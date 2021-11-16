@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -73,11 +73,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
-
-    initGroupBy(context, groupByTimePlan);
   }
 
-  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
+  /** init reader and aggregate function. This method should be called once after initializing */
+  public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 

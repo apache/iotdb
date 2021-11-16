@@ -22,16 +22,13 @@ package org.apache.iotdb.db.metadata.lastCache.container.value;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class UnaryLastCacheValue implements ILastCacheValue {
-
-  private static final String INDEX_OPERATION_ON_MONAD_EXCEPTION =
-      "Cannot operate data on any index but 0 on MonadLastCacheValue";
+public class LastCacheValue implements ILastCacheValue {
 
   private long timestamp;
 
   private TsPrimitiveType value;
 
-  public UnaryLastCacheValue(long timestamp, TsPrimitiveType value) {
+  public LastCacheValue(long timestamp, TsPrimitiveType value) {
     this.timestamp = timestamp;
     this.value = value;
   }
@@ -54,53 +51,5 @@ public class UnaryLastCacheValue implements ILastCacheValue {
   @Override
   public TimeValuePair getTimeValuePair() {
     return new TimeValuePair(timestamp, value);
-  }
-
-  @Override
-  public int getSize() {
-    return 1;
-  }
-
-  @Override
-  public long getTimestamp(int index) {
-    if (index == 0) {
-      return timestamp;
-    }
-    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
-  }
-
-  @Override
-  public void setTimestamp(int index, long timestamp) {
-    if (index == 0) {
-      this.timestamp = timestamp;
-    }
-    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
-  }
-
-  @Override
-  public TsPrimitiveType getValue(int index) {
-    if (index == 0) {
-      return value;
-    }
-    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
-  }
-
-  @Override
-  public void setValue(int index, TsPrimitiveType value) {
-    if (index == 0) {
-      this.value = value;
-    }
-    throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
-  }
-
-  @Override
-  public TimeValuePair getTimeValuePair(int index) {
-    if (index != 0) {
-      throw new RuntimeException(INDEX_OPERATION_ON_MONAD_EXCEPTION);
-    } else if (value == null) {
-      return null;
-    } else {
-      return new TimeValuePair(timestamp, value);
-    }
   }
 }

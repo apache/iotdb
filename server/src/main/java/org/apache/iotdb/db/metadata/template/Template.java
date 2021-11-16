@@ -47,7 +47,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
@@ -88,11 +87,8 @@ public class Template {
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
-        if (plan.getAlignedPrefix() != null && plan.getAlignedPrefix().contains(thisPrefix)) {
-          isAlign = true;
-        } else {
-          isAlign = false;
-        }
+        isAlign =
+            plan.getAlignedDeviceId() != null && plan.getAlignedDeviceId().contains(thisPrefix);
       }
 
       // vector, aligned measurements
@@ -139,12 +135,12 @@ public class Template {
     return schemaMap;
   }
 
-  public void setSchemaMap(Map<String, IMeasurementSchema> schemaMap) {
-    this.schemaMap = schemaMap;
-  }
-
   public boolean hasSchema(String measurementId) {
     return schemaMap.containsKey(measurementId);
+  }
+
+  public IMeasurementSchema getSchema(String measurementId) {
+    return schemaMap.get(measurementId);
   }
 
   public List<IMeasurementMNode> getMeasurementMNode() {
@@ -223,9 +219,7 @@ public class Template {
 
     synchronized (this) {
       // if not aligned now, it will be set to aligned
-      if (!alignedPrefix.contains(prefix)) {
-        alignedPrefix.add(prefix);
-      }
+      alignedPrefix.add(prefix);
       for (int i = 0; i <= measurementNames.size() - 1; i++) {
         // find the parent and add nodes to template
         if (prefix.equals("")) {
@@ -408,10 +402,6 @@ public class Template {
     return directNodes.getOrDefault(nodeName, null);
   }
 
-  public Collection<IMNode> getDirectNodes() {
-    return directNodes.values();
-  }
-
   // endregion
 
   // region inner utils
@@ -579,9 +569,7 @@ public class Template {
       IMNode top = astack.pop();
       if (!top.isMeasurement()) {
         String thisPrefix = getFullPathWithoutTemplateName(top);
-        if (alignedPrefix.contains(thisPrefix)) {
-          alignedPrefix.remove(thisPrefix);
-        }
+        alignedPrefix.remove(thisPrefix);
         for (IMNode child : top.getChildren().values()) {
           astack.push(child);
         }
@@ -593,9 +581,7 @@ public class Template {
   }
 
   public void deleteAlignedPrefix(String path) {
-    if (alignedPrefix.contains(path)) {
-      alignedPrefix.remove(path);
-    }
+    alignedPrefix.remove(path);
   }
   // endregion
 

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.utils.StatusUtils;
@@ -136,7 +136,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      prefixPaths.add(insertTabletPlan.getPrefixPath());
+      prefixPaths.add(insertTabletPlan.getDeviceId());
     }
     return prefixPaths;
   }
@@ -195,7 +195,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getPrefixPath();
+    return insertTabletPlanList.get(0).getDeviceId();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {

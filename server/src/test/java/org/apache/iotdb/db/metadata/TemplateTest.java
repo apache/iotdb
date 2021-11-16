@@ -22,6 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
@@ -87,10 +89,9 @@ public class TemplateTest {
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
-    for (IMeasurementSchema schema :
-        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
-      allSchema.remove(schema);
-    }
+    manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1")).stream()
+        .map(MeasurementPath::getMeasurementSchema)
+        .forEach(allSchema::remove);
 
     assertTrue(allSchema.isEmpty());
 

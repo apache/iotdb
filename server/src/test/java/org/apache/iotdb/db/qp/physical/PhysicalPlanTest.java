@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -1076,7 +1076,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLastPlanDataTypes() throws QueryProcessException {
+  public void testLastPlanDataTypes() throws QueryProcessException, MetadataException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
     String sqlStr2 = "SELECT last s1 FROM root.vehicle.d2, root.vehicle.d3, root.vehicle.d4";
 

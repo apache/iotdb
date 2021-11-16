@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -187,8 +187,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     noMoreDataInQueueArray = new boolean[readers.size()];
     bufferNum = 0;
     for (PartialPath path : paths) {
-      if (path instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) path).getSubSensorsList().size();
+      if (path instanceof AlignedPath) {
+        bufferNum += ((AlignedPath) path).getMeasurementList().size();
       } else {
         bufferNum += 1;
       }
@@ -275,9 +275,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
-            if (paths.get(seriesIndex) instanceof VectorPartialPath) {
+            if (paths.get(seriesIndex) instanceof AlignedPath) {
               for (int i = 0;
-                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
+                  i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
                   i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
@@ -571,9 +571,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        if (paths.get(seriesIndex) instanceof VectorPartialPath) {
+        if (paths.get(seriesIndex) instanceof AlignedPath) {
           for (int i = 0;
-              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
+              i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
               i++) {
             record.addField(null);
           }

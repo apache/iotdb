@@ -19,27 +19,24 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-
-import java.util.LinkedList;
-import java.util.List;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class implements storage group path collection function.
-public class StorageGroupPathCollector extends CollectorTraverser<List<PartialPath>> {
+public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
   protected boolean collectInternal = false;
 
-  public StorageGroupPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.resultSet = new LinkedList<>();
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
       if (collectInternal) {
-        transferToResult(node);
+        collectStorageGroup(node.getAsStorageGroupMNode());
       }
       return true;
     }
@@ -49,15 +46,13 @@ public class StorageGroupPathCollector extends CollectorTraverser<List<PartialPa
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
     if (node.isStorageGroup()) {
-      transferToResult(node);
+      collectStorageGroup(node.getAsStorageGroupMNode());
       return true;
     }
     return false;
   }
 
-  private void transferToResult(IMNode node) {
-    resultSet.add(node.getPartialPath());
-  }
+  protected abstract void collectStorageGroup(IStorageGroupMNode node);
 
   public void setCollectInternal(boolean collectInternal) {
     this.collectInternal = collectInternal;

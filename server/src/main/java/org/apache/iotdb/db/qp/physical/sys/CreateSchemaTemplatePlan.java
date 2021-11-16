@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -45,7 +45,7 @@ import java.util.Set;
 public class CreateSchemaTemplatePlan extends PhysicalPlan {
 
   String name;
-  Set<String> alignedPrefix;
+  Set<String> alignedDeviceId;
   String[] schemaNames;
   String[][] measurements;
   TSDataType[][] dataTypes;
@@ -101,7 +101,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
         this.compressors[i][j] = compressors.get(i).get(j);
       }
     }
-    this.alignedPrefix = new HashSet<>();
+    this.alignedDeviceId = new HashSet<>();
   }
 
   public CreateSchemaTemplatePlan(
@@ -122,10 +122,10 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
       List<List<TSDataType>> dataTypes,
       List<List<TSEncoding>> encodings,
       List<List<CompressionType>> compressors,
-      Set<String> alignedPrefix) {
+      Set<String> alignedDeviceId) {
     // Only accessed by deserialization, which may cause ambiguity with align designation
     this(name, measurements, dataTypes, encodings, compressors);
-    this.alignedPrefix = alignedPrefix;
+    this.alignedDeviceId = alignedDeviceId;
   }
 
   public CreateSchemaTemplatePlan(
@@ -141,7 +141,6 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     this.dataTypes = dataTypes;
     this.encodings = encodings;
     this.compressors = compressors;
-    this.alignedPrefix = alignedPrefix;
   }
 
   public List<String> getSchemaNames() {
@@ -160,14 +159,14 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
     this.name = name;
   }
 
-  public Set<String> getAlignedPrefix() {
-    return alignedPrefix;
+  public Set<String> getAlignedDeviceId() {
+    return alignedDeviceId;
   }
 
   public List<List<String>> getMeasurements() {
     List<List<String>> ret = new ArrayList<>();
-    for (int i = 0; i < measurements.length; i++) {
-      ret.add(Arrays.asList(measurements[i]));
+    for (String[] measurement : measurements) {
+      ret.add(Arrays.asList(measurement));
     }
     return ret;
   }
@@ -242,7 +241,7 @@ public class CreateSchemaTemplatePlan extends PhysicalPlan {
         alignedEncodings.get(prefix).add(encoding);
         alignedCompressions.get(prefix).add(compressionType);
       } else {
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           measurements.add(Collections.singletonList(measurementName));
         } else {
           measurements.add(

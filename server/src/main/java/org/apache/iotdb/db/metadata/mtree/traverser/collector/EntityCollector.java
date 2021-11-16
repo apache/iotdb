@@ -19,27 +19,20 @@
 package org.apache.iotdb.db.metadata.mtree.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.util.Set;
-import java.util.TreeSet;
+// This class defines EntityMNode as target node and defines the Entity process framework.
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-// This class implements the EntityMNode path collection function.
-// Compared with BelongedEntityPathCollector, this class only process entities that full match the
-// path
-// pattern.
-public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
-
-  public EntityPathCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public EntityCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.resultSet = new TreeSet<>();
   }
 
-  public EntityPathCollector(IMNode startNode, PartialPath path, int limit, int offset)
+  public EntityCollector(IMNode startNode, PartialPath path, int limit, int offset)
       throws MetadataException {
     super(startNode, path, limit, offset);
-    this.resultSet = new TreeSet<>();
   }
 
   @Override
@@ -48,7 +41,8 @@ public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
     if (node.isEntity()) {
       if (hasLimit) {
         curOffset += 1;
@@ -56,11 +50,13 @@ public class EntityPathCollector extends CollectorTraverser<Set<PartialPath>> {
           return true;
         }
       }
-      resultSet.add(node.getPartialPath());
+      collectEntity(node.getAsEntityMNode());
       if (hasLimit) {
         count += 1;
       }
     }
     return false;
   }
+
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

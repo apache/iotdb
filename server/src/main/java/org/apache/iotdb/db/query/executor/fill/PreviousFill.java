@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.executor.fill;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -101,7 +101,8 @@ public class PreviousFill extends IFill {
       TSDataType dataType,
       long queryTime,
       Set<String> sensors,
-      QueryContext context) {
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException {
     this.seriesPath = path;
     this.dataType = dataType;
     this.context = context;

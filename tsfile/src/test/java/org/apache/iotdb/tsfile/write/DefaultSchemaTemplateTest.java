@@ -60,11 +60,11 @@ public class DefaultSchemaTemplateTest {
       schemaList.add(s1);
       schemaList.add(s2);
 
-      Map<String, IMeasurementSchema> schema = new HashMap<>();
+      Map<String, UnaryMeasurementSchema> schema = new HashMap<>();
       schema.put("s1", s1);
       schema.put("s2", s2);
 
-      writer.registerSchemaTemplate("defaultTemplate", schema);
+      writer.registerSchemaTemplate("defaultTemplate", schema, false);
 
       Tablet tablet = new Tablet("d1", schemaList);
       long[] timestamps = tablet.timestamps;
