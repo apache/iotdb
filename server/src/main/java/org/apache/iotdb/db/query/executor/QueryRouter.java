@@ -242,6 +242,12 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
+  protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithValueFilterDataSet(context, groupByTimeFillPlan);
+  }
+
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
@@ -264,7 +270,7 @@ public class QueryRouter implements IQueryRouter {
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
     } else {
-      dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
     }
 
     return dataSet;

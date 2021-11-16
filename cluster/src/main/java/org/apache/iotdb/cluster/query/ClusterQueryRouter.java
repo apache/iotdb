@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.query;
 
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
+import org.apache.iotdb.cluster.query.groupby.ClusterGroupByFillWithValueFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
@@ -29,11 +30,13 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
@@ -75,6 +78,14 @@ public class ClusterQueryRouter extends QueryRouter {
       QueryContext context, GroupByTimePlan plan)
       throws StorageEngineException, QueryProcessException {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
+  }
+
+  @Override
+  protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new ClusterGroupByFillWithValueFilterDataSet(
+        context, groupByTimeFillPlan, metaGroupMember);
   }
 
   @Override

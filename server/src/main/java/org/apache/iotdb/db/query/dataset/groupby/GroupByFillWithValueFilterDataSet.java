@@ -115,12 +115,12 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
     }
   }
 
-  private TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
+  protected TimeGenerator getTimeGenerator(QueryContext context, RawDataQueryPlan queryPlan)
       throws StorageEngineException {
     return new ServerTimeGenerator(context, queryPlan);
   }
 
-  private IReaderByTimestamp getReaderByTime(
+  protected IReaderByTimestamp getReaderByTime(
       PartialPath path, RawDataQueryPlan queryPlan, TSDataType dataType, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     return new SeriesReaderByTimestamp(
