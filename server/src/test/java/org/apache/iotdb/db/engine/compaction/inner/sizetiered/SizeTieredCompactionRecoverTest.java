@@ -284,7 +284,9 @@ public class SizeTieredCompactionRecoverTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanEnv();
-    FileUtils.deleteDirectory(tempSGDir);
+    if (tempSGDir.exists()) {
+      FileUtils.deleteDirectory(tempSGDir);
+    }
   }
 
   private void removeFiles() throws IOException {
