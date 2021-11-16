@@ -32,7 +32,7 @@ public class ActivateTemplateOperator extends Operator {
 
   public ActivateTemplateOperator(int tokenIntType) {
     super(tokenIntType);
-    operatorType = OperatorType.SET_USING_SCHEMA_TEMPLATE;
+    operatorType = OperatorType.ACTIVATE_TEMPLATE;
   }
 
   public PartialPath getPrefixPath() {
