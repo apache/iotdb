@@ -54,15 +54,15 @@ You can start multiple instances on a single machine by modifying the configurat
 ***iotdb-cluster.properties***
 
 ```
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-default\_replica\_num = 1
-internal\_meta\_port = 9003
-internal\_data\_port = 40010
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9003
+internal_data_port = 40010
 ```
 ***iotdb-engine.properties***
 
 ```
-rpc\_port=6667
+rpc_port=6667
 ```
 
 **Node2**:
@@ -70,16 +70,16 @@ rpc\_port=6667
 ***iotdb-cluster.properties***
 
 ```
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-default\_replica\_num = 1
-internal\_meta\_port = 9005
-internal\_data\_port = 40012
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9005
+internal_data_port = 40012
 ```
 
 ***iotdb-engine.properties***
 
 ```
-rpc\_port=6669
+rpc_port=6669
 ```
 
 **Node3**:
@@ -87,16 +87,16 @@ rpc\_port=6669
 ***iotdb-cluster.properties***
 
 ```
-seed\_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
-default\_replica\_num = 1
-internal\_meta\_port = 9007
-internal\_data\_port = 40014
+seed_nodes = 127.0.0.1:9003,127.0.0.1:9005,127.0.0.1:9007
+default_replica_num = 1
+internal_meta_port = 9007
+internal_data_port = 40014
 ```
 
 ***iotdb-engine.properties***
 
 ```
-rpc\_port=6671
+rpc_port=6671
 ```
 
 ### Compile from source code:
