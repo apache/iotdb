@@ -54,7 +54,6 @@ import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -63,7 +62,6 @@ import org.apache.iotdb.db.qp.physical.sys.CreateSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -1719,7 +1717,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
                 req.prefixPath + "." + req.measurements.get(0),
                 req.dataTypes.get(0),
                 req.encodings.get(0),
-                req.compressor));
+                req.compressors.get(0)));
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1738,6 +1736,10 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       for (int encoding : req.encodings) {
         encodings.add(TSEncoding.values()[encoding]);
       }
+      List<CompressionType> compressors = new ArrayList<>();
+      for (int compressor : req.compressors) {
+        compressors.add(CompressionType.values()[compressor]);
+      }
 
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
@@ -1745,7 +1747,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.measurements,
               dataTypes,
               encodings,
-              CompressionType.values()[req.compressor],
+              compressors,
               req.measurementAlias);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);

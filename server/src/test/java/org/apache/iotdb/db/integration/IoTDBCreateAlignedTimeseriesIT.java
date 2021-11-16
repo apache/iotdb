@@ -56,17 +56,17 @@ public class IoTDBCreateAlignedTimeseriesIT {
   }
 
   @Test
-  @Ignore
   public void testCreateAlignedTimeseries() throws Exception {
     String[] timeSeriesArray =
         new String[] {
-          "root.sg1.d1.vector1.s1,FLOAT,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
+          "root.sg1.d1.vector1.s1,FLOAT,PLAIN,UNCOMPRESSED",
+          "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
         };
 
     statement.execute("SET STORAGE GROUP TO root.sg1");
     try {
       statement.execute(
-          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN,s2 INT64 encoding=RLE) compressor=SNAPPY");
+          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
     } catch (IoTDBSQLException ignored) {
     }
 

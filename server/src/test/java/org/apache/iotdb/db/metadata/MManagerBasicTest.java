@@ -276,7 +276,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -317,7 +317,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -851,7 +851,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplate() throws MetadataException {
-    CreateTemplatePlan plan = getCreateTemplatePlan();
+    CreateSchemaTemplatePlan plan = getCreateTemplatePlan();
 
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
@@ -897,7 +897,7 @@ public class MManagerBasicTest {
 
   @Test
   public void testTemplateInnerTree() {
-    CreateTemplatePlan plan = getTreeTemplatePlan();
+    CreateSchemaTemplatePlan plan = getTreeTemplatePlan();
     Template template;
     MManager manager = IoTDB.metaManager;
 
@@ -943,7 +943,7 @@ public class MManagerBasicTest {
     }
   }
 
-  private CreateTemplatePlan getTreeTemplatePlan() {
+  private CreateSchemaTemplatePlan getTreeTemplatePlan() {
     /**
      * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
      * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
@@ -971,7 +971,7 @@ public class MManagerBasicTest {
     compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     compressionTypes.add(Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY));
 
-    return new CreateTemplatePlan(
+    return new CreateSchemaTemplatePlan(
         "treeTemplate", measurementList, dataTypeList, encodingList, compressionTypes);
   }
 
@@ -1326,8 +1326,8 @@ public class MManagerBasicTest {
     schemaNames.add("s0");
     schemaNames.add("s1");
 
-    CreateTemplatePlan plan =
-        new CreateTemplatePlan(
+    CreateSchemaTemplatePlan plan =
+        new CreateSchemaTemplatePlan(
             "template1",
             schemaNames,
             measurementList,
@@ -1620,7 +1620,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -1671,7 +1671,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -1806,7 +1806,7 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            compressionType);
+            Arrays.asList(compressionType, compressionType, compressionType));
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -1829,7 +1829,7 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            compressionType);
+            Arrays.asList(compressionType, compressionType, compressionType));
         fail();
       } catch (Exception e) {
         Assert.assertEquals(String.format("%s is an illegal name.", measurementId), e.getMessage());

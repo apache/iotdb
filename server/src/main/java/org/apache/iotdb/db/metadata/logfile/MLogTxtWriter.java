@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -142,7 +143,7 @@ public class MLogTxtWriter implements AutoCloseable {
             plan.getMeasurements(),
             plan.getDataTypes().stream().map(TSDataType::serialize),
             plan.getEncodings().stream().map(TSEncoding::serialize),
-            plan.getCompressor().serialize()));
+            plan.getCompressors().stream().map(CompressionType::serialize)));
 
     buf.append(",[");
     if (plan.getAliasList() != null) {

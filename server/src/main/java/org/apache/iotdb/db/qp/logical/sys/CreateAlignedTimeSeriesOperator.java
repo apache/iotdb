@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -29,7 +29,10 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class CreateAlignedTimeSeriesOperator extends Operator {
 
@@ -122,8 +125,7 @@ public class CreateAlignedTimeSeriesOperator extends Operator {
           "the measurement under an aligned device is not allowed to have the same measurement name");
     }
 
-    // TODO: remove "get(0)" after refactoring CreateAlignedTimeSeriesPlan
     return new CreateAlignedTimeSeriesPlan(
-        prefixPath, measurements, dataTypes, encodings, compressors.get(0), aliasList);
+        prefixPath, measurements, dataTypes, encodings, compressors, aliasList);
   }
 }

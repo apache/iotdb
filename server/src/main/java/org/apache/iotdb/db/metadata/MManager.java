@@ -552,11 +552,11 @@ public class MManager {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      CompressionType compressor)
+      List<CompressionType> compressors)
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressor, null));
+            prefixPath, measurements, dataTypes, encodings, compressors, null));
   }
 
   /**
@@ -584,7 +584,11 @@ public class MManager {
 
       // create time series in MTree
       mtree.createAlignedTimeseries(
-          prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+          prefixPath,
+          measurements,
+          plan.getDataTypes(),
+          plan.getEncodings(),
+          plan.getCompressors());
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.removeObject(prefixPath);
@@ -1907,15 +1911,12 @@ public class MManager {
       PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
     List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
     for (TSDataType dataType : dataTypes) {
       encodings.add(getDefaultEncoding(dataType));
+      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
-    createAlignedTimeSeries(
-        prefixPath,
-        measurements,
-        dataTypes,
-        encodings,
-        TSFileDescriptor.getInstance().getConfig().getCompressor());
+    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
   // endregion
 
