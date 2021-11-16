@@ -118,10 +118,10 @@ error: encoding TS_2DIFF does not support BOOLEAN
 创建一组对齐时间序列的SQL语句如下所示：
 
 ```
-IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN, longitude FLOAT encoding=PLAIN) compressor=SNAPPY
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY) 
 ```
 
-一组对齐序列中的序列可以有不同的数据类型和编码方式，但压缩方式必须相同。
+一组对齐序列中的序列可以有不同的数据类型、编码方式以及压缩方式。
 
 对齐的时间序列暂不支持设置别名、标签、属性。
 

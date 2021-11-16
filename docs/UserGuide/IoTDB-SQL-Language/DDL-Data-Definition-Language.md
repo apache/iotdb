@@ -117,10 +117,10 @@ Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence betwe
 The SQL statement for creating a group of timeseries are as follows:
 
 ```
-IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN, longitude FLOAT encoding=PLAIN) compressor=SNAPPY
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)
 ```
 
-You can set different datatype and encoding for the timeseries in a group of aligned timeseries, but the compression must be the same.
+You can set different datatype, encoding, and compression for the timeseries in a group of aligned timeseries
 
 It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
 
