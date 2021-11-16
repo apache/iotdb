@@ -87,7 +87,6 @@ import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -1735,7 +1734,8 @@ public class MManager {
       PartialPath fullPath = devicePath.concatNode(measurementId);
       int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
       if (index != fullPath.getNodeLength() - 1) {
-        // this measurement is in template, need to assure mounted node exists and set using template.
+        // this measurement is in template, need to assure mounted node exists and set using
+        // template.
         if (index != indexRecord) {
           // Without allowing overlap of template and MTree, this block run only once
           String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);

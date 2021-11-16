@@ -1515,6 +1515,7 @@ public class MTree implements Serializable {
 
   /**
    * Note that template and MTree cannot have overlap paths.
+   *
    * @return true iff path corresponding to a measurement inside a template, whether using or not.
    */
   public boolean isPathExistsWithinTemplate(PartialPath path) {
@@ -1549,11 +1550,15 @@ public class MTree implements Serializable {
   }
 
   /**
-   * Check measurement path and return the mounted node index on path. The node could have not created yet.
-   * The result is used for getDeviceNodeWithAutoCreate, which return corresponding IMNode on MTree.
-   * @return index on full path of the node which matches all measurements path with its upperTemplate.
+   * Check measurement path and return the mounted node index on path. The node could have not
+   * created yet. The result is used for getDeviceNodeWithAutoCreate, which return corresponding
+   * IMNode on MTree.
+   *
+   * @return index on full path of the node which matches all measurements path with its
+   *     upperTemplate.
    */
-  public int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath) throws MetadataException{
+  public int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath)
+      throws MetadataException {
     String[] fullPathNodes = measurementPath.getNodes();
     IMNode cur = root;
     Template upperTemplate = cur.getSchemaTemplate();
@@ -1566,18 +1571,22 @@ public class MTree implements Serializable {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
       if (!cur.hasChild(fullPathNodes[index])) {
         if (upperTemplate != null) {
-          String suffixPath = new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length)).toString();
+          String suffixPath =
+              new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
+                  .toString();
 
-          // if suffix matches template, then fullPathNodes[index-1] should be the node to use template on MTree
+          // if suffix matches template, then fullPathNodes[index-1] should be the node to use
+          // template on MTree
           if (upperTemplate.hasSchema(suffixPath)) {
             return index - 1;
           }
 
           // overlap with template, cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
-            throw new PathNotExistException(String.format(
-                "Path [%s] overlaps but not matches template [%s] under node [%s]",
-                measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]));
+            throw new PathNotExistException(
+                String.format(
+                    "Path [%s] overlaps but not matches template [%s] under node [%s]",
+                    measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]));
           }
         } else {
           // no matched child, no template, need to create device node as logical device path
@@ -1591,7 +1600,6 @@ public class MTree implements Serializable {
     // all nodes on path exist in MTree, device node should be the penultimate one
     return fullPathNodes.length - 1;
   }
-
 
   // endregion
 

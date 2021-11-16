@@ -20,7 +20,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -151,7 +150,7 @@ public abstract class Traverser {
     }
     traverseContext.pop();
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 
@@ -191,7 +190,7 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 
@@ -233,7 +232,7 @@ public abstract class Traverser {
       traverseContext.pop();
     }
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 

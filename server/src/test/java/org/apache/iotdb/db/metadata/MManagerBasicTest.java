@@ -52,6 +52,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -1091,12 +1092,14 @@ public class MManagerBasicTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(plan);
+    manager.createSchemaTemplate(getTreeTemplatePlan());
 
     // set device template
     SetSchemaTemplatePlan setSchemaTemplatePlan =
         new SetSchemaTemplatePlan("template1", "root.sg1.d1");
 
     manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(new SetSchemaTemplatePlan("treeTemplate", "root.tree.sg0"));
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1128,6 +1131,38 @@ public class MManagerBasicTest {
     } catch (Exception e) {
       assertEquals("Path [root.sg1.d1.s11] conflicts with template [template1].", e.getMessage());
     }
+
+    CreateTimeSeriesPlan createTimeSeriesPlan3 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg0.GPS.s9"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    try {
+      manager.createTimeseries(createTimeSeriesPlan3);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "Path [root.tree.sg0.GPS.s9] conflicts with template [treeTemplate].", e.getMessage());
+    }
+
+    CreateTimeSeriesPlan createTimeSeriesPlan4 =
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg0.s3"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null);
+
+    manager.createTimeseries(createTimeSeriesPlan4);
   }
 
   @Test
@@ -1135,10 +1170,14 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     CreateTemplatePlan plan = getCreateTemplatePlan();
     manager.createSchemaTemplate(plan);
+    manager.createSchemaTemplate(getTreeTemplatePlan());
 
     // set device template
     SetSchemaTemplatePlan setSchemaTemplatePlan =
         new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+
+    SetSchemaTemplatePlan setSchemaTemplatePlan2 =
+        new SetSchemaTemplatePlan("treeTemplate", "root.tree.sg0");
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1153,12 +1192,45 @@ public class MManagerBasicTest {
 
     manager.createTimeseries(createTimeSeriesPlan);
 
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg0.s1"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    manager.setSchemaTemplate(setSchemaTemplatePlan2);
+    manager.unsetSchemaTemplate(new UnsetSchemaTemplatePlan("root.tree.sg0", "treeTemplate"));
     try {
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       fail();
     } catch (MetadataException e) {
       assertEquals(
-          "Schema name s11 in template has conflict with node's child root.sg1.d1.s11",
+          "Node name s11 in template has conflict with node's child root.sg1.d1.s11",
+          e.getMessage());
+    }
+
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            new PartialPath("root.tree.sg0.GPS.speed"),
+            TSDataType.INT32,
+            TSEncoding.PLAIN,
+            CompressionType.GZIP,
+            null,
+            null,
+            null,
+            null));
+
+    try {
+      manager.setSchemaTemplate(setSchemaTemplatePlan2);
+      fail();
+    } catch (MetadataException e) {
+      assertEquals(
+          "Node name GPS in template has conflict with node's child root.tree.sg0.GPS",
           e.getMessage());
     }
 
@@ -1367,9 +1439,20 @@ public class MManagerBasicTest {
 
       // show timeseries root.tree.d0
       ShowTimeSeriesPlan showTreeTSPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root.tree.d0"), false, null, null, 0, 0, false);
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.tree.d0.**"), false, null, null, 0, 0, false);
       List<ShowTimeSeriesResult> treeShowResult =
           manager.showTimeseries(showTreeTSPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+      assertEquals(4, treeShowResult.size());
+      Set<String> checkSet = new HashSet<>();
+      checkSet.add("root.tree.d0.d1.s1");
+      checkSet.add("root.tree.d0.s2");
+      checkSet.add("root.tree.d0.GPS.x");
+      checkSet.add("root.tree.d0.GPS.y");
+      for (ShowTimeSeriesResult res : treeShowResult) {
+        checkSet.remove(res.getName());
+      }
+      assertTrue(checkSet.isEmpty());
 
       // show timeseries root.laptop.d1.s0
       ShowTimeSeriesPlan showTimeSeriesPlan =
@@ -1442,7 +1525,7 @@ public class MManagerBasicTest {
   }
 
   @Test
-  public void testCountTimeseriesWithTemplate() {
+  public void testCountTimeseriesWithTemplate() throws IOException {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s0"));
     measurementList.add(Collections.singletonList("s1"));
@@ -1475,11 +1558,13 @@ public class MManagerBasicTest {
     MManager manager = IoTDB.metaManager;
     try {
       manager.createSchemaTemplate(plan);
+      manager.createSchemaTemplate(getTreeTemplatePlan());
 
       // set device template
       SetSchemaTemplatePlan setSchemaTemplatePlan =
           new SetSchemaTemplatePlan("template1", "root.laptop.d1");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setSchemaTemplate(new SetSchemaTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
@@ -1492,6 +1577,11 @@ public class MManagerBasicTest {
       setSchemaTemplatePlan = new SetSchemaTemplatePlan("template1", "root.computer");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
+      manager.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v0"));
+      manager.getDeviceNodeWithAutoCreate(new PartialPath("root.tree.d0.v1"));
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0.v0")));
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0.v1")));
 
       Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.s1")));
@@ -1499,7 +1589,8 @@ public class MManagerBasicTest {
       Assert.assertEquals(1, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.s2")));
       Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.d1.**")));
       Assert.assertEquals(3, manager.getAllTimeseriesCount(new PartialPath("root.computer.**")));
-      Assert.assertEquals(5, manager.getAllTimeseriesCount(new PartialPath("root.**")));
+      Assert.assertEquals(12, manager.getAllTimeseriesCount(new PartialPath("root.tree.**")));
+      Assert.assertEquals(17, manager.getAllTimeseriesCount(new PartialPath("root.**")));
 
     } catch (MetadataException e) {
       e.printStackTrace();
@@ -1542,11 +1633,14 @@ public class MManagerBasicTest {
 
     try {
       manager.createSchemaTemplate(plan);
+      manager.createSchemaTemplate(getTreeTemplatePlan());
       // set device template
       SetSchemaTemplatePlan setSchemaTemplatePlan =
           new SetSchemaTemplatePlan("template1", "root.laptop.d1");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setSchemaTemplate(new SetSchemaTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
+      manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d2.s1"),
@@ -1559,6 +1653,8 @@ public class MManagerBasicTest {
       Assert.assertEquals(1, manager.getDevicesNum(new PartialPath("root.laptop.d2")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.*")));
       Assert.assertEquals(2, manager.getDevicesNum(new PartialPath("root.laptop.**")));
+      Assert.assertEquals(3, manager.getDevicesNum(new PartialPath("root.tree.**")));
+      Assert.assertEquals(5, manager.getDevicesNum(new PartialPath("root.**")));
 
       manager.createTimeseries(
           new PartialPath("root.laptop.d1.a.s3"),
