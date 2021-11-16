@@ -170,7 +170,7 @@ public class BloomFilterCacheTest {
                 sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
         measurementSchemas.add(measurementSchema);
         schema.registerTimeseries(
-            new Path(device, sensorPrefix + (i + 1)),
+            new Path(device),
             new UnaryMeasurementSchema(
                 sensorPrefix + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
       }
