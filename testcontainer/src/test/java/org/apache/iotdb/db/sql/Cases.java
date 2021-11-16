@@ -851,8 +851,6 @@ public abstract class Cases {
     for (long time = 1; time <= 3; time++) {
       session.insertAlignedRecord(
           "root.sg1.d1.v1", time, multiMeasurementComponents, types, values);
-      session.insertAlignedRecord(
-          "root.sg0.d1.v1", time, multiMeasurementComponents, types, values);
     }
     List<String> multiSeriesIds = new ArrayList<>();
     List<List<String>> multiMeasurementComponentsList = new ArrayList<>();
@@ -877,13 +875,9 @@ public abstract class Cases {
     multiSeriesIds.add("root.sg0.d2.v1");
     multiSeriesIds.add("root.sg0.d2.v1");
     multiSeriesIds.add("root.sg0.d2.v1");
-    session.insertAlignedRecords(
-        multiSeriesIds, times, multiMeasurementComponentsList, typeList, valueList);
 
     session.insertAlignedRecordsOfOneDevice(
         "root.sg5.d1.v1", times, multiMeasurementComponentsList, typeList, valueList);
-    session.insertAlignedRecordsOfOneDevice(
-        "root.sg0.d3.v1", times, multiMeasurementComponentsList, typeList, valueList);
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
@@ -902,8 +896,6 @@ public abstract class Cases {
       tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, 2);
       tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, 3.0f);
     }
-    session.insertTablet(tablet, true);
-    tablet.setPrefixPath("root.sg0.d4.v1");
     session.insertTablet(tablet, true);
     tablet.reset();
 
@@ -955,30 +947,8 @@ public abstract class Cases {
     session.insertTablets(tabletMap, true);
 
     tabletMap.clear();
-    tablet1.setPrefixPath("root.sg0.d5.v1");
-    tablet2.setPrefixPath("root.sg0.d6.v1");
-    tablet3.setPrefixPath("root.sg0.d7.v1");
-    tabletMap.put("root.sg0.d5.v1", tablet1);
-    tabletMap.put("root.sg0.d6.v1", tablet2);
-    tabletMap.put("root.sg0.d7.v1", tablet3);
-    session.insertTablets(tabletMap, true);
-    tablet1.reset();
-    tablet2.reset();
-    tablet3.reset();
 
     for (Statement readStatement : readStatements) {
-      for (int d = 1; d <= 7; d++) {
-        ResultSet resultSet =
-            readStatement.executeQuery(String.format("SELECT * from root.sg0.d%d.v1", d));
-        for (long t = 1; t <= 3; t++) {
-          Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(resultSet.getLong(1), t);
-          Assert.assertEquals(resultSet.getString(2), "1");
-          Assert.assertEquals(resultSet.getString(3), "2");
-          Assert.assertEquals(resultSet.getString(4), "3.0");
-        }
-      }
-
       for (int sg = 1; sg <= 9; sg++) {
         ResultSet resultSet =
             readStatement.executeQuery(String.format("SELECT * from root.sg%d.d1.v1", sg));

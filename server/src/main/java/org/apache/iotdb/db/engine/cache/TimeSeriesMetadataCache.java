@@ -139,7 +139,9 @@ public class TimeSeriesMetadataCache {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
-          BloomFilter bloomFilter = reader.readBloomFilter();
+          BloomFilter bloomFilter =
+              BloomFilterCache.getInstance()
+                  .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
           if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
             if (debug) {
               DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);

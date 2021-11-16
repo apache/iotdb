@@ -37,6 +37,7 @@ public class IoTDBConstant {
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+  public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 

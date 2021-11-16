@@ -242,12 +242,16 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   public Long getFirstPoint() {
-    if (list.size() == 0) return Long.MAX_VALUE;
+    if (list.size() == 0) {
+      return Long.MAX_VALUE;
+    }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
   }
 
   public Long getLastPoint() {
-    if (list.size() == 0) return Long.MIN_VALUE;
+    if (list.size() == 0) {
+      return Long.MIN_VALUE;
+    }
     return getSortedTvListForQuery()
         .getTimeValuePair(getSortedTvListForQuery().size() - 1)
         .getTimestamp();

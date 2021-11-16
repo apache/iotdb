@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.lastCache;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
@@ -41,6 +42,9 @@ import java.util.Set;
 public class LastCacheManager {
 
   private static final Logger logger = LoggerFactory.getLogger(LastCacheManager.class);
+
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
 
   /**
    * get the last cache value of time series of given seriesPath
@@ -231,6 +235,9 @@ public class LastCacheManager {
                 Long.MAX_VALUE,
                 null);
         last = lastReader.readLastPoint();
+        if (CACHE_ENABLED && last != null && last.getValue() != null) {
+          updateLastCache(node, last, false, Long.MIN_VALUE);
+        }
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error(

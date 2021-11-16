@@ -1107,7 +1107,9 @@ public class PlanExecutor implements IPlanExecutor {
     Collections.sort(
         tsfiles,
         (o1, o2) -> {
-          if (establishTime[o1] == establishTime[o2]) return 0;
+          if (establishTime[o1] == establishTime[o2]) {
+            return 0;
+          }
           return establishTime[o1] < establishTime[o2] ? -1 : 1;
         });
     for (Integer i : tsfiles) {
@@ -1470,7 +1472,9 @@ public class PlanExecutor implements IPlanExecutor {
       // check whether types are match
       getSeriesSchemas(insertRowPlan);
       insertRowPlan.transferType();
-      StorageEngine.getInstance().insert(insertRowPlan);
+      if (insertRowPlan.getFailedMeasurementNumber() < insertRowPlan.getMeasurements().length) {
+        StorageEngine.getInstance().insert(insertRowPlan);
+      }
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
@@ -2083,7 +2087,9 @@ public class PlanExecutor implements IPlanExecutor {
       SettleService.getINSTANCE().startSettling(seqResourcesToBeSettled, unseqResourcesToBeSettled);
       StorageEngine.getInstance().setSettling(sgPath, false);
     } catch (WriteProcessException e) {
-      if (sgPath != null) StorageEngine.getInstance().setSettling(sgPath, false);
+      if (sgPath != null) {
+        StorageEngine.getInstance().setSettling(sgPath, false);
+      }
       throw new StorageEngineException(e.getMessage());
     }
   }

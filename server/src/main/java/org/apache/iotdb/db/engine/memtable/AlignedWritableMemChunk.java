@@ -39,8 +39,8 @@ import java.util.Map;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
-  private Map<String, Integer> measurementIndexMap;
-  private List<IMeasurementSchema> schemaList;
+  private final Map<String, Integer> measurementIndexMap;
+  private final List<IMeasurementSchema> schemaList;
   private AlignedTVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
@@ -187,7 +187,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return list.size() * measurementIndexMap.size();
+    return (long) list.size() * measurementIndexMap.size();
   }
 
   public long alignedListSize() {
