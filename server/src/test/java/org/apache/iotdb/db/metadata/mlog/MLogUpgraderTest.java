@@ -121,7 +121,7 @@ public class MLogUpgraderTest {
     byte[] byteArray = baos.toByteArray();
     ByteBuffer buffer = ByteBuffer.wrap(byteArray);
 
-    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal(), buffer.get());
+    assertEquals(PhysicalPlan.PhysicalPlanType.CREATE_TEMPLATE.ordinal(), buffer.get());
 
     CreateTemplatePlan deserializedPlan = new CreateTemplatePlan();
     deserializedPlan.deserialize(buffer);

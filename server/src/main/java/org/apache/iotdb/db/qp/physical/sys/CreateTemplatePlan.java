@@ -282,7 +282,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);
 
@@ -412,7 +412,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
 
@@ -462,7 +462,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
   // added and modified for test adaptation of CreateSchemaTemplate serialization.
   @TestOnly
   public void formerSerialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.CREATE_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, stream);
 

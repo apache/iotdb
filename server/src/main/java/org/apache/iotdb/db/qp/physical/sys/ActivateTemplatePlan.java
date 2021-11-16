@@ -58,7 +58,7 @@ public class ActivateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_USING_SCHEMA_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.ACTIVATE_TEMPLATE.ordinal());
     ReadWriteIOUtils.write(prefixPath.getFullPath(), buffer);
     buffer.putLong(index);
   }
@@ -76,7 +76,7 @@ public class ActivateTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.SET_USING_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.ACTIVATE_TEMPLATE.ordinal());
     ReadWriteIOUtils.write(prefixPath.getFullPath(), stream);
     stream.writeLong(index);
   }

@@ -403,7 +403,7 @@ public abstract class PhysicalPlan {
         case CLUSTER_LOG:
           plan = new LogPlan();
           break;
-        case CREATE_SCHEMA_TEMPLATE:
+        case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
         case APPEND_TEMPLATE:
@@ -412,10 +412,10 @@ public abstract class PhysicalPlan {
         case PRUNE_TEMPLATE:
           plan = new PruneTemplatePlan();
           break;
-        case SET_SCHEMA_TEMPLATE:
+        case SET_TEMPLATE:
           plan = new SetTemplatePlan();
           break;
-        case SET_USING_SCHEMA_TEMPLATE:
+        case ACTIVATE_TEMPLATE:
           plan = new ActivateTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
@@ -495,9 +495,9 @@ public abstract class PhysicalPlan {
     MULTI_BATCH_INSERT,
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
-    CREATE_SCHEMA_TEMPLATE,
-    SET_SCHEMA_TEMPLATE,
-    SET_USING_SCHEMA_TEMPLATE,
+    CREATE_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_ALIGNED_TIMESERIES,
     CLUSTER_LOG,
@@ -515,7 +515,7 @@ public abstract class PhysicalPlan {
     DROP_FUNCTION,
     SELECT_INTO,
     SET_SYSTEM_MODE,
-    UNSET_SCHEMA_TEMPLATE,
+    UNSET_TEMPLATE,
     APPEND_TEMPLATE,
     PRUNE_TEMPLATE
   }

@@ -66,7 +66,7 @@ public class SetTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.SET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(templateName, buffer);
     ReadWriteIOUtils.write(prefixPath, buffer);
@@ -84,7 +84,7 @@ public class SetTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.SET_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.SET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(templateName, stream);
     ReadWriteIOUtils.write(prefixPath, stream);
