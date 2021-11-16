@@ -72,7 +72,8 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public void writeAlignedValue(long insertTime, Object[] objectValue, IMeasurementSchema schema) {
+  public void writeAlignedValue(
+      long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
   }
 
@@ -114,7 +115,7 @@ public class WritableMemChunk implements IWritableMemChunk {
       long[] times,
       Object[] valueList,
       BitMap[] bitMaps,
-      IMeasurementSchema schema,
+      List<IMeasurementSchema> schemaList,
       int start,
       int end) {
     throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + list.getDataType());
@@ -341,5 +342,12 @@ public class WritableMemChunk implements IWritableMemChunk {
           break;
       }
     }
+  }
+
+  @Override
+  public void release() {
+    //        if (list.getReferenceCount() == 0) {
+    //          TVListAllocator.getInstance().release(list);
+    //        }
   }
 }

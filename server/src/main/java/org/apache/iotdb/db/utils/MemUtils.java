@@ -56,8 +56,8 @@ public class MemUtils {
   }
 
   /**
-   * function for getting the value size. If mem control enabled, do not add text data size
-   * here, the size will be added to memtable before inserting.
+   * function for getting the value size. If mem control enabled, do not add text data size here,
+   * the size will be added to memtable before inserting.
    */
   public static long getRecordsSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {

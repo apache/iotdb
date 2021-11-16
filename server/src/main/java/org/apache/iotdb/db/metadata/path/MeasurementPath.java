@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -248,7 +249,8 @@ public class MeasurementPath extends PartialPath {
         || !memTableMap.get(getDevice()).contains(getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk = memTableMap.get(getDevice()).getMemChunk(getMeasurement());
+    IWritableMemChunk memChunk =
+        memTableMap.get(getDevice()).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();

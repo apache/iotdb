@@ -19,11 +19,7 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
-
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class PrimitiveMemTable extends AbstractMemTable {
@@ -36,16 +32,6 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   public PrimitiveMemTable(Map<String, IWritableMemChunkGroup> memTableMap) {
     super(memTableMap);
-  }
-
-  @Override
-  protected IWritableMemChunkGroup genMemChunkGroup(List<IMeasurementSchema> schemaList) {
-    return new WritableMemChunkGroup(schemaList);
-  }
-
-  @Override
-  protected IWritableMemChunkGroup genAlignedMemChunkGroup(List<IMeasurementSchema> schemaList) {
-    return new AlignedWritableMemChunkGroup(schemaList);
   }
 
   @Override
