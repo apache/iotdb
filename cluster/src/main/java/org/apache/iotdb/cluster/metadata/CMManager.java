@@ -712,6 +712,7 @@ public class CMManager extends MManager {
 
     List<TSDataType> dataTypes = new ArrayList<>(measurements.size());
     List<TSEncoding> encodings = new ArrayList<>(measurements.size());
+    List<CompressionType> compressors = new ArrayList<>(measurements.size());
     for (int index = 0; index < measurements.size(); index++) {
       TSDataType dataType;
       if (insertPlan.getDataTypes() != null && insertPlan.getDataTypes()[index] != null) {
@@ -726,16 +727,12 @@ public class CMManager extends MManager {
       }
       dataTypes.add(dataType);
       encodings.add(getDefaultEncoding(dataType));
+      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
 
     CreateAlignedTimeSeriesPlan plan =
         new CreateAlignedTimeSeriesPlan(
-            insertPlan.getDeviceId(),
-            measurements,
-            dataTypes,
-            encodings,
-            TSFileDescriptor.getInstance().getConfig().getCompressor(),
-            null);
+            insertPlan.getDeviceId(), measurements, dataTypes, encodings, compressors, null);
     TSStatus result;
     try {
       result = coordinator.processPartitionedPlan(plan);
@@ -770,7 +767,7 @@ public class CMManager extends MManager {
     List<PartialPath> paths = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
     for (String seriesPath : unregisteredSeriesList) {
       paths.add(new PartialPath(seriesPath));
       int index = seriesList.indexOf(seriesPath);
@@ -789,13 +786,13 @@ public class CMManager extends MManager {
       dataTypes.add(dataType);
       // use default encoding and compression from the config
       encodings.add(getDefaultEncoding(dataType));
-      compressionTypes.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
+      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
     CreateMultiTimeSeriesPlan plan = new CreateMultiTimeSeriesPlan();
     plan.setPaths(paths);
     plan.setDataTypes(dataTypes);
     plan.setEncodings(encodings);
-    plan.setCompressors(compressionTypes);
+    plan.setCompressors(compressors);
 
     TSStatus result;
     try {
