@@ -83,6 +83,8 @@ import org.slf4j.LoggerFactory;
 /** The hierarchical struct of the Metadata Tree is implemented in this class. */
 public class MTree implements Serializable {
 
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
   private static final long serialVersionUID = -4200394435237291964L;
   private static final Logger logger = LoggerFactory.getLogger(MTree.class);
@@ -113,6 +115,9 @@ public class MTree implements Serializable {
             node.getSchema().getType(), Collections.emptySet(), queryContext,
             dataSource, Long.MAX_VALUE, null);
         last = lastReader.readLastPoint();
+        if (CACHE_ENABLED && last != null && last.getValue() != null) {
+          node.updateCachedLast(last, false, Long.MIN_VALUE);
+        }
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error("Something wrong happened while trying to get last time value pair of {}",
