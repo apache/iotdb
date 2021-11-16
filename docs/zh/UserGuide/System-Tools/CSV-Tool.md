@@ -153,13 +153,15 @@ Time,root.test.t1.str(TEXT),root.test.t2.str(TEXT),root.test.t2.int(INT32)
 通过设备对齐，并且header中不包含数据类型的数据。
 
 ```sql
-Time,Device,str,int1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str,int
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 通过设备对齐，并且header中包含数据类型的数据。
 
 ```sql
-Time,Device,str(TEXT),int(INT32)1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
+Time,Device,str(TEXT),int(INT32)
+1970-01-01T08:00:00.001+08:00,root.test.t1,"123hello world",1970-01-01T08:00:00.002+08:00,root.test.t1,"123",1970-01-01T08:00:00.001+08:00,root.test.t2,"123\,abc",100
 ```
 
 ### 运行方法
@@ -175,7 +177,7 @@ tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv>
 参数:
 
 * `-f`:
-  - 指定你想要导入的数据。
+  - 指定你想要导入的数据，这里可以指定文件或者文件夹。如果指定的是文件夹，将会把文件夹中所有的后缀为txt与csv的文件进行批量导入。
   - 例如: `-f filename.csv`
 
 * `-fd`:
@@ -201,3 +203,5 @@ tools/import-csv.bat -h 127.0.0.1 -p 6667 -u root -pw root -f example-filename.c
 
 1. `,` :如果text类型的字段中包含`,`那么需要用`\`来进行转义。
 2. 你可以导入像`yyyy-MM-dd'T'HH:mm:ss`， `yyy-MM-dd HH:mm:ss`， 或者 `yyyy-MM-dd'T'HH:mm:ss.SSSZ`格式的时间。
+3. 单个CSV或者txt文件最好不要超过2GB。如果超过2GB可以将文件分割成小文件，然后用`-f`参数来指定存放小文件的文件夹的方式进行批量导入。
+4. `Time`这一列应该放在第一列。
