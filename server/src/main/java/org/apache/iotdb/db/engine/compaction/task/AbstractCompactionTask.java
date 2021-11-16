@@ -85,6 +85,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
    */
   public abstract boolean checkValidAndSetMerging();
 
+  @Override
   public boolean equals(Object other) {
     if (other instanceof AbstractCompactionTask) {
       return equalsOtherTask((AbstractCompactionTask) other);

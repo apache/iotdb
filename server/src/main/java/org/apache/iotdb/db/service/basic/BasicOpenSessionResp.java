@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.utils;
+package org.apache.iotdb.db.service.basic;
 
-import java.io.IOException;
-import java.io.OutputStream;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-/** Empty OutputStream To count serialize size without serialization */
-public class EmptyOutputStream extends OutputStream {
+public class BasicOpenSessionResp extends TSStatus {
+  private long sessionId;
 
-  @Override
-  public void write(int b) throws IOException {}
+  public long getSessionId() {
+    return sessionId;
+  }
 
-  @Override
-  public void write(byte b[], int off, int len) throws IOException {}
-
-  @Override
-  public void write(byte b[]) throws IOException {}
+  public BasicOpenSessionResp sessionId(long sessionId) {
+    this.sessionId = sessionId;
+    return this;
+  }
 }
