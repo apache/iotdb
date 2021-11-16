@@ -45,6 +45,7 @@ import java.util.Map;
 public class GroupByFillDataSet extends QueryDataSet {
 
   private GroupByEngineDataSet groupByEngineDataSet;
+  private final LastQueryExecutor lastQueryExecutor;
   private Map<TSDataType, IFill> fillTypes;
   // the first value for each time series
   private Object[] previousValue;
@@ -60,10 +61,12 @@ public class GroupByFillDataSet extends QueryDataSet {
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes,
       QueryContext context,
-      GroupByTimeFillPlan groupByFillPlan)
+      GroupByTimeFillPlan groupByFillPlan,
+      LastQueryExecutor lastQueryExecutor)
       throws StorageEngineException, IOException, QueryProcessException {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
+    this.lastQueryExecutor = lastQueryExecutor;
     this.fillTypes = fillTypes;
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
     try {
@@ -125,8 +128,8 @@ public class GroupByFillDataSet extends QueryDataSet {
       seriesPaths.add((PartialPath) paths.get(i));
     }
     List<Pair<Boolean, TimeValuePair>> lastValueContainer =
-        LastQueryExecutor.calculateLastPairForSeriesLocally(
-            seriesPaths, dataTypes, context, null, groupByFillPlan.getDeviceToMeasurements());
+        lastQueryExecutor.calculateLastPairForSeries(
+            seriesPaths, dataTypes, context, null, groupByFillPlan);
     for (int i = 0; i < lastValueContainer.size(); i++) {
       if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
         lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();

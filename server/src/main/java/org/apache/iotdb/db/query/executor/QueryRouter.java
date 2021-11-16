@@ -240,13 +240,16 @@ public class QueryRouter implements IQueryRouter {
           IOException {
     GroupByEngineDataSet groupByEngineDataSet =
         (GroupByEngineDataSet) groupBy(groupByFillPlan, context);
+    // here we pass an empty LastQueryPlan as we don't depend on it but only to generate a
+    // LastQueryExecutor
     return new GroupByFillDataSet(
         groupByFillPlan.getDeduplicatedPaths(),
         groupByFillPlan.getDeduplicatedDataTypes(),
         groupByEngineDataSet,
         groupByFillPlan.getFillType(),
         context,
-        groupByFillPlan);
+        groupByFillPlan,
+        getLastQueryExecutor(new LastQueryPlan()));
   }
 
   @Override
