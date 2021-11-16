@@ -61,9 +61,12 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
       QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException, StorageEngineException {
     super(context, groupByTimeFillPlan);
+  }
 
-    initPathExecutors(context, groupByTimeFillPlan);
-
+  public void init(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    initGroupBy(context, groupByTimeFillPlan);
+    initArrays();
     initExtraExecutors(context, groupByTimeFillPlan);
     if (extraPreviousExecutors != null) {
       initExtraArrays(extraPreviousValues, extraPreviousTimes, true, extraPreviousExecutors);

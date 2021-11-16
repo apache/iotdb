@@ -195,8 +195,10 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithoutValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     } else {
       dataSet = getGroupByWithValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     }
 
     // we support group by level for count operation
@@ -242,10 +244,17 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
+
   protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
       QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException, StorageEngineException {
     return new GroupByFillWithValueFilterDataSet(context, groupByTimeFillPlan);
+  }
+  
+  protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
   }
 
   @Override
@@ -263,12 +272,13 @@ public class QueryRouter implements IQueryRouter {
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
-    GroupByEngineDataSet dataSet;
+    GroupByFillWithoutValueFilterDataSet dataSet;
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet = getGroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet.init(context, groupByFillPlan);
     } else {
       dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
     }

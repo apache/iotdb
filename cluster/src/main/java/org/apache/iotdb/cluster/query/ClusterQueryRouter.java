@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.query.aggregate.ClusterAggregateExecutor;
 import org.apache.iotdb.cluster.query.fill.ClusterFillExecutor;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByFillVFilterDataSet;
+import org.apache.iotdb.cluster.query.groupby.ClusterGroupByFillNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByNoVFilterDataSet;
 import org.apache.iotdb.cluster.query.groupby.ClusterGroupByVFilterDataSet;
 import org.apache.iotdb.cluster.query.last.ClusterLastQueryExecutor;
@@ -37,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithValueFilterDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.executor.AggregationExecutor;
@@ -68,15 +70,13 @@ public class ClusterQueryRouter extends QueryRouter {
 
   @Override
   protected GroupByWithoutValueFilterDataSet getGroupByWithoutValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByNoVFilterDataSet(context, plan, metaGroupMember);
   }
 
   @Override
   protected GroupByWithValueFilterDataSet getGroupByWithValueFilterDataSet(
-      QueryContext context, GroupByTimePlan plan)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan plan) {
     return new ClusterGroupByVFilterDataSet(context, plan, metaGroupMember);
   }
 
@@ -84,8 +84,14 @@ public class ClusterQueryRouter extends QueryRouter {
   protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
       QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException, StorageEngineException {
-    return new ClusterGroupByFillVFilterDataSet(
-        context, groupByTimeFillPlan, metaGroupMember);
+    return new ClusterGroupByFillVFilterDataSet(context, groupByTimeFillPlan, metaGroupMember);
+  }
+  
+  @Override
+  protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new ClusterGroupByFillNoVFilterDataSet(context, groupByFillPlan, metaGroupMember);
   }
 
   @Override

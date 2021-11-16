@@ -104,6 +104,7 @@ public class InternalMNode extends MNode {
    * @param child child's node
    * @return return the MNode already added
    */
+  @Override
   public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory

@@ -126,7 +126,7 @@ public class UDTFCast implements UDTF {
         collector.putDouble(time, value);
         return;
       case BOOLEAN:
-        collector.putBoolean(time, value != 0l);
+        collector.putBoolean(time, value != 0L);
         return;
       case TEXT:
         collector.putString(time, String.valueOf(value));

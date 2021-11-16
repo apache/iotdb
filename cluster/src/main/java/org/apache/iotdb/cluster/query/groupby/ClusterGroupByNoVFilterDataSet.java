@@ -20,8 +20,6 @@
 package org.apache.iotdb.cluster.query.groupby;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -40,8 +38,7 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   private MetaGroupMember metaGroupMember;
 
   public ClusterGroupByNoVFilterDataSet(
-      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember) {
     initQueryDataSetFields(
         new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
         groupByPlan.getDeduplicatedDataTypes(),
@@ -49,7 +46,6 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
     initGroupByEngineDataSetFields(context, groupByPlan);
 
     this.metaGroupMember = metaGroupMember;
-    initGroupBy(context, groupByPlan);
   }
 
   @Override

@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
@@ -374,11 +371,6 @@ public class MergeFileTask {
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
-      // clean cache
-      if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
-        ChunkCache.getInstance().clear();
-        TimeSeriesMetadataCache.getInstance().clear();
-      }
       seqFile.writeUnlock();
     }
   }

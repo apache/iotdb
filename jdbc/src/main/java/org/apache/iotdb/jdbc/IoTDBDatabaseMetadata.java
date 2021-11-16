@@ -261,15 +261,22 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
       "YEAR", "EXCEPT", "OUTPUT", "ZONE", "EXCEPTION"
     };
     TreeMap myKeywordMap = new TreeMap();
-    for (int i = 0; i < allIotdbSQLKeywords.length; i++)
+    for (int i = 0; i < allIotdbSQLKeywords.length; i++) {
       myKeywordMap.put(allIotdbSQLKeywords[i], null);
+    }
     HashMap sql92KeywordMap = new HashMap(sql92Keywords.length);
-    for (int j = 0; j < sql92Keywords.length; j++) sql92KeywordMap.put(sql92Keywords[j], null);
+    for (int j = 0; j < sql92Keywords.length; j++) {
+      sql92KeywordMap.put(sql92Keywords[j], null);
+    }
     Iterator it = sql92KeywordMap.keySet().iterator();
-    while (it.hasNext()) myKeywordMap.remove(it.next());
+    while (it.hasNext()) {
+      myKeywordMap.remove(it.next());
+    }
     StringBuffer keywordBuf = new StringBuffer();
     it = myKeywordMap.keySet().iterator();
-    if (it.hasNext()) keywordBuf.append(it.next().toString());
+    if (it.hasNext()) {
+      keywordBuf.append(it.next().toString());
+    }
     while (it.hasNext()) {
       keywordBuf.append(",");
       keywordBuf.append(it.next().toString());

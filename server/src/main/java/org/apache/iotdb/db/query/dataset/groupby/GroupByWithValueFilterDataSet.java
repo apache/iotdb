@@ -63,11 +63,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   protected GroupByWithValueFilterDataSet() {}
 
   /** constructor. */
-  public GroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-      throws StorageEngineException, QueryProcessException {
+  public GroupByWithValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
     super(context, groupByTimePlan);
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
-    initGroupBy(context, groupByTimePlan);
   }
 
   @TestOnly
@@ -77,8 +75,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
-  /** init reader and aggregate function. */
-  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
+  /** init reader and aggregate function. This method should be called once after initializing */
+  public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     this.timestampGenerator = getTimeGenerator(context, groupByTimePlan);
     this.allDataReaderList = new ArrayList<>();
