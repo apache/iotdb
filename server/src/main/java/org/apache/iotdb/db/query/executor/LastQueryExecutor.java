@@ -134,7 +134,7 @@ public class LastQueryExecutor {
     return dataSet;
   }
 
-  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+  public List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
       List<PartialPath> seriesPaths,
       List<TSDataType> dataTypes,
       QueryContext context,

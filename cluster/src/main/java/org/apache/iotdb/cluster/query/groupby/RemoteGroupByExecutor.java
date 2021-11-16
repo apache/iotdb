@@ -160,7 +160,9 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
     if (aggrBuffer != null) {
       long time = aggrBuffer.getLong();
       Object o = SerializeUtils.deserializeObject(aggrBuffer);
-      result = new Pair<>(time, o);
+      if (o != null) {
+        result = new Pair<>(time, o);
+      }
     }
     logger.debug(
         "Fetched peekNextNotNullValue from {} of [{}, {}]: {}",
