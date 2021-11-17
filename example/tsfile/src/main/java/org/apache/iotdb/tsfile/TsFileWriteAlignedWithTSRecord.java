@@ -30,12 +30,17 @@ import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class TsFileWriteAlignedWithTSRecord {
+  private static final Logger logger =
+      LoggerFactory.getLogger(TsFileWriteAlignedWithTSRecord.class);
 
   public static void main(String[] args) throws IOException {
     File f = FSFactoryProducer.getFSFactory().getFile("alignedRecord.tsfile");
@@ -58,7 +63,7 @@ public class TsFileWriteAlignedWithTSRecord {
       writeMeasurementScheams.add(measurementSchemas.get(2));
       writeAligned(tsFileWriter, "root.sg.d1", writeMeasurementScheams, 1000000, 0, 0);
     } catch (WriteProcessException e) {
-      e.printStackTrace();
+      logger.error("write TSRecord failed", e);
     }
   }
 

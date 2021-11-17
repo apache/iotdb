@@ -137,7 +137,8 @@ public class FillQueryExecutor {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException {
     fill.configureFill(path, dataType, queryTime, deviceMeasurements, context);
     return fill;
   }

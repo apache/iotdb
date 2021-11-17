@@ -98,7 +98,7 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge getOrCreatGauge(String metric, String... tags) {
+  public Gauge getOrCreateGauge(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -134,7 +134,7 @@ public class MicrometerMetricManager implements MetricManager {
    * @return Rate instance
    */
   @Override
-  public Rate getOrCreatRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
@@ -362,11 +362,10 @@ public class MicrometerMetricManager implements MetricManager {
     classLoaderMetrics.bindTo(meterRegistry);
     JvmCompilationMetrics jvmCompilationMetrics = new JvmCompilationMetrics();
     jvmCompilationMetrics.bindTo(meterRegistry);
-    try (JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
-        JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics()) {
-      jvmGcMetrics.bindTo(meterRegistry);
-      jvmHeapPressureMetrics.bindTo(meterRegistry);
-    }
+    JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
+    JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics();
+    jvmGcMetrics.bindTo(meterRegistry);
+    jvmHeapPressureMetrics.bindTo(meterRegistry);
     JvmMemoryMetrics jvmMemoryMetrics = new JvmMemoryMetrics();
     jvmMemoryMetrics.bindTo(meterRegistry);
     JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();

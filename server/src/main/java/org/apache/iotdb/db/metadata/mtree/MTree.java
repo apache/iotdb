@@ -400,6 +400,12 @@ public class MTree implements Serializable {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
+      if (upperTemplate != null
+          && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
+        throw new PathAlreadyExistException(
+            path.getFullPath() + " ( which is incompatible with template )");
+      }
+
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
 
       IMeasurementMNode measurementMNode =

@@ -39,7 +39,7 @@ import java.util.List;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
-  private VectorMeasurementSchema schema;
+  private final VectorMeasurementSchema schema;
   private AlignedTVList list;
   private static final String UNSUPPORTED_TYPE = "Unsupported data type:";
   private static final Logger LOGGER = LoggerFactory.getLogger(AlignedWritableMemChunk.class);
@@ -167,8 +167,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
         this.list.extendColumn(dataTypesInInsertPlan.get(i));
       }
     }
-    List<String> measurementIdsInTVList =
-        ((VectorMeasurementSchema) this.schema).getSubMeasurementsList();
+    List<String> measurementIdsInTVList = this.schema.getSubMeasurementsList();
     int[] columnIndexArray = new int[measurementIdsInTVList.size()];
     for (int i = 0; i < columnIndexArray.length; i++) {
       columnIndexArray[i] = measurementIdsInInsertPlan.indexOf(measurementIdsInTVList.get(i));
@@ -183,7 +182,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
 
   @Override
   public long count() {
-    return list.size() * schema.getSubMeasurementsCount();
+    return (long) list.size() * schema.getSubMeasurementsCount();
   }
 
   public long alignedListSize() {

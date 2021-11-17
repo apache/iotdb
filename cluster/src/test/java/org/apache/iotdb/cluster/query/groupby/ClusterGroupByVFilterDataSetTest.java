@@ -83,7 +83,7 @@ public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
 
       ClusterGroupByVFilterDataSet dataSet =
           new ClusterGroupByVFilterDataSet(queryContext, groupByPlan, testMetaMember);
-
+      dataSet.initGroupBy(queryContext, groupByPlan);
       Object[][] answers =
           new Object[][] {
             new Object[] {0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0},

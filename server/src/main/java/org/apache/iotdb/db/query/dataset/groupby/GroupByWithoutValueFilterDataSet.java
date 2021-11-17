@@ -73,11 +73,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
-
-    initGroupBy(context, groupByTimePlan);
   }
 
-  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
+  /** init reader and aggregate function. This method should be called once after initializing */
+  public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 

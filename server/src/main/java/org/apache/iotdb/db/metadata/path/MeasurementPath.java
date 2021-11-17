@@ -44,6 +44,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -52,6 +55,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class MeasurementPath extends PartialPath {
+
+  private static final Logger logger = LoggerFactory.getLogger(MeasurementPath.class);
 
   private IMeasurementSchema measurementSchema;
 
@@ -269,7 +274,7 @@ public class MeasurementPath extends PartialPath {
       newMeasurementPath =
           new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
     } catch (IllegalPathException e) {
-      e.printStackTrace();
+      logger.warn("path is illegal: {}", this.getFullPath(), e);
     }
     return newMeasurementPath;
   }

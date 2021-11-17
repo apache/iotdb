@@ -306,7 +306,9 @@ public class Template {
       if (cur.isMeasurement()) {
         res.add(getFullPathWithoutTemplateName(cur));
       } else {
-        for (IMNode child : cur.getChildren().values()) stack.push(child);
+        for (IMNode child : cur.getChildren().values()) {
+          stack.push(child);
+        }
       }
     }
     return res;
