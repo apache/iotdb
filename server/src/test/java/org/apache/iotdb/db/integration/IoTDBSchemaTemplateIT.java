@@ -53,7 +53,7 @@ public class IoTDBSchemaTemplateIT {
 
   @Test
   @Ignore
-  public void testCreateAndSetUsingSchemaTemplate() throws SQLException {
+  public void testCreateAndCreateTimeseries() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
     // create schema template
@@ -76,8 +76,8 @@ public class IoTDBSchemaTemplateIT {
       Assert.assertFalse(resultSet.next());
     }
 
-    // set using schema template
-    statement.execute("SET USING SCHEMA TEMPLATE ON root.sg1");
+    // create timeseries of schema template
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1");
 
     boolean hasResult = statement.execute("SHOW TIMESERIES root.sg1.**");
     Assert.assertTrue(hasResult);
