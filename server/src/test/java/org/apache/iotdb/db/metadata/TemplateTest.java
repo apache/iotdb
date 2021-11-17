@@ -26,8 +26,8 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -75,10 +75,9 @@ public class TemplateTest {
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);

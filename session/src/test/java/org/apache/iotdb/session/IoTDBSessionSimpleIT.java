@@ -985,7 +985,7 @@ public class IoTDBSessionSimpleIT {
           measurements,
           tsDataTypes,
           tsEncodings,
-          CompressionType.SNAPPY,
+          compressionTypes,
           Arrays.asList("alias1", "alias2", "alias3"));
       fail("Exception expected");
     } catch (StatementExecutionException e) {

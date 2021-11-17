@@ -38,6 +38,8 @@ public class InsertOperator extends Operator {
   private String[] measurementList;
   private String[] valueList;
 
+  private boolean isAligned;
+
   public InsertOperator(int tokenIntType) {
     super(tokenIntType);
     operatorType = OperatorType.INSERT;
@@ -75,6 +77,14 @@ public class InsertOperator extends Operator {
     this.times = times;
   }
 
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
@@ -93,17 +103,20 @@ public class InsertOperator extends Operator {
               measurementsNum, valueList.length));
     }
     if (measurementsNum == valueList.length) {
-      return new InsertRowPlan(device, times[0], measurementList, valueList);
+      InsertRowPlan insertRowPlan = new InsertRowPlan(device, times[0], measurementList, valueList);
+      insertRowPlan.setAligned(isAligned);
+      return insertRowPlan;
     }
     InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
     for (int i = 0; i < times.length; i++) {
-      insertRowsPlan.addOneInsertRowPlan(
+      InsertRowPlan insertRowPlan =
           new InsertRowPlan(
               device,
               times[i],
               measurementList,
-              Arrays.copyOfRange(valueList, i * measurementsNum, (i + 1) * measurementsNum)),
-          i);
+              Arrays.copyOfRange(valueList, i * measurementsNum, (i + 1) * measurementsNum));
+      insertRowPlan.setAligned(isAligned);
+      insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }
     return insertRowsPlan;
   }

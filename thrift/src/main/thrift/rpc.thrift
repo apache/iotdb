@@ -303,7 +303,7 @@ struct TSCreateAlignedTimeseriesReq {
   3: required list<string> measurements
   4: required list<i32> dataTypes
   5: required list<i32> encodings
-  6: required i32 compressor
+  6: required list<i32> compressors
   7: optional list<string> measurementAlias
 }
 
