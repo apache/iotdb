@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.rpc.IoTDBRpcDataSet.START_INDEX;
 
-public class SessionDataSet implements AutoCloseable{
+public class SessionDataSet implements AutoCloseable {
 
   private final IoTDBRpcDataSet ioTDBRpcDataSet;
 
@@ -183,7 +183,6 @@ public class SessionDataSet implements AutoCloseable{
 
     return constructRowRecordFromValueArray();
   }
-
 
   public void closeOperationHandle() throws StatementExecutionException, IoTDBConnectionException {
     try {
