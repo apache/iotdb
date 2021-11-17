@@ -21,7 +21,7 @@
 
 # 0.12.x(version-1) -> 0.13.x(version-SNAPSHOT)
 
-Last Updated on 2021.11.8 by Xin Zhao.
+Last Updated on 2021.11.16 by Minghui Liu.
 
 ## 1. Delete Old
 
@@ -40,7 +40,7 @@ Last Updated on 2021.11.8 by Xin Zhao.
 | Latest Changes                                               | Related Committers |
 | ------------------------------------------------------------ | ------------------ |
 | Change schemaNames from required to optional in TSCreateSchemaTemplateReq | Xin Zhao           |
-
+| Change TSCreateAlignedTimeseriesReq, from `i32 compressor` to `List<i32> compressors`  | Minghui Liu|
 
 # 0.11.x(version-2) -> 0.12.x(version-1)
 

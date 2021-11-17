@@ -29,13 +29,13 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -276,7 +276,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -317,7 +317,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
     } catch (MetadataException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -857,10 +857,9 @@ public class MManagerBasicTest {
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
@@ -1053,31 +1052,29 @@ public class MManagerBasicTest {
             dataTypeList,
             encodingList,
             compressionTypes);
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg.1");
-    UnsetSchemaTemplatePlan unsetSchemaTemplatePlan =
-        new UnsetSchemaTemplatePlan("root.sg.1", "template1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg.1");
+    UnsetTemplatePlan unsetTemplatePlan = new UnsetTemplatePlan("root.sg.1", "template1");
     MManager manager = IoTDB.metaManager;
     manager.createSchemaTemplate(createTemplatePlan);
 
     // path does not exist test
     try {
-      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      manager.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
       assertEquals("Path [root.sg.1] does not exist", e.getMessage());
     }
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     // template unset test
-    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.unsetSchemaTemplate(unsetTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     // no template on path test
-    manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+    manager.unsetSchemaTemplate(unsetTemplatePlan);
     try {
-      manager.unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      manager.unsetSchemaTemplate(unsetTemplatePlan);
       fail("No exception thrown.");
     } catch (Exception e) {
       assertEquals("NO template on root.sg.1", e.getMessage());
@@ -1091,10 +1088,9 @@ public class MManagerBasicTest {
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1137,8 +1133,7 @@ public class MManagerBasicTest {
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1154,7 +1149,7 @@ public class MManagerBasicTest {
     manager.createTimeseries(createTimeSeriesPlan);
 
     try {
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      manager.setSchemaTemplate(setTemplatePlan);
       fail();
     } catch (MetadataException e) {
       assertEquals(
@@ -1232,13 +1227,13 @@ public class MManagerBasicTest {
     encodingList.get(1).add(TSEncoding.RLE);
     compressionTypes.get(1).add(CompressionType.SNAPPY);
 
-    SetSchemaTemplatePlan setPlan1 = new SetSchemaTemplatePlan("template1", "root.sg1");
-    SetSchemaTemplatePlan setPlan2 = new SetSchemaTemplatePlan("template2", "root.sg2.d1");
+    SetTemplatePlan setPlan1 = new SetTemplatePlan("template1", "root.sg1");
+    SetTemplatePlan setPlan2 = new SetTemplatePlan("template2", "root.sg2.d1");
 
-    SetSchemaTemplatePlan setPlan3 = new SetSchemaTemplatePlan("template1", "root.sg1.d1");
-    SetSchemaTemplatePlan setPlan4 = new SetSchemaTemplatePlan("template2", "root.sg2");
+    SetTemplatePlan setPlan3 = new SetTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setPlan4 = new SetTemplatePlan("template2", "root.sg2");
 
-    SetSchemaTemplatePlan setPlan5 = new SetSchemaTemplatePlan("template2", "root.sg1.d1");
+    SetTemplatePlan setPlan5 = new SetTemplatePlan("template2", "root.sg1.d1");
 
     MManager manager = IoTDB.metaManager;
 
@@ -1339,9 +1334,8 @@ public class MManagerBasicTest {
       manager.createSchemaTemplate(plan);
 
       // set device template
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       // show timeseries root.laptop.d1.s0
@@ -1421,9 +1415,8 @@ public class MManagerBasicTest {
       manager.createSchemaTemplate(plan);
 
       // set device template
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
@@ -1433,8 +1426,8 @@ public class MManagerBasicTest {
           CompressionType.GZIP,
           null);
 
-      setSchemaTemplatePlan = new SetSchemaTemplatePlan("template1", "root.computer");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      setTemplatePlan = new SetTemplatePlan("template1", "root.computer");
+      manager.setSchemaTemplate(setTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.computer.d1")));
 
       Assert.assertEquals(2, manager.getAllTimeseriesCount(new PartialPath("root.laptop.d1.**")));
@@ -1487,9 +1480,8 @@ public class MManagerBasicTest {
     try {
       manager.createSchemaTemplate(plan);
       // set device template
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.laptop.d1");
-      manager.setSchemaTemplate(setSchemaTemplatePlan);
+      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
+      manager.setSchemaTemplate(setTemplatePlan);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
 
       manager.createTimeseries(
@@ -1620,7 +1612,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -1671,7 +1663,7 @@ public class MManagerBasicTest {
               TSDataType.valueOf("INT32")),
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-          compressionType);
+          Arrays.asList(compressionType, compressionType, compressionType));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -1806,7 +1798,7 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            compressionType);
+            Arrays.asList(compressionType, compressionType, compressionType));
         fail();
       } catch (Exception e) {
         Assert.assertEquals(
@@ -1829,7 +1821,7 @@ public class MManagerBasicTest {
                 TSDataType.valueOf("INT32")),
             Arrays.asList(
                 TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
-            compressionType);
+            Arrays.asList(compressionType, compressionType, compressionType));
         fail();
       } catch (Exception e) {
         Assert.assertEquals(String.format("%s is an illegal name.", measurementId), e.getMessage());
@@ -1971,7 +1963,7 @@ public class MManagerBasicTest {
 
     CreateTemplatePlan plan = getCreateTemplatePlan("s1");
     manager.createSchemaTemplate(plan);
-    SetSchemaTemplatePlan setPlan = new SetSchemaTemplatePlan("template1", "root.sg.d1");
+    SetTemplatePlan setPlan = new SetTemplatePlan("template1", "root.sg.d1");
     manager.setSchemaTemplate(setPlan);
     manager.createTimeseries(
         new PartialPath("root.sg.d1.s2"),

@@ -19,13 +19,13 @@
 
 -->
 
-## Measurement Template
+## Schema Template
 
 ### Problem scenario
 
 When faced with a large number of entities of the same type and the measurements of these entities are the same, registering time series for each measurent will result in the following problems. On the one hand, the metadata of time series will occupy a lot of memory resources; on the other hand, the maintenance of a large number of time series will be very complex.
 
-In order to enable different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements, IoTDB introduces the measurement template function.
+In order to enable different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements, IoTDB introduces the schema template function.
 
 The following picture illustrates the data model of petrol vehicle scenario. The velocity, fuel amount, acceleration, and angular velocity of each petrol vehicle spread over cities will be collected. Obviously, the measurements of single petrol vehicle are the same as those of another.
 
@@ -35,21 +35,21 @@ The following picture illustrates the data model of petrol vehicle scenario. The
 
 Supported from v0.13
 
-In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A measurement template can be declared to define the collectable measurements set. Measurement template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
+In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A schema template can be declared to define the collectable measurements set. Schema template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
 
-Currently you can only set one measurement template on a specific path. If there's one measurement template on one node, it will be forbidden to set any measurement template on the ancestors or descendants of this node. An entity will use it's own measurement template or ancestor's measurement template.
+Currently you can only set one schema template on a specific path. If there's one schema template on one node, it will be forbidden to set any schema template on the ancestors or descendants of this node. An entity will use it's own schema template or ancestor's schema template.
 
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to schema template will be introduced one by one.
 
-After applying measurement template, the following picture illustrates the new data model of petrol vehicle scenario. All petrol vehicles share the schemas defined in template. There are no redundancy storage of measurement schemas.
+After applying schema template, the following picture illustrates the new data model of petrol vehicle scenario. All petrol vehicles share the schemas defined in template. There are no redundancy storage of measurement schemas.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
 ### Usage
 
-Currently, only Session API supports Measurement Template usage.
+Currently, only Session API supports Schema Template usage.
 
-* Create a measurement template
+* Create a schema template
 ```
 
 * name: template name
@@ -79,6 +79,6 @@ void setSchemaTemplate(String templateName, String prefixPath)
 
 ```
 
-After setting measurement template，data could be inserted directly to the according timeseries. For example, suppose there's storage group root.sg and template t1(s1,s2) has been set to root.sg.car，then timeseries like root.sg.car.d1.s1 and root.sg.car.d1.s2 are available and data can be inserted。
+After setting schema template，data could be inserted directly to the according timeseries. For example, suppose there's storage group root.sg and template t1(s1,s2) has been set to root.sg.car，then timeseries like root.sg.car.d1.s1 and root.sg.car.d1.s2 are available and data can be inserted。
 
-For examples of measurement template, you can refer to example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java
+For examples of schema template, you can refer to example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java
