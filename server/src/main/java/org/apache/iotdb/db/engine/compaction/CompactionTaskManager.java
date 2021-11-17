@@ -32,9 +32,11 @@ import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -58,6 +60,7 @@ public class CompactionTaskManager implements IService {
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
+  private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
   private final long TASK_SUBMIT_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionInterval();
@@ -193,10 +196,15 @@ public class CompactionTaskManager implements IService {
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && compactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = compactionTaskQueue.poll();
-      if (task.checkValidAndSetMerging()) {
+      if (task != null && task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+        runningCompactionTaskList.add(task);
       }
     }
+  }
+
+  public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
+    runningCompactionTaskList.remove(task);
   }
 
   /**
