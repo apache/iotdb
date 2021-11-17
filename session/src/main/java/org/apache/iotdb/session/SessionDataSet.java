@@ -198,11 +198,7 @@ public class SessionDataSet implements AutoCloseable {
 
   @Override
   public void close() throws IoTDBConnectionException, StatementExecutionException {
-    try {
-      ioTDBRpcDataSet.close();
-    } catch (TException e) {
-      throw new IoTDBConnectionException(e.getMessage());
-    }
+    closeOperationHandle()
   }
 
   public class DataIterator {
