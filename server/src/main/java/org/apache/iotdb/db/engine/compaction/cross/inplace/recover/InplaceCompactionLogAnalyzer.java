@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
-import org.apache.iotdb.db.engine.compaction.CompactionFileInfo;
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -128,16 +128,16 @@ public class InplaceCompactionLogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
-      CompactionFileInfo toMatchedFileInfo = null;
+      TsFileIdentifier toMatchedFileIdentifier = null;
       if (currLine.contains(File.separator)) {
-        toMatchedFileInfo = CompactionFileInfo.getFileInfoFromFilePath(currLine);
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
       } else {
-        toMatchedFileInfo = CompactionFileInfo.getFileInfoFromInfoString(currLine);
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
       }
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (CompactionFileInfo.getFileInfoFromFilePath(seqFile.getTsFile().getAbsolutePath())
-            .equals(toMatchedFileInfo)) {
+        if (TsFileIdentifier.getFileIdentifierFromFilePath(seqFile.getTsFile().getAbsolutePath())
+            .equals(toMatchedFileIdentifier)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -166,16 +166,16 @@ public class InplaceCompactionLogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
-      CompactionFileInfo toMatchedFileInfo = null;
+      TsFileIdentifier toMatchedFileIdentifier = null;
       if (currLine.contains(File.separator)) {
-        toMatchedFileInfo = CompactionFileInfo.getFileInfoFromFilePath(currLine);
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
       } else {
-        toMatchedFileInfo = CompactionFileInfo.getFileInfoFromInfoString(currLine);
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
       }
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (CompactionFileInfo.getFileInfoFromFilePath(unseqFile.getTsFile().getAbsolutePath())
-            .equals(toMatchedFileInfo)) {
+        if (TsFileIdentifier.getFileIdentifierFromFilePath(unseqFile.getTsFile().getAbsolutePath())
+            .equals(toMatchedFileIdentifier)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -234,10 +234,10 @@ public class InplaceCompactionLogAnalyzer {
           tempFileLastPositions.put(file, position);
         } else {
           Long position = Long.parseLong(splits[splits.length - 1]);
-          CompactionFileInfo compactionFileInfo =
-              CompactionFileInfo.getFileInfoFromInfoString(
+          TsFileIdentifier tsFileIdentifier =
+              TsFileIdentifier.getFileIdentifierFromInfoString(
                   currLine.substring(0, currTSList.lastIndexOf(' ')));
-          File file = compactionFileInfo.getFileFromDataDirs();
+          File file = tsFileIdentifier.getFileFromDataDirs();
           tempFileLastPositions.put(file, position);
         }
       } else {

@@ -31,9 +31,9 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 
-import static org.apache.iotdb.db.engine.compaction.CompactionFileInfo.INFO_SEPARATOR;
+import static org.apache.iotdb.db.engine.compaction.TsFileIdentifier.INFO_SEPARATOR;
 
-public class CompactionFileInfoUT {
+public class TsFileIdentifierUT {
 
   @Test
   public void testGetInfoFromFilePath() {
@@ -47,7 +47,7 @@ public class CompactionFileInfoUT {
             + "0"
             + File.separator
             + "1-1-0-0.tsfile";
-    CompactionFileInfo firstInfo = CompactionFileInfo.getFileInfoFromFilePath(firstPath);
+    TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromFilePath(firstPath);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
@@ -65,7 +65,7 @@ public class CompactionFileInfoUT {
             + File.separator
             + "999-3-24-12.tsfile";
 
-    CompactionFileInfo secondInfo = CompactionFileInfo.getFileInfoFromFilePath(secondPath);
+    TsFileIdentifier secondInfo = TsFileIdentifier.getFileIdentifierFromFilePath(secondPath);
     Assert.assertEquals(secondInfo.getFilename(), "999-3-24-12.tsfile");
     Assert.assertEquals(secondInfo.getLogicalStorageGroupName(), "root.test.sg");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "426");
@@ -81,7 +81,7 @@ public class CompactionFileInfoUT {
             + File.separator
             + "999-3-24-12.tsfile";
     try {
-      CompactionFileInfo.getFileInfoFromFilePath(illegalPath);
+      TsFileIdentifier.getFileIdentifierFromFilePath(illegalPath);
       Assert.fail();
     } catch (RuntimeException e) {
 
@@ -92,7 +92,7 @@ public class CompactionFileInfoUT {
   public void testGetInfoFromInfoString() {
     String[] firstInfoArray = new String[] {"root.test.sg", "0", "0", "true", "1-1-0-0.tsfile"};
     String firstInfoString = String.join(INFO_SEPARATOR, firstInfoArray);
-    CompactionFileInfo firstInfo = CompactionFileInfo.getFileInfoFromInfoString(firstInfoString);
+    TsFileIdentifier firstInfo = TsFileIdentifier.getFileIdentifierFromInfoString(firstInfoString);
     Assert.assertEquals(firstInfo.getFilename(), "1-1-0-0.tsfile");
     Assert.assertEquals(firstInfo.getTimePartitionId(), "0");
     Assert.assertEquals(firstInfo.getVirtualStorageGroupId(), "0");
@@ -102,7 +102,8 @@ public class CompactionFileInfoUT {
     String[] secondInfoArray =
         new String[] {"root.test.sg", "0", "425", "false", "666-888-222-131.tsfile"};
     String secondInfoString = String.join(INFO_SEPARATOR, secondInfoArray);
-    CompactionFileInfo secondInfo = CompactionFileInfo.getFileInfoFromInfoString(secondInfoString);
+    TsFileIdentifier secondInfo =
+        TsFileIdentifier.getFileIdentifierFromInfoString(secondInfoString);
     Assert.assertEquals(secondInfo.getFilename(), "666-888-222-131.tsfile");
     Assert.assertEquals(secondInfo.getTimePartitionId(), "425");
     Assert.assertEquals(secondInfo.getVirtualStorageGroupId(), "0");
@@ -113,7 +114,7 @@ public class CompactionFileInfoUT {
     String illegalInfoString = String.join(INFO_SEPARATOR, illegalInfoArray);
 
     try {
-      CompactionFileInfo.getFileInfoFromInfoString(illegalInfoString);
+      TsFileIdentifier.getFileIdentifierFromInfoString(illegalInfoString);
       Assert.fail();
     } catch (RuntimeException e) {
 
@@ -140,7 +141,7 @@ public class CompactionFileInfoUT {
     }
 
     try {
-      CompactionFileInfo info = CompactionFileInfo.getFileInfoFromFilePath(firstPath);
+      TsFileIdentifier info = TsFileIdentifier.getFileIdentifierFromFilePath(firstPath);
       Assert.assertNull(info.getFileFromDataDirs());
       if (!file.getParentFile().exists()) {
         Assert.assertTrue(file.getParentFile().mkdirs());
@@ -174,7 +175,7 @@ public class CompactionFileInfoUT {
             + "100-10-5-1.tsfile";
     File testFile = new File("target" + File.separator + "data2", filePath);
     try {
-      CompactionFileInfo info = CompactionFileInfo.getFileInfoFromFilePath(filePath);
+      TsFileIdentifier info = TsFileIdentifier.getFileIdentifierFromFilePath(filePath);
       if (!testFile.getParentFile().exists()) {
         Assert.assertTrue(testFile.getParentFile().mkdirs());
       }

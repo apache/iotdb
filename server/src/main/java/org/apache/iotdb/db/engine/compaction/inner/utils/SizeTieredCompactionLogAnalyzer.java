@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
-import org.apache.iotdb.db.engine.compaction.CompactionFileInfo;
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -34,8 +34,8 @@ public class SizeTieredCompactionLogAnalyzer {
 
   private File logFile;
   private List<String> sourceFiles = new ArrayList<>();
-  private List<CompactionFileInfo> sourceFileInfos = new ArrayList<>();
-  private CompactionFileInfo targetFileInfo = null;
+  private List<TsFileIdentifier> sourceFileInfos = new ArrayList<>();
+  private TsFileIdentifier targetFileInfo = null;
   private String targetFile = null;
   private boolean isSeq = false;
 
@@ -52,19 +52,19 @@ public class SizeTieredCompactionLogAnalyzer {
             // we parse the compaction log with file path to keep compatible with 0.12
           case SOURCE_NAME:
             currLine = bufferedReader.readLine();
-            sourceFileInfos.add(CompactionFileInfo.getFileInfoFromFilePath(currLine));
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromFilePath(currLine));
             break;
           case TARGET_NAME:
             currLine = bufferedReader.readLine();
-            targetFileInfo = CompactionFileInfo.getFileInfoFromFilePath(currLine);
+            targetFileInfo = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
             break;
           case SOURCE_INFO:
             currLine = bufferedReader.readLine();
-            sourceFileInfos.add(CompactionFileInfo.getFileInfoFromInfoString(currLine));
+            sourceFileInfos.add(TsFileIdentifier.getFileIdentifierFromInfoString(currLine));
             break;
           case TARGET_INFO:
             currLine = bufferedReader.readLine();
-            targetFileInfo = CompactionFileInfo.getFileInfoFromInfoString(currLine);
+            targetFileInfo = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
             break;
           case SEQUENCE_NAME:
             isSeq = true;
@@ -83,11 +83,11 @@ public class SizeTieredCompactionLogAnalyzer {
     return sourceFiles;
   }
 
-  public List<CompactionFileInfo> getSourceFileInfos() {
+  public List<TsFileIdentifier> getSourceFileInfos() {
     return sourceFileInfos;
   }
 
-  public CompactionFileInfo getTargetFileInfo() {
+  public TsFileIdentifier getTargetFileInfo() {
     return targetFileInfo;
   }
 

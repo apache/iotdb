@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
-import org.apache.iotdb.db.engine.compaction.CompactionFileInfo;
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -84,7 +84,8 @@ public class InplaceCompactionLogger {
   public void logFileMergeStart(File file, long position) throws IOException {
     logStream.write(
         String.format(
-            "%s %d", CompactionFileInfo.getFileInfoFromFilePath(file.getAbsolutePath()), position));
+            "%s %d",
+            TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()), position));
     logStream.newLine();
     logStream.flush();
   }
@@ -111,7 +112,8 @@ public class InplaceCompactionLogger {
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
       logStream.write(
-          CompactionFileInfo.getFileInfoFromFilePath(tsFileResource.getTsFile().getAbsolutePath())
+          TsFileIdentifier.getFileIdentifierFromFilePath(
+                  tsFileResource.getTsFile().getAbsolutePath())
               .toString());
       logStream.newLine();
     }
@@ -123,7 +125,8 @@ public class InplaceCompactionLogger {
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
       logStream.write(
-          CompactionFileInfo.getFileInfoFromFilePath(tsFileResource.getTsFile().getAbsolutePath())
+          TsFileIdentifier.getFileIdentifierFromFilePath(
+                  tsFileResource.getTsFile().getAbsolutePath())
               .toString());
       logStream.newLine();
     }

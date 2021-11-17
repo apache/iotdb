@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
-import org.apache.iotdb.db.engine.compaction.CompactionFileInfo;
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import java.io.BufferedWriter;
@@ -61,7 +61,8 @@ public class SizeTieredCompactionLogger {
   public void logFileInfo(String prefix, File file) throws IOException {
     logStream.write(prefix);
     logStream.newLine();
-    logStream.write(CompactionFileInfo.getFileInfoFromFilePath(file.getAbsolutePath()).toString());
+    logStream.write(
+        TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()).toString());
     logStream.newLine();
     logStream.flush();
   }

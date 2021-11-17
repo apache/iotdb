@@ -18,25 +18,36 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import java.io.File;
 
 /**
  * This class record the logical information of files in compaction, which is used to locate file in
- * disk. File information includes is file sequence, storage group name, virtual storage group id,
- * time partition id, file name. <b>This class cannot be initialized directly.</b> We provide some
- * static method to create instance of this class.
+ * disk. File identifier includes whether the file is sequence, its storage group name, virtual
+ * storage group id, time partition id and file name. <b>This class cannot be initialized
+ * directly.</b> We provide some static methods to create instance of this class.
  */
-public class CompactionFileInfo {
+public class TsFileIdentifier {
   private final String logicalStorageGroupName;
   private final String virtualStorageGroupId;
   private final String timePartitionId;
   private final boolean sequence;
   private final String filename;
   public static final String INFO_SEPARATOR = " ";
+  public static final int FILE_NAME_OFFSET_IN_PATH = 1;
+  public static final int TIME_PARTITION_OFFSET_IN_PATH = 2;
+  public static final int VIRTUAL_SG_OFFSET_IN_PATH = 3;
+  public static final int LOGICAL_SG_OFFSET_IN_PATH = 4;
+  public static final int SEQUENCE_OFFSET_IN_PATH = 5;
+  public static final int LOGICAL_SG_OFFSET_IN_LOG = 0;
+  public static final int VIRTUAL_SG_OFFSET_IN_LOG = 1;
+  public static final int TIME_PARTITION_OFFSET_IN_LOG = 2;
+  public static final int SEQUENCE_OFFSET_IN_LOG = 4;
+  public static final int FILE_NAME_OFFSET_IN_LOG = 5;
 
-  private CompactionFileInfo(
+  private TsFileIdentifier(
       String logicalStorageGroupName,
       String virtualStorageGroupId,
       String timePartitionId,
@@ -50,12 +61,12 @@ public class CompactionFileInfo {
   }
 
   /**
-   * This function generates an instance of CompactionFileInfo by parsing the path of a tsfile.
-   * Notice, the path of the file should include information of its logical storage group, virtual
-   * storage group id, time partition, sequence or not and its filename, such as
+   * This function generates an instance of CompactionFileIdentifier by parsing the path of a
+   * tsfile. Notice, the path of the file should include information of its logical storage group,
+   * virtual storage group id, time partition, sequence or not and its filename, such as
    * "sequence/root.test.sg/0/0/1-1-0-0.tsfile".
    */
-  public static CompactionFileInfo getFileInfoFromFilePath(String filepath) {
+  public static TsFileIdentifier getFileIdentifierFromFilePath(String filepath) {
     String splitter = File.separator;
     if (splitter.equals("\\")) {
       // String.split use a regex way to split the string into array
@@ -71,31 +82,31 @@ public class CompactionFileInfo {
           String.format("Path %s cannot be parsed into file info", filepath));
     }
 
-    return new CompactionFileInfo(
-        splittedPath[length - 4],
-        splittedPath[length - 3],
-        splittedPath[length - 2],
-        splittedPath[length - 5].equals("sequence"),
-        splittedPath[length - 1]);
+    return new TsFileIdentifier(
+        splittedPath[length - LOGICAL_SG_OFFSET_IN_PATH],
+        splittedPath[length - VIRTUAL_SG_OFFSET_IN_PATH],
+        splittedPath[length - TIME_PARTITION_OFFSET_IN_PATH],
+        splittedPath[length - SEQUENCE_OFFSET_IN_PATH].equals(IoTDBConstant.SEQUENCE_FLODER_NAME),
+        splittedPath[length - FILE_NAME_OFFSET_IN_PATH]);
   }
 
   /**
-   * This function generates an instance of CompactionFileInfo by parsing the info string of a
+   * This function generates an instance of CompactionFileIdentifier by parsing the info string of a
    * tsfile(usually recorded in a compaction.log), such as “root.test.sg 0 0 true 1-1-0-0.tsfile"
    */
-  public static CompactionFileInfo getFileInfoFromInfoString(String infoString) {
+  public static TsFileIdentifier getFileIdentifierFromInfoString(String infoString) {
     String[] splittedFileInfo = infoString.split(INFO_SEPARATOR);
     int length = splittedFileInfo.length;
     if (length != 5) {
       throw new RuntimeException(
           String.format("String %s is not a legal file info string", infoString));
     }
-    return new CompactionFileInfo(
-        splittedFileInfo[0],
-        splittedFileInfo[1],
-        splittedFileInfo[2],
-        Boolean.parseBoolean(splittedFileInfo[3]),
-        splittedFileInfo[4]);
+    return new TsFileIdentifier(
+        splittedFileInfo[LOGICAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[VIRTUAL_SG_OFFSET_IN_LOG],
+        splittedFileInfo[TIME_PARTITION_OFFSET_IN_LOG],
+        Boolean.parseBoolean(splittedFileInfo[SEQUENCE_OFFSET_IN_LOG]),
+        splittedFileInfo[FILE_NAME_OFFSET_IN_LOG]);
   }
 
   @Override
@@ -115,10 +126,10 @@ public class CompactionFileInfo {
 
   @Override
   public boolean equals(Object other) {
-    if (!(other instanceof CompactionFileInfo)) {
+    if (!(other instanceof TsFileIdentifier)) {
       return false;
     }
-    CompactionFileInfo otherInfo = (CompactionFileInfo) other;
+    TsFileIdentifier otherInfo = (TsFileIdentifier) other;
     return otherInfo.sequence == this.sequence
         && otherInfo.logicalStorageGroupName.equals(this.logicalStorageGroupName)
         && otherInfo.virtualStorageGroupId.equals(this.virtualStorageGroupId)
@@ -133,7 +144,7 @@ public class CompactionFileInfo {
   public File getFileFromDataDirs() {
     String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
     String partialFileString =
-        (sequence ? "sequence" : "unsequence")
+        (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
             + File.separator
             + logicalStorageGroupName
             + File.separator

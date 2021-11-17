@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.engine.compaction.CompactionFileInfo;
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -38,6 +38,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected File compactionLogFile;
   protected String dataDir;
+  protected String logicalStorageGroupName;
+  protected String virtualStorageGroup;
 
   public SizeTieredCompactionRecoverTask(
       String logicalStorageGroupName,
@@ -58,6 +60,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         currentTaskNum);
     this.compactionLogFile = compactionLogFile;
     this.dataDir = dataDir;
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.virtualStorageGroup = virtualStorageGroup;
   }
 
   /**
@@ -81,30 +85,29 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       if (compactionLogFile.exists()) {
         LOGGER.info(
             "{}-{} [Compaction][Recover] compaction log file {} exists, start to recover it",
-            fullStorageGroupName,
-            timePartition,
+            logicalStorageGroupName,
+            virtualStorageGroup,
             compactionLogFile);
         SizeTieredCompactionLogAnalyzer logAnalyzer =
             new SizeTieredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
-        List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        List<CompactionFileInfo> sourceFileInfos = logAnalyzer.getSourceFileInfos();
-        CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
-        if (targetFileInfo == null || sourceFileInfos.isEmpty()) {
+        List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfo();
+        if (targetFileIdentifier == null || sourceFileIdentifiers.isEmpty()) {
           LOGGER.info(
               "{}-{} [Compaction][Recover] incomplete log file, abort recover",
-              fullStorageGroupName,
-              timePartition);
+              logicalStorageGroupName,
+              virtualStorageGroup);
           return;
         }
-        File targetFile = targetFileInfo.getFileFromDataDirs();
+        File targetFile = targetFileIdentifier.getFileFromDataDirs();
         if (targetFile == null) {
           // cannot find target file from data dirs
           LOGGER.info(
               "{}-{} [Compaction][Recover] cannot find target file {} from data dirs, abort recover",
-              fullStorageGroupName,
-              timePartition,
-              targetFileInfo);
+              logicalStorageGroupName,
+              virtualStorageGroup,
+              targetFileIdentifier);
           return;
         }
         File resourceFile = new File(targetFile.getPath() + ".resource");
@@ -112,42 +115,38 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
         if (writer.hasCrashed()) {
           LOGGER.info(
-              "{} [Compaction][Recover] target file {} crash, start to delete it",
-              fullStorageGroupName,
+              "{}-{} [Compaction][Recover] target file {} crash, start to delete it",
+              logicalStorageGroupName,
+              virtualStorageGroup,
               targetFile);
           // the target tsfile is crashed, it is not completed
           writer.close();
-          LOGGER.info(
-              "{}-{} [Compaction][Recover] target file {} is not completed, delete it",
-              fullStorageGroupName,
-              timePartition,
-              targetFile);
           if (!targetFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                fullStorageGroupName,
-                timePartition,
+                logicalStorageGroupName,
+                virtualStorageGroup,
                 targetFile);
           }
           if (resourceFile.exists() && !resourceFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                fullStorageGroupName,
-                timePartition,
+                logicalStorageGroupName,
+                virtualStorageGroup,
                 resourceFile);
           }
         } else {
           // the target tsfile is completed
           LOGGER.info(
               "{}-{} [Compaction][Recover] target file {} is completed, delete source files {}",
-              fullStorageGroupName,
-              timePartition,
+              logicalStorageGroupName,
+              virtualStorageGroup,
               targetFile,
-              sourceFileInfos);
+              sourceFileIdentifiers);
           TsFileResource targetResource = new TsFileResource(targetFile);
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (CompactionFileInfo sourceFileInfo : sourceFileInfos) {
-            File sourceFile = sourceFileInfo.getFileFromDataDirs();
+          for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+            File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
             if (sourceFile != null) {
               sourceTsFileResources.add(new TsFileResource(sourceFile));
             }
@@ -165,14 +164,14 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         if (!compactionLogFile.delete()) {
           LOGGER.warn(
               "{}-{} [Compaction][Recover] fail to delete {}",
-              fullStorageGroupName,
-              timePartition,
+              logicalStorageGroupName,
+              virtualStorageGroup,
               compactionLogFile);
         } else {
           LOGGER.info(
               "{}-{} [Compaction][Recover] delete compaction log {}",
-              fullStorageGroupName,
-              timePartition,
+              logicalStorageGroupName,
+              virtualStorageGroup,
               compactionLogFile);
         }
       }
