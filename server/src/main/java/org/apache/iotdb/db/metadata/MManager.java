@@ -55,28 +55,28 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.MonitorConstants;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -419,21 +419,21 @@ public class MManager {
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
         break;
-      case SET_SCHEMA_TEMPLATE:
-        SetSchemaTemplatePlan setSchemaTemplatePlan = (SetSchemaTemplatePlan) plan;
-        setSchemaTemplate(setSchemaTemplatePlan);
+      case SET_TEMPLATE:
+        SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
+        setSchemaTemplate(setTemplatePlan);
         break;
-      case SET_USING_SCHEMA_TEMPLATE:
-        SetUsingSchemaTemplatePlan setUsingSchemaTemplatePlan = (SetUsingSchemaTemplatePlan) plan;
-        setUsingSchemaTemplate(setUsingSchemaTemplatePlan);
+      case ACTIVATE_TEMPLATE:
+        ActivateTemplatePlan activateTemplatePlan = (ActivateTemplatePlan) plan;
+        setUsingSchemaTemplate(activateTemplatePlan);
         break;
       case AUTO_CREATE_DEVICE_MNODE:
         AutoCreateDeviceMNodePlan autoCreateDeviceMNodePlan = (AutoCreateDeviceMNodePlan) plan;
         autoCreateDeviceMNode(autoCreateDeviceMNodePlan);
         break;
-      case UNSET_SCHEMA_TEMPLATE:
-        UnsetSchemaTemplatePlan unsetSchemaTemplatePlan = (UnsetSchemaTemplatePlan) plan;
-        unsetSchemaTemplate(unsetSchemaTemplatePlan);
+      case UNSET_TEMPLATE:
+        UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
+        unsetSchemaTemplate(unsetTemplatePlan);
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -552,11 +552,11 @@ public class MManager {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      CompressionType compressor)
+      List<CompressionType> compressors)
       throws MetadataException {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
-            prefixPath, measurements, dataTypes, encodings, compressor, null));
+            prefixPath, measurements, dataTypes, encodings, compressors, null));
   }
 
   /**
@@ -584,7 +584,11 @@ public class MManager {
 
       // create time series in MTree
       mtree.createAlignedTimeseries(
-          prefixPath, measurements, plan.getDataTypes(), plan.getEncodings(), plan.getCompressor());
+          prefixPath,
+          measurements,
+          plan.getDataTypes(),
+          plan.getEncodings(),
+          plan.getCompressors());
 
       // the cached mNode may be replaced by new entityMNode in mtree
       mNodeCache.removeObject(prefixPath);
@@ -1907,15 +1911,12 @@ public class MManager {
       PartialPath prefixPath, List<String> measurements, List<TSDataType> dataTypes)
       throws MetadataException {
     List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
     for (TSDataType dataType : dataTypes) {
       encodings.add(getDefaultEncoding(dataType));
+      compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
     }
-    createAlignedTimeSeries(
-        prefixPath,
-        measurements,
-        dataTypes,
-        encodings,
-        TSFileDescriptor.getInstance().getConfig().getCompressor());
+    createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
   // endregion
 
@@ -1984,7 +1985,7 @@ public class MManager {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
   }
 
-  public synchronized void setSchemaTemplate(SetSchemaTemplatePlan plan) throws MetadataException {
+  public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
     // get mnode and update template should be atomic
     Template template = templateManager.getTemplate(plan.getTemplateName());
 
@@ -2008,8 +2009,7 @@ public class MManager {
     }
   }
 
-  public synchronized void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan)
-      throws MetadataException {
+  public synchronized void unsetSchemaTemplate(UnsetTemplatePlan plan) throws MetadataException {
     // get mnode should be atomic
     try {
       PartialPath path = new PartialPath(plan.getPrefixPath());
@@ -2032,7 +2032,7 @@ public class MManager {
     }
   }
 
-  public void setUsingSchemaTemplate(SetUsingSchemaTemplatePlan plan) throws MetadataException {
+  public void setUsingSchemaTemplate(ActivateTemplatePlan plan) throws MetadataException {
     try {
       setUsingSchemaTemplate(getDeviceNode(plan.getPrefixPath()));
     } catch (PathNotExistException e) {

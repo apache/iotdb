@@ -431,14 +431,14 @@ public class MTree implements Serializable {
    * @param measurements measurements list
    * @param dataTypes data types list
    * @param encodings encodings list
-   * @param compressor compressor
+   * @param compressors compressor
    */
   public void createAlignedTimeseries(
       PartialPath devicePath,
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      CompressionType compressor)
+      List<CompressionType> compressors)
       throws MetadataException {
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
@@ -479,7 +479,7 @@ public class MTree implements Serializable {
                 entityMNode,
                 measurements.get(i),
                 new UnaryMeasurementSchema(
-                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressor),
+                    measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
                 null);
         entityMNode.addChild(measurements.get(i), measurementMNode);
       }

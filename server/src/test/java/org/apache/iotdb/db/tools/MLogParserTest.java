@@ -23,10 +23,10 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.mlog.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -102,18 +102,17 @@ public class MLogParserTest {
 
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-      IoTDB.metaManager.createSchemaTemplate(genCreateTemplatePlan());
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.sg");
-      IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
+      IoTDB.metaManager.createSchemaTemplate(genCreateSchemaTemplatePlan());
+      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg");
+      IoTDB.metaManager.setSchemaTemplate(setTemplatePlan);
       IoTDB.metaManager.setUsingSchemaTemplate(
-          new SetUsingSchemaTemplatePlan(new PartialPath("root.sg.d1")));
+          new ActivateTemplatePlan(new PartialPath("root.sg.d1")));
     } catch (MetadataException e) {
       e.printStackTrace();
     }
   }
 
-  private CreateTemplatePlan genCreateTemplatePlan() {
+  private CreateTemplatePlan genCreateSchemaTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     measurementList.add(Collections.singletonList("s12"));
