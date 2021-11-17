@@ -476,7 +476,7 @@ public class Session {
       List<String> multiMeasurementComponents,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      CompressionType compressor,
+      List<CompressionType> compressors,
       List<String> measurementAliasList)
       throws IoTDBConnectionException, StatementExecutionException {
     TSCreateAlignedTimeseriesReq request =
@@ -485,7 +485,7 @@ public class Session {
             multiMeasurementComponents,
             dataTypes,
             encodings,
-            compressor,
+            compressors,
             measurementAliasList);
     defaultSessionConnection.createAlignedTimeseries(request);
   }
@@ -495,14 +495,15 @@ public class Session {
       List<String> measurements,
       List<TSDataType> dataTypes,
       List<TSEncoding> encodings,
-      CompressionType compressor,
+      List<CompressionType> compressors,
       List<String> measurementAliasList) {
     TSCreateAlignedTimeseriesReq request = new TSCreateAlignedTimeseriesReq();
     request.setPrefixPath(prefixPath);
     request.setMeasurements(measurements);
     request.setDataTypes(dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
     request.setEncodings(encodings.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    request.setCompressor(compressor.ordinal());
+    request.setCompressors(
+        compressors.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
     request.setMeasurementAlias(measurementAliasList);
     return request;
   }

@@ -195,11 +195,13 @@ public class IoTDBSessionVectorABDeviceIT {
     dataTypes.add(TSDataType.INT64);
     dataTypes.add(TSDataType.INT64);
     List<TSEncoding> encodings = new ArrayList<>();
+    List<CompressionType> compressors = new ArrayList<>();
     for (int i = 1; i <= 2; i++) {
       encodings.add(TSEncoding.RLE);
+      compressors.add(CompressionType.SNAPPY);
     }
     session.createAlignedTimeseries(
-        ROOT_SG1_D1, measurements, dataTypes, encodings, CompressionType.SNAPPY, null);
+        ROOT_SG1_D1, measurements, dataTypes, encodings, compressors, null);
   }
 
   private static void prepareAlignedTimeSeriesData()

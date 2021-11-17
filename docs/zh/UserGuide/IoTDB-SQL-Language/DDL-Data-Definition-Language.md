@@ -94,6 +94,17 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
+从 v0.13 起，可以使用简化版的 SQL 语句创建时间序列：
+
+```
+IoTDB > create timeseries root.ln.wf01.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.ln.wf01.wt01.temperature FLOAT encoding=RLE
+IoTDB > create timeseries root.ln.wf02.wt02.hardware TEXT encoding=PLAIN
+IoTDB > create timeseries root.ln.wf02.wt02.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.temperature FLOAT encoding=RLE
+```
+
 需要注意的是，当创建时间序列时指定的编码方式与数据类型不对应时，系统会给出相应的错误提示，如下所示：
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -101,6 +112,18 @@ error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
 详细的数据类型与编码方式的对应列表请参见 [编码方式](../Data-Concept/Encoding.md)。
+
+### 创建对齐时间序列 (v0.13 起支持)
+
+创建一组对齐时间序列的SQL语句如下所示：
+
+```
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY) 
+```
+
+一组对齐序列中的序列可以有不同的数据类型、编码方式以及压缩方式。
+
+对齐的时间序列暂不支持设置别名、标签、属性。
 
 ### 删除时间序列
 
@@ -110,19 +133,6 @@ error: encoding TS_2DIFF does not support BOOLEAN
 IoTDB> delete timeseries root.ln.wf01.wt01.status
 IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardware
 IoTDB> delete timeseries root.ln.wf02.*
-```
-
-对于**对齐**时间序列，我们可以通过括号来显式地删除整组序列：
-
-```
-IoTDB > delete timeseries root.sg.d1.(s1,s2)
-```
-
-注意：目前暂不支持删除部分对齐时间序列。
-
-```
-IoTDB > delete timeseries root.sg.d1.s1
-error: Not support deleting part of aligned timeseies!
 ```
 
 ### 查看时间序列
@@ -524,6 +534,44 @@ It costs 0.003s
 Total line number = 2
 It costs 0.001s
 ```
+
+## 物理量模板
+
+IoTDB 支持物理量模板功能，实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理。
+
+### 创建物理量模板
+
+创建物理量模板的 SQL 语句如下所示：
+
+```
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla) compression=SNAPPY, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+### 挂载物理量模板
+
+挂载物理量模板的 SQL 语句如下所示：
+
+```
+IoTDB> set schema template temp1 to root.ln.wf01
+```
+
+挂载好物理量模板后，即可进行数据的写入。例如存储组为root.ln，模板temp1被挂载到了节点root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+
+**注意**：在插入数据之前，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列：
+
+```
+IoTDB> create timeseries of schema template on root.ln.wf01
+```
+
+### 卸载物理量模板
+
+卸载物理量模板的 SQL 语句如下所示：
+
+```
+IoTDB> unset schema template temp1 from root.beijing
+```
+
+**注意**：目前不支持从曾经使用模板插入数据后（即使数据已被删除）的实体中卸载模板。
 
 ## 数据存活时间（TTL）
 
