@@ -173,7 +173,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
         field.setBinaryV(col.getBinary());
         break;
       case VECTOR:
-        Field.putAlignedValueIntoField((col.getVector())[0], field);
+        Field.setTsPrimitiveValue((col.getVector())[0], field);
         break;
       default:
         throw new UnSupportedDataTypeException("UnSupported" + col.getDataType());

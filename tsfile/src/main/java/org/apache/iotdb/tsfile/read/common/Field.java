@@ -201,8 +201,8 @@ public class Field {
       return null;
     }
     Field field = new Field(dataType);
-    if (value instanceof TsPrimitiveType[]) { // aligned timeseries
-      putAlignedValueIntoField(((TsPrimitiveType[]) value)[0], field);
+    if (value instanceof TsPrimitiveType) { // value in aligned BatchData
+      setTsPrimitiveValue((TsPrimitiveType) value, field);
     } else {
       switch (dataType) {
         case INT32:
@@ -230,13 +230,7 @@ public class Field {
     return field;
   }
 
-  /**
-   * This method is only used for aligned timeseries which has only one value measurement.
-   *
-   * @param value
-   * @param field
-   */
-  public static void putAlignedValueIntoField(TsPrimitiveType value, Field field) {
+  public static void setTsPrimitiveValue(TsPrimitiveType value, Field field) {
     switch (value.getDataType()) {
       case BOOLEAN:
         field.setBoolV(value.getBoolean());
