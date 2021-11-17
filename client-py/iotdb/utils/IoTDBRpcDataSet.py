@@ -158,7 +158,7 @@ class IoTDBRpcDataSet(object):
     def resultset_to_pandas(self):
         result = {}
         for column_name in self.__column_name_list:
-            result[column_name] = None
+            result[column_name] = []
         while self._has_next_result_set():
             time_array = np.frombuffer(self.__query_data_set.time, np.dtype(np.longlong).newbyteorder('>'))
             if time_array.dtype.byteorder == '>':
@@ -244,9 +244,6 @@ class IoTDBRpcDataSet(object):
                     result[column_name] = data_array
                 else:
                     result[column_name] = np.concatenate((result[column_name], data_array), axis=0)
-        for k, v in result.items():
-            if v is not None and len(v) == 0:
-                result[k] = np.nan
 
         df = pd.DataFrame(result)
         return df
