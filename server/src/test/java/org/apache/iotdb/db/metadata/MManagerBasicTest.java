@@ -947,7 +947,6 @@ public class MManagerBasicTest {
     }
   }
 
-
   @SuppressWarnings("Duplicates")
   private CreateTemplatePlan getTreeTemplatePlan() {
     /**
@@ -1466,7 +1465,8 @@ public class MManagerBasicTest {
 
       // show timeseries root.laptop.d1.(s1,s2,s3)
       showTimeSeriesPlan =
-          new ShowTimeSeriesPlan(new PartialPath("root.**"), false, null, null, 0, 0, false);
+          new ShowTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.vector.s1"), false, null, null, 0, 0, false);
       result = manager.showTimeseries(showTimeSeriesPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
       assertEquals(1, result.size());

@@ -1158,7 +1158,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             .setQueryId(sessionManager.requestQueryId(false));
   }
 
-
   protected void handleClientExit() {
     Long sessionId = sessionManager.getCurrSessionId();
     if (sessionId != null) {
@@ -2030,7 +2029,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     return status != null ? status : executeNonQueryPlan(plan);
   }
 
-
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     try {
       return executeNonQuery(plan)
@@ -2039,7 +2037,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } catch (Exception e) {
       return onNonQueryException(e, OperationType.EXECUTE_NON_QUERY_PLAN);
     }
-
   }
 
   private TSStatus getNotLoggedInStatus() {
