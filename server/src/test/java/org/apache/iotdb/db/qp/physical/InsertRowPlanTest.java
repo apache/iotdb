@@ -250,7 +250,7 @@ public class InsertRowPlanTest {
             compressionTypes);
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
 

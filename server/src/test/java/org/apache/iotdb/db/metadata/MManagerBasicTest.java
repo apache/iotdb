@@ -1094,7 +1094,6 @@ public class MManagerBasicTest {
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-
     manager.setSchemaTemplate(setTemplatePlan);
     manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.sg0"));
 
@@ -1172,8 +1171,7 @@ public class MManagerBasicTest {
     // set device template
     SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    SetTemplatePlan setSchemaTemplatePlan2 =
-        new SetTemplatePlan("treeTemplate", "root.tree.sg0");
+    SetTemplatePlan setSchemaTemplatePlan2 = new SetTemplatePlan("treeTemplate", "root.tree.sg0");
 
     CreateTimeSeriesPlan createTimeSeriesPlan =
         new CreateTimeSeriesPlan(
@@ -1425,10 +1423,8 @@ public class MManagerBasicTest {
 
       // set device template
 
-      SetTemplatePlan setSchemaTemplatePlan =
-          new SetTemplatePlan("template1", "root.laptop.d1");
-      SetTemplatePlan setSchemaTemplatePlan1 =
-          new SetTemplatePlan("treeTemplate", "root.tree.d0");
+      SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
+      SetTemplatePlan setSchemaTemplatePlan1 = new SetTemplatePlan("treeTemplate", "root.tree.d0");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setSchemaTemplate(setSchemaTemplatePlan1);
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
@@ -1510,8 +1506,7 @@ public class MManagerBasicTest {
     manager.createSchemaTemplate(treePlan);
 
     // set device template
-    SetTemplatePlan setSchemaTemplatePlan1 =
-        new SetTemplatePlan("treeTemplate", "root.tree.d0");
+    SetTemplatePlan setSchemaTemplatePlan1 = new SetTemplatePlan("treeTemplate", "root.tree.d0");
     manager.setSchemaTemplate(setSchemaTemplatePlan1);
     manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.tree.d0")));
 
@@ -1559,8 +1554,7 @@ public class MManagerBasicTest {
       manager.createSchemaTemplate(getTreeTemplatePlan());
 
       // set device template
-      SetTemplatePlan setSchemaTemplatePlan =
-          new SetTemplatePlan("template1", "root.laptop.d1");
+      SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));
@@ -1633,8 +1627,7 @@ public class MManagerBasicTest {
       manager.createSchemaTemplate(plan);
       manager.createSchemaTemplate(getTreeTemplatePlan());
       // set device template
-      SetTemplatePlan setSchemaTemplatePlan =
-          new SetTemplatePlan("template1", "root.laptop.d1");
+      SetTemplatePlan setSchemaTemplatePlan = new SetTemplatePlan("template1", "root.laptop.d1");
       manager.setSchemaTemplate(setSchemaTemplatePlan);
       manager.setSchemaTemplate(new SetTemplatePlan("treeTemplate", "root.tree.d0"));
       manager.setUsingSchemaTemplate(manager.getDeviceNode(new PartialPath("root.laptop.d1")));

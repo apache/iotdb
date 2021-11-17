@@ -27,10 +27,10 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
@@ -295,7 +295,7 @@ public class InsertTabletPlanTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
@@ -338,7 +338,7 @@ public class InsertTabletPlanTest {
     CreateTemplatePlan plan = getCreateTemplatePlan();
 
     IoTDB.metaManager.createSchemaTemplate(plan);
-    IoTDB.metaManager.setSchemaTemplate(new SetSchemaTemplatePlan("template1", "root.isp.d1"));
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
 
     InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
