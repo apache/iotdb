@@ -46,9 +46,7 @@ public class Eq<T extends Comparable<T>> extends UnaryFilter<T> {
       return ((Long) value) >= statistics.getStartTime()
           && ((Long) value) <= statistics.getEndTime();
     } else {
-      if (statistics.getType() == TSDataType.TEXT
-          || statistics.getType() == TSDataType.BOOLEAN
-          || statistics.getType() == TSDataType.VECTOR) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
       return value.compareTo((T) statistics.getMinValue()) >= 0

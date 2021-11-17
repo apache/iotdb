@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.ForceAppendTsFileWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +40,7 @@ public class TsFileForceAppendWrite {
   private static final Logger logger = LoggerFactory.getLogger(TsFileForceAppendWrite.class);
 
   public static void main(String[] args) throws IOException {
-    String path = "alignedTablet.tsfile";
+    String path = "test.tsfile";
     File f = FSFactoryProducer.getFSFactory().getFile(path);
     if (f.exists()) {
       Files.delete(f.toPath());

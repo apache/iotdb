@@ -201,31 +201,27 @@ public class Field {
       return null;
     }
     Field field = new Field(dataType);
-    if (value instanceof TsPrimitiveType) { // value in aligned BatchData
-      setTsPrimitiveValue((TsPrimitiveType) value, field);
-    } else {
-      switch (dataType) {
-        case INT32:
-          field.setIntV((int) value);
-          break;
-        case INT64:
-          field.setLongV((long) value);
-          break;
-        case FLOAT:
-          field.setFloatV((float) value);
-          break;
-        case DOUBLE:
-          field.setDoubleV((double) value);
-          break;
-        case BOOLEAN:
-          field.setBoolV((boolean) value);
-          break;
-        case TEXT:
-          field.setBinaryV((Binary) value);
-          break;
-        default:
-          throw new UnSupportedDataTypeException(dataType.toString());
-      }
+    switch (dataType) {
+      case INT32:
+        field.setIntV((int) value);
+        break;
+      case INT64:
+        field.setLongV((long) value);
+        break;
+      case FLOAT:
+        field.setFloatV((float) value);
+        break;
+      case DOUBLE:
+        field.setDoubleV((double) value);
+        break;
+      case BOOLEAN:
+        field.setBoolV((boolean) value);
+        break;
+      case TEXT:
+        field.setBinaryV((Binary) value);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(dataType.toString());
     }
     return field;
   }

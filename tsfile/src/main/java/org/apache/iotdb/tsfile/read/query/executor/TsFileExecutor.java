@@ -20,7 +20,6 @@ package org.apache.iotdb.tsfile.read.query.executor;
 
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.NoMeasurementException;
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -189,15 +188,16 @@ public class TsFileExecutor implements QueryExecutor {
           seriesReader =
               new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
-        if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
-          dataTypes.add(chunkMetadataList.get(0).getDataType());
-        } else {
-          dataTypes.add(
-              ((AlignedChunkMetadata) chunkMetadataList.get(0))
-                  .getValueChunkMetadataList()
-                  .get(0)
-                  .getDataType());
-        }
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
+        //       if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
+        //          dataTypes.add(chunkMetadataList.get(0).getDataType());
+        //        } else {
+        //          dataTypes.add(
+        //              ((AlignedChunkMetadata) chunkMetadataList.get(0))
+        //                  .getValueChunkMetadataList()
+        //                  .get(0)
+        //                  .getDataType());
+        //        }
       }
       readersOfSelectedSeries.add(seriesReader);
     }

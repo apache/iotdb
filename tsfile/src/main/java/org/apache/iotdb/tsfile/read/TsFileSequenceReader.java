@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -458,7 +457,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return metadataIndexPair;
   }
 
-  public List<ITimeSeriesMetadata> readTimeseriesMetadata(String device, Set<String> measurements)
+  public List<ITimeSeriesMetadata> readITimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -497,7 +496,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               measurementMetadataIndexNode, measurementList.get(i), false, false);
 
       if (measurementMetadataIndexPair == null) {
-        return Collections.emptyList();
+        continue;
       }
       // the content of TimeseriesNode of the specific MeasurementLeafNode
       buffer =
@@ -1296,10 +1295,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return new ArrayList<>(
           ((AlignedTimeSeriesMetadata) timeseriesMetaData).getChunkMetadataList());
     } else {
-      return ((TimeseriesMetadata) timeseriesMetaData)
-          .getChunkMetadataList().stream()
-              .map(chunkMetadata -> (ChunkMetadata) chunkMetadata)
-              .collect(Collectors.toList());
+      return new ArrayList<>(((TimeseriesMetadata) timeseriesMetaData).getChunkMetadataList());
     }
   }
 

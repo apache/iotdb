@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.read.query.executor;
 
-import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -79,15 +78,16 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
       List<IChunkMetadata> chunkMetadataList = metadataQuerier.getChunkMetaDataList(selectedPath);
       if (chunkMetadataList.size() != 0) {
-        if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
-          dataTypes.add(chunkMetadataList.get(0).getDataType());
-        } else {
-          dataTypes.add(
-              ((AlignedChunkMetadata) chunkMetadataList.get(0))
-                  .getValueChunkMetadataList()
-                  .get(0)
-                  .getDataType());
-        }
+        dataTypes.add(chunkMetadataList.get(0).getDataType());
+        //        if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
+        //          dataTypes.add(chunkMetadataList.get(0).getDataType());
+        //        } else {
+        //          dataTypes.add(
+        //              ((AlignedChunkMetadata) chunkMetadataList.get(0))
+        //                  .getValueChunkMetadataList()
+        //                  .get(0)
+        //                  .getDataType());
+        //        }
         if (cachedValue) {
           readersOfSelectedSeries.add(null);
           continue;

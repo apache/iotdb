@@ -23,13 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -38,7 +33,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class TsFileWriteApiTest {
   private final File f = FSFactoryProducer.getFSFactory().getFile("TsFileWriteTest.tsfile");
@@ -90,18 +84,21 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0, false);
+      TsFileGeneratorForTest.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 10000, 0, 0, false);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
       writeMeasurementScheams.add(measurementSchemas.get(0));
-      writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 10000, 10000, 100, false);
+      TsFileGeneratorForTest.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 10000, 10000, 100, false);
 
       // example 3 : late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
-      writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 100, false);
+      TsFileGeneratorForTest.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 100, false);
     } catch (IOException | WriteProcessException e) {
       e.printStackTrace();
       System.out.println(e.getMessage());
@@ -117,19 +114,21 @@ public class TsFileWriteApiTest {
       // example1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
+      TsFileGeneratorForTest.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
 
       // example2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      writeWithTsRecord(
+      TsFileGeneratorForTest.writeWithTsRecord(
           tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10000000, 500, true);
 
       // example3 : late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      writeWithTsRecord(tsFileWriter, deviceId, writeMeasurementScheams, 20, 10000, 50, true);
+      TsFileGeneratorForTest.writeWithTsRecord(
+          tsFileWriter, deviceId, writeMeasurementScheams, 20, 10000, 50, true);
     } catch (WriteProcessException | IOException e) {
       e.printStackTrace();
     }
@@ -144,18 +143,21 @@ public class TsFileWriteApiTest {
       // example 1
       writeMeasurementScheams.add(measurementSchemas.get(0));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, false);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, false);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 1000, 2000, 0, false);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 1000, 2000, 0, false);
 
       // example 3: late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(1));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 1000, 20, 0, false);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 1000, 20, 0, false);
     } catch (IOException | WriteProcessException e) {
       e.printStackTrace();
     }
@@ -169,90 +171,24 @@ public class TsFileWriteApiTest {
       List<UnaryMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
       // example 1
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
 
       // example 2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10, 0, true);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10, 0, true);
 
       // example 3
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
-      writeWithTablet(tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
 
     } catch (WriteProcessException | IOException e) {
       e.printStackTrace();
-    }
-  }
-
-  public static void writeWithTsRecord(
-      TsFileWriter tsFileWriter,
-      String deviceId,
-      List<UnaryMeasurementSchema> schemas,
-      long rowSize,
-      long startTime,
-      long startValue,
-      boolean isAligned)
-      throws IOException, WriteProcessException {
-    for (long time = startTime; time < rowSize + startTime; time++) {
-      // construct TsRecord
-      TSRecord tsRecord = new TSRecord(time, deviceId);
-      for (IMeasurementSchema schema : schemas) {
-        DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue++);
-        tsRecord.addTuple(dPoint);
-      }
-      // write
-      if (isAligned) {
-        tsFileWriter.writeAligned(tsRecord);
-      } else {
-        tsFileWriter.write(tsRecord);
-      }
-    }
-  }
-
-  public static void writeWithTablet(
-      TsFileWriter tsFileWriter,
-      String deviceId,
-      List<UnaryMeasurementSchema> schemas,
-      long rowNum,
-      long startTime,
-      long startValue,
-      boolean isAligned)
-      throws IOException, WriteProcessException {
-    List<IMeasurementSchema> measurementSchemas =
-        schemas.stream().map(schema -> (IMeasurementSchema) schema).collect(Collectors.toList());
-    Tablet tablet = new Tablet(deviceId, measurementSchemas);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-    long sensorNum = schemas.size();
-
-    for (long r = 0; r < rowNum; r++, startValue++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = startTime++;
-      for (int i = 0; i < sensorNum; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = startValue;
-      }
-      // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        if (isAligned) {
-          tsFileWriter.writeAligned(tablet);
-        } else {
-          tsFileWriter.write(tablet);
-        }
-        tablet.reset();
-      }
-    }
-    // write
-    if (tablet.rowSize != 0) {
-      if (isAligned) {
-        tsFileWriter.writeAligned(tablet);
-      } else {
-        tsFileWriter.write(tablet);
-      }
-      tablet.reset();
     }
   }
 }

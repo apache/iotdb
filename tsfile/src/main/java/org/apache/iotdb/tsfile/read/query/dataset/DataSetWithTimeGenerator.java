@@ -73,27 +73,25 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
 
       // get value from readers in time generator
       if (cached.get(i)) {
-        Object tmpValue = timeGenerator.getValue(paths.get(i));
-        Object value;
-        if (tmpValue instanceof TsPrimitiveType[]) { // value in aligned BatchData
-          value = ((TsPrimitiveType[]) tmpValue)[0];
+        Object value = timeGenerator.getValue(paths.get(i));
+        if (value instanceof TsPrimitiveType[]) { // value in aligned BatchData
+          TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
+          rowRecord.addField(v.getValue(), v.getDataType());
         } else {
-          value = tmpValue;
+          rowRecord.addField(value, dataTypes.get(i));
         }
-        rowRecord.addField(value, dataTypes.get(i));
         continue;
       }
 
       // get value from series reader without filter
       FileSeriesReaderByTimestamp fileSeriesReaderByTimestamp = readers.get(i);
-      Object tmpValue = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
-      Object value;
-      if (tmpValue instanceof TsPrimitiveType[]) { // value in aligned BatchData
-        value = ((TsPrimitiveType[]) tmpValue)[0];
+      Object value = fileSeriesReaderByTimestamp.getValueInTimestamp(timestamp);
+      if (dataTypes.get(i) == TSDataType.VECTOR) {
+        TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
+        rowRecord.addField(v.getValue(), v.getDataType());
       } else {
-        value = tmpValue;
+        rowRecord.addField(value, dataTypes.get(i));
       }
-      rowRecord.addField(value, dataTypes.get(i));
     }
 
     return rowRecord;

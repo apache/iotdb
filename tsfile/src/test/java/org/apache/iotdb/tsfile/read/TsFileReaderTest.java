@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -486,8 +485,8 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      // System.out.println(queryDataSet.next());
-      queryDataSet.next();
+      System.out.println(queryDataSet.next());
+      // queryDataSet.next();
       rowCount++;
     }
     return rowCount;

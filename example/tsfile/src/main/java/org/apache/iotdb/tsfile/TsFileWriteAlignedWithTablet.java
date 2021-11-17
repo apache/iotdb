@@ -28,7 +28,6 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +85,7 @@ public class TsFileWriteAlignedWithTablet {
       timestamps[row] = startTime++;
       for (int i = 0; i < sensorNum; i++) {
         Binary[] textSensor = (Binary[]) values[i];
-        textSensor[row] = new Binary("test");
+        textSensor[row] = new Binary("testString.........");
       }
       // write
       if (tablet.rowSize == tablet.getMaxRowNumber()) {

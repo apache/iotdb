@@ -45,9 +45,7 @@ public class LtEq<T extends Comparable<T>> extends UnaryFilter<T> {
     if (filterType == FilterType.TIME_FILTER) {
       return ((Long) value) >= statistics.getStartTime();
     } else {
-      if (statistics.getType() == TSDataType.TEXT
-          || statistics.getType() == TSDataType.BOOLEAN
-          || statistics.getType() == TSDataType.VECTOR) {
+      if (statistics.getType() == TSDataType.TEXT || statistics.getType() == TSDataType.BOOLEAN) {
         return true;
       }
       return value.compareTo((T) statistics.getMinValue()) >= 0;

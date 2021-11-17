@@ -194,10 +194,6 @@ public class ValuePageReader {
     return valueBatch;
   }
 
-  public PageHeader getPageHeader() {
-    return pageHeader;
-  }
-
   public Statistics getStatistics() {
     return pageHeader.getStatistics();
   }

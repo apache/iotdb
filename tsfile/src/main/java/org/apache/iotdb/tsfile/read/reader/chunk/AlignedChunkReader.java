@@ -196,7 +196,7 @@ public class AlignedChunkReader implements IChunkReader {
             .position(
                 valueChunkDataBufferList.get(i).position()
                     + valuePageHeader.get(i).getCompressedSize());
-        valuePageHeaderList.add(valuePageHeader.get(i));
+        valuePageHeaderList.add(null);
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
         valueDecoderList.add(null);
@@ -232,12 +232,6 @@ public class AlignedChunkReader implements IChunkReader {
       throws IOException {
     pageInfo.pageHeader = pageHeader;
     pageInfo.dataType = chunkHeader.getDataType();
-    if (pageHeader.getUncompressedSize() == 0) { // Empty Page
-      pageInfo.pageData = null;
-      pageInfo.decoder = null;
-      return;
-    }
-
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
     // doesn't has a complete page body

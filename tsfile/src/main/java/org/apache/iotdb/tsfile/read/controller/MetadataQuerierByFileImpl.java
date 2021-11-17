@@ -103,7 +103,7 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
       }
 
       List<ITimeSeriesMetadata> timeseriesMetaDataList =
-          tsFileReader.readTimeseriesMetadata(selectedDevice, selectedMeasurements);
+          tsFileReader.readITimeseriesMetadata(selectedDevice, selectedMeasurements);
       for (ITimeSeriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
         List<IChunkMetadata> chunkMetadataList =
             tsFileReader.readIChunkMetaDataList(timeseriesMetadata);
@@ -119,10 +119,10 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         }
         this.chunkMetaDataCache.put(new Path(selectedDevice, measurementId), chunkMetadataList);
         count += chunkMetadataList.size();
-      }
-      if (count == CACHED_ENTRY_NUMBER) {
-        enough = true;
-        break;
+        if (count == CACHED_ENTRY_NUMBER) {
+          enough = true;
+          break;
+        }
       }
     }
   }
