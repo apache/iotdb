@@ -138,9 +138,6 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
   private void replaceGroupByFilter(IExpression expression, Filter timeFilter)
       throws QueryProcessException, IllegalPathException {
     if (expression instanceof SingleSeriesExpression) {
-      ((SingleSeriesExpression) expression)
-          .setSeriesPath(
-              new PartialPath(((SingleSeriesExpression) expression).getSeriesPath().getFullPath()));
       if (((SingleSeriesExpression) expression).getFilter() instanceof GroupByFilter) {
         ((SingleSeriesExpression) expression).setFilter(timeFilter);
       } else if (((SingleSeriesExpression) expression).getFilter() instanceof BinaryFilter) {
