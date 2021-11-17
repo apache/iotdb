@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -30,7 +31,7 @@ import java.io.IOException;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class MergeLogger {
+public class InplaceCompactionLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log";
 
@@ -45,7 +46,7 @@ public class MergeLogger {
 
   private BufferedWriter logStream;
 
-  public MergeLogger(String storageGroupDir) throws IOException {
+  public InplaceCompactionLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
   }
 
@@ -81,7 +82,10 @@ public class MergeLogger {
   }
 
   public void logFileMergeStart(File file, long position) throws IOException {
-    logStream.write(String.format("%s %d", file.getAbsolutePath(), position));
+    logStream.write(
+        String.format(
+            "%s %d",
+            TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()), position));
     logStream.newLine();
     logStream.flush();
   }
@@ -107,7 +111,10 @@ public class MergeLogger {
     logStream.write(STR_SEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
-      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
+      logStream.write(
+          TsFileIdentifier.getFileIdentifierFromFilePath(
+                  tsFileResource.getTsFile().getAbsolutePath())
+              .toString());
       logStream.newLine();
     }
     logStream.flush();
@@ -117,7 +124,10 @@ public class MergeLogger {
     logStream.write(STR_UNSEQ_FILES);
     logStream.newLine();
     for (TsFileResource tsFileResource : unseqFiles) {
-      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
+      logStream.write(
+          TsFileIdentifier.getFileIdentifierFromFilePath(
+                  tsFileResource.getTsFile().getAbsolutePath())
+              .toString());
       logStream.newLine();
     }
     logStream.flush();
