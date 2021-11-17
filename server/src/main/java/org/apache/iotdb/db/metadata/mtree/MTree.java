@@ -1465,6 +1465,7 @@ public class MTree implements Serializable {
       } else {
         for (IMNode child : mountedNode.getChildren().values()) {
           if (child.isMeasurement()) {
+            // a prefix of empty string, which is "", means direct measurements of the template is aligned
             if (template.getAlignedPrefixSet().contains("")
                 != mountedNode.getAsEntityMNode().isAligned()) {
               throw new MetadataException(

@@ -1727,7 +1727,6 @@ public class MManager {
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node, set using template if accessed.
-
     int indexRecord = -1;
     // check every measurement path
     for (String measurementId : measurementList) {
