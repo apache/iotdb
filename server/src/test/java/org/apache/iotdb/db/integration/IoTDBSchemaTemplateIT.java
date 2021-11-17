@@ -53,7 +53,7 @@ public class IoTDBSchemaTemplateIT {
 
   @Test
   @Ignore
-  public void testCreateAndCreateTimeseries() throws SQLException {
+  public void testCreateTemplateAndCreateTimeseries() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
     // create schema template
