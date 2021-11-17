@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
@@ -83,6 +83,9 @@ public class QueryRouter implements IQueryRouter {
     }
     queryPlan.setExpression(optimizedExpression);
 
+    // group the vector partial paths for raw query after optimize the expression
+    // because path in expressions should not be grouped
+    queryPlan.transformToVector();
     RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
@@ -101,9 +104,6 @@ public class QueryRouter implements IQueryRouter {
         return new EmptyDataSet();
       }
     }
-
-    // Currently, we only group the vector partial paths for raw query without value filter
-    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 
@@ -194,8 +194,10 @@ public class QueryRouter implements IQueryRouter {
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByWithoutValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithoutValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     } else {
       dataSet = getGroupByWithValueFilterDataSet(context, groupByTimePlan);
+      ((GroupByWithValueFilterDataSet) dataSet).initGroupBy(context, groupByTimePlan);
     }
 
     // we support group by level for count operation
@@ -241,6 +243,12 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
+  protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+  }
+
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
@@ -256,14 +264,16 @@ public class QueryRouter implements IQueryRouter {
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
-    GroupByEngineDataSet dataSet;
+    GroupByFillWithoutValueFilterDataSet dataSet;
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
-      dataSet = new GroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet = getGroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
+      dataSet.init(context, groupByFillPlan);
     } else {
-      // dataSet = new GroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      // dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      // dataSet.init(context, groupByFillPlan);
       throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
     }
 

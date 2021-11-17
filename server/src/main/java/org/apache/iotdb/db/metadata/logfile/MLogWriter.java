@@ -20,12 +20,14 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
@@ -166,6 +168,14 @@ public class MLogWriter implements AutoCloseable {
   }
 
   public void createSchemaTemplate(CreateTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void appendSchemaTemplate(AppendTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 

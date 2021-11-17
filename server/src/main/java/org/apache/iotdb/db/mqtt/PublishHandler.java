@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -102,7 +102,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
       boolean status = false;
       try {
-        plan.setPrefixPath(new PartialPath(event.getDevice()));
+        plan.setDeviceId(new PartialPath(event.getDevice()));
         status = executeNonQuery(plan);
       } catch (Exception e) {
         LOG.warn(

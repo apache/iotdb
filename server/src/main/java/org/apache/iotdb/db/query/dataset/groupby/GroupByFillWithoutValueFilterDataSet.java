@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.impl.CountAggrResult;
@@ -100,7 +100,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
       throws QueryProcessException, StorageEngineException {
     super(context, groupByTimeFillPlan);
     this.aggregations = groupByTimeFillPlan.getDeduplicatedAggregations();
-
     this.deduplicatedPaths = new ArrayList<>();
     for (Path path : paths) {
       PartialPath partialPath = (PartialPath) path;
@@ -108,7 +107,11 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
         deduplicatedPaths.add(partialPath);
       }
     }
+  }
 
+  public void init(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    initGroupBy(context, groupByTimeFillPlan);
     initArrays();
     initExtraExecutors(context, groupByTimeFillPlan);
     if (extraPreviousExecutors != null) {

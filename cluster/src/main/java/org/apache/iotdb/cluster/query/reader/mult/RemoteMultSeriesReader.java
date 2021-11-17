@@ -73,7 +73,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      String fullPath = sourceInfo.getPartialPaths().get(i).getExactFullPath();
+      String fullPath = sourceInfo.getPartialPaths().get(i).getFullPath();
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }
@@ -129,7 +129,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       return;
     }
     List<String> paths = batchStrategy.selectBatchPaths(this.cachedBatchs);
-    if (paths.isEmpty()) return;
+    if (paths.isEmpty()) {
+      return;
+    }
 
     Map<String, ByteBuffer> result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -138,7 +140,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       result = fetchResultSync(paths);
     }
 
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
     for (String path : result.keySet()) {
 

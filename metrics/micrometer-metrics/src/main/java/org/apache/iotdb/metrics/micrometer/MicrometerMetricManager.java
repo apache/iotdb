@@ -362,11 +362,10 @@ public class MicrometerMetricManager implements MetricManager {
     classLoaderMetrics.bindTo(meterRegistry);
     JvmCompilationMetrics jvmCompilationMetrics = new JvmCompilationMetrics();
     jvmCompilationMetrics.bindTo(meterRegistry);
-    try (JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
-        JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics()) {
-      jvmGcMetrics.bindTo(meterRegistry);
-      jvmHeapPressureMetrics.bindTo(meterRegistry);
-    }
+    JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
+    JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics();
+    jvmGcMetrics.bindTo(meterRegistry);
+    jvmHeapPressureMetrics.bindTo(meterRegistry);
     JvmMemoryMetrics jvmMemoryMetrics = new JvmMemoryMetrics();
     jvmMemoryMetrics.bindTo(meterRegistry);
     JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();

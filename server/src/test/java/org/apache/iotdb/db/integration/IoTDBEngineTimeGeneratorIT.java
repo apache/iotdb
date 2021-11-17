@@ -21,12 +21,14 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -89,9 +91,9 @@ public class IoTDBEngineTimeGeneratorIT {
     insertData();
   }
 
+  // recovery value
   @AfterClass
   public static void tearDown() throws Exception {
-    // recovery value
     tsFileConfig.setMaxNumberOfPointsInPage(maxNumberOfPointsInPage);
     tsFileConfig.setPageSizeInByte(pageSizeInByte);
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
@@ -189,12 +191,13 @@ public class IoTDBEngineTimeGeneratorIT {
   /** value >= 14 && time > 500 */
   @Test
   public void testOneSeriesWithValueAndTimeFilter()
-      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
+      throws IOException, StorageEngineException, MetadataException, QueryProcessException {
     // System.out.println("Test >>> root.vehicle.d0.s0 >= 14 && time > 500");
 
-    PartialPath pd0s0 =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(14);
+    MeasurementPath pd0s0 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    ValueFilter.ValueGtEq<Integer> valueGtEq = ValueFilter.gtEq(14);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(500);
 
     SingleSeriesExpression singleSeriesExpression =
@@ -219,12 +222,13 @@ public class IoTDBEngineTimeGeneratorIT {
   /** root.vehicle.d1.s0 >= 5, and d1.s0 has no data */
   @Test
   public void testEmptySeriesWithValueFilter()
-      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
+      throws IOException, StorageEngineException, MetadataException, QueryProcessException {
     // System.out.println("Test >>> root.vehicle.d1.s0 >= 5");
 
-    PartialPath pd1s0 =
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    ValueFilter.ValueGtEq valueGtEq = ValueFilter.gtEq(5);
+    MeasurementPath pd1s0 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    ValueFilter.ValueGtEq<Integer> valueGtEq = ValueFilter.gtEq(5);
 
     IExpression singleSeriesExpression = new SingleSeriesExpression(pd1s0, valueGtEq);
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
@@ -244,17 +248,19 @@ public class IoTDBEngineTimeGeneratorIT {
   /** root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900 */
   @Test
   public void testMultiSeriesWithValueFilterAndTimeFilter()
-      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException {
+      throws IOException, StorageEngineException, MetadataException, QueryProcessException {
     System.out.println(
         "Test >>> root.vehicle.d0.s0 >= 5 && root.vehicle.d0.s2 >= 11.5 || time > 900");
 
-    PartialPath pd0s0 =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    PartialPath pd0s2 =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2);
+    MeasurementPath pd0s0 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    MeasurementPath pd0s2 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2);
 
-    ValueFilter.ValueGtEq valueGtEq5 = ValueFilter.gtEq(5);
-    ValueFilter.ValueGtEq valueGtEq11 = ValueFilter.gtEq(11.5f);
+    ValueFilter.ValueGtEq<Integer> valueGtEq5 = ValueFilter.gtEq(5);
+    ValueFilter.ValueGtEq<Float> valueGtEq11 = ValueFilter.gtEq(11.5f);
     TimeFilter.TimeGt timeGt = TimeFilter.gt(900L);
 
     IExpression singleSeriesExpression1 =

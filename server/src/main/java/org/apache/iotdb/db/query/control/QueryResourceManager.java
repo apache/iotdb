@@ -22,12 +22,11 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -84,14 +83,16 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
+  /**
+   * @param selectedPath MeasurementPath or AlignedPath, even if it contains only one sub sensor of
+   *     an aligned device, it should be AlignedPath instead of MeasurementPath
+   */
   public QueryDataSource getQueryDataSource(
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {
 
-    SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(selectedPath, filter);
     QueryDataSource queryDataSource =
-        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
+        StorageEngine.getInstance().query(selectedPath, filter, context, filePathsManager);
 
     // for tracing: calculate the distinct number of seq and unseq tsfiles
     if (context.isEnableTracing()) {

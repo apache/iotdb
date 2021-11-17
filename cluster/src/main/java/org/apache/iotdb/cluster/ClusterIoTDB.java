@@ -65,7 +65,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -86,7 +86,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 import static org.apache.iotdb.cluster.utils.ClusterUtils.UNKNOWN_CLIENT_IP;
-import static org.apache.iotdb.db.service.TSServiceImpl.sessionManager;
 
 /** we do not inherent IoTDB instance, as it may break the singleton mode of IoTDB. */
 public class ClusterIoTDB implements ClusterIoTDBMBean {
@@ -387,8 +386,8 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
     clusterServiceImpl.setCoordinator(coordinator);
     clusterServiceImpl.setExecutor(metaGroupMember);
-    TSServiceImpl.setSessionManager(ClusterSessionManager.getInstance());
-    ((ClusterSessionManager) sessionManager).setCoordinator(coordinator);
+    BasicServiceProvider.sessionManager = ClusterSessionManager.getInstance();
+    ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
   }

@@ -31,11 +31,12 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -97,7 +98,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteCache()
-      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -146,6 +147,8 @@ public class DeletionFileNodeTest {
               -1,
               (storageGroupName, timePartitionId) -> timePartitionId < 5);
       checkSeriesPointCount(0, 5);
+    } catch (MetadataException e) {
+      e.printStackTrace();
     } finally {
       StorageEngine.setEnablePartition(prevEnablePartition);
       StorageEngine.setTimePartitionInterval(prevPartitionInterval);
@@ -156,10 +159,10 @@ public class DeletionFileNodeTest {
   }
 
   private void checkSeriesPointCount(int measurementIdx, int expectedCount)
-      throws IllegalPathException, StorageEngineException, QueryProcessException, IOException {
+      throws MetadataException, StorageEngineException, QueryProcessException, IOException {
     SingleSeriesExpression expression =
         new SingleSeriesExpression(
-            new PartialPath(
+            SchemaTestUtils.getMeasurementPath(
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
     List<StorageGroupProcessor> list =
@@ -265,7 +268,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -296,7 +299,9 @@ public class DeletionFileNodeTest {
 
     SingleSeriesExpression expression =
         new SingleSeriesExpression(
-            new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
+            SchemaTestUtils.getMeasurementPath(
+                processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
+            null);
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()

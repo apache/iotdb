@@ -22,7 +22,7 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -126,9 +126,9 @@ public class MLogParserTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(CompressionType.SNAPPY);
-    compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
@@ -163,7 +163,7 @@ public class MLogParserTest {
         lineNum++;
         lines.add(line);
       }
-      if (lineNum != 114) {
+      if (lineNum != 113) {
         // First, we prepare 2 storage groups, each one has 5 devices, and every device has 10
         // measurements.
         // So, mlog records 2 * 5 * 10 = 100 CreateTimeSeriesPlan, and 2 SetStorageGroupPlan.
@@ -171,15 +171,15 @@ public class MLogParserTest {
         // delete timeseries, delete sg, add tags.
         // The final operation changeAlias only change the mtree in memory, so it will not write
         // record to mlog.
-        // Then, we set 1 more storage group, create a template with 2 measurements, set
+        // Then, we set 1 more storage group, create a template with 2 measurements(1 line), set
         // the template to this storage group and set 1 device using template. The device will be
         // auto created.
-        // Finally, the mlog should have 100 + 2 + 6 + 1 + 2 + 1 + 1 + 1 = 114 records
+        // Finally, the mlog should have 100 + 2 + 6 + 1 + 1 + 1 + 1 + 1 = 113 records
         for (String content : lines) {
           System.out.println(content);
         }
       }
-      Assert.assertEquals(114, lineNum);
+      Assert.assertEquals(113, lineNum);
     } catch (IOException e) {
       Assert.fail(e.getMessage());
     }
