@@ -18,7 +18,7 @@
  *
  */
 
-package org.apache.iotdb.db.qp.physical.crud;
+package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -30,17 +30,17 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 
-public class UnsetSchemaTemplatePlan extends PhysicalPlan {
+public class UnsetTemplatePlan extends PhysicalPlan {
 
   String prefixPath;
   String templateName;
 
-  public UnsetSchemaTemplatePlan() {
-    super(false, Operator.OperatorType.UNSET_SCHEMA_TEMPLATE);
+  public UnsetTemplatePlan() {
+    super(false, Operator.OperatorType.UNSET_TEMPLATE);
   }
 
-  public UnsetSchemaTemplatePlan(String prefixPath, String templateName) {
-    super(false, Operator.OperatorType.UNSET_SCHEMA_TEMPLATE);
+  public UnsetTemplatePlan(String prefixPath, String templateName) {
+    super(false, Operator.OperatorType.UNSET_TEMPLATE);
     this.prefixPath = prefixPath;
     this.templateName = templateName;
   }
@@ -68,7 +68,7 @@ public class UnsetSchemaTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(ByteBuffer buffer) {
-    buffer.put((byte) PhysicalPlanType.UNSET_SCHEMA_TEMPLATE.ordinal());
+    buffer.put((byte) PhysicalPlanType.UNSET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(prefixPath, buffer);
     ReadWriteIOUtils.write(templateName, buffer);
@@ -86,7 +86,7 @@ public class UnsetSchemaTemplatePlan extends PhysicalPlan {
 
   @Override
   public void serialize(DataOutputStream stream) throws IOException {
-    stream.writeByte((byte) PhysicalPlanType.UNSET_SCHEMA_TEMPLATE.ordinal());
+    stream.writeByte((byte) PhysicalPlanType.UNSET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(prefixPath, stream);
     ReadWriteIOUtils.write(templateName, stream);

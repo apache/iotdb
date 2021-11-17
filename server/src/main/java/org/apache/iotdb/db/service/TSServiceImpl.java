@@ -43,8 +43,6 @@ import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
-import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -53,21 +51,23 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
-import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
@@ -1717,7 +1717,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
                 req.prefixPath + "." + req.measurements.get(0),
                 req.dataTypes.get(0),
                 req.encodings.get(0),
-                req.compressor));
+                req.compressors.get(0)));
       }
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
@@ -1736,6 +1736,10 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       for (int encoding : req.encodings) {
         encodings.add(TSEncoding.values()[encoding]);
       }
+      List<CompressionType> compressors = new ArrayList<>();
+      for (int compressor : req.compressors) {
+        compressors.add(CompressionType.values()[compressor]);
+      }
 
       CreateAlignedTimeSeriesPlan plan =
           new CreateAlignedTimeSeriesPlan(
@@ -1743,7 +1747,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.measurements,
               dataTypes,
               encodings,
-              CompressionType.values()[req.compressor],
+              compressors,
               req.measurementAlias);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       return status != null ? status : executeNonQueryPlan(plan);
@@ -2005,7 +2009,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getPrefixPath());
     }
 
-    SetSchemaTemplatePlan plan = new SetSchemaTemplatePlan(req.templateName, req.prefixPath);
+    SetTemplatePlan plan = new SetTemplatePlan(req.templateName, req.prefixPath);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
@@ -2024,7 +2028,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getTemplateName());
     }
 
-    UnsetSchemaTemplatePlan plan = new UnsetSchemaTemplatePlan(req.prefixPath, req.templateName);
+    UnsetTemplatePlan plan = new UnsetTemplatePlan(req.prefixPath, req.templateName);
     TSStatus status = checkAuthority(plan, req.getSessionId());
     return status != null ? status : executeNonQueryPlan(plan);
   }
