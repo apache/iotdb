@@ -485,8 +485,8 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
-      // queryDataSet.next();
+      // System.out.println(queryDataSet.next());
+      queryDataSet.next();
       rowCount++;
     }
     return rowCount;

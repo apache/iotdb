@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +65,9 @@ public class TsFileWriter implements AutoCloseable {
 
   private final int pageSize;
   private long recordCount = 0;
+
+  // DeviceId, whose chunk group has been flushed at least one time
+  private Map<String, List<String>> flushedMeasurementsInDeviceMap = new HashMap<>();
 
   private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
 
@@ -295,7 +297,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
-      throws NoMeasurementException {
+      throws WriteProcessException {
     // initial ChunkGroupWriter of this device in the TSRecord
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(record.deviceId, isAligned);
 
@@ -306,6 +308,20 @@ public class TsFileWriter implements AutoCloseable {
       measurementSchemas =
           checkIsAllMeasurementsInGroup(
               record.dataPointList, schema.getSeriesSchema(devicePath), isAligned);
+      if (isAligned) {
+        for (IMeasurementSchema s : measurementSchemas) {
+          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+              && !flushedMeasurementsInDeviceMap
+                  .get(devicePath.getFullPath())
+                  .contains(s.getMeasurementId())) {
+            throw new WriteProcessException(
+                "TsFile has flushed chunk group and should not add new measurement "
+                    + s.getMeasurementId()
+                    + " in device "
+                    + devicePath.getFullPath());
+          }
+        }
+      }
       groupWriter.tryToAddSeriesWriter(measurementSchemas);
     } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
       // use the default template without needing to register device
@@ -321,13 +337,27 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
-      throws NoMeasurementException {
+      throws WriteProcessException {
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.prefixPath, isAligned);
 
     Path devicePath = new Path(tablet.prefixPath);
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     if (schema.containsDevice(devicePath)) {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
+      if (isAligned) {
+        for (IMeasurementSchema s : schemas) {
+          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+              && !flushedMeasurementsInDeviceMap
+                  .get(devicePath.getFullPath())
+                  .contains(s.getMeasurementId())) {
+            throw new WriteProcessException(
+                "TsFile has flushed chunk group and should not add new measurement "
+                    + s.getMeasurementId()
+                    + " in device "
+                    + devicePath.getFullPath());
+          }
+        }
+      }
       groupWriter.tryToAddSeriesWriter(schemas);
     } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
       MeasurementGroup measurementGroup =
@@ -530,6 +560,18 @@ public class TsFileWriter implements AutoCloseable {
                   dataSize, fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup();
+        if (groupWriter instanceof AlignedChunkGroupWriterImpl) {
+          List<String> measurementList =
+              flushedMeasurementsInDeviceMap.computeIfAbsent(deviceId, p -> new ArrayList<>());
+          ((AlignedChunkGroupWriterImpl) groupWriter)
+              .getMeasurements()
+              .forEach(
+                  measurementId -> {
+                    if (!measurementList.contains(measurementId)) {
+                      measurementList.add(measurementId);
+                    }
+                  });
+        }
       }
       reset();
     }

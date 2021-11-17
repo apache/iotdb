@@ -351,6 +351,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
   }
 
+  // This method is only used for TsFile
   public ITimeSeriesMetadata readITimeseriesMetadata(Path path, boolean ignoreNotExists)
       throws IOException {
     readFileMetadata();
@@ -457,6 +458,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return metadataIndexPair;
   }
 
+  // This method is only used for TsFile
   public List<ITimeSeriesMetadata> readITimeseriesMetadata(String device, Set<String> measurements)
       throws IOException {
     readFileMetadata();
@@ -668,7 +670,7 @@ public class TsFileSequenceReader implements AutoCloseable {
               measurementNode.getChildren().get(0).getOffset(),
               measurementNode.getChildren().get(1).getOffset());
       MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
-      tryToGetFirstTimeseriesMetadata(metadataIndexNode);
+      return tryToGetFirstTimeseriesMetadata(metadataIndexNode);
     }
     return null;
   }
@@ -1264,6 +1266,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     return chunkMetadataList;
   }
 
+  // This method is only used for TsFile
   public List<IChunkMetadata> getIChunkMetadataList(Path path) throws IOException {
     ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, false);
     if (timeseriesMetaData == null) {
@@ -1290,6 +1293,7 @@ public class TsFileSequenceReader implements AutoCloseable {
         .collect(Collectors.toList());
   }
 
+  // This method is only used for TsFile
   public List<IChunkMetadata> readIChunkMetaDataList(ITimeSeriesMetadata timeseriesMetaData) {
     if (timeseriesMetaData instanceof AlignedTimeSeriesMetadata) {
       return new ArrayList<>(

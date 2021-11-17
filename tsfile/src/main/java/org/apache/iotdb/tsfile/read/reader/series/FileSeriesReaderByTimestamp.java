@@ -26,7 +26,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 
 import java.io.IOException;
@@ -160,7 +160,7 @@ public class FileSeriesReaderByTimestamp {
       for (IChunkMetadata metadata : alignedChunkMetadata.getValueChunkMetadataList()) {
         valueChunkList.add(chunkLoader.loadChunk((ChunkMetadata) metadata));
       }
-      this.chunkReader = new AlignedChunkReader(timeChunk, valueChunkList, null);
+      this.chunkReader = new AlignedChunkReaderByTimestamp(timeChunk, valueChunkList);
     }
   }
 

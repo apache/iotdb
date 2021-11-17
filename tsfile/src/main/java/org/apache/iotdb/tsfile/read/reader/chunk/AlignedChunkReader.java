@@ -146,7 +146,7 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** used for value page filter */
-  private boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
+  protected boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
     if (valueDeleteInterval != null) {
       for (TimeRange range : valueDeleteInterval) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {

@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.tsfile.write;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -26,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -76,7 +78,7 @@ public class TsFileWriteApiTest {
   }
 
   @Test
-  public void writeWithTsRecord() {
+  public void writeWithTsRecord() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerTimeseries(tsFileWriter);
 
@@ -98,15 +100,12 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(measurementSchemas.get(2));
       TsFileGeneratorForTest.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 100, false);
-    } catch (IOException | WriteProcessException e) {
-      e.printStackTrace();
-      System.out.println(e.getMessage());
+          tsFileWriter, deviceId, writeMeasurementScheams, 10, 20000, 200000, false);
     }
   }
 
   @Test
-  public void writeAlignedWithTsRecord() {
+  public void writeAlignedWithTsRecord() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerAlignedTimeseries(tsFileWriter);
 
@@ -115,27 +114,25 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
       TsFileGeneratorForTest.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
+          tsFileWriter, deviceId, writeMeasurementScheams, 100, 0, 0, true);
 
       // example2
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
       TsFileGeneratorForTest.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 200000, 10000000, 500, true);
+          tsFileWriter, deviceId, writeMeasurementScheams, 200000, 1000, 500, true);
 
       // example3 : late data
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       TsFileGeneratorForTest.writeWithTsRecord(
-          tsFileWriter, deviceId, writeMeasurementScheams, 20, 10000, 50, true);
-    } catch (WriteProcessException | IOException e) {
-      e.printStackTrace();
+          tsFileWriter, deviceId, writeMeasurementScheams, 20, 300000, 50, true);
     }
   }
 
   @Test
-  public void writeWithTablet() {
+  public void writeWithTablet() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerTimeseries(tsFileWriter);
 
@@ -158,13 +155,11 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.add(measurementSchemas.get(1));
       TsFileGeneratorForTest.writeWithTablet(
           tsFileWriter, deviceId, writeMeasurementScheams, 1000, 20, 0, false);
-    } catch (IOException | WriteProcessException e) {
-      e.printStackTrace();
     }
   }
 
   @Test
-  public void writeAlignedWithTablet() {
+  public void writeAlignedWithTablet() throws IOException, WriteProcessException {
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
       registerAlignedTimeseries(tsFileWriter);
 
@@ -185,10 +180,142 @@ public class TsFileWriteApiTest {
       writeMeasurementScheams.clear();
       writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
       TsFileGeneratorForTest.writeWithTablet(
-          tsFileWriter, deviceId, writeMeasurementScheams, 10, 0, 0, true);
+          tsFileWriter, deviceId, writeMeasurementScheams, 10, 210000, 0, true);
+    }
+  }
 
-    } catch (WriteProcessException | IOException e) {
-      e.printStackTrace();
+  @Test
+  public void writeNewAlignedMeasurementAfterFlushChunkGroup1() {
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(100);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(50);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<UnaryMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example 1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
+
+      // example 2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(2));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 20, 1000000, 0, true);
+
+    } catch (IOException | WriteProcessException e) {
+      Assert.assertEquals(
+          "TsFile has flushed chunk group and should not add new measurement s3 in device root.sg.d1",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void writeNewAlignedMeasurementAfterFlushChunkGroup2() {
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(100);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(50);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<UnaryMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example 1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 100000, 0, 0, true);
+
+      // example 2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(3));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 20, 1000000, 0, true);
+    } catch (IOException | WriteProcessException e) {
+      Assert.assertEquals(
+          "TsFile has flushed chunk group and should not add new measurement s4 in device root.sg.d1",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void writeOutOfOrderAlignedData() throws IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(100 * 1024 * 1024);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(100 * 1024);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerAlignedTimeseries(tsFileWriter);
+
+      List<UnaryMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example 1
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, true);
+
+      // example 2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(0));
+      try {
+        TsFileGeneratorForTest.writeWithTablet(
+            tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, true);
+      } catch (WriteProcessException e) {
+        Assert.assertEquals(
+            "Not allowed to write out-of-order data in timeseries root.sg.d1., time should later than 100",
+            e.getMessage());
+      }
+
+      // example 3
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(alignedMeasurementSchemas.get(1));
+      try {
+        TsFileGeneratorForTest.writeWithTsRecord(
+            tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, true);
+      } catch (WriteProcessException e) {
+        Assert.assertEquals(
+            "Not allowed to write out-of-order data in timeseries root.sg.d1., time should later than 100",
+            e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void writeOutOfOrderData() throws IOException, WriteProcessException {
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(100 * 1024 * 1024);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(100 * 1024);
+    try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
+      registerTimeseries(tsFileWriter);
+
+      List<UnaryMeasurementSchema> writeMeasurementScheams = new ArrayList<>();
+      // example 1
+      writeMeasurementScheams.add(measurementSchemas.get(0));
+      writeMeasurementScheams.add(measurementSchemas.get(1));
+      TsFileGeneratorForTest.writeWithTablet(
+          tsFileWriter, deviceId, writeMeasurementScheams, 1000, 0, 0, false);
+
+      // example 2
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(measurementSchemas.get(0));
+      try {
+        TsFileGeneratorForTest.writeWithTablet(
+            tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, false);
+      } catch (WriteProcessException e) {
+        Assert.assertEquals(
+            "Not allowed to write out-of-order data in timeseries root.sg.d1.s1, time should later than 100",
+            e.getMessage());
+      }
+
+      // example 3
+      writeMeasurementScheams.clear();
+      writeMeasurementScheams.add(measurementSchemas.get(1));
+      try {
+        TsFileGeneratorForTest.writeWithTsRecord(
+            tsFileWriter, deviceId, writeMeasurementScheams, 20, 100, 0, false);
+      } catch (WriteProcessException e) {
+        Assert.assertEquals(
+            "Not allowed to write out-of-order data in timeseries root.sg.d1.s2, time should later than 100",
+            e.getMessage());
+      }
     }
   }
 }

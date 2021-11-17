@@ -189,15 +189,6 @@ public class TsFileExecutor implements QueryExecutor {
               new FileSeriesReader(chunkLoader, chunkMetadataList, timeExpression.getFilter());
         }
         dataTypes.add(chunkMetadataList.get(0).getDataType());
-        //       if (chunkMetadataList.get(0).getDataType() != TSDataType.VECTOR) {
-        //          dataTypes.add(chunkMetadataList.get(0).getDataType());
-        //        } else {
-        //          dataTypes.add(
-        //              ((AlignedChunkMetadata) chunkMetadataList.get(0))
-        //                  .getValueChunkMetadataList()
-        //                  .get(0)
-        //                  .getDataType());
-        //        }
       }
       readersOfSelectedSeries.add(seriesReader);
     }

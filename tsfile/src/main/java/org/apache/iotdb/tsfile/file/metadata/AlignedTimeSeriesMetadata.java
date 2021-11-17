@@ -112,9 +112,6 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
       // only at least one sensor exits, we add the AlignedChunkMetadata to the list
       boolean exits = false;
       for (List<IChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        if (i >= chunkMetadata.size()) { // there may be fewer value chunks than time chunks
-          break;
-        }
         IChunkMetadata v = chunkMetadata == null ? null : chunkMetadata.get(i);
         exits = (exits || v != null);
         chunkMetadataList.add(v);
