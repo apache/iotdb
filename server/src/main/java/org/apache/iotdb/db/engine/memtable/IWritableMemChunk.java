@@ -132,4 +132,8 @@ public interface IWritableMemChunk {
   void encode(IChunkWriter chunkWriter);
 
   void release();
+
+  long getFirstPoint();
+
+  long getLastPoint();
 }

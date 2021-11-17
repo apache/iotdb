@@ -132,7 +132,7 @@ public class LogReplayer {
       String deviceId = deviceEntry.getKey();
       for (Map.Entry<String, IWritableMemChunk> measurementEntry :
           deviceEntry.getValue().getMemChunkMap().entrySet()) {
-        WritableMemChunk memChunk = (WritableMemChunk) measurementEntry.getValue();
+        IWritableMemChunk memChunk = measurementEntry.getValue();
         currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
         currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
       }

@@ -241,14 +241,16 @@ public class WritableMemChunk implements IWritableMemChunk {
     return list.getMinTime();
   }
 
-  public Long getFirstPoint() {
+  @Override
+  public long getFirstPoint() {
     if (list.size() == 0) {
       return Long.MAX_VALUE;
     }
     return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
   }
 
-  public Long getLastPoint() {
+  @Override
+  public long getLastPoint() {
     if (list.size() == 0) {
       return Long.MIN_VALUE;
     }

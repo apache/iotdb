@@ -322,4 +322,22 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       TVListAllocator.getInstance().release(list);
     }
   }
+
+  @Override
+  public long getFirstPoint() {
+    if (list.size() == 0) {
+      return Long.MAX_VALUE;
+    }
+    return getSortedTvListForQuery().getTimeValuePair(0).getTimestamp();
+  }
+
+  @Override
+  public long getLastPoint() {
+    if (list.size() == 0) {
+      return Long.MIN_VALUE;
+    }
+    return getSortedTvListForQuery()
+        .getTimeValuePair(getSortedTvListForQuery().size() - 1)
+        .getTimestamp();
+  }
 }

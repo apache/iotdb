@@ -43,7 +43,7 @@ public interface IWritableMemChunkGroup {
 
   void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
-  Map<String, IWritableMemChunk> getMemChunkMap();
+   Map<String, IWritableMemChunk> getMemChunkMap();
 
   long getCurrentChunkPointNum(String measurement);
 }
