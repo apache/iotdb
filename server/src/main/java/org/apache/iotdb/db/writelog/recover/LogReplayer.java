@@ -22,6 +22,7 @@ package org.apache.iotdb.db.writelog.recover;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.memtable.WritableMemChunk;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -126,11 +127,11 @@ public class LogReplayer {
       }
     }
 
-    Map<String, Map<String, IWritableMemChunk>> memTableMap = recoverMemTable.getMemTableMap();
-    for (Map.Entry<String, Map<String, IWritableMemChunk>> deviceEntry : memTableMap.entrySet()) {
+    Map<String, IWritableMemChunkGroup> memTableMap = recoverMemTable.getMemTableMap();
+    for (Map.Entry<String, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
       String deviceId = deviceEntry.getKey();
       for (Map.Entry<String, IWritableMemChunk> measurementEntry :
-          deviceEntry.getValue().entrySet()) {
+          deviceEntry.getValue().getMemChunkMap().entrySet()) {
         WritableMemChunk memChunk = (WritableMemChunk) measurementEntry.getValue();
         currentTsFileResource.updateStartTime(deviceId, memChunk.getFirstPoint());
         currentTsFileResource.updateEndTime(deviceId, memChunk.getLastPoint());
@@ -194,10 +195,19 @@ public class LogReplayer {
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
-      recoverMemTable.insert((InsertRowPlan) plan);
+      if (plan.isAligned()) {
+        recoverMemTable.insertAlignedRow((InsertRowPlan) plan);
+      } else {
+        recoverMemTable.insert((InsertRowPlan) plan);
+      }
     } else {
-      recoverMemTable.insertTablet(
-          (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      if (plan.isAligned()) {
+        recoverMemTable.insertAlignedTablet(
+            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      } else {
+        recoverMemTable.insertTablet(
+            (InsertTabletPlan) plan, 0, ((InsertTabletPlan) plan).getRowCount());
+      }
     }
   }
 
