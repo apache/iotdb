@@ -198,7 +198,7 @@ public class SessionDataSet implements AutoCloseable {
 
   @Override
   public void close() throws IoTDBConnectionException, StatementExecutionException {
-    closeOperationHandle()
+    closeOperationHandle();
   }
 
   public class DataIterator {
