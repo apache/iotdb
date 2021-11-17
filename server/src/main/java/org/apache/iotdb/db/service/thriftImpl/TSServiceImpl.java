@@ -1160,7 +1160,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
             .setQueryId(sessionManager.requestQueryId(false));
   }
 
-  protected void handleClientExit() {
+  public void handleClientExit() {
     Long sessionId = sessionManager.getCurrSessionId();
     if (sessionId != null) {
       TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
