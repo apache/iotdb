@@ -41,7 +41,7 @@ public class TsFileForceAppendWrite {
   private static final Logger logger = LoggerFactory.getLogger(TsFileForceAppendWrite.class);
 
   public static void main(String[] args) throws IOException {
-    String path = "test.tsfile";
+    String path = "alignedTablet.tsfile";
     File f = FSFactoryProducer.getFSFactory().getFile(path);
     if (f.exists()) {
       Files.delete(f.toPath());

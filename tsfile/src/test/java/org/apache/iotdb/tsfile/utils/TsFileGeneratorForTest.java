@@ -282,6 +282,7 @@ public class TsFileGeneratorForTest {
     return filePath.concat(fileName);
   }
 
+  // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries "d2.s1","d2.s2","d2.s3"
   public static void generateAlignedTsFile(int rowCount, int chunkGroupSize, int pageSize) {
     File file = fsFactory.getFile(alignedOutputDataFile);
     if (file.exists()) {
