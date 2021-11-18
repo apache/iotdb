@@ -66,14 +66,14 @@ public class DropwizardMetricManagerTest {
 
   @Test
   public void getOrCreateGauge() {
-    Gauge gauge1 = metricManager.getOrCreatGauge("gauge_test", "tag1", "tag2");
+    Gauge gauge1 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
     assertNotNull(gauge1);
     Gauge gauge2 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
     assertEquals(gauge1, gauge2);
   }
 
   @Test
-  public void getOrCreatRate() {
+  public void getOrCreateRate() {
     Rate rate1 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");
     assertNotNull(rate1);
     Rate rate2 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");
