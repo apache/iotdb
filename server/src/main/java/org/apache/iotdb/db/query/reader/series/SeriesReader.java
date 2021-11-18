@@ -158,10 +158,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
@@ -201,10 +201,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(seqFileResource);
@@ -221,6 +221,14 @@ public class SeriesReader {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  }
+
+  protected PriorityMergeReader getPriorityMergeReader() {
+    return new PriorityMergeReader();
+  }
+
+  protected DescPriorityMergeReader getDescPriorityMergeReader() {
+    return new DescPriorityMergeReader();
   }
 
   public boolean isEmpty() throws IOException {

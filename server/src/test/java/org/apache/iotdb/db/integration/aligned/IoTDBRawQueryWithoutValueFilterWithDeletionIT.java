@@ -41,9 +41,9 @@ import static org.junit.Assert.fail;
 
 public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
-  private static boolean enableSeqSpaceCompaction;
-  private static boolean enableUnseqSpaceCompaction;
-  private static boolean enableCrossSpaceCompaction;
+  protected static boolean enableSeqSpaceCompaction;
+  protected static boolean enableUnseqSpaceCompaction;
+  protected static boolean enableCrossSpaceCompaction;
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -70,7 +70,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
       // disk before doing deletion
       statement.execute("flush");
       statement.execute("delete timeseries root.sg1.d1.s2");
-      statement.execute("delete from root.sg1.d1.s1 where time <= 27");
+      statement.execute("delete from root.sg1.d1.s1 where time <= 21");
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -105,7 +105,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "10,null,10,true,aligned_test10",
           "11,null,11,null,null",
           "12,null,12,null,null",
-          "13,null,130000,null,null",
+          "13,null,130000,true,aligned_unseq_test13",
           "14,null,14,null,null",
           "15,null,15,null,null",
           "16,null,16,null,null",
@@ -115,7 +115,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "20,null,20,null,null",
           "21,null,21,true,null",
           "22,null,22,true,null",
-          "23,null,230000,false,null",
+          "23,230000.0,230000,false,null",
           "24,null,24,true,null",
           "25,null,25,true,null",
           "26,null,26,false,null",
@@ -190,7 +190,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "10,null,10,true,aligned_test10,null,10,10,true,non_aligned_test10",
           "11,null,11,null,null,11.0,11,11,null,null",
           "12,null,12,null,null,12.0,12,12,null,null",
-          "13,null,130000,null,null,13.0,13,13,null,null",
+          "13,null,130000,true,aligned_unseq_test13,13.0,13,13,null,null",
           "14,null,14,null,null,14.0,14,14,null,null",
           "15,null,15,null,null,15.0,15,15,null,null",
           "16,null,16,null,null,16.0,16,16,null,null",
@@ -200,7 +200,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "20,null,20,null,null,20.0,20,20,null,null",
           "21,null,21,true,null,null,null,21,true,null",
           "22,null,22,true,null,null,null,22,true,null",
-          "23,null,230000,false,null,null,null,23,true,null",
+          "23,230000.0,230000,false,null,null,null,23,true,null",
           "24,null,24,true,null,null,null,24,true,null",
           "25,null,25,true,null,null,null,25,true,null",
           "26,null,26,false,null,null,null,26,false,null",
@@ -277,7 +277,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "10,null,10,true,aligned_test10",
           "11,null,11,null,null",
           "12,null,12,null,null",
-          "13,null,130000,null,null",
+          "13,null,130000,true,aligned_unseq_test13",
           "14,null,14,null,null",
           "15,null,15,null,null",
           "16,null,16,null,null",
@@ -287,7 +287,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "20,null,20,null,null",
           "21,null,21,true,null",
           "22,null,22,true,null",
-          "23,null,230000,false,null",
+          "23,230000.0,230000,false,null",
           "24,null,24,true,null",
           "25,null,25,true,null",
           "26,null,26,false,null",
@@ -354,9 +354,10 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "8,null,null,aligned_test8",
           "9,null,false,aligned_test9",
           "10,null,true,aligned_test10",
+          "13,null,true,aligned_unseq_test13",
           "21,null,true,null",
           "22,null,true,null",
-          "23,null,false,null",
+          "23,230000.0,false,null",
           "24,null,true,null",
           "25,null,true,null",
           "26,null,false,null",
@@ -427,9 +428,10 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "7,null,false",
           "9,null,false",
           "10,null,true",
+          "13,null,true",
           "21,null,true",
           "22,null,true",
-          "23,null,false",
+          "23,230000.0,false",
           "24,null,true",
           "25,null,true",
           "26,null,false",
@@ -484,7 +486,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
         new String[] {
           "21,null,true,null",
           "22,null,true,null",
-          "23,null,false,null",
+          "23,230000.0,false,null",
           "24,null,true,null",
           "25,null,true,null",
           "26,null,false,null",
@@ -549,7 +551,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "20,null,null,20.0,null,null,null",
           "21,null,true,null,null,true,null",
           "22,null,true,null,null,true,null",
-          "23,null,false,null,null,true,null",
+          "23,null,false,null,null,true,230000.0",
           "24,null,true,null,null,true,null",
           "25,null,true,null,null,true,null",
           "26,null,false,null,null,false,null",
