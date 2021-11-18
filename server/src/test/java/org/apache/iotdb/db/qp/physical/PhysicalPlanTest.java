@@ -1426,7 +1426,6 @@ public class PhysicalPlanTest {
     assertEquals(expect.toString(), queryFilter.toString());
   }
 
-
   @Test(expected = UnsupportedOperationException.class)
   public void testSerializationError() {
     ShowDevicesPlan plan = new ShowDevicesPlan();
