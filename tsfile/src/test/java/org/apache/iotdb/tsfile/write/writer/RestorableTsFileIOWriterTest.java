@@ -171,7 +171,7 @@ public class RestorableTsFileIOWriterTest {
     writer.registerTimeseries(
         new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.FLOAT, TSEncoding.RLE));
     writer.write(
-        new TSRecord(1, "d1")
+        new TSRecord(3, "d1")
             .addTuple(new FloatDataPoint("s1", 5))
             .addTuple(new FloatDataPoint("s2", 4)));
     writer.flushAllChunkGroups();

@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -239,8 +240,8 @@ public class TsFileReaderTest {
   }
 
   @Test
-  public void queryWithoutFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(10, 100 * 1024, 1000);
+  public void queryWithoutFilter() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(10, 100, 30);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -252,15 +253,13 @@ public class TsFileReaderTest {
 
       long rowCount = queryAndPrint(paths, tsFileReader, null);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithTimeFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+  public void queryWithTimeFilter() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -276,15 +275,13 @@ public class TsFileReaderTest {
               new GlobalTimeExpression(TimeFilter.ltEq(30009L)));
       long rowCount = queryAndPrint(paths, tsFileReader, timeFilter);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithValueFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+  public void queryWithValueFilter() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -298,15 +295,13 @@ public class TsFileReaderTest {
           new SingleSeriesExpression(new Path("d2", "s1"), ValueFilter.ltEq(9L));
       long rowCount = queryAndPrint(paths, tsFileReader, valueFilter);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithValueFilter2() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+  public void queryWithValueFilter2() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -323,15 +318,13 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.and(valueFilter1, valueFilter2);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithAndBinaryFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+  public void queryWithAndBinaryFilter() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -352,15 +345,13 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithOrBinaryFilter() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 100 * 1024, 1000);
+  public void queryWithOrBinaryFilter() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -382,15 +373,13 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.or(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithAndBinaryFilter2() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 10 * 1024, 100);
+  public void queryWithAndBinaryFilter2() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -412,15 +401,13 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithUnRegisteredTimeseries() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 10 * 1024, 100);
+  public void queryWithUnRegisteredTimeseries() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -443,15 +430,13 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
 
   @Test
-  public void queryWithValueFilterOnUnExistedTimeseries() {
-    TsFileGeneratorForTest.generateAlignedTsFile(100000, 10 * 1024, 100);
+  public void queryWithValueFilterOnUnExistedTimeseries() throws IOException {
+    TsFileGeneratorForTest.generateAlignedTsFile(100000, 1024, 100);
     String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
@@ -473,8 +458,6 @@ public class TsFileReaderTest {
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertEquals(0, rowCount);
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }

@@ -283,11 +283,19 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
               + TsFileConstant.PATH_SEPARATOR
               + measurementId
               + ", time should later than "
-              + time);
+              + lastTime);
     }
   }
 
   public List<String> getMeasurements() {
     return new ArrayList<>(valueChunkWriterMap.keySet());
+  }
+
+  public Long getLastTime() {
+    return this.lastTime;
+  }
+
+  public void setLastTime(Long lastTime) {
+    this.lastTime = lastTime;
   }
 }

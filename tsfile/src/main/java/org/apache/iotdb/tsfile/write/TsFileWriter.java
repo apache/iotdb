@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +69,12 @@ public class TsFileWriter implements AutoCloseable {
 
   // DeviceId, whose chunk group has been flushed at least one time
   private Map<String, List<String>> flushedMeasurementsInDeviceMap = new HashMap<>();
+
+  // DeviceId -> LastTime
+  private Map<String, Long> alignedDeviceLastTimeMap = new HashMap<>();
+
+  // TimeseriesId -> LastTime
+  private Map<String, Map<String, Long>> nonAlignedTimeseriesLastTimeMap = new HashMap<>();
 
   private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
 
@@ -448,8 +455,13 @@ public class TsFileWriter implements AutoCloseable {
     if (!groupWriters.containsKey(deviceId)) {
       if (isAligned) {
         groupWriter = new AlignedChunkGroupWriterImpl(deviceId);
+        ((AlignedChunkGroupWriterImpl) groupWriter)
+            .setLastTime(alignedDeviceLastTimeMap.getOrDefault(deviceId, -1L));
       } else {
         groupWriter = new NonAlignedChunkGroupWriterImpl(deviceId);
+        ((NonAlignedChunkGroupWriterImpl) groupWriter)
+            .setLastTimeMap(
+                nonAlignedTimeseriesLastTimeMap.getOrDefault(deviceId, new HashMap<>()));
       }
       groupWriters.put(deviceId, groupWriter);
     } else {
@@ -561,6 +573,7 @@ public class TsFileWriter implements AutoCloseable {
         }
         fileWriter.endChunkGroup();
         if (groupWriter instanceof AlignedChunkGroupWriterImpl) {
+          // add flushed measurements
           List<String> measurementList =
               flushedMeasurementsInDeviceMap.computeIfAbsent(deviceId, p -> new ArrayList<>());
           ((AlignedChunkGroupWriterImpl) groupWriter)
@@ -571,6 +584,13 @@ public class TsFileWriter implements AutoCloseable {
                       measurementList.add(measurementId);
                     }
                   });
+          // add lastTime
+          this.alignedDeviceLastTimeMap.put(
+              deviceId, ((AlignedChunkGroupWriterImpl) groupWriter).getLastTime());
+        } else {
+          // add lastTime
+          this.nonAlignedTimeseriesLastTimeMap.put(
+              deviceId, ((NonAlignedChunkGroupWriterImpl) groupWriter).getLastTimeMap());
         }
       }
       reset();

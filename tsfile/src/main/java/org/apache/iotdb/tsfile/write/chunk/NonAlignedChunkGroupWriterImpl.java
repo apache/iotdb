@@ -46,6 +46,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   /** Map(measurementID, ChunkWriterImpl). Aligned measurementId is empty. */
   private Map<String, ChunkWriterImpl> chunkWriters = new LinkedHashMap<>();
 
+  // measurementId -> lastTime
   private Map<String, Long> lastTimeMap = new HashMap<>();
 
   public NonAlignedChunkGroupWriterImpl(String deviceId) {
@@ -173,7 +174,15 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
               + TsFileConstant.PATH_SEPARATOR
               + measurementId
               + ", time should later than "
-              + time);
+              + lastTimeMap.get(measurementId));
     }
+  }
+
+  public Map<String, Long> getLastTimeMap() {
+    return this.lastTimeMap;
+  }
+
+  public void setLastTimeMap(Map<String, Long> lastTimeMap) {
+    this.lastTimeMap = lastTimeMap;
   }
 }
