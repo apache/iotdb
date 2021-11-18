@@ -23,13 +23,13 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -45,8 +45,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
@@ -56,22 +54,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
-  /**
-   * path -> result index for each aggregation
-   *
-   * <p>e.g.,
-   *
-   * <p>deduplicated paths : s1, s2, s1 deduplicated aggregations : count, count, sum
-   *
-   * <p>s1 -> 0, 2 s2 -> 1
-   */
   protected Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
+  protected Map<PartialPath, List<List<Integer>>> alignedPathToIndexesMap = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 
   /** constructor. */
-  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
-      throws StorageEngineException, QueryProcessException {
+  public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan) {
     super(context, groupByTimePlan);
   }
 
@@ -91,29 +80,51 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+
+    // init resultIndexes, group aligned series
+    resultIndexes = groupAggregationsBySeries(paths);
+    alignedPathToIndexesMap = groupAlignedSeries(resultIndexes);
+
     try {
-      // init resultIndexes, group result indexes by path
-      for (int i = 0; i < paths.size(); i++) {
-        PartialPath path = (PartialPath) paths.get(i);
+      // init GroupByExecutor for non-aligned series
+      for (Map.Entry<PartialPath, List<Integer>> entry : resultIndexes.entrySet()) {
+        MeasurementPath path = (MeasurementPath) entry.getKey();
+        List<Integer> indexes = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
-          // init GroupByExecutor
+          pathExecutors.put(
+              path, new LocalGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+        }
+        for (int index : indexes) {
+          AggregateResult aggrResult =
+              AggregateResultFactory.getAggrResultByName(
+                  groupByTimePlan.getDeduplicatedAggregations().get(index),
+                  path.getSeriesType(),
+                  ascending);
+          pathExecutors.get(path).addAggregateResult(aggrResult);
+        }
+      }
+      // init GroupByExecutor for aligned series
+      for (Map.Entry<PartialPath, List<List<Integer>>> entry : alignedPathToIndexesMap.entrySet()) {
+        AlignedPath path = (AlignedPath) entry.getKey();
+        List<List<Integer>> indexesList = entry.getValue();
+        if (!pathExecutors.containsKey(path)) {
           pathExecutors.put(
               path,
-              getGroupByExecutor(
-                  path,
-                  groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
-                  dataTypes.get(i),
-                  context,
-                  timeFilter.copy(),
-                  null,
-                  groupByTimePlan.isAscending()));
-          resultIndexes.put(path, new ArrayList<>());
+              new LocalAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
         }
-        resultIndexes.get(path).add(i);
-        AggregateResult aggrResult =
-            AggregateResultFactory.getAggrResultByName(
-                groupByTimePlan.getDeduplicatedAggregations().get(i), dataTypes.get(i), ascending);
-        pathExecutors.get(path).addAggregateResult(aggrResult);
+        for (int i = 0; i < path.getMeasurementList().size(); i++) {
+          List<AggregateResult> aggrResultList = new ArrayList<>();
+          for (int index : indexesList.get(i)) {
+            AggregateResult aggrResult =
+                AggregateResultFactory.getAggrResultByName(
+                    groupByTimePlan.getDeduplicatedAggregations().get(index),
+                    path.getSchemaList().get(i).getType(),
+                    ascending);
+            aggrResultList.add(aggrResult);
+          }
+          ((LocalAlignedGroupByExecutor) pathExecutors.get(path))
+              .addAggregateResultList(aggrResultList);
+        }
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
@@ -148,12 +159,32 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private AggregateResult[] getNextAggregateResult() throws IOException {
     curAggregateResults = new AggregateResult[paths.size()];
     try {
-      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathToExecutorEntry.getValue();
-        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+      // get aggregate results of non-aligned series
+      for (Map.Entry<PartialPath, List<Integer>> entry : resultIndexes.entrySet()) {
+        MeasurementPath path = (MeasurementPath) entry.getKey();
+        List<Integer> indexes = entry.getValue();
+        LocalGroupByExecutor groupByExecutor = (LocalGroupByExecutor) pathExecutors.get(path);
+        List<AggregateResult> aggregations = groupByExecutor.calcResult(curStartTime, curEndTime);
         for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+          int resultIndex = indexes.get(i);
           curAggregateResults[resultIndex] = aggregations.get(i);
+        }
+      }
+      // get aggregate results of aligned series
+      for (Map.Entry<PartialPath, List<List<Integer>>> entry : alignedPathToIndexesMap.entrySet()) {
+        AlignedPath path = (AlignedPath) entry.getKey();
+        List<List<Integer>> indexesList = entry.getValue();
+        LocalAlignedGroupByExecutor groupByExecutor =
+            (LocalAlignedGroupByExecutor) pathExecutors.get(path);
+        List<List<AggregateResult>> aggregationsList =
+            groupByExecutor.calcAlignedResult(curStartTime, curEndTime);
+        for (int i = 0; i < path.getMeasurementList().size(); i++) {
+          List<AggregateResult> aggregations = aggregationsList.get(i);
+          List<Integer> indexes = indexesList.get(i);
+          for (int j = 0; j < aggregations.size(); j++) {
+            int resultIndex = indexes.get(j);
+            curAggregateResults[resultIndex] = aggregations.get(j);
+          }
         }
       }
     } catch (QueryProcessException e) {
@@ -180,16 +211,50 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return result;
   }
 
-  protected GroupByExecutor getGroupByExecutor(
-      PartialPath path,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext context,
-      Filter timeFilter,
-      TsFileFilter fileFilter,
-      boolean ascending)
-      throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(
-        path, allSensors, dataType, context, timeFilter, fileFilter, ascending);
+  /**
+   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
+   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
+   *
+   * @param selectedSeries selected series
+   * @return path to aggregation indexes map
+   */
+  private Map<PartialPath, List<Integer>> groupAggregationsBySeries(List<Path> selectedSeries) {
+    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      PartialPath series = (PartialPath) selectedSeries.get(i);
+      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
+    }
+    return pathToAggrIndexesMap;
+  }
+
+  /**
+   * Group all the series under an aligned entity into one AlignedPath and remove these series from
+   * resultIndexes. For example, input map: vector1[s1] -> [1, 3], vector1[s2] -> [2,4], will return
+   * vector1[s1,s2], [[1,3], [2,4]]
+   */
+  private Map<PartialPath, List<List<Integer>>> groupAlignedSeries(
+      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
+    Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
+    Map<String, AlignedPath> temp = new HashMap<>();
+
+    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
+    for (PartialPath seriesPath : seriesPaths) {
+      if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        if (groupPath == null) {
+          groupPath = new AlignedPath((MeasurementPath) seriesPath);
+          temp.put(seriesPath.getDevice(), groupPath);
+          result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = result.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurement((MeasurementPath) seriesPath);
+          result.put(groupPath, subIndexes);
+        }
+      }
+    }
+    return result;
   }
 }

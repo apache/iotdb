@@ -189,15 +189,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByWithoutValueFil
         if (!extraExecutors.containsKey(path)) {
           // init GroupByExecutor
           extraExecutors.put(
-              path,
-              getGroupByExecutor(
-                  path,
-                  groupByTimeFillPlan.getAllMeasurementsInDevice(path.getDevice()),
-                  dataTypes.get(i),
-                  context,
-                  timeFilter.copy(),
-                  null,
-                  isAscending));
+              path, new LocalGroupByExecutor(path, context, timeFilter.copy(), null, isAscending));
         }
         AggregateResult aggrResult =
             AggregateResultFactory.getAggrResultByName(
