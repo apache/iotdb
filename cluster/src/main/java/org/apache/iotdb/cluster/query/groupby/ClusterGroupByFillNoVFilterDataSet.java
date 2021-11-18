@@ -19,14 +19,11 @@
 package org.apache.iotdb.cluster.query.groupby;
 
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -40,8 +37,7 @@ public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueF
   public ClusterGroupByFillNoVFilterDataSet(
       QueryContext context,
       GroupByTimeFillPlan groupByTimeFillPlan,
-      MetaGroupMember metaGroupMember)
-      throws QueryProcessException, StorageEngineException {
+      MetaGroupMember metaGroupMember) {
     super(context, groupByTimeFillPlan);
     this.metaGroupMember = metaGroupMember;
   }
@@ -53,7 +49,6 @@ public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueF
       TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
-      TsFileFilter fileFilter,
       boolean ascending) {
     return new MergeGroupByExecutor(
         path, deviceMeasurements, dataType, context, timeFilter, metaGroupMember, ascending);

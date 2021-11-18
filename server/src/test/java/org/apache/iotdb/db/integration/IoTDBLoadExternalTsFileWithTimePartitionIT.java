@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -124,7 +124,7 @@ public class IoTDBLoadExternalTsFileWithTimePartitionIT {
       for (String deviceId : devices) {
         for (String measurement : measurements) {
           tsFileWriter.registerTimeseries(
-              new Path(STORAGE_GROUP + DOT + deviceId, measurement),
+              new Path(STORAGE_GROUP + DOT + deviceId),
               new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
         }
       }

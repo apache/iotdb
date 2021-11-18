@@ -24,7 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -50,8 +50,8 @@ import java.util.stream.Collectors;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<IReaderByTimestamp> allDataReaderList;
-  private GroupByTimePlan groupByTimePlan;
+  protected List<IReaderByTimestamp> allDataReaderList;
+  protected GroupByTimePlan groupByTimePlan;
   private TimeGenerator timestampGenerator;
   /** cached timestamp for next group by partition. */
   private LinkedList<Long> cachedTimestamps = new LinkedList<>();

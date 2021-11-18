@@ -68,15 +68,15 @@ public class DropwizardMetricManagerTest {
   public void getOrCreateGauge() {
     Gauge gauge1 = metricManager.getOrCreatGauge("gauge_test", "tag1", "tag2");
     assertNotNull(gauge1);
-    Gauge gauge2 = metricManager.getOrCreatGauge("gauge_test", "tag1", "tag2");
+    Gauge gauge2 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
     assertEquals(gauge1, gauge2);
   }
 
   @Test
   public void getOrCreatRate() {
-    Rate rate1 = metricManager.getOrCreatRate("rate_test", "tag1", "tag2");
+    Rate rate1 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");
     assertNotNull(rate1);
-    Rate rate2 = metricManager.getOrCreatRate("rate_test", "tag1", "tag2");
+    Rate rate2 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");
     assertEquals(rate1, rate2);
   }
 
@@ -108,18 +108,18 @@ public class DropwizardMetricManagerTest {
 
   @Test
   public void gauge() {
-    Gauge gauge1 = metricManager.getOrCreatGauge("gauge_set1", "tag1", "tag2");
+    Gauge gauge1 = metricManager.getOrCreateGauge("gauge_set1", "tag1", "tag2");
     assertNotNull(gauge1);
     metricManager.gauge(10, "gauge_set1", "tag1", "tag2");
     assertEquals(10, gauge1.value());
-    Gauge gauge2 = metricManager.getOrCreatGauge("gauge_set2", "tag1", "tag2");
+    Gauge gauge2 = metricManager.getOrCreateGauge("gauge_set2", "tag1", "tag2");
     metricManager.gauge(20L, "gauge_set2", "tag1", "tag2");
     assertEquals(20, gauge2.value());
   }
 
   @Test
   public void rate() {
-    Rate rate = metricManager.getOrCreatRate("rate_mark", "tag1", "tag2");
+    Rate rate = metricManager.getOrCreateRate("rate_mark", "tag1", "tag2");
     assertNotNull(rate);
     metricManager.rate(10, "rate_mark", "tag1", "tag2");
     assertEquals(10, rate.getCount());
@@ -170,17 +170,17 @@ public class DropwizardMetricManagerTest {
 
   @Test
   public void removeGauge() {
-    Gauge gauge1 = metricManager.getOrCreatGauge("gauge_remove", "tag1", "tag2");
+    Gauge gauge1 = metricManager.getOrCreateGauge("gauge_remove", "tag1", "tag2");
     metricManager.removeGauge("gauge_remove", "tag1", "tag2");
-    Gauge gauge2 = metricManager.getOrCreatGauge("gauge_remove", "tag1", "tag2");
+    Gauge gauge2 = metricManager.getOrCreateGauge("gauge_remove", "tag1", "tag2");
     assertNotEquals(gauge1, gauge2);
   }
 
   @Test
   public void removeRate() {
-    Rate rate1 = metricManager.getOrCreatRate("rate_remove", "tag1", "tag2");
+    Rate rate1 = metricManager.getOrCreateRate("rate_remove", "tag1", "tag2");
     metricManager.removeRate("rate_remove", "tag1", "tag2");
-    Rate rate2 = metricManager.getOrCreatRate("rate_remove", "tag1", "tag2");
+    Rate rate2 = metricManager.getOrCreateRate("rate_remove", "tag1", "tag2");
     assertNotEquals(rate1, rate2);
   }
 
@@ -225,7 +225,7 @@ public class DropwizardMetricManagerTest {
 
   @Test
   public void getAllGauges() {
-    metricManager.getOrCreatGauge("gauges");
+    metricManager.getOrCreateGauge("gauges");
     Map<String[], Gauge> gauges = metricManager.getAllGauges();
     assertNotNull(gauges);
     assertTrue(gauges.size() > 0);
@@ -233,7 +233,7 @@ public class DropwizardMetricManagerTest {
 
   @Test
   public void getAllRates() {
-    metricManager.getOrCreatRate("rates");
+    metricManager.getOrCreateRate("rates");
     Map<String[], Rate> rates = metricManager.getAllRates();
     assertNotNull(rates);
     assertTrue(rates.size() > 0);

@@ -31,8 +31,8 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -167,8 +167,8 @@ public class LogReplayer {
       }
       String deviceId =
           plan.isAligned()
-              ? plan.getPrefixPath().getDevicePath().getFullPath()
-              : plan.getPrefixPath().getFullPath();
+              ? plan.getDeviceId().getDevicePath().getFullPath()
+              : plan.getDeviceId().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
@@ -185,16 +185,12 @@ public class LogReplayer {
     }
     IMeasurementMNode[] mNodes;
     try {
-      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getPrefixPath(), plan.getMeasurements());
+      mNodes = IoTDB.metaManager.getMeasurementMNodes(plan.getDeviceId(), plan.getMeasurements());
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
     }
     // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
     plan.setMeasurementMNodes(mNodes);
-
-    if (plan.isAligned()) {
-      plan.setPrefixPathForAlignTimeSeries(plan.getPrefixPath().getDevicePath());
-    }
     // mark failed plan manually
     checkDataTypeAndMarkFailed(mNodes, plan);
     if (plan instanceof InsertRowPlan) {
@@ -211,23 +207,14 @@ public class LogReplayer {
         tPlan.markFailedMeasurementInsertion(
             i,
             new PathNotExistException(
-                tPlan.getPrefixPath().getFullPath()
+                tPlan.getDeviceId().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
-      } else if (!tPlan.isAligned() && mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
+      } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {
         tPlan.markFailedMeasurementInsertion(
             i,
             new DataTypeMismatchException(
                 mNodes[i].getName(), tPlan.getDataTypes()[i], mNodes[i].getSchema().getType()));
-      } else if (tPlan.isAligned()
-          && mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)
-              != tPlan.getDataTypes()[i]) {
-        tPlan.markFailedMeasurementInsertion(
-            i,
-            new DataTypeMismatchException(
-                mNodes[i].getName() + "." + mNodes[i].getSchema().getSubMeasurementsList().get(i),
-                tPlan.getDataTypes()[i],
-                mNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i)));
       }
     }
   }

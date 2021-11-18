@@ -30,7 +30,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -102,8 +102,8 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected boolean checkAuthorization(List<PartialPath> paths, PhysicalPlan plan, String username)
-      throws AuthException {
+  protected boolean checkAuthorization(
+      List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
@@ -112,7 +112,7 @@ public class BasicServiceProvider {
   }
 
   protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<PartialPath> paths = plan.getPaths();
+    List<? extends PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
         return RpcUtils.getStatus(

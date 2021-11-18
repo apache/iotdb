@@ -77,6 +77,17 @@ public class IoTDBGroupByFillMixPathsIT {
         "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(72, 33)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, status) values(74, true)",
         "INSERT INTO root.ln.wf01.wt01(timestamp, hardware) values(75, 46.8)",
+        "flush",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(110, 21, false, 11.1)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(112, 23, true, 22.3)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(114, 25, false, 33.5)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(123, 28, true, 34.9)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(125, 23, false, 31.7)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(133, 29, false, 44.6)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(136, 24, true, 44.8)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(148, 28, false, 54.6)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(150, 30, true, 55.8)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp, temperature, status, hardware) values(166, 40, false, 33.0)",
         "flush"
       };
 
@@ -260,6 +271,186 @@ public class IoTDBGroupByFillMixPathsIT {
                   + "min_value(temperature), max_value(hardware), first_value(status) "
                   + "from root.ln.wf01.wt01 "
                   + "GROUP BY ([17, 65), 5ms) "
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 12ms, 18ms], "
+                  + "int64[previousUntilLast, 17ms], boolean[true]) "
+                  + "order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.status"))
+                  + ","
+                  + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(max_value("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(first_value("root.ln.wf01.wt01.status"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void singlePathMixWithValueFilterTest() {
+    String[] retArray =
+        new String[] {
+          // "112,33.5,33.5,114"
+          "117,null,null,114",
+          "122,39.05,39.05,114",
+          "127,null,null,114",
+          "132,44.6,44.6,133",
+          "137,47.93333333333334,47.93333333333334,133",
+          "142,51.266666666666666,51.266666666666666,133",
+          "147,54.6,54.6,148",
+          "152,47.4,47.4,148"
+          // "162,33.0,33.0,166"
+        };
+
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(hardware), last_value(hardware), max_time(hardware) "
+                  + "from root.ln.wf01.wt01 "
+                  + "WHERE temperature >= 25 and status = false "
+                  + "GROUP BY ([117, 155), 5ms) "
+                  + "FILL(double[linear, 12ms, 12ms], int64[previous, 17ms])");
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(last_value("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select sum(hardware), last_value(hardware), max_time(hardware) "
+                  + "from root.ln.wf01.wt01 "
+                  + "WHERE temperature >= 25 and status = false "
+                  + "GROUP BY ([117, 155), 5ms) "
+                  + "FILL(double[linear, 12ms, 12ms], int64[previous, 17ms]) "
+                  + "order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(last_value("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.hardware"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void MultiPathsMixWithValueFilterTest() {
+    String[] retArray =
+        new String[] {
+          "117,null,null,114,26,null,true",
+          "122,27.0,39.05,114,27,39.05,true",
+          "127,null,null,114,null,null,true",
+          "132,29.0,44.6,133,29,44.6,false",
+          "137,28.666666666666668,47.93333333333334,133,29,47.93333333333334,true",
+          "142,28.333333333333332,51.266666666666666,133,29,51.266666666666666,true",
+          "147,28.0,54.6,148,28,54.6,false",
+          "152,32.0,47.4,null,32,47.4,true"
+        };
+
+    /*  Format result
+                   linear,      linear,  preUntil,   linear,      linear,      value
+          7,         25.0,        33.5,       114,       25,        33.5,      false
+         117,        null,        null, 114(null), 26(null),        null, true(null)
+         122,  27.0(null), 39.05(null), 114(null), 27(null), 39.05(null), true(null)
+         127,        null,        null, 114(null),     null,        null, true(null)
+         132,        29.0,        44.6,       133,       29,        44.6,      false
+         137, 28.67(null), 47.93(null), 133(null), 29(null), 47.93(null), true(null)
+         142, 28.33(null), 51.27(null), 133(null), 29(null), 51.27(null), true(null)
+         147,        28.0,        54.6,       148,       28,        54.6,      false
+         152,  32.0(null),  47.4(null),      null, 32(null),  47.4(null), true(null)
+         162,        40.0,        33.0,      null,       40,        33.0,       null
+    */
+
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(temperature), avg(hardware), max_time(status), "
+                  + "min_value(temperature), max_value(hardware), first_value(status) "
+                  + "from root.ln.wf01.wt01 "
+                  + "WHERE temperature >= 25 and status = false "
+                  + "GROUP BY ([117, 155), 5ms) "
+                  + "FILL(double[linear, 12ms, 12ms], int32[linear, 12ms, 18ms], "
+                  + "int64[previousUntilLast, 17ms], boolean[true])");
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(sum("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(avg("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(max_time("root.ln.wf01.wt01.status"))
+                  + ","
+                  + resultSet.getString(min_value("root.ln.wf01.wt01.temperature"))
+                  + ","
+                  + resultSet.getString(max_value("root.ln.wf01.wt01.hardware"))
+                  + ","
+                  + resultSet.getString(first_value("root.ln.wf01.wt01.status"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select sum(temperature), avg(hardware), max_time(status), "
+                  + "min_value(temperature), max_value(hardware), first_value(status) "
+                  + "from root.ln.wf01.wt01 "
+                  + "WHERE temperature >= 25 and status = false "
+                  + "GROUP BY ([117, 155), 5ms) "
                   + "FILL(double[linear, 12ms, 12ms], int32[linear, 12ms, 18ms], "
                   + "int64[previousUntilLast, 17ms], boolean[true]) "
                   + "order by time desc");

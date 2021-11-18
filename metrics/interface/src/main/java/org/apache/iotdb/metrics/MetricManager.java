@@ -43,14 +43,14 @@ public interface MetricManager {
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Gauge getOrCreatGauge(String metric, String... tags);
+  Gauge getOrCreateGauge(String metric, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Rate getOrCreatRate(String metric, String... tags);
+  Rate getOrCreateRate(String metric, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return

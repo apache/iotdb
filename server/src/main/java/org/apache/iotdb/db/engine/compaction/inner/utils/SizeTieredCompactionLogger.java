@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 
 import java.io.BufferedWriter;
@@ -31,9 +32,10 @@ public class SizeTieredCompactionLogger {
   public static final String COMPACTION_LOG_NAME = ".compaction.log";
   public static final String SOURCE_NAME = "source";
   public static final String TARGET_NAME = "target";
+  public static final String SOURCE_INFO = "source_info";
+  public static final String TARGET_INFO = "target_info";
   public static final String SEQUENCE_NAME = "sequence";
   public static final String UNSEQUENCE_NAME = "unsequence";
-  public static final String FULL_MERGE = "full merge";
 
   private BufferedWriter logStream;
 
@@ -54,6 +56,15 @@ public class SizeTieredCompactionLogger {
 
   public void close() throws IOException {
     logStream.close();
+  }
+
+  public void logFileInfo(String prefix, File file) throws IOException {
+    logStream.write(prefix);
+    logStream.newLine();
+    logStream.write(
+        TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()).toString());
+    logStream.newLine();
+    logStream.flush();
   }
 
   public void logFile(String prefix, File file) throws IOException {

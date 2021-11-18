@@ -75,7 +75,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Gauge getOrCreatGauge(String metric, String... tags) {
+  public Gauge getOrCreateGauge(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
@@ -96,7 +96,7 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public Rate getOrCreatRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
