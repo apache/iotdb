@@ -256,9 +256,6 @@ public class MeasurementPath extends PartialPath {
     }
     IWritableMemChunk memChunk =
         memTableMap.get(getDevice()).getMemChunkMap().get(getMeasurement());
-    if (memChunk == null) {
-      return null;
-    }
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();
