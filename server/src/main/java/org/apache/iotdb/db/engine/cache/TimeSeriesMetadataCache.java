@@ -138,7 +138,6 @@ public class TimeSeriesMetadataCache {
         if (timeseriesMetadata == null) {
           Path path = new Path(key.device, key.measurement);
           // bloom filter part
-          TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()
                   .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
@@ -148,6 +147,7 @@ public class TimeSeriesMetadataCache {
             }
             return null;
           }
+          TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           List<TimeseriesMetadata> timeSeriesMetadataList =
               reader.readTimeseriesMetadata(path, allSensors);
           // put TimeSeriesMetadata of all sensors used in this query into cache

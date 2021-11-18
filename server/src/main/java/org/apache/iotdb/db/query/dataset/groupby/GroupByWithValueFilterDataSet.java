@@ -50,8 +50,8 @@ import java.util.stream.Collectors;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
-  private List<IReaderByTimestamp> allDataReaderList;
-  private GroupByTimePlan groupByTimePlan;
+  protected List<IReaderByTimestamp> allDataReaderList;
+  protected GroupByTimePlan groupByTimePlan;
   private TimeGenerator timestampGenerator;
   /** cached timestamp for next group by partition. */
   private LinkedList<Long> cachedTimestamps = new LinkedList<>();
