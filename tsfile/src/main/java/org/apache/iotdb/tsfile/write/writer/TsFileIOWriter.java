@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -233,8 +232,8 @@ public class TsFileIOWriter {
             chunkHeader.getMeasurementID(),
             chunkMetadata.getNumOfPoints());
       }
-    } catch (IOException e) {
-      logger.warn("Exception occurs while writing to {}", file.getAbsolutePath(), e);
+    } catch (Exception e) {
+      logger.error("Exception occurs while writing to {}", file.getAbsolutePath(), e);
       throw e;
     }
   }

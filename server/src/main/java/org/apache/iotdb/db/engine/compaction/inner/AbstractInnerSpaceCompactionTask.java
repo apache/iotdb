@@ -124,6 +124,8 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
         .append(timePartition)
         .append(" task file num is ")
         .append(selectedTsFileResourceList.size())
+        .append(", files is ")
+        .append(selectedTsFileResourceList)
         .append(", total compaction count is ")
         .append(sumOfCompactionCount)
         .toString();

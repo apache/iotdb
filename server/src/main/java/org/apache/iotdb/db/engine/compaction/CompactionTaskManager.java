@@ -176,10 +176,10 @@ public class CompactionTaskManager implements IService {
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
     if (!compactionTaskQueue.contains(compactionTask)) {
-      logger.debug(
-          "Add a compaction task {} to queue, current queue size is {}, current task num is {}",
+      logger.info(
+          "Add a compaction task {} to queue, current queue is {}, current task num is {}",
           compactionTask,
-          compactionTaskQueue.size(),
+          compactionTaskQueue,
           currentTaskNum.get());
       compactionTaskQueue.add(compactionTask);
       return true;
@@ -197,6 +197,10 @@ public class CompactionTaskManager implements IService {
         && compactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = compactionTaskQueue.poll();
       if (task != null && task.checkValidAndSetMerging()) {
+        logger.info(
+            "submit a compaction task {} to execute, current queue is {}",
+            task,
+            compactionTaskQueue);
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
         runningCompactionTaskList.add(task);
       }
