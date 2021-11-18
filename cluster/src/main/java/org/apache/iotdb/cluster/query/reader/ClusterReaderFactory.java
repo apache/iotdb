@@ -52,7 +52,8 @@ import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -333,7 +334,7 @@ public class ClusterReaderFactory {
                 dataGroupMember,
                 ascending,
                 null);
-        partialPathPointReaderMap.put(partialPath.getExactFullPath(), seriesPointReader);
+        partialPathPointReaderMap.put(partialPath.getFullPath(), seriesPointReader);
       }
 
       if (logger.isDebugEnabled()) {
@@ -540,7 +541,6 @@ public class ClusterReaderFactory {
       boolean ascending,
       Set<Integer> requiredSlots)
       throws StorageEngineException, QueryProcessException {
-    ClusterQueryUtils.checkPathExistence(path);
     // If requiredSlots is null, it means that this node should provide data of all slots about
     // required paths.
     if (requiredSlots == null) {
@@ -553,8 +553,7 @@ public class ClusterReaderFactory {
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
-    return new SeriesReader(
-        path,
+    return path.createSeriesReader(
         allSensors,
         dataType,
         context,
@@ -687,7 +686,7 @@ public class ClusterReaderFactory {
       request.setValueFilterBytes(SerializeUtils.serializeFilter(valueFilter));
     }
 
-    List<List<String>> fullPaths = Lists.newArrayList();
+    List<String> fullPaths = Lists.newArrayList();
     paths.forEach(path -> fullPaths.add(getPathStrListForRequest(path)));
 
     List<Integer> dataTypeOrdinals = Lists.newArrayList();
@@ -1077,7 +1076,7 @@ public class ClusterReaderFactory {
    * @throws StorageEngineException
    */
   public IBatchReader getMultSeriesBatchReader(
-      List<PartialPath> paths,
+      List<MeasurementPath> paths,
       Map<String, Set<String>> allSensors,
       List<TSDataType> dataTypes,
       Filter timeFilter,
@@ -1109,7 +1108,7 @@ public class ClusterReaderFactory {
               ascending,
               null,
               false);
-      partialPathBatchReaderMap.put(partialPath.getExactFullPath(), batchReader);
+      partialPathBatchReaderMap.put(partialPath.getFullPath(), batchReader);
     }
     return new MultBatchReader(partialPathBatchReaderMap);
   }

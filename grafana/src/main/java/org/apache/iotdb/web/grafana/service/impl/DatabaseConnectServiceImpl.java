@@ -35,11 +35,6 @@ public class DatabaseConnectServiceImpl implements DatabaseConnectService {
   @Autowired BasicDao basicDao;
 
   @Override
-  public int testConnection() {
-    return 0;
-  }
-
-  @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
     return basicDao.querySeries(s, timeRange);
   }

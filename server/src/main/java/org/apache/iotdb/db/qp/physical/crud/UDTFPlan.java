@@ -20,15 +20,13 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
@@ -75,14 +73,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      boolean isUdf =
-          !(resultColumns.get(originalIndex).getExpression() instanceof TimeSeriesOperand);
-
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        addDeduplicatedDataTypes(
-            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         columnForReaderSet.add(columnForReader);
       }

@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -69,7 +69,7 @@ public class DeviceStringTest {
 
     schema = new Schema();
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor4")),
+        new Path("root.sg.device99"),
         new UnaryMeasurementSchema("sensor4", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor4"),
@@ -78,7 +78,7 @@ public class DeviceStringTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor2")),
+        new Path("root.sg.device99"),
         new UnaryMeasurementSchema("sensor2", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor2"),
@@ -87,7 +87,7 @@ public class DeviceStringTest {
         TSFileDescriptor.getInstance().getConfig().getCompressor(),
         Collections.emptyMap());
     schema.registerTimeseries(
-        new Path(("root.sg.device99"), ("sensor1")),
+        new Path(("root.sg.device99")),
         new UnaryMeasurementSchema("sensor1", TSDataType.INT64, TSEncoding.PLAIN));
     mManager.createTimeseries(
         new PartialPath("root.sg.device99.sensor1"),

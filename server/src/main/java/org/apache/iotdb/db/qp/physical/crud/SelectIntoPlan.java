@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -95,7 +96,7 @@ public class SelectIntoPlan extends PhysicalPlan {
 
   /** mainly for query auth. */
   @Override
-  public List<PartialPath> getPaths() {
+  public List<MeasurementPath> getPaths() {
     return queryPlan.getPaths();
   }
 

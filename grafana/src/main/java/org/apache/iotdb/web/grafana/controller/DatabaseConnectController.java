@@ -32,15 +32,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -69,15 +68,12 @@ public class DatabaseConnectController {
   /**
    * get metrics numbers in JSON string structure.
    *
-   * @param request http request
-   * @param response http response
    * @return metrics numbers in JSON string structure
    */
   @RequestMapping(value = "/search")
   @ResponseBody
-  public String metricFindQuery(HttpServletRequest request, HttpServletResponse response) {
+  public String metricFindQuery() {
     JsonObject root = new JsonObject();
-    response.setStatus(200);
     List<String> columnsName = new ArrayList<>();
     try {
       columnsName = databaseConnectService.getMetaData();
@@ -88,44 +84,38 @@ public class DatabaseConnectController {
     for (int i = 0; i < columnsName.size(); i++) {
       root.addProperty(String.valueOf(i), columnsName.get(i));
     }
-
     return root.toString();
   }
 
   /**
-   * convert query result data to JSON format.
+   * query and return data in JSON format.
    *
-   * @param request http request
-   * @param response http response
    * @return data in JSON format
    */
   @RequestMapping(value = "/query")
   @ResponseBody
-  public String query(HttpServletRequest request, HttpServletResponse response) {
+  public String query(@RequestBody String json) {
     String targetStr = "target";
-    response.setStatus(200);
     try {
-      JsonObject jsonObject = getRequestBodyJson(request);
+      JsonObject jsonObject = GSON.fromJson(json, JsonObject.class);
       if (Objects.isNull(jsonObject)) {
         return null;
       }
-
       Pair<ZonedDateTime, ZonedDateTime> timeRange = getTimeFromAndTo(jsonObject);
-      JsonArray array = (JsonArray) jsonObject.get("targets"); // []
+      JsonArray array = jsonObject.getAsJsonArray("targets");
       JsonArray result = new JsonArray();
       for (int i = 0; i < array.size(); i++) {
-        JsonObject object = array.get(i).getAsJsonObject(); // {}
+        JsonObject object = array.get(i).getAsJsonObject();
         if (!object.has(targetStr)) {
-          return "[]";
+          continue;
         }
         String target = object.get(targetStr).getAsString();
-        String type = getJsonType(jsonObject);
-
         JsonObject obj = new JsonObject();
         obj.addProperty("target", target);
-        if (type.equals("table")) {
+        String type = getJsonType(object);
+        if ("table".equals(type)) {
           setJsonTable(obj, target, timeRange);
-        } else if (type.equals("timeserie")) {
+        } else if ("timeserie".equals(type)) {
           setJsonTimeseries(obj, target, timeRange);
         }
         result.add(obj);
@@ -133,13 +123,13 @@ public class DatabaseConnectController {
       logger.info("query finished");
       return result.toString();
     } catch (Exception e) {
-      logger.error("/query failed", e);
+      logger.error("/query failed, request body is {}", json, e);
     }
     return null;
   }
 
   private Pair<ZonedDateTime, ZonedDateTime> getTimeFromAndTo(JsonObject jsonObject) {
-    JsonObject obj = jsonObject.get("range").getAsJsonObject();
+    JsonObject obj = jsonObject.getAsJsonObject("range");
     Instant from = Instant.parse(obj.get("from").getAsString());
     Instant to = Instant.parse(obj.get("to").getAsString());
     return new Pair<>(
@@ -191,37 +181,12 @@ public class DatabaseConnectController {
   }
 
   /**
-   * get request body JsonNode.
-   *
-   * @param request http request
-   * @return request JsonNode
-   */
-  public JsonObject getRequestBodyJson(HttpServletRequest request) {
-    try {
-      BufferedReader br = request.getReader();
-      StringBuilder sb = new StringBuilder();
-      String line;
-      while ((line = br.readLine()) != null) {
-        sb.append(line);
-      }
-
-      return GSON.fromJson(sb.toString(), JsonObject.class);
-    } catch (IOException e) {
-      logger.error("getRequestBodyJson failed", e);
-    }
-
-    return null;
-  }
-
-  /**
    * get JSON type of input JSON object.
    *
    * @param jsonObject JSON Object
    * @return type (string)
    */
   public String getJsonType(JsonObject jsonObject) {
-    JsonArray array = jsonObject.get("targets").getAsJsonArray(); // []
-    JsonObject object = array.get(0).getAsJsonObject(); // {}
-    return object.get("type").getAsString();
+    return jsonObject.get("type").getAsString();
   }
 }

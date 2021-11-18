@@ -39,6 +39,7 @@ class SessionDataSet(object):
         column_name_index,
         query_id,
         client,
+        statement_id,
         session_id,
         query_data_set,
         ignore_timestamp,
@@ -51,10 +52,17 @@ class SessionDataSet(object):
             ignore_timestamp,
             query_id,
             client,
+            statement_id,
             session_id,
             query_data_set,
             1024,
         )
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close_operation_handle()
 
     def get_fetch_size(self):
         return self.iotdb_rpc_data_set.get_fetch_size()
