@@ -30,6 +30,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -354,10 +355,8 @@ public class MTree implements Serializable {
 
       // even template not in use, measurement path shall not be conflict with MTree
       if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-        throw new MetadataException(
-            String.format(
-                "Path [%s] conflicts with template [%s].",
-                path.getFullPath(), upperTemplate.getName()));
+        throw new TemplateImcompatibeException(
+            path.getFullPath(), upperTemplate.getName(), childName);
       }
 
       if (!cur.hasChild(childName)) {
@@ -378,13 +377,6 @@ public class MTree implements Serializable {
       throw new PathAlreadyExistException(cur.getFullPath());
     }
 
-    if (upperTemplate != null && upperTemplate.getDirectNode(path.getMeasurement()) != null) {
-      throw new MetadataException(
-          String.format(
-              "Path [%s] conflicts with template [%s].",
-              path.getFullPath(), upperTemplate.getName()));
-    }
-
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
     String leafName = path.getMeasurement();
@@ -402,8 +394,7 @@ public class MTree implements Serializable {
 
       if (upperTemplate != null
           && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
-        throw new PathAlreadyExistException(
-            path.getFullPath() + " ( which is incompatible with template )");
+        throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
@@ -1591,10 +1582,8 @@ public class MTree implements Serializable {
 
           // overlap with template, cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
-            throw new MetadataException(
-                String.format(
-                    "Path [%s] overlaps but not matches template [%s] under node [%s]",
-                    measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]));
+            throw new TemplateImcompatibeException(
+                measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
           }
         } else {
           // no matched child, no template, need to create device node as logical device path

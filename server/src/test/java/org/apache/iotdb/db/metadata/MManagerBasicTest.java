@@ -1125,7 +1125,7 @@ public class MManagerBasicTest {
       manager.createTimeseries(createTimeSeriesPlan2);
       fail();
     } catch (Exception e) {
-      assertEquals("Path [root.sg1.d1.s11] conflicts with template [template1].", e.getMessage());
+      assertEquals("Path [root.sg1.d1.s11] already exists in [template1]", e.getMessage());
     }
 
     CreateTimeSeriesPlan createTimeSeriesPlan3 =
@@ -1144,7 +1144,7 @@ public class MManagerBasicTest {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "Path [root.tree.sg0.GPS.s9] conflicts with template [treeTemplate].", e.getMessage());
+          "Path [root.tree.sg0.GPS.s9] overlaps with [treeTemplate] on [GPS]", e.getMessage());
     }
 
     CreateTimeSeriesPlan createTimeSeriesPlan4 =

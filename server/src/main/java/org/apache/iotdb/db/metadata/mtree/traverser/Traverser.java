@@ -21,8 +21,6 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -274,26 +272,6 @@ public abstract class Traverser {
     }
     builder.append(currentNode.getName());
     return new PartialPath(builder.toString());
-  }
-
-  protected MeasurementPath getCurrentMeasurementPathInTraverse(IMeasurementMNode currentNode)
-      throws MetadataException {
-    IMNode par = traverseContext.peek();
-
-    Iterator<IMNode> nodes = traverseContext.descendingIterator();
-    StringBuilder builder = new StringBuilder(nodes.next().getName());
-    while (nodes.hasNext()) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-      builder.append(nodes.next().getName());
-    }
-    if (builder.length() != 0) {
-      builder.append(TsFileConstant.PATH_SEPARATOR);
-    }
-    builder.append(currentNode.getName());
-    MeasurementPath retPath =
-        new MeasurementPath(new PartialPath(builder.toString()), currentNode.getSchema());
-    retPath.setUnderAlignedEntity(par.getAsEntityMNode().isAligned());
-    return retPath;
   }
 
   /** @return the storage group node in the traverse path */

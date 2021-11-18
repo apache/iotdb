@@ -1185,7 +1185,7 @@ public class IoTDBSessionSimpleIT {
       fail();
     } catch (StatementExecutionException e) {
       assertEquals(
-          "303: Path [root.sg.loc1.sector.GPS.speed] overlaps but not matches template [treeTemplate] under node [GPS]",
+          "327: Path [root.sg.loc1.sector.GPS.speed] overlaps with [treeTemplate] on [GPS]",
           e.getMessage());
     }
 
@@ -1224,6 +1224,7 @@ public class IoTDBSessionSimpleIT {
     // delete series inside template
     try {
       session.deleteTimeseries("root.sg.loc1.sector.x");
+      fail();
     } catch (StatementExecutionException e) {
       assertEquals(
           "Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;", e.getMessage());

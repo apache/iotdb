@@ -40,7 +40,6 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -1731,7 +1730,7 @@ public class MManager {
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device node, set using template if accessed.
-    int indexRecord = -1;
+    boolean mountedNodeFound = false;
     // check every measurement path
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
@@ -1739,12 +1738,12 @@ public class MManager {
       if (index != fullPath.getNodeLength() - 1) {
         // this measurement is in template, need to assure mounted node exists and set using
         // template.
-        if (index != indexRecord) {
+        if (!mountedNodeFound) {
           // Without allowing overlap of template and MTree, this block run only once
           String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
           IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
           setUsingSchemaTemplate(mountedNode);
-          indexRecord = index;
+          mountedNodeFound = true;
         }
       }
     }
@@ -2018,9 +2017,6 @@ public class MManager {
 
       templateManager.checkIsTemplateAndMNodeCompatible(template, node);
 
-      // node might be replaced when check with alignment
-      node = mtree.checkTemplateAlignmentWithMountedNode(node, template);
-
       node.setSchemaTemplate(template);
 
       // write wal
@@ -2070,19 +2066,29 @@ public class MManager {
     }
   }
 
-  IEntityMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
-    IEntityMNode entityMNode = mtree.setToEntity(node);
 
-    // to ensure alignment adapt with former node or template
-    entityMNode.setAligned(
-        node.isEntity()
-            ? node.getAsEntityMNode().isAligned()
-            : node.getUpperTemplate().isDirectAligned());
-    entityMNode.setUseTemplate(true);
-    if (node != entityMNode) {
-      mNodeCache.removeObject(entityMNode.getPartialPath());
+    // check alignment of template and mounted node
+    // if direct measurement exists, node will be replaced
+    IMNode mountedMNode =
+        mtree.checkTemplateAlignmentWithMountedNode(node, node.getUpperTemplate());
+
+    // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
+    // template
+    if (mountedMNode.isEntity()) {
+      mountedMNode
+          .getAsEntityMNode()
+          .setAligned(
+              node.isEntity()
+                  ? node.getAsEntityMNode().isAligned()
+                  : node.getUpperTemplate().isDirectAligned());
+    }
+    mountedMNode.setUseTemplate(true);
+
+    if (node != mountedMNode) {
+      mNodeCache.removeObject(mountedMNode.getPartialPath());
     }
     if (!isRecovering) {
       try {
@@ -2091,7 +2097,7 @@ public class MManager {
         throw new MetadataException(e);
       }
     }
-    return entityMNode;
+    return mountedMNode;
   }
   // endregion
 
