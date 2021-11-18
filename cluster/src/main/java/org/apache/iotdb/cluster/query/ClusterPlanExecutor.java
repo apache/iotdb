@@ -160,7 +160,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalDeviceCount(pathUnderSG);
         logger.debug(
@@ -321,7 +321,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalPathCount(pathUnderSG, level);
         logger.debug(
@@ -586,7 +586,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodeNameInNextLevel(path);

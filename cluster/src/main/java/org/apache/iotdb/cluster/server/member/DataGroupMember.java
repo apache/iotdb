@@ -178,7 +178,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-"
             + nodes.getHeader().getNode().getDataPort()
             + "-raftId-"
-            + nodes.getId()
+            + nodes.getRaftId()
             + "";
     allNodes = nodes;
     mbeanName =
@@ -201,7 +201,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-"
             + nodes.getHeader().getNode().getDataPort()
             + "-raftId-"
-            + nodes.getId()
+            + nodes.getRaftId()
             + "",
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),

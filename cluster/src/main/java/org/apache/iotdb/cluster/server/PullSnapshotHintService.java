@@ -173,7 +173,7 @@ public class PullSnapshotHintService {
     }
 
     public int getRaftId() {
-      return receivers.getId();
+      return receivers.getRaftId();
     }
   }
 }

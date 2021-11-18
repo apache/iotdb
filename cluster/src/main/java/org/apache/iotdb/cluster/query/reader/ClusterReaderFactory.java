@@ -167,7 +167,7 @@ public class ClusterReaderFactory {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId());
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: creating a local reader for {}#{}",
@@ -806,7 +806,7 @@ public class ClusterReaderFactory {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
       DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
+          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataGroupMember);
       logger.debug(
           "{}: creating a local group by executor for {}#{}",

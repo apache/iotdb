@@ -996,7 +996,7 @@ public class CMManager extends MManager {
         // leader
         try {
           metaGroupMember
-              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
               .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
@@ -1139,7 +1139,7 @@ public class CMManager extends MManager {
         // leader
         try {
           metaGroupMember
-              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+              .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
               .syncLeader(null);
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
@@ -1552,7 +1552,7 @@ public class CMManager extends MManager {
       PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
       throws CheckConsistencyException, MetadataException {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowDevicesResult> localResult = super.getMatchedDevices(plan);
@@ -1571,7 +1571,7 @@ public class CMManager extends MManager {
       QueryContext context)
       throws CheckConsistencyException, MetadataException {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);

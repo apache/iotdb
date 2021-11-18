@@ -142,7 +142,7 @@ public class StoppedMemberManager {
   private void parseRemoved(String[] split) {
     PartitionGroup partitionGroup = new PartitionGroup();
     int raftId = Integer.parseInt(split[1]);
-    partitionGroup.setId(raftId);
+    partitionGroup.setRaftId(raftId);
     for (int i = 2; i < split.length; i++) {
       Node node = ClusterUtils.stringToNode(split[i]);
       partitionGroup.add(node);

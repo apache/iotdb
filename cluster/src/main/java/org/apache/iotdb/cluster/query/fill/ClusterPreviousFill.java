@@ -160,7 +160,7 @@ public class ClusterPreviousFill extends PreviousFill {
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     try {
       fillHandler.onComplete(
           localDataMember

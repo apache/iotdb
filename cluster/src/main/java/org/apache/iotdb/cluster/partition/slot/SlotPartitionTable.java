@@ -308,7 +308,7 @@ public class SlotPartitionTable implements PartitionTable {
         PartitionGroup partitionGroup = groupIterator.next();
         for (PartitionGroup retiredGroup : retiredGroups) {
           if (retiredGroup.getHeader().equals(partitionGroup.getHeader())
-              && retiredGroup.getId() == partitionGroup.getId()) {
+              && retiredGroup.getRaftId() == partitionGroup.getRaftId()) {
             groupIterator.remove();
             break;
           }
@@ -527,7 +527,7 @@ public class SlotPartitionTable implements PartitionTable {
       }
       for (int i = removedGroupIdxs.size() - 1; i >= 0; i--) {
         int removedGroupIdx = removedGroupIdxs.get(i);
-        int raftId = localGroups.get(removedGroupIdx).getId();
+        int raftId = localGroups.get(removedGroupIdx).getRaftId();
         localGroups.remove(removedGroupIdx);
         // each node exactly joins replicationNum groups, so when a group is removed, the node
         // should join a new one

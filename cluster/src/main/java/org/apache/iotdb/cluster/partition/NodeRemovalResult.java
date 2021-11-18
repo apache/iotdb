@@ -32,7 +32,7 @@ public class NodeRemovalResult {
 
   public PartitionGroup getRemovedGroup(int raftId) {
     for (PartitionGroup group : removedGroupList) {
-      if (group.getId() == raftId) {
+      if (group.getRaftId() == raftId) {
         return group;
       }
     }
