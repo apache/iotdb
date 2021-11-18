@@ -1464,7 +1464,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       }
       // translate the headers to groups
       for (RaftNode groupHeader : groupHeaders) {
-        partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
+        partitionGroups.add(partitionTable.getPartitionGroup(groupHeader));
       }
     }
     return partitionGroups;
@@ -1873,7 +1873,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     syncLocalApply(getPartitionTable().getLastMetaLogIndex(), false);
     synchronized (headerMap) {
       for (DataGroupMember dataMember : headerMap.values()) {
-        int num = dataMember.getSlotManager().getSloNumInDataMigration();
+        int num = dataMember.getSlotManager().getSlotNumInDataMigration();
         if (num > 0) {
           groupSlotMap.put(dataMember.getPartitionGroup(), num);
         }

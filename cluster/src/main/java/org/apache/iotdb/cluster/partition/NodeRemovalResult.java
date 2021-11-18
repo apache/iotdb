@@ -28,7 +28,7 @@ import java.util.List;
 /** NodeRemovalResult stores the removed partition group. */
 public class NodeRemovalResult {
 
-  private List<PartitionGroup> removedGroupList = new ArrayList<>();
+  private final List<PartitionGroup> removedGroupList = new ArrayList<>();
 
   public PartitionGroup getRemovedGroup(int raftId) {
     for (PartitionGroup group : removedGroupList) {

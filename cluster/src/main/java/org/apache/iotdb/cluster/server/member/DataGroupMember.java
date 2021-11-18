@@ -927,7 +927,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     synchronized (allNodes) {
       if (allNodes.contains(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
-        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        PartitionGroup newGroup =
+            metaGroupMember.getPartitionTable().getPartitionGroup(getHeader());
         if (newGroup == null) {
           return;
         }

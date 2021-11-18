@@ -205,7 +205,7 @@ public class SlotPartitionTableTest {
 
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
-        localTable.getHeaderGroup(
+        localTable.getPartitionGroup(
             new RaftNode(
                 new Node(
                     "localhost",

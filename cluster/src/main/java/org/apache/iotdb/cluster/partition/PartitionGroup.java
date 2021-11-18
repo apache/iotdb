@@ -32,9 +32,8 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
- * the REPLICATION_NUM - 1 different physical nodes after this node. The first element of the list
- * is called header, which is also the identifier of the data group.
+ * PartitionGroup contains all the nodes of a data group. The first element of the list is called
+ * header, which is also the id of this partition group.
  */
 public class PartitionGroup extends ArrayList<Node> {
 
