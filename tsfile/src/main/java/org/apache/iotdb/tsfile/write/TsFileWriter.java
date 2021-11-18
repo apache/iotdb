@@ -67,7 +67,7 @@ public class TsFileWriter implements AutoCloseable {
   private final int pageSize;
   private long recordCount = 0;
 
-  // DeviceId, whose chunk group has been flushed at least one time
+  // deviceId -> measurementIdList
   private Map<String, List<String>> flushedMeasurementsInDeviceMap = new HashMap<>();
 
   // DeviceId -> LastTime
@@ -75,6 +75,12 @@ public class TsFileWriter implements AutoCloseable {
 
   // TimeseriesId -> LastTime
   private Map<String, Map<String, Long>> nonAlignedTimeseriesLastTimeMap = new HashMap<>();
+
+  /**
+   * if true, this tsfile allow unsequential data when writing; Otherwise, it limits the user to
+   * write only sequential data
+   */
+  private boolean isUnseq = false;
 
   private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
 
@@ -455,13 +461,17 @@ public class TsFileWriter implements AutoCloseable {
     if (!groupWriters.containsKey(deviceId)) {
       if (isAligned) {
         groupWriter = new AlignedChunkGroupWriterImpl(deviceId);
-        ((AlignedChunkGroupWriterImpl) groupWriter)
-            .setLastTime(alignedDeviceLastTimeMap.getOrDefault(deviceId, -1L));
+        if (!isUnseq) { // Sequence File
+          ((AlignedChunkGroupWriterImpl) groupWriter)
+              .setLastTime(alignedDeviceLastTimeMap.getOrDefault(deviceId, -1L));
+        }
       } else {
         groupWriter = new NonAlignedChunkGroupWriterImpl(deviceId);
-        ((NonAlignedChunkGroupWriterImpl) groupWriter)
-            .setLastTimeMap(
-                nonAlignedTimeseriesLastTimeMap.getOrDefault(deviceId, new HashMap<>()));
+        if (!isUnseq) { // Sequence File
+          ((NonAlignedChunkGroupWriterImpl) groupWriter)
+              .setLastTimeMap(
+                  nonAlignedTimeseriesLastTimeMap.getOrDefault(deviceId, new HashMap<>()));
+        }
       }
       groupWriters.put(deviceId, groupWriter);
     } else {
@@ -585,12 +595,16 @@ public class TsFileWriter implements AutoCloseable {
                     }
                   });
           // add lastTime
-          this.alignedDeviceLastTimeMap.put(
-              deviceId, ((AlignedChunkGroupWriterImpl) groupWriter).getLastTime());
+          if (!isUnseq) { // Sequence TsFile
+            this.alignedDeviceLastTimeMap.put(
+                deviceId, ((AlignedChunkGroupWriterImpl) groupWriter).getLastTime());
+          }
         } else {
           // add lastTime
-          this.nonAlignedTimeseriesLastTimeMap.put(
-              deviceId, ((NonAlignedChunkGroupWriterImpl) groupWriter).getLastTimeMap());
+          if (!isUnseq) { // Sequence TsFile
+            this.nonAlignedTimeseriesLastTimeMap.put(
+                deviceId, ((NonAlignedChunkGroupWriterImpl) groupWriter).getLastTimeMap());
+          }
         }
       }
       reset();
@@ -623,5 +637,9 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
+  }
+
+  public void setIsUnseq(boolean unseq) {
+    this.isUnseq = unseq;
   }
 }

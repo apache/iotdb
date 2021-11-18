@@ -114,6 +114,7 @@ public class MergeOverLapTest extends MergeTest {
       TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
+    fileWriter.setIsUnseq(true);
     for (String deviceId : deviceIds) {
       for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
@@ -135,6 +136,7 @@ public class MergeOverLapTest extends MergeTest {
       }
       // insert overlapping tuples
       if ((i + 1) % 100 == 0) {
+        fileWriter.flushAllChunkGroups(); // UnsequenceData is not allowed in one chunk group
         for (int j = 0; j < deviceNum; j++) {
           TSRecord record = new TSRecord(i, deviceIds[j]);
           for (int k = 0; k < measurementNum; k++) {
