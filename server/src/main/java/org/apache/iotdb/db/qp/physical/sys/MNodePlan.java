@@ -70,7 +70,7 @@ public class MNodePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.MNODE.ordinal());
     putString(buffer, name);
     buffer.putInt(childSize);
