@@ -48,7 +48,6 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
     this.metaGroupMember = metaGroupMember;
   }
 
-  @Override
   protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
       Set<String> deviceMeasurements,
