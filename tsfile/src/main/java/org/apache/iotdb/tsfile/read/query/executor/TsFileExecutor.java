@@ -67,8 +67,7 @@ public class TsFileExecutor implements QueryExecutor {
       queryExpression.setSelectSeries(filteredSeriesPath);
     }
 
-    // metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
-    // metadataQuerier.loadChunkMetaDatasV2(queryExpression.getSelectedSeries());
+    //    metadataQuerier.loadChunkMetaDatas(queryExpression.getSelectedSeries());
     metadataQuerier.loadChunkMetaDatasV3(queryExpression.getSelectedSeries());
 
     if (queryExpression.hasQueryFilter()) {

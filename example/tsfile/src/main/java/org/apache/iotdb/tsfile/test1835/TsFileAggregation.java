@@ -24,30 +24,38 @@ import org.apache.iotdb.tsfile.read.common.Path;
 
 import org.apache.commons.cli.BasicParser;
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.Options;
 
 import java.io.IOException;
 
 public class TsFileAggregation {
 
-  private static final String DEVICE1 = "device_";
-  public static int chunkNum;
-  public static int deviceNum = 1;
-  public static int sensorNum = 1;
-  public static int fileNum = 1;
+  private static final String DEVICE1 = "device_1";
+  public static int deviceNum;
+  public static int sensorNum;
+  public static int fileNum;
 
   public static void main(String[] args) throws IOException {
-    long costTime = 0L;
     Options opts = new Options();
-    //    Option chunkNumOption =
-    //        OptionBuilder.withArgName("args").withLongOpt("chunkNum").hasArg().create("c");
-    //    opts.addOption(chunkNumOption);
+    Option deviceNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("deviceNum").hasArg().create("d");
+    opts.addOption(deviceNumOption);
+    Option sensorNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("sensorNum").hasArg().create("m");
+    opts.addOption(sensorNumOption);
+    Option fileNumOption =
+        OptionBuilder.withArgName("args").withLongOpt("fileNum").hasArg().create("f");
+    opts.addOption(fileNumOption);
 
     BasicParser parser = new BasicParser();
     CommandLine cl;
     try {
       cl = parser.parse(opts, args);
-      //      chunkNum = Integer.parseInt(cl.getOptionValue("c"));
+      deviceNum = Integer.parseInt(cl.getOptionValue("d"));
+      sensorNum = Integer.parseInt(cl.getOptionValue("m"));
+      fileNum = Integer.parseInt(cl.getOptionValue("f"));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -56,22 +64,23 @@ public class TsFileAggregation {
     for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
       // file path
       String path =
-          "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/1/"
+          "/data/szs/data/data/sequence/root.sg/1/"
               + deviceNum
-              + "/test1.tsfile";
+              + "."
+              + sensorNum
+              + "/test"
+              + fileIndex
+              + ".tsfile";
 
       // aggregation query
       try (TsFileSequenceReader reader = new TsFileSequenceReader(path)) {
         Path seriesPath = new Path(DEVICE1, "sensor_1");
-        long startTime = System.nanoTime();
         TimeseriesMetadata timeseriesMetadata = reader.readTimeseriesMetadata(seriesPath, false);
         long count = timeseriesMetadata.getStatistics().getCount();
-        costTime += (System.nanoTime() - startTime);
-        System.out.println(count);
       }
     }
-    System.out.println(
-        "Total raw read cost time: " + (System.nanoTime() - totalStartTime) / 1000_000 + "ms");
-    System.out.println("Index area cost time: " + costTime / 1000_000 + "ms");
+    long totalTime = (System.nanoTime() - totalStartTime) / 1000_000;
+    System.out.println("Total raw read cost time: " + totalTime + "ms");
+    System.out.println("Average cost time: " + (double) totalTime / (double) fileNum + "ms");
   }
 }

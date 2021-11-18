@@ -43,7 +43,7 @@ import java.util.Random;
  * An example of writing data with TSRecord to TsFile It uses the interface: public void
  * addMeasurement(MeasurementSchema measurementSchema) throws WriteProcessException
  */
-public class TsFileWrite {
+public class TsFileWriteV2 {
   public static int deviceNum;
   public static int sensorNum;
   public static int fileNum;
@@ -65,9 +65,9 @@ public class TsFileWrite {
     CommandLine cl;
     try {
       cl = parser.parse(opts, args);
-      deviceNum = Integer.parseInt(cl.getOptionValue("d"));
-      sensorNum = Integer.parseInt(cl.getOptionValue("m"));
-      fileNum = Integer.parseInt(cl.getOptionValue("f"));
+      deviceNum = 1000; // Integer.parseInt(cl.getOptionValue("d"));
+      sensorNum = 10; // Integer.parseInt(cl.getOptionValue("m"));
+      fileNum = 1; // Integer.parseInt(cl.getOptionValue("f"));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -75,7 +75,7 @@ public class TsFileWrite {
     for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
       try {
         String path =
-            "/data/szs/data/data/sequence/root.sg/0/"
+            "/Users/samperson1997/git/iotdb/data/data/sequence/root.sg/0/"
                 + deviceNum
                 + "."
                 + sensorNum
