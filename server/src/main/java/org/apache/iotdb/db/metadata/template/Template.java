@@ -60,6 +60,7 @@ public class Template {
   private String name;
   private Map<String, IMNode> directNodes;
   private Set<String> alignedPrefix;
+  private boolean isDirectAligned;
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
 
@@ -75,6 +76,7 @@ public class Template {
     schemaMap = new HashMap<>();
     name = plan.getName();
     alignedPrefix = new HashSet<>();
+    isDirectAligned = false;
     directNodes = new HashMap<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
@@ -146,7 +148,7 @@ public class Template {
   }
 
   public boolean isDirectAligned() {
-    return alignedPrefix.contains("");
+    return isDirectAligned;
   }
 
   // region construct template tree
@@ -194,9 +196,12 @@ public class Template {
     synchronized (this) {
       // if not aligned now, it will be set to aligned
       alignedPrefix.add(prefix);
+      if (prefix.equals("")) {
+        isDirectAligned = true;
+      }
       for (int i = 0; i <= measurementNames.size() - 1; i++) {
         // find the parent and add nodes to template
-        if (prefix.equals("")) {
+        if (isDirectAligned) {
           leafNode =
               MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
           directNodes.put(leafNode.getName(), leafNode);
@@ -552,7 +557,12 @@ public class Template {
       IMNode top = astack.pop();
       if (!top.isMeasurement()) {
         String thisPrefix = getFullPathWithoutTemplateName(top);
+
         alignedPrefix.remove(thisPrefix);
+        if (thisPrefix.equals("")) {
+          isDirectAligned = false;
+        }
+
         for (IMNode child : top.getChildren().values()) {
           astack.push(child);
         }
@@ -565,6 +575,9 @@ public class Template {
 
   public void deleteAlignedPrefix(String path) {
     alignedPrefix.remove(path);
+    if (path.equals("")) {
+      isDirectAligned = false;
+    }
   }
   // endregion
 

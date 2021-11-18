@@ -97,7 +97,7 @@ public class InsertRowPlanTest {
     Assert.assertEquals("[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
@@ -192,13 +192,13 @@ public class InsertRowPlanTest {
           QueryFilterOptimizationException, StorageEngineException, IOException {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = new ArrayList<>();
-    v1.add("vector.s1");
-    v1.add("vector.s2");
-    v1.add("vector.s3");
+    v1.add("GPS.s1");
+    v1.add("GPS.s2");
+    v1.add("GPS.s3");
     measurementList.add(v1);
     List<String> v2 = new ArrayList<>();
-    v2.add("vector2.s4");
-    v2.add("vector2.s5");
+    v2.add("GPS2.s4");
+    v2.add("GPS2.s5");
     measurementList.add(v2);
     measurementList.add(Collections.singletonList("s6"));
 
@@ -235,15 +235,10 @@ public class InsertRowPlanTest {
       compressionTypes.add(compressorList);
     }
 
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("vector");
-    schemaNames.add("vector2");
-    schemaNames.add("s6");
 
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
             "template1",
-            schemaNames,
             measurementList,
             dataTypesList,
             encodingList,
@@ -260,7 +255,7 @@ public class InsertRowPlanTest {
     executor.insert(rowPlan);
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select s1 from root.isp.d1.vector");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select s1 from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
@@ -308,7 +303,7 @@ public class InsertRowPlanTest {
     columns[2] = 10000 + "";
 
     return new InsertRowPlan(
-        new PartialPath("root.isp.d1.vector"),
+        new PartialPath("root.isp.d1.GPS"),
         time,
         new String[] {"s1", "s2", "s3"},
         dataTypes,
