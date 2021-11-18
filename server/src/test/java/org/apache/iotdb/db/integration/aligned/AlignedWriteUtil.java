@@ -18,24 +18,20 @@
  */
 package org.apache.iotdb.db.integration.aligned;
 
-import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
-public class AlignedWriter {
+public class AlignedWriteUtil {
 
   private static final String[] sqls =
       new String[] {
         "SET STORAGE GROUP TO root.sg1",
-        "create aligned timeseries root.sg1.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Grollia compression=SNAPPY, s3 INT64, s4 BOOLEAN, s5 TEXT) compression=SNAPPY",
+        "create aligned timeseries root.sg1.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64, s4 BOOLEAN, s5 TEXT)",
         "create timeseries root.sg1.d2.s1 WITH DATATYPE=FLOAT, encoding=RLE",
-        "create timeseries root.sg1.d2.s2 WITH DATATYPE=INT32, encoding=Grollia",
+        "create timeseries root.sg1.d2.s2 WITH DATATYPE=INT32, encoding=Gorilla",
         "create timeseries root.sg1.d2.s3 WITH DATATYPE=INT64",
         "create timeseries root.sg1.d2.s4 WITH DATATYPE=BOOLEAN",
         "create timeseries root.sg1.d2.s5 WITH DATATYPE=TEXT",
@@ -92,7 +88,7 @@ public class AlignedWriter {
         "insert into root.sg1.d1(time, s3, s4) aligned values(29, 29, FALSE)",
         "insert into root.sg1.d1(time, s3, s4) aligned values(30, 30, FALSE)",
         "insert into root.sg1.d2(time, s3, s4) values(21, 21, TRUE)",
-        "insert into root.sg1.d2(time, s3, s4) values(22, 21, TRUE)",
+        "insert into root.sg1.d2(time, s3, s4) values(22, 22, TRUE)",
         "insert into root.sg1.d2(time, s3, s4) values(23, 23, TRUE)",
         "insert into root.sg1.d2(time, s3, s4) values(24, 24, TRUE)",
         "insert into root.sg1.d2(time, s3, s4) values(25, 25, TRUE)",
@@ -122,22 +118,9 @@ public class AlignedWriter {
         "insert into root.sg1.d2(time, s2, s5) values(38, 38, 'non_aligned_test38')",
         "insert into root.sg1.d2(time, s2, s5) values(39, 39, 'non_aligned_test39')",
         "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')",
-        "flush",
       };
 
-  @BeforeClass
-  public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-    insertData();
-  }
-
-  @AfterClass
-  public static void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-  }
-
-  private static void insertData() throws ClassNotFoundException {
+  public static void insertData() throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(

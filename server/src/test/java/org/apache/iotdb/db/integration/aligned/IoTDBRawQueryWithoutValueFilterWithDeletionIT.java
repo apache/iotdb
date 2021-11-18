@@ -39,7 +39,7 @@ import java.util.Map;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBRawQueryWithoutValueFilterIT {
+public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
   private static boolean enableSeqSpaceCompaction;
   private static boolean enableUnseqSpaceCompaction;
@@ -49,7 +49,7 @@ public class IoTDBRawQueryWithoutValueFilterIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    // TODO When the aligned time series support compaction, we need to set compaction to true
+
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
@@ -59,7 +59,21 @@ public class IoTDBRawQueryWithoutValueFilterIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+
     AlignedWriteUtil.insertData();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
+      // disk before doing deletion
+      statement.execute("flush");
+      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s1 where time <= 27");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @AfterClass
@@ -79,51 +93,49 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "1,1.0,1,1,true,aligned_test1",
-          "2,2.0,2,2,null,aligned_test2",
-          "3,3.0,null,3,false,aligned_test3",
-          "4,4.0,4,null,true,aligned_test4",
-          "5,5.0,5,null,true,aligned_test5",
-          "6,6.0,6,6,true,null",
-          "7,7.0,7,7,false,aligned_test7",
-          "8,8.0,8,8,null,aligned_test8",
-          "9,9.0,9,9,false,aligned_test9",
-          "10,null,10,10,true,aligned_test10",
-          "11,11.0,11,11,null,null",
-          "12,12.0,12,12,null,null",
-          "13,13.0,13,13,null,null",
-          "14,14.0,14,14,null,null",
-          "15,15.0,15,15,null,null",
-          "16,16.0,16,16,null,null",
-          "17,17.0,17,17,null,null",
-          "18,18.0,18,18,null,null",
-          "19,19.0,19,19,null,null",
-          "20,20.0,20,20,null,null",
-          "21,null,null,21,true,null",
-          "22,null,null,22,true,null",
-          "23,null,null,23,true,null",
-          "24,null,null,24,true,null",
-          "25,null,null,25,true,null",
-          "26,null,null,26,false,null",
-          "27,null,null,27,false,null",
-          "28,null,null,28,false,null",
-          "29,null,null,29,false,null",
-          "30,null,null,30,false,null",
-          "31,null,31,null,null,aligned_test31",
-          "32,null,32,null,null,aligned_test32",
-          "33,null,33,null,null,aligned_test33",
-          "34,null,34,null,null,aligned_test34",
-          "35,null,35,null,null,aligned_test35",
-          "36,null,36,null,null,aligned_test36",
-          "37,null,37,null,null,aligned_test37",
-          "38,null,38,null,null,aligned_test38",
-          "39,null,39,null,null,aligned_test39",
-          "40,null,40,null,null,aligned_test40",
+          "1,null,1,true,aligned_test1",
+          "2,null,2,null,aligned_test2",
+          "3,null,3,false,aligned_test3",
+          "4,null,null,true,aligned_test4",
+          "5,null,null,true,aligned_test5",
+          "6,null,6,true,null",
+          "7,null,7,false,aligned_test7",
+          "8,null,8,null,aligned_test8",
+          "9,null,9,false,aligned_test9",
+          "10,null,10,true,aligned_test10",
+          "11,null,11,null,null",
+          "12,null,12,null,null",
+          "13,null,13,null,null",
+          "14,null,14,null,null",
+          "15,null,15,null,null",
+          "16,null,16,null,null",
+          "17,null,17,null,null",
+          "18,null,18,null,null",
+          "19,null,19,null,null",
+          "20,null,20,null,null",
+          "21,null,21,true,null",
+          "22,null,22,true,null",
+          "23,null,23,true,null",
+          "24,null,24,true,null",
+          "25,null,25,true,null",
+          "26,null,26,false,null",
+          "27,null,27,false,null",
+          "28,null,28,false,null",
+          "29,null,29,false,null",
+          "30,null,30,false,null",
+          "31,null,null,null,aligned_test31",
+          "32,null,null,null,aligned_test32",
+          "33,null,null,null,aligned_test33",
+          "34,null,null,null,aligned_test34",
+          "35,null,null,null,aligned_test35",
+          "36,null,null,null,aligned_test36",
+          "37,null,null,null,aligned_test37",
+          "38,null,null,null,aligned_test38",
+          "39,null,null,null,aligned_test39",
+          "40,null,null,null,aligned_test40",
         };
 
-    String[] columnNames = {
-      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
-    };
+    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -166,51 +178,50 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "1,1.0,1,1,true,aligned_test1,1.0,1,1,true,non_aligned_test1",
-          "2,2.0,2,2,null,aligned_test2,2.0,2,2,null,non_aligned_test2",
-          "3,3.0,null,3,false,aligned_test3,3.0,null,3,false,non_aligned_test3",
-          "4,4.0,4,null,true,aligned_test4,4.0,4,null,true,non_aligned_test4",
-          "5,5.0,5,null,true,aligned_test5,5.0,5,null,true,non_aligned_test5",
-          "6,6.0,6,6,true,null,6.0,6,6,true,null",
-          "7,7.0,7,7,false,aligned_test7,7.0,7,7,false,non_aligned_test7",
-          "8,8.0,8,8,null,aligned_test8,8.0,8,8,null,non_aligned_test8",
-          "9,9.0,9,9,false,aligned_test9,9.0,9,9,false,non_aligned_test9",
-          "10,null,10,10,true,aligned_test10,null,10,10,true,non_aligned_test10",
-          "11,11.0,11,11,null,null,11.0,11,11,null,null",
-          "12,12.0,12,12,null,null,12.0,12,12,null,null",
-          "13,13.0,13,13,null,null,13.0,13,13,null,null",
-          "14,14.0,14,14,null,null,14.0,14,14,null,null",
-          "15,15.0,15,15,null,null,15.0,15,15,null,null",
-          "16,16.0,16,16,null,null,16.0,16,16,null,null",
-          "17,17.0,17,17,null,null,17.0,17,17,null,null",
-          "18,18.0,18,18,null,null,18.0,18,18,null,null",
-          "19,19.0,19,19,null,null,19.0,19,19,null,null",
-          "20,20.0,20,20,null,null,20.0,20,20,null,null",
-          "21,null,null,21,true,null,null,null,21,true,null",
-          "22,null,null,22,true,null,null,null,22,true,null",
-          "23,null,null,23,true,null,null,null,23,true,null",
-          "24,null,null,24,true,null,null,null,24,true,null",
-          "25,null,null,25,true,null,null,null,25,true,null",
-          "26,null,null,26,false,null,null,null,26,false,null",
-          "27,null,null,27,false,null,null,null,27,false,null",
-          "28,null,null,28,false,null,null,null,28,false,null",
-          "29,null,null,29,false,null,null,null,29,false,null",
-          "30,null,null,30,false,null,null,null,30,false,null",
-          "31,null,31,null,null,aligned_test31,null,31,null,null,non_aligned_test31",
-          "32,null,32,null,null,aligned_test32,null,32,null,null,non_aligned_test32",
-          "33,null,33,null,null,aligned_test33,null,33,null,null,non_aligned_test33",
-          "34,null,34,null,null,aligned_test34,null,34,null,null,non_aligned_test34",
-          "35,null,35,null,null,aligned_test35,null,35,null,null,non_aligned_test35",
-          "36,null,36,null,null,aligned_test36,null,36,null,null,non_aligned_test36",
-          "37,null,37,null,null,aligned_test37,null,37,null,null,non_aligned_test37",
-          "38,null,38,null,null,aligned_test38,null,38,null,null,non_aligned_test38",
-          "39,null,39,null,null,aligned_test39,null,39,null,null,non_aligned_test39",
-          "40,null,40,null,null,aligned_test40,null,40,null,null,non_aligned_test40",
+          "1,null,1,true,aligned_test1,1.0,1,1,true,non_aligned_test1",
+          "2,null,2,null,aligned_test2,2.0,2,2,null,non_aligned_test2",
+          "3,null,3,false,aligned_test3,3.0,null,3,false,non_aligned_test3",
+          "4,null,null,true,aligned_test4,4.0,4,null,true,non_aligned_test4",
+          "5,null,null,true,aligned_test5,5.0,5,null,true,non_aligned_test5",
+          "6,null,6,true,null,6.0,6,6,true,null",
+          "7,null,7,false,aligned_test7,7.0,7,7,false,non_aligned_test7",
+          "8,null,8,null,aligned_test8,8.0,8,8,null,non_aligned_test8",
+          "9,null,9,false,aligned_test9,9.0,9,9,false,non_aligned_test9",
+          "10,null,10,true,aligned_test10,null,10,10,true,non_aligned_test10",
+          "11,null,11,null,null,11.0,11,11,null,null",
+          "12,null,12,null,null,12.0,12,12,null,null",
+          "13,null,13,null,null,13.0,13,13,null,null",
+          "14,null,14,null,null,14.0,14,14,null,null",
+          "15,null,15,null,null,15.0,15,15,null,null",
+          "16,null,16,null,null,16.0,16,16,null,null",
+          "17,null,17,null,null,17.0,17,17,null,null",
+          "18,null,18,null,null,18.0,18,18,null,null",
+          "19,null,19,null,null,19.0,19,19,null,null",
+          "20,null,20,null,null,20.0,20,20,null,null",
+          "21,null,21,true,null,null,null,21,true,null",
+          "22,null,22,true,null,null,null,22,true,null",
+          "23,null,23,true,null,null,null,23,true,null",
+          "24,null,24,true,null,null,null,24,true,null",
+          "25,null,25,true,null,null,null,25,true,null",
+          "26,null,26,false,null,null,null,26,false,null",
+          "27,null,27,false,null,null,null,27,false,null",
+          "28,null,28,false,null,null,null,28,false,null",
+          "29,null,29,false,null,null,null,29,false,null",
+          "30,null,30,false,null,null,null,30,false,null",
+          "31,null,null,null,aligned_test31,null,31,null,null,non_aligned_test31",
+          "32,null,null,null,aligned_test32,null,32,null,null,non_aligned_test32",
+          "33,null,null,null,aligned_test33,null,33,null,null,non_aligned_test33",
+          "34,null,null,null,aligned_test34,null,34,null,null,non_aligned_test34",
+          "35,null,null,null,aligned_test35,null,35,null,null,non_aligned_test35",
+          "36,null,null,null,aligned_test36,null,36,null,null,non_aligned_test36",
+          "37,null,null,null,aligned_test37,null,37,null,null,non_aligned_test37",
+          "38,null,null,null,aligned_test38,null,38,null,null,non_aligned_test38",
+          "39,null,null,null,aligned_test39,null,39,null,null,non_aligned_test39",
+          "40,null,null,null,aligned_test40,null,40,null,null,non_aligned_test40",
         };
 
     String[] columnNames = {
       "root.sg1.d1.s1",
-      "root.sg1.d1.s2",
       "root.sg1.d1.s3",
       "root.sg1.d1.s4",
       "root.sg1.d1.s5",
@@ -262,36 +273,34 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "9,9.0,9,9,false,aligned_test9",
-          "10,null,10,10,true,aligned_test10",
-          "11,11.0,11,11,null,null",
-          "12,12.0,12,12,null,null",
-          "13,13.0,13,13,null,null",
-          "14,14.0,14,14,null,null",
-          "15,15.0,15,15,null,null",
-          "16,16.0,16,16,null,null",
-          "17,17.0,17,17,null,null",
-          "18,18.0,18,18,null,null",
-          "19,19.0,19,19,null,null",
-          "20,20.0,20,20,null,null",
-          "21,null,null,21,true,null",
-          "22,null,null,22,true,null",
-          "23,null,null,23,true,null",
-          "24,null,null,24,true,null",
-          "25,null,null,25,true,null",
-          "26,null,null,26,false,null",
-          "27,null,null,27,false,null",
-          "28,null,null,28,false,null",
-          "29,null,null,29,false,null",
-          "30,null,null,30,false,null",
-          "31,null,31,null,null,aligned_test31",
-          "32,null,32,null,null,aligned_test32",
-          "33,null,33,null,null,aligned_test33",
+          "9,null,9,false,aligned_test9",
+          "10,null,10,true,aligned_test10",
+          "11,null,11,null,null",
+          "12,null,12,null,null",
+          "13,null,13,null,null",
+          "14,null,14,null,null",
+          "15,null,15,null,null",
+          "16,null,16,null,null",
+          "17,null,17,null,null",
+          "18,null,18,null,null",
+          "19,null,19,null,null",
+          "20,null,20,null,null",
+          "21,null,21,true,null",
+          "22,null,22,true,null",
+          "23,null,23,true,null",
+          "24,null,24,true,null",
+          "25,null,25,true,null",
+          "26,null,26,false,null",
+          "27,null,27,false,null",
+          "28,null,28,false,null",
+          "29,null,29,false,null",
+          "30,null,30,false,null",
+          "31,null,null,null,aligned_test31",
+          "32,null,null,null,aligned_test32",
+          "33,null,null,null,aligned_test33",
         };
 
-    String[] columnNames = {
-      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
-    };
+    String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -335,26 +344,16 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "1,1.0,true,aligned_test1",
-          "2,2.0,null,aligned_test2",
-          "3,3.0,false,aligned_test3",
-          "4,4.0,true,aligned_test4",
-          "5,5.0,true,aligned_test5",
-          "6,6.0,true,null",
-          "7,7.0,false,aligned_test7",
-          "8,8.0,null,aligned_test8",
-          "9,9.0,false,aligned_test9",
+          "1,null,true,aligned_test1",
+          "2,null,null,aligned_test2",
+          "3,null,false,aligned_test3",
+          "4,null,true,aligned_test4",
+          "5,null,true,aligned_test5",
+          "6,null,true,null",
+          "7,null,false,aligned_test7",
+          "8,null,null,aligned_test8",
+          "9,null,false,aligned_test9",
           "10,null,true,aligned_test10",
-          "11,11.0,null,null",
-          "12,12.0,null,null",
-          "13,13.0,null,null",
-          "14,14.0,null,null",
-          "15,15.0,null,null",
-          "16,16.0,null,null",
-          "17,17.0,null,null",
-          "18,18.0,null,null",
-          "19,19.0,null,null",
-          "20,20.0,null,null",
           "21,null,true,null",
           "22,null,true,null",
           "23,null,true,null",
@@ -420,26 +419,14 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "1,1.0,true",
-          "2,2.0,null",
-          "3,3.0,false",
-          "4,4.0,true",
-          "5,5.0,true",
-          "6,6.0,true",
-          "7,7.0,false",
-          "8,8.0,null",
-          "9,9.0,false",
+          "1,null,true",
+          "3,null,false",
+          "4,null,true",
+          "5,null,true",
+          "6,null,true",
+          "7,null,false",
+          "9,null,false",
           "10,null,true",
-          "11,11.0,null",
-          "12,12.0,null",
-          "13,13.0,null",
-          "14,14.0,null",
-          "15,15.0,null",
-          "16,16.0,null",
-          "17,17.0,null",
-          "18,18.0,null",
-          "19,19.0,null",
-          "20,20.0,null",
           "21,null,true",
           "22,null,true",
           "23,null,true",
@@ -495,11 +482,6 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "16,16.0,null,null",
-          "17,17.0,null,null",
-          "18,18.0,null,null",
-          "19,19.0,null,null",
-          "20,20.0,null,null",
           "21,null,true,null",
           "22,null,true,null",
           "23,null,true,null",
@@ -560,11 +542,11 @@ public class IoTDBRawQueryWithoutValueFilterIT {
 
     String[] retArray =
         new String[] {
-          "16,null,null,16.0,null,null,16.0",
-          "17,null,null,17.0,null,null,17.0",
-          "18,null,null,18.0,null,null,18.0",
-          "19,null,null,19.0,null,null,19.0",
-          "20,null,null,20.0,null,null,20.0",
+          "16,null,null,16.0,null,null,null",
+          "17,null,null,17.0,null,null,null",
+          "18,null,null,18.0,null,null,null",
+          "19,null,null,19.0,null,null,null",
+          "20,null,null,20.0,null,null,null",
           "21,null,true,null,null,true,null",
           "22,null,true,null,null,true,null",
           "23,null,true,null,null,true,null",
