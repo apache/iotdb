@@ -56,6 +56,7 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s1, s2, s3, s4, s5) values(9, 9.0, 9, 9, FALSE, 'non_aligned_test9')",
         "insert into root.sg1.d2(time, s2, s3, s4, s5) values(10, 10, 10, TRUE, 'non_aligned_test10')",
         "flush",
+        "insert into root.sg1.d1(time, s1, s3, s4, s5) aligned values(3, 30000.0, 30000, TRUE, 'aligned_unseq_test3')",
         "insert into root.sg1.d1(time, s1, s2, s3) aligned values(11, 11.0, 11, 11)",
         "insert into root.sg1.d1(time, s1, s2, s3) aligned values(12, 12.0, 12, 12)",
         "insert into root.sg1.d1(time, s1, s2, s3) aligned values(13, 13.0, 13, 13)",
@@ -77,6 +78,7 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s1, s2, s3) values(19, 19.0, 19, 19)",
         "insert into root.sg1.d2(time, s1, s2, s3) values(20, 20.0, 20, 20)",
         "flush",
+        "insert into root.sg1.d1(time, s1, s2, s3) aligned values(13, 130000.0, 130000, 130000)",
         "insert into root.sg1.d1(time, s3, s4) aligned values(21, 21, TRUE)",
         "insert into root.sg1.d1(time, s3, s4) aligned values(22, 22, TRUE)",
         "insert into root.sg1.d1(time, s3, s4) aligned values(23, 23, TRUE)",
@@ -98,6 +100,7 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s3, s4) values(29, 29, FALSE)",
         "insert into root.sg1.d2(time, s3, s4) values(30, 30, FALSE)",
         "flush",
+        "insert into root.sg1.d1(time, s3, s4) aligned values(23, 230000, FALSE)",
         "insert into root.sg1.d1(time, s2, s5) aligned values(31, 31, 'aligned_test31')",
         "insert into root.sg1.d1(time, s2, s5) aligned values(32, 32, 'aligned_test32')",
         "insert into root.sg1.d1(time, s2, s5) aligned values(33, 33, 'aligned_test33')",
@@ -131,6 +134,7 @@ public class AlignedWriteUtil {
       for (String sql : sqls) {
         statement.execute(sql);
       }
+
     } catch (Exception e) {
       e.printStackTrace();
     }

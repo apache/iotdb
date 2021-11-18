@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -811,10 +812,19 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
-          Object valueForFilter =
-              timeValuePair.getValue().getDataType() == TSDataType.VECTOR
-                  ? timeValuePair.getValue().getVector()[0].getValue()
-                  : timeValuePair.getValue().getValue();
+          Object valueForFilter = timeValuePair.getValue().getValue();
+
+          // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
+          // only accept AlignedPath with only one sub sensor
+          if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+            for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+              if (tsPrimitiveType != null) {
+                valueForFilter = tsPrimitiveType.getValue();
+                break;
+              }
+            }
+          }
+
           if (valueFilter == null
               || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
             cachedBatchData.putAnObject(
