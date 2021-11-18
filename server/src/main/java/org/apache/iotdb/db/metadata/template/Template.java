@@ -145,6 +145,10 @@ public class Template {
     return schemaMap.get(measurementId);
   }
 
+  public boolean isDirectAligned() {
+    return alignedPrefix.contains("");
+  }
+
   // region construct template tree
   /** Construct aligned measurements, checks prefix equality, path duplication and conflict */
   private void constructTemplateTree(String[] alignedPaths, IMeasurementSchema[] schemas)

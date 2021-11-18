@@ -1591,7 +1591,7 @@ public class MTree implements Serializable {
 
           // overlap with template, cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
-            throw new PathNotExistException(
+            throw new MetadataException(
                 String.format(
                     "Path [%s] overlaps but not matches template [%s] under node [%s]",
                     measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]));

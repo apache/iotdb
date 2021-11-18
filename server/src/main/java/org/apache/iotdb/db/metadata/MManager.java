@@ -2074,6 +2074,12 @@ public class MManager {
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
     IEntityMNode entityMNode = mtree.setToEntity(node);
+
+    // to ensure alignment adapt with former node or template
+    entityMNode.setAligned(
+        node.isEntity()
+            ? node.getAsEntityMNode().isAligned()
+            : node.getUpperTemplate().isDirectAligned());
     entityMNode.setUseTemplate(true);
     if (node != entityMNode) {
       mNodeCache.removeObject(entityMNode.getPartialPath());
