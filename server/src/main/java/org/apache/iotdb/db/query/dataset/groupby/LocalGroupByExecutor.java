@@ -38,8 +38,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Collections;
+import java.util.List;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
