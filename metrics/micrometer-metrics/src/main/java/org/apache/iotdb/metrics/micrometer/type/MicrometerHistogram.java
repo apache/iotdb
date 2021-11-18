@@ -31,11 +31,6 @@ public class MicrometerHistogram implements Histogram {
   }
 
   @Override
-  public void update(int value) {
-    distributionSummary.record(value);
-  }
-
-  @Override
   public void update(long value) {
     distributionSummary.record(value);
   }
