@@ -148,7 +148,7 @@ public class FlushPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.FLUSH.ordinal();
     buffer.put((byte) type);
     if (isSeq == null) {
