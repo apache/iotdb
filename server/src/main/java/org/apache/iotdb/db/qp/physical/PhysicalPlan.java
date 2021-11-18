@@ -165,8 +165,9 @@ public abstract class PhysicalPlan {
       throw e;
     } catch (Exception e) {
       logger.error(
-          "Rollback buffer because error occurs when serializing this physical plan, please check it {}",
-          this);
+          "Rollback buffer because error occurs when serializing this physical plan, see plan details in the debug log.");
+      // use info level to log plan because the error log may too large
+      logger.debug("Meet error when serializing this physical plan, please check it {}.", this);
       buffer.reset();
       throw e;
     }
