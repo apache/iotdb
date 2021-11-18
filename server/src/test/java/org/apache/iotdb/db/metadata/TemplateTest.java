@@ -131,7 +131,7 @@ public class TemplateTest {
       CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
       template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
 
-      assertEquals("[GPS, to.be.prefix]", template.getAllAlignedPrefix().toString());
+      assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
       assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
 
       template.deleteAlignedPrefix("to.be.prefix");

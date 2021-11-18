@@ -235,14 +235,9 @@ public class InsertRowPlanTest {
       compressionTypes.add(compressorList);
     }
 
-
     CreateTemplatePlan plan =
         new CreateTemplatePlan(
-            "template1",
-            measurementList,
-            dataTypesList,
-            encodingList,
-            compressionTypes);
+            "template1", measurementList, dataTypesList, encodingList, compressionTypes);
 
     IoTDB.metaManager.createSchemaTemplate(plan);
     IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));

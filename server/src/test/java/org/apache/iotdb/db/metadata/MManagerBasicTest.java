@@ -918,7 +918,7 @@ public class MManagerBasicTest {
       CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
       template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
 
-      assertEquals("[GPS, to.be.prefix]", template.getAllAlignedPrefix().toString());
+      assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
       assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
 
       template.deleteAlignedPrefix("to.be.prefix");
@@ -931,7 +931,7 @@ public class MManagerBasicTest {
         template.deleteMeasurements("a.single");
         fail();
       } catch (IllegalPathException e) {
-        assertEquals("a.single is not a legal path, because Path does not exist", e.getMessage());
+        assertEquals("Path [a.single] does not exist", e.getMessage());
       }
       assertEquals(
           "[d1.s1, GPS.x, to.be.prefix.s2, GPS.y, to.be.prefix.s1, s2]",

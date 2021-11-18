@@ -59,7 +59,6 @@ import java.util.Set;
 public class Template {
   private String name;
   private Map<String, IMNode> directNodes;
-  private Set<String> alignedPrefix;
   private boolean isDirectAligned;
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
@@ -75,7 +74,6 @@ public class Template {
     boolean isAlign;
     schemaMap = new HashMap<>();
     name = plan.getName();
-    alignedPrefix = new HashSet<>();
     isDirectAligned = false;
     directNodes = new HashMap<>();
 
@@ -157,7 +155,7 @@ public class Template {
       throws IllegalPathException {
     // Only for aligned Paths, with common direct prefix
     String[] pathNodes;
-    IEntityMNode commonPar;
+    IMNode commonPar;
     String prefix = null;
     List<String> measurementNames = new ArrayList<>();
     IMeasurementMNode leafNode;
@@ -194,23 +192,21 @@ public class Template {
     }
 
     synchronized (this) {
-      // if not aligned now, it will be set to aligned
-      alignedPrefix.add(prefix);
       if (prefix.equals("")) {
         isDirectAligned = true;
       }
       for (int i = 0; i <= measurementNames.size() - 1; i++) {
         // find the parent and add nodes to template
-        if (isDirectAligned) {
+        if (prefix.equals("")) {
           leafNode =
               MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
           directNodes.put(leafNode.getName(), leafNode);
         } else {
-          commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
+          commonPar = constructEntityPath(alignedPaths[0]);
           commonPar.getAsEntityMNode().setAligned(true);
           leafNode =
               MeasurementMNode.getMeasurementMNode(
-                  commonPar, measurementNames.get(i), schemas[i], null);
+                  commonPar.getAsEntityMNode(), measurementNames.get(i), schemas[i], null);
           commonPar.addChild(leafNode);
         }
         schemaMap.put(getFullPathWithoutTemplateName(leafNode), schemas[i]);
@@ -265,24 +261,37 @@ public class Template {
   // region query of template
 
   public List<String> getAllAlignedPrefix() {
-    return Arrays.asList(alignedPrefix.toArray(new String[0]));
-  }
+    List<String> alignedPrefix = new ArrayList<>();
+    if (isDirectAligned) {
+      alignedPrefix.add("");
+    }
 
-  public Set<String> getAlignedPrefixSet() {
+    Deque<IMNode> traverseChildren = new ArrayDeque<>();
+    directNodes.values().forEach(traverseChildren::push);
+    while (traverseChildren.size() != 0) {
+      IMNode cur = traverseChildren.pop();
+      if (cur.getChildren().size() != 0) {
+        cur.getChildren().values().forEach(traverseChildren::push);
+      }
+      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
+        alignedPrefix.add(cur.getFullPath());
+      }
+    }
     return alignedPrefix;
   }
 
   public List<String> getAlignedMeasurements(String prefix) throws IllegalPathException {
-    if (!alignedPrefix.contains(prefix)) {
-      return null;
-    }
     IMNode prefixNode = getPathNodeInTemplate(prefix);
     if (prefixNode == null) {
-      throw new IllegalPathException(prefix, "there is no prefix IMNode.");
+      throw new IllegalPathException(prefix, "there is no IMNode for given prefix.");
     }
     if (prefixNode.isMeasurement()) {
       throw new IllegalPathException(prefix, "path is a measurement.");
     }
+    if (!prefixNode.isEntity() || !prefixNode.getAsEntityMNode().isAligned()) {
+      throw new IllegalPathException(prefix, "path has no child as aligned measurement.");
+    }
+
     List<String> subMeasurements = new ArrayList<>();
     for (IMNode child : prefixNode.getChildren().values()) {
       if (child.isMeasurement()) {
@@ -470,7 +479,8 @@ public class Template {
     // Prefix equality will be checked in constructTemplateTree
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-    if ((getPathNodeInTemplate(prefix) != null) && (!alignedPrefix.contains(prefix))) {
+    IMNode targetNode = getPathNodeInTemplate(prefix);
+    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -502,7 +512,8 @@ public class Template {
 
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-      if ((getPathNodeInTemplate(prefix) != null) && (alignedPrefix.contains(prefix))) {
+      IMNode parNode = getPathNodeInTemplate(prefix);
+      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
         throw new IllegalPathException(prefix, "path already exists and aligned");
       }
 
@@ -558,7 +569,6 @@ public class Template {
       if (!top.isMeasurement()) {
         String thisPrefix = getFullPathWithoutTemplateName(top);
 
-        alignedPrefix.remove(thisPrefix);
         if (thisPrefix.equals("")) {
           isDirectAligned = false;
         }
@@ -573,10 +583,13 @@ public class Template {
     }
   }
 
-  public void deleteAlignedPrefix(String path) {
-    alignedPrefix.remove(path);
+  public void deleteAlignedPrefix(String path) throws IllegalPathException {
     if (path.equals("")) {
       isDirectAligned = false;
+    }
+    IMNode targetNode = getPathNodeInTemplate(path);
+    if (targetNode.isEntity()) {
+      targetNode.getAsEntityMNode().setAligned(false);
     }
   }
   // endregion
