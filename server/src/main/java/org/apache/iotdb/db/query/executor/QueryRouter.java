@@ -32,6 +32,8 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillEngineDataSet;
+import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
@@ -243,6 +245,12 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
+  protected GroupByFillWithValueFilterDataSet getGroupByFillWithValueFilterDataSet(
+      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException, StorageEngineException {
+    return new GroupByFillWithValueFilterDataSet(context, groupByTimeFillPlan);
+  }
+
   protected GroupByFillWithoutValueFilterDataSet getGroupByFillWithoutValueFilterDataSet(
       QueryContext context, GroupByTimeFillPlan groupByFillPlan)
       throws QueryProcessException, StorageEngineException {
@@ -264,20 +272,17 @@ public class QueryRouter implements IQueryRouter {
   public QueryDataSet groupByFill(GroupByTimeFillPlan groupByFillPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException {
 
-    GroupByFillWithoutValueFilterDataSet dataSet;
+    GroupByFillEngineDataSet dataSet;
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
     if (optimizedExpression.getType() == ExpressionType.GLOBAL_TIME) {
       dataSet = getGroupByFillWithoutValueFilterDataSet(context, groupByFillPlan);
-      dataSet.init(context, groupByFillPlan);
+      ((GroupByFillWithoutValueFilterDataSet) dataSet).init(context, groupByFillPlan);
     } else {
-      // dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
-      // dataSet.init(context, groupByFillPlan);
-      throw new QueryProcessException("Group by fill doesn't support valueFilter yet.");
+      dataSet = getGroupByFillWithValueFilterDataSet(context, groupByFillPlan);
+      ((GroupByFillWithValueFilterDataSet) dataSet).init(context, groupByFillPlan);
     }
-
-    // TODO: support group by level in group by fill
 
     return dataSet;
   }

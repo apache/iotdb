@@ -241,11 +241,8 @@ public class InsertRowPlan extends InsertPlan {
           }
           continue;
         }
-        if (isAligned) {
-          dataTypes[i] = measurementMNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i);
-        } else {
-          dataTypes[i] = measurementMNodes[i].getSchema().getType();
-        }
+
+        dataTypes[i] = measurementMNodes[i].getSchema().getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {

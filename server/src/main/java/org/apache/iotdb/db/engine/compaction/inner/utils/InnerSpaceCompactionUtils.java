@@ -250,16 +250,12 @@ public class InnerSpaceCompactionUtils {
    * @param targetResource the target resource to be merged to
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
-   * @param sizeTieredCompactionLogger the logger
-   * @param devices the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void compact(
       TsFileResource targetResource,
       List<TsFileResource> tsFileResources,
       String storageGroup,
-      SizeTieredCompactionLogger sizeTieredCompactionLogger,
-      Set<String> devices,
       boolean sequence)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
@@ -272,9 +268,6 @@ public class InnerSpaceCompactionUtils {
       Set<String> tsFileDevicesMap =
           getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap, storageGroup);
       for (String device : tsFileDevicesMap) {
-        if (devices.contains(device)) {
-          continue;
-        }
         writer.startChunkGroup(device);
         // tsfile -> measurement -> List<ChunkMetadata>
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =

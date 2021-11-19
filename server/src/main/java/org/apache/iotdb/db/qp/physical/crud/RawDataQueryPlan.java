@@ -66,7 +66,6 @@ public class RawDataQueryPlan extends QueryPlan {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForReaderSet = new HashSet<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -74,10 +73,10 @@ public class RawDataQueryPlan extends QueryPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
+      // TODO this method must have some big problem
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (this instanceof AggregationPlan) {
           ((AggregationPlan) this)
               .addDeduplicatedAggregations(getAggregations().get(originalIndex));
@@ -92,8 +91,7 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
-    // vector into one VectorPartialPath
+    // group all the aligned sensors of one device into one AlignedPath
     groupVectorPaths(physicalGenerator);
   }
 

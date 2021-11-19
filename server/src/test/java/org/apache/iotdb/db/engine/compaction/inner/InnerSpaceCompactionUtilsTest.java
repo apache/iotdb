@@ -43,9 +43,8 @@ import org.junit.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
-import java.util.HashSet;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -104,16 +103,10 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
         new SizeTieredCompactionLogger(
             targetTsFileResource.getTsFilePath().concat(".compaction.log"));
     for (TsFileResource resource : seqResources) {
-      sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+      sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
     }
     sizeTieredCompactionLogger.logSequence(true);
-    InnerSpaceCompactionUtils.compact(
-        targetTsFileResource,
-        seqResources,
-        COMPACTION_TEST_SG,
-        sizeTieredCompactionLogger,
-        new HashSet<>(),
-        true);
+    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =
