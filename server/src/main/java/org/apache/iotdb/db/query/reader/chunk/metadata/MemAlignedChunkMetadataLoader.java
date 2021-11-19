@@ -22,7 +22,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.reader.chunk.DiskChunkLoader;
+import org.apache.iotdb.db.query.reader.chunk.DiskAlignedChunkLoader;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -57,7 +57,7 @@ public class MemAlignedChunkMetadataLoader implements IChunkMetadataLoader {
           if (chunkMetadata.needSetChunkLoader()) {
             chunkMetadata.setFilePath(resource.getTsFilePath());
             chunkMetadata.setClosed(resource.isClosed());
-            chunkMetadata.setChunkLoader(new DiskChunkLoader(context.isDebug()));
+            chunkMetadata.setChunkLoader(new DiskAlignedChunkLoader(context.isDebug()));
           }
         });
 
