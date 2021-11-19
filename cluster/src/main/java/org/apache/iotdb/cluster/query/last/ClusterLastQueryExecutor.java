@@ -189,7 +189,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember =
-          metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {

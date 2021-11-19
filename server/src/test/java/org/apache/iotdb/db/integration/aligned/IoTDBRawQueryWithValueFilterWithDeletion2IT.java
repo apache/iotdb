@@ -20,13 +20,18 @@ package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-/** Let One chunk has more than one page. */
-public class IoTDBRawQueryWithoutValueFilter2IT extends IoTDBRawQueryWithoutValueFilterIT {
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+
+public class IoTDBRawQueryWithValueFilterWithDeletion2IT
+    extends IoTDBRawQueryWithValueFilterWithDeletionIT {
 
   private static int numOfPointsPerPage;
 
@@ -34,7 +39,7 @@ public class IoTDBRawQueryWithoutValueFilter2IT extends IoTDBRawQueryWithoutValu
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    // TODO When the aligned time series support compaction, we need to set compaction to true
+
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
@@ -47,6 +52,19 @@ public class IoTDBRawQueryWithoutValueFilter2IT extends IoTDBRawQueryWithoutValu
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
     AlignedWriteUtil.insertData();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
+      // disk before doing deletion
+      statement.execute("flush");
+      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s1 where time <= 21");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @AfterClass

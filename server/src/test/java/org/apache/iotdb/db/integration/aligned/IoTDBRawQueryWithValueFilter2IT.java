@@ -25,8 +25,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-/** Let One chunk has more than one page. */
-public class IoTDBRawQueryWithoutValueFilter2IT extends IoTDBRawQueryWithoutValueFilterIT {
+public class IoTDBRawQueryWithValueFilter2IT extends IoTDBRawQueryWithValueFilterIT {
 
   private static int numOfPointsPerPage;
 

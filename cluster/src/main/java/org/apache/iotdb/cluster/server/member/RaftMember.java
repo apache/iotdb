@@ -2075,7 +2075,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   public int getRaftGroupId() {
-    return allNodes.getId();
+    return allNodes.getRaftId();
   }
 
   enum AppendLogResult {
