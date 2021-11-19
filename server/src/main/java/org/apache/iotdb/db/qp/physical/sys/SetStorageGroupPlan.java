@@ -64,7 +64,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);

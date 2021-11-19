@@ -124,10 +124,6 @@ public abstract class QueryPlan extends PhysicalPlan {
     return false;
   }
 
-  public void setPathToIndex(Map<String, Integer> pathToIndex) {
-    this.pathToIndex = pathToIndex;
-  }
-
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
   }

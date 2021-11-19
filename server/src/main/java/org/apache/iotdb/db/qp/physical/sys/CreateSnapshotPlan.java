@@ -47,7 +47,7 @@ public class CreateSnapshotPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_SNAPSHOT.ordinal());
   }
 

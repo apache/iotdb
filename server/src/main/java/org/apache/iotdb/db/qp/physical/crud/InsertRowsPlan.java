@@ -168,7 +168,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ROWS.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertRowPlanList.size());

@@ -42,8 +42,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -157,10 +158,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
@@ -200,10 +201,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(seqFileResource);
@@ -220,6 +221,14 @@ public class SeriesReader {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  }
+
+  protected PriorityMergeReader getPriorityMergeReader() {
+    return new PriorityMergeReader();
+  }
+
+  protected DescPriorityMergeReader getDescPriorityMergeReader() {
+    return new DescPriorityMergeReader();
   }
 
   public boolean isEmpty() throws IOException {
@@ -644,8 +653,8 @@ public class SeriesReader {
     if (firstPageReader == null) {
       return null;
     }
-    if (!(firstPageReader.isVectorPageReader())) {
-      throw new IOException("Can only get statistics by index from VectorPageReader");
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics by index from AlignedPageReader");
     }
     return firstPageReader.getStatistics(index);
   }
@@ -811,10 +820,19 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
-          Object valueForFilter =
-              timeValuePair.getValue().getDataType() == TSDataType.VECTOR
-                  ? timeValuePair.getValue().getVector()[0].getValue()
-                  : timeValuePair.getValue().getValue();
+          Object valueForFilter = timeValuePair.getValue().getValue();
+
+          // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
+          // only accept AlignedPath with only one sub sensor
+          if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+            for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+              if (tsPrimitiveType != null) {
+                valueForFilter = tsPrimitiveType.getValue();
+                break;
+              }
+            }
+          }
+
           if (valueFilter == null
               || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
             cachedBatchData.putAnObject(
@@ -1069,8 +1087,8 @@ public class SeriesReader {
       this.isSeq = isSeq;
     }
 
-    public boolean isVectorPageReader() {
-      return data instanceof AlignedPageReader;
+    public boolean isAlignedPageReader() {
+      return data instanceof IAlignedPageReader;
     }
 
     Statistics getStatistics() {
@@ -1078,10 +1096,10 @@ public class SeriesReader {
     }
 
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof AlignedPageReader)) {
-        throw new IOException("Can only get statistics by index from VectorPageReader");
+      if (!(data instanceof IAlignedPageReader)) {
+        throw new IOException("Can only get statistics by index from AlignedPageReader");
       }
-      return ((AlignedPageReader) data).getStatistics(index);
+      return ((IAlignedPageReader) data).getStatistics(index);
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

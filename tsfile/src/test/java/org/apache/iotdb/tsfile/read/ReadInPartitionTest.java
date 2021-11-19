@@ -57,7 +57,7 @@ import java.util.List;
 public class ReadInPartitionTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
-  private static ReadOnlyTsFile roTsFile = null;
+  private static TsFileReader roTsFile = null;
   private ArrayList<TimeRange> d1s6timeRangeList = new ArrayList<>();
   private ArrayList<TimeRange> d2s1timeRangeList = new ArrayList<>();
   private ArrayList<long[]> d1chunkGroupMetaDataOffsetList = new ArrayList<>();
@@ -66,7 +66,7 @@ public class ReadInPartitionTest {
   public void before() throws IOException {
     TsFileGeneratorForTest.generateFile(10000, 1024, 100);
     TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH);
-    roTsFile = new ReadOnlyTsFile(reader);
+    roTsFile = new TsFileReader(reader);
 
     // Because the size of the generated chunkGroupMetaData may differ under
     // different test environments,

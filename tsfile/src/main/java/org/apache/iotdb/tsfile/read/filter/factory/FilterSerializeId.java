@@ -23,6 +23,7 @@ public enum FilterSerializeId {
   AND,
   EQ,
   GROUP_BY,
+  GROUP_BY_MONTH,
   GT,
   GTEQ,
   LT,

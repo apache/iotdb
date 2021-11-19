@@ -156,7 +156,8 @@ public class ClusterAggregator {
     } else {
       // perform the aggregations locally
       DataGroupMember dataMember =
-          metaGroupMember.getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId());
+          metaGroupMember.getLocalDataMember(
+              partitionGroup.getHeader(), partitionGroup.getRaftId());
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger.debug(

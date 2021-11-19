@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
@@ -63,8 +64,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -138,7 +141,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     int ret;
     try {
-      ret = getDeviceCount(sgPathMap);
+      ret = getDeviceCount(sgPathMap, path);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -146,24 +149,40 @@ public class ClusterPlanExecutor extends PlanExecutor {
     return ret;
   }
 
-  private int getDeviceCount(Map<String, String> sgPathMap)
+  private int getDeviceCount(Map<String, String> sgPathMap, PartialPath queryPath)
       throws CheckConsistencyException, MetadataException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
-      String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
+    for (String storageGroupName : sgPathMap.keySet()) {
+      PartialPath pathUnderSG = new PartialPath(storageGroupName);
       // find the data group that should hold the device schemas of the storage group
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().route(storageGroupName, 0);
+      PartialPath targetPath;
+      // If storage group node length is larger than the one of queryPath, we query the device count
+      // of the storage group directly
+      if (pathUnderSG.getNodeLength() >= queryPath.getNodeLength()) {
+        targetPath = pathUnderSG;
+      } else {
+        // Or we replace the prefix of queryPath with the storage group as the target queryPath
+        String[] targetNodes = new String[queryPath.getNodeLength()];
+        for (int i = 0; i < queryPath.getNodeLength(); i++) {
+          if (i < pathUnderSG.getNodeLength()) {
+            targetNodes[i] = pathUnderSG.getNodes()[i];
+          } else {
+            targetNodes[i] = queryPath.getNodes()[i];
+          }
+        }
+        targetPath = new PartialPath(targetNodes);
+      }
       if (partitionGroup.contains(metaGroupMember.getThisNode())) {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
-        int localResult = getLocalDeviceCount(pathUnderSG);
+        int localResult = getLocalDeviceCount(targetPath);
         logger.debug(
             "{}: get device count of {} locally, result {}",
             metaGroupMember.getName(),
@@ -174,7 +193,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // batch the queries of the same group to reduce communication
         groupPathMap
             .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
+            .add(targetPath.getFullPath());
       }
     }
     if (groupPathMap.isEmpty()) {
@@ -284,14 +303,55 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throw new MetadataException(e);
     }
 
-    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+    // Here we append a ** to the path to query the storage groups which have the prefix as 'path',
+    // if path doesn't end with **.
+    // e.g. we have SG root.sg.a and root.sg.b, the query path is root.sg, we should return the map
+    // with key root.sg.a and root.sg.b instead of an empty one.
+    PartialPath wildcardPath = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
     }
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret;
+    int ret = 0;
     try {
-      ret = getPathCount(sgPathMap, level);
+      // level >= 0 is the COUNT NODE query
+      if (level >= 0) {
+        int prefixPartIdx = 0;
+        for (; prefixPartIdx < path.getNodeLength(); prefixPartIdx++) {
+          String currentPart = path.getNodes()[prefixPartIdx];
+          if (currentPart.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+            break;
+          } else if (currentPart.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
+            // Only level equals the first * occurred level, e.g. root.sg.d1.* and level = 4, the
+            // query makes sense.
+            if (level != prefixPartIdx) {
+              return 0;
+            }
+            break;
+          }
+        }
+        // if level is less than the query path level, there's no suitable node
+        if (level < prefixPartIdx - 1) {
+          return 0;
+        }
+        Set<String> deletedSg = new HashSet<>();
+        Set<PartialPath> matchedPath = new HashSet<>(0);
+        for (String sg : sgPathMap.keySet()) {
+          PartialPath p = new PartialPath(sg);
+          // if the storage group path level is larger than the query level, then the prefix must be
+          // a suitable node and there's no need to query children nodes later
+          if (p.getNodeLength() - 1 >= level) {
+            deletedSg.add(sg);
+            matchedPath.add(new PartialPath(Arrays.copyOfRange(p.getNodes(), 0, level + 1)));
+          }
+        }
+        for (String sg : deletedSg) {
+          sgPathMap.remove(sg);
+        }
+        ret += matchedPath.size();
+      }
+      ret += getPathCount(sgPathMap, level);
     } catch (CheckConsistencyException e) {
       throw new MetadataException(e);
     }
@@ -322,7 +382,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
         // this node is a member of the group, perform a local query after synchronizing with the
         // leader
         metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getId())
+            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
             .syncLeaderWithConsistencyCheck(false);
         int localResult = getLocalPathCount(pathUnderSG, level);
         logger.debug(
@@ -587,7 +647,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
       throws CheckConsistencyException {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
       return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
