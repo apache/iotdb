@@ -229,9 +229,8 @@ public class BasicServiceProvider {
     }
   }
 
-  public QueryDataSet constructQueryDataSet(
-          PhysicalPlan physicalPlan)
-          throws TException, StorageEngineException, QueryFilterOptimizationException,
+  public QueryDataSet constructQueryDataSet(PhysicalPlan physicalPlan)
+      throws TException, StorageEngineException, QueryFilterOptimizationException,
           MetadataException, IOException, InterruptedException, SQLException,
           QueryProcessException {
     long queryId = QueryResourceManager.getInstance().assignQueryId(true);
@@ -272,7 +271,6 @@ public class BasicServiceProvider {
   protected void releaseQueryResource(long queryId) throws StorageEngineException {
     sessionManager.releaseQueryResource(queryId);
   }
-
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);

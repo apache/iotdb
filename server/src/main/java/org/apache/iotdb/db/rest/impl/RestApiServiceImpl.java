@@ -17,18 +17,11 @@
 
 package org.apache.iotdb.db.rest.impl;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.rest.RestApiService;
 import org.apache.iotdb.db.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.rest.handler.ExceptionHandler;
@@ -48,7 +41,7 @@ public class RestApiServiceImpl extends RestApiService {
 
   protected final Planner planner = new Planner();
 
-  public BasicServiceProvider basicServiceProvider =new BasicServiceProvider();
+  public BasicServiceProvider basicServiceProvider = new BasicServiceProvider();
 
   public RestApiServiceImpl() throws QueryProcessException {}
 
@@ -97,8 +90,7 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
       return QueryDataSetHandler.fillDateSet(
-              basicServiceProvider.constructQueryDataSet(physicalPlan),
-          (QueryPlan) physicalPlan);
+          basicServiceProvider.constructQueryDataSet(physicalPlan), (QueryPlan) physicalPlan);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
@@ -132,5 +124,4 @@ public class RestApiServiceImpl extends RestApiService {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
   }
-
 }
