@@ -24,6 +24,10 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.universal.AlignedDescPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.AlignedPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
@@ -79,6 +83,16 @@ public class AlignedSeriesReader extends SeriesReader {
         timeFilter,
         valueFilter,
         ascending);
+  }
+
+  @Override
+  protected PriorityMergeReader getPriorityMergeReader() {
+    return new AlignedPriorityMergeReader();
+  }
+
+  @Override
+  protected DescPriorityMergeReader getDescPriorityMergeReader() {
+    return new AlignedDescPriorityMergeReader();
   }
 
   @Override
