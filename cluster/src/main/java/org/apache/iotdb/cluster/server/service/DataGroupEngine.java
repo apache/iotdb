@@ -220,11 +220,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   private DataGroupMember createNewMember(RaftNode header)
       throws NotInSameGroupException, CheckConsistencyException {
     PartitionGroup partitionGroup;
-    partitionGroup = partitionTable.getHeaderGroup(header);
+    partitionGroup = partitionTable.getPartitionGroup(header);
     if (partitionGroup == null || !partitionGroup.contains(thisNode)) {
       // if the partition table is old, this node may have not been moved to the new group
       metaGroupMember.syncLeaderWithConsistencyCheck(true);
-      partitionGroup = partitionTable.getHeaderGroup(header);
+      partitionGroup = partitionTable.getPartitionGroup(header);
     }
     DataGroupMember member;
     synchronized (headerGroupMap) {
