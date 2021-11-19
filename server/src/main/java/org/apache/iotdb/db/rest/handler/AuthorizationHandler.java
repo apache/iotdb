@@ -27,15 +27,17 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
-public class AuthorizationHandler extends BasicServiceProvider {
-  private AuthorizationHandler() throws QueryProcessException {
-    super();
+public class AuthorizationHandler {
+  private final BasicServiceProvider basicServiceProvider;
+
+  public AuthorizationHandler(BasicServiceProvider basicServiceProvider)
+      throws QueryProcessException {
+    this.basicServiceProvider = basicServiceProvider;
   }
 
-  public static Response checkAuthority(
-      SecurityContext securityContext, PhysicalPlan physicalPlan) {
+  public Response checkAuthority(SecurityContext securityContext, PhysicalPlan physicalPlan) {
     try {
-      if (!checkAuthorization(
+      if (!this.basicServiceProvider.checkAuthorization(
           physicalPlan.getAuthPaths(),
           physicalPlan,
           securityContext.getUserPrincipal().getName())) {

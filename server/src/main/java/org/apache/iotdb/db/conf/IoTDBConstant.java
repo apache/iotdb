@@ -159,6 +159,8 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;

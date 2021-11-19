@@ -39,7 +39,6 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
@@ -103,7 +102,7 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected static boolean checkAuthorization(
+  public boolean checkAuthorization(
       List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
@@ -229,22 +228,13 @@ public class BasicServiceProvider {
     }
   }
 
-  public QueryDataSet constructQueryDataSet(PhysicalPlan physicalPlan)
-      throws TException, StorageEngineException, QueryFilterOptimizationException,
-          MetadataException, IOException, InterruptedException, SQLException,
-          QueryProcessException {
-    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
-    QueryContext context = new QueryContext(queryId);
-    return executor.processQuery(physicalPlan, context);
-  }
-
-  protected QueryContext genQueryContext(
+  public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  protected QueryDataSet createQueryDataSet(
+  public QueryDataSet createQueryDataSet(
       QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
@@ -268,7 +258,7 @@ public class BasicServiceProvider {
   }
 
   /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  public void releaseQueryResource(long queryId) throws StorageEngineException {
     sessionManager.releaseQueryResource(queryId);
   }
 

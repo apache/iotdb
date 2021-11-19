@@ -111,7 +111,7 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(
+  public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     RemoteQueryContext context =
         new RemoteQueryContext(queryId, debug, startTime, statement, timeout);
@@ -121,7 +121,7 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
 
   /** Release the local and remote resources used by a query. */
   @Override
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  public void releaseQueryResource(long queryId) throws StorageEngineException {
     // release resources locally
     super.releaseQueryResource(queryId);
     // release resources remotely
