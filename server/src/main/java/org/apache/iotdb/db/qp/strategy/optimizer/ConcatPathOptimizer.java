@@ -22,7 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -163,14 +164,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     FunctionOperator functionOperator = (FunctionOperator) operator;
     PartialPath filterPath = functionOperator.getSinglePath();
-    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath)
-        || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    List<PartialPath> concatPaths = new ArrayList<>();
+    if (SQLConstant.isReservedPath(filterPath)) {
+      // do nothing in the case of "where time > 5"
       filterPaths.add(filterPath);
       return operator;
+    } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+      // do nothing in the case of "where root.d1.s1 > 5"
+      concatPaths.add(filterPath);
+    } else {
+      fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
-    List<PartialPath> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
+
     List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
@@ -237,8 +242,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
       for (PartialPath originalPath : originalPaths) {
-        List<PartialPath> all =
-            IoTDB.metaManager.getFlatMeasurementPathsWithAlias(originalPath, 0, 0).left;
+        List<MeasurementPath> all =
+            IoTDB.metaManager.getMeasurementPathsWithAlias(originalPath, 0, 0).left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
               String.format("Unknown time series %s in `where clause`", originalPath));

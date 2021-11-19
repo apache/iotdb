@@ -667,7 +667,7 @@ var config = {
 						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
-							['Data-Concept/Measurement-Template','Measurement Template'],
+							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
@@ -1465,7 +1465,7 @@ var config = {
 						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
-							['Data-Concept/Measurement-Template','物理量模板'],
+							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
@@ -1504,6 +1504,7 @@ var config = {
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
+							['Communication-Service-Protocol/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
 							['API/Time-zone','时区'],
 							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)']
@@ -1524,6 +1525,7 @@ var config = {
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
 							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+							['Communication-Service-Protocol/RestService','REST'],
 						]
 					},
 					{

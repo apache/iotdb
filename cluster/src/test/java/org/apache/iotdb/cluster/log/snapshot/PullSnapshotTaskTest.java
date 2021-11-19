@@ -42,7 +42,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
@@ -92,11 +92,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     hintRegistered = false;
     sourceMember =
         new TestDataGroupMember() {
-          @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-            return getAsyncClient(node);
-          }
-
           @Override
           public AsyncClient getAsyncClient(Node node) {
             try {

@@ -23,8 +23,8 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
@@ -52,7 +51,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.security.SecureRandom;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -378,13 +383,11 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
 
-    Tablet tablet = new Tablet("root.sg1.d1.vector", schemaList);
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
@@ -392,20 +395,14 @@ public class IoTDBSessionSimpleIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(0),
-          rowIndex,
-          new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1),
-          rowIndex,
-          new SecureRandom().nextInt());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, new Binary("test"));
+          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary("test"));
       timestamp++;
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
 
@@ -988,7 +985,7 @@ public class IoTDBSessionSimpleIT {
           measurements,
           tsDataTypes,
           tsEncodings,
-          CompressionType.SNAPPY,
+          compressionTypes,
           Arrays.asList("alias1", "alias2", "alias3"));
       fail("Exception expected");
     } catch (StatementExecutionException e) {

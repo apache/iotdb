@@ -18,11 +18,9 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.tracing.TracingManager;
@@ -33,10 +31,10 @@ import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader.MergeReade
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -45,7 +43,8 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.VectorPageReader;
+import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -60,7 +59,6 @@ import java.util.stream.Collectors;
 
 public class SeriesReader {
 
-  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   // inner class of SeriesReader for order purpose
   protected TimeOrderUtils orderUtils;
 
@@ -153,7 +151,6 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
-    this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     QueryUtils.filterQueryDataSource(dataSource, fileFilter);
@@ -161,10 +158,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
@@ -185,7 +182,7 @@ public class SeriesReader {
 
   @TestOnly
   @SuppressWarnings("squid:S107")
-  SeriesReader(
+  public SeriesReader(
       PartialPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
@@ -204,10 +201,10 @@ public class SeriesReader {
     this.valueFilter = valueFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
-      mergeReader = new PriorityMergeReader();
+      mergeReader = getPriorityMergeReader();
     } else {
       this.orderUtils = new DescTimeOrderUtils();
-      mergeReader = new DescPriorityMergeReader();
+      mergeReader = getDescPriorityMergeReader();
     }
 
     this.seqFileResource = new LinkedList<>(seqFileResource);
@@ -224,6 +221,14 @@ public class SeriesReader {
         new PriorityQueue<>(
             orderUtils.comparingLong(
                 versionPageReader -> orderUtils.getOrderTime(versionPageReader.getStatistics())));
+  }
+
+  protected PriorityMergeReader getPriorityMergeReader() {
+    return new PriorityMergeReader();
+  }
+
+  protected DescPriorityMergeReader getDescPriorityMergeReader() {
+    return new DescPriorityMergeReader();
   }
 
   public boolean isEmpty() throws IOException {
@@ -279,10 +284,10 @@ public class SeriesReader {
   }
 
   Statistics currentFileStatistics(int index) throws IOException {
-    if (!(firstTimeSeriesMetadata instanceof VectorTimeSeriesMetadata)) {
+    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
       throw new IOException("Can only get statistics by index from vectorTimeSeriesMetaData");
     }
-    return ((VectorTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
   }
 
   boolean currentFileModified() throws IOException {
@@ -412,10 +417,10 @@ public class SeriesReader {
   }
 
   Statistics currentChunkStatistics(int index) throws IOException {
-    if (!(firstChunkMetadata instanceof VectorChunkMetadata)) {
+    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
       throw new IOException("Can only get statistics by index from vectorChunkMetaData");
     }
-    return ((VectorChunkMetadata) firstChunkMetadata).getStatistics(index);
+    return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
   }
 
   boolean currentChunkModified() throws IOException {
@@ -815,10 +820,19 @@ public class SeriesReader {
            */
           timeValuePair = mergeReader.nextTimeValuePair();
 
-          Object valueForFilter =
-              timeValuePair.getValue().getDataType() == TSDataType.VECTOR
-                  ? timeValuePair.getValue().getVector()[0].getValue()
-                  : timeValuePair.getValue().getValue();
+          Object valueForFilter = timeValuePair.getValue().getValue();
+
+          // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will
+          // only accept AlignedPath with only one sub sensor
+          if (timeValuePair.getValue().getDataType() == TSDataType.VECTOR) {
+            for (TsPrimitiveType tsPrimitiveType : timeValuePair.getValue().getVector()) {
+              if (tsPrimitiveType != null) {
+                valueForFilter = tsPrimitiveType.getValue();
+                break;
+              }
+            }
+          }
+
           if (valueFilter == null
               || valueFilter.satisfy(timeValuePair.getTimestamp(), valueForFilter)) {
             cachedBatchData.putAnObject(
@@ -1014,7 +1028,7 @@ public class SeriesReader {
 
   protected void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        FileLoaderUtils.loadTimeSeriesMetadata(
+        loadTimeSeriesMetadata(
             orderUtils.getNextSeqFileResource(seqFileResource, true),
             seriesPath,
             context,
@@ -1028,13 +1042,24 @@ public class SeriesReader {
 
   protected void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
-        FileLoaderUtils.loadTimeSeriesMetadata(
+        loadTimeSeriesMetadata(
             unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
       unSeqTimeSeriesMetadata.add(timeseriesMetadata);
     }
+  }
+
+  protected ITimeSeriesMetadata loadTimeSeriesMetadata(
+      TsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter filter,
+      Set<String> allSensors)
+      throws IOException {
+    return FileLoaderUtils.loadTimeSeriesMetadata(
+        resource, seriesPath, context, filter, allSensors);
   }
 
   protected Filter getAnyFilter() {
@@ -1063,7 +1088,7 @@ public class SeriesReader {
     }
 
     public boolean isVectorPageReader() {
-      return data instanceof VectorPageReader;
+      return data instanceof AlignedPageReader;
     }
 
     Statistics getStatistics() {
@@ -1071,10 +1096,10 @@ public class SeriesReader {
     }
 
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof VectorPageReader)) {
+      if (!(data instanceof AlignedPageReader)) {
         throw new IOException("Can only get statistics by index from VectorPageReader");
       }
-      return ((VectorPageReader) data).getStatistics(index);
+      return ((AlignedPageReader) data).getStatistics(index);
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

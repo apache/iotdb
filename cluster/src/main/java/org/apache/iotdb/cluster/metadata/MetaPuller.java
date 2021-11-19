@@ -19,9 +19,11 @@
 
 package org.apache.iotdb.cluster.metadata;
 
+import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.client.sync.SyncClientAdaptor;
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -30,11 +32,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
@@ -225,35 +226,37 @@ public class MetaPuller {
   }
 
   private List<IMeasurementSchema> pullMeasurementSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws IOException, TException, InterruptedException {
     List<IMeasurementSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullMeasurementSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        try {
-          // only need measurement name
-          PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
-          ByteBuffer buffer = pullSchemaResp.schemaBytes;
-          int size = buffer.getInt();
-          schemas = new ArrayList<>(size);
-          for (int i = 0; i < size; i++) {
-            schemas.add(
-                buffer.get() == 0
-                    ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
-                    : VectorMeasurementSchema.partialDeserializeFrom(buffer));
-          }
-        } catch (TException e) {
-          // the connection may be broken, close it to avoid it being reused
-          syncDataClient.getInputProtocol().getTransport().close();
-          throw e;
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
+        // only need measurement name
+        PullSchemaResp pullSchemaResp = syncDataClient.pullMeasurementSchema(request);
+        ByteBuffer buffer = pullSchemaResp.schemaBytes;
+        int size = buffer.getInt();
+        schemas = new ArrayList<>(size);
+        for (int i = 0; i < size; i++) {
+          schemas.add(
+              buffer.get() == 0
+                  ? UnaryMeasurementSchema.partialDeserializeFrom(buffer)
+                  : VectorMeasurementSchema.partialDeserializeFrom(buffer));
+        }
+      } catch (TException e) {
+        // the connection may be broken, close it to avoid it being reused
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }
@@ -415,26 +418,32 @@ public class MetaPuller {
    * null if there was a timeout.
    */
   private List<TimeseriesSchema> pullTimeSeriesSchemas(Node node, PullSchemaRequest request)
-      throws TException, InterruptedException, IOException {
+      throws IOException, TException, InterruptedException {
     List<TimeseriesSchema> schemas;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
-          metaGroupMember
-              .getClientProvider()
-              .getAsyncDataClient(node, RaftServer.getReadOperationTimeoutMS());
+          ClusterIoTDB.getInstance()
+              .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       schemas = SyncClientAdaptor.pullTimeseriesSchema(client, request);
     } else {
-      try (SyncDataClient syncDataClient =
-          metaGroupMember
-              .getClientProvider()
-              .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-
+      SyncDataClient syncDataClient = null;
+      try {
+        syncDataClient =
+            ClusterIoTDB.getInstance()
+                .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         PullSchemaResp pullSchemaResp = syncDataClient.pullTimeSeriesSchema(request);
         ByteBuffer buffer = pullSchemaResp.schemaBytes;
         int size = buffer.getInt();
         schemas = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
+        }
+      } catch (TException e) {
+        syncDataClient.close();
+        throw e;
+      } finally {
+        if (syncDataClient != null) {
+          syncDataClient.returnSelf();
         }
       }
     }

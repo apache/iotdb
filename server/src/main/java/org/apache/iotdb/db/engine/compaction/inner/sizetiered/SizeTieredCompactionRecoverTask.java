@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -37,6 +38,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   protected File compactionLogFile;
   protected String dataDir;
+  protected String logicalStorageGroupName;
+  protected String virtualStorageGroup;
 
   public SizeTieredCompactionRecoverTask(
       String logicalStorageGroupName,
@@ -57,6 +60,8 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         currentTaskNum);
     this.compactionLogFile = compactionLogFile;
     this.dataDir = dataDir;
+    this.logicalStorageGroupName = logicalStorageGroupName;
+    this.virtualStorageGroup = virtualStorageGroup;
   }
 
   /**
@@ -71,86 +76,80 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
    *   <li><b>No compaction log file exists</b>: do nothing
    * </ol>
    */
+  @Override
   public void doCompaction() {
     // read log -> Set<Device> -> doCompaction -> clear
     try {
       LOGGER.info(
           "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
       if (compactionLogFile.exists()) {
-        LOGGER.info("{} [Compaction][Recover] log exists, start recover", fullStorageGroupName);
+        LOGGER.info(
+            "{}-{} [Compaction][Recover] compaction log file {} exists, start to recover it",
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            compactionLogFile);
         SizeTieredCompactionLogAnalyzer logAnalyzer =
             new SizeTieredCompactionLogAnalyzer(compactionLogFile);
         logAnalyzer.analyze();
-        List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        String targetFileName = logAnalyzer.getTargetFile();
-        if (targetFileName == null || sourceFileList.isEmpty()) {
-          return;
-        }
-        File targetFile = new File(targetFileName);
-        File resourceFile = new File(targetFileName + ".resource");
-        LOGGER.info("{} [Compaction][Recover] target file is {}", fullStorageGroupName, targetFile);
-        if (!targetFile.exists()) {
-          if (resourceFile.exists()) {
-            if (!resourceFile.delete()) {
-              LOGGER.warn(
-                  "{} [Compaction][Recover] Fail to delete tsfile resource {}",
-                  fullStorageGroupName,
-                  resourceFile);
-            } else {
-              LOGGER.info(
-                  "{} [Compaction][Recover] Deleted target file resource {}",
-                  fullStorageGroupName,
-                  resourceFile);
-            }
-          }
+        List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
+        TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfo();
+        if (targetFileIdentifier == null || sourceFileIdentifiers.isEmpty()) {
           LOGGER.info(
-              "{} [Compaction][Recover] Target file {} not exists, return",
-              fullStorageGroupName,
-              targetFile);
+              "{}-{} [Compaction][Recover] incomplete log file, abort recover",
+              logicalStorageGroupName,
+              virtualStorageGroup);
           return;
         }
+        File targetFile = targetFileIdentifier.getFileFromDataDirs();
+        if (targetFile == null) {
+          // cannot find target file from data dirs
+          LOGGER.info(
+              "{}-{} [Compaction][Recover] cannot find target file {} from data dirs, abort recover",
+              logicalStorageGroupName,
+              virtualStorageGroup,
+              targetFileIdentifier);
+          return;
+        }
+        File resourceFile = new File(targetFile.getPath() + ".resource");
 
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
         if (writer.hasCrashed()) {
           LOGGER.info(
-              "{} [Compaction][Recover] target file {} crash, start to delete it",
-              fullStorageGroupName,
+              "{}-{} [Compaction][Recover] target file {} crash, start to delete it",
+              logicalStorageGroupName,
+              virtualStorageGroup,
               targetFile);
           // the target tsfile is crashed, it is not completed
           writer.close();
           if (!targetFile.delete()) {
-            LOGGER.warn(
-                "{} [Compaction][Recover] Fail to delete uncompleted file {}",
-                fullStorageGroupName,
+            LOGGER.error(
+                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+                logicalStorageGroupName,
+                virtualStorageGroup,
                 targetFile);
-          } else {
-            LOGGER.info(
-                "{} [Compaction][Recover] remove target file {}", fullStorageGroupName, targetFile);
           }
-          if (resourceFile.exists()) {
-            if (!resourceFile.delete()) {
-              LOGGER.warn(
-                  "{} [Compaction][Recover] Fail to delete tsfile resource {}",
-                  fullStorageGroupName,
-                  resourceFile);
-            } else {
-              LOGGER.info(
-                  "{} [Compaction][Recover] delete target file resource {}",
-                  fullStorageGroupName,
-                  resourceFile);
-            }
+          if (resourceFile.exists() && !resourceFile.delete()) {
+            LOGGER.error(
+                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+                logicalStorageGroupName,
+                virtualStorageGroup,
+                resourceFile);
           }
         } else {
           // the target tsfile is completed
           LOGGER.info(
-              "{} [Compaction][Recover] target file {} is completed, remove source files",
-              fullStorageGroupName,
-              targetFile);
+              "{}-{} [Compaction][Recover] target file {} is completed, delete source files {}",
+              logicalStorageGroupName,
+              virtualStorageGroup,
+              targetFile,
+              sourceFileIdentifiers);
           TsFileResource targetResource = new TsFileResource(targetFile);
           List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (String sourceFileName : sourceFileList) {
-            File sourceFile = new File(sourceFileName);
-            sourceTsFileResources.add(new TsFileResource(sourceFile));
+          for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+            File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
+            if (sourceFile != null) {
+              sourceTsFileResources.add(new TsFileResource(sourceFile));
+            }
           }
 
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
@@ -164,13 +163,15 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
       if (compactionLogFile.exists()) {
         if (!compactionLogFile.delete()) {
           LOGGER.warn(
-              "{} [Compaction][Recover] fail to delete {}",
-              fullStorageGroupName,
+              "{}-{} [Compaction][Recover] fail to delete {}",
+              logicalStorageGroupName,
+              virtualStorageGroup,
               compactionLogFile);
         } else {
           LOGGER.info(
-              "{} [Compaction][Recover] delete compaction log {}",
-              fullStorageGroupName,
+              "{}-{} [Compaction][Recover] delete compaction log {}",
+              logicalStorageGroupName,
+              virtualStorageGroup,
               compactionLogFile);
         }
       }

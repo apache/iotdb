@@ -541,7 +541,9 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if (headerName.equals("Time") || headerName.equals("Device")) continue;
+      if (headerName.equals("Time") || headerName.equals("Device")) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       if (matcher.find()) {
@@ -652,9 +654,11 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) return TEXT;
-    else if (value.equals("true") || value.equals("false")) return BOOLEAN;
-    else if (!value.contains(".")) {
+    if (value.contains("\"")) {
+      return TEXT;
+    } else if (value.equals("true") || value.equals("false")) {
+      return BOOLEAN;
+    } else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -667,9 +671,11 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())
+      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length()) {
         return FLOAT;
-      else return DOUBLE;
+      } else {
+        return DOUBLE;
+      }
     }
   }
 

@@ -112,9 +112,9 @@ public class SessionConcurrentExample {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
     }
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s1");

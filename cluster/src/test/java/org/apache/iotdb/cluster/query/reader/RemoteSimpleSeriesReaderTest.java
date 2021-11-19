@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestMetaGroupMember;
 import org.apache.iotdb.cluster.common.TestUtils;
@@ -28,6 +30,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -39,7 +42,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -73,50 +75,66 @@ public class RemoteSimpleSeriesReaderTest {
     batchData = TestUtils.genBatchData(TSDataType.DOUBLE, 0, 100);
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new AsyncDataClient(null, null, node, null) {
+    // TODO fixme : restore normal provider
+    ClusterIoTDB.getInstance()
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public void fetchSingleSeries(
-                  RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
+                  @Override
+                  public void fetchSingleSeries(
+                      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
 
-                new Thread(
-                        () -> {
-                          if (batchUsed) {
-                            resultHandler.onComplete(ByteBuffer.allocate(0));
-                          } else {
-                            ByteArrayOutputStream byteArrayOutputStream =
-                                new ByteArrayOutputStream();
-                            DataOutputStream dataOutputStream =
-                                new DataOutputStream(byteArrayOutputStream);
-                            SerializeUtils.serializeBatchData(batchData, dataOutputStream);
-                            batchUsed = true;
-                            resultHandler.onComplete(
-                                ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-                          }
-                        })
-                    .start();
+                    new Thread(
+                            () -> {
+                              if (batchUsed) {
+                                resultHandler.onComplete(ByteBuffer.allocate(0));
+                              } else {
+                                ByteArrayOutputStream byteArrayOutputStream =
+                                    new ByteArrayOutputStream();
+                                DataOutputStream dataOutputStream =
+                                    new DataOutputStream(byteArrayOutputStream);
+                                SerializeUtils.serializeBatchData(batchData, dataOutputStream);
+                                batchUsed = true;
+                                resultHandler.onComplete(
+                                    ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                              }
+                            })
+                        .start();
+                  }
+
+                  @Override
+                  public void querySingleSeries(
+                      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+                };
               }
 
               @Override
-              public void querySingleSeries(
-                  SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                new Thread(() -> resultHandler.onComplete(1L)).start();
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
               }
-            };
-          }
-        });
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
+            });
   }
 
   @After
@@ -136,7 +154,7 @@ public class RemoteSimpleSeriesReaderTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
 
       reader = new RemoteSimpleSeriesReader(sourceInfo);
@@ -170,7 +188,7 @@ public class RemoteSimpleSeriesReaderTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       sourceInfo.hasNextDataClient(false, Long.MIN_VALUE);
       reader = new RemoteSimpleSeriesReader(sourceInfo);
 
