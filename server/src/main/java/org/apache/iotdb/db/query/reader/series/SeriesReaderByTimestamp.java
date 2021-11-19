@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
@@ -44,7 +45,7 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       QueryDataSource dataSource,
       TsFileFilter fileFilter,
       boolean ascending) {
-    Filter timeFilter = SeriesReader.defaultTimeFilter(ascending);
+    Filter timeFilter = TimeFilter.defaultTimeFilter(ascending);
     this.seriesReader =
         seriesPath.createSeriesReader(
             allSensors, dataType, context, dataSource, timeFilter, null, fileFilter, ascending);
