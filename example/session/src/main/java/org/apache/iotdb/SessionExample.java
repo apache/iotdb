@@ -70,7 +70,7 @@ public class SessionExample {
       }
     }
 
-    createTemplate();
+    //createTemplate();
     createTimeseries();
     createMultiTimeseries();
     insertRecord();
