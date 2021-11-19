@@ -155,6 +155,7 @@ public class PriorityMergeReader implements IPointReader {
     }
   }
 
+  /** this method only take effect for aligned time series, so the override version */
   protected void fillNullValue(TimeValuePair v, TimeValuePair c) {
     // do nothing for non-aligned time series
   }
