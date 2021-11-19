@@ -18,8 +18,14 @@
  */
 package org.apache.iotdb.db.integration.aligned;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -29,13 +35,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class IoTDBRawQueryWithValueFilterIT {
   protected static boolean enableSeqSpaceCompaction;
@@ -54,8 +56,8 @@ public class IoTDBRawQueryWithValueFilterIT {
     enableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     AlignedWriteUtil.insertData();
   }
 
@@ -64,10 +66,10 @@ public class IoTDBRawQueryWithValueFilterIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableUnseqSpaceCompaction);
+        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableCrossSpaceCompaction);
+        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -76,27 +78,27 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "1,1.0,1,1,true,aligned_test1",
-            "3,30000.0,null,30000,true,aligned_unseq_test3",
-            "4,4.0,4,null,true,aligned_test4",
-            "5,5.0,5,null,true,aligned_test5",
-            "6,6.0,6,6,true,null",
-            "10,null,10,10,true,aligned_test10",
-            "13,130000.0,130000,130000,true,aligned_unseq_test13",
-            "21,null,null,21,true,null",
-            "22,null,null,22,true,null",
-            "24,null,null,24,true,null",
-            "25,null,null,25,true,null",
+          "1,1.0,1,1,true,aligned_test1",
+          "3,30000.0,null,30000,true,aligned_unseq_test3",
+          "4,4.0,4,null,true,aligned_test4",
+          "5,5.0,5,null,true,aligned_test5",
+          "6,6.0,6,6,true,null",
+          "10,null,10,10,true,aligned_test10",
+          "13,130000.0,130000,130000,true,aligned_unseq_test13",
+          "21,null,null,21,true,null",
+          "22,null,null,22,true,null",
+          "24,null,null,24,true,null",
+          "25,null,null,25,true,null",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s4 = true");
@@ -134,27 +136,28 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "12,12.0,12,12,null,null",
-            "14,14.0,14,14,null,null",
-            "15,15.0,15,15,null,null",
-            "16,16.0,16,16,null,null",
-            "17,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null",
-            "19,19.0,19,19,null,null",
-            "20,20.0,20,20,null,null",
+          "12,12.0,12,12,null,null",
+          "14,14.0,14,14,null,null",
+          "15,15.0,15,15,null,null",
+          "16,16.0,16,16,null,null",
+          "17,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null",
+          "19,19.0,19,19,null,null",
+          "20,20.0,20,20,null,null",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s1 > 11 and s2 <= 33");
+      boolean hasResultSet =
+          statement.execute("select * from root.sg1.d1 where s1 > 11 and s2 <= 33");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -189,42 +192,43 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "1,1.0,1,1,true,aligned_test1",
-            "2,2.0,2,2,null,aligned_test2",
-            "3,30000.0,null,30000,true,aligned_unseq_test3",
-            "4,4.0,4,null,true,aligned_test4",
-            "5,5.0,5,null,true,aligned_test5",
-            "6,6.0,6,6,true,null",
-            "7,7.0,7,7,false,aligned_test7",
-            "8,8.0,8,8,null,aligned_test8",
-            "9,9.0,9,9,false,aligned_test9",
-            "10,null,10,10,true,aligned_test10",
-            "11,11.0,11,11,null,null",
-            "12,12.0,12,12,null,null",
-            "13,130000.0,130000,130000,true,aligned_unseq_test13",
-            "14,14.0,14,14,null,null",
-            "15,15.0,15,15,null,null",
-            "16,16.0,16,16,null,null",
-            "17,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null",
-            "19,19.0,19,19,null,null",
-            "20,20.0,20,20,null,null",
-            "23,230000.0,null,230000,false,null",
-            "31,null,31,null,null,aligned_test31",
-            "32,null,32,null,null,aligned_test32",
+          "1,1.0,1,1,true,aligned_test1",
+          "2,2.0,2,2,null,aligned_test2",
+          "3,30000.0,null,30000,true,aligned_unseq_test3",
+          "4,4.0,4,null,true,aligned_test4",
+          "5,5.0,5,null,true,aligned_test5",
+          "6,6.0,6,6,true,null",
+          "7,7.0,7,7,false,aligned_test7",
+          "8,8.0,8,8,null,aligned_test8",
+          "9,9.0,9,9,false,aligned_test9",
+          "10,null,10,10,true,aligned_test10",
+          "11,11.0,11,11,null,null",
+          "12,12.0,12,12,null,null",
+          "13,130000.0,130000,130000,true,aligned_unseq_test13",
+          "14,14.0,14,14,null,null",
+          "15,15.0,15,15,null,null",
+          "16,16.0,16,16,null,null",
+          "17,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null",
+          "19,19.0,19,19,null,null",
+          "20,20.0,20,20,null,null",
+          "23,230000.0,null,230000,false,null",
+          "31,null,31,null,null,aligned_test31",
+          "32,null,32,null,null,aligned_test32",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root.sg1.d1 where s1 >= 13 or s2 < 33");
+      boolean hasResultSet =
+          statement.execute("select * from root.sg1.d1 where s1 >= 13 or s2 < 33");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -259,34 +263,35 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "13,130000.0,130000,130000,true,aligned_unseq_test13,13.0,13,13,null,null",
-            "17,17.0,17,17,null,null,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null,18.0,18,18,null,null",
-            "19,19.0,19,19,null,null,19.0,19,19,null,null",
-            "20,20.0,20,20,null,null,20.0,20,20,null,null",
-            "23,230000.0,null,230000,false,null,null,null,23,true,null",
+          "13,130000.0,130000,130000,true,aligned_unseq_test13,13.0,13,13,null,null",
+          "17,17.0,17,17,null,null,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null,18.0,18,18,null,null",
+          "19,19.0,19,19,null,null,19.0,19,19,null,null",
+          "20,20.0,20,20,null,null,20.0,20,20,null,null",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1",
-        "root.sg1.d1.s2",
-        "root.sg1.d1.s3",
-        "root.sg1.d1.s4",
-        "root.sg1.d1.s5",
-        "root.sg1.d2.s1",
-        "root.sg1.d2.s2",
-        "root.sg1.d2.s3",
-        "root.sg1.d2.s4",
-        "root.sg1.d2.s5"
+      "root.sg1.d1.s1",
+      "root.sg1.d1.s2",
+      "root.sg1.d1.s3",
+      "root.sg1.d1.s4",
+      "root.sg1.d1.s5",
+      "root.sg1.d2.s1",
+      "root.sg1.d2.s2",
+      "root.sg1.d2.s3",
+      "root.sg1.d2.s4",
+      "root.sg1.d2.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root.sg1.* where root.sg1.d1.s2 > 16 and root.sg1.d2.s3 <= 36");
+      boolean hasResultSet =
+          statement.execute(
+              "select * from root.sg1.* where root.sg1.d1.s2 > 16 and root.sg1.d2.s3 <= 36");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -321,41 +326,53 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "3,30000.0,null,30000,true,aligned_unseq_test3,3.0,null,3,false,non_aligned_test3",
-            "7,7.0,7,7,false,aligned_test7,7.0,7,7,false,non_aligned_test7",
-            "9,9.0,9,9,false,aligned_test9,9.0,9,9,false,non_aligned_test9",
-            "17,17.0,17,17,null,null,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null,18.0,18,18,null,null",
-            "19,19.0,19,19,null,null,19.0,19,19,null,null",
-            "20,20.0,20,20,null,null,20.0,20,20,null,null",
-            "23,230000.0,null,230000,false,null,null,null,23,true,null",
-            "26,null,null,26,false,null,null,null,26,false,null",
-            "27,null,null,27,false,null,null,null,27,false,null",
-            "28,null,null,28,false,null,null,null,28,false,null",
-            "29,null,null,29,false,null,null,null,29,false,null",
-            "30,null,null,30,false,null,null,null,30,false,null",
+          "3,30000.0,null,30000,true,aligned_unseq_test3,3.0,null,3,false,non_aligned_test3",
+          "7,7.0,7,7,false,aligned_test7,7.0,7,7,false,non_aligned_test7",
+          "9,9.0,9,9,false,aligned_test9,9.0,9,9,false,non_aligned_test9",
+          "13,130000.0,130000,130000,true,aligned_unseq_test13,13.0,13,13,null,null",
+          "17,17.0,17,17,null,null,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null,18.0,18,18,null,null",
+          "19,19.0,19,19,null,null,19.0,19,19,null,null",
+          "20,20.0,20,20,null,null,20.0,20,20,null,null",
+          "26,null,null,26,false,null,null,null,26,false,null",
+          "27,null,null,27,false,null,null,null,27,false,null",
+          "28,null,null,28,false,null,null,null,28,false,null",
+          "29,null,null,29,false,null,null,null,29,false,null",
+          "30,null,null,30,false,null,null,null,30,false,null",
+          "31,null,31,null,null,aligned_test31,null,31,null,null,non_aligned_test31",
+          "32,null,32,null,null,aligned_test32,null,32,null,null,non_aligned_test32",
+          "33,null,33,null,null,aligned_test33,null,33,null,null,non_aligned_test33",
+          "34,null,34,null,null,aligned_test34,null,34,null,null,non_aligned_test34",
+          "35,null,35,null,null,aligned_test35,null,35,null,null,non_aligned_test35",
+          "36,null,36,null,null,aligned_test36,null,36,null,null,non_aligned_test36",
+          "37,null,37,null,null,aligned_test37,null,37,null,null,non_aligned_test37",
+          "38,null,38,null,null,aligned_test38,null,38,null,null,non_aligned_test38",
+          "39,null,39,null,null,aligned_test39,null,39,null,null,non_aligned_test39",
+          "40,null,40,null,null,aligned_test40,null,40,null,null,non_aligned_test40",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1",
-        "root.sg1.d1.s2",
-        "root.sg1.d1.s3",
-        "root.sg1.d1.s4",
-        "root.sg1.d1.s5",
-        "root.sg1.d2.s1",
-        "root.sg1.d2.s2",
-        "root.sg1.d2.s3",
-        "root.sg1.d2.s4",
-        "root.sg1.d2.s5"
+      "root.sg1.d1.s1",
+      "root.sg1.d1.s2",
+      "root.sg1.d1.s3",
+      "root.sg1.d1.s4",
+      "root.sg1.d1.s5",
+      "root.sg1.d2.s1",
+      "root.sg1.d2.s2",
+      "root.sg1.d2.s3",
+      "root.sg1.d2.s4",
+      "root.sg1.d2.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root.sg1.* where root.sg1.d1.s2 > 16 or root.sg1.d2.s4 = false");
+      boolean hasResultSet =
+          statement.execute(
+              "select * from root.sg1.* where root.sg1.d1.s2 > 16 or root.sg1.d2.s4 = false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -390,24 +407,24 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "9,9.0,9,9,false,aligned_test9",
-            "11,11.0,11,11,null,null",
-            "12,12.0,12,12,null,null",
-            "14,14.0,14,14,null,null",
-            "15,15.0,15,15,null,null",
-            "16,16.0,16,16,null,null",
-            "17,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null",
+          "9,9.0,9,9,false,aligned_test9",
+          "11,11.0,11,11,null,null",
+          "12,12.0,12,12,null,null",
+          "14,14.0,14,14,null,null",
+          "15,15.0,15,15,null,null",
+          "16,16.0,16,16,null,null",
+          "17,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -446,47 +463,48 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "9,9.0,9,9,false,aligned_test9",
-            "10,null,10,10,true,aligned_test10",
-            "11,11.0,11,11,null,null",
-            "12,12.0,12,12,null,null",
-            "13,130000.0,130000,130000,true,aligned_unseq_test13",
-            "14,14.0,14,14,null,null",
-            "15,15.0,15,15,null,null",
-            "16,16.0,16,16,null,null",
-            "17,17.0,17,17,null,null",
-            "18,18.0,18,18,null,null",
-            "19,19.0,19,19,null,null",
-            "20,20.0,20,20,null,null",
-            "21,null,null,21,true,null",
-            "22,null,null,22,true,null",
-            "23,230000.0,null,230000,false,null",
-            "24,null,null,24,true,null",
-            "25,null,null,25,true,null",
-            "26,null,null,26,false,null",
-            "27,null,null,27,false,null",
-            "28,null,null,28,false,null",
-            "29,null,null,29,false,null",
-            "30,null,null,30,false,null",
-            "31,null,31,null,null,aligned_test31",
-            "32,null,32,null,null,aligned_test32",
-            "33,null,33,null,null,aligned_test33",
-            "36,null,36,null,null,aligned_test36",
-            "37,null,37,null,null,aligned_test37",
+          "9,9.0,9,9,false,aligned_test9",
+          "10,null,10,10,true,aligned_test10",
+          "11,11.0,11,11,null,null",
+          "12,12.0,12,12,null,null",
+          "13,130000.0,130000,130000,true,aligned_unseq_test13",
+          "14,14.0,14,14,null,null",
+          "15,15.0,15,15,null,null",
+          "16,16.0,16,16,null,null",
+          "17,17.0,17,17,null,null",
+          "18,18.0,18,18,null,null",
+          "19,19.0,19,19,null,null",
+          "20,20.0,20,20,null,null",
+          "21,null,null,21,true,null",
+          "22,null,null,22,true,null",
+          "23,230000.0,null,230000,false,null",
+          "24,null,null,24,true,null",
+          "25,null,null,25,true,null",
+          "26,null,null,26,false,null",
+          "27,null,null,27,false,null",
+          "28,null,null,28,false,null",
+          "29,null,null,29,false,null",
+          "30,null,null,30,false,null",
+          "31,null,31,null,null,aligned_test31",
+          "32,null,32,null,null,aligned_test32",
+          "33,null,33,null,null,aligned_test33",
+          "36,null,36,null,null,aligned_test36",
+          "37,null,37,null,null,aligned_test37",
         };
 
     String[] columnNames = {
-        "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
+      "root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3", "root.sg1.d1.s4", "root.sg1.d1.s5"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select * from root.sg1.d1 where time >= 9 and time <= 33 or s5 = 'aligned_test36' or s5 = 'aligned_test37'");
+          statement.execute(
+              "select * from root.sg1.d1 where time >= 9 and time <= 33 or s5 = 'aligned_test36' or s5 = 'aligned_test37'");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -521,31 +539,33 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "1,1.0,true,aligned_test1",
-            "2,2.0,null,aligned_test2",
-            "4,4.0,true,aligned_test4",
-            "5,5.0,true,aligned_test5",
-            "6,6.0,true,null",
-            "7,7.0,false,aligned_test7",
-            "8,8.0,null,aligned_test8",
-            "9,9.0,false,aligned_test9",
-            "11,11.0,null,null",
-            "12,12.0,null,null",
-            "14,14.0,null,null",
-            "15,15.0,null,null",
-            "16,16.0,null,null",
-            "34,null,null,aligned_test34",
+          "1,1.0,true,aligned_test1",
+          "2,2.0,null,aligned_test2",
+          "4,4.0,true,aligned_test4",
+          "5,5.0,true,aligned_test5",
+          "6,6.0,true,null",
+          "7,7.0,false,aligned_test7",
+          "8,8.0,null,aligned_test8",
+          "9,9.0,false,aligned_test9",
+          "11,11.0,null,null",
+          "12,12.0,null,null",
+          "14,14.0,null,null",
+          "15,15.0,null,null",
+          "16,16.0,null,null",
+          "34,null,null,aligned_test34",
         };
 
     String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select s1,s4,s5 from root.sg1.d1 where s1 < 17 or s5 = 'aligned_test34'");
+      boolean hasResultSet =
+          statement.execute(
+              "select s1,s4,s5 from root.sg1.d1 where s1 < 17 or s5 = 'aligned_test34'");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -580,19 +600,19 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "7,7.0,false",
-            "9,9.0,false",
+          "7,7.0,false", "9,9.0,false",
         };
 
     String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select s1,s4 from root.sg1.d1 where s1 < 19 and s4 = false");
+      boolean hasResultSet =
+          statement.execute("select s1,s4 from root.sg1.d1 where s1 < 19 and s4 = false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -627,24 +647,25 @@ public class IoTDBRawQueryWithValueFilterIT {
 
     String[] retArray =
         new String[] {
-            "23,230000.0,false,null",
-            "26,null,false,null",
-            "27,null,false,null",
-            "28,null,false,null",
-            "29,null,false,null",
-            "30,null,false,null",
+          "23,230000.0,false,null",
+          "26,null,false,null",
+          "27,null,false,null",
+          "28,null,false,null",
+          "29,null,false,null",
+          "30,null,false,null",
         };
 
     String[] columnNames = {"root.sg1.d1.s1", "root.sg1.d1.s4", "root.sg1.d1.s5"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select s1,s4,s5 from root.sg1.d1 where time >= 16 and time <= 34 and s4=false");
+          statement.execute(
+              "select s1,s4,s5 from root.sg1.d1 where time >= 16 and time <= 34 and s4=false");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -675,33 +696,34 @@ public class IoTDBRawQueryWithValueFilterIT {
   }
 
   @Test
-  public void selectSomeAlignedAndNonAlignedWithTimeAndValueFilterTest() throws ClassNotFoundException {
+  public void selectSomeAlignedAndNonAlignedWithTimeAndValueFilterTest()
+      throws ClassNotFoundException {
 
     String[] retArray =
         new String[] {
-            "18,null,null,18.0,null,null,18.0",
-            "19,null,null,19.0,null,null,19.0",
-            "20,null,null,20.0,null,null,20.0",
-            "21,null,true,null,null,true,null",
-            "22,null,true,null,null,true,null",
-            "23,null,false,null,null,true,230000.0",
-            "24,null,true,null,null,true,null",
-            "25,null,true,null,null,true,null",
+          "18,null,null,18.0,null,null,18.0",
+          "19,null,null,19.0,null,null,19.0",
+          "20,null,null,20.0,null,null,20.0",
+          "21,null,true,null,null,true,null",
+          "22,null,true,null,null,true,null",
+          "23,null,false,null,null,true,230000.0",
+          "24,null,true,null,null,true,null",
+          "25,null,true,null,null,true,null",
         };
 
     String[] columnNames = {
-        "root.sg1.d2.s5",
-        "root.sg1.d1.s4",
-        "root.sg1.d2.s1",
-        "root.sg1.d1.s5",
-        "root.sg1.d2.s4",
-        "root.sg1.d1.s1"
+      "root.sg1.d2.s5",
+      "root.sg1.d1.s4",
+      "root.sg1.d2.s1",
+      "root.sg1.d1.s5",
+      "root.sg1.d2.s4",
+      "root.sg1.d1.s1"
     };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // 1 4 5

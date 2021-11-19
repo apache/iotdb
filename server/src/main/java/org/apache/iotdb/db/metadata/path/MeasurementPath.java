@@ -273,6 +273,7 @@ public class MeasurementPath extends PartialPath {
     try {
       newMeasurementPath =
           new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+      newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
     }
