@@ -74,7 +74,7 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
       // get value from readers in time generator
       if (cached.get(i)) {
         Object value = timeGenerator.getValue(paths.get(i));
-        if (value instanceof TsPrimitiveType[]) { // value in aligned BatchData
+        if (dataTypes.get(i) == TSDataType.VECTOR) {
           TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
           rowRecord.addField(v.getValue(), v.getDataType());
         } else {

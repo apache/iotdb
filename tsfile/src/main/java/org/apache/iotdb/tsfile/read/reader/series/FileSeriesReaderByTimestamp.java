@@ -140,8 +140,11 @@ public class FileSeriesReaderByTimestamp {
       IChunkMetadata chunkMetaData = chunkMetadataList.get(currentChunkIndex++);
       if (chunkSatisfied(chunkMetaData)) {
         initChunkReader(chunkMetaData);
-        if (chunkReader instanceof ChunkReaderByTimestamp)
+        if (chunkReader instanceof ChunkReaderByTimestamp) {
           ((ChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
+        } else {
+          ((AlignedChunkReaderByTimestamp) chunkReader).setCurrentTimestamp(currentTimestamp);
+        }
         return true;
       }
     }
