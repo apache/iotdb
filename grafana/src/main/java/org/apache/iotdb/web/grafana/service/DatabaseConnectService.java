@@ -26,8 +26,6 @@ import java.util.List;
 
 public interface DatabaseConnectService {
 
-  int testConnection();
-
   List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange);
 
   List<String> getMetaData();

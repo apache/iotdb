@@ -18,6 +18,16 @@
  */
 package org.apache.iotdb.db.query.reader.series;
 
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Objects;
+import java.util.PriorityQueue;
+import java.util.Set;
+import java.util.function.ToLongFunction;
+import java.util.stream.Collectors;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -42,20 +52,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.PriorityQueue;
-import java.util.Set;
-import java.util.function.ToLongFunction;
-import java.util.stream.Collectors;
 
 public class SeriesReader {
 
@@ -653,8 +652,8 @@ public class SeriesReader {
     if (firstPageReader == null) {
       return null;
     }
-    if (!(firstPageReader.isVectorPageReader())) {
-      throw new IOException("Can only get statistics by index from VectorPageReader");
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics by index from AlignedPageReader");
     }
     return firstPageReader.getStatistics(index);
   }
@@ -1087,8 +1086,8 @@ public class SeriesReader {
       this.isSeq = isSeq;
     }
 
-    public boolean isVectorPageReader() {
-      return data instanceof AlignedPageReader;
+    public boolean isAlignedPageReader() {
+      return data instanceof IAlignedPageReader;
     }
 
     Statistics getStatistics() {
@@ -1096,10 +1095,10 @@ public class SeriesReader {
     }
 
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof AlignedPageReader)) {
-        throw new IOException("Can only get statistics by index from VectorPageReader");
+      if (!(data instanceof IAlignedPageReader)) {
+        throw new IOException("Can only get statistics by index from AlignedPageReader");
       }
-      return ((AlignedPageReader) data).getStatistics(index);
+      return ((IAlignedPageReader) data).getStatistics(index);
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

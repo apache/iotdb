@@ -16,31 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.web.grafana.service.impl;
+package org.apache.iotdb.tsfile.read.reader;
 
-import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.web.grafana.bean.TimeValues;
-import org.apache.iotdb.web.grafana.dao.BasicDao;
-import org.apache.iotdb.web.grafana.service.DatabaseConnectService;
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+public interface IAlignedPageReader {
 
-import java.time.ZonedDateTime;
-import java.util.List;
-
-@Service
-public class DatabaseConnectServiceImpl implements DatabaseConnectService {
-
-  @Autowired BasicDao basicDao;
-
-  @Override
-  public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
-    return basicDao.querySeries(s, timeRange);
-  }
-
-  @Override
-  public List<String> getMetaData() {
-    return basicDao.getMetaData();
-  }
+  Statistics getStatistics(int index);
 }
