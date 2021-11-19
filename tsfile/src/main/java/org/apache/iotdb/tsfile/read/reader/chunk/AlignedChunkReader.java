@@ -195,7 +195,7 @@ public class AlignedChunkReader implements IChunkReader {
             .position(
                 valueChunkDataBufferList.get(i).position()
                     + valuePageHeader.get(i).getCompressedSize());
-        valuePageHeaderList.add(valuePageHeader.get(i));
+        valuePageHeaderList.add(null);
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
         valueDecoderList.add(null);

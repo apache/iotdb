@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -132,7 +133,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public void setFilter(Filter filter) {
-    this.filter = filter;
+    if (this.filter == null) {
+      this.filter = filter;
+    } else {
+      this.filter = new AndFilter(this.filter, filter);
+    }
   }
 
   @Override
