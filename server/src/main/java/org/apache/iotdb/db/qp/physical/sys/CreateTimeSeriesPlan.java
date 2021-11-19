@@ -208,7 +208,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
     buffer.putInt(bytes.length);
