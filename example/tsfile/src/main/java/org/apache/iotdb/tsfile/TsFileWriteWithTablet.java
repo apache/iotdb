@@ -56,7 +56,7 @@ public class TsFileWriteWithTablet {
         measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
         measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
 
-        // register nonAlign timeseries
+        // register nonAligned timeseries
         tsFileWriter.registerTimeseries(new Path("root.sg.d1"), measurementSchemas);
 
         List<IMeasurementSchema> writeMeasurementScheams = new ArrayList<>();

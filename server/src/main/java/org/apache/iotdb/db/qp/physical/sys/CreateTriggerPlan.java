@@ -128,7 +128,7 @@ public class CreateTriggerPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TRIGGER.ordinal());
 
     putString(buffer, triggerName);

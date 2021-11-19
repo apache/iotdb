@@ -62,7 +62,7 @@ public class DropTriggerPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.DROP_TRIGGER.ordinal());
 
     putString(buffer, triggerName);

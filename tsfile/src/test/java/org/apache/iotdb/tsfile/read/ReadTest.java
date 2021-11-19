@@ -46,13 +46,13 @@ import static org.junit.Assert.assertFalse;
 public class ReadTest {
 
   private static final String fileName = FileGenerator.outputDataFile;
-  private static ReadOnlyTsFile roTsFile = null;
+  private static TsFileReader roTsFile = null;
 
   @Before
   public void prepare() throws IOException {
     FileGenerator.generateFile(1000, 100);
     TsFileSequenceReader reader = new TsFileSequenceReader(fileName);
-    roTsFile = new ReadOnlyTsFile(reader);
+    roTsFile = new TsFileReader(reader);
   }
 
   @After

@@ -62,7 +62,7 @@ public class StopTriggerPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.STOP_TRIGGER.ordinal());
 
     putString(buffer, triggerName);

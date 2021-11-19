@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -44,6 +46,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   /** Map(measurementID, ChunkWriterImpl). Aligned measurementId is empty. */
   private Map<String, ChunkWriterImpl> chunkWriters = new LinkedHashMap<>();
 
+  // measurementId -> lastTime
   private Map<String, Long> lastTimeMap = new HashMap<>();
 
   public NonAlignedChunkGroupWriterImpl(String deviceId) {
@@ -67,12 +70,11 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public int write(long time, List<DataPoint> data) throws IOException {
+  public int write(long time, List<DataPoint> data) throws IOException, WriteProcessException {
     int pointCount = 0;
     for (DataPoint point : data) {
-      if (checkIsHistoryData(point.getMeasurementId(), time)) {
-        continue;
-      }
+      checkIsHistoryData(point.getMeasurementId(), time);
+
       if (pointCount == 0) {
         pointCount++;
       }
@@ -84,7 +86,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public int write(Tablet tablet) {
+  public int write(Tablet tablet) throws WriteProcessException {
     int pointCount = 0;
     List<IMeasurementSchema> timeseries = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
@@ -92,9 +94,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
       boolean hasOneColumnWritten = false;
       for (int column = 0; column < timeseries.size(); column++) {
         String measurementId = timeseries.get(column).getMeasurementId();
-        if (checkIsHistoryData(measurementId, time)) {
-          continue;
-        }
+        checkIsHistoryData(measurementId, time);
         hasOneColumnWritten = true;
         switch (timeseries.get(column).getType()) {
           case INT32:
@@ -166,19 +166,23 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }
 
-  private boolean checkIsHistoryData(String measurementId, long time) {
+  private void checkIsHistoryData(String measurementId, long time) throws WriteProcessException {
     if (time <= lastTimeMap.getOrDefault(measurementId, -1L)) {
-      LOG.warn(
-          "not allowed to write out-of-order data, time should later than "
-              + time
-              + ", skip dataPoint : "
+      throw new WriteProcessException(
+          "Not allowed to write out-of-order data in timeseries "
               + deviceId
-              + "."
+              + TsFileConstant.PATH_SEPARATOR
               + measurementId
-              + " at time "
-              + time);
-      return true;
+              + ", time should later than "
+              + lastTimeMap.get(measurementId));
     }
-    return false;
+  }
+
+  public Map<String, Long> getLastTimeMap() {
+    return this.lastTimeMap;
+  }
+
+  public void setLastTimeMap(Map<String, Long> lastTimeMap) {
+    this.lastTimeMap = lastTimeMap;
   }
 }

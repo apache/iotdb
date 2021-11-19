@@ -51,7 +51,7 @@ public class DropContinuousQueryPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.DROP_CONTINUOUS_QUERY.ordinal());
     ReadWriteIOUtils.write(continuousQueryName, buffer);
   }

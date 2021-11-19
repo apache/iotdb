@@ -281,7 +281,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);
