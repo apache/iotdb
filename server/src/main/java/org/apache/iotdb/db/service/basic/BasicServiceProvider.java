@@ -102,7 +102,7 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected boolean checkAuthorization(
+  public boolean checkAuthorization(
       List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
@@ -228,13 +228,13 @@ public class BasicServiceProvider {
     }
   }
 
-  protected QueryContext genQueryContext(
+  public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  protected QueryDataSet createQueryDataSet(
+  public QueryDataSet createQueryDataSet(
       QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
@@ -245,7 +245,7 @@ public class BasicServiceProvider {
     return queryDataSet;
   }
 
-  protected boolean executeNonQuery(PhysicalPlan plan)
+  public boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
