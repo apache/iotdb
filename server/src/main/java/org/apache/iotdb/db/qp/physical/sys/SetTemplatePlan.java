@@ -65,7 +65,7 @@ public class SetTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(templateName, buffer);

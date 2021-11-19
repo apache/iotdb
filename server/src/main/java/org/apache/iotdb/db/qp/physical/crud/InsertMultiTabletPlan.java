@@ -258,7 +258,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.MULTI_BATCH_INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());

@@ -61,7 +61,7 @@ public class AutoCreateDeviceMNodePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.AUTO_CREATE_DEVICE_MNODE.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);

@@ -73,6 +73,9 @@ import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -82,6 +85,7 @@ import java.util.List;
 
 /** This class is a abstract class for all type of PhysicalPlan. */
 public abstract class PhysicalPlan {
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
@@ -182,11 +186,27 @@ public abstract class PhysicalPlan {
 
   /**
    * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
-   * recovered will not be serialized.
+   * recovered will not be serialized. If error occurs when serializing this plan, the buffer will
+   * be reset.
    *
    * @param buffer
    */
   public void serialize(ByteBuffer buffer) {
+    buffer.mark();
+    try {
+      serializeImpl(buffer);
+    } catch (UnsupportedOperationException e) {
+      // ignore and throw
+      throw e;
+    } catch (Exception e) {
+      logger.error(
+          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
+      buffer.reset();
+      throw e;
+    }
+  }
+
+  protected void serializeImpl(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 

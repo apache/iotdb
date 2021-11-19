@@ -71,7 +71,7 @@ public class ChangeAliasPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CHANGE_ALIAS.ordinal();
     buffer.put((byte) type);
     putString(buffer, path.getFullPath());

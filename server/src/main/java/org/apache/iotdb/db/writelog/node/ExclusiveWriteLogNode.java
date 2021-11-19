@@ -126,11 +126,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void putLog(PhysicalPlan plan) {
-    logBufferWorking.mark();
     try {
       plan.serialize(logBufferWorking);
     } catch (BufferOverflowException e) {
-      logBufferWorking.reset();
       sync();
       plan.serialize(logBufferWorking);
     }

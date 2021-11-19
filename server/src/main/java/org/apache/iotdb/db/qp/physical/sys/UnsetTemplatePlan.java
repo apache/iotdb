@@ -67,7 +67,7 @@ public class UnsetTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.UNSET_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(prefixPath, buffer);
