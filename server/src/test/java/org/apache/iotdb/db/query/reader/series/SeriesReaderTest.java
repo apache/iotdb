@@ -22,15 +22,15 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -49,7 +49,7 @@ public class SeriesReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
@@ -74,7 +74,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,
@@ -118,7 +118,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,
@@ -157,7 +157,7 @@ public class SeriesReaderTest {
               new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               seqResources,
               unseqResources,
               null,

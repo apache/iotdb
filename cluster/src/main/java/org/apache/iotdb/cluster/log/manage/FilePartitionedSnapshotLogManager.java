@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -41,9 +41,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -52,6 +53,8 @@ import java.util.Map.Entry;
  * Different from PartitionedSnapshotLogManager, FilePartitionedSnapshotLogManager does not store
  * the committed in memory after snapshots, it considers the logs are contained in the TsFiles so it
  * will record every TsFiles in the slot instead.
+ *
+ * <p>FilePartitionedSnapshotLogManager is used for dataGroup
  */
 public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogManager<FileSnapshot> {
 
@@ -130,11 +133,16 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
 
     // 2.register the measurement
     boolean slotExistsInPartition;
-    List<Integer> slots = null;
+    HashSet<Integer> slots = null;
     if (dataGroupMember.getMetaGroupMember() != null) {
-      slots =
+      // if header node in raft group has removed, the result may be null
+      List<Integer> nodeSlots =
           ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
               .getNodeSlots(dataGroupMember.getHeader());
+      // the method of 'HashSet(Collection<? extends E> c)' throws NPE,so we need check this part
+      if (nodeSlots != null) {
+        slots = new HashSet<>(nodeSlots);
+      }
     }
 
     for (Map.Entry<Integer, Collection<TimeseriesSchema>> entry : slotTimeseries.entrySet()) {
@@ -154,7 +162,7 @@ public class FilePartitionedSnapshotLogManager extends PartitionedSnapshotLogMan
     slotSnapshots.clear();
     Map<PartialPath, Map<Long, List<TsFileResource>>> allClosedStorageGroupTsFile =
         StorageEngine.getInstance().getAllClosedStorageGroupTsFile();
-    List<TsFileResource> createdHardlinks = new ArrayList<>();
+    List<TsFileResource> createdHardlinks = new LinkedList<>();
     // group the TsFiles by their slots
     for (Entry<PartialPath, Map<Long, List<TsFileResource>>> entry :
         allClosedStorageGroupTsFile.entrySet()) {

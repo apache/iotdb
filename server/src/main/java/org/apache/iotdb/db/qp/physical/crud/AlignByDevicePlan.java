@@ -18,10 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.List;
@@ -29,8 +30,14 @@ import java.util.Map;
 
 public class AlignByDevicePlan extends QueryPlan {
 
+  public static final String MEASUREMENT_ERROR_MESSAGE =
+      "The paths of the SELECT clause can only be measurements or STAR.";
+  public static final String ALIAS_ERROR_MESSAGE =
+      "alias %s can only be matched with one time series";
+
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
+  private List<TSDataType> dataTypes;
   private Map<String, MeasurementInfo> measurementInfoMap;
 
   // to check data type consistency for the same name sensor of different devices
@@ -56,6 +63,15 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public List<String> getMeasurements() {
     return measurements;
+  }
+
+  @Override
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
   }
 
   public void setDevices(List<PartialPath> devices) {

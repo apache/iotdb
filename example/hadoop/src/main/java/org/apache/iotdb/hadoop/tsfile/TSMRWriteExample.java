@@ -24,8 +24,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -59,17 +59,15 @@ public class TSMRWriteExample {
     // add measurements into file schema (all with INT64 data type)
     for (int i = 0; i < 2; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(
-              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
-          new MeasurementSchema(
+          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
+          new UnaryMeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF));
     }
 
     for (int i = 2; i < sensorNum; i++) {
       schema.registerTimeseries(
-          new org.apache.iotdb.tsfile.read.common.Path(
-              Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)),
-          new MeasurementSchema(
+          new org.apache.iotdb.tsfile.read.common.Path(Constant.DEVICE_1),
+          new UnaryMeasurementSchema(
               Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF));
     }
     TSFOutputFormat.setSchema(schema);

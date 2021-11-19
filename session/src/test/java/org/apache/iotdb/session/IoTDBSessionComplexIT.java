@@ -34,7 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -147,7 +147,7 @@ public class IoTDBSessionComplexIT {
     insertTablet("root.sg1.d1");
 
     SessionDataSet sessionDataSet =
-        session.executeQueryStatement("select '11', s1, '11' from root.sg1.d1 align by device");
+        session.executeQueryStatement("select s1 from root.sg1.d1 align by device");
     sessionDataSet.setFetchSize(1024);
     int count = 0;
     while (sessionDataSet.hasNext()) {
@@ -157,7 +157,7 @@ public class IoTDBSessionComplexIT {
       for (Field f : fields) {
         sb.append(f.getStringValue()).append(",");
       }
-      Assert.assertEquals("root.sg1.d1,'11',0,'11',", sb.toString());
+      Assert.assertEquals("root.sg1.d1,0,", sb.toString());
     }
     Assert.assertEquals(100, count);
     sessionDataSet.closeOperationHandle();
@@ -218,9 +218,9 @@ public class IoTDBSessionComplexIT {
     createTimeseries();
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
@@ -268,7 +268,7 @@ public class IoTDBSessionComplexIT {
 
     session.testInsertRecords(deviceIds, timestamps, measurementsList, valuesList);
 
-    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1");
+    SessionDataSet dataSet = session.executeQueryStatement("show timeseries root.sg1.**");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -417,13 +417,13 @@ public class IoTDBSessionComplexIT {
     session.createTimeseries(
         "root.sg1.d1.1_2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.3\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     session.createTimeseries(
-        "root.sg1.d1.\"1.2.4\"", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+        "root.sg1.d1.1+2+4", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.1_2"));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.3\""));
-    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1.2.4\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1_2\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+3\""));
+    Assert.assertTrue(session.checkTimeseriesExists("root.sg1.d1.\"1+2+4\""));
 
     session.setStorageGroup("root.1");
     session.createTimeseries(
@@ -447,7 +447,7 @@ public class IoTDBSessionComplexIT {
 
     insertTablet("root.sg5.d1");
 
-    SessionDataSet dataSet = session.executeQueryStatement("select * from root group by device");
+    SessionDataSet dataSet = session.executeQueryStatement("select * from root.** group by device");
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
@@ -491,9 +491,9 @@ public class IoTDBSessionComplexIT {
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
@@ -621,7 +621,7 @@ public class IoTDBSessionComplexIT {
     while (sessionDataSet.hasNext()) {
       count++;
       List<Field> fields = sessionDataSet.next().getFields();
-      Assert.assertEquals("[root.sg1.d2.s1, 1]", fields.toString());
+      Assert.assertEquals("[root.sg1.d2.s1,1,INT64]", fields.toString().replace(" ", ""));
     }
     Assert.assertEquals(1, count);
     sessionDataSet.closeOperationHandle();
@@ -631,9 +631,9 @@ public class IoTDBSessionComplexIT {
       throws IoTDBConnectionException, StatementExecutionException {
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
@@ -821,7 +821,7 @@ public class IoTDBSessionComplexIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery("SELECT * FROM root");
+      ResultSet resultSet = statement.executeQuery("SELECT * FROM root.**");
       final ResultSetMetaData metaData = resultSet.getMetaData();
       final int colCount = metaData.getColumnCount();
       for (int i = 0; i < colCount; i++) {
@@ -847,9 +847,9 @@ public class IoTDBSessionComplexIT {
     createTimeseries();
 
     session.executeNonQueryStatement(
-        "create trigger d1s1 after insert on root.sg1.d1.s1 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s1 after insert on root.sg1.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
     session.executeNonQueryStatement(
-        "create trigger d1s2 before insert on root.sg1.d1.s2 as \"org.apache.iotdb.db.engine.trigger.example.Counter\"");
+        "create trigger d1s2 before insert on root.sg1.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
     assertEquals(
         Counter.BASE,

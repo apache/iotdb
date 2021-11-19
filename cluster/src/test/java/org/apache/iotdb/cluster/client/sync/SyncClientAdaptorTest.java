@@ -45,15 +45,15 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -113,7 +113,7 @@ public class SyncClientAdaptorTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       snapshotMap.put(i, new SimpleSnapshot(i, i));
-      measurementSchemas.add(new MeasurementSchema(String.valueOf(i), TSDataType.INT64));
+      measurementSchemas.add(new UnaryMeasurementSchema(String.valueOf(i), TSDataType.INT64));
       timeseriesSchemas.add(new TimeseriesSchema(String.valueOf(i), TSDataType.INT64));
     }
     lastResult = ByteBuffer.wrap("last".getBytes());
@@ -245,7 +245,11 @@ public class SyncClientAdaptorTest {
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            resultHandler.onComplete(new GetAllPathsResult(path));
+            List<Byte> dataTypes = new ArrayList<>();
+            for (int i = 0; i < path.size(); i++) {
+              dataTypes.add(TSDataType.DOUBLE.serialize());
+            }
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
           }
 
           @Override
@@ -391,9 +395,11 @@ public class SyncClientAdaptorTest {
         paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(
             dataClient, TestUtils.getRaftNode(0, 0), paths));
-    assertEquals(
-        paths,
-        SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false).paths);
+    List<String> result =
+        new ArrayList<>(
+            SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
+                .paths);
+    assertEquals(paths, result);
     assertEquals(
         paths.size(),
         (int) SyncClientAdaptor.getPathCount(dataClient, TestUtils.getRaftNode(0, 0), paths, 0));

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -84,8 +84,8 @@ public class IoTDBRemovePartitionIT {
       try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.test1")) {
         int count = 0;
         while (resultSet.next()) {
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(1));
-          assertEquals(count / 2 * 100 + count % 2 * 50, resultSet.getLong(2));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(1));
+          assertEquals(count / 2 * 100L + count % 2 * 50, resultSet.getLong(2));
           count++;
         }
         assertEquals(20, count);

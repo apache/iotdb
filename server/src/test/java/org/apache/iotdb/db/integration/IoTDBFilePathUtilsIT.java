@@ -22,10 +22,10 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
 import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.junit.AfterClass;
@@ -83,11 +83,13 @@ public class IoTDBFilePathUtilsIT {
     Assert.assertNotNull(tsFileResources);
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      String sgName = FilePathUtils.getLogicalStorageGroupName(tsFileResource);
+      String sgName =
+          FilePathUtils.getLogicalStorageGroupName(tsFileResource.getTsFile().getAbsolutePath());
       Assert.assertEquals(storageGroupName, sgName);
 
       Pair<String, Long> logicalSgNameAndTimePartitionIdPair =
-          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(tsFileResource);
+          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(
+              tsFileResource.getTsFile().getAbsolutePath());
       Assert.assertEquals(storageGroupName, logicalSgNameAndTimePartitionIdPair.left);
     }
   }

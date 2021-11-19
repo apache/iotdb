@@ -18,8 +18,6 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
@@ -103,18 +101,12 @@ public class IoTDBAlignByDeviceIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private static void insertData() throws ClassNotFoundException {
@@ -162,7 +154,7 @@ public class IoTDBAlignByDeviceIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select * from root.vehicle align by device");
+      boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -327,20 +319,22 @@ public class IoTDBAlignByDeviceIT {
   public void selectSlimitTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
-          "1,root.vehicle.d0,101,1101,",
-          "2,root.vehicle.d0,10000,40000,",
-          "50,root.vehicle.d0,10000,50000,",
-          "100,root.vehicle.d0,99,199,",
-          "101,root.vehicle.d0,99,199,",
-          "102,root.vehicle.d0,80,180,",
-          "103,root.vehicle.d0,99,199,",
-          "104,root.vehicle.d0,90,190,",
-          "105,root.vehicle.d0,99,199,",
-          "106,root.vehicle.d0,99,null,",
-          "1000,root.vehicle.d0,22222,55555,",
-          "946684800000,root.vehicle.d0,null,100,",
-          "1,root.vehicle.d1,999,null,",
-          "1000,root.vehicle.d1,888,null,"
+          "1,root.vehicle.d0,1101,null,",
+          "2,root.vehicle.d0,40000,2.22,",
+          "3,root.vehicle.d0,null,3.33,",
+          "4,root.vehicle.d0,null,4.44,",
+          "50,root.vehicle.d0,50000,null,",
+          "100,root.vehicle.d0,199,null,",
+          "101,root.vehicle.d0,199,null,",
+          "102,root.vehicle.d0,180,10.0,",
+          "103,root.vehicle.d0,199,null,",
+          "104,root.vehicle.d0,190,null,",
+          "105,root.vehicle.d0,199,11.11,",
+          "106,root.vehicle.d0,null,null,",
+          "1000,root.vehicle.d0,55555,1000.11,",
+          "946684800000,root.vehicle.d0,100,null,",
+          "1,root.vehicle.d1,null,null,",
+          "1000,root.vehicle.d1,null,null,",
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -350,7 +344,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select s0,s0,s1 from root.vehicle.* slimit 2 soffset 1 align by device");
+              "select s0,s1,s2 from root.vehicle.* slimit 2 soffset 1 align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -358,9 +352,9 @@ public class IoTDBAlignByDeviceIT {
         List<Integer> actualIndexToExpectedIndexList =
             checkHeader(
                 resultSetMetaData,
-                "Time,Device,s0,s1",
+                "Time,Device,s1,s2",
                 new int[] {
-                  Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.BIGINT,
+                  Types.TIMESTAMP, Types.VARCHAR, Types.BIGINT, Types.FLOAT,
                 });
 
         int cnt = 0;
@@ -377,7 +371,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(14, cnt);
+        Assert.assertEquals(16, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -518,7 +512,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select count(*) from root.vehicle GROUP BY ([2,50),20ms) align by device");
+              "select count(*) from root.vehicle.** GROUP BY ([2,50),20ms) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -623,7 +617,7 @@ public class IoTDBAlignByDeviceIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select * from root.vehicle where time = 3 Fill(int32[previous, 5ms]) align by device");
+              "select * from root.vehicle.* where time = 3 Fill(int32[previous, 5ms]) align by device");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -661,24 +655,6 @@ public class IoTDBAlignByDeviceIT {
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void errorCaseTest1() throws ClassNotFoundException {
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      statement.execute("select d0.s1, d0.s2, d1.s0 from root.vehicle align by device");
-      fail("No exception thrown.");
-    } catch (Exception e) {
-      Assert.assertTrue(
-          e.getMessage()
-              .contains(
-                  "The paths of the SELECT clause can only be single level. In other words, "
-                      + "the paths of the SELECT clause can only be measurements or STAR, without DOT."));
     }
   }
 
@@ -813,78 +789,6 @@ public class IoTDBAlignByDeviceIT {
   }
 
   @Test
-  public void selectConstantTest() throws ClassNotFoundException {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,'11',",
-          "2,root.vehicle.d0,10000,40000,2.22,null,null,'11',",
-          "3,root.vehicle.d0,null,null,3.33,null,null,'11',",
-          "4,root.vehicle.d0,null,null,4.44,null,null,'11',",
-          "50,root.vehicle.d0,10000,50000,null,null,null,'11',",
-          "60,root.vehicle.d0,null,null,null,aaaaa,null,'11',",
-          "70,root.vehicle.d0,null,null,null,bbbbb,null,'11',",
-          "80,root.vehicle.d0,null,null,null,ccccc,null,'11',",
-          "100,root.vehicle.d0,99,199,null,null,true,'11',",
-          "101,root.vehicle.d0,99,199,null,ddddd,null,'11',",
-          "102,root.vehicle.d0,80,180,10.0,fffff,null,'11',",
-          "103,root.vehicle.d0,99,199,null,null,null,'11',",
-          "104,root.vehicle.d0,90,190,null,null,null,'11',",
-          "105,root.vehicle.d0,99,199,11.11,null,null,'11',",
-          "106,root.vehicle.d0,99,null,null,null,null,'11',",
-          "1000,root.vehicle.d0,22222,55555,1000.11,null,null,'11',",
-          "946684800000,root.vehicle.d0,null,100,null,good,null,'11',",
-          "1,root.vehicle.d1,999,null,null,null,null,'11',",
-          "1000,root.vehicle.d1,888,null,null,null,null,'11',",
-        };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet = statement.execute("select *, '11' from root.vehicle align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,Device,s0,s1,s2,s3,s4,'11'",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.VARCHAR,
-                  Types.INTEGER,
-                  Types.BIGINT,
-                  Types.FLOAT,
-                  Types.VARCHAR,
-                  Types.BOOLEAN, /* constant column */
-                  Types.VARCHAR
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(19, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void selectNonExistTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
@@ -933,233 +837,6 @@ public class IoTDBAlignByDeviceIT {
                   Types.VARCHAR,
                   Types.BOOLEAN, /* non exist column */
                   Types.VARCHAR
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(19, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void selectUnorderedConstantTest() throws ClassNotFoundException {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,'11',null,'22',null,null,",
-          "2,root.vehicle.d0,10000,40000,'11',2.22,'22',null,null,",
-          "3,root.vehicle.d0,null,null,'11',3.33,'22',null,null,",
-          "4,root.vehicle.d0,null,null,'11',4.44,'22',null,null,",
-          "50,root.vehicle.d0,10000,50000,'11',null,'22',null,null,",
-          "60,root.vehicle.d0,null,null,'11',null,'22',aaaaa,null,",
-          "70,root.vehicle.d0,null,null,'11',null,'22',bbbbb,null,",
-          "80,root.vehicle.d0,null,null,'11',null,'22',ccccc,null,",
-          "100,root.vehicle.d0,99,199,'11',null,'22',null,true,",
-          "101,root.vehicle.d0,99,199,'11',null,'22',ddddd,null,",
-          "102,root.vehicle.d0,80,180,'11',10.0,'22',fffff,null,",
-          "103,root.vehicle.d0,99,199,'11',null,'22',null,null,",
-          "104,root.vehicle.d0,90,190,'11',null,'22',null,null,",
-          "105,root.vehicle.d0,99,199,'11',11.11,'22',null,null,",
-          "106,root.vehicle.d0,99,null,'11',null,'22',null,null,",
-          "1000,root.vehicle.d0,22222,55555,'11',1000.11,'22',null,null,",
-          "946684800000,root.vehicle.d0,null,100,'11',null,'22',good,null,",
-        };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s0, s1,'11', s2, '22', s3, s4 from root.vehicle.d0 align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,Device,s0,s1,'11',s2,'22',s3,s4",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.VARCHAR,
-                  Types.INTEGER,
-                  Types.BIGINT,
-                  /* constant column */ Types.VARCHAR,
-                  Types.FLOAT,
-                  /* constant column */ Types.VARCHAR,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(17, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void selectUnorderedConstantAndNonExistTest() throws ClassNotFoundException {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,'11',null,'22',null,null,null,",
-          "2,root.vehicle.d0,10000,40000,'11',2.22,'22',null,null,null,",
-          "3,root.vehicle.d0,null,null,'11',3.33,'22',null,null,null,",
-          "4,root.vehicle.d0,null,null,'11',4.44,'22',null,null,null,",
-          "50,root.vehicle.d0,10000,50000,'11',null,'22',null,null,null,",
-          "60,root.vehicle.d0,null,null,'11',null,'22',null,aaaaa,null,",
-          "70,root.vehicle.d0,null,null,'11',null,'22',null,bbbbb,null,",
-          "80,root.vehicle.d0,null,null,'11',null,'22',null,ccccc,null,",
-          "100,root.vehicle.d0,99,199,'11',null,'22',null,null,true,",
-          "101,root.vehicle.d0,99,199,'11',null,'22',null,ddddd,null,",
-          "102,root.vehicle.d0,80,180,'11',10.0,'22',null,fffff,null,",
-          "103,root.vehicle.d0,99,199,'11',null,'22',null,null,null,",
-          "104,root.vehicle.d0,90,190,'11',null,'22',null,null,null,",
-          "105,root.vehicle.d0,99,199,'11',11.11,'22',null,null,null,",
-          "106,root.vehicle.d0,99,null,'11',null,'22',null,null,null,",
-          "1000,root.vehicle.d0,22222,55555,'11',1000.11,'22',null,null,null,",
-          "946684800000,root.vehicle.d0,null,100,'11',null,'22',null,good,null,",
-          "1,root.vehicle.d1,999,null,'11',null,'22',null,null,null,",
-          "1000,root.vehicle.d1,888,null,'11',null,'22',null,null,null,",
-        };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s0, s1,'11', s2, '22', s5, s3, s4 from root.vehicle.* align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,Device,s0,s1,'11',s2,'22',s5,s3,s4",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.VARCHAR,
-                  Types.INTEGER,
-                  Types.BIGINT,
-                  /* constant column */ Types.VARCHAR,
-                  Types.FLOAT, /* constant column */
-                  Types.VARCHAR, /* non exist column */
-                  Types.VARCHAR,
-                  Types.VARCHAR,
-                  Types.BOOLEAN,
-                });
-
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
-          StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
-          }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
-          cnt++;
-        }
-        Assert.assertEquals(19, cnt);
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void selectConstantAndNonExistTestWithUnorderedDevice() throws ClassNotFoundException {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d1,null,999,null,'11',null,'11','22',null,null,999,",
-          "1000,root.vehicle.d1,null,888,null,'11',null,'11','22',null,null,888,",
-          "1,root.vehicle.d0,null,101,null,'11',null,'11','22',null,null,101,",
-          "2,root.vehicle.d0,null,10000,null,'11',2.22,'11','22',null,null,10000,",
-          "3,root.vehicle.d0,null,null,null,'11',3.33,'11','22',null,null,null,",
-          "4,root.vehicle.d0,null,null,null,'11',4.44,'11','22',null,null,null,",
-          "50,root.vehicle.d0,null,10000,null,'11',null,'11','22',null,null,10000,",
-          "60,root.vehicle.d0,null,null,null,'11',null,'11','22',null,aaaaa,null,",
-          "70,root.vehicle.d0,null,null,null,'11',null,'11','22',null,bbbbb,null,",
-          "80,root.vehicle.d0,null,null,null,'11',null,'11','22',null,ccccc,null,",
-          "100,root.vehicle.d0,null,99,null,'11',null,'11','22',null,null,99,",
-          "101,root.vehicle.d0,null,99,null,'11',null,'11','22',null,ddddd,99,",
-          "102,root.vehicle.d0,null,80,null,'11',10.0,'11','22',null,fffff,80,",
-          "103,root.vehicle.d0,null,99,null,'11',null,'11','22',null,null,99,",
-          "104,root.vehicle.d0,null,90,null,'11',null,'11','22',null,null,90,",
-          "105,root.vehicle.d0,null,99,null,'11',11.11,'11','22',null,null,99,",
-          "106,root.vehicle.d0,null,99,null,'11',null,'11','22',null,null,99,",
-          "1000,root.vehicle.d0,null,22222,null,'11',1000.11,'11','22',null,null,22222,",
-          "946684800000,root.vehicle.d0,null,null,null,'11',null,'11','22',null,good,null,",
-        };
-
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select s5, s0, s5, '11', s2, '11', '22', s5, s3, s0 from root.vehicle.d1, root.vehicle.d0  align by device");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        List<Integer> actualIndexToExpectedIndexList =
-            checkHeader(
-                resultSetMetaData,
-                "Time,Device,s5,s0,s5,'11',s2,'11','22',s5,s3,s0",
-                new int[] {
-                  Types.TIMESTAMP,
-                  Types.VARCHAR,
-                  Types.VARCHAR,
-                  Types.INTEGER,
-                  /* non exist column */ Types.VARCHAR, /* constant column */
-                  Types.VARCHAR,
-                  Types.FLOAT, /* constant column */
-                  Types.VARCHAR,
-                  /* constant column */ Types.VARCHAR, /* non exist column */
-                  Types.VARCHAR,
-                  Types.VARCHAR,
-                  Types.INTEGER,
                 });
 
         int cnt = 0;

@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.DeleteDataOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
@@ -196,7 +196,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testDisableAlign() {
-    String sqlStr = "select * from root.vehicle disable align";
+    String sqlStr = "select * from root.vehicle.** disable align";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
@@ -205,7 +205,7 @@ public class LogicalPlanSmallTest {
 
   @Test
   public void testNotDisableAlign() {
-    String sqlStr = "select * from root.vehicle";
+    String sqlStr = "select * from root.vehicle.**";
     QueryOperator operator =
         (QueryOperator) LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, operator.getClass());
@@ -214,7 +214,7 @@ public class LogicalPlanSmallTest {
 
   @Test(expected = ParseCancellationException.class)
   public void testDisableAlignConflictAlignByDevice() {
-    String sqlStr = "select * from root.vehicle disable align align by device";
+    String sqlStr = "select * from root.vehicle.** disable align align by device";
     LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
   }
 
@@ -343,5 +343,19 @@ public class LogicalPlanSmallTest {
       errorMsg = e.getMessage();
     }
     Assert.assertEquals("Invalid delete range: [6, 0]", errorMsg);
+  }
+
+  @Test
+  public void testRegexpQuery() {
+    String sqlStr = "SELECT a FROM root.sg.* WHERE a REGEXP 'string'";
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
+    Assert.assertEquals(QueryOperator.class, op.getClass());
+    QueryOperator queryOperator = (QueryOperator) op;
+    Assert.assertEquals(Operator.OperatorType.QUERY, queryOperator.getType());
+    Assert.assertEquals(
+        "a",
+        queryOperator.getSelectComponent().getResultColumns().get(0).getExpression().toString());
+    Assert.assertEquals(
+        "root.sg.*", queryOperator.getFromComponent().getPrefixPaths().get(0).getFullPath());
   }
 }

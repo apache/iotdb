@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -133,19 +134,20 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
       // lazy reset batch data for calculation
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+      IBatchDataIterator batchIterator = batchData.getBatchDataIterator();
       if (ascending) {
         // skip points that cannot be calculated
-        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() < curStartTime) {
+          batchIterator.next();
         }
       } else {
-        while (batchData.hasCurrent() && batchData.currentTime() >= curEndTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() >= curEndTime) {
+          batchIterator.next();
         }
       }
 
-      if (batchData.hasCurrent()) {
-        result.updateResultFromPageData(batchData, curStartTime, curEndTime);
+      if (batchIterator.hasNext()) {
+        result.updateResultFromPageData(batchIterator, curStartTime, curEndTime);
       }
     }
     lastReadCurArrayIndex = batchData.getReadCurArrayIndex();

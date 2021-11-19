@@ -68,9 +68,10 @@ public class IoTDBQueryMemoryControlIT {
   }
 
   private static void createTimeSeries() {
-    try (Statement statement =
-        DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root")
-            .createStatement()) {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       for (String sql : sqls) {
         statement.execute(sql);
       }
@@ -93,7 +94,7 @@ public class IoTDBQueryMemoryControlIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("select * from root");
+        statement.execute("select * from root.**");
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Too many paths in one query!"));
       }
@@ -115,7 +116,7 @@ public class IoTDBQueryMemoryControlIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("select * from root slimit 10");
+      statement.execute("select * from root.** slimit 10");
       statement.execute("select count(*) from root slimit 10");
     } catch (SQLException e) {
       e.printStackTrace();
@@ -130,7 +131,7 @@ public class IoTDBQueryMemoryControlIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       try {
-        statement.execute("select * from root slimit 11");
+        statement.execute("select * from root.** slimit 11");
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("Too many paths in one query!"));
       }

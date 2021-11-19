@@ -32,7 +32,7 @@ IoTDB 支持：
 
 一共六种数据类型。
 
-其中** FLOAT **与** DOUBLE **类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) 可以指定 MAX_POINT_NUMBER，该项为浮点数的小数点后位数，若不指定则系统会根据配置文件`iotdb-engine.properties`文件中的 [float_precision 项](../Appendix/Config-Manual.md) 配置。
+其中 **FLOAT** 与 **DOUBLE** 类型的序列，如果编码方式采用 [RLE](Encoding.md) 或 [TS_2DIFF](Encoding.md) 可以指定 MAX_POINT_NUMBER，该项为浮点数的小数点后位数，若不指定则系统会根据配置文件`iotdb-engine.properties`文件中的 [float_precision 项](../Appendix/Config-Manual.md) 配置。
 
 当系统中用户输入的数据类型与该时间序列的数据类型不对应时，系统会提醒类型错误，如下所示，二阶差分编码不支持布尔类型：
 
@@ -53,7 +53,9 @@ IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIM
 
 在用户在输入时间戳时，可以使用 LONG 类型的时间戳或 DATETIME-INPUT 类型的时间戳，其中 DATETIME-INPUT 类型的时间戳支持格式如表所示：
 
-<center>**DATETIME-INPUT 类型支持格式**
+<center>
+
+**DATETIME-INPUT 类型支持格式**
 
 
 | format                       |
@@ -61,34 +63,24 @@ IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIM
 | yyyy-MM-dd HH:mm:ss          |
 | yyyy/MM/dd HH:mm:ss          |
 | yyyy.MM.dd HH:mm:ss          |
-| yyyy-MM-dd'T'HH:mm:ss        |
-| yyyy/MM/dd'T'HH:mm:ss        |
-| yyyy.MM.dd'T'HH:mm:ss        |
 | yyyy-MM-dd HH:mm:ssZZ        |
 | yyyy/MM/dd HH:mm:ssZZ        |
 | yyyy.MM.dd HH:mm:ssZZ        |
-| yyyy-MM-dd'T'HH:mm:ssZZ      |
-| yyyy/MM/dd'T'HH:mm:ssZZ      |
-| yyyy.MM.dd'T'HH:mm:ssZZ      |
 | yyyy/MM/dd HH:mm:ss.SSS      |
 | yyyy-MM-dd HH:mm:ss.SSS      |
 | yyyy.MM.dd HH:mm:ss.SSS      |
-| yyyy/MM/dd'T'HH:mm:ss.SSS    |
-| yyyy-MM-dd'T'HH:mm:ss.SSS    |
-| yyyy.MM.dd'T'HH:mm:ss.SSS    |
 | yyyy-MM-dd HH:mm:ss.SSSZZ    |
 | yyyy/MM/dd HH:mm:ss.SSSZZ    |
 | yyyy.MM.dd HH:mm:ss.SSSZZ    |
-| yyyy-MM-dd'T'HH:mm:ss.SSSZZ  |
-| yyyy/MM/dd'T'HH:mm:ss.SSSZZ  |
-| yyyy.MM.dd'T'HH:mm:ss.SSSZZ  |
 | ISO8601 standard time format |
 
 </center>
 
 IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类型，其中 DATETIME-DISPLAY 类型可以支持用户自定义时间格式。自定义时间格式的语法如表所示：
 
-<center>**DATETIME-DISPLAY 自定义时间格式的语法**
+<center>
+
+**DATETIME-DISPLAY 自定义时间格式的语法**
 
 
 | Symbol |           Meaning           | Presentation |              Examples              |
@@ -135,7 +127,9 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
   RelativeTime = (now() | DATETIME) ((+|-) Duration)+
   ```
 
-  <center>**The syntax of the duration unit**
+  <center>
+  
+  **The syntax of the duration unit**
 
 
   | Symbol |   Meaning   |       Presentation       | Examples |

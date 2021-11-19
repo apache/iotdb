@@ -33,7 +33,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.RaftMember;
-import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -41,9 +40,9 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -315,7 +314,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
      */
     private boolean isFileAlreadyPulled(RemoteTsFileResource resource) throws IllegalPathException {
       Pair<String, Long> sgNameAndTimePartitionIdPair =
-          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(resource);
+          FilePathUtils.getLogicalSgNameAndTimePartitionIdPair(
+              resource.getTsFile().getAbsolutePath());
       return StorageEngine.getInstance()
           .isFileAlreadyExist(
               resource,
@@ -350,13 +350,13 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         try {
           client.removeHardLink(resource.getTsFile().getAbsolutePath());
         } catch (TException te) {
-          client.getInputProtocol().getTransport().close();
+          client.close();
           logger.error(
               "Cannot remove hardlink {} from {}",
               resource.getTsFile().getAbsolutePath(),
               sourceNode);
         } finally {
-          ClientUtils.putBackSyncClient(client);
+          client.returnSelf();
         }
       }
     }
@@ -407,7 +407,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<tsfile>
       // you can see FilePathUtils.splitTsFilePath() method for details.
       PartialPath storageGroupName =
-          new PartialPath(FilePathUtils.getLogicalStorageGroupName(resource));
+          new PartialPath(
+              FilePathUtils.getLogicalStorageGroupName(resource.getTsFile().getAbsolutePath()));
       try {
         StorageEngine.getInstance().getProcessor(storageGroupName).loadNewTsFile(resource);
         if (resource.isPlanRangeUnique()) {
@@ -444,11 +445,12 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
       // the new file is stored at:
       // remote/<nodeIdentifier>/<FilePathUtils.getTsFilePrefixPath(resource)>/<newTsFile>
       // you can see FilePathUtils.splitTsFilePath() method for details.
-      String tempFileName = FilePathUtils.getTsFileNameWithoutHardLink(resource);
+      String tempFileName =
+          FilePathUtils.getTsFileNameWithoutHardLink(resource.getTsFile().getAbsolutePath());
       String tempFilePath =
           node.getNodeIdentifier()
               + File.separator
-              + FilePathUtils.getTsFilePrefixPath(resource)
+              + FilePathUtils.getTsFilePrefixPath(resource.getTsFile().getAbsolutePath())
               + File.separator
               + tempFileName;
       File tempFile = new File(REMOTE_FILE_TEMP_DIR, tempFilePath);
@@ -530,7 +532,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
         if (client == null) {
           throw new IOException("No available client for " + node.toString());
         }
-        ByteBuffer buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
+        ByteBuffer buffer;
+        buffer = SyncClientAdaptor.readFile(client, remotePath, offset, fetchSize);
         int len = writeBuffer(buffer, dest);
         if (len == 0) {
           break;
@@ -576,9 +579,9 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           offset += len;
         }
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
+        client.close();
       } finally {
-        ClientUtils.putBackSyncClient(client);
+        client.returnSelf();
       }
       dest.flush();
     }

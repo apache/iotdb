@@ -19,18 +19,17 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,8 +45,8 @@ public class MemTableTestUtils {
 
   static {
     schema.registerTimeseries(
-        new Path(deviceId0, measurementId0),
-        new MeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
+        new Path(deviceId0),
+        new UnaryMeasurementSchema(measurementId0, dataType0, TSEncoding.PLAIN));
   }
 
   public static void produceData(
@@ -62,7 +61,10 @@ public class MemTableTestUtils {
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId, new MeasurementSchema(measurementId, dataType, TSEncoding.PLAIN), l, (int) l);
+          deviceId,
+          new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
+          l,
+          (int) l);
     }
   }
 
@@ -87,14 +89,15 @@ public class MemTableTestUtils {
     encodings[1] = TSEncoding.GORILLA;
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema =
-        new VectorMeasurementSchema("vectorName", measurements, dataTypes, encodings);
-    mNodes[0] = new MeasurementMNode(null, "sensor0", schema, null);
-    mNodes[1] = new MeasurementMNode(null, "sensor1", schema, null);
+    IMeasurementSchema schema0 =
+        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 =
+        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(deviceId0), new String[] {"(sensor0,sensor1)"}, dataTypesList);
+        new InsertTabletPlan(new PartialPath(deviceId0), measurements, dataTypesList);
 
     insertTabletPlan.setAligned(true);
 

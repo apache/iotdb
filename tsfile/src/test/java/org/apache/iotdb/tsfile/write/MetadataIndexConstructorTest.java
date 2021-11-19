@@ -32,27 +32,32 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.MeasurementGroup;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.org.apache.commons.lang.text.StrBuilder;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 /** test for MetadataIndexConstructor */
 public class MetadataIndexConstructorTest {
@@ -74,6 +79,10 @@ public class MetadataIndexConstructorTest {
   @After
   public void after() {
     conf.setMaxDegreeOfIndexNode(maxDegreeOfIndexNode);
+    File file = new File(FILE_PATH);
+    if (file.exists()) {
+      file.delete();
+    }
   }
 
   /** Example 1: 5 entities with 5 measurements each */
@@ -152,37 +161,26 @@ public class MetadataIndexConstructorTest {
     test(devices, vectorMeasurement, singleMeasurement);
   }
 
-  /** Example 5: 1 entities with 2 vectors, 9 measurements for each vector */
+  /** Example 5: 1 entities with 1 vector containing 9 measurements */
   @Test
-  public void vectorIndexTest1() {
+  public void vectorIndexTest() {
     String[] devices = {"d0"};
-    int[][] vectorMeasurement = {{9, 9}};
-    test(devices, vectorMeasurement, null);
-  }
-
-  /** Example 6: 1 entities with 2 vectors, 15 measurements for each vector */
-  @Test
-  public void vectorIndexTest2() {
-    String[] devices = {"d0"};
-    int[][] vectorMeasurement = {{15, 15}};
+    int[][] vectorMeasurement = {{9}};
     test(devices, vectorMeasurement, null);
   }
 
   /**
-   * Example 7: 2 entities, measurements of entities are shown in the following table
+   * Example 6: 2 entities, measurements of entities are shown in the following table
    *
-   * <p>d0.s0~s4 | d0.v0.(s0~s8) | d0.z0~z3 d1.s0~s14 | d1.v0.(s0~s3)
+   * <p>d0.s0~s4 | d0.z0~z3 | d1.v0.(s0~s3)
    */
   @Test
   public void compositeIndexTest() {
     String[] devices = {"d0", "d1"};
-    int[][] vectorMeasurement = {{9}, {4}};
+    int[][] vectorMeasurement = {{}, {4}};
     String[][] singleMeasurement = {
       {"s0", "s1", "s2", "s3", "s4", "z0", "z1", "z2", "z3"},
-      {
-        "s00", "s01", "s02", "s03", "s04", "s05", "s06", "s07", "s08", "s09", "s10", "s11", "s12",
-        "s13", "s14"
-      }
+      {}
     };
     test(devices, vectorMeasurement, singleMeasurement);
   }
@@ -307,7 +305,6 @@ public class MetadataIndexConstructorTest {
           endOffset = node.getChildren().get(i + 1).getOffset();
         }
         if (node.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
-          // 把每个叶子节点的第一个加进来
           measurements.get(deviceIndex).add(metadataIndexEntry.getName());
         } else if (node.getNodeType().equals(MetadataIndexNodeType.INTERNAL_MEASUREMENT)) {
           MetadataIndexNode subNode =
@@ -348,14 +345,12 @@ public class MetadataIndexConstructorTest {
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
-        String vectorName =
-            vectorPrefix + generateIndexString(vectorIndex, vectorMeasurement.length);
-        measurements.add(vectorName);
+        measurements.add("");
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
-          measurements.add(vectorName + TsFileConstant.PATH_SEPARATOR + measurementName);
+          measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
         }
       }
       Collections.sort(measurements);
@@ -383,8 +378,8 @@ public class MetadataIndexConstructorTest {
           String device = devices[i];
           for (String measurement : singleMeasurement[i]) {
             tsFileWriter.registerTimeseries(
-                new Path(device, measurement),
-                new MeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
+                new Path(device),
+                new UnaryMeasurementSchema(measurement, TSDataType.INT64, TSEncoding.RLE));
           }
           // the number of record rows
           int rowNum = 10;
@@ -411,25 +406,24 @@ public class MetadataIndexConstructorTest {
           String vectorName =
               vectorPrefix + generateIndexString(vectorIndex, vectorMeasurement.length);
           logger.info("generating vector {}...", vectorName);
-          List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
           int measurementNum = vectorMeasurement[i][vectorIndex];
-          String[] measurementNames = new String[measurementNum];
-          TSDataType[] dataTypes = new TSDataType[measurementNum];
+          List<UnaryMeasurementSchema> schemas = new ArrayList<>();
+          List<IMeasurementSchema> tabletSchema = new ArrayList<>();
           for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
             String measurementName =
                 measurementPrefix + generateIndexString(measurementIndex, measurementNum);
             logger.info("generating vector measurement {}...", measurementName);
             // add measurements into file schema (all with INT64 data type)
-            measurementNames[measurementIndex] = measurementName;
-            dataTypes[measurementIndex] = TSDataType.INT64;
+            UnaryMeasurementSchema schema1 =
+                new UnaryMeasurementSchema(measurementName, TSDataType.INT64, TSEncoding.RLE);
+            schemas.add(schema1);
+            tabletSchema.add(schema1);
           }
-          IMeasurementSchema measurementSchema =
-              new VectorMeasurementSchema(vectorName, measurementNames, dataTypes);
-          measurementSchemas.add(measurementSchema);
-          schema.registerTimeseries(new Path(device, vectorName), measurementSchema);
+          MeasurementGroup group = new MeasurementGroup(true, schemas);
+          schema.registerMeasurementGroup(new Path(device), group);
           // add measurements into TSFileWriter
           // construct the tablet
-          Tablet tablet = new Tablet(device, measurementSchemas);
+          Tablet tablet = new Tablet(device, tabletSchema);
           long[] timestamps = tablet.timestamps;
           Object[] values = tablet.values;
           long timestamp = 1;
@@ -443,13 +437,13 @@ public class MetadataIndexConstructorTest {
             }
             // write Tablet to TsFile
             if (tablet.rowSize == tablet.getMaxRowNumber()) {
-              tsFileWriter.write(tablet);
+              tsFileWriter.writeAligned(tablet);
               tablet.reset();
             }
           }
           // write Tablet to TsFile
           if (tablet.rowSize != 0) {
-            tsFileWriter.write(tablet);
+            tsFileWriter.writeAligned(tablet);
             tablet.reset();
           }
         }
@@ -468,7 +462,7 @@ public class MetadataIndexConstructorTest {
    * @return curIndex's string
    */
   private String generateIndexString(int curIndex, int maxIndex) {
-    StrBuilder res = new StrBuilder(String.valueOf(curIndex));
+    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
     String target = String.valueOf(maxIndex);
     while (res.length() < target.length()) {
       res.insert(0, "0");

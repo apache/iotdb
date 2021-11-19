@@ -25,8 +25,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,20 +65,18 @@ public class TsFileHelper {
 
       // add measurements into file schema (all with INT64 data type)
       for (int i = 0; i < 2; i++) {
-        MeasurementSchema measurementSchema =
-            new MeasurementSchema(
+        UnaryMeasurementSchema measurementSchema =
+            new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.INT64, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 
       for (int i = 2; i < sensorNum; i++) {
-        IMeasurementSchema measurementSchema =
-            new MeasurementSchema(
+        UnaryMeasurementSchema measurementSchema =
+            new UnaryMeasurementSchema(
                 Constant.SENSOR_PREFIX + (i + 1), TSDataType.DOUBLE, TSEncoding.TS_2DIFF);
-        schema.registerTimeseries(
-            new Path(Constant.DEVICE_1, Constant.SENSOR_PREFIX + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path(Constant.DEVICE_1), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

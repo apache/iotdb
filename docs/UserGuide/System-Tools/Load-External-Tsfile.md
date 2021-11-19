@@ -31,7 +31,7 @@ The user sends specified commands to the Apache IoTDB system through the Cli too
 
 #### load tsfiles
 
-The command to load tsfiles is `load "<path/dir>" [autoregister=true/false][,sglevel=int][,verify=true/false]`.
+The command to load tsfiles is `load <path/dir> [autoregister=true/false][,sglevel=int][,verify=true/false]`.
 
 This command has two usages:
 
@@ -49,15 +49,15 @@ If the `.resource` file corresponding to the file exists, it will be loaded into
 
 Examples:
 
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile"`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=true,sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" verify=false,sglevel=1`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,verify=true`
-* `load "/Users/Desktop/data/1575028885956-101-0.tsfile" autoregister=false,sglevel=1,verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile'`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=true,sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' verify=false,sglevel=1`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false,verify=true`
+* `load '/Users/Desktop/data/1575028885956-101-0.tsfile' autoregister=false,sglevel=1,verify=true`
 
 2. Load a batch of files by specifying a folder path (absolute path). 
 
@@ -65,11 +65,11 @@ The second parameter indicates the path of the tsfile to be loaded and the name 
 
 Examples:
 
-* `load "/Users/Desktop/data"`
-* `load "/Users/Desktop/data" autoregister=false`
-* `load "/Users/Desktop/data" autoregister=true`
-* `load "/Users/Desktop/data" autoregister=true,sglevel=1`
-* `load "/Users/Desktop/data" autoregister=false,sglevel=1,verify=true`
+* `load '/Users/Desktop/data'`
+* `load '/Users/Desktop/data' autoregister=false`
+* `load '/Users/Desktop/data' autoregister=true`
+* `load '/Users/Desktop/data' autoregister=true,sglevel=1`
+* `load '/Users/Desktop/data' autoregister=false,sglevel=1,verify=true`
 
 #### remove a tsfile
 
@@ -79,16 +79,16 @@ This command deletes a tsfile by specifying the file path. The specific implemen
 
 Examples:
 
-* `remove "root.vehicle/1575028885956-101-0.tsfile"` 
-* `remove "1575028885956-101-0.tsfile"`
+* `remove 'root.vehicle/1575028885956-101-0.tsfile'`
+* `remove '1575028885956-101-0.tsfile'`
 
-#### move a tsfile to a target directory
+#### unload a tsfile and move it to a target directory
 
-The command to move a tsfile to target directory is: `move "<path>" "<dir>"`.
+The command to unload a tsfile and move it to target directory is: `unload "<path>" "<dir>"`.
 
-This command moves a tsfile to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
+This command unload a tsfile and move it to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
 
 Examples:
 
-* `move "root.vehicle/1575029224130-101-0.tsfile" "/data/data/tmp"`
-* `move "1575029224130-101-0.tsfile" "/data/data/tmp"`
+* `unload 'root.vehicle/1575029224130-101-0.tsfile' '/data/data/tmp'`
+* `unload '1575029224130-101-0.tsfile' '/data/data/tmp'`

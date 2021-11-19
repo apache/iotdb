@@ -44,7 +44,6 @@ public class ClusterConfig {
   private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
-  private int maxConcurrentClientNum = 10000;
 
   @ClusterConsistent private int replicationNum = 1;
 
@@ -57,6 +56,10 @@ public class ClusterConfig {
   private boolean useAsyncApplier = true;
 
   private int connectionTimeoutInMS = (int) TimeUnit.SECONDS.toMillis(20);
+
+  private long heartbeatIntervalMs = TimeUnit.SECONDS.toMillis(1);
+
+  private long electionTimeoutMs = TimeUnit.SECONDS.toMillis(20);
 
   private int readOperationTimeoutMS = (int) TimeUnit.SECONDS.toMillis(30);
 
@@ -226,14 +229,6 @@ public class ClusterConfig {
 
   void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
-  }
-
-  public int getMaxConcurrentClientNum() {
-    return maxConcurrentClientNum;
-  }
-
-  void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
-    this.maxConcurrentClientNum = maxConcurrentClientNum;
   }
 
   public List<String> getSeedNodeUrls() {
@@ -510,6 +505,22 @@ public class ClusterConfig {
 
   public void setWaitClientTimeoutMS(long waitClientTimeoutMS) {
     this.waitClientTimeoutMS = waitClientTimeoutMS;
+  }
+
+  public long getHeartbeatIntervalMs() {
+    return heartbeatIntervalMs;
+  }
+
+  public void setHeartbeatIntervalMs(long heartbeatIntervalMs) {
+    this.heartbeatIntervalMs = heartbeatIntervalMs;
+  }
+
+  public long getElectionTimeoutMs() {
+    return electionTimeoutMs;
+  }
+
+  public void setElectionTimeoutMs(long electionTimeoutMs) {
+    this.electionTimeoutMs = electionTimeoutMs;
   }
 
   public int getClusterInfoRpcPort() {

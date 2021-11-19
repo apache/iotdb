@@ -24,10 +24,11 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -45,6 +46,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+/** Each storage group that set by users corresponds to a StorageGroupManager */
 public class VirtualStorageGroupManager {
 
   /** logger of this class */
@@ -61,6 +63,8 @@ public class VirtualStorageGroupManager {
    * new created
    */
   private AtomicBoolean[] isVsgReady;
+
+  private AtomicBoolean isSettling = new AtomicBoolean();
 
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
@@ -105,11 +109,29 @@ public class VirtualStorageGroupManager {
     }
   }
 
-  /** push check memtable flush interval down to all sg */
-  public void timedFlushMemTable() {
+  /** push check sequence memtable flush interval down to all sg */
+  public void timedFlushSeqMemTable() {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.timedFlushMemTable();
+        storageGroupProcessor.timedFlushSeqMemTable();
+      }
+    }
+  }
+
+  /** push check unsequence memtable flush interval down to all sg */
+  public void timedFlushUnseqMemTable() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedFlushUnseqMemTable();
+      }
+    }
+  }
+
+  /** push check TsFileProcessor close interval down to all sg */
+  public void timedCloseTsFileProcessor() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.timedCloseTsFileProcessor();
       }
     }
   }
@@ -143,11 +165,8 @@ public class VirtualStorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
-        throw new StorageEngineException(
-            String.format(
-                "the virtual storage group %s[%d] may not ready now, please wait and retry later",
-                storageGroupMNode.getFullPath(), loc),
-            TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+        throw new StorageGroupNotReadyException(
+            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
 
@@ -281,11 +300,16 @@ public class VirtualStorageGroupManager {
   }
 
   /** push delete operation down to all virtual storage group processors */
-  public void delete(PartialPath path, long startTime, long endTime, long planIndex)
+  public void delete(
+      PartialPath path,
+      long startTime,
+      long endTime,
+      long planIndex,
+      TimePartitionFilter timePartitionFilter)
       throws IOException {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
-        storageGroupProcessor.delete(path, startTime, endTime, planIndex);
+        storageGroupProcessor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
       }
     }
   }
@@ -307,6 +331,18 @@ public class VirtualStorageGroupManager {
     for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
       if (storageGroupProcessor != null) {
         storageGroupProcessor.upgrade();
+      }
+    }
+  }
+
+  public void getResourcesToBeSettled(
+      List<TsFileResource> seqResourcesToBeSettled,
+      List<TsFileResource> unseqResourcesToBeSettled,
+      List<String> tsFilePaths) {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.addSettleFilesToList(
+            seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
       }
     }
   }
@@ -339,7 +375,7 @@ public class VirtualStorageGroupManager {
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
-  public void deleteStorageGroup(String path) {
+  public void deleteStorageGroupSystemFolder(String path) {
     for (StorageGroupProcessor processor : virtualStorageGroupProcessor) {
       if (processor != null) {
         processor.deleteFolder(path);
@@ -422,5 +458,21 @@ public class VirtualStorageGroupManager {
   /** only for test */
   public void reset() {
     Arrays.fill(virtualStorageGroupProcessor, null);
+  }
+
+  public void stopCompactionSchedulerPool() {
+    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
+      if (storageGroupProcessor != null) {
+        storageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+      }
+    }
+  }
+
+  public void setSettling(boolean settling) {
+    isSettling.set(settling);
+  }
+
+  public AtomicBoolean getIsSettling() {
+    return isSettling;
   }
 }

@@ -21,18 +21,19 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,25 +53,28 @@ public class SeriesAggregateReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    EnvironmentUtils.envSetUp();
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test
   public void aggregateTest() {
     try {
-      PartialPath path = new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0");
+      MeasurementPath path =
+          SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
       QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
@@ -79,7 +83,7 @@ public class SeriesAggregateReaderTest {
               path,
               allSensors,
               TSDataType.INT32,
-              new QueryContext(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               queryDataSource,
               null,
               null,
@@ -120,17 +124,17 @@ public class SeriesAggregateReaderTest {
             }
 
             while (seriesReader.hasNextPage()) {
-              BatchData nextOverlappedPageData = seriesReader.nextPage();
-              aggregateResult.updateResultFromPageData(nextOverlappedPageData);
-              nextOverlappedPageData.resetBatchData();
-              assertTrue(nextOverlappedPageData.hasCurrent());
+              IBatchDataIterator batchDataIterator = seriesReader.nextPage().getBatchDataIterator();
+              aggregateResult.updateResultFromPageData(batchDataIterator);
+              batchDataIterator.reset();
+              assertTrue(batchDataIterator.hasNext());
             }
             loopTime++;
           }
         }
       }
       assertEquals(500L, aggregateResult.getResult());
-    } catch (IOException | QueryProcessException | IllegalPathException e) {
+    } catch (IOException | QueryProcessException | MetadataException e) {
       e.printStackTrace();
       fail();
     }

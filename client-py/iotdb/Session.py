@@ -459,7 +459,7 @@ class Session(object):
                          1,  125.3,  True,  text1
                          2,  111.6, False,  text2
                          3,  688.6,  True,  text3
-        Notice: The tablet should not have empty cell
+        Notice: From 0.13.0, the tablet can contain empty cell
                 The tablet itself is sorted (see docs of Tablet.py)
         :param tablet: a tablet specified above
         """
@@ -649,6 +649,7 @@ class Session(object):
             resp.columnNameIndexMap,
             resp.queryId,
             self.__client,
+            self.__statement_id,
             self.__session_id,
             resp.queryDataSet,
             resp.ignoreTimeStamp,

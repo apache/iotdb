@@ -349,7 +349,8 @@ UDTF 的结束方法，您可以在此方法中进行一些资源释放等的操
 
 1. 实现一个完整的 UDF 类，假定这个类的全类名为`org.apache.iotdb.udf.UDTFExample`
 2. 将项目打成 JAR 包，如果您使用 Maven 管理项目，可以参考上述 Maven 项目示例的写法
-3. 将 JAR 包放置到目录 `iotdb-server-0.13.0-SNAPSHOT/ext/udf` （也可以是`iotdb-server-0.13.0-SNAPSHOT/ext/udf`的子目录）下。
+3. 将 JAR 包放置到目录 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` （也可以是`iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`的子目录）下。
+   **注意，在部署集群的时候，需要保证每一个节点的 UDF JAR 包路径下都存在相应的 JAR 包。**
    
     > 您可以通过修改配置文件中的`udf_root_dir`来指定 UDF 加载 Jar 的根路径。
 4. 使用 SQL 语句注册该 UDF，假定赋予该 UDF 的名字为`example`
@@ -363,7 +364,7 @@ CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
 例子中注册 UDF 的 SQL 语句如下：
 
 ```sql
-CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample"
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample'
 ```
 
 由于 IoTDB 的 UDF 是通过反射技术动态装载的，因此您在装载过程中无需启停服务器。
@@ -421,20 +422,18 @@ UDF 的使用方法与普通内建函数的类似。
 您可以在进行 UDF 查询的时候，向 UDF 传入任意数量的键值对参数。键值对中的键和值都需要被单引号或者双引号引起来。注意，键值对参数只能在所有时间序列后传入。下面是一组例子：
 
 ``` sql
-SELECT example(s1, "key1"="value1", "key2"="value2"), example(*, "key3"="value3") FROM root.sg.d1;
-SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
+SELECT example(s1, 'key1'='value1', 'key2'='value2'), example(*, 'key3'='value3') FROM root.sg.d1;
+SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
 ```
 
-### 与其他查询的混合查询
-
-目前 IoTDB 支持 UDF 查询与原始查询的混合查询，例如：
+### 与其他查询的嵌套查询
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
 SELECT *, example(*) FROM root.sg.d1 DISABLE ALIGN;
+SELECT s1 * example(* / s1 + s2) FROM root.sg.d1;
+SELECT s1, s2, s1 + example(s1, s2), s1 - example(s1 + example(s1, s2) / s2) FROM root.sg.d1;
 ```
-
-暂不支持 UDF 查询与其他查询混合使用。
 
 ## 查看所有注册的 UDF
 
@@ -507,12 +506,12 @@ SHOW FUNCTIONS
 
 ## Q&A
 
-**Q1: 如何修改已经注册的 UDF？**
+Q1: 如何修改已经注册的 UDF？
 
 A1: 假设 UDF 的名称为`example`，全类名为`org.apache.iotdb.udf.UDTFExample`，由`example.jar`引入
 
 1. 首先卸载已经注册的`example`函数，执行`DROP FUNCTION example`
-2. 删除 `iotdb-server-0.13.0-SNAPSHOT/ext/udf` 目录下的`example.jar`
+2. 删除 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` 目录下的`example.jar`
 3. 修改`org.apache.iotdb.udf.UDTFExample`中的逻辑，重新打包，JAR 包的名字可以仍然为`example.jar`
-4. 将新的 JAR 包上传至 `iotdb-server-0.13.0-SNAPSHOT/ext/udf` 目录下
+4. 将新的 JAR 包上传至 `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` 目录下
 5. 装载新的 UDF，执行`CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample"`

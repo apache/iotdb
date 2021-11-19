@@ -21,13 +21,13 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,23 +44,25 @@ public class SeriesReaderByTimestampTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
 
   @Before
   public void setUp() throws MetadataException, IOException, WriteProcessException {
+    EnvironmentUtils.envSetUp();
     SeriesReaderTestUtil.setUp(measurementSchemas, deviceIds, seqResources, unseqResources);
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
+    EnvironmentUtils.cleanEnv();
     SeriesReaderTestUtil.tearDown(seqResources, unseqResources);
   }
 
   @Test
-  public void test() throws IOException, IllegalPathException {
+  public void test() throws IOException, MetadataException {
     QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
@@ -68,10 +70,10 @@ public class SeriesReaderByTimestampTest {
 
     SeriesReaderByTimestamp seriesReader =
         new SeriesReaderByTimestamp(
-            new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+            SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
             allSensors,
             TSDataType.INT32,
-            new QueryContext(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
             dataSource,
             null,
             true);

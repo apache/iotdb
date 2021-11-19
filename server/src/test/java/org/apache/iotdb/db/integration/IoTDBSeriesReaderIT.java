@@ -20,21 +20,19 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.QueryRouter;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
@@ -56,7 +54,6 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
-import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -90,9 +87,6 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setGroupSizeInByte(1024 * 1024 * 150);
     prevChunkMergePointThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1024 * 16);
 
@@ -116,9 +110,6 @@ public class IoTDBSeriesReaderIT {
     tsFileConfig.setGroupSizeInByte(groupSizeInByte);
 
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance()
@@ -284,40 +275,35 @@ public class IoTDBSeriesReaderIT {
 
   @Test
   public void selectAllTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
-    dataTypes.add(TSDataType.FLOAT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s2));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
-    dataTypes.add(TSDataType.TEXT);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s3));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
-    dataTypes.add(TSDataType.BOOLEAN);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s4));
     pathList.add(
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s5));
-    dataTypes.add(TSDataType.DOUBLE);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s5));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
-    dataTypes.add(TSDataType.INT32);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0));
     pathList.add(
-        new PartialPath(TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
-    dataTypes.add(TSDataType.INT64);
-
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d1 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
 
@@ -327,28 +313,21 @@ public class IoTDBSeriesReaderIT {
       cnt++;
     }
     assertEquals(23400, cnt);
-
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
   public void selectOneSeriesWithValueFilterTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
     List<PartialPath> pathList = new ArrayList<>();
-    List<TSDataType> dataTypes = new ArrayList<>();
-    PartialPath p =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    pathList.add(p);
-    dataTypes.add(TSDataType.INT32);
+    PartialPath path =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    pathList.add(path);
     SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(p, ValueFilter.gtEq(20));
-
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
+        new SingleSeriesExpression(path, ValueFilter.gtEq(20));
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
     queryPlan.setExpression(singleSeriesExpression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
@@ -359,24 +338,18 @@ public class IoTDBSeriesReaderIT {
       cnt++;
     }
     assertEquals(16940, cnt);
-
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
   public void seriesTimeDigestReadTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    List<TSDataType> dataTypes = Collections.singletonList(TSDataType.INT32);
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
     SingleSeriesExpression expression = new SingleSeriesExpression(path, TimeFilter.gt(22987L));
 
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
-
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
     queryPlan.setDeduplicatedPathsAndUpdate(Collections.singletonList(path));
     queryPlan.setExpression(expression);
     QueryDataSet queryDataSet = queryRouter.rawDataQuery(queryPlan, TEST_QUERY_CONTEXT);
@@ -387,18 +360,18 @@ public class IoTDBSeriesReaderIT {
       cnt++;
     }
     assertEquals(3012, cnt);
-
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test
   public void crossSeriesReadUpdateTest()
-      throws IOException, StorageEngineException, QueryProcessException, IllegalPathException {
+      throws IOException, StorageEngineException, QueryProcessException, MetadataException {
     QueryRouter queryRouter = new QueryRouter();
-    PartialPath path1 =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
-    PartialPath path2 =
-        new PartialPath(TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1);
+    MeasurementPath path1 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s0);
+    MeasurementPath path2 =
+        SchemaTestUtils.getMeasurementPath(
+            TestConstant.d0 + TsFileConstant.PATH_SEPARATOR + TestConstant.s1);
 
     RawDataQueryPlan queryPlan = new RawDataQueryPlan();
 
@@ -406,14 +379,6 @@ public class IoTDBSeriesReaderIT {
     pathList.add(path1);
     pathList.add(path2);
     queryPlan.setDeduplicatedPathsAndUpdate(pathList);
-
-    List<TSDataType> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.INT32);
-    dataTypes.add(TSDataType.INT64);
-    queryPlan.setDeduplicatedDataTypes(dataTypes);
-
-    TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
-    TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
     SingleSeriesExpression singleSeriesExpression =
         new SingleSeriesExpression(path1, ValueFilter.lt(111));
@@ -428,8 +393,6 @@ public class IoTDBSeriesReaderIT {
     }
 
     assertEquals(22300, cnt);
-
-    QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
   }
 
   @Test

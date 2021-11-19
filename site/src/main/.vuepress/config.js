@@ -116,13 +116,13 @@ var config = {
 					  { text: 'Changelist of RPC', link: '/Development/rpc-changelist'},
 					]
 				  },
-				{
-					text: 'Blog',
-					items: [
-						{ text: 'Overview', link: '/Blog/Index'},
-						{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
-					]
-				},
+				// {
+				// 	text: 'Blog',
+				// 	items: [
+				// 		{ text: 'Overview', link: '/Blog/Index'},
+				// 		{ text: 'Some Notes on Release 0.9.3 and upcoming 0.10.0', link: '/Blog/Release0_93'}
+				// 	]
+				// },
 				  {
 					text: 'ASF',
 					items: [
@@ -558,10 +558,10 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Native API'],
 							['API/Programming-Other-Languages','Other Languages'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)']
 						]
 					},
 					{
@@ -641,7 +641,7 @@ var config = {
 				],
 				'/UserGuide/Master/': [
 					{
-						title:'IoTDB User Guide (In progress)',
+						title:'IoTDB User Guide (latest)',
 						collapsable: false,
 					},
 					{
@@ -664,12 +664,16 @@ var config = {
 					},
 					{
 						title: 'Data Concept',
+						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','Data Model and Terminology'],
+							['Data-Concept/Schema-Template','Schema Template'],
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/SDT','SDT']
+							['Data-Concept/SDT','SDT'],
+							['Data-Concept/Auto-Create-MetaData','Auto Create Metadata'],
+							['Data-Concept/Time-Partition','Time Partition']
 						]
 					},
 					{
@@ -686,8 +690,9 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL Language',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
+							['IoTDB-SQL-Language/Syntax-Conventions','Syntax Conventions'],
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','DDL (Data Definition Language)'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','DML (Data Manipulation Language)'],
 							['IoTDB-SQL-Language/Maintenance-Command','Maintenance Command']
@@ -696,8 +701,8 @@ var config = {
 					{
 						title: 'API',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java Native API'],
+							['API/Programming-JDBC','JDBC (Not Recommend)'],
 							['API/Programming-Python-Native-API','Python Native API'],
 							['API/Programming-Cpp-Native-API','C++ Native API'],
 							['API/Programming-Go-Native-API','Go Native API'],
@@ -709,11 +714,10 @@ var config = {
 						title: 'Advanced Features',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-							// The trigger module has not been implemented yet,
-							// so the website should not show users how to use it to avoid misleading.
-							// ['Advanced-Features/Triggers','Trigger'],
               ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
               ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+							['Advanced-Features/Triggers','Triggers'],
+							['Advanced-Features/Alerting','Alerting'],
 						]
 					},
 					{
@@ -748,6 +752,7 @@ var config = {
 						children: [
 							['Ecosystem Integration/Grafana','Grafana'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark IoTDB'],
@@ -891,12 +896,12 @@ var config = {
 				 {
 					text: '文档',
 					items: [
-						{ text: 'In progress', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
-						{ text: 'V0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
-						{ text: 'V0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
-						{ text: 'V0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
-					  { text: 'V0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
-					  { text: 'V0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
+						{ text: 'latest', link: '/zh/UserGuide/Master/QuickStart/QuickStart' },
+						{ text: 'v0.12.x', link: '/zh/UserGuide/V0.12.x/QuickStart/QuickStart' },
+						{ text: 'v0.11.x', link: '/zh/UserGuide/V0.11.x/Get Started/QuickStart' },
+						{ text: 'v0.10.x', link: '/zh/UserGuide/V0.10.x/Get Started/QuickStart' },
+					  { text: 'v0.9.x', link: '/zh/UserGuide/V0.9.x/0-Get Started/1-QuickStart' },
+					  { text: 'v0.8.x', link: '/zh/UserGuide/V0.8.x/0-Get Started/1-QuickStart'},
 					]
 				  },
 				  	{
@@ -1357,10 +1362,10 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Native-API','Java 原生接口'],
 							['API/Programming-Other-Languages','其他语言原生接口'],
-							['API/Programming-TsFile-API','TsFile API']
+							['API/Programming-TsFile-API','TsFile API'],
+							['API/Programming-JDBC','JDBC (不推荐)']
 						]
 					},
 					{
@@ -1457,12 +1462,16 @@ var config = {
 					},
 					{
 						title: '数据模式与概念',
+						sidebarDepth: 2,
 						children: [
 							['Data-Concept/Data-Model-and-Terminology','数据模型'],
+							['Data-Concept/Schema-Template','元数据模板'],
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/SDT','旋转门压缩']
+							['Data-Concept/SDT','旋转门压缩'],
+							['Data-Concept/Auto-Create-MetaData','自动创建元数据'],
+							['Data-Concept/Time-Partition','时间分区']
 						]
 					},
 					{
@@ -1479,8 +1488,9 @@ var config = {
 					},
 					{
 						title: 'IoTDB-SQL 语言',
-						sidebarDepth: 1,
+						sidebarDepth: 2,
 						children: [
+							['IoTDB-SQL-Language/Syntax-Conventions','语法约定'],
 							['IoTDB-SQL-Language/DDL-Data-Definition-Language','数据定义语言（DDL）'],
 							['IoTDB-SQL-Language/DML-Data-Manipulation-Language','数据操作语言（DML）'],
 							['IoTDB-SQL-Language/Maintenance-Command','运维命令']
@@ -1489,24 +1499,25 @@ var config = {
 					{
 						title: '应用编程接口',
 						children: [
-							['API/Programming-JDBC','JDBC'],
 							['API/Programming-Java-Native-API','Java 原生接口'],
+							['API/Programming-JDBC','JDBC (不推荐)'],
 							['API/Programming-Python-Native-API','Python 原生接口'],
 							['API/Programming-Cpp-Native-API','C++ 原生接口'],
 							['API/Programming-Go-Native-API','Go 原生接口'],
+							['Communication-Service-Protocol/RestService','HTTP API'],
 							['API/Programming-TsFile-API','TsFile API'],
-							['API/Time-zone','时区']
+							['API/Time-zone','时区'],
+							['API/InfluxDB-Protocol','InfluxDB 协议适配器（开发中)']
 						]
 					},
 					{
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-						  // The trigger module has not been implemented yet,
-						  // so the website should not show users how to use it to avoid misleading.
-						  // ['Advanced-Features/Triggers','触发器'],
               ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
               ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+							['Advanced-Features/Triggers','触发器'],
+							['Advanced-Features/Alerting','告警机制'],
 						]
 					},
 					{
@@ -1514,6 +1525,7 @@ var config = {
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
 							['Communication-Service-Protocol/Programming-MQTT','MQTT'],
+							['Communication-Service-Protocol/RestService','REST'],
 						]
 					},
 					{
@@ -1541,6 +1553,7 @@ var config = {
 						children: [
 							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
+							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],
 							['Ecosystem Integration/MapReduce TsFile','Hadoop-TsFile'],
 							['Ecosystem Integration/Spark IoTDB','Spark-IoTDB'],

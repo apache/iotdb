@@ -18,8 +18,9 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,6 +36,12 @@ public class DeletePlan extends PhysicalPlan {
   private long deleteStartTime;
   private long deleteEndTime;
   private List<PartialPath> paths = new ArrayList<>();
+  /**
+   * This deletion only affects those time partitions that evaluate true by the filter. If the
+   * filter is null, all partitions are processed. This is to avoid redundant data deletions when
+   * one timeseries deletion is split and executed into different replication groups.
+   */
+  private TimePartitionFilter partitionFilter;
 
   public DeletePlan() {
     super(false, Operator.OperatorType.DELETE);
@@ -102,6 +109,14 @@ public class DeletePlan extends PhysicalPlan {
     this.paths = paths;
   }
 
+  public TimePartitionFilter getPartitionFilter() {
+    return partitionFilter;
+  }
+
+  public void setPartitionFilter(TimePartitionFilter partitionFilter) {
+    this.partitionFilter = partitionFilter;
+  }
+
   @Override
   public int hashCode() {
     return Objects.hash(deleteStartTime, deleteEndTime, paths);
@@ -136,7 +151,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
     buffer.putLong(deleteStartTime);

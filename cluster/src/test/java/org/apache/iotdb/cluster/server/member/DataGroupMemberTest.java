@@ -54,7 +54,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RequestCommitIndexResponse;
 import org.apache.iotdb.cluster.rpc.thrift.SendSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.NodeCharacter;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullMeasurementSchemaHandler;
@@ -72,8 +71,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -191,7 +190,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(new Factory(), nodes, node, testMetaMember) {
+        new DataGroupMember(new Factory(), nodes, testMetaMember) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
@@ -207,11 +206,6 @@ public class DataGroupMemberTest extends BaseMember {
 
           @Override
           public AsyncClient getSendLogAsyncClient(Node node) {
-            return getAsyncClient(node);
-          }
-
-          @Override
-          public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
             return getAsyncClient(node);
           }
 
@@ -290,6 +284,7 @@ public class DataGroupMemberTest extends BaseMember {
           }
         };
     PartitionedSnapshotLogManager logManager = getLogManager(nodes, dataGroupMember);
+    dataGroupMember.setThisNode(node);
     dataGroupMember.setLogManager(logManager);
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
@@ -514,7 +509,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
 
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[] {"s0"});
     insertPlan.setNeedInferType(true);
@@ -640,10 +635,10 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testPullTimeseriesSchema() {
     System.out.println("Start testPullTimeseriesSchema()");
-    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
-    int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
-    RaftServer.setConnectionTimeoutInMS(20);
-    RaftServer.setSyncLeaderMaxWaitMs(200);
+    int prevTimeOut = ClusterConstant.getConnectionTimeoutInMS();
+    int prevMaxWait = ClusterConstant.getSyncLeaderMaxWaitMs();
+    ClusterConstant.setConnectionTimeoutInMS(20);
+    ClusterConstant.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
       dataGroupMember.setLeader(TestUtils.getNode(0));
@@ -671,18 +666,18 @@ public class DataGroupMemberTest extends BaseMember {
         assertTrue(result.get().contains(TestUtils.getTestTimeSeriesSchema(0, i)));
       }
     } finally {
-      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
-      RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);
+      ClusterConstant.setConnectionTimeoutInMS(prevTimeOut);
+      ClusterConstant.setSyncLeaderMaxWaitMs(prevMaxWait);
     }
   }
 
   @Test
   public void testPullMeasurementSchema() {
     System.out.println("Start testPullMeasurementSchema()");
-    int prevTimeOut = RaftServer.getConnectionTimeoutInMS();
-    int prevMaxWait = RaftServer.getSyncLeaderMaxWaitMs();
-    RaftServer.setConnectionTimeoutInMS(20);
-    RaftServer.setSyncLeaderMaxWaitMs(200);
+    int prevTimeOut = ClusterConstant.getConnectionTimeoutInMS();
+    int prevMaxWait = ClusterConstant.getSyncLeaderMaxWaitMs();
+    ClusterConstant.setConnectionTimeoutInMS(20);
+    ClusterConstant.setSyncLeaderMaxWaitMs(200);
     try {
       // sync with leader is temporarily disabled, the request should be forward to the leader
       dataGroupMember.setLeader(TestUtils.getNode(0));
@@ -710,8 +705,8 @@ public class DataGroupMemberTest extends BaseMember {
         assertTrue(result.get().contains(TestUtils.getTestMeasurementSchema(i)));
       }
     } finally {
-      RaftServer.setConnectionTimeoutInMS(prevTimeOut);
-      RaftServer.setSyncLeaderMaxWaitMs(prevMaxWait);
+      ClusterConstant.setConnectionTimeoutInMS(prevTimeOut);
+      ClusterConstant.setSyncLeaderMaxWaitMs(prevMaxWait);
     }
   }
 
@@ -721,7 +716,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -789,7 +784,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -857,7 +852,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -925,7 +920,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -989,14 +984,14 @@ public class DataGroupMemberTest extends BaseMember {
   @Test
   public void testGetPaths() {
     System.out.println("Start testGetPaths()");
-    String path = TestUtils.getTestSg(0);
+    String path = TestUtils.getTestSg(0) + ".**";
     AtomicReference<GetAllPathsResult> pathResult = new AtomicReference<>();
     GenericHandler<GetAllPathsResult> handler =
         new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
         .getAllPaths(
             TestUtils.getRaftNode(0, raftId), Collections.singletonList(path), false, handler);
-    List<String> result = pathResult.get().paths;
+    List<String> result = new ArrayList<>(pathResult.get().paths);
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
       assertTrue(result.contains(TestUtils.getTestSeries(0, i)));

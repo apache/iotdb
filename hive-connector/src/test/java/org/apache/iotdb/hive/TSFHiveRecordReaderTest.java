@@ -20,6 +20,8 @@ package org.apache.iotdb.hive;
 
 import org.apache.iotdb.hadoop.tsfile.TSFInputSplit;
 import org.apache.iotdb.hive.constant.TestConstant;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.fileSystem.FSType;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -31,16 +33,35 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 
 import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_DELTAOBJECTS;
 import static org.apache.iotdb.hadoop.tsfile.TSFInputFormat.READ_MEASUREMENTID;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class TSFHiveRecordReaderTest {
 
   private TSFHiveRecordReader tsfHiveRecordReader;
-  private String filePath = TestConstant.BASE_OUTPUT_PATH.concat("test.tsfile");
+  private final String filePath =
+      TestConstant.BASE_OUTPUT_PATH
+          .concat("data")
+          .concat(File.separator)
+          .concat("data")
+          .concat(File.separator)
+          .concat("sequence")
+          .concat(File.separator)
+          .concat("root.sg1")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("0")
+          .concat(File.separator)
+          .concat("1-0-0-0.tsfile");
+  private FSType beforeFSType;
 
   @Before
   public void setUp() throws IOException {
@@ -48,6 +69,8 @@ public class TSFHiveRecordReaderTest {
     JobConf job = new JobConf();
     Path path = new Path(filePath);
     String[] hosts = {"127.0.0.1"};
+    beforeFSType = TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs();
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(FSType.HDFS);
     TSFInputSplit inputSplit = new TSFInputSplit(path, hosts, 0, 3727528L);
     String[] deviceIds = {"device_1"}; // configure reading which deviceIds
     job.set(READ_DELTAOBJECTS, String.join(",", deviceIds));
@@ -70,6 +93,7 @@ public class TSFHiveRecordReaderTest {
   @After
   public void tearDown() {
     TsFileTestHelper.deleteTsFile(filePath);
+    TSFileDescriptor.getInstance().getConfig().setTSFileStorageFs(beforeFSType);
   }
 
   @Test

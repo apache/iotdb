@@ -72,6 +72,8 @@ public class IoTDBCreateStorageGroupIT {
     // ensure that current StorageGroup in cache is right.
     createStorageGroupTool(storageGroups);
 
+    statement.close();
+    connection.close();
     EnvironmentUtils.stopDaemon();
     setUp();
 
@@ -120,7 +122,7 @@ public class IoTDBCreateStorageGroupIT {
     statement.execute("create storage group root.sg");
 
     try {
-      statement.execute("create storage group root.sg.device");
+      statement.execute("create storage group root.sg.`device`");
     } catch (SQLException e) {
       Assert.assertEquals(e.getMessage(), "300: root.sg has already been set to storage group");
     }

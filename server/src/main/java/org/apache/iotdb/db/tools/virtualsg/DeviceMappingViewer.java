@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.Set;
 
@@ -43,7 +43,7 @@ public class DeviceMappingViewer {
     MManager mManager = MManager.getInstance();
     mManager.init();
 
-    Set<PartialPath> partialPathSet = mManager.getDevices(new PartialPath("root.*"));
+    Set<PartialPath> partialPathSet = mManager.getMatchedDevices(new PartialPath("root.**"));
 
     if (partialPathSet.isEmpty() && args.length == 1) {
       System.out.println("no mlog in given system schema dir: " + args[0] + " please have a check");

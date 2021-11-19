@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.cache.Accountable;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -30,6 +29,7 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,12 +56,12 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   private String measurementId;
   private TSDataType dataType;
 
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   // modified is true when there are modifications of the series, or from unseq file
   private boolean modified;
 
-  protected IChunkMetadataLoader chunkMetadataLoader;
+  private IChunkMetadataLoader chunkMetadataLoader;
 
   private long ramSize;
 
@@ -80,7 +80,7 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
       int chunkMetaDataListDataSize,
       String measurementId,
       TSDataType dataType,
-      Statistics statistics,
+      Statistics<? extends Serializable> statistics,
       PublicBAOS chunkMetadataListBuffer) {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
     this.chunkMetaDataListDataSize = chunkMetaDataListDataSize;
@@ -147,14 +147,6 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
     return timeSeriesMetadataType;
   }
 
-  public boolean isTimeColumn() {
-    return timeSeriesMetadataType == TsFileConstant.TIME_COLUMN_MASK;
-  }
-
-  public boolean isValueColumn() {
-    return timeSeriesMetadataType == TsFileConstant.VALUE_COLUMN_MASK;
-  }
-
   public void setTimeSeriesMetadataType(byte timeSeriesMetadataType) {
     this.timeSeriesMetadataType = timeSeriesMetadataType;
   }
@@ -192,11 +184,11 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   }
 
   @Override
-  public Statistics getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 
-  public void setStatistics(Statistics statistics) {
+  public void setStatistics(Statistics<? extends Serializable> statistics) {
     this.statistics = statistics;
   }
 

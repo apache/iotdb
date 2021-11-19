@@ -99,24 +99,24 @@ public class BasicDaoImpl implements BasicDao {
   public static void setTimestampRadioX(String timestampPrecision) {
     switch (timestampPrecision) {
       case "us":
-        timestampRadioX = 1000;
+        timestampRadioX = 1000L;
         break;
       case "ns":
-        timestampRadioX = 1000_000;
+        timestampRadioX = 1000_000L;
         break;
       default:
-        timestampRadioX = 1;
+        timestampRadioX = 1L;
     }
     logger.info("Use timestamp precision {}", timestampPrecision);
   }
 
   /**
-   * Note: If the query fails this could be due to AGGREGATIION like AVG on booleayn field. Thus, we
+   * Note: If the query fails this could be due to AGGREGATION like AVG on boolean field. Thus, we
    * then do a retry with FIRST aggregation. This should be solved better in the long run.
    */
   @Override
   public List<TimeValues> querySeries(String s, Pair<ZonedDateTime, ZonedDateTime> timeRange) {
-    if (timestampRadioX == -1) {
+    if (timestampRadioX == -1L) {
       setTimestampRadioX(timestampPrecision);
     }
     try {
@@ -134,8 +134,8 @@ public class BasicDaoImpl implements BasicDao {
 
   public List<TimeValues> querySeriesInternal(
       String s, Pair<ZonedDateTime, ZonedDateTime> timeRange, String function) {
-    Long from = zonedCovertToLong(timeRange.left);
-    Long to = zonedCovertToLong(timeRange.right);
+    long from = zonedCovertToLong(timeRange.left);
+    long to = zonedCovertToLong(timeRange.right);
     final long hours = Duration.between(timeRange.left, timeRange.right).toHours();
 
     String sql =
@@ -182,7 +182,7 @@ public class BasicDaoImpl implements BasicDao {
     return this.interval;
   }
 
-  private Long zonedCovertToLong(ZonedDateTime time) {
+  private long zonedCovertToLong(ZonedDateTime time) {
     return time.toInstant().toEpochMilli();
   }
 

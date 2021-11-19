@@ -66,11 +66,6 @@ public class LogCatchUpTaskTest {
       new TestMetaGroupMember() {
 
         @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
-
-        @Override
         public AsyncClient getAsyncClient(Node node) {
           return new TestAsyncClient() {
             @Override
@@ -243,7 +238,7 @@ public class LogCatchUpTaskTest {
               + "nodeIdentifier:6, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.7, metaPort:9003, "
               + "nodeIdentifier:7, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.8, metaPort:9003, "
               + "nodeIdentifier:8, dataPort:40010, clientPort:6667, clientIp:0.0.0.0), Node(internalIp:192.168.0.9, metaPort:9003, "
-              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)]",
+              + "nodeIdentifier:9, dataPort:40010, clientPort:6667, clientIp:0.0.0.0)], id = 0",
           e.getMessage());
     }
 

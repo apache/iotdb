@@ -21,7 +21,6 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -60,9 +59,6 @@ public class IoTDBMultiSeriesIT {
   public static void setUp() throws Exception {
 
     EnvironmentUtils.closeStatMonitor();
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.NO_COMPACTION);
 
     // use small page setting
     // origin value
@@ -94,9 +90,6 @@ public class IoTDBMultiSeriesIT {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(groupSizeInByte);
     TSFileDescriptor.getInstance().getConfig().setCompressor("SNAPPY");
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setCompactionStrategy(CompactionStrategy.LEVEL_COMPACTION);
   }
 
   private static void insertData() throws ClassNotFoundException {
@@ -259,10 +252,9 @@ public class IoTDBMultiSeriesIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
   @Test
   public void selectAllTest() throws ClassNotFoundException {
-    String selectSql = "select * from root";
+    String selectSql = "select * from root.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -290,10 +282,10 @@ public class IoTDBMultiSeriesIT {
     }
   }
 
-  // "select * from root.vehicle" : test select wild data
+  // "select * from root.vehicle.**" : test select wild data
   @Test
   public void selectAllFromVehicleTest() throws ClassNotFoundException {
-    String selectSql = "select * from root.vehicle";
+    String selectSql = "select * from root.vehicle.**";
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -470,7 +462,7 @@ public class IoTDBMultiSeriesIT {
       fail("not throw exception when unknown time series in where clause");
     } catch (SQLException e) {
       assertEquals(
-          "411: Error occurred in query process: Path [root.vehicle.d0.s10] does not exist",
+          "411: Error occurred in query process: Unknown time series root.vehicle.d0.s10 in `where clause`",
           e.getMessage());
     }
   }

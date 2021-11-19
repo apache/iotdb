@@ -136,7 +136,7 @@ IoTDB 的元数据统一由 MManger 管理，包括以下几个部分：
 
 ## 元数据树
 
-* org.apache.iotdb.db.metadata.MTree
+* org.apache.iotdb.db.metadata.mtree.MTree
 
 树中包括三种节点：StorageGroupMNode、InternalMNode（非叶子节点）、LeafMNode（叶子节点），他们都是 MNode 的子类。
 
@@ -288,9 +288,9 @@ mlog.bin 存储二进制编码。我们可以使用 [MlogParser Tool](https://io
     > 格式：61,path
 
 ## 标签文件
-* org.apache.iotdb.db.metadata.logfile.TagLogFile
+* org.apache.iotdb.db.metadata.tag.TagLogFile
 
-所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/mlog.bin。
+所有时间序列的标签/属性信息都会保存在标签文件中，此文件默认为 data/system/schema/tlog.txt。
 
 * 每条时间序列的 tags 和 attributes 持久化总字节数为 L，在 iotdb-engine.properties 中配置。
 

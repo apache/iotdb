@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 /** Memtable insert benchmark. Bench the Memtable and get its performance. */
 public class MemtableBenchmark {
@@ -46,7 +46,7 @@ public class MemtableBenchmark {
       for (int j = 0; j < numOfMeasurement; j++) {
         memTable.write(
             deviceId,
-            new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN),
+            new UnaryMeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN),
             System.nanoTime(),
             String.valueOf(System.currentTimeMillis()));
       }

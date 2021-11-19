@@ -24,12 +24,11 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MTree;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.logfile.TagLogFile;
+import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -41,7 +40,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 
 import static java.util.stream.Collectors.toList;
 
@@ -88,7 +86,7 @@ public class TagManager {
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
-        .computeIfAbsent(tagValue, v -> new CopyOnWriteArraySet<>())
+        .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))
         .add(measurementMNode);
   }
 
@@ -153,7 +151,8 @@ public class TagManager {
               allMatchedNodes.stream()
                   .sorted(
                       Comparator.comparingLong(
-                              (IMeasurementMNode mNode) -> MTree.getLastTimeStamp(mNode, context))
+                              (IMeasurementMNode mNode) ->
+                                  LastCacheManager.getLastTimeStamp(mNode, context))
                           .reversed()
                           .thenComparing(IMNode::getFullPath))
                   .collect(toList());

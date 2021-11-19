@@ -50,13 +50,14 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -161,6 +162,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    */
   public TsFileSequenceReader(TsFileInput input, boolean loadMetadataSize) throws IOException {
     this.tsFileInput = input;
+    this.file = input.getFilePath();
     try {
       if (loadMetadataSize) { // NOTE no autoRepair here
         loadMetadataSize();
@@ -367,41 +369,6 @@ public class TsFileSequenceReader implements AutoCloseable {
     int searchResult =
         binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
     return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
-  }
-
-  /**
-   * Find the leaf node that contains this vector, return all the needed subSensor and time column
-   *
-   * @param path path with time column
-   * @param subSensorList value columns that needed
-   * @return TimeseriesMetadata for the time column and all the needed subSensor, the order of the
-   *     element in this list should be the same as subSensorList
-   */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, List<String> subSensorList)
-      throws IOException {
-    Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
-    if (metadataIndexPair == null) {
-      return Collections.emptyList();
-    }
-    Map<String, TimeseriesMetadata> timeseriesMetadataMap = new HashMap<>();
-    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
-    while (buffer.hasRemaining()) {
-      TimeseriesMetadata timeseriesMetadata;
-      try {
-        timeseriesMetadata = TimeseriesMetadata.deserializeFrom(buffer, true);
-      } catch (BufferOverflowException e) {
-        logger.error(
-            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
-        throw e;
-      }
-      timeseriesMetadataMap.put(timeseriesMetadata.getMeasurementId(), timeseriesMetadata);
-    }
-
-    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
-    for (String subSensor : subSensorList) {
-      timeseriesMetadataList.add(timeseriesMetadataMap.get(subSensor));
-    }
-    return timeseriesMetadataList;
   }
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
@@ -891,13 +858,17 @@ public class TsFileSequenceReader implements AutoCloseable {
     tsFileInput.position(tsFileInput.position() + header.getCompressedSize());
   }
 
+  public ByteBuffer readCompressedPage(PageHeader header) throws IOException {
+    return readData(-1, header.getCompressedSize());
+  }
+
   public ByteBuffer readPage(PageHeader header, CompressionType type) throws IOException {
     ByteBuffer buffer = readData(-1, header.getCompressedSize());
-    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
-    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
-    if (type == CompressionType.UNCOMPRESSED) {
+    if (header.getUncompressedSize() == 0 || type == CompressionType.UNCOMPRESSED) {
       return buffer;
     } // FIXME if the buffer is not array-implemented.
+    IUnCompressor unCompressor = IUnCompressor.getUnCompressor(type);
+    ByteBuffer uncompressedBuffer = ByteBuffer.allocate(header.getUncompressedSize());
     unCompressor.uncompress(
         buffer.array(), buffer.position(), buffer.remaining(), uncompressedBuffer.array(), 0);
     return uncompressedBuffer;
@@ -1049,14 +1020,15 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
             IMeasurementSchema measurementSchema =
-                new MeasurementSchema(
+                new UnaryMeasurementSchema(
                     measurementID,
                     chunkHeader.getDataType(),
                     chunkHeader.getEncodingType(),
                     chunkHeader.getCompressionType());
             measurementSchemaList.add(measurementSchema);
             dataType = chunkHeader.getDataType();
-            Statistics<?> chunkStatistics = Statistics.getStatsByType(dataType);
+            Statistics<? extends Serializable> chunkStatistics =
+                Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
             if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
               while (dataSize > 0) {

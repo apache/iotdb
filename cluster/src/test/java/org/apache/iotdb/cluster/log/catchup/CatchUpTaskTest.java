@@ -99,11 +99,6 @@ public class CatchUpTaskTest {
         }
 
         @Override
-        public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
-          return getAsyncClient(node);
-        }
-
-        @Override
         public AsyncClient getAsyncClient(Node node) {
           return new TestAsyncClient() {
             @Override

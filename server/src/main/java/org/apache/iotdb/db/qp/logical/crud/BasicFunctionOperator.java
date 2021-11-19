@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -36,7 +36,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Map;
 import java.util.Objects;
 
-/** basic operator includes < > >= <= !=. */
+/** basic operator includes = < > >= <= !=. */
 public class BasicFunctionOperator extends FunctionOperator {
 
   protected String value;
@@ -100,13 +100,19 @@ public class BasicFunctionOperator extends FunctionOperator {
         ret = funcToken.getUnaryExpression(singlePath, Double.valueOf(value));
         break;
       case TEXT:
-        ret =
-            funcToken.getUnaryExpression(
-                singlePath,
-                (value.startsWith("'") && value.endsWith("'"))
-                        || (value.startsWith("\"") && value.endsWith("\""))
-                    ? new Binary(value.substring(1, value.length() - 1))
-                    : new Binary(value));
+        if (funcToken.equals(BasicOperatorType.EQ)
+            || funcToken.equals(BasicOperatorType.NOTEQUAL)) {
+          ret =
+              funcToken.getUnaryExpression(
+                  singlePath,
+                  (value.startsWith("'") && value.endsWith("'"))
+                          || (value.startsWith("\"") && value.endsWith("\""))
+                      ? new Binary(value.substring(1, value.length() - 1))
+                      : new Binary(value));
+        } else {
+          throw new LogicalOperatorException(
+              "For Basic operator,TEXT type only support EQUAL or NOTEQUAL operator");
+        }
         break;
       default:
         throw new LogicalOperatorException(type.toString(), "");
@@ -129,9 +135,7 @@ public class BasicFunctionOperator extends FunctionOperator {
   public BasicFunctionOperator copy() {
     BasicFunctionOperator ret;
     try {
-      ret =
-          new BasicFunctionOperator(
-              this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+      ret = new BasicFunctionOperator(this.filterType, singlePath.clone(), value);
     } catch (SQLParserException e) {
       logger.error("error copy:", e);
       return null;

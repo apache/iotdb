@@ -31,8 +31,8 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.utils.StringContainer;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -60,7 +60,7 @@ public class WriteTest {
   private String outputDataFile;
   private String errorOutputDataFile;
   private Random rm = new Random();
-  private ArrayList<MeasurementSchema> measurementArray;
+  private ArrayList<UnaryMeasurementSchema> measurementArray;
   private ArrayList<Path> pathArray;
   private Schema schema;
   private int stageSize = 4;
@@ -99,12 +99,12 @@ public class WriteTest {
       errorFile.delete();
     }
     measurementArray = new ArrayList<>();
-    measurementArray.add(new MeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
-    measurementArray.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+    measurementArray.add(new UnaryMeasurementSchema("s0", TSDataType.INT32, TSEncoding.RLE));
+    measurementArray.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     HashMap<String, String> props = new HashMap<>();
     props.put("max_point_number", "2");
     measurementArray.add(
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s2",
             TSDataType.FLOAT,
             TSEncoding.RLE,
@@ -113,13 +113,13 @@ public class WriteTest {
     props = new HashMap<>();
     props.put("max_point_number", "3");
     measurementArray.add(
-        new MeasurementSchema(
+        new UnaryMeasurementSchema(
             "s3",
             TSDataType.DOUBLE,
             TSEncoding.TS_2DIFF,
             TSFileDescriptor.getInstance().getConfig().getCompressor(),
             props));
-    measurementArray.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    measurementArray.add(new UnaryMeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     pathArray = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
       pathArray.add(new Path("d1", "s" + i));
@@ -218,7 +218,8 @@ public class WriteTest {
     String[] strings;
     // add all measurement except the last one at before writing
     for (int i = 0; i < measurementArray.size() - 1; i++) {
-      tsFileWriter.registerTimeseries(pathArray.get(i), measurementArray.get(i));
+      tsFileWriter.registerTimeseries(
+          new Path(pathArray.get(i).getDevice()), measurementArray.get(i));
     }
     while (true) {
       if (lineCount % stageSize == 0) {
@@ -234,21 +235,24 @@ public class WriteTest {
       }
       if (lineCount == ROW_COUNT / 2) {
         tsFileWriter.registerTimeseries(
-            pathArray.get(measurementArray.size() - 1),
+            new Path(pathArray.get(measurementArray.size() - 1).getDevice()),
             measurementArray.get(measurementArray.size() - 1));
       }
       strings = getNextRecord(lineCount, stageState);
       for (String str : strings) {
         TSRecord record = RecordUtils.parseSimpleTupleRecord(str, schema);
+        if (record.dataPointList.isEmpty()) {
+          continue;
+        }
         tsFileWriter.write(record);
       }
       lineCount++;
     }
     // test duplicate measurement adding
     Path path = pathArray.get(measurementArray.size() - 1);
-    MeasurementSchema dupTimeseries = measurementArray.get(measurementArray.size() - 1);
+    UnaryMeasurementSchema dupTimeseries = measurementArray.get(measurementArray.size() - 1);
     try {
-      tsFileWriter.registerTimeseries(path, dupTimeseries);
+      tsFileWriter.registerTimeseries(new Path(path.getDevice()), dupTimeseries);
     } catch (WriteProcessException e) {
       assertEquals("given timeseries has exists! " + path, e.getMessage());
     }

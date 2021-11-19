@@ -19,14 +19,18 @@
 package org.apache.iotdb.db.conf;
 
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
-import org.apache.iotdb.db.engine.compaction.CompactionStrategy;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.compaction.CompactionPriority;
+import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
+import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
@@ -174,6 +178,12 @@ public class IoTDBDescriptor {
                   "buffered_arrays_memory_proportion",
                   Double.toString(conf.getBufferedArraysMemoryProportion()))));
 
+      conf.setTimeIndexMemoryProportion(
+          Double.parseDouble(
+              properties.getProperty(
+                  "time_index_memory_proportion",
+                  Double.toString(conf.getTimeIndexMemoryProportion()))));
+
       conf.setFlushProportion(
           Double.parseDouble(
               properties.getProperty(
@@ -251,14 +261,22 @@ public class IoTDBDescriptor {
                   "enable_mem_control", Boolean.toString(conf.isEnableMemControl())))));
       logger.info("IoTDB enable memory control: {}", conf.isEnableMemControl());
 
-      long tsfileSizeThreshold =
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =
@@ -269,34 +287,6 @@ public class IoTDBDescriptor {
                   .trim());
       if (memTableSizeThreshold > 0) {
         conf.setMemtableSizeThreshold(memTableSizeThreshold);
-      }
-
-      conf.setEnableTimedFlushUnseqMemtable(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_timed_flush_unseq_memtable",
-                  Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
-
-      long unseqMemTableFlushInterval =
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "unseq_memtable_flush_interval_in_ms",
-                      Long.toString(conf.getUnseqMemtableFlushInterval()))
-                  .trim());
-      if (unseqMemTableFlushInterval > 0) {
-        conf.setUnseqMemtableFlushInterval(unseqMemTableFlushInterval);
-      }
-
-      long unseqMemTableFlushCheckInterval =
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "unseq_memtable_flush_check_interval_in_ms",
-                      Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
-                  .trim());
-      if (unseqMemTableFlushCheckInterval > 0) {
-        conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
       }
 
       conf.setAvgSeriesPointNumberThreshold(
@@ -339,49 +329,56 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_page_point_number",
                   Integer.toString(conf.getMergePagePointNumberThreshold()))));
-
-      conf.setCompactionStrategy(
-          CompactionStrategy.valueOf(
+      conf.setCompactionScheduleInterval(
+          Long.parseLong(
               properties.getProperty(
-                  "compaction_strategy", conf.getCompactionStrategy().toString())));
+                  "compaction_schedule_interval",
+                  Long.toString(conf.getCompactionScheduleInterval()))));
 
-      conf.setEnableUnseqCompaction(
+      conf.setCompactionSubmissionInterval(
+          Long.parseLong(
+              properties.getProperty(
+                  "compaction_submission_interval",
+                  Long.toString(conf.getCompactionSubmissionInterval()))));
+
+      conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(
               properties.getProperty(
-                  "enable_unseq_compaction", Boolean.toString(conf.isEnableUnseqCompaction()))));
+                  "enable_cross_space_compaction",
+                  Boolean.toString(conf.isEnableCrossSpaceCompaction()))));
 
-      conf.setEnableContinuousCompaction(
+      conf.setEnableSeqSpaceCompaction(
           Boolean.parseBoolean(
               properties.getProperty(
-                  "enable_continuous_compaction",
-                  Boolean.toString(conf.isEnableContinuousCompaction()))));
+                  "enable_seq_space_compaction",
+                  Boolean.toString(conf.isEnableSeqSpaceCompaction()))));
 
-      conf.setSeqLevelNum(
-          Integer.parseInt(
-              properties.getProperty("seq_level_num", Integer.toString(conf.getSeqLevelNum()))));
+      conf.setEnableUnseqSpaceCompaction(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_unseq_space_compaction",
+                  Boolean.toString(conf.isEnableUnseqSpaceCompaction()))));
 
-      conf.setSeqFileNumInEachLevel(
+      conf.setCrossCompactionStrategy(
+          CrossCompactionStrategy.getCrossCompactionStrategy(
+              properties.getProperty(
+                  "cross_compaction_strategy", conf.getCrossCompactionStrategy().toString())));
+
+      conf.setInnerCompactionStrategy(
+          InnerCompactionStrategy.getInnerCompactionStrategy(
+              properties.getProperty(
+                  "inner_compaction_strategy", conf.getInnerCompactionStrategy().toString())));
+
+      conf.setCompactionPriority(
+          CompactionPriority.valueOf(
+              properties.getProperty(
+                  "compaction_priority", conf.getCompactionPriority().toString())));
+
+      conf.setMaxOpenFileNumInCrossSpaceCompaction(
           Integer.parseInt(
               properties.getProperty(
-                  "seq_file_num_in_each_level",
-                  Integer.toString(conf.getSeqFileNumInEachLevel()))));
-
-      conf.setUnseqLevelNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "unseq_level_num", Integer.toString(conf.getUnseqLevelNum()))));
-
-      conf.setMaxOpenFileNumInEachUnseqCompaction(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_open_file_num_in_each_unseq_compaction",
-                  Integer.toString(conf.getMaxOpenFileNumInEachUnseqCompaction()))));
-
-      conf.setUnseqFileNumInEachLevel(
-          Integer.parseInt(
-              properties.getProperty(
-                  "unseq_file_num_in_each_level",
-                  Integer.toString(conf.getUnseqFileNumInEachLevel()))));
+                  "max_open_file_num_in_cross_space_compaction",
+                  Integer.toString(conf.getMaxOpenFileNumInCrossSpaceCompaction()))));
 
       conf.setQueryTimeoutThreshold(
           Integer.parseInt(
@@ -491,10 +488,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "merge_memory_budget", Long.toString(conf.getMergeMemoryBudget()))));
-      conf.setMergeThreadNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "merge_thread_num", Integer.toString(conf.getMergeThreadNum()))));
       conf.setMergeChunkSubThreadNum(
           Integer.parseInt(
               properties.getProperty(
@@ -518,10 +511,21 @@ public class IoTDBDescriptor {
           Boolean.parseBoolean(
               properties.getProperty(
                   "force_full_merge", Boolean.toString(conf.isForceFullMerge()))));
-      conf.setCompactionThreadNum(
+      conf.setConcurrentCompactionThread(
           Integer.parseInt(
               properties.getProperty(
-                  "compaction_thread_num", Integer.toString(conf.getCompactionThreadNum()))));
+                  "concurrent_compaction_thread",
+                  Integer.toString(conf.getConcurrentCompactionThread()))));
+      conf.setTargetCompactionFileSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_compaction_file_size",
+                  Long.toString(conf.getTargetCompactionFileSize()))));
+      conf.setMaxCompactionCandidateFileNum(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_compaction_candidate_file_num",
+                  Integer.toString(conf.getMaxCompactionCandidateFileNum()))));
 
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
@@ -553,14 +557,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setEnablePerformanceTracing(
-          Boolean.parseBoolean(
-              properties
-                  .getProperty(
-                      "enable_performance_tracing",
-                      Boolean.toString(conf.isEnablePerformanceTracing()))
                   .trim()));
 
       conf.setPerformanceStatDisplayInterval(
@@ -632,6 +628,13 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty("default_ttl", String.valueOf(conf.getDefaultTTL()))));
 
+      // the num of memtables in each storage group
+      conf.setConcurrentWritingTimePartition(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_writing_time_partition",
+                  String.valueOf(conf.getConcurrentWritingTimePartition()))));
+
       conf.setTimeIndexLevel(
           properties.getProperty("time_index_level", String.valueOf(conf.getTimeIndexLevel())));
 
@@ -645,6 +648,13 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "tag_attribute_total_size", String.valueOf(conf.getTagAttributeTotalSize()))));
+
+      conf.setTagAttributeFlushInterval(
+          Integer.parseInt(
+              properties.getProperty(
+                  "tag_attribute_flush_interval",
+                  String.valueOf(conf.getTagAttributeFlushInterval()))));
+
       conf.setPrimitiveArraySize(
           (Integer.parseInt(
               properties.getProperty(
@@ -802,8 +812,14 @@ public class IoTDBDescriptor {
               properties.getProperty("kerberos_principal", conf.getKerberosPrincipal()));
       TSFileDescriptor.getInstance().getConfig().setBatchSize(conf.getBatchSize());
 
+      // timed flush memtable, timed close tsfile
+      loadTimedService(properties);
+
       // set tsfile-format config
       loadTsFileProps(properties);
+
+      // make RPCTransportFactory taking effect.
+      RpcTransportFactory.reInit();
 
       // UDF
       loadUDFProps(properties);
@@ -966,12 +982,6 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage()))));
     TSFileDescriptor.getInstance()
         .getConfig()
-        .setTimeSeriesDataType(
-            properties.getProperty(
-                "time_series_data_type",
-                TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType()));
-    TSFileDescriptor.getInstance()
-        .getConfig()
         .setMaxStringLength(
             Integer.parseInt(
                 properties.getProperty(
@@ -1020,6 +1030,92 @@ public class IoTDBDescriptor {
                         TSFileDescriptor.getInstance().getConfig().getMaxDegreeOfIndexNode()))));
   }
 
+  // timed flush memtable, timed close tsfile
+  private void loadTimedService(Properties properties) {
+    conf.setEnableTimedFlushSeqMemtable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_flush_seq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushSeqMemtable()))));
+
+    long seqMemTableFlushInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "seq_memtable_flush_interval_in_ms",
+                    Long.toString(conf.getSeqMemtableFlushInterval()))
+                .trim());
+    if (seqMemTableFlushInterval > 0) {
+      conf.setSeqMemtableFlushInterval(seqMemTableFlushInterval);
+    }
+
+    long seqMemTableFlushCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "seq_memtable_flush_check_interval_in_ms",
+                    Long.toString(conf.getSeqMemtableFlushCheckInterval()))
+                .trim());
+    if (seqMemTableFlushCheckInterval > 0) {
+      conf.setSeqMemtableFlushCheckInterval(seqMemTableFlushCheckInterval);
+    }
+
+    conf.setEnableTimedFlushUnseqMemtable(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_flush_unseq_memtable",
+                Boolean.toString(conf.isEnableTimedFlushUnseqMemtable()))));
+
+    long unseqMemTableFlushInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "unseq_memtable_flush_interval_in_ms",
+                    Long.toString(conf.getUnseqMemtableFlushInterval()))
+                .trim());
+    if (unseqMemTableFlushInterval > 0) {
+      conf.setUnseqMemtableFlushInterval(unseqMemTableFlushInterval);
+    }
+
+    long unseqMemTableFlushCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "unseq_memtable_flush_check_interval_in_ms",
+                    Long.toString(conf.getUnseqMemtableFlushCheckInterval()))
+                .trim());
+    if (unseqMemTableFlushCheckInterval > 0) {
+      conf.setUnseqMemtableFlushCheckInterval(unseqMemTableFlushCheckInterval);
+    }
+
+    conf.setEnableTimedCloseTsFile(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_timed_close_tsfile", Boolean.toString(conf.isEnableTimedCloseTsFile()))));
+
+    long closeTsFileIntervalAfterFlushing =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "close_tsfile_interval_after_flushing_in_ms",
+                    Long.toString(conf.getCloseTsFileIntervalAfterFlushing()))
+                .trim());
+    if (closeTsFileIntervalAfterFlushing > 0) {
+      conf.setCloseTsFileIntervalAfterFlushing(closeTsFileIntervalAfterFlushing);
+    }
+
+    long closeTsFileCheckInterval =
+        Long.parseLong(
+            properties
+                .getProperty(
+                    "close_tsfile_check_interval_in_ms",
+                    Long.toString(conf.getCloseTsFileCheckInterval()))
+                .trim());
+    if (closeTsFileCheckInterval > 0) {
+      conf.setCloseTsFileCheckInterval(closeTsFileCheckInterval);
+    }
+  }
+
   public void loadHotModifiedProps(Properties properties) throws QueryProcessException {
     try {
       // update data dirs
@@ -1039,14 +1135,26 @@ public class IoTDBDescriptor {
       // update WAL conf
       loadWALProps(properties);
 
-      long tsfileSizeThreshold =
+      // update timed flush & close conf
+      loadTimedService(properties);
+      StorageEngine.getInstance().rebootTimedService();
+
+      long seqTsFileSize =
           Long.parseLong(
               properties
-                  .getProperty(
-                      "tsfile_size_threshold", Long.toString(conf.getTsFileSizeThreshold()))
+                  .getProperty("seq_tsfile_size", Long.toString(conf.getSeqTsFileSize()))
                   .trim());
-      if (tsfileSizeThreshold >= 0) {
-        conf.setTsFileSizeThreshold(tsfileSizeThreshold);
+      if (seqTsFileSize >= 0) {
+        conf.setSeqTsFileSize(seqTsFileSize);
+      }
+
+      long unSeqTsFileSize =
+          Long.parseLong(
+              properties
+                  .getProperty("unseq_tsfile_size", Long.toString(conf.getUnSeqTsFileSize()))
+                  .trim());
+      if (unSeqTsFileSize >= 0) {
+        conf.setUnSeqTsFileSize(unSeqTsFileSize);
       }
 
       long memTableSizeThreshold =
@@ -1082,12 +1190,6 @@ public class IoTDBDescriptor {
           Long.parseLong(
               properties.getProperty(
                   "slow_query_threshold", Long.toString(conf.getSlowQueryThreshold()))));
-      // update enable_continuous_compaction
-      conf.setEnableContinuousCompaction(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_continuous_compaction",
-                  Boolean.toString(conf.isEnableContinuousCompaction()))));
       // update merge_write_throughput_mb_per_sec
       conf.setMergeWriteThroughputMbPerSec(
           Integer.parseInt(
@@ -1164,12 +1266,14 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       if (proportionSum != 0) {
         try {
-          conf.setAllocateMemoryForChunkCache(
+          conf.setAllocateMemoryForBloomFilterCache(
               maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+          conf.setAllocateMemoryForChunkCache(
               maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-          conf.setAllocateMemoryForReadWithoutCache(
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
               maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+          conf.setAllocateMemoryForReadWithoutCache(
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -1177,10 +1281,13 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
-
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
+
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

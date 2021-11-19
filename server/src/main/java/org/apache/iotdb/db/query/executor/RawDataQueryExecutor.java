@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -65,6 +65,7 @@ public class RawDataQueryExecutor {
       return dataSet;
     }
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
+
     try {
       return new RawQueryDataSetWithoutValueFilter(
           context.getQueryId(),
@@ -105,9 +106,9 @@ public class RawDataQueryExecutor {
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
-      for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
-        PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
-        TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
+      List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
+      for (PartialPath path : paths) {
+        TSDataType dataType = path.getSeriesType();
 
         QueryDataSource queryDataSource =
             QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);

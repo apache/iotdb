@@ -22,12 +22,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptPublishMessage;
@@ -93,16 +92,15 @@ public class PublishHandler extends AbstractInterceptHandler {
         continue;
       }
 
-      InsertRowPlan plan = new InsertRowPlan();
-      plan.setTime(event.getTimestamp());
-      plan.setMeasurements(event.getMeasurements().toArray(new String[0]));
-      plan.setValues(event.getValues().toArray(new Object[0]));
-      plan.setDataTypes(new TSDataType[event.getValues().size()]);
-      plan.setNeedInferType(true);
-
       boolean status = false;
       try {
-        plan.setPrefixPath(new PartialPath(event.getDevice()));
+        PartialPath path = new PartialPath(event.getDevice());
+        InsertRowPlan plan =
+            new InsertRowPlan(
+                path,
+                event.getTimestamp(),
+                event.getMeasurements().toArray(new String[0]),
+                event.getValues().toArray(new String[0]));
         status = executeNonQuery(plan);
       } catch (Exception e) {
         LOG.warn(

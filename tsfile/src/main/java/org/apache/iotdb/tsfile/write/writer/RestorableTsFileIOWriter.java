@@ -68,7 +68,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   /** all chunk group metadata which have been serialized on disk. */
-  private Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
+  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
@@ -108,6 +108,47 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           canWrite = true;
           // remove broken data
           out.truncate(truncatedSize);
+        }
+      }
+    }
+  }
+
+  public RestorableTsFileIOWriter(File file, boolean truncate) throws IOException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("{} is opened.", file.getName());
+    }
+    this.file = file;
+    this.out = FSFactoryProducer.getFileOutputFactory().getTsFileOutput(file.getPath(), true);
+
+    // file doesn't exist
+    if (file.length() == 0) {
+      startFile();
+      crashed = true;
+      canWrite = true;
+      return;
+    }
+
+    if (file.exists()) {
+      try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+
+        truncatedSize = reader.selfCheck(knownSchemas, chunkGroupMetadataList, true);
+        minPlanIndex = reader.getMinPlanIndex();
+        maxPlanIndex = reader.getMaxPlanIndex();
+        if (truncatedSize == TsFileCheckStatus.COMPLETE_FILE) {
+          crashed = false;
+          canWrite = false;
+          out.close();
+        } else if (truncatedSize == TsFileCheckStatus.INCOMPATIBLE_FILE) {
+          out.close();
+          throw new NotCompatibleTsFileException(
+              String.format("%s is not in TsFile format.", file.getAbsolutePath()));
+        } else {
+          crashed = true;
+          canWrite = true;
+          // remove broken data
+          if (truncate) {
+            out.truncate(truncatedSize);
+          }
         }
       }
     }
@@ -194,7 +235,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());
@@ -202,7 +243,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           if (!metadatasForQuery.get(device).containsKey(measurementId)) {
             metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(device).get(measurementId).add((ChunkMetadata) chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
         }
       }
     }

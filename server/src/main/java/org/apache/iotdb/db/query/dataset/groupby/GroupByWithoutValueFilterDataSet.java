@@ -23,7 +23,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -54,7 +54,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  private Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
+  protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
   /**
    * path -> result index for each aggregation
@@ -65,7 +65,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
    *
    * <p>s1 -> 0, 2 s2 -> 1
    */
-  private Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
+  protected Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 
@@ -73,11 +73,10 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithoutValueFilterDataSet(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     super(context, groupByTimePlan);
-
-    initGroupBy(context, groupByTimePlan);
   }
 
-  protected void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
+  /** init reader and aggregate function. This method should be called once after initializing */
+  public void initGroupBy(QueryContext context, GroupByTimePlan groupByTimePlan)
       throws StorageEngineException, QueryProcessException {
     IExpression expression = groupByTimePlan.getExpression();
 
@@ -135,23 +134,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       record = new RowRecord(curEndTime - 1);
     }
 
-    AggregateResult[] fields = new AggregateResult[paths.size()];
-
-    try {
-      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
-        GroupByExecutor executor = pathToExecutorEntry.getValue();
-        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
-        for (int i = 0; i < aggregations.size(); i++) {
-          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
-          fields[resultIndex] = aggregations.get(i);
-        }
-      }
-    } catch (QueryProcessException e) {
-      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
-      throw new IOException(e.getMessage(), e);
-    }
-
-    for (AggregateResult res : fields) {
+    curAggregateResults = getNextAggregateResult();
+    for (AggregateResult res : curAggregateResults) {
       if (res == null) {
         record.addField(null);
         continue;
@@ -159,6 +143,24 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       record.addField(res.getResult(), res.getResultDataType());
     }
     return record;
+  }
+
+  private AggregateResult[] getNextAggregateResult() throws IOException {
+    curAggregateResults = new AggregateResult[paths.size()];
+    try {
+      for (Entry<PartialPath, GroupByExecutor> pathToExecutorEntry : pathExecutors.entrySet()) {
+        GroupByExecutor executor = pathToExecutorEntry.getValue();
+        List<AggregateResult> aggregations = executor.calcResult(curStartTime, curEndTime);
+        for (int i = 0; i < aggregations.size(); i++) {
+          int resultIndex = resultIndexes.get(pathToExecutorEntry.getKey()).get(i);
+          curAggregateResults[resultIndex] = aggregations.get(i);
+        }
+      }
+    } catch (QueryProcessException e) {
+      logger.error("GroupByWithoutValueFilterDataSet execute has error", e);
+      throw new IOException(e.getMessage(), e);
+    }
+    return curAggregateResults;
   }
 
   @Override

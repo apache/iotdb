@@ -22,7 +22,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -167,7 +167,8 @@ public class PlannerTest {
     PhysicalPlan plan6 = processor.parseSQLToPhysicalPlan(deleteStatement);
     assertEquals(OperatorType.DELETE, plan6.getOperatorType());
 
-    String queryStatement1 = "select * from root.vehicle where root.vehicle.device1.sensor1 > 50";
+    String queryStatement1 =
+        "select * from root.vehicle.** where root.vehicle.device1.sensor1 > 50";
     PhysicalPlan plan7 = processor.parseSQLToPhysicalPlan(queryStatement1);
     assertEquals(OperatorType.QUERY, plan7.getOperatorType());
 
@@ -191,12 +192,12 @@ public class PlannerTest {
     assertEquals(OperatorType.INSERT, plan11.getOperatorType());
 
     String createTSStatement2 =
-        "create timeseries root.a.b.d_1.1s with datatype=FLOAT,encoding=RLE";
+        "create timeseries root.a.b.d_1.`1s` with datatype=FLOAT,encoding=RLE";
     PhysicalPlan plan12 = processor.parseSQLToPhysicalPlan(createTSStatement2);
     assertEquals(OperatorType.CREATE_TIMESERIES, plan12.getOperatorType());
 
     String queryStatement2 =
-        "select windDirection10min from root.national.4.5.585.9_6666.9_333.88_9";
+        "select windDirection10min from root.national.`4`.`5`.`585`.`9_6666`.`9_333`.`88_9`";
     PhysicalPlan plan13 = processor.parseSQLToPhysicalPlan(queryStatement2);
     assertEquals(OperatorType.QUERY, plan13.getOperatorType());
 

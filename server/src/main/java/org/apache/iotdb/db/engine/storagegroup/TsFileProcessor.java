@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.engine.storagegroup;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -28,11 +27,11 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
 import org.apache.iotdb.db.engine.flush.NotifyFlushMemTable;
+import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
@@ -40,7 +39,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -48,7 +48,7 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -58,13 +58,10 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -130,6 +127,9 @@ public class TsFileProcessor {
 
   /** working memtable */
   private IMemTable workMemTable;
+
+  /** last flush time to flush the working memtable */
+  private long lastWorkMemtableFlushTime;
 
   /** this callback is called before the workMemtable is added into the flushingMemTables. */
   private final UpdateEndTimeCallBack updateLatestFlushTimeCallback;
@@ -209,16 +209,22 @@ public class TsFileProcessor {
       }
     }
 
+    long[] memIncrements = null;
     if (enableMemControl) {
-      checkMemCostAndAddToTspInfo(insertRowPlan);
+      if (insertRowPlan.isAligned()) {
+        memIncrements = checkAlignedMemCostAndAddToTspInfo(insertRowPlan);
+      } else {
+        memIncrements = checkMemCostAndAddToTspInfo(insertRowPlan);
+      }
     }
-
-    workMemTable.insert(insertRowPlan);
 
     if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
       try {
         getLogNode().write(insertRowPlan);
       } catch (Exception e) {
+        if (enableMemControl && memIncrements != null) {
+          rollbackMemoryInfo(memIncrements);
+        }
         throw new WriteProcessException(
             String.format(
                 "%s: %s write WAL failed",
@@ -227,21 +233,28 @@ public class TsFileProcessor {
       }
     }
 
+    if (insertRowPlan.isAligned()) {
+      workMemTable.insertAlignedRow(insertRowPlan);
+    } else {
+      workMemTable.insert(insertRowPlan);
+    }
+
     // update start time of this memtable
     tsFileResource.updateStartTime(
-        insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+        insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+          insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
 
   /**
-   * insert batch data of insertTabletPlan into the workingMemtable The rows to be inserted are in
-   * the range [start, end)
+   * insert batch data of insertTabletPlan into the workingMemtable. The rows to be inserted are in
+   * the range [start, end). Null value in each column values will be replaced by the subsequent
+   * non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    *
    * @param insertTabletPlan insert a tablet of a device
    * @param start start index of rows to be inserted in insertTabletPlan
@@ -261,9 +274,14 @@ public class TsFileProcessor {
       }
     }
 
+    long[] memIncrements = null;
     try {
       if (enableMemControl) {
-        checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+        if (insertTabletPlan.isAligned()) {
+          memIncrements = checkAlignedMemCostAndAddToTsp(insertTabletPlan, start, end);
+        } else {
+          memIncrements = checkMemCostAndAddToTspInfo(insertTabletPlan, start, end);
+        }
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
@@ -271,8 +289,8 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
+
     try {
-      workMemTable.insertTablet(insertTabletPlan, start, end);
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
         insertTabletPlan.setEnd(end);
@@ -282,112 +300,173 @@ public class TsFileProcessor {
       for (int i = start; i < end; i++) {
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
+      if (enableMemControl && memIncrements != null) {
+        rollbackMemoryInfo(memIncrements);
+      }
       throw new WriteProcessException(e);
     }
+
+    try {
+      if (insertTabletPlan.isAligned()) {
+        workMemTable.insertAlignedTablet(insertTabletPlan, start, end);
+      } else {
+        workMemTable.insertTablet(insertTabletPlan, start, end);
+      }
+    } catch (WriteProcessException e) {
+      for (int i = start; i < end; i++) {
+        results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
+      }
+      throw new WriteProcessException(e);
+    }
+
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-        insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[start]);
+        insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
+  private long[] checkMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
       throws WriteProcessException {
     // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getPrefixPath().getFullPath();
-    int columnIndex = 0;
-    for (int i = 0; i < insertRowPlan.getMeasurementMNodes().length; i++) {
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
+    for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
-      if (insertRowPlan.getDataTypes()[columnIndex] == null
-          || insertRowPlan.getMeasurements()[i] == null) {
-        columnIndex++;
+      if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
         continue;
       }
       if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
-        IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
-        if (schema.getType() == TSDataType.VECTOR) {
-          chunkMetadataIncrement +=
-              schema.getValueTSDataTypeList().size()
-                  * ChunkMetadata.calculateRamSize(
-                      schema.getValueMeasurementIdList().get(0),
-                      schema.getValueTSDataTypeList().get(0));
-          memTableIncrement += TVList.vectorTvListArrayMemSize(schema.getValueTSDataTypeList());
-        } else {
-          chunkMetadataIncrement +=
-              ChunkMetadata.calculateRamSize(
-                  insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[columnIndex]);
-          memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnIndex]);
-        }
+        chunkMetadataIncrement +=
+            ChunkMetadata.calculateRamSize(
+                insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
+        memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
       } else {
         // here currentChunkPointNum >= 1
         int currentChunkPointNum =
             workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[columnIndex])
+                ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
                 : 0;
       }
       // TEXT data mem size
-      if (insertRowPlan.getDataTypes()[columnIndex] == TSDataType.TEXT) {
-        textDataIncrement +=
-            MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[columnIndex]);
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
       }
     }
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
   }
 
-  private void checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
+  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
+  private long[] checkAlignedMemCostAndAddToTspInfo(InsertRowPlan insertRowPlan)
+      throws WriteProcessException {
+    // memory of increased PrimitiveArray and TEXT values, e.g., add a long[128], add 128*8
+    long memTableIncrement = 0L;
+    long textDataIncrement = 0L;
+    long chunkMetadataIncrement = 0L;
+    AlignedWritableMemChunk vectorMemChunk = null;
+    String deviceId = insertRowPlan.getDeviceId().getFullPath();
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
+      // ChunkMetadataIncrement
+      chunkMetadataIncrement +=
+          ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
+              * insertRowPlan.getDataTypes().length;
+      memTableIncrement += AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes());
+    } else {
+      // here currentChunkPointNum >= 1
+      int currentChunkPointNum =
+          workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+      memTableIncrement +=
+          (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
+              ? AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes())
+              : 0;
+      vectorMemChunk =
+          ((AlignedWritableMemChunk)
+              workMemTable.getMemTableMap().get(deviceId).get(AlignedPath.VECTOR_PLACEHOLDER));
+    }
+    for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
+      // skip failed Measurements
+      if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
+        continue;
+      }
+      // extending the column of aligned mem chunk
+      if (vectorMemChunk != null
+          && !vectorMemChunk.containsMeasurement(insertRowPlan.getMeasurements()[i])) {
+        memTableIncrement +=
+            (vectorMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * insertRowPlan.getDataTypes()[i].getDataTypeSize();
+      }
+      // TEXT data mem size
+      if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
+        textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
+      }
+    }
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return new long[] {memTableIncrement, textDataIncrement, chunkMetadataIncrement};
+  }
+
+  private long[] checkMemCostAndAddToTspInfo(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException {
     if (start >= end) {
-      return;
+      return new long[] {0, 0, 0};
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getPrefixPath().getFullPath();
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
 
-    int columnIndex = 0;
-    for (int i = 0; i < insertTabletPlan.getMeasurementMNodes().length; i++) {
-      // for aligned timeseries
-      if (insertTabletPlan.isAligned()) {
-        VectorMeasurementSchema vectorSchema =
-            (VectorMeasurementSchema) insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-        Object[] columns = new Object[vectorSchema.getValueMeasurementIdList().size()];
-        for (int j = 0; j < vectorSchema.getValueMeasurementIdList().size(); j++) {
-          columns[j] = insertTabletPlan.getColumns()[columnIndex++];
-        }
-        updateVectorMemCost(vectorSchema, deviceId, start, end, memIncrements, columns);
-        break;
+    for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
+      // skip failed Measurements
+      TSDataType dataType = insertTabletPlan.getDataTypes()[i];
+      String measurement = insertTabletPlan.getMeasurements()[i];
+      Object column = insertTabletPlan.getColumns()[i];
+      if (dataType == null || column == null || measurement == null) {
+        continue;
       }
-      // for non aligned
-      else {
-        // skip failed Measurements
-        TSDataType dataType = insertTabletPlan.getDataTypes()[columnIndex];
-        String measurement = insertTabletPlan.getMeasurements()[i];
-        Object column = insertTabletPlan.getColumns()[columnIndex];
-        columnIndex++;
-        if (dataType == null || column == null || measurement == null) {
-          continue;
-        }
-        updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
-      }
+      updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
     }
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
     long chunkMetadataIncrement = memIncrements[2];
     updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return memIncrements;
+  }
+
+  private long[] checkAlignedMemCostAndAddToTsp(
+      InsertTabletPlan insertTabletPlan, int start, int end) throws WriteProcessException {
+    if (start >= end) {
+      return new long[] {0, 0, 0};
+    }
+    long[] memIncrements = new long[3]; // memTable, text, chunk metadata
+
+    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+
+    updateAlignedMemCost(
+        insertTabletPlan.getDataTypes(),
+        deviceId,
+        insertTabletPlan.getMeasurements(),
+        start,
+        end,
+        memIncrements,
+        insertTabletPlan.getColumns());
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+    updateMemoryInfo(memTableIncrement, chunkMetadataIncrement, textDataIncrement);
+    return memIncrements;
   }
 
   private void updateMemCost(
@@ -427,43 +506,59 @@ public class TsFileProcessor {
     }
   }
 
-  private void updateVectorMemCost(
-      VectorMeasurementSchema vectorSchema,
+  private void updateAlignedMemCost(
+      TSDataType[] dataTypes,
       String deviceId,
+      String[] measurementIds,
       int start,
       int end,
       long[] memIncrements,
       Object[] columns) {
+    AlignedWritableMemChunk vectorMemChunk = null;
     // memIncrements = [memTable, text, chunk metadata] respectively
-
-    List<String> measurementIds = vectorSchema.getValueMeasurementIdList();
-    List<TSDataType> dataTypes = vectorSchema.getValueTSDataTypeList();
-    if (workMemTable.checkIfChunkDoesNotExist(deviceId, vectorSchema.getMeasurementId())) {
+    if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
       memIncrements[2] +=
-          dataTypes.size()
-              * ChunkMetadata.calculateRamSize(measurementIds.get(0), dataTypes.get(0));
+          dataTypes.length
+              * ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * TVList.vectorTvListArrayMemSize(dataTypes);
+              * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
     } else {
       int currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceId, vectorSchema.getMeasurementId());
+          workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.vectorTvListArrayMemSize(dataTypes);
+                * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.vectorTvListArrayMemSize(dataTypes);
+            acquireArray == 0
+                ? 0
+                : acquireArray * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
       }
+      vectorMemChunk =
+          ((AlignedWritableMemChunk)
+              workMemTable.getMemTableMap().get(deviceId).get(AlignedPath.VECTOR_PLACEHOLDER));
     }
-    // TEXT data size
-    for (int i = 0; i < dataTypes.size(); i++) {
-      if (dataTypes.get(i) == TSDataType.TEXT) {
+    for (int i = 0; i < dataTypes.length; i++) {
+      TSDataType dataType = dataTypes[i];
+      String measurement = measurementIds[i];
+      Object column = columns[i];
+      if (dataType == null || column == null || measurement == null) {
+        continue;
+      }
+      // extending the column of aligned mem chunk
+      if (vectorMemChunk != null && !vectorMemChunk.containsMeasurement(measurementIds[i])) {
+        memIncrements[0] +=
+            (vectorMemChunk.alignedListSize() / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * dataType.getDataTypeSize();
+      }
+      // TEXT data size
+      if (dataType == TSDataType.TEXT) {
         Binary[] binColumn = (Binary[]) columns[i];
         memIncrements[1] += MemUtils.getBinaryColumnSize(binColumn, start, end);
       }
@@ -492,6 +587,19 @@ public class TsFileProcessor {
     workMemTable.addTextDataSize(textDataIncrement);
   }
 
+  private void rollbackMemoryInfo(long[] memIncrements) {
+    long memTableIncrement = memIncrements[0];
+    long textDataIncrement = memIncrements[1];
+    long chunkMetadataIncrement = memIncrements[2];
+
+    memTableIncrement += textDataIncrement;
+    storageGroupInfo.releaseStorageGroupMemCost(memTableIncrement);
+    tsFileProcessorInfo.releaseTSPMemCost(chunkMetadataIncrement);
+    SystemInfo.getInstance().resetStorageGroupStatus(storageGroupInfo);
+    workMemTable.releaseTVListRamCost(memTableIncrement);
+    workMemTable.releaseTextDataSize(textDataIncrement);
+  }
+
   /**
    * Delete data which belongs to the timeseries `deviceId.measurementId` and the timestamp of which
    * <= 'timestamp' in the deletion. <br>
@@ -509,11 +617,6 @@ public class TsFileProcessor {
         for (PartialPath device : devicePaths) {
           workMemTable.delete(
               deletion.getPath(), device, deletion.getStartTime(), deletion.getEndTime());
-          logger.info(
-              "[Deletion] Delete in-memory data with deletion path: {}, time:{}-{}.",
-              deletion.getPath(),
-              deletion.getStartTime(),
-              deletion.getEndTime());
         }
       }
       // flushing memTables are immutable, only record this deletion in these memTables for query
@@ -567,7 +670,8 @@ public class TsFileProcessor {
 
   public boolean shouldClose() {
     long fileSize = tsFileResource.getTsFileSize();
-    long fileSizeThreshold = IoTDBDescriptor.getInstance().getConfig().getTsFileSizeThreshold();
+    long fileSizeThreshold = sequence ? config.getSeqTsFileSize() : config.getUnSeqTsFileSize();
+
     if (fileSize >= fileSizeThreshold) {
       logger.info(
           "{} fileSize {} >= fileSizeThreshold {}",
@@ -801,6 +905,7 @@ public class TsFileProcessor {
       totalMemTableSize += tobeFlushed.memSize();
     }
     workMemTable = null;
+    lastWorkMemtableFlushTime = System.currentTimeMillis();
     FlushManager.getInstance().registerTsFileProcessor(this);
   }
 
@@ -1138,20 +1243,16 @@ public class TsFileProcessor {
    * construct a deletion list from a memtable
    *
    * @param memTable memtable
-   * @param deviceId device id
-   * @param measurement measurement name
    * @param timeLowerBound time water mark
    */
   private List<TimeRange> constructDeletionList(
-      IMemTable memTable, String deviceId, String measurement, long timeLowerBound)
-      throws MetadataException {
+      IMemTable memTable, PartialPath fullPath, long timeLowerBound) {
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : getModificationsForMemtable(memTable)) {
       if (modification instanceof Deletion) {
         Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(new PartialPath(deviceId, measurement))
-            && deletion.getEndTime() > timeLowerBound) {
+        if (deletion.getPath().matchFullPath(fullPath) && deletion.getEndTime() > timeLowerBound) {
           long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
           deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
         }
@@ -1164,17 +1265,10 @@ public class TsFileProcessor {
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
-   *
-   * @param deviceId device id
-   * @param measurementId measurements id
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void query(
-      String deviceId,
-      String measurementId,
-      IMeasurementSchema schema,
-      QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
+      PartialPath fullPath, QueryContext context, List<TsFileResource> tsfileResourcesForQuery)
       throws IOException, MetadataException {
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -1190,64 +1284,28 @@ public class TsFileProcessor {
           continue;
         }
         List<TimeRange> deletionList =
-            constructDeletionList(
-                flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
+            constructDeletionList(flushingMemTable, fullPath, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk =
-            flushingMemTable.query(
-                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), deletionList);
+            flushingMemTable.query(fullPath, context.getQueryTimeLowerBound(), deletionList);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
       if (workMemTable != null) {
         ReadOnlyMemChunk memChunk =
-            workMemTable.query(
-                deviceId, measurementId, schema, context.getQueryTimeLowerBound(), null);
+            workMemTable.query(fullPath, context.getQueryTimeLowerBound(), null);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
       }
 
-      ModificationFile modificationFile = tsFileResource.getModFile();
-      List<Modification> modifications =
-          context.getPathModifications(
-              modificationFile,
-              new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
-
-      List<IChunkMetadata> chunkMetadataList = new ArrayList<>();
-      if (schema instanceof VectorMeasurementSchema) {
-        List<ChunkMetadata> timeChunkMetadataList =
-            writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
-        List<List<ChunkMetadata>> valueChunkMetadataList = new ArrayList<>();
-        List<String> valueMeasurementIdList = schema.getValueMeasurementIdList();
-        List<TSDataType> valueDataTypeList = schema.getValueTSDataTypeList();
-        for (int i = 0; i < valueMeasurementIdList.size(); i++) {
-          valueChunkMetadataList.add(
-              writer.getVisibleMetadataList(
-                  deviceId, valueMeasurementIdList.get(i), valueDataTypeList.get(i)));
-        }
-
-        for (int i = 0; i < timeChunkMetadataList.size(); i++) {
-          List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
-          for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-            valueChunkMetadata.add(chunkMetadata.get(i));
-          }
-          chunkMetadataList.add(
-              new VectorChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
-        }
-      } else {
-        chunkMetadataList =
-            new ArrayList<>(
-                writer.getVisibleMetadataList(deviceId, measurementId, schema.getType()));
-      }
-
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-      chunkMetadataList.removeIf(context::chunkNotSatisfy);
+      List<IChunkMetadata> chunkMetadataList =
+          fullPath.getVisibleMetadataListFromWriter(writer, tsFileResource, context);
 
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            fullPath.createTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(
@@ -1302,6 +1360,10 @@ public class TsFileProcessor {
   /** Return Long.MAX_VALUE if workMemTable is null */
   public long getWorkMemTableCreatedTime() {
     return workMemTable != null ? workMemTable.getCreatedTime() : Long.MAX_VALUE;
+  }
+
+  public long getLastWorkMemtableFlushTime() {
+    return lastWorkMemtableFlushTime;
   }
 
   public boolean isSequence() {

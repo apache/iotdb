@@ -21,7 +21,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.CompactionMergeTaskPoolManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -308,7 +308,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -341,7 +341,7 @@ public class IoTDBRestartIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
-      boolean hasResultSet = statement.execute("select * from root");
+      boolean hasResultSet = statement.execute("select * from root.**");
       assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       int cnt = 0;
@@ -361,8 +361,10 @@ public class IoTDBRestartIT {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     int avgSeriesPointNumberThreshold = config.getAvgSeriesPointNumberThreshold();
     config.setAvgSeriesPointNumberThreshold(2);
-    long tsfileSize = config.getTsFileSizeThreshold();
-    config.setTsFileSizeThreshold(10000000);
+    long tsFileSize = config.getSeqTsFileSize();
+    long unFsFileSize = config.getSeqTsFileSize();
+    config.setSeqTsFileSize(10000000);
+    config.setUnSeqTsFileSize(10000000);
 
     try (Connection connection =
             DriverManager.getConnection(
@@ -396,7 +398,8 @@ public class IoTDBRestartIT {
     }
 
     config.setAvgSeriesPointNumberThreshold(avgSeriesPointNumberThreshold);
-    config.setTsFileSizeThreshold(tsfileSize);
+    config.setSeqTsFileSize(tsFileSize);
+    config.setUnSeqTsFileSize(unFsFileSize);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -427,7 +430,7 @@ public class IoTDBRestartIT {
     }
 
     try {
-      CompactionMergeTaskPoolManager.getInstance().waitAllCompactionFinish();
+      CompactionTaskManager.getInstance().waitAllCompactionFinish();
       Thread.sleep(10000);
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {

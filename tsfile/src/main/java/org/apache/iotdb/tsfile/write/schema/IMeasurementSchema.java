@@ -39,6 +39,8 @@ public interface IMeasurementSchema {
 
   TSDataType getType();
 
+  byte getTypeInByte();
+
   void setType(TSDataType dataType);
 
   TSEncoding getTimeTSEncoding();
@@ -49,20 +51,20 @@ public interface IMeasurementSchema {
 
   Map<String, String> getProps();
 
-  List<String> getValueMeasurementIdList();
+  List<String> getSubMeasurementsList();
 
-  List<TSDataType> getValueTSDataTypeList();
+  List<TSDataType> getSubMeasurementsTSDataTypeList();
 
-  List<TSEncoding> getValueTSEncodingList();
+  List<TSEncoding> getSubMeasurementsTSEncodingList();
 
-  List<Encoder> getValueEncoderList();
+  List<Encoder> getSubMeasurementsEncoderList();
 
-  int getMeasurementIdColumnIndex(String measurementId);
+  int getSubMeasurementIndex(String measurementId);
 
-  int getMeasurementCount();
+  int getSubMeasurementsCount();
 
   /* test whether the schema contains Measurement with given measurementId */
-  boolean isCompatible(String measurementId);
+  boolean containsSubMeasurement(String measurementId);
 
   int serializeTo(ByteBuffer buffer);
 
