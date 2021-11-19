@@ -302,15 +302,19 @@ public class AlignedPath extends PartialPath {
       valueTimeSeriesMetadataList.add(valueMetadata);
     }
 
+    boolean[] exist = new boolean[schemaList.size()];
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
       timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-        valueTimeSeriesMetadataList
-            .get(i)
-            .getStatistics()
-            .mergeStatistics(
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+        if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          exist[i] = true;
+          valueTimeSeriesMetadataList
+              .get(i)
+              .getStatistics()
+              .mergeStatistics(
+                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+        }
       }
     }
 
@@ -320,15 +324,24 @@ public class AlignedPath extends PartialPath {
             (AlignedChunkMetadata) memChunk.getChunkMetaData();
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-          valueTimeSeriesMetadataList
-              .get(i)
-              .getStatistics()
-              .mergeStatistics(
-                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+            exist[i] = true;
+            valueTimeSeriesMetadataList
+                .get(i)
+                .getStatistics()
+                .mergeStatistics(
+                    alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          }
         }
       }
     }
     timeTimeSeriesMetadata.setStatistics(timeStatistics);
+
+    for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+      if (!exist[i]) {
+        valueTimeSeriesMetadataList.set(i, null);
+      }
+    }
 
     return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
   }
@@ -378,11 +391,17 @@ public class AlignedPath extends PartialPath {
 
     for (int i = 0; i < timeChunkMetadataList.size(); i++) {
       List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+      // if all the sub sensors doesn't exist, it will be false
+      boolean exits = false;
       for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        valueChunkMetadata.add(chunkMetadata.get(i));
+        boolean currentExist = i < chunkMetadata.size();
+        exits = (exits || currentExist);
+        valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
       }
-      chunkMetadataList.add(
-          new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+      if (exits) {
+        chunkMetadataList.add(
+            new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+      }
     }
 
     QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);

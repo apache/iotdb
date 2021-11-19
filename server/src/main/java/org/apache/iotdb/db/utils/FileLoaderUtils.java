@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskAlignedChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.DiskChunkMetadataLoader;
 import org.apache.iotdb.db.query.reader.chunk.metadata.MemAlignedChunkMetadataLoader;
@@ -35,7 +34,6 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
@@ -254,11 +252,5 @@ public class FileLoaderUtils {
     IChunkLoader chunkLoader = chunkMetaData.getChunkLoader();
     IChunkReader chunkReader = chunkLoader.getChunkReader(chunkMetaData, timeFilter);
     return chunkReader.loadPageReaderList();
-  }
-
-  public static List<IChunkMetadata> getChunkMetadataList(Path path, String filePath)
-      throws IOException {
-    TsFileSequenceReader tsFileReader = FileReaderManager.getInstance().get(filePath, true);
-    return new ArrayList<>(tsFileReader.getChunkMetadataList(path));
   }
 }

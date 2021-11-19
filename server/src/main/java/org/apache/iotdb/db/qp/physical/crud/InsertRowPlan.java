@@ -241,6 +241,7 @@ public class InsertRowPlan extends InsertPlan {
           }
           continue;
         }
+
         dataTypes[i] = measurementMNodes[i].getSchema().getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());

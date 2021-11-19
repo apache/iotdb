@@ -38,12 +38,11 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_NAME;
-import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_NAME;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.SOURCE_INFO;
+import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_INFO;
 
 /**
  * SizeTiredCompactionTask compact several inner space files selected by {@link
@@ -126,20 +125,15 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       SizeTieredCompactionLogger sizeTieredCompactionLogger =
           new SizeTieredCompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
-        sizeTieredCompactionLogger.logFile(SOURCE_NAME, resource.getTsFile());
+        sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
       }
       sizeTieredCompactionLogger.logSequence(sequence);
-      sizeTieredCompactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
+      sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
       LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
-          targetTsFileResource,
-          selectedTsFileResourceList,
-          fullStorageGroupName,
-          sizeTieredCompactionLogger,
-          new HashSet<>(),
-          sequence);
+          targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, true);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       sizeTieredCompactionLogger.close();
