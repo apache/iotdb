@@ -71,7 +71,8 @@ public class DataMigrationExample {
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
     SessionDataSetWrapper schemaDataSet =
-        readerPool.executeQueryStatement("count timeseries " + path);
+        readerPool.executeQueryStatement("count timeseries " + path + ".**");
+    //System.out.println("count timeseries " + path);
     DataIterator schemaIter = schemaDataSet.iterator();
     int total;
     if (schemaIter.next()) {
@@ -83,7 +84,7 @@ public class DataMigrationExample {
     }
     readerPool.closeResultSet(schemaDataSet);
 
-    schemaDataSet = readerPool.executeQueryStatement("show timeseries " + path);
+    schemaDataSet = readerPool.executeQueryStatement("show timeseries " + path + ".**");
     schemaIter = schemaDataSet.iterator();
 
     List<Future> futureList = new ArrayList<>();
@@ -111,6 +112,14 @@ public class DataMigrationExample {
       }
       measurementsInCurrentDevice.add(currentPath.getMeasurement());
       dataTypesInCurrentDevice.add(TSDataType.valueOf(schemaIter.getString("dataType")));
+    }
+    if (measurementsInCurrentDevice.size() > 0) {
+      count++;
+      Future future1 =
+              executorService.submit(
+                      new LoadThread(
+                              count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
+      futureList.add(future1);
     }
     readerPool.closeResultSet(schemaDataSet);
 
