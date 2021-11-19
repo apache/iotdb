@@ -25,6 +25,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -33,8 +35,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -218,33 +220,21 @@ public class SessionExample {
   }
 
   private static void createTemplate()
-      throws IoTDBConnectionException, StatementExecutionException {
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s1"));
-    measurementList.add(Collections.singletonList("s2"));
-    measurementList.add(Collections.singletonList("s3"));
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
 
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    Template template = new Template("template1", false);
+    MeasurementNode mNodeS1 =
+        new MeasurementNode("s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    MeasurementNode mNodeS2 =
+        new MeasurementNode("s2", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    MeasurementNode mNodeS3 =
+        new MeasurementNode("s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    template.addToTemplate(mNodeS1);
+    template.addToTemplate(mNodeS2);
+    template.addToTemplate(mNodeS3);
 
-    List<List<CompressionType>> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
-    }
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s1");
-    schemaNames.add("s2");
-    schemaNames.add("s3");
-
-    session.createSchemaTemplate(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    session.createSchemaTemplate(template);
     session.setSchemaTemplate("template1", "root.sg1");
   }
 
