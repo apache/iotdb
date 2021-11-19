@@ -22,11 +22,14 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AlignByDevicePlan extends QueryPlan {
 
@@ -34,14 +37,17 @@ public class AlignByDevicePlan extends QueryPlan {
       "The paths of the SELECT clause can only be measurements or STAR.";
   public static final String ALIAS_ERROR_MESSAGE =
       "alias %s can only be matched with one time series";
+  public static final String DATATYPE_ERROR_MESSAGE =
+      "The data types of the same measurement column should be the same across devices.";
 
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
-  private List<TSDataType> dataTypes;
   private Map<String, MeasurementInfo> measurementInfoMap;
+  private List<PartialPath> deduplicatePaths;
+  private List<String> aggregations;
 
-  // to check data type consistency for the same name sensor of different devices
-  private List<PartialPath> devices;
+  // paths index of each device that need to execute
+  private Map<String, List<Integer>> deviceToPathIndex = new LinkedHashMap<>();
   private Map<String, IExpression> deviceToFilterMap;
 
   private GroupByTimePlan groupByTimePlan;
@@ -54,7 +60,40 @@ public class AlignByDevicePlan extends QueryPlan {
 
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
-    // do nothing
+    Set<PartialPath> deduplicatePaths = new LinkedHashSet<>();
+    List<String> deduplicatedAggregations = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = paths.get(i);
+      if (!deduplicatePaths.contains(path)) {
+        deduplicatePaths.add(path);
+        if (this.aggregations != null) {
+          deduplicatedAggregations.add(this.aggregations.get(i));
+        }
+        deviceToPathIndex
+            .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+            .add(deduplicatePaths.size() - 1);
+      }
+    }
+    // paths are deduplicated from here
+    this.deduplicatePaths = new ArrayList<>(deduplicatePaths);
+    setAggregations(deduplicatedAggregations);
+    this.paths = null;
+  }
+
+  public List<PartialPath> getDeduplicatePaths() {
+    return deduplicatePaths;
+  }
+
+  public void removeDevice(String device) {
+    deviceToPathIndex.remove(device);
+  }
+
+  public void setMeasurementInfoMap(Map<String, MeasurementInfo> measurementInfoMap) {
+    this.measurementInfoMap = measurementInfoMap;
+  }
+
+  public Map<String, MeasurementInfo> getMeasurementInfoMap() {
+    return measurementInfoMap;
   }
 
   public void setMeasurements(List<String> measurements) {
@@ -65,21 +104,20 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
-  @Override
-  public List<TSDataType> getDataTypes() {
-    return dataTypes;
+  public List<String> getAggregations() {
+    return aggregations;
   }
 
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
+  public void setAggregations(List<String> aggregations) {
+    this.aggregations = aggregations.isEmpty() ? null : aggregations;
   }
 
-  public void setDevices(List<PartialPath> devices) {
-    this.devices = devices;
+  public Map<String, List<Integer>> getDeviceToPathIndex() {
+    return deviceToPathIndex;
   }
 
-  public List<PartialPath> getDevices() {
-    return devices;
+  public void setDeviceToPathIndex(Map<String, List<Integer>> deviceToPathIndex) {
+    this.deviceToPathIndex = deviceToPathIndex;
   }
 
   public Map<String, IExpression> getDeviceToFilterMap() {
@@ -115,25 +153,5 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setAggregationPlan(AggregationPlan aggregationPlan) {
     this.aggregationPlan = aggregationPlan;
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
-  }
-
-  public void setMeasurementInfoMap(Map<String, MeasurementInfo> measurementInfoMap) {
-    this.measurementInfoMap = measurementInfoMap;
-  }
-
-  public Map<String, MeasurementInfo> getMeasurementInfoMap() {
-    return measurementInfoMap;
-  }
-
-  /**
-   * Exist: the measurements which don't belong to NonExist and Constant. NonExist: the measurements
-   * that do not exist in any device, data type is considered as String. The value is considered as
-   * null. Constant: the measurements that have quotation mark. e.g. "abc",'11'. The data type is
-   * considered as String and the value is the measurement name.
-   */
-  public enum MeasurementType {
-    Exist,
-    NonExist,
-    Constant
   }
 }

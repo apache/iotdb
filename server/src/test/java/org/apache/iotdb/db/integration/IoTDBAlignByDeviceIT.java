@@ -330,11 +330,8 @@ public class IoTDBAlignByDeviceIT {
           "103,root.vehicle.d0,199,null,",
           "104,root.vehicle.d0,190,null,",
           "105,root.vehicle.d0,199,11.11,",
-          "106,root.vehicle.d0,null,null,",
           "1000,root.vehicle.d0,55555,1000.11,",
           "946684800000,root.vehicle.d0,100,null,",
-          "1,root.vehicle.d1,null,null,",
-          "1000,root.vehicle.d1,null,null,",
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -371,7 +368,7 @@ public class IoTDBAlignByDeviceIT {
           Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
           cnt++;
         }
-        Assert.assertEquals(16, cnt);
+        Assert.assertEquals(13, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
