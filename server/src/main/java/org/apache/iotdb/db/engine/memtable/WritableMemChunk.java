@@ -352,8 +352,8 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   @Override
   public void release() {
-    //        if (list.getReferenceCount() == 0) {
-    //          TVListAllocator.getInstance().release(list);
-    //        }
+    if (list.getReferenceCount() == 0) {
+      TVListAllocator.getInstance().release(list);
+    }
   }
 }
