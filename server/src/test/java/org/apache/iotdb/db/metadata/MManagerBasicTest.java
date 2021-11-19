@@ -927,6 +927,11 @@ public class MManagerBasicTest {
       assertEquals(null, template.getDirectNode("prefix"));
       assertEquals("to", template.getDirectNode("to").getName());
 
+      assertFalse(template.isDirectAligned());
+      template.addAlignedMeasurements(
+          new String[] {"speed", "temperature"}, dataTypes, encodings, compressionTypes);
+      assertTrue(template.isDirectAligned());
+
       try {
         template.deleteMeasurements("a.single");
         fail();
