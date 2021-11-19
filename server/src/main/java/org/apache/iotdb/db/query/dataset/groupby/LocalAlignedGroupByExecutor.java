@@ -156,21 +156,22 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextFile()) {
       // try to calc from fileMetaData
       Statistics fileStatistics = reader.currentFileStatistics();
-      if (fileStatistics.getStartTime() >= curEndTime) {
-        return results;
-      }
-      if (reader.canUseCurrentFileStatistics()
-          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-        // calc from fileMetaData
-        while (reader.hasNextSubSeries()) {
-          Statistics currentFileStatistics = reader.currentFileStatistics();
-          calcFromStatistics(currentFileStatistics, results.get(reader.getCurIndex()));
-          reader.nextSeries();
+      if (fileStatistics != null && !isEmpty(fileStatistics)) {
+        if (fileStatistics.getStartTime() >= curEndTime) {
+          return results;
         }
-        reader.skipCurrentFile();
-        continue;
+        if (reader.canUseCurrentFileStatistics()
+            && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+          // calc from fileMetaData
+          while (reader.hasNextSubSeries()) {
+            Statistics currentFileStatistics = reader.currentFileStatistics();
+            calcFromStatistics(currentFileStatistics, results.get(reader.getCurIndex()));
+            reader.nextSeries();
+          }
+          reader.skipCurrentFile();
+          continue;
+        }
       }
-
       // read chunk
       if (readAndCalcFromChunk(curStartTime, curEndTime)) {
         return results;
@@ -182,6 +183,10 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
 
   private void calcFromStatistics(Statistics statistics, List<AggregateResult> aggregateResultList)
       throws QueryProcessException {
+    // statistics may be null for aligned time series
+    if (statistics == null) {
+      return;
+    }
     for (AggregateResult result : aggregateResultList) {
       if (result.hasFinalResult()) {
         continue;
@@ -195,24 +200,26 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextChunk()) {
       // try to calc from chunkMetaData
       Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
-        if (ascending) {
-          return true;
-        } else {
+      if (chunkStatistics != null && !isEmpty(chunkStatistics)) {
+        if (chunkStatistics.getStartTime() >= curEndTime) {
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentChunk();
+            continue;
+          }
+        }
+        if (reader.canUseCurrentChunkStatistics()
+            && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          // calc from chunkMetaData
+          while (reader.hasNextSubSeries()) {
+            Statistics currentChunkStatistics = reader.currentChunkStatistics();
+            calcFromStatistics(currentChunkStatistics, results.get(reader.getCurIndex()));
+            reader.nextSeries();
+          }
           reader.skipCurrentChunk();
           continue;
         }
-      }
-      if (reader.canUseCurrentChunkStatistics()
-          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-        // calc from chunkMetaData
-        while (reader.hasNextSubSeries()) {
-          Statistics currentChunkStatistics = reader.currentChunkStatistics();
-          calcFromStatistics(currentChunkStatistics, results.get(reader.getCurIndex()));
-          reader.nextSeries();
-        }
-        reader.skipCurrentChunk();
-        continue;
       }
       // read page
       if (readAndCalcFromPage(curStartTime, curEndTime)) {
@@ -228,7 +235,7 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
       // try to calc from pageHeader
       Statistics pageStatistics = reader.currentPageStatistics();
       // must be non overlapped page
-      if (pageStatistics != null) {
+      if (pageStatistics != null && !isEmpty(pageStatistics)) {
         // current page max than time range
         if (pageStatistics.getStartTime() >= curEndTime) {
           if (ascending) {
@@ -370,5 +377,12 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
       return false;
     }
     return true;
+  }
+
+  private boolean isEmpty(Statistics statistics) {
+    if (statistics.getStartTime() == Long.MAX_VALUE && statistics.getEndTime() == Long.MIN_VALUE) {
+      return true;
+    }
+    return false;
   }
 }
