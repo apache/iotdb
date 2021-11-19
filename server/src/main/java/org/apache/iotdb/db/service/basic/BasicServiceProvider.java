@@ -74,7 +74,7 @@ public class BasicServiceProvider {
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   protected final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  protected final SessionManager sessionManager = SessionManager.getInstance();
+  public static SessionManager sessionManager = SessionManager.getInstance();
   protected final TracingManager tracingManager = TracingManager.getInstance();
   protected final QueryFrequencyRecorder queryFrequencyRecorder;
 
@@ -255,11 +255,6 @@ public class BasicServiceProvider {
           "Current system mode is read-only, does not support non-query operation");
     }
     return executor.processNonQuery(plan);
-  }
-
-  /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
-    sessionManager.releaseQueryResource(queryId);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {
