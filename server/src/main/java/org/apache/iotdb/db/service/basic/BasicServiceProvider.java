@@ -103,7 +103,7 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected boolean checkAuthorization(
+  protected static boolean checkAuthorization(
       List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
