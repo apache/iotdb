@@ -38,7 +38,10 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class LocalAlignedGroupByExecutor implements GroupByExecutor {
 
@@ -152,20 +155,22 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
     // read from file
     while (reader.hasNextFile()) {
       // try to calc from fileMetaData
-      int remainingToCalculate = reader.getSubSensorSize();
-      while (reader.hasNextSubSeries()) {
-        Statistics fileStatistics = reader.currentFileStatistics();
-        if (reader.canUseCurrentFileStatistics()
-            && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-          calcFromStatistics(fileStatistics, results.get(reader.getCurIndex()));
-          remainingToCalculate--;
-        }
-        reader.nextSeries();
+      Statistics fileStatistics = reader.currentFileStatistics();
+      if (fileStatistics.getStartTime() >= curEndTime) {
+        return results;
       }
-      if (remainingToCalculate == 0) {
+      if (reader.canUseCurrentFileStatistics()
+          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+        // calc from fileMetaData
+        while (reader.hasNextSubSeries()) {
+          Statistics currentFileStatistics = reader.currentFileStatistics();
+          calcFromStatistics(currentFileStatistics, results.get(reader.getCurIndex()));
+          reader.nextSeries();
+        }
         reader.skipCurrentFile();
         continue;
       }
+
       // read chunk
       if (readAndCalcFromChunk(curStartTime, curEndTime)) {
         return results;
@@ -189,17 +194,23 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
       // try to calc from chunkMetaData
-      int remainingToCalculate = reader.getSubSensorSize();
-      while (reader.hasNextSubSeries()) {
-        Statistics chunkStatistics = reader.currentChunkStatistics();
-        if (reader.canUseCurrentChunkStatistics()
-            && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-          calcFromStatistics(chunkStatistics, results.get(reader.getCurIndex()));
-          remainingToCalculate--;
+      Statistics chunkStatistics = reader.currentChunkStatistics();
+      if (chunkStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
+          return true;
+        } else {
+          reader.skipCurrentChunk();
+          continue;
         }
-        reader.nextSeries();
       }
-      if (remainingToCalculate == 0) {
+      if (reader.canUseCurrentChunkStatistics()
+          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+        // calc from chunkMetaData
+        while (reader.hasNextSubSeries()) {
+          Statistics currentChunkStatistics = reader.currentChunkStatistics();
+          calcFromStatistics(currentChunkStatistics, results.get(reader.getCurIndex()));
+          reader.nextSeries();
+        }
         reader.skipCurrentChunk();
         continue;
       }
@@ -215,20 +226,32 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
       // try to calc from pageHeader
-      int remainingToCalculate = reader.getSubSensorSize();
-      while (reader.hasNextSubSeries()) {
-        Statistics pageStatistics = reader.currentPageStatistics();
-        if (pageStatistics != null
-            && reader.canUseCurrentPageStatistics()
-            && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
-          calcFromStatistics(pageStatistics, results.get(reader.getCurIndex()));
-          remainingToCalculate--;
+      Statistics pageStatistics = reader.currentPageStatistics();
+      // must be non overlapped page
+      if (pageStatistics != null) {
+        // current page max than time range
+        if (pageStatistics.getStartTime() >= curEndTime) {
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentPage();
+            continue;
+          }
         }
-        reader.nextSeries();
-      }
-      if (remainingToCalculate == 0) {
-        reader.skipCurrentPage();
-        continue;
+        if (reader.canUseCurrentPageStatistics()
+            && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+          // calc from pageHeader
+          while (reader.hasNextSubSeries()) {
+            Statistics currentPageStatistics = reader.currentPageStatistics();
+            calcFromStatistics(currentPageStatistics, results.get(reader.getCurIndex()));
+            reader.nextSeries();
+          }
+          reader.skipCurrentPage();
+          if (isEndCalc()) {
+            return true;
+          }
+          continue;
+        }
       }
 
       // calc from page data
