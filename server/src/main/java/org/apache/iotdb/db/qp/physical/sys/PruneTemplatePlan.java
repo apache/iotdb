@@ -59,7 +59,7 @@ public class PruneTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.PRUNE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);

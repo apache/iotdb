@@ -173,7 +173,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_ALIGNED_TIMESERIES.ordinal());
     byte[] bytes = prefixPath.getFullPath().getBytes();
     buffer.putInt(bytes.length);
