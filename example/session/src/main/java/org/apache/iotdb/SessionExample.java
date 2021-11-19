@@ -70,13 +70,13 @@ public class SessionExample {
       }
     }
 
-    // createTemplate();
+    createTemplate();
     createTimeseries();
     createMultiTimeseries();
     insertRecord();
     insertTablet();
     insertTabletWithNullValues();
-  /*  insertTablets();
+    insertTablets();
     insertRecords();
     selectInto();
     createAndDropContinuousQueries();
@@ -88,7 +88,7 @@ public class SessionExample {
     queryByIterator();
     deleteData();
     deleteTimeseries();
-    setTimeout();*/
+    setTimeout();
 
     sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
     sessionEnableRedirect.setEnableQueryRedirection(true);

@@ -72,7 +72,6 @@ public class DataMigrationExample {
 
     SessionDataSetWrapper schemaDataSet =
         readerPool.executeQueryStatement("count timeseries " + path + ".**");
-    //System.out.println("count timeseries " + path);
     DataIterator schemaIter = schemaDataSet.iterator();
     int total;
     if (schemaIter.next()) {
