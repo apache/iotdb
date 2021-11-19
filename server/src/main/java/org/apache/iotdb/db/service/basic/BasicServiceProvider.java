@@ -39,6 +39,7 @@ import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.control.SessionTimeoutManager;
@@ -228,6 +229,16 @@ public class BasicServiceProvider {
     }
   }
 
+  public QueryDataSet constructQueryDataSet(
+          PhysicalPlan physicalPlan)
+          throws TException, StorageEngineException, QueryFilterOptimizationException,
+          MetadataException, IOException, InterruptedException, SQLException,
+          QueryProcessException {
+    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+    QueryContext context = new QueryContext(queryId);
+    return executor.processQuery(physicalPlan, context);
+  }
+
   protected QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     return new QueryContext(queryId, debug, startTime, statement, timeout);
@@ -245,7 +256,7 @@ public class BasicServiceProvider {
     return queryDataSet;
   }
 
-  protected boolean executeNonQuery(PhysicalPlan plan)
+  public boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
@@ -261,6 +272,7 @@ public class BasicServiceProvider {
   protected void releaseQueryResource(long queryId) throws StorageEngineException {
     sessionManager.releaseQueryResource(queryId);
   }
+
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);

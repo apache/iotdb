@@ -38,6 +38,7 @@ import org.apache.iotdb.db.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.rest.model.SQL;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
@@ -45,8 +46,9 @@ import javax.ws.rs.core.SecurityContext;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  protected final IPlanExecutor executor = new PlanExecutor(); // todo cluster
   protected final Planner planner = new Planner();
+
+  public BasicServiceProvider basicServiceProvider =new BasicServiceProvider();
 
   public RestApiServiceImpl() throws QueryProcessException {}
 
@@ -62,7 +64,7 @@ public class RestApiServiceImpl extends RestApiService {
       }
       return Response.ok()
           .entity(
-              executor.processNonQuery(physicalPlan)
+              basicServiceProvider.executeNonQuery(physicalPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
@@ -95,7 +97,7 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
       return QueryDataSetHandler.fillDateSet(
-          QueryDataSetHandler.constructQueryDataSet(executor, physicalPlan),
+              basicServiceProvider.constructQueryDataSet(physicalPlan),
           (QueryPlan) physicalPlan);
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -118,7 +120,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              executeNonQuery(insertTabletPlan)
+              basicServiceProvider.executeNonQuery(insertTabletPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
@@ -131,14 +133,4 @@ public class RestApiServiceImpl extends RestApiService {
     }
   }
 
-  private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (!(plan instanceof SetSystemModePlan)
-        && !(plan instanceof FlushPlan)
-        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new QueryProcessException(
-          "Current system mode is read-only, does not support non-query operation");
-    }
-    return executor.processNonQuery(plan);
-  }
 }
