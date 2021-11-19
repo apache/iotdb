@@ -214,7 +214,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     list.increaseReferenceCount();
     List<Integer> columnIndexList = new ArrayList<>();
     for (IMeasurementSchema measurementSchema : schemaList) {
-      columnIndexList.add(measurementIndexMap.get(measurementSchema.getMeasurementId()));
+      columnIndexList.add(
+          measurementIndexMap.getOrDefault(measurementSchema.getMeasurementId(), -1));
     }
     return list.getTvListByColumnIndex(columnIndexList);
   }
