@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
@@ -229,6 +230,10 @@ public class SeriesReader {
 
   protected DescPriorityMergeReader getDescPriorityMergeReader() {
     return new DescPriorityMergeReader();
+  }
+
+  public static Filter defaultTimeFilter(boolean ascending) {
+    return ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
   }
 
   public boolean isEmpty() throws IOException {

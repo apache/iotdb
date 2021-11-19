@@ -71,7 +71,6 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
@@ -1142,6 +1141,7 @@ public class ClusterReaderFactory {
     // when a slot is in the status of PULLING or PULLING_WRITABLE, the read of it should merge
     // result to guarantee integrity.
     Map<PartitionGroup, Set<Integer>> holderSlotMap = dataGroupMember.getPreviousHolderSlotMap();
+    Filter timeFilter = SeriesReader.defaultTimeFilter(ascending);
     try {
       // If requiredSlots is not null, it means that this data group is the previous holder of
       // required slots, which is no need to merge other resource,
@@ -1160,7 +1160,7 @@ public class ClusterReaderFactory {
                 path,
                 allSensors,
                 dataType,
-                TimeFilter.gtEq(Long.MIN_VALUE),
+                timeFilter,
                 null,
                 context,
                 dataGroupMember,
@@ -1180,7 +1180,7 @@ public class ClusterReaderFactory {
                   entry.getKey(),
                   path,
                   allSensors,
-                  TimeFilter.gtEq(Long.MIN_VALUE),
+                  timeFilter,
                   null,
                   context,
                   dataType,
@@ -1199,7 +1199,7 @@ public class ClusterReaderFactory {
                 path,
                 allSensors,
                 dataType,
-                TimeFilter.gtEq(Long.MIN_VALUE),
+                timeFilter,
                 null,
                 context,
                 dataGroupMember.getHeader(),
