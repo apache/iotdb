@@ -27,23 +27,23 @@ from iotdb.Session import Session
 from iotdb.utils.IoTDBConstants import TSDataType, TSEncoding, Compressor
 from iotdb.utils.Tablet import Tablet
 
-device_id = 'root.wt1'
+device_id = "root.wt1"
 
 ts_path_lst = [
-    'root.wt1.temperature',
-    'root.wt1.windspeed',
-    'root.wt1.angle',
-    'root.wt1.altitude',
-    'root.wt1.status',
-    'root.wt1.hardware',
+    "root.wt1.temperature",
+    "root.wt1.windspeed",
+    "root.wt1.angle",
+    "root.wt1.altitude",
+    "root.wt1.status",
+    "root.wt1.hardware",
 ]
 measurements = [
-    'temperature',
-    'windspeed',
-    'angle',
-    'altitude',
-    'status',
-    'hardware',
+    "temperature",
+    "windspeed",
+    "angle",
+    "altitude",
+    "status",
+    "hardware",
 ]
 data_type_lst = [
     TSDataType.FLOAT,
@@ -59,7 +59,9 @@ def create_ts(session):
     # setting time series.
     encoding_lst = [TSEncoding.PLAIN for _ in range(len(data_type_lst))]
     compressor_lst = [Compressor.SNAPPY for _ in range(len(data_type_lst))]
-    session.create_multi_time_series(ts_path_lst, data_type_lst, encoding_lst, compressor_lst)
+    session.create_multi_time_series(
+        ts_path_lst, data_type_lst, encoding_lst, compressor_lst
+    )
 
 
 def test_simple_query():
@@ -76,10 +78,10 @@ def test_simple_query():
         timestamps = np.arange(data_nums)
         data[ts_path_lst[0]] = np.float32(np.random.rand(data_nums))
         data[ts_path_lst[1]] = np.random.rand(data_nums)
-        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype='int32')
-        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype='int64')
+        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype="int32")
+        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype="int64")
         data[ts_path_lst[4]] = np.random.choice([True, False], size=data_nums)
-        data[ts_path_lst[5]] = np.random.choice(['text1', 'text2'], size=data_nums)
+        data[ts_path_lst[5]] = np.random.choice(["text1", "text2"], size=data_nums)
 
         df_input = pd.DataFrame(data)
 
@@ -88,7 +90,7 @@ def test_simple_query():
         )
         session.insert_tablet(tablet)
 
-        df_input.insert(0, 'Time', timestamps)
+        df_input.insert(0, "Time", timestamps)
 
         session_data_set = session.execute_query_statement("SELECT * FROM root.*")
         df_output = session_data_set.todf()
@@ -112,24 +114,28 @@ def test_with_null_query():
         timestamps = np.arange(data_nums)
         data[ts_path_lst[0]] = np.float32(np.random.rand(data_nums))
         data[ts_path_lst[1]] = np.random.rand(data_nums)
-        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype='int32')
-        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype='int64')
-        data[ts_path_lst[4]] = np.random.choice([True, False], size=data_nums).astype('bool')
-        data[ts_path_lst[5]] = np.random.choice(['text1', 'text2'], size=data_nums).astype(np.object)
+        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype="int32")
+        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype="int64")
+        data[ts_path_lst[4]] = np.random.choice([True, False], size=data_nums).astype(
+            "bool"
+        )
+        data[ts_path_lst[5]] = np.random.choice(
+            ["text1", "text2"], size=data_nums
+        ).astype(np.object)
 
         data_empty = {}
         for ts_path in ts_path_lst:
             if data[ts_path].dtype == np.int32 or data[ts_path].dtype == np.int64:
                 tmp_array = np.full(data_nums, np.nan, np.float32)
                 if data[ts_path].dtype == np.int32:
-                    tmp_array = pd.Series(tmp_array).astype('Int32')
+                    tmp_array = pd.Series(tmp_array).astype("Int32")
                 else:
-                    tmp_array = pd.Series(tmp_array).astype('Int64')
+                    tmp_array = pd.Series(tmp_array).astype("Int64")
             elif data[ts_path].dtype == np.float32 or data[ts_path].dtype == np.double:
                 tmp_array = np.full(data_nums, np.nan, data[ts_path].dtype)
             elif data[ts_path].dtype == np.bool:
                 tmp_array = np.full(data_nums, np.nan, np.float32)
-                tmp_array = pd.Series(tmp_array).astype('boolean')
+                tmp_array = pd.Series(tmp_array).astype("boolean")
             else:
                 tmp_array = np.full(data_nums, None, dtype=data[ts_path].dtype)
             data_empty[ts_path] = tmp_array
@@ -139,19 +145,31 @@ def test_with_null_query():
             is_row_inserted = False
             for column_index in range(len(measurements)):
                 if random.choice([True, False]):
-                    session.insert_record(device_id, row_index, [measurements[column_index]],
-                                          [data_type_lst[column_index]],
-                                          [data[ts_path_lst[column_index]].tolist()[row_index]])
-                    df_input.at[row_index, ts_path_lst[column_index]] = data[ts_path_lst[column_index]][row_index]
+                    session.insert_record(
+                        device_id,
+                        row_index,
+                        [measurements[column_index]],
+                        [data_type_lst[column_index]],
+                        [data[ts_path_lst[column_index]].tolist()[row_index]],
+                    )
+                    df_input.at[row_index, ts_path_lst[column_index]] = data[
+                        ts_path_lst[column_index]
+                    ][row_index]
                     is_row_inserted = True
             if not is_row_inserted:
                 column_index = 0
-                session.insert_record(device_id, row_index, [measurements[column_index]],
-                                      [data_type_lst[column_index]],
-                                      [data[ts_path_lst[column_index]].tolist()[row_index]])
-                df_input.at[row_index, ts_path_lst[column_index]] = data[ts_path_lst[column_index]][row_index]
+                session.insert_record(
+                    device_id,
+                    row_index,
+                    [measurements[column_index]],
+                    [data_type_lst[column_index]],
+                    [data[ts_path_lst[column_index]].tolist()[row_index]],
+                )
+                df_input.at[row_index, ts_path_lst[column_index]] = data[
+                    ts_path_lst[column_index]
+                ][row_index]
 
-        df_input.insert(0, 'Time', timestamps)
+        df_input.insert(0, "Time", timestamps)
 
         session_data_set = session.execute_query_statement("SELECT * FROM root.*")
         df_output = session_data_set.todf()
@@ -175,10 +193,10 @@ def test_multi_fetch():
         timestamps = np.arange(data_nums)
         data[ts_path_lst[0]] = np.float32(np.random.rand(data_nums))
         data[ts_path_lst[1]] = np.random.rand(data_nums)
-        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype='int32')
-        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype='int64')
+        data[ts_path_lst[2]] = np.random.randint(10, 100, data_nums, dtype="int32")
+        data[ts_path_lst[3]] = np.random.randint(10, 100, data_nums, dtype="int64")
         data[ts_path_lst[4]] = np.random.choice([True, False], size=data_nums)
-        data[ts_path_lst[5]] = np.random.choice(['text1', 'text2'], size=data_nums)
+        data[ts_path_lst[5]] = np.random.choice(["text1", "text2"], size=data_nums)
 
         df_input = pd.DataFrame(data)
 
@@ -187,7 +205,7 @@ def test_multi_fetch():
         )
         session.insert_tablet(tablet)
 
-        df_input.insert(0, 'Time', timestamps)
+        df_input.insert(0, "Time", timestamps)
 
         session_data_set = session.execute_query_statement("SELECT * FROM root.*")
         session_data_set.set_fetch_size(100)

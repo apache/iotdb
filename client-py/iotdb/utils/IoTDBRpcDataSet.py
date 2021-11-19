@@ -114,7 +114,9 @@ class IoTDBRpcDataSet(object):
         if self.__client is not None:
             try:
                 status = self.__client.closeOperation(
-                    TSCloseOperationReq(self.__session_id, self.__query_id, self.__statement_id)
+                    TSCloseOperationReq(
+                        self.__session_id, self.__query_id, self.__statement_id
+                    )
                 )
                 logger.debug(
                     "close session {}, message: {}".format(
@@ -162,15 +164,21 @@ class IoTDBRpcDataSet(object):
         for column_name in self.__column_name_list:
             result[column_name] = None
         while self._has_next_result_set():
-            time_array = np.frombuffer(self.__query_data_set.time, np.dtype(np.longlong).newbyteorder('>'))
-            if time_array.dtype.byteorder == '>':
-                time_array = time_array.byteswap().newbyteorder('<')
-            if self.get_ignore_timestamp() is None or self.get_ignore_timestamp() is False:
+            time_array = np.frombuffer(
+                self.__query_data_set.time, np.dtype(np.longlong).newbyteorder(">")
+            )
+            if time_array.dtype.byteorder == ">":
+                time_array = time_array.byteswap().newbyteorder("<")
+            if (
+                self.get_ignore_timestamp() is None
+                or self.get_ignore_timestamp() is False
+            ):
                 if result[IoTDBRpcDataSet.TIMESTAMP_STR] is None:
                     result[IoTDBRpcDataSet.TIMESTAMP_STR] = time_array
                 else:
                     result[IoTDBRpcDataSet.TIMESTAMP_STR] = np.concatenate(
-                        (result[IoTDBRpcDataSet.TIMESTAMP_STR], time_array), axis=0)
+                        (result[IoTDBRpcDataSet.TIMESTAMP_STR], time_array), axis=0
+                    )
             self.__query_data_set.time = []
             total_length = len(time_array)
 
@@ -180,7 +188,10 @@ class IoTDBRpcDataSet(object):
                 else:
                     column_name = self.get_column_names()[i + 1]
 
-                location = self.__column_ordinal_dict[column_name] - IoTDBRpcDataSet.START_INDEX
+                location = (
+                    self.__column_ordinal_dict[column_name]
+                    - IoTDBRpcDataSet.START_INDEX
+                )
                 if location < 0:
                     continue
                 data_type = self.__column_type_deduplicated_list[location]
@@ -189,25 +200,35 @@ class IoTDBRpcDataSet(object):
 
                 data_array = None
                 if data_type == TSDataType.DOUBLE:
-                    data_array = np.frombuffer(value_buffer, np.dtype(np.double).newbyteorder('>'))
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.double).newbyteorder(">")
+                    )
                 elif data_type == TSDataType.FLOAT:
-                    data_array = np.frombuffer(value_buffer, np.dtype(np.float32).newbyteorder('>'))
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.float32).newbyteorder(">")
+                    )
                 elif data_type == TSDataType.BOOLEAN:
-                    data_array = np.frombuffer(value_buffer, np.dtype('?'))
+                    data_array = np.frombuffer(value_buffer, np.dtype("?"))
                 elif data_type == TSDataType.INT32:
-                    data_array = np.frombuffer(value_buffer, np.dtype(np.int32).newbyteorder('>'))
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.int32).newbyteorder(">")
+                    )
                 elif data_type == TSDataType.INT64:
-                    data_array = np.frombuffer(value_buffer, np.dtype(np.int64).newbyteorder('>'))
+                    data_array = np.frombuffer(
+                        value_buffer, np.dtype(np.int64).newbyteorder(">")
+                    )
                 elif data_type == TSDataType.TEXT:
                     j = 0
                     offset = 0
                     data_array = []
                     while offset < value_buffer_len:
                         length = int.from_bytes(
-                            value_buffer[offset:offset + 4], byteorder="big", signed=False
+                            value_buffer[offset : offset + 4],
+                            byteorder="big",
+                            signed=False,
                         )
                         offset += 4
-                        value_bytes = value_buffer[offset:offset + length]
+                        value_bytes = value_buffer[offset : offset + length]
                         value = value_bytes.decode("utf-8")
                         data_array.append(value)
                         j += 1
@@ -215,29 +236,31 @@ class IoTDBRpcDataSet(object):
                     data_array = np.array(data_array, dtype=np.object)
                 else:
                     raise RuntimeError("unsupported data type {}.".format(data_type))
-                if data_array.dtype.byteorder == '>':
-                    data_array = data_array.byteswap().newbyteorder('<')
+                if data_array.dtype.byteorder == ">":
+                    data_array = data_array.byteswap().newbyteorder("<")
                 self.__query_data_set.valueList[location] = None
 
                 if len(data_array) < total_length:
                     if data_type == TSDataType.INT32 or data_type == TSDataType.INT64:
                         tmp_array = np.full(total_length, np.nan, np.float32)
                         if data_array.dtype == np.int32:
-                            tmp_array = pd.Series(tmp_array).astype('Int32')
+                            tmp_array = pd.Series(tmp_array).astype("Int32")
                         else:
-                            tmp_array = pd.Series(tmp_array).astype('Int64')
-                    elif data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE:
+                            tmp_array = pd.Series(tmp_array).astype("Int64")
+                    elif (
+                        data_type == TSDataType.FLOAT or data_type == TSDataType.DOUBLE
+                    ):
                         tmp_array = np.full(total_length, np.nan, data_array.dtype)
                     elif data_type == TSDataType.BOOLEAN:
                         tmp_array = np.full(total_length, np.nan, np.float32)
-                        tmp_array = pd.Series(tmp_array).astype('boolean')
+                        tmp_array = pd.Series(tmp_array).astype("boolean")
                     elif data_type == TSDataType.TEXT:
                         tmp_array = np.full(total_length, None, dtype=data_array.dtype)
                     bitmap_buffer = self.__query_data_set.bitmapList[location]
                     bitmap_str = self._to_bitstring(bitmap_buffer)
                     j = 0
                     for index in range(total_length):
-                        if bitmap_str[index] == '1':
+                        if bitmap_str[index] == "1":
                             tmp_array[index] = data_array[j]
                             j += 1
                     data_array = tmp_array
@@ -245,7 +268,9 @@ class IoTDBRpcDataSet(object):
                 if result[column_name] is None:
                     result[column_name] = data_array
                 else:
-                    result[column_name] = np.concatenate((result[column_name], data_array), axis=0)
+                    result[column_name] = np.concatenate(
+                        (result[column_name], data_array), axis=0
+                    )
         for k, v in result.items():
             if v is None:
                 result[k] = []
