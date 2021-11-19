@@ -159,7 +159,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 

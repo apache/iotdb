@@ -57,7 +57,7 @@ public class ActivateTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.ACTIVATE_TEMPLATE.ordinal());
     ReadWriteIOUtils.write(prefixPath.getFullPath(), buffer);
     buffer.putLong(index);

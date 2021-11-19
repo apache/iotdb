@@ -68,7 +68,7 @@ public class SelectIntoPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SELECT_INTO.ordinal());
 
     queryPlan.serialize(buffer);
