@@ -25,7 +25,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -325,14 +325,14 @@ public class TsFileWriterTest {
   private void readNothing() {
     // using TsFileReader for test
     try {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
+      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
-          readOnlyTsFile.query(
+          tsFileReader.query(
               QueryExpression.create()
                   .addSelectedPath(new Path("d1", "s1"))
                   .addSelectedPath(new Path("d1", "s2")));
       assertFalse(dataSet.hasNext());
-      readOnlyTsFile.close();
+      tsFileReader.close();
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -345,9 +345,9 @@ public class TsFileWriterTest {
 
   private void readOneRow(int s2Value) {
     try {
-      ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(new TsFileSequenceReader(fileName));
+      TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(fileName));
       QueryDataSet dataSet =
-          readOnlyTsFile.query(
+          tsFileReader.query(
               QueryExpression.create()
                   .addSelectedPath(new Path("d1", "s1"))
                   .addSelectedPath(new Path("d1", "s2"))
@@ -359,7 +359,7 @@ public class TsFileWriterTest {
         assertEquals(5.0f, result.getFields().get(0).getFloatV(), 0.00001);
         assertEquals(s2Value, result.getFields().get(1).getIntV());
       }
-      readOnlyTsFile.close();
+      tsFileReader.close();
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
