@@ -1541,7 +1541,13 @@ public class TSServiceImpl implements TSIService.Iface {
       insertTabletPlan.setDataTypes(req.types);
 
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
-      return status != null ? status : executeNonQueryPlan(insertTabletPlan);
+      if (status != null) {
+        return status;
+      } else {
+        status = executeNonQueryPlan(insertTabletPlan);
+      }
+      LOGGER.info("Insert time cost: {} ms", System.currentTimeMillis() - t1);
+      return status;
     } catch (Exception e) {
       return onNPEOrUnexpectedException(
           e, "inserting tablet", TSStatusCode.EXECUTE_STATEMENT_ERROR);
