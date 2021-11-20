@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
@@ -882,28 +883,92 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
+    logger.info(
+        "{}-{} [Compaction][Restore] Start to restore compaction",
+        storageGroupName,
+        virtualStorageGroupId);
     try {
       if (logFile.exists()) {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
-        String targetFilePath = logAnalyzer.getTargetFile();
-        List<String> sourceFileList = logAnalyzer.getSourceFiles();
-        boolean isSeq = logAnalyzer.isSeq();
-        for (String file : sourceFileList) {
-          TsFileResource fileResource = getTsFileResource(file, isSeq);
-          if (fileResource != null) {
-            fileResource.setMerging(false);
+        CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
+        if (targetFileInfo == null) {
+          logger.info(
+              "{}-{} [Compaction][Restore] cannot get target file info from compaction log, stop restoration",
+              storageGroupName,
+              virtualStorageGroupId);
+          return;
+        }
+        File targetFile = null;
+        for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+          if ((targetFile = targetFileInfo.getFile(dataDir)) != null) {
+            break;
           }
         }
-        if (targetFilePath != null) {
-          File targetFile = new File(targetFilePath);
-          if (targetFile.exists()) {
-            logger.error(
-                "{} restore delete target file {} ", storageGroupName, targetFile.getName());
-            if (!targetFile.delete()) {
-              logger.warn("fail to delete {}", targetFile);
+        if (targetFile != null) {
+          // target file exists
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
+          if (writer.hasCrashed()) {
+            // target file is not completed
+            writer.close();
+            logger.info(
+                "{}-{} [Compaction][Restore] target file {} is not completed, delete it",
+                storageGroupName,
+                virtualStorageGroupId,
+                targetFile);
+            Files.delete(targetFile.toPath());
+          } else {
+            // target file is completed
+            // check if all the source files exists
+            // if true, delete target file
+            // else, delete source files remaining
+            List<CompactionFileInfo> sourceFileInfos = logAnalyzer.getSourceFileInfo();
+            List<File> sourceFiles = new ArrayList<>();
+            boolean allSourceFileExists = true;
+            for (CompactionFileInfo sourceFileInfo : sourceFileInfos) {
+              File sourceFile = null;
+              for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
+                if ((sourceFile = sourceFileInfo.getFile(dataDir)) != null) {
+                  sourceFiles.add(sourceFile);
+                  break;
+                }
+              }
+              if (sourceFile == null) {
+                // one of the source file does not exist
+                allSourceFileExists = false;
+              }
+            }
+            if (allSourceFileExists) {
+              // delete target file
+              logger.info(
+                  "{}-{} [Compaction][Restore] all source file exists, delete target file {}",
+                  storageGroupName,
+                  virtualStorageGroupId,
+                  targetFile);
+              Files.delete(targetFile.toPath());
+            } else {
+              logger.info(
+                  "{}-{} [Compaction][Restore] target file {} is completed, some source files does not exists, delete source files {}",
+                  storageGroupName,
+                  virtualStorageGroupId,
+                  targetFile,
+                  sourceFiles);
+              for (File sourceFile : sourceFiles) {
+                logger.info(
+                    "{}-{} [Compaction][Restore] delete source file {}",
+                    storageGroupName,
+                    virtualStorageGroupId,
+                    sourceFile);
+                Files.delete(sourceFile.toPath());
+              }
             }
           }
+        } else {
+          logger.info(
+              "{}-{} [Compaction][Restore] target file {} cannot be found from data dirs, stop restoration",
+              storageGroupName,
+              virtualStorageGroupId,
+              targetFileInfo);
         }
       }
     } catch (IOException e) {
