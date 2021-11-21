@@ -129,7 +129,7 @@ public class BasicServiceProvider {
     return null;
   }
 
-  protected BasicOpenSessionResp openSession(
+  public BasicOpenSessionResp openSession(
       String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
@@ -183,7 +183,7 @@ public class BasicServiceProvider {
     return openSessionResp.sessionId(sessionId);
   }
 
-  protected boolean closeSession(long sessionId) {
+  public boolean closeSession(long sessionId) {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
     sessionManager.removeCurrSessionId();
