@@ -66,6 +66,61 @@ public class IoTDBAggregationWithoutValueFilterIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  /** aggregate multi columns of aligned timeseries in one SQL */
+  @Test
+  public void aggregateAllAlignedWithoutValueFilterTest() throws ClassNotFoundException {
+    double[] retArray =
+        new double[] {
+          6, 9, 15, 230090, 220, 230322, 38348.333333333336, 24.444444444444443, 15354.8
+        };
+    String[] columnNames = {
+      "count(root.sg1.d1.s1)",
+      "count(root.sg1.d1.s2)",
+      "count(root.sg1.d1.s3)",
+      "sum(root.sg1.d1.s1)",
+      "sum(root.sg1.d1.s2)",
+      "sum(root.sg1.d1.s3)",
+      "avg(root.sg1.d1.s1)",
+      "avg(root.sg1.d1.s2)",
+      "avg(root.sg1.d1.s3)",
+    };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1),count (s2),count (s3),sum(s1),sum(s2),sum(s3),avg(s1),avg(s2),avg(s3) from root.sg1.d1 where time>=16 and time<=34");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>();
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          double[] ans = new double[columnNames.length];
+          StringBuilder builder = new StringBuilder();
+          // No need to add time column for aggregation query
+          for (String columnName : columnNames) {
+            int index = map.get(columnName);
+            ans[index - 1] = Double.parseDouble(resultSet.getString(index));
+          }
+          assertArrayEquals(retArray, ans, DELTA);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   @Test
   public void countAlignedWithoutValueFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"9"};
