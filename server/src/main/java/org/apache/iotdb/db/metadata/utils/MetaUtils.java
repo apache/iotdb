@@ -104,7 +104,7 @@ public class MetaUtils {
         result.add(measurementPath);
         alignedPath = null;
       } else {
-        if (alignedPath == null) {
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
           alignedPath = new AlignedPath(measurementPath);
           result.add(alignedPath);
         } else {
