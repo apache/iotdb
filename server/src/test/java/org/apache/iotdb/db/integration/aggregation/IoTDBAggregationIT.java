@@ -55,25 +55,15 @@ public class IoTDBAggregationIT {
   private static final String TEMPERATURE_STR = "root.ln.wf01.wt01.temperature";
 
   private static String[] creationSqls =
-          new String[] {
-//                  "SET STORAGE GROUP TO root.vehicle.d0",
-//                  "SET STORAGE GROUP TO root.vehicle.d1",
-                  "CREATE ALIGNED TIMESERIES root.vehicle.d0(" +
-                          "s0 INT32 encoding=RLE compressor=SNAPPY, "+
-                          "s1 INT64 encoding=RLE compressor=SNAPPY, "+
-                          "s2 FLOAT encoding=RLE compressor=SNAPPY, "+
-                          "s3 TEXT encoding=PLAIN compressor=SNAPPY, "+
-                          "s4 BOOLEAN encoding=PLAIN compressor=SNAPPY)"
-          };
-//      new String[] {
-//        "SET STORAGE GROUP TO root.vehicle.d0",
-//        "SET STORAGE GROUP TO root.vehicle.d1",
-//        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-//        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-//        "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-//        "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-//        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
-//      };
+      new String[] {
+        "SET STORAGE GROUP TO root.vehicle.d0",
+        "SET STORAGE GROUP TO root.vehicle.d1",
+        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN"
+      };
   private static String[] dataSet2 =
       new String[] {
         "SET STORAGE GROUP TO root.ln.wf01.wt01",

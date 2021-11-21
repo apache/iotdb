@@ -768,7 +768,8 @@ public class AggregationExecutor {
           // groupPath is changed here so we update it
           List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addMeasurement(exactPath.getMeasurementList());
+          groupPath.addMeasurements(exactPath.getMeasurementList());
+          groupPath.addSchemas(exactPath.getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }
