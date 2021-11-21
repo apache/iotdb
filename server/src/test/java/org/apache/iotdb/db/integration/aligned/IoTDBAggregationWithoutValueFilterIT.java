@@ -101,7 +101,7 @@ public class IoTDBAggregationWithoutValueFilterIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("select count(s3) from root.sg1.d1 where time>=16 and time<=34");
+          statement.execute("select sum(s3) from root.sg1.d1 where time>=16 and time<=34");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
