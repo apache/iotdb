@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import io.moquette.interception.AbstractInterceptHandler;
 import io.moquette.interception.messages.InterceptConnectMessage;
@@ -128,7 +129,12 @@ public class PublishHandler extends AbstractInterceptHandler {
                 event.getTimestamp(),
                 event.getMeasurements().toArray(new String[0]),
                 event.getValues().toArray(new String[0]));
-        status = basicServiceProvider.executeNonQuery(plan);
+        TSStatus tsStatus = basicServiceProvider.checkAuthority(plan, sessionId);
+        if (tsStatus != null) {
+          LOG.warn(tsStatus.message);
+        } else {
+          status = basicServiceProvider.executeNonQuery(plan);
+        }
       } catch (Exception e) {
         LOG.warn(
             "meet error when inserting device {}, measurements {}, at time {}, because ",
