@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -94,7 +94,7 @@ public class DefaultSchemaTemplateTest {
     }
 
     try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getPath());
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();

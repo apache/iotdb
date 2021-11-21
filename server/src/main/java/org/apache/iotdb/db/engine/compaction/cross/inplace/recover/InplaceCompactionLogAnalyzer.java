@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -43,14 +44,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_ALL_TS_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_END;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_MERGE_START;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_START;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_TIMESERIES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_ALL_TS_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_MERGE_END;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_MERGE_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_START;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_TIMESERIES;
+import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
 
 /**
  * LogAnalyzer scans the "merge.log" file and recovers information such as files of last merge, the
@@ -60,9 +61,9 @@ import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeL
  * server/0seq.tsfile.merge 338 end start root.mergeTest.device0.sensor1 server/0seq.tsfile.merge
  * 664 end all ts end server/0seq.tsfile 145462 end merge end
  */
-public class LogAnalyzer {
+public class InplaceCompactionLogAnalyzer {
 
-  private static final Logger logger = LoggerFactory.getLogger(LogAnalyzer.class);
+  private static final Logger logger = LoggerFactory.getLogger(InplaceCompactionLogAnalyzer.class);
 
   private CrossSpaceMergeResource resource;
   private String taskName;
@@ -79,7 +80,7 @@ public class LogAnalyzer {
 
   private Status status;
 
-  public LogAnalyzer(
+  public InplaceCompactionLogAnalyzer(
       CrossSpaceMergeResource resource, String taskName, File logFile, String storageGroupName) {
     this.resource = resource;
     this.taskName = taskName;
@@ -127,9 +128,16 @@ public class LogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getSeqFiles().iterator();
+      TsFileIdentifier toMatchedFileIdentifier = null;
+      if (currLine.contains(File.separator)) {
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
+      } else {
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
+      }
       while (iterator.hasNext()) {
         TsFileResource seqFile = iterator.next();
-        if (seqFile.getTsFile().getAbsolutePath().equals(currLine)) {
+        if (TsFileIdentifier.getFileIdentifierFromFilePath(seqFile.getTsFile().getAbsolutePath())
+            .equals(toMatchedFileIdentifier)) {
           mergeSeqFiles.add(seqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -158,9 +166,16 @@ public class LogAnalyzer {
         break;
       }
       Iterator<TsFileResource> iterator = resource.getUnseqFiles().iterator();
+      TsFileIdentifier toMatchedFileIdentifier = null;
+      if (currLine.contains(File.separator)) {
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromFilePath(currLine);
+      } else {
+        toMatchedFileIdentifier = TsFileIdentifier.getFileIdentifierFromInfoString(currLine);
+      }
       while (iterator.hasNext()) {
         TsFileResource unseqFile = iterator.next();
-        if (unseqFile.getTsFile().getAbsolutePath().equals(currLine)) {
+        if (TsFileIdentifier.getFileIdentifierFromFilePath(unseqFile.getTsFile().getAbsolutePath())
+            .equals(toMatchedFileIdentifier)) {
           mergeUnseqFiles.add(unseqFile);
           // remove to speed-up next iteration
           iterator.remove();
@@ -213,9 +228,18 @@ public class LogAnalyzer {
       } else if (!currLine.contains(STR_END)) {
         // file position
         String[] splits = currLine.split(" ");
-        File file = SystemFileFactory.INSTANCE.getFile(splits[0]);
-        Long position = Long.parseLong(splits[1]);
-        tempFileLastPositions.put(file, position);
+        if (currLine.contains(File.separator)) {
+          File file = SystemFileFactory.INSTANCE.getFile(splits[0]);
+          Long position = Long.parseLong(splits[1]);
+          tempFileLastPositions.put(file, position);
+        } else {
+          Long position = Long.parseLong(splits[splits.length - 1]);
+          TsFileIdentifier tsFileIdentifier =
+              TsFileIdentifier.getFileIdentifierFromInfoString(
+                  currLine.substring(0, currTSList.lastIndexOf(' ')));
+          File file = tsFileIdentifier.getFileFromDataDirs();
+          tempFileLastPositions.put(file, position);
+        }
       } else {
         // a TS ends merging
         unmergedPaths.removeAll(currTSList);

@@ -67,7 +67,7 @@ public class SetTTLPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.TTL.ordinal();
     buffer.put((byte) type);
     buffer.putLong(dataTTL);

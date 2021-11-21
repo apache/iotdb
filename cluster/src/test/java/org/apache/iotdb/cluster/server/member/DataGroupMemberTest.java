@@ -183,7 +183,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Override
   DataGroupMember getDataGroupMember(RaftNode raftNode) {
-    PartitionGroup nodes = partitionTable.getHeaderGroup(raftNode);
+    PartitionGroup nodes = partitionTable.getPartitionGroup(raftNode);
     return dataGroupMemberMap.computeIfAbsent(
         raftNode, n -> getDataGroupMember(n.getNode(), nodes));
   }
@@ -626,7 +626,8 @@ public class DataGroupMemberTest extends BaseMember {
     testMetaMember.setPartitionTable(partitionTable);
     dataGroupMember.setLogManager(
         getLogManager(
-            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), dataGroupMember));
+            partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)),
+            dataGroupMember));
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
     assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
@@ -732,7 +733,7 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -800,7 +801,7 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -868,7 +869,7 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));
@@ -936,7 +937,7 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
     request.setPath(TestUtils.getTestSeries(0, 0));

@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.common.cache;
+package org.apache.iotdb.tsfile.read.reader;
 
-public interface Accountable {
+import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
-  void setRamSize(long size);
+public interface IAlignedPageReader {
 
-  long getRamSize();
+  Statistics getStatistics(int index);
 }
