@@ -89,6 +89,12 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
     getGroupByExecutors(pathExecutors, context, groupByTimeFillPlan, timeFilter, ascending);
   }
 
+  protected GroupByExecutor getGroupByExecutor(
+      PartialPath path, QueryContext context, Filter timeFilter, boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    return new LocalGroupByExecutor(path, context, timeFilter, null, ascending);
+  }
+
   private void getGroupByExecutors(
       Map<PartialPath, GroupByExecutor> extraExecutors,
       QueryContext context,
@@ -106,7 +112,7 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
         if (!extraExecutors.containsKey(path)) {
           // init GroupByExecutor
           extraExecutors.put(
-              path, new LocalGroupByExecutor(path, context, timeFilter.copy(), null, isAscending));
+              path, getGroupByExecutor(path, context, timeFilter.copy(), isAscending));
         }
         AggregateResult aggregateResult =
             AggregateResultFactory.getAggrResultByName(

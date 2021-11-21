@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -82,8 +83,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
 
     // init resultIndexes, group aligned series
-    resultIndexes = groupAggregationsBySeries(paths);
-    alignedPathToIndexesMap = groupAlignedSeries(resultIndexes);
+    resultIndexes = MetaUtils.groupAggregationsBySeries(paths);
+    alignedPathToIndexesMap = MetaUtils.groupAlignedSeries(resultIndexes);
 
     try {
       // init GroupByExecutor for non-aligned series
@@ -208,53 +209,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       }
       result = pathExecutors.get(path).peekNextNotNullValue(nextStartTime, nextEndTime);
     } while (result == null);
-    return result;
-  }
-
-  /**
-   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
-   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   *
-   * @param selectedSeries selected series
-   * @return path to aggregation indexes map
-   */
-  private Map<PartialPath, List<Integer>> groupAggregationsBySeries(List<Path> selectedSeries) {
-    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath series = (PartialPath) selectedSeries.get(i);
-      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
-    }
-    return pathToAggrIndexesMap;
-  }
-
-  /**
-   * Group all the series under an aligned entity into one AlignedPath and remove these series from
-   * resultIndexes. For example, input map: vector1[s1] -> [1, 3], vector1[s2] -> [2,4], will return
-   * vector1[s1,s2], [[1,3], [2,4]]
-   */
-  private Map<PartialPath, List<List<Integer>>> groupAlignedSeries(
-      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
-    Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
-    Map<String, AlignedPath> temp = new HashMap<>();
-
-    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
-    for (PartialPath seriesPath : seriesPaths) {
-      if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
-        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getDevice());
-        if (groupPath == null) {
-          groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getDevice(), groupPath);
-          result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
-        } else {
-          // groupPath is changed here so we update it
-          List<List<Integer>> subIndexes = result.remove(groupPath);
-          subIndexes.add(indexes);
-          groupPath.addMeasurement((MeasurementPath) seriesPath);
-          result.put(groupPath, subIndexes);
-        }
-      }
-    }
     return result;
   }
 }

@@ -27,8 +27,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -103,14 +103,14 @@ public class AggregationExecutor {
 
     // TODO use multi-thread
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
-        groupAggregationsBySeries(selectedSeries);
+        MetaUtils.groupAggregationsBySeries(selectedSeries);
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
 
     // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
     Map<PartialPath, List<List<Integer>>> vectorPathIndexesMap =
-        groupVectorSeries(pathToAggrIndexesMap);
+        MetaUtils.groupAlignedSeries(pathToAggrIndexesMap);
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         PartialPath seriesPath = entry.getKey();
@@ -587,7 +587,7 @@ public class AggregationExecutor {
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     // group by path name
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
-        groupAggregationsBySeries(selectedSeries);
+        MetaUtils.groupAggregationsBySeries(selectedSeries);
     Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap = new HashMap<>();
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
     try {
@@ -724,53 +724,5 @@ public class AggregationExecutor {
     dataSet.setRecord(record);
 
     return dataSet;
-  }
-
-  /**
-   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
-   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   *
-   * @param selectedSeries selected series
-   * @return path to aggregation indexes map
-   */
-  private Map<PartialPath, List<Integer>> groupAggregationsBySeries(
-      List<PartialPath> selectedSeries) {
-    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath series = selectedSeries.get(i);
-      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
-    }
-    return pathToAggrIndexesMap;
-  }
-
-  /**
-   * Group all the subSensors of one vector into one VectorPartialPath and Remove vectorPartialPath
-   * from pathToAggrIndexesMap. For example, input map: vector1[s1] -> [1, 3], vector1[s2] -> [2,4],
-   * will return vector1[s1,s2], [[1,3], [2,4]]
-   */
-  private Map<PartialPath, List<List<Integer>>> groupVectorSeries(
-      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
-    Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
-    Map<String, AlignedPath> temp = new HashMap<>();
-
-    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
-    for (PartialPath seriesPath : seriesPaths) {
-      if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
-        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getDevice());
-        if (groupPath == null) {
-          groupPath = new AlignedPath((MeasurementPath) seriesPath);
-          temp.put(seriesPath.getDevice(), groupPath);
-          result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
-        } else {
-          // groupPath is changed here so we update it
-          List<List<Integer>> subIndexes = result.remove(groupPath);
-          subIndexes.add(indexes);
-          groupPath.addMeasurement((MeasurementPath) seriesPath);
-          result.put(groupPath, subIndexes);
-        }
-      }
-    }
-    return result;
   }
 }
