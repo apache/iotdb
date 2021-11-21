@@ -115,9 +115,9 @@ public class DataMigrationExample {
     if (measurementsInCurrentDevice.size() > 0) {
       count++;
       Future future1 =
-              executorService.submit(
-                      new LoadThread(
-                              count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
+          executorService.submit(
+              new LoadThread(
+                  count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
       futureList.add(future1);
     }
     readerPool.closeResultSet(schemaDataSet);
