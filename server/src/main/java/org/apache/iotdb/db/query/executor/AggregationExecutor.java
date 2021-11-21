@@ -756,7 +756,7 @@ public class AggregationExecutor {
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
       if (seriesPath instanceof MeasurementPath
-              && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
         AlignedPath groupPath = temp.get(exactPath.getFullPath());
