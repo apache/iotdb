@@ -68,7 +68,7 @@ public class PublishHandler extends AbstractInterceptHandler {
 
   @Override
   public String getID() {
-    return "iotdb-mqtt-broker-listener";
+    return "iotdb-mqtt-broker-listener-" + sessionId;
   }
 
   @Override
