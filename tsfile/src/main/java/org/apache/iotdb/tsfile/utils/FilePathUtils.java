@@ -31,7 +31,7 @@ public class FilePathUtils {
 
   private static final String PATH_SPLIT_STRING =
       TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs() == FSType.LOCAL
-              && File.separator.equals("\\")
+              && "\\".equals(File.separator)
           ? "\\\\"
           : "/";
   public static final String FILE_NAME_SEPARATOR = "-";

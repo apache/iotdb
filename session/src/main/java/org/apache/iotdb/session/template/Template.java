@@ -97,7 +97,7 @@ public class Template {
       StringBuilder fullPath = new StringBuilder(prefix);
 
       if (!curNode.isMeasurement()) {
-        if (!prefix.equals("")) {
+        if (!"".equals(prefix)) {
           fullPath.append(TsFileConstant.PATH_SEPARATOR);
         }
         fullPath.append(curNode.getName());

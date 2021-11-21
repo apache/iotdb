@@ -130,9 +130,9 @@ public class IoTDBConfigCheck {
     }
 
     // check time stamp precision
-    if (!(timestampPrecision.equals("ms")
-        || timestampPrecision.equals("us")
-        || timestampPrecision.equals("ns"))) {
+    if (!("ms".equals(timestampPrecision)
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
       logger.error(
           "Wrong {}, please set as: ms, us or ns ! Current is: {}",
           TIMESTAMP_PRECISION_STRING,
@@ -248,7 +248,7 @@ public class IoTDBConfigCheck {
     }
 
     // virtual storage group num can only set to 1 when upgrading from old version
-    if (!virtualStorageGroupNum.equals("1")) {
+    if (!"1".equals(virtualStorageGroupNum)) {
       logger.error(
           "virtual storage group num cannot set to {} when upgrading from old version, "
               + "please set to 1 and restart",

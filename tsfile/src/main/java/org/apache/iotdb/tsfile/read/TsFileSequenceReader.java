@@ -646,7 +646,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   private TimeseriesMetadata tryToGetFirstTimeseriesMetadata(MetadataIndexNode measurementNode)
       throws IOException {
     // Not aligned timeseries
-    if (!measurementNode.getChildren().get(0).getName().equals("")) {
+    if (!"".equals(measurementNode.getChildren().get(0).getName())) {
       return null;
     }
 

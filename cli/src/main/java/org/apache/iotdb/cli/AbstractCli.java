@@ -523,7 +523,7 @@ public abstract class AbstractCli {
                     maxPrintRowCount));
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             try {
-              if (br.readLine().equals("")) {
+              if ("".equals(br.readLine())) {
                 maxSizeList = new ArrayList<>(columnLength);
                 lists =
                     cacheResult(resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);

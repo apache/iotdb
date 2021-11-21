@@ -32,7 +32,7 @@ public class IoTDBConstant {
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
   public static final String MAJOR_VERSION =
-      VERSION.equals("UNKNOWN")
+      "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 

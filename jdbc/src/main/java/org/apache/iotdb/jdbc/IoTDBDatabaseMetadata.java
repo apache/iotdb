@@ -1069,7 +1069,7 @@ public class IoTDBDatabaseMetadata implements DatabaseMetaData {
         m.put("type", listType.get(i));
         if (i == 2) {
           m.put("val", rs.getString(1));
-        } else if (fields[i].getSqlType().equals("INT32")) {
+        } else if ("INT32".equals(fields[i].getSqlType())) {
           m.put("val", 0);
         } else {
           m.put("val", "");

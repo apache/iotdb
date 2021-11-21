@@ -77,7 +77,7 @@ public class TsFileExtractVisdata {
     for (int i = 0; i < M - 1; i = i + 2) {
       inputPathList.add(args[i]);
       String indicator = args[i + 1].toLowerCase();
-      if (!indicator.equals("true") && !indicator.equals("false")) {
+      if (!"true".equals(indicator) && !"false".equals(indicator)) {
         throw new IOException("seqIndicator should be 'true' or 'false' (not case sensitive).");
       }
       seqIndicatorList.add(Boolean.parseBoolean(args[i + 1]));
