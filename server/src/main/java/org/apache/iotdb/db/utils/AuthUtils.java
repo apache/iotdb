@@ -205,7 +205,8 @@ public class AuthUtils {
     for (PathPrivilege pathPrivilege : privilegeList) {
       if (path != null) {
         if (pathPrivilege.getPath() != null
-            && AuthUtils.pathBelongsTo(path, pathPrivilege.getPath())
+            && (path == IoTDBConstant.PATH_ROOT
+                || AuthUtils.pathBelongsTo(path, pathPrivilege.getPath()))
             && pathPrivilege.getPrivileges().contains(privilegeId)) {
           return true;
         }
