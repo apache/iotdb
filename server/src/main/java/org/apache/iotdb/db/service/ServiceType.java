@@ -26,6 +26,7 @@ public enum ServiceType {
   JMX_SERVICE("JMX ServerService", "JMX ServerService"),
   METRICS_SERVICE("Metrics ServerService", "MetricsService"),
   RPC_SERVICE("RPC ServerService", "RPCService"),
+  INFLUX_SERVICE("InfluxDB Protocol Service","InfluxDB Protocol"),
   MQTT_SERVICE("MQTTService", ""),
   MONITOR_SERVICE("Monitor ServerService", "Monitor"),
   STAT_MONITOR_SERVICE("Statistics ServerService", ""),
@@ -56,7 +57,6 @@ public enum ServiceType {
   SYSTEMINFO_SERVICE("MemTable Monitor Service", "MemTable, Monitor"),
   CONTINUOUS_QUERY_SERVICE("Continuous Query Service", "Continuous Query Service"),
   CLUSTER_INFO_SERVICE("Cluster Monitor Service (thrift-based)", "Cluster Monitor-Thrift"),
-  INFLUX_SERVICE("InfluxDB Protocol Service","InfluxDB Protocol"),
   CLUSTER_RPC_SERVICE("Cluster RPC Service", "ClusterRPCService"),
   CLUSTER_META_RPC_SERVICE("Cluster Meta RPC Service", "ClusterMetaRPCService"),
   CLUSTER_META_HEART_BEAT_RPC_SERVICE(

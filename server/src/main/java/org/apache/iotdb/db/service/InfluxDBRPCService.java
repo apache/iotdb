@@ -3,64 +3,54 @@ package org.apache.iotdb.db.service;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
-import org.apache.iotdb.db.service.thriftImpl.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService.Processor;
 
+public class InfluxDBRPCService extends ThriftService implements RPCServiceMBean{
+    private InfluxDBServiceImpl impl;
 
-public class InfluxDBRPCService extends ThriftService implements RPCServiceMBean {
-
-    private TSServiceImpl impl;
-
-    private InfluxDBRPCService () {}
-
-    public static InfluxDBRPCService getInstance() {
-        return InfluxDBRPCServiceHolder.INSTANCE;
+    public static InfluxDBRPCService getInstance(){
+        return InfluxDBServiceHolder.INSTANCE;
     }
 
     @Override
-    public int getRPCPort() {
-        IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-        return config.getRpcPort();
-    }
-
-    @Override
-    public ThriftService getImplementation() {
+    public ThriftService getImplementation(){
         return getInstance();
     }
 
     @Override
-    public void initTProcessor()
-            throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    public void initTProcessor() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
         impl =
-                (TSServiceImpl)
-                        Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
+                (InfluxDBServiceImpl)
+                        Class.forName(IoTDBDescriptor.getInstance().getConfig().getInfluxDBImplClassName())
                                 .newInstance();
-        processor = new TSIService.Processor<>(impl);
+        initSyncedServiceImpl(null);
+        processor = new Processor<>(impl);
     }
 
     @Override
-    public void initThriftServiceThread() throws IllegalAccessException {
+    public void initThriftServiceThread() throws IllegalAccessException, InstantiationException, ClassNotFoundException {
         IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
         try {
             thriftServiceThread =
                     new ThriftServiceThread(
                             processor,
                             getID().getName(),
-                            ThreadName.RPC_CLIENT.getName(),
+                            ThreadName.INFLUXDB_CLIENT.getName(),
                             config.getRpcAddress(),
-                            config.getRpcPort(),
+                            config.getInfluxDBRpcPort(),
                             config.getRpcMaxConcurrentClientNum(),
                             config.getThriftServerAwaitTimeForStopService(),
-                            new RPCServiceThriftHandler(impl),
-                            IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
+                            new InfluxDBServiceThriftHandler(impl),
+                            IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService());
         } catch (RPCServiceException e) {
             throw new IllegalAccessException(e.getMessage());
         }
-        thriftServiceThread.setName(ThreadName.RPC_SERVICE.getName());
+        thriftServiceThread.setName(ThreadName.INFLUXDB_SERVICE.getName());
+
     }
 
     @Override
@@ -70,18 +60,23 @@ public class InfluxDBRPCService extends ThriftService implements RPCServiceMBean
 
     @Override
     public int getBindPort() {
-        return IoTDBDescriptor.getInstance().getConfig().getRpcPort();
+        return IoTDBDescriptor.getInstance().getConfig().getInfluxDBRpcPort();
+    }
+
+    @Override
+    public int getRPCPort() {
+        return getBindPort();
     }
 
     @Override
     public ServiceType getID() {
-        return ServiceType.RPC_SERVICE;
+        return ServiceType.INFLUX_SERVICE;
     }
 
-    private static class InfluxDBRPCServiceHolder {
+    private static class InfluxDBServiceHolder {
 
         private static final InfluxDBRPCService INSTANCE = new InfluxDBRPCService();
 
-        private InfluxDBRPCServiceHolder() {}
+        private InfluxDBServiceHolder() {}
     }
 }

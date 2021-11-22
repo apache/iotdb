@@ -169,6 +169,10 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setInfluxDBRpcPort(
+              Integer.parseInt(
+                      properties.getProperty("influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))));
+
       conf.setTimestampPrecision(
           properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
 

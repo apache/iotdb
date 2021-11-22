@@ -26,7 +26,8 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.service.thriftImpl.TSServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
@@ -105,6 +106,9 @@ public class IoTDBConfig {
 
   /** Port which the JDBC server listens to. */
   private int rpcPort = 6667;
+
+  /** Port which the influxdb protocol server listens to. */
+  private int influxDBRpcPort = 8086;
 
   /** Max concurrent client number */
   private int rpcMaxConcurrentClientNum = 65535;
@@ -466,6 +470,9 @@ public class IoTDBConfig {
   /** Replace implementation class of JDBC service */
   private String rpcImplClassName = TSServiceImpl.class.getName();
 
+  /** Replace implementation class of influxdb protocol service */
+  private String influxdbImplClassName = InfluxDBServiceImpl.class.getName();
+
   /** Is stat performance of sub-module enable. */
   private boolean enablePerformanceStat = false;
 
@@ -760,6 +767,12 @@ public class IoTDBConfig {
    */
   private boolean enableRpcService = true;
 
+  /**
+   * whether enable the influxdb rpc service. This parameter has no a corresponding field in the
+   * iotdb-engine.properties
+   */
+  private boolean enableInfluxDBRpcService = true;
+
   /** the size of ioTaskQueue */
   private int ioTaskQueueSizeForFlushing = 10;
 
@@ -995,6 +1008,7 @@ public class IoTDBConfig {
     return rpcAddress;
   }
 
+
   public void setRpcAddress(String rpcAddress) {
     this.rpcAddress = rpcAddress;
   }
@@ -1006,6 +1020,15 @@ public class IoTDBConfig {
   public void setRpcPort(int rpcPort) {
     this.rpcPort = rpcPort;
   }
+
+  public int getInfluxDBRpcPort() {
+    return influxDBRpcPort;
+  }
+
+  public void setInfluxDBRpcPort(int influxDBRpcPort) {
+    this.influxDBRpcPort= influxDBRpcPort;
+  }
+
 
   public String getTimestampPrecision() {
     return timestampPrecision;
@@ -1319,6 +1342,10 @@ public class IoTDBConfig {
 
   public String getRpcImplClassName() {
     return rpcImplClassName;
+  }
+
+  public String getInfluxDBImplClassName() {
+    return influxdbImplClassName;
   }
 
   public void setRpcImplClassName(String rpcImplClassName) {
@@ -2332,6 +2359,14 @@ public class IoTDBConfig {
 
   public void setEnableRpcService(boolean enableRpcService) {
     this.enableRpcService = enableRpcService;
+  }
+
+  public boolean isEnableInfluxDBRpcService() {
+    return enableInfluxDBRpcService;
+  }
+
+  public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
+    this.enableInfluxDBRpcService= enableInfluxDBRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {
