@@ -120,24 +120,6 @@ public abstract class InsertPlan extends PhysicalPlan {
     measurements[index] = null;
   }
 
-  public void markFailedMeasurementAlignedInsertion(Exception e) {
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-      failedExceptions = new ArrayList<>();
-      failedIndices = new ArrayList<>();
-    }
-
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      failedMeasurements.add(measurements[i]);
-      failedExceptions.add(e);
-      failedIndices.add(i);
-      measurements[i] = null;
-    }
-  }
-
   /**
    * Reconstruct this plan with the failed measurements.
    *

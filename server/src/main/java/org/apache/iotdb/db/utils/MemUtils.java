@@ -63,6 +63,9 @@ public class MemUtils {
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
     long memSize = 0L;
     for (int i = 0; i < dataTypes.size(); i++) {
+      if (value[i] == null) {
+        continue;
+      }
       memSize += getRecordSize(dataTypes.get(i), value[i], addingTextDataSize);
     }
     return memSize;
@@ -77,6 +80,9 @@ public class MemUtils {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
+      if (value[i] == null) {
+        continue;
+      }
       if (dataTypes.get(i) == TSDataType.TEXT) {
         memSize += (addingTextDataSize ? getBinarySize((Binary) value[i]) : 0);
       } else {
@@ -110,6 +116,9 @@ public class MemUtils {
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
       // time column memSize
       memSize += (end - start) * 8L;
       if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
@@ -130,6 +139,9 @@ public class MemUtils {
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
       TSDataType valueType;
       // value columns memSize
       valueType = insertTabletPlan.getDataTypes()[i];
