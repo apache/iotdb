@@ -773,9 +773,14 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
 
+    // check timeseries
+    if (physicalPlan.getAuthPaths().size() == 0) {
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(TSStatusCode.TIMESERIES_NOT_EXIST, "Timeseries not exist"));
+    }
+
     // check permissions
-    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)
-        && physicalPlan.getAuthPaths().size() != 0) {
+    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
