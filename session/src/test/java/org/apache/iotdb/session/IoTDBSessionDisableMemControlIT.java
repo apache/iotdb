@@ -42,9 +42,9 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 
-public class IoTDBDisableMemControlSessionIT {
+public class IoTDBSessionDisableMemControlIT {
 
-  private static Logger logger = LoggerFactory.getLogger(IoTDBDisableMemControlSessionIT.class);
+  private static Logger logger = LoggerFactory.getLogger(IoTDBSessionDisableMemControlIT.class);
 
   private Session session;
 
