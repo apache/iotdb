@@ -124,7 +124,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
+  protected void deleteLevelFilesInDisk(Collection<TsFileResource> mergeTsFiles) {
     logger.info("{} [compaction] merge starts to delete real file", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteLevelFile(mergeTsFile);
@@ -133,7 +133,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFilesInList(
+  protected void deleteLevelFilesInList(
       long timePartitionId, Collection<TsFileResource> mergeTsFiles, int level, boolean sequence) {
     logger.info("{} [compaction] merge starts to delete file list", storageGroupName);
     if (sequence) {
@@ -151,7 +151,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     }
   }
 
-  private void deleteLevelFile(TsFileResource seqFile) {
+  protected void deleteLevelFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
       ChunkCache.getInstance().clear();
