@@ -50,20 +50,24 @@ public class CountAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
-    //    setLongValue(getLongValue() + batchIterator.totalLength());
+    setLongValue(getLongValue() + batchIterator.totalLength());
   }
 
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     int cnt = 0;
+    int count = batchIterator.totalLength();
     while (batchIterator.hasNext()) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }
       cnt++;
       batchIterator.next();
+    }
+    if (cnt != count) {
+      batchIterator.totalLength();
+      System.out.println("!");
     }
     setLongValue(getLongValue() + cnt);
   }
