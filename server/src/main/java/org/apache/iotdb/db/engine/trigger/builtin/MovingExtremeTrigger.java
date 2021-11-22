@@ -27,14 +27,18 @@ import org.apache.iotdb.db.engine.trigger.sink.local.LocalIoTDBHandler;
 import org.apache.iotdb.db.utils.windowing.api.Evaluator;
 import org.apache.iotdb.db.utils.windowing.api.Window;
 import org.apache.iotdb.db.utils.windowing.configuration.SlidingSizeWindowConfiguration;
+import org.apache.iotdb.db.utils.windowing.configuration.SlidingTimeWindowConfiguration;
 import org.apache.iotdb.db.utils.windowing.handler.SlidingSizeWindowEvaluationHandler;
+import org.apache.iotdb.db.utils.windowing.handler.SlidingTimeWindowEvaluationHandler;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class MovingExtremeTrigger implements Trigger {
 
   private final LocalIoTDBHandler localIoTDBHandler = new LocalIoTDBHandler();
 
-  private SlidingSizeWindowEvaluationHandler windowEvaluationHandler;
+  private boolean isSizeBased;
+  private SlidingSizeWindowEvaluationHandler slidingSizeWindowEvaluationHandler;
+  private SlidingTimeWindowEvaluationHandler slidingTimeWindowEvaluationHandler;
 
   private String device;
   private String[] measurements;
@@ -48,37 +52,50 @@ public class MovingExtremeTrigger implements Trigger {
 
     openSinkHandlers();
 
-    windowEvaluationHandler =
-        new SlidingSizeWindowEvaluationHandler(
-            new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, 100, 100),
-            new Evaluator() {
+    final Evaluator evaluator =
+        new Evaluator() {
 
-              @Override
-              public void evaluate(Window window) throws Exception {
-                double extreme = 0;
-                double[] array = window.getDoubleArray();
-                for (int i = 0, n = window.size(); i < n; ++i) {
-                  extreme = Math.max(extreme, Math.abs(array[i]));
-                }
+          @Override
+          public void evaluate(Window window) throws Exception {
+            double extreme = 0;
+            double[] array = window.getDoubleArray();
+            for (int i = 0, n = window.size(); i < n; ++i) {
+              extreme = Math.max(extreme, Math.abs(array[i]));
+            }
 
-                localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), extreme));
-              }
+            localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), extreme));
+          }
 
-              @Override
-              public void onRejection(Window window) {
-                double extreme = 0;
-                double[] array = window.getDoubleArray();
-                for (int i = 0, n = window.size(); i < n; ++i) {
-                  extreme = Math.max(extreme, Math.abs(array[i]));
-                }
+          @Override
+          public void onRejection(Window window) {
+            double extreme = 0;
+            double[] array = window.getDoubleArray();
+            for (int i = 0, n = window.size(); i < n; ++i) {
+              extreme = Math.max(extreme, Math.abs(array[i]));
+            }
 
-                try {
-                  localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), extreme));
-                } catch (Exception e) {
-                  throw new RuntimeException(e.getMessage());
-                }
-              }
-            });
+            try {
+              localIoTDBHandler.onEvent(new LocalIoTDBEvent(window.getTime(0), extreme));
+            } catch (Exception e) {
+              throw new RuntimeException(e.getMessage());
+            }
+          }
+        };
+
+    int windowSize = attributes.getInt("window_size");
+    int slidingStep = attributes.getInt("sliding_step");
+    isSizeBased = attributes.getStringOrDefault("strategy", "time").equals("size");
+    if (isSizeBased) {
+      slidingSizeWindowEvaluationHandler =
+          new SlidingSizeWindowEvaluationHandler(
+              new SlidingSizeWindowConfiguration(TSDataType.DOUBLE, windowSize, slidingStep),
+              evaluator);
+    } else {
+      slidingTimeWindowEvaluationHandler =
+          new SlidingTimeWindowEvaluationHandler(
+              new SlidingTimeWindowConfiguration(TSDataType.DOUBLE, windowSize, slidingStep),
+              evaluator);
+    }
   }
 
   @Override
@@ -98,14 +115,24 @@ public class MovingExtremeTrigger implements Trigger {
 
   @Override
   public Double fire(long timestamp, Double value) {
-    windowEvaluationHandler.collect(timestamp, value);
+    if (isSizeBased) {
+      slidingSizeWindowEvaluationHandler.collect(timestamp, value);
+    } else {
+      slidingTimeWindowEvaluationHandler.collect(timestamp, value);
+    }
     return value;
   }
 
   @Override
   public double[] fire(long[] timestamps, double[] values) {
-    for (int i = 0, n = timestamps.length; i < n; ++i) {
-      windowEvaluationHandler.collect(timestamps[i], values[i]);
+    if (isSizeBased) {
+      for (int i = 0, n = timestamps.length; i < n; ++i) {
+        slidingSizeWindowEvaluationHandler.collect(timestamps[i], values[i]);
+      }
+    } else {
+      for (int i = 0, n = timestamps.length; i < n; ++i) {
+        slidingTimeWindowEvaluationHandler.collect(timestamps[i], values[i]);
+      }
     }
     return values;
   }
