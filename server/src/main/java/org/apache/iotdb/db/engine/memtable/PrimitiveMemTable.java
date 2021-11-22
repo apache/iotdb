@@ -19,10 +19,6 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.rescon.TVListAllocator;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,23 +30,13 @@ public class PrimitiveMemTable extends AbstractMemTable {
     this.disableMemControl = !enableMemControl;
   }
 
-  public PrimitiveMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
+  public PrimitiveMemTable(Map<String, IWritableMemChunkGroup> memTableMap) {
     super(memTableMap);
   }
 
   @Override
-  protected IWritableMemChunk genMemSeries(IMeasurementSchema schema) {
-    if (schema.getType() == TSDataType.VECTOR) {
-      return new WritableMemChunk(
-          schema,
-          TVListAllocator.getInstance().allocate(schema.getSubMeasurementsTSDataTypeList()));
-    }
-    return new WritableMemChunk(schema, TVListAllocator.getInstance().allocate(schema.getType()));
-  }
-
-  @Override
   public IMemTable copy() {
-    Map<String, Map<String, IWritableMemChunk>> newMap = new HashMap<>(getMemTableMap());
+    Map<String, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
 
     return new PrimitiveMemTable(newMap);
   }

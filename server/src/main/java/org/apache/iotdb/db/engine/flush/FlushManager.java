@@ -52,7 +52,7 @@ public class FlushManager implements FlushManagerMBean, IService {
   @Override
   public void start() throws StartupException {
     FlushSubTaskPoolManager.getInstance().start();
-    FlushTaskPoolManager.getInstance().start();
+    flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
     } catch (Exception e) {
@@ -171,6 +171,7 @@ public class FlushManager implements FlushManagerMBean, IService {
     private static FlushManager instance = new FlushManager();
   }
 
+  @Override
   public String toString() {
     return String.format(
         "TSProcessors in the queue: %d, TaskPool size %d + %d,",

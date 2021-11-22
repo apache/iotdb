@@ -31,7 +31,7 @@ public class FilePathUtils {
 
   private static final String PATH_SPLIT_STRING =
       TSFileDescriptor.getInstance().getConfig().getTSFileStorageFs() == FSType.LOCAL
-              && File.separator.equals("\\")
+              && "\\".equals(File.separator)
           ? "\\\\"
           : "/";
   public static final String FILE_NAME_SEPARATOR = "-";
@@ -93,7 +93,9 @@ public class FilePathUtils {
   }
 
   public static String getTsFilePrefixPath(String tsFileAbsolutePath) {
-    if (tsFileAbsolutePath == null) return null;
+    if (tsFileAbsolutePath == null) {
+      return null;
+    }
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
     return pathSegments[pathLength - 4]

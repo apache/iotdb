@@ -25,7 +25,7 @@ import org.apache.thrift.transport.TTransport;
 public class RPCServiceThriftHandler implements TServerEventHandler {
   private TSServiceImpl serviceImpl;
 
-  RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
+  public RPCServiceThriftHandler(TSServiceImpl serviceImpl) {
     this.serviceImpl = serviceImpl;
   }
 

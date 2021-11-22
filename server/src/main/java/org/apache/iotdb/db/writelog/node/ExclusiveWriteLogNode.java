@@ -65,6 +65,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   private volatile ByteBuffer[] bufferArray;
 
   private final Object switchBufferCondition = new Object();
+
   private final ReentrantLock lock = new ReentrantLock();
   private final ExecutorService FLUSH_BUFFER_THREAD_POOL;
 
@@ -125,11 +126,9 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
   }
 
   private void putLog(PhysicalPlan plan) {
-    logBufferWorking.mark();
     try {
       plan.serialize(logBufferWorking);
     } catch (BufferOverflowException e) {
-      logBufferWorking.reset();
       sync();
       plan.serialize(logBufferWorking);
     }

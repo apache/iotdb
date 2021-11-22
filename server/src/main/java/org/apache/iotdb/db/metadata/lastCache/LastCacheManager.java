@@ -19,20 +19,17 @@
 
 package org.apache.iotdb.db.metadata.lastCache;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,15 +43,17 @@ public class LastCacheManager {
 
   private static final Logger logger = LoggerFactory.getLogger(LastCacheManager.class);
 
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
+
   /**
    * get the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    * @return the last cache value
    */
-  public static TimeValuePair getLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+  public static TimeValuePair getLastCache(IMeasurementMNode node) {
     if (node == null) {
       return null;
     }
@@ -62,38 +61,23 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    if (seriesPath == null) {
-      return lastCacheContainer.getCachedLast();
-    } else if (seriesPath instanceof VectorPartialPath) {
-      IMeasurementSchema schema = node.getSchema();
-      if (schema instanceof VectorMeasurementSchema) {
-        return lastCacheContainer.getCachedLast(
-            node.getSchema()
-                .getSubMeasurementIndex(
-                    ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
-      }
-      return null;
-    } else {
-      return lastCacheContainer.getCachedLast();
-    }
+    return lastCacheContainer.getCachedLast();
   }
 
   /**
    * update the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
+   * @param node the measurementMNode holding the lastCache When invoker only has the target
+   *     seriesPath, the node could be null and MManager will search the node
    * @param timeValuePair the latest point value
    * @param highPriorityUpdate the last value from insertPlan is high priority
    * @param latestFlushedTime latest flushed time
-   * @param node the measurementMNode holding the lastCache When invoker only has the target
-   *     seriesPath, the node could be null and MManager will search the node
    */
   public static void updateLastCache(
-      PartialPath seriesPath,
+      IMeasurementMNode node,
       TimeValuePair timeValuePair,
       boolean highPriorityUpdate,
-      Long latestFlushedTime,
-      IMeasurementMNode node) {
+      Long latestFlushedTime) {
     if (node == null) {
       return;
     }
@@ -101,34 +85,16 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    if (seriesPath == null) {
-      lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    } else if (seriesPath instanceof VectorPartialPath) {
-      IMeasurementSchema schema = node.getSchema();
-      if (schema instanceof VectorMeasurementSchema) {
-        if (lastCacheContainer.isEmpty()) {
-          lastCacheContainer.init(schema.getSubMeasurementsCount());
-        }
-        lastCacheContainer.updateCachedLast(
-            schema.getSubMeasurementIndex(
-                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)),
-            timeValuePair,
-            highPriorityUpdate,
-            latestFlushedTime);
-      }
-    } else {
-      lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
-    }
+    lastCacheContainer.updateCachedLast(timeValuePair, highPriorityUpdate, latestFlushedTime);
   }
 
   /**
    * reset the last cache value of time series of given seriesPath
    *
-   * @param seriesPath the path of timeseries or subMeasurement of aligned timeseries
    * @param node the measurementMNode holding the lastCache When invoker only has the target
    *     seriesPath, the node could be null and MManager will search the node
    */
-  public static void resetLastCache(PartialPath seriesPath, IMeasurementMNode node) {
+  public static void resetLastCache(IMeasurementMNode node) {
     if (node == null) {
       return;
     }
@@ -136,21 +102,7 @@ public class LastCacheManager {
     checkIsTemplateLastCacheAndSetIfAbsent(node);
 
     ILastCacheContainer lastCacheContainer = node.getLastCacheContainer();
-    if (seriesPath == null) {
-      lastCacheContainer.resetLastCache();
-    } else if (seriesPath instanceof VectorPartialPath) {
-      IMeasurementSchema schema = node.getSchema();
-      if (schema instanceof VectorMeasurementSchema) {
-        if (lastCacheContainer.isEmpty()) {
-          lastCacheContainer.init(schema.getSubMeasurementsCount());
-        }
-        lastCacheContainer.resetLastCache(
-            schema.getSubMeasurementIndex(
-                ((VectorPartialPath) seriesPath).getSubSensorsList().get(0)));
-      }
-    } else {
-      lastCacheContainer.resetLastCache();
-    }
+    lastCacheContainer.resetLastCache();
   }
 
   private static void checkIsTemplateLastCacheAndSetIfAbsent(IMeasurementMNode node) {
@@ -164,10 +116,6 @@ public class LastCacheManager {
     // if entityMNode doesn't have this child, the child is derived from template
     if (!entityMNode.hasChild(measurement)) {
       ILastCacheContainer lastCacheContainer = entityMNode.getLastCacheContainer(measurement);
-      IMeasurementSchema schema = node.getSchema();
-      if (lastCacheContainer.isEmpty() && (schema instanceof VectorMeasurementSchema)) {
-        lastCacheContainer.init(schema.getSubMeasurementsCount());
-      }
       node.setLastCacheContainer(lastCacheContainer);
     }
   }
@@ -212,7 +160,6 @@ public class LastCacheManager {
   public static void deleteLastCacheByDevice(
       IEntityMNode node, PartialPath originalPath, long startTime, long endTime) {
     PartialPath path;
-    IMeasurementSchema schema;
     ILastCacheContainer lastCacheContainer;
 
     // process lastCache of timeseries represented by measurementNode
@@ -228,13 +175,11 @@ public class LastCacheManager {
         if (lastCacheContainer == null) {
           continue;
         }
-        schema = measurementMNode.getSchema();
-        deleteLastCache(path, schema, lastCacheContainer, startTime, endTime);
+        deleteLastCache(path, lastCacheContainer, startTime, endTime);
       }
     }
 
     // process lastCache of timeseries represented by template
-    Template template = node.getUpperTemplate();
     for (Map.Entry<String, ILastCacheContainer> entry : node.getTemplateLastCaches().entrySet()) {
       path = node.getPartialPath().concatNode(entry.getKey());
       if (originalPath.matchFullPath(path)) {
@@ -242,45 +187,21 @@ public class LastCacheManager {
         if (lastCacheContainer == null) {
           continue;
         }
-        schema = template.getSchemaMap().get(entry.getKey());
-        deleteLastCache(path, schema, lastCacheContainer, startTime, endTime);
+        deleteLastCache(path, lastCacheContainer, startTime, endTime);
       }
     }
   }
 
   private static void deleteLastCache(
-      PartialPath path,
-      IMeasurementSchema schema,
-      ILastCacheContainer lastCacheContainer,
-      long startTime,
-      long endTime) {
-    TimeValuePair lastPair;
-    if (schema instanceof VectorMeasurementSchema) {
-      int index;
-      for (String measurement : schema.getSubMeasurementsList()) {
-        index = schema.getSubMeasurementIndex(measurement);
-        lastPair = lastCacheContainer.getCachedLast(index);
-        if (lastPair != null
-            && startTime <= lastPair.getTimestamp()
-            && lastPair.getTimestamp() <= endTime) {
-          lastCacheContainer.resetLastCache(index);
-          if (logger.isDebugEnabled()) {
-            logger.debug(
-                "[tryToDeleteLastCache] Last cache for path: {} is set to null",
-                path.concatNode(measurement).getFullPath());
-          }
-        }
-      }
-    } else {
-      lastPair = lastCacheContainer.getCachedLast();
-      if (lastPair != null
-          && startTime <= lastPair.getTimestamp()
-          && lastPair.getTimestamp() <= endTime) {
-        lastCacheContainer.resetLastCache();
-        if (logger.isDebugEnabled()) {
-          logger.debug(
-              "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());
-        }
+      PartialPath path, ILastCacheContainer lastCacheContainer, long startTime, long endTime) {
+    TimeValuePair lastPair = lastCacheContainer.getCachedLast();
+    if (lastPair != null
+        && startTime <= lastPair.getTimestamp()
+        && lastPair.getTimestamp() <= endTime) {
+      lastCacheContainer.resetLastCache();
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "[tryToDeleteLastCache] Last cache for path: {} is set to null", path.getFullPath());
       }
     }
   }
@@ -294,9 +215,9 @@ public class LastCacheManager {
    * @return the last value
    */
   public static long getLastTimeStamp(IMeasurementMNode node, QueryContext queryContext) {
-    TimeValuePair last = getLastCache(null, node);
+    TimeValuePair last = getLastCache(node);
     if (last != null) {
-      return getLastCache(null, node).getTimestamp();
+      return getLastCache(node).getTimestamp();
     } else {
       try {
         QueryDataSource dataSource =
@@ -314,6 +235,9 @@ public class LastCacheManager {
                 Long.MAX_VALUE,
                 null);
         last = lastReader.readLastPoint();
+        if (CACHE_ENABLED && last != null && last.getValue() != null) {
+          updateLastCache(node, last, false, Long.MIN_VALUE);
+        }
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error(

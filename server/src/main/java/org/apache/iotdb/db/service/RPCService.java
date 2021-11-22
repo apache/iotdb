@@ -32,16 +32,8 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
 
   private TSServiceImpl impl;
 
-  private RPCService() {}
-
   public static RPCService getInstance() {
     return RPCServiceHolder.INSTANCE;
-  }
-
-  @Override
-  public int getRPCPort() {
-    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-    return config.getRpcPort();
   }
 
   @Override
@@ -56,6 +48,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
         (TSServiceImpl)
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .newInstance();
+    initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
 
@@ -93,6 +86,11 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
   @Override
   public ServiceType getID() {
     return ServiceType.RPC_SERVICE;
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   private static class RPCServiceHolder {

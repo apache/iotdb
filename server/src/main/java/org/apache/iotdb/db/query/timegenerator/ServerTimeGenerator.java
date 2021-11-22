@@ -22,12 +22,12 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
@@ -72,7 +72,7 @@ public class ServerTimeGenerator extends TimeGenerator {
   public void serverConstructNode(IExpression expression)
       throws IOException, StorageEngineException {
     List<PartialPath> pathList = new ArrayList<>();
-    getPartialPathFromExpression(expression, pathList);
+    getAndTransformPartialPathFromExpression(expression, pathList);
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
     try {
       operatorNode = construct(expression);
@@ -81,12 +81,24 @@ public class ServerTimeGenerator extends TimeGenerator {
     }
   }
 
-  private void getPartialPathFromExpression(IExpression expression, List<PartialPath> pathList) {
+  /**
+   * collect PartialPath from Expression and transform MeasurementPath whose isUnderAlignedEntity is
+   * true to AlignedPath
+   */
+  private void getAndTransformPartialPathFromExpression(
+      IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
-      pathList.add((PartialPath) ((SingleSeriesExpression) expression).getSeriesPath());
+      SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
+      MeasurementPath measurementPath = (MeasurementPath) seriesExpression.getSeriesPath();
+      // change the MeasurementPath to AlignedPath if the MeasurementPath's isUnderAlignedEntity ==
+      // true
+      seriesExpression.setSeriesPath(measurementPath.transformToExactPath());
+      pathList.add((PartialPath) seriesExpression.getSeriesPath());
     } else {
-      getPartialPathFromExpression(((IBinaryExpression) expression).getLeft(), pathList);
-      getPartialPathFromExpression(((IBinaryExpression) expression).getRight(), pathList);
+      getAndTransformPartialPathFromExpression(
+          ((IBinaryExpression) expression).getLeft(), pathList);
+      getAndTransformPartialPathFromExpression(
+          ((IBinaryExpression) expression).getRight(), pathList);
     }
   }
 
@@ -95,10 +107,9 @@ public class ServerTimeGenerator extends TimeGenerator {
       throws IOException {
     Filter valueFilter = expression.getFilter();
     PartialPath path = (PartialPath) expression.getSeriesPath();
-    TSDataType dataType;
+    TSDataType dataType = path.getSeriesType();
     QueryDataSource queryDataSource;
     try {
-      dataType = IoTDB.metaManager.getSeriesType(path);
       queryDataSource =
           QueryResourceManager.getInstance().getQueryDataSource(path, context, valueFilter);
       // update valueFilter by TTL

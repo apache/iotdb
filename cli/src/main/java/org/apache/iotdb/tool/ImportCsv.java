@@ -319,7 +319,7 @@ public class ImportCsv extends AbstractCsvTool {
                         measurementName -> {
                           String header = deviceId + "." + measurementName;
                           String value = record.get(header);
-                          if (!value.equals("")) {
+                          if (!"".equals(value)) {
                             TSDataType type;
                             if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                               type = typeInfer(value);
@@ -436,7 +436,7 @@ public class ImportCsv extends AbstractCsvTool {
                             .forEach(
                                 measurement -> {
                                   String value = record.get(measurement);
-                                  if (!value.equals("")) {
+                                  if (!"".equals(value)) {
                                     TSDataType type;
                                     if (!headerTypeMap.containsKey(
                                         headerNameMap.get(measurement))) {
@@ -541,7 +541,9 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if (headerName.equals("Time") || headerName.equals("Device")) continue;
+      if ("Time".equals(headerName) || "Device".equals(headerName)) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       if (matcher.find()) {
@@ -652,9 +654,11 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) return TEXT;
-    else if (value.equals("true") || value.equals("false")) return BOOLEAN;
-    else if (!value.contains(".")) {
+    if (value.contains("\"")) {
+      return TEXT;
+    } else if ("true".equals(value) || "false".equals(value)) {
+      return BOOLEAN;
+    } else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -667,9 +671,11 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())
+      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length()) {
         return FLOAT;
-      else return DOUBLE;
+      } else {
+        return DOUBLE;
+      }
     }
   }
 
@@ -684,7 +690,7 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
-          if (!value.equals("true") && !value.equals("false")) {
+          if (!"true".equals(value) && !"false".equals(value)) {
             return null;
           }
           return Boolean.valueOf(value);

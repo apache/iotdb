@@ -31,7 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -88,7 +88,7 @@ public class MetaLogApplierTest extends IoTDBTest {
     Node node = new Node("localhost", 1111, 0, 2222, Constants.RPC_PORT, "localhost");
     AddNodeLog log = new AddNodeLog();
     log.setNewNode(node);
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     applier.apply(log);
 
     assertTrue(nodes.contains(node));
@@ -100,7 +100,7 @@ public class MetaLogApplierTest extends IoTDBTest {
 
     Node node = testMetaGroupMember.getThisNode();
     RemoveNodeLog log = new RemoveNodeLog();
-    log.setPartitionTable(TestUtils.seralizePartitionTable);
+    log.setPartitionTable(TestUtils.getSeralizePartitionTable());
     log.setRemovedNode(node);
     applier.apply(log);
 

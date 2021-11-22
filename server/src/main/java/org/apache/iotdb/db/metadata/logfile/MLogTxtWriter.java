@@ -20,17 +20,19 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -141,7 +143,7 @@ public class MLogTxtWriter implements AutoCloseable {
             plan.getMeasurements(),
             plan.getDataTypes().stream().map(TSDataType::serialize),
             plan.getEncodings().stream().map(TSEncoding::serialize),
-            plan.getCompressor().serialize()));
+            plan.getCompressors().stream().map(CompressionType::serialize)));
 
     buf.append(",[");
     if (plan.getAliasList() != null) {
@@ -318,7 +320,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setTemplate(SetSchemaTemplatePlan plan) throws IOException {
+  public void setTemplate(SetTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_TEMPLATE));
     buf.append(",");
     buf.append(plan.getTemplateName());
@@ -330,7 +332,7 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void setUsingTemplate(SetUsingSchemaTemplatePlan plan) throws IOException {
+  public void setUsingTemplate(ActivateTemplatePlan plan) throws IOException {
     StringBuilder buf = new StringBuilder(String.valueOf(MetadataOperationType.SET_USING_TEMPLATE));
     buf.append(",");
     buf.append(plan.getPrefixPath());
@@ -340,36 +342,72 @@ public class MLogTxtWriter implements AutoCloseable {
     lineNumber.incrementAndGet();
   }
 
-  public void createTemplate(CreateTemplatePlan plan) throws IOException {
+  public void createSchemaTemplate(CreateTemplatePlan plan) throws IOException {
+    // CreateTemplatePlan txt Log be like:
+    // OperationType,templateName[,measurementPath,isAlign,dataType,encoding,compressor]
     StringBuilder buf = new StringBuilder();
-    for (int i = 0; i < plan.getSchemaNames().size(); i++) {
+    buf.append(MetadataOperationType.CREATE_TEMPLATE);
+    buf.append(plan.getName());
+    for (int i = 0; i < plan.getMeasurements().size(); i++) {
       for (int j = 0; j < plan.getMeasurements().get(i).size(); j++) {
         String measurement;
         boolean isAligned = false;
         if (plan.getMeasurements().get(i).size() == 1) {
-          measurement = plan.getSchemaNames().get(i);
+          measurement = plan.getMeasurements().get(i).get(0);
         } else {
           // for aligned timeseries
           isAligned = true;
-          measurement =
-              plan.getSchemaNames().get(i)
-                  + TsFileConstant.PATH_SEPARATOR
-                  + plan.getMeasurements().get(i).get(j);
+          measurement = plan.getMeasurements().get(i).get(j);
         }
         buf.append(
             String.format(
-                "%s,%s,%s,%s,%s,%s,%s",
-                MetadataOperationType.CREATE_TEMPLATE,
-                plan.getName(),
-                isAligned ? 1 : 0,
+                ",%s,%s,%s,%s,%s",
                 measurement,
+                isAligned ? 1 : 0,
                 plan.getDataTypes().get(i).get(j).serialize(),
                 plan.getEncodings().get(i).get(j).serialize(),
-                plan.getCompressors().get(i).serialize()));
-        buf.append(LINE_SEPARATOR);
-        lineNumber.incrementAndGet();
+                plan.getCompressors().get(i).get(j).serialize()));
       }
     }
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+  }
+
+  public void appendTemplate(AppendTemplatePlan plan) throws IOException {
+    // AppendTemplatePlan txt Log be like:
+    // OperationType,templateName,isAlign[,measurementPath,dataType,encoding,compressor]
+    StringBuilder buf = new StringBuilder();
+    buf.append(MetadataOperationType.APPEND_TEMPLATE);
+    buf.append(plan.getName());
+    buf.append(plan.isAligned());
+    for (int i = 0; i < plan.getMeasurements().size(); i++) {
+      buf.append(
+          String.format(
+              ",%s,%s,%s,%s",
+              plan.getMeasurements().get(i),
+              plan.getDataTypes().get(i).serialize(),
+              plan.getEncodings().get(i).serialize(),
+              plan.getCompressors().get(i).serialize()));
+    }
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
+    ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
+    channel.write(buff);
+  }
+
+  public void pruneTemplate(PruneTemplatePlan plan) throws IOException {
+    // PruneTemplatePlan txt Log be like:
+    // OperationType,templateName[,measurementPath]
+    StringBuilder buf = new StringBuilder();
+    buf.append(MetadataOperationType.PRUNE_TEMPLATE);
+    buf.append(plan.getName());
+    for (int i = 0; i < plan.getPrunedMeasurements().size(); i++) {
+      buf.append(plan.getPrunedMeasurements().get(i));
+    }
+    buf.append(LINE_SEPARATOR);
+    lineNumber.incrementAndGet();
     ByteBuffer buff = ByteBuffer.wrap(buf.toString().getBytes());
     channel.write(buff);
   }

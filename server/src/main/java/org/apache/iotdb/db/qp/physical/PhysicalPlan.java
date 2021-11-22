@@ -20,10 +20,9 @@ package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -31,8 +30,9 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
@@ -44,6 +44,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateIndexPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
@@ -59,10 +60,11 @@ import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
@@ -70,6 +72,9 @@ import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.qp.utils.EmptyOutputStream;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -80,6 +85,7 @@ import java.util.List;
 
 /** This class is a abstract class for all type of PhysicalPlan. */
 public abstract class PhysicalPlan {
+  private static final Logger logger = LoggerFactory.getLogger(PhysicalPlan.class);
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
@@ -116,7 +122,7 @@ public abstract class PhysicalPlan {
     return "abstract plan";
   }
 
-  public abstract List<PartialPath> getPaths();
+  public abstract List<? extends PartialPath> getPaths();
 
   public void setPaths(List<PartialPath> paths) {}
 
@@ -180,11 +186,27 @@ public abstract class PhysicalPlan {
 
   /**
    * Serialize the plan into the given buffer. This is provided for WAL, so fields that can be
-   * recovered will not be serialized.
+   * recovered will not be serialized. If error occurs when serializing this plan, the buffer will
+   * be reset.
    *
    * @param buffer
    */
   public void serialize(ByteBuffer buffer) {
+    buffer.mark();
+    try {
+      serializeImpl(buffer);
+    } catch (UnsupportedOperationException e) {
+      // ignore and throw
+      throw e;
+    } catch (Exception e) {
+      logger.error(
+          "Rollback buffer entry because error occurs when serializing this physical plan.", e);
+      buffer.reset();
+      throw e;
+    }
+  }
+
+  protected void serializeImpl(ByteBuffer buffer) {
     throw new UnsupportedOperationException(SERIALIZATION_UNIMPLEMENTED);
   }
 
@@ -253,7 +275,7 @@ public abstract class PhysicalPlan {
   }
 
   /** Used to check whether a user has the permission to execute the plan with these paths. */
-  public List<PartialPath> getAuthPaths() {
+  public List<? extends PartialPath> getAuthPaths() {
     return getPaths();
   }
 
@@ -404,11 +426,17 @@ public abstract class PhysicalPlan {
         case CREATE_TEMPLATE:
           plan = new CreateTemplatePlan();
           break;
-        case SET_SCHEMA_TEMPLATE:
-          plan = new SetSchemaTemplatePlan();
+        case APPEND_TEMPLATE:
+          plan = new AppendTemplatePlan();
           break;
-        case SET_USING_SCHEMA_TEMPLATE:
-          plan = new SetUsingSchemaTemplatePlan();
+        case PRUNE_TEMPLATE:
+          plan = new PruneTemplatePlan();
+          break;
+        case SET_TEMPLATE:
+          plan = new SetTemplatePlan();
+          break;
+        case ACTIVATE_TEMPLATE:
+          plan = new ActivateTemplatePlan();
           break;
         case AUTO_CREATE_DEVICE_MNODE:
           plan = new AutoCreateDeviceMNodePlan();
@@ -488,8 +516,8 @@ public abstract class PhysicalPlan {
     BATCH_INSERT_ROWS,
     SHOW_DEVICES,
     CREATE_TEMPLATE,
-    SET_SCHEMA_TEMPLATE,
-    SET_USING_SCHEMA_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
     AUTO_CREATE_DEVICE_MNODE,
     CREATE_ALIGNED_TIMESERIES,
     CLUSTER_LOG,
@@ -507,7 +535,9 @@ public abstract class PhysicalPlan {
     DROP_FUNCTION,
     SELECT_INTO,
     SET_SYSTEM_MODE,
-    UNSET_SCHEMA_TEMPLATE
+    UNSET_TEMPLATE,
+    APPEND_TEMPLATE,
+    PRUNE_TEMPLATE
   }
 
   public long getIndex() {

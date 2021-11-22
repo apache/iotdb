@@ -51,6 +51,10 @@ ALIGN
     : A L I G N
     ;
 
+ALIGNED
+    : A L I G N E D
+    ;
+
 ALL
     : A L L
     ;
@@ -466,6 +470,10 @@ TAGS
 
 TASK
     : T A S K
+    ;
+
+TEMPLATE
+    : T E M P L A T E
     ;
 
 TIME

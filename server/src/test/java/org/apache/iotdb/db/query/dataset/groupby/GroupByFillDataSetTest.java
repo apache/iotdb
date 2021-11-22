@@ -155,7 +155,7 @@ public class GroupByFillDataSetTest {
     QueryPlan queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select last_value(s0) from root.vehicle.* where s1 > 1 or s0 > 1  group by ([5,20), 1ms) fill (int32[Previous]) order by time desc");
+                "select last_value(s0) from root.vehicle.* where s1 > 1 or s0 >= 1  group by ([5,20), 1ms) fill (int32[Previous, 11ms]) order by time desc");
     QueryDataSet dataSet =
         queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     for (int i = 19; i >= 8; i--) {
