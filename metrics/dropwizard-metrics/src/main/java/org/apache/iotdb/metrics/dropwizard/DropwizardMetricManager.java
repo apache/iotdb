@@ -156,6 +156,7 @@ public class DropwizardMetricManager implements MetricManager {
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
     if (m instanceof Counter) {
       ((Counter) m).inc(delta);
+      return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
@@ -182,6 +183,7 @@ public class DropwizardMetricManager implements MetricManager {
             });
     if (m instanceof Gauge) {
       ((Gauge) m).set(value);
+      return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
@@ -202,6 +204,7 @@ public class DropwizardMetricManager implements MetricManager {
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
     if (m instanceof Rate) {
       ((Rate) m).mark(value);
+      return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
@@ -222,6 +225,7 @@ public class DropwizardMetricManager implements MetricManager {
             name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
     if (m instanceof Histogram) {
       ((Histogram) m).update(value);
+      return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
@@ -238,6 +242,7 @@ public class DropwizardMetricManager implements MetricManager {
 
     if (m instanceof Timer) {
       ((Timer) m).update(delta, timeUnit);
+      return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
