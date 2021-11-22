@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
@@ -170,6 +171,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
             currentDataSet = queryRouter.fill(fillQueryPlan, context);
             break;
           case QUERY:
+            // Group all the subSensors of one vector into one VectorPartialPath
+            executePaths = MetaUtils.groupAlignedPaths(executePaths);
             rawDataQueryPlan.setDeduplicatedPathsAndUpdate(executePaths);
             rawDataQueryPlan.setExpression(expression);
             currentDataSet = queryRouter.rawDataQuery(rawDataQueryPlan, context);
