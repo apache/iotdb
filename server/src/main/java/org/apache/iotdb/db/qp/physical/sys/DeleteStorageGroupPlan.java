@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -60,7 +60,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE_STORAGE_GROUP.ordinal();
     buffer.put((byte) type);
     buffer.putInt(this.getPaths().size());

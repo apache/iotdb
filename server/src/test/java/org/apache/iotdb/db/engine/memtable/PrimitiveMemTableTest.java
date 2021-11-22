@@ -22,12 +22,13 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MathUtils;
-import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -39,7 +40,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Before;
@@ -65,8 +65,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesSortIteratorTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 1000;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -84,8 +83,7 @@ public class PrimitiveMemTableTest {
   public void memSeriesToStringTest() throws IOException {
     TSDataType dataType = TSDataType.INT32;
     WritableMemChunk series =
-        new WritableMemChunk(
-            new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN), TVList.newList(dataType));
+        new WritableMemChunk(new UnaryMeasurementSchema("s1", dataType, TSEncoding.PLAIN));
     int count = 100;
     for (int i = 0; i < count; i++) {
       series.write(i, i);
@@ -121,19 +119,21 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
-          i + 10);
+          new Object[] {i + 10});
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
-          i);
+          new Object[] {i});
     }
-    ReadOnlyMemChunk memChunk =
-        memTable.query(
+    MeasurementPath fullPath =
+        new MeasurementPath(
             deviceId,
             measurementId[0],
             new UnaryMeasurementSchema(
@@ -141,9 +141,8 @@ public class PrimitiveMemTableTest {
                 TSDataType.INT32,
                 TSEncoding.RLE,
                 CompressionType.UNCOMPRESSED,
-                Collections.emptyMap()),
-            Long.MIN_VALUE,
-            null);
+                Collections.emptyMap()));
+    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, null);
     IPointReader iterator = memChunk.getPointReader();
     for (int i = 0; i < dataSize; i++) {
       iterator.hasNextTimeValuePair();
@@ -166,24 +165,21 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(sensorId, dataType, encoding),
+          Collections.singletonList(new UnaryMeasurementSchema(sensorId, dataType, encoding)),
           aRet.getTimestamp(),
-          aRet.getValue().getValue());
+          new Object[] {aRet.getValue().getValue()});
     }
-    IPointReader tvPair =
-        memTable
-            .query(
-                deviceId,
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            sensorId,
+            new UnaryMeasurementSchema(
                 sensorId,
-                new UnaryMeasurementSchema(
-                    sensorId,
-                    dataType,
-                    encoding,
-                    CompressionType.UNCOMPRESSED,
-                    Collections.emptyMap()),
-                Long.MIN_VALUE,
-                null)
-            .getPointReader();
+                dataType,
+                encoding,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+    IPointReader tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
     Arrays.sort(ret);
     TimeValuePair last = null;
     for (int i = 0; i < ret.length; i++) {
@@ -215,43 +211,46 @@ public class PrimitiveMemTableTest {
 
   private void writeVector(IMemTable memTable)
       throws IOException, QueryProcessException, MetadataException {
-    memTable.write(genInsertTablePlan(), 0, 100);
+    memTable.writeAlignedTablet(genInsertTablePlan(), 0, 100);
 
-    IPointReader tvPair =
-        memTable
-            .query(
-                "root.sg.device5",
-                "sensor1",
-                new VectorMeasurementSchema(
-                    "$#$0",
-                    new String[] {"sensor1"},
-                    new TSDataType[] {TSDataType.INT64},
-                    new TSEncoding[] {TSEncoding.GORILLA},
-                    CompressionType.UNCOMPRESSED),
-                Long.MIN_VALUE,
-                null)
-            .getPointReader();
+    AlignedPath fullPath =
+        new AlignedPath(
+            "root.sg.device5",
+            Collections.singletonList("sensor1"),
+            Collections.singletonList(
+                new UnaryMeasurementSchema(
+                    "sensor1",
+                    TSDataType.INT64,
+                    TSEncoding.GORILLA,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap())));
+    IPointReader tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
       Assert.assertEquals(i, next.getTimestamp());
-      Assert.assertEquals(i, next.getValue().getLong());
+      Assert.assertEquals(i, next.getValue().getVector()[0].getLong());
     }
 
-    tvPair =
-        memTable
-            .query(
-                "root.sg.device5",
-                "$#$1",
-                new VectorMeasurementSchema(
-                    "$#$0",
-                    new String[] {"sensor0", "sensor1"},
-                    new TSDataType[] {TSDataType.BOOLEAN, TSDataType.INT64},
-                    new TSEncoding[] {TSEncoding.PLAIN, TSEncoding.GORILLA},
-                    CompressionType.UNCOMPRESSED),
-                Long.MIN_VALUE,
-                null)
-            .getPointReader();
+    fullPath =
+        new AlignedPath(
+            "root.sg.device5",
+            Arrays.asList("sensor0", "sensor1"),
+            Arrays.asList(
+                new UnaryMeasurementSchema(
+                    "sensor0",
+                    TSDataType.BOOLEAN,
+                    TSEncoding.PLAIN,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap()),
+                new UnaryMeasurementSchema(
+                    "sensor1",
+                    TSDataType.INT64,
+                    TSEncoding.GORILLA,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap())));
+
+    tvPair = memTable.query(fullPath, Long.MIN_VALUE, null).getPointReader();
     for (int i = 0; i < 100; i++) {
       tvPair.hasNextTimeValuePair();
       TimeValuePair next = tvPair.nextTimeValuePair();
@@ -349,14 +348,15 @@ public class PrimitiveMemTableTest {
     String deviceId = "root.sg.device5";
 
     IMeasurementMNode[] mNodes = new IMeasurementMNode[2];
-    IMeasurementSchema schema =
-        new VectorMeasurementSchema("$#$0", measurements, dataTypes, encodings);
-    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema, null);
-    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema, null);
+    IMeasurementSchema schema0 =
+        new UnaryMeasurementSchema(measurements[0], dataTypes[0], encodings[0]);
+    IMeasurementSchema schema1 =
+        new UnaryMeasurementSchema(measurements[1], dataTypes[1], encodings[1]);
+    mNodes[0] = MeasurementMNode.getMeasurementMNode(null, "sensor0", schema0, null);
+    mNodes[1] = MeasurementMNode.getMeasurementMNode(null, "sensor1", schema1, null);
 
     InsertTabletPlan insertTabletPlan =
-        new InsertTabletPlan(
-            new PartialPath(deviceId), new String[] {"(sensor0,sensor1)"}, dataTypesList);
+        new InsertTabletPlan(new PartialPath(deviceId), measurements, dataTypesList);
 
     long[] times = new long[100];
     Object[] columns = new Object[2];

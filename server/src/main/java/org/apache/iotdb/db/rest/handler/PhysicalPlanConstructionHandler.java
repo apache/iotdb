@@ -19,7 +19,7 @@ package org.apache.iotdb.db.rest.handler;
 
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.rest.model.InsertTabletRequest;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;

@@ -53,7 +53,7 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
@@ -215,7 +215,7 @@ public class BaseMember {
 
   private DataGroupMember newDataGroupMember(RaftNode raftNode) {
     DataGroupMember newMember =
-        new TestDataGroupMember(raftNode.getNode(), partitionTable.getHeaderGroup(raftNode)) {
+        new TestDataGroupMember(raftNode.getNode(), partitionTable.getPartitionGroup(raftNode)) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -247,7 +247,7 @@ public class BaseMember {
     newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(
         getLogManager(
-            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
+            partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;

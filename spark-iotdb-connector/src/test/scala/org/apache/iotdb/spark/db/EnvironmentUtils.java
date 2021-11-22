@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -120,6 +121,7 @@ public class EnvironmentUtils {
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     }
     // close metadata
     IoTDB.metaManager.clear();

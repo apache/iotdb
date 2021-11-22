@@ -104,7 +104,6 @@ public class PageReader implements IPageReader {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-
     BatchData pageData = BatchDataFactory.createBatchData(dataType, ascending, false);
     if (filter == null || filter.satisfy(getStatistics())) {
       while (timeDecoder.hasNext(timeBuffer)) {

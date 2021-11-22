@@ -328,7 +328,7 @@ public class ExportCsv extends AbstractCsvTool {
 
     if (needDataTypePrinted) {
       for (int i = 0; i < names.size(); i++) {
-        if (!names.get(i).equals("Time") && !names.get(i).equals("Device")) {
+        if (!"Time".equals(names.get(i)) && !"Device".equals(names.get(i))) {
           headers.add(String.format("%s(%s)", names.get(i), types.get(i)));
         } else {
           headers.add(names.get(i));
@@ -350,7 +350,7 @@ public class ExportCsv extends AbstractCsvTool {
           .forEach(
               field -> {
                 String fieldStringValue = field.getStringValue();
-                if (!field.getStringValue().equals("null")) {
+                if (!"null".equals(field.getStringValue())) {
                   if (field.getDataType() == TSDataType.TEXT
                       && !fieldStringValue.startsWith("root.")) {
                     fieldStringValue = "\"" + fieldStringValue + "\"";

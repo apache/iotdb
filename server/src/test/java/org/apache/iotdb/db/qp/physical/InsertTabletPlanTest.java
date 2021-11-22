@@ -23,13 +23,15 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -193,13 +195,12 @@ public class InsertTabletPlanTest {
   public void testInsertTabletPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals(
-        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
@@ -215,7 +216,7 @@ public class InsertTabletPlanTest {
   public void testInsertNullableTabletPlanWithAlignedTimeseries()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    InsertTabletPlan tabletPlan = getVectorInsertTabletPlan();
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
     tabletPlan.setBitMaps(new BitMap[3]);
     BitMap[] bitMaps = tabletPlan.getBitMaps();
     for (int i = 0; i < 3; i++) {
@@ -227,8 +228,7 @@ public class InsertTabletPlanTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals(
-        "[vector, vector, vector]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
@@ -240,18 +240,138 @@ public class InsertTabletPlanTest {
     }
   }
 
+  @Test
+  public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
+    InsertTabletPlan plan1 = getAlignedInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(plan1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    plan1.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+
+    InsertTabletPlan plan2 = new InsertTabletPlan();
+    plan2.deserialize(byteBuffer);
+    executor.insertTablet(plan2);
+
+    Assert.assertEquals(plan1, plan2);
+  }
+
+  @Test
+  public void testInsertTabletWithBitMapsSerialization()
+      throws IllegalPathException, QueryProcessException {
+    InsertTabletPlan plan1 = getAlignedInsertTabletPlan();
+    plan1.setBitMaps(new BitMap[3]);
+    BitMap[] bitMaps = plan1.getBitMaps();
+    for (int i = 0; i < 3; i++) {
+      if (bitMaps[i] == null) {
+        bitMaps[i] = new BitMap(4);
+      }
+      bitMaps[i].mark(i);
+    }
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(plan1);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    plan1.serialize(byteBuffer);
+    byteBuffer.flip();
+
+    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+
+    InsertTabletPlan plan2 = new InsertTabletPlan();
+    plan2.deserialize(byteBuffer);
+    executor.insertTablet(plan2);
+
+    Assert.assertEquals(plan1, plan2);
+  }
+
+  @Test
+  public void testInsertTabletPlanWithSchemaTemplateAndAutoCreateSchema()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+
+    // test recover
+    EnvironmentUtils.stopDaemon();
+    IoTDB.metaManager.clear();
+    // wait for close
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Thread.currentThread().interrupt();
+    }
+    EnvironmentUtils.activeDaemon();
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
+  @Test
+  public void testInsertTabletPlanWithSchemaTemplate()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+
+    // nothing can be found when we not insert data
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(0, dataSet.getPaths().size());
+
+    executor.insertTablet(tabletPlan);
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
   private CreateTemplatePlan getCreateTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     List<String> v1 = new ArrayList<>();
-    v1.add("s1");
-    v1.add("s2");
-    v1.add("s3");
+    v1.add("vector.s1");
+    v1.add("vector.s2");
+    v1.add("vector.s3");
     measurementList.add(v1);
     List<String> v2 = new ArrayList<>();
-    v2.add("s4");
-    v2.add("s5");
+    v2.add("vector2.s4");
+    v2.add("vector2.s5");
     measurementList.add(v2);
-    measurementList.add(Collections.singletonList("s6"));
+    measurementList.add(Collections.singletonList("vector3.s6"));
 
     List<List<TSDataType>> dataTypesList = new ArrayList<>();
     List<TSDataType> d1 = new ArrayList<>();
@@ -278,13 +398,17 @@ public class InsertTabletPlanTest {
     encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
 
     List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> c1 = new ArrayList<>();
     for (int i = 0; i < 3; i++) {
-      List<CompressionType> compressorList = new ArrayList<>();
-      for (int j = 0; j < 3; j++) {
-        compressorList.add(CompressionType.SNAPPY);
-      }
-      compressionTypes.add(compressorList);
+      c1.add(CompressionType.SNAPPY);
     }
+    List<CompressionType> c2 = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      c2.add(CompressionType.SNAPPY);
+    }
+    compressionTypes.add(c1);
+    compressionTypes.add(c2);
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("vector");
@@ -295,55 +419,7 @@ public class InsertTabletPlanTest {
         "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
   }
 
-  @Test
-  public void testInsertTabletSerialization() throws IllegalPathException, QueryProcessException {
-    InsertTabletPlan plan1 = getVectorInsertTabletPlan();
-
-    PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(plan1);
-
-    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
-    plan1.serialize(byteBuffer);
-    byteBuffer.flip();
-
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
-
-    InsertTabletPlan plan2 = new InsertTabletPlan();
-    plan2.deserialize(byteBuffer);
-    executor.insertTablet(plan2);
-
-    Assert.assertEquals(plan1, plan2);
-  }
-
-  @Test
-  public void testInsertTabletWithBitMapsSerialization()
-      throws IllegalPathException, QueryProcessException {
-    InsertTabletPlan plan1 = getVectorInsertTabletPlan();
-    plan1.setBitMaps(new BitMap[3]);
-    BitMap[] bitMaps = plan1.getBitMaps();
-    for (int i = 0; i < 3; i++) {
-      if (bitMaps[i] == null) {
-        bitMaps[i] = new BitMap(4);
-      }
-      bitMaps[i].mark(i);
-    }
-    PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(plan1);
-
-    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
-    plan1.serialize(byteBuffer);
-    byteBuffer.flip();
-
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
-
-    InsertTabletPlan plan2 = new InsertTabletPlan();
-    plan2.deserialize(byteBuffer);
-    executor.insertTablet(plan2);
-
-    Assert.assertEquals(plan1, plan2);
-  }
-
-  private InsertTabletPlan getVectorInsertTabletPlan() throws IllegalPathException {
+  private InsertTabletPlan getAlignedInsertTabletPlan() throws IllegalPathException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());

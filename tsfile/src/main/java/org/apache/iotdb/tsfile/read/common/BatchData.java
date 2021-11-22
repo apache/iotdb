@@ -858,12 +858,17 @@ public class BatchData {
     }
 
     @Override
-    public Object currentValue() {
-      if (dataType == TSDataType.VECTOR) {
-        return getVector()[subIndex].getValue();
-      } else {
-        return null;
+    public boolean hasNext() {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        super.next();
       }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public Object currentValue() {
+      TsPrimitiveType v = getVector()[subIndex];
+      return v == null ? null : v.getValue();
     }
   }
 }

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -151,7 +151,7 @@ public class DeletePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE.ordinal();
     buffer.put((byte) type);
     buffer.putLong(deleteStartTime);

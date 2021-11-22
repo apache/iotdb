@@ -27,7 +27,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -59,7 +59,7 @@ import java.util.Set;
 public class Template {
   private String name;
   private Map<String, IMNode> directNodes;
-  private Set<String> alignedPrefix;
+  private boolean isDirectAligned;
   private int measurementsCount;
   private Map<String, IMeasurementSchema> schemaMap;
 
@@ -74,7 +74,7 @@ public class Template {
     boolean isAlign;
     schemaMap = new HashMap<>();
     name = plan.getName();
-    alignedPrefix = new HashSet<>();
+    isDirectAligned = false;
     directNodes = new HashMap<>();
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
@@ -83,16 +83,14 @@ public class Template {
       if (size > 1) {
         isAlign = true;
       } else {
-        // Patch for align designation ambiguity when creating from serialization
+        // If sublist of measurements has only one item,
+        // but it share prefix with other aligned sublist, it will be aligned too
         String[] thisMeasurement =
             MetaUtils.splitPathToDetachedPath(plan.getMeasurements().get(i).get(0));
         String thisPrefix =
             joinBySeparator(Arrays.copyOf(thisMeasurement, thisMeasurement.length - 1));
-        if (plan.getAlignedPrefix() != null && plan.getAlignedPrefix().contains(thisPrefix)) {
-          isAlign = true;
-        } else {
-          isAlign = false;
-        }
+        isAlign =
+            plan.getAlignedDeviceId() != null && plan.getAlignedDeviceId().contains(thisPrefix);
       }
 
       // vector, aligned measurements
@@ -139,44 +137,16 @@ public class Template {
     return schemaMap;
   }
 
-  public void setSchemaMap(Map<String, IMeasurementSchema> schemaMap) {
-    this.schemaMap = schemaMap;
+  public boolean hasSchema(String suffixPath) {
+    return schemaMap.containsKey(suffixPath);
   }
 
-  public boolean hasSchema(String measurementId) {
-    return schemaMap.containsKey(measurementId);
+  public IMeasurementSchema getSchema(String measurementId) {
+    return schemaMap.get(measurementId);
   }
 
-  public List<IMeasurementMNode> getMeasurementMNode() {
-    Set<IMeasurementSchema> deduplicateSchema = new HashSet<>();
-    List<IMeasurementMNode> res = new ArrayList<>();
-
-    for (IMeasurementSchema measurementSchema : schemaMap.values()) {
-      if (deduplicateSchema.add(measurementSchema)) {
-        IMeasurementMNode measurementMNode = null;
-        if (measurementSchema instanceof UnaryMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null, measurementSchema.getMeasurementId(), measurementSchema, null);
-
-        } else if (measurementSchema instanceof VectorMeasurementSchema) {
-          measurementMNode =
-              MeasurementMNode.getMeasurementMNode(
-                  null,
-                  getMeasurementNodeName(measurementSchema.getMeasurementId()),
-                  measurementSchema,
-                  null);
-        }
-
-        res.add(measurementMNode);
-      }
-    }
-
-    return res;
-  }
-
-  public String getMeasurementNodeName(String measurementName) {
-    return schemaMap.get(measurementName).getMeasurementId();
+  public boolean isDirectAligned() {
+    return isDirectAligned;
   }
 
   // region construct template tree
@@ -185,7 +155,7 @@ public class Template {
       throws IllegalPathException {
     // Only for aligned Paths, with common direct prefix
     String[] pathNodes;
-    IEntityMNode commonPar;
+    IMNode commonPar;
     String prefix = null;
     List<String> measurementNames = new ArrayList<>();
     IMeasurementMNode leafNode;
@@ -222,21 +192,21 @@ public class Template {
     }
 
     synchronized (this) {
-      // if not aligned now, it will be set to aligned
-      if (!alignedPrefix.contains(prefix)) {
-        alignedPrefix.add(prefix);
+      if (prefix.equals("")) {
+        isDirectAligned = true;
       }
       for (int i = 0; i <= measurementNames.size() - 1; i++) {
         // find the parent and add nodes to template
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           leafNode =
               MeasurementMNode.getMeasurementMNode(null, measurementNames.get(i), schemas[i], null);
           directNodes.put(leafNode.getName(), leafNode);
         } else {
-          commonPar = (IEntityMNode) constructEntityPath(alignedPaths[0]);
+          commonPar = constructEntityPath(alignedPaths[0]);
+          commonPar.getAsEntityMNode().setAligned(true);
           leafNode =
               MeasurementMNode.getMeasurementMNode(
-                  commonPar, measurementNames.get(i), schemas[i], null);
+                  commonPar.getAsEntityMNode(), measurementNames.get(i), schemas[i], null);
           commonPar.addChild(leafNode);
         }
         schemaMap.put(getFullPathWithoutTemplateName(leafNode), schemas[i]);
@@ -291,20 +261,37 @@ public class Template {
   // region query of template
 
   public List<String> getAllAlignedPrefix() {
-    return Arrays.asList(alignedPrefix.toArray(new String[0]));
+    List<String> alignedPrefix = new ArrayList<>();
+    if (isDirectAligned) {
+      alignedPrefix.add("");
+    }
+
+    Deque<IMNode> traverseChildren = new ArrayDeque<>();
+    directNodes.values().forEach(traverseChildren::push);
+    while (traverseChildren.size() != 0) {
+      IMNode cur = traverseChildren.pop();
+      if (cur.getChildren().size() != 0) {
+        cur.getChildren().values().forEach(traverseChildren::push);
+      }
+      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
+        alignedPrefix.add(cur.getFullPath());
+      }
+    }
+    return alignedPrefix;
   }
 
   public List<String> getAlignedMeasurements(String prefix) throws IllegalPathException {
-    if (!alignedPrefix.contains(prefix)) {
-      return null;
-    }
     IMNode prefixNode = getPathNodeInTemplate(prefix);
     if (prefixNode == null) {
-      throw new IllegalPathException(prefix, "there is no prefix IMNode.");
+      throw new IllegalPathException(prefix, "there is no IMNode for given prefix.");
     }
     if (prefixNode.isMeasurement()) {
       throw new IllegalPathException(prefix, "path is a measurement.");
     }
+    if (!prefixNode.isEntity() || !prefixNode.getAsEntityMNode().isAligned()) {
+      throw new IllegalPathException(prefix, "path has no child as aligned measurement.");
+    }
+
     List<String> subMeasurements = new ArrayList<>();
     for (IMNode child : prefixNode.getChildren().values()) {
       if (child.isMeasurement()) {
@@ -319,7 +306,7 @@ public class Template {
   }
 
   public List<String> getMeasurementsUnderPath(String path) throws MetadataException {
-    if (path.equals("")) {
+    if ("".equals(path)) {
       return getAllMeasurementsPaths();
     }
     List<String> res = new ArrayList<>();
@@ -492,7 +479,8 @@ public class Template {
     // Prefix equality will be checked in constructTemplateTree
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-    if ((getPathNodeInTemplate(prefix) != null) && (!alignedPrefix.contains(prefix))) {
+    IMNode targetNode = getPathNodeInTemplate(prefix);
+    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -524,7 +512,8 @@ public class Template {
 
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
-      if ((getPathNodeInTemplate(prefix) != null) && (alignedPrefix.contains(prefix))) {
+      IMNode parNode = getPathNodeInTemplate(prefix);
+      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
         throw new IllegalPathException(prefix, "path already exists and aligned");
       }
 
@@ -579,9 +568,11 @@ public class Template {
       IMNode top = astack.pop();
       if (!top.isMeasurement()) {
         String thisPrefix = getFullPathWithoutTemplateName(top);
-        if (alignedPrefix.contains(thisPrefix)) {
-          alignedPrefix.remove(thisPrefix);
+
+        if (thisPrefix.equals("")) {
+          isDirectAligned = false;
         }
+
         for (IMNode child : top.getChildren().values()) {
           astack.push(child);
         }
@@ -592,9 +583,13 @@ public class Template {
     }
   }
 
-  public void deleteAlignedPrefix(String path) {
-    if (alignedPrefix.contains(path)) {
-      alignedPrefix.remove(path);
+  public void deleteAlignedPrefix(String path) throws IllegalPathException {
+    if (path.equals("")) {
+      isDirectAligned = false;
+    }
+    IMNode targetNode = getPathNodeInTemplate(path);
+    if (targetNode.isEntity()) {
+      targetNode.getAsEntityMNode().setAligned(false);
     }
   }
   // endregion
