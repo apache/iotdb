@@ -19,35 +19,31 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.HashMap;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.util.List;
 import java.util.Map;
 
-public class PrimitiveMemTable extends AbstractMemTable {
+public interface IWritableMemChunkGroup {
 
-  public PrimitiveMemTable() {}
+  void writeValues(
+      long[] times,
+      Object[] columns,
+      BitMap[] bitMaps,
+      List<IMeasurementSchema> schemaList,
+      int start,
+      int end);
 
-  public PrimitiveMemTable(boolean enableMemControl) {
-    this.disableMemControl = !enableMemControl;
-  }
+  void release();
 
-  public PrimitiveMemTable(Map<String, IWritableMemChunkGroup> memTableMap) {
-    super(memTableMap);
-  }
+  long count();
 
-  @Override
-  public IMemTable copy() {
-    Map<String, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
+  boolean contains(String measurement);
 
-    return new PrimitiveMemTable(newMap);
-  }
+  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
-  @Override
-  public boolean isSignalMemTable() {
-    return false;
-  }
+  Map<String, IWritableMemChunk> getMemChunkMap();
 
-  @Override
-  public String toString() {
-    return "PrimitiveMemTable{planIndex=[" + getMinPlanIndex() + "," + getMaxPlanIndex() + "]}";
-  }
+  long getCurrentChunkPointNum(String measurement);
 }

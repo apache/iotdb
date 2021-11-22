@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MemTableTestUtils {
@@ -62,9 +63,10 @@ public class MemTableTestUtils {
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
           l,
-          (int) l);
+          new Object[] {(int) l});
     }
   }
 
