@@ -255,8 +255,11 @@ public class SeriesReader {
       return true;
     }
 
-    // init first time series metadata whose startTime is minimum
-    tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+    while (firstTimeSeriesMetadata == null
+        && (!seqFileResource.isEmpty() || !unseqFileResource.isEmpty())) {
+      // init first time series metadata whose startTime is minimum
+      tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+    }
 
     return firstTimeSeriesMetadata != null;
   }
@@ -321,9 +324,14 @@ public class SeriesReader {
       return true;
     }
 
-    /*
-     * construct first chunk metadata
-     */
+    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+      initFirstChunkMetadata();
+    }
+    return firstChunkMetadata != null;
+  }
+
+  /** construct first chunk metadata */
+  private void initFirstChunkMetadata() throws IOException {
     if (firstTimeSeriesMetadata != null) {
       /*
        * try to unpack all overlapped TimeSeriesMetadata to cachedChunkMetadata
@@ -350,10 +358,10 @@ public class SeriesReader {
     }
     if (valueFilter != null
         && firstChunkMetadata != null
+        && !isChunkOverlapped()
         && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
       skipCurrentChunk();
     }
-    return firstChunkMetadata != null;
   }
 
   private void unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
@@ -687,10 +695,6 @@ public class SeriesReader {
       if (valueFilter != null) {
         firstPageReader.setFilter(valueFilter);
       }
-      if (valueFilter != null && !valueFilter.satisfy(currentPageStatistics())) {
-        skipCurrentPage();
-        return null;
-      }
       BatchData batchData = firstPageReader.getAllSatisfiedPageData(orderUtils.getAscending());
       firstPageReader = null;
 
@@ -1004,6 +1008,11 @@ public class SeriesReader {
       } else {
         firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
       }
+    }
+    if (valueFilter != null
+        && !isFileOverlapped()
+        && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
+      firstTimeSeriesMetadata = null;
     }
   }
 
