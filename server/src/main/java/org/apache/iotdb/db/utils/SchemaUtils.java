@@ -168,6 +168,16 @@ public class SchemaUtils {
     return tsDataTypes;
   }
 
+  public static TSDataType getSeriesTypeByPath(MeasurementPath path, String aggregation)
+      throws MetadataException {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return dataType;
+    } else {
+      return path.getSeriesType();
+    }
+  }
+
   /**
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null

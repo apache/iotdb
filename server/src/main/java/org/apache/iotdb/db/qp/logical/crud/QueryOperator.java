@@ -53,7 +53,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.utils.SchemaUtils.getAggregationType;
+import static org.apache.iotdb.db.utils.SchemaUtils.getSeriesTypeByPath;
 
 public class QueryOperator extends Operator {
 
@@ -271,9 +271,8 @@ public class QueryOperator extends Operator {
           for (MeasurementPath path : actualPaths) {
             MeasurementInfo measurementInfo =
                 new MeasurementInfo(getMeasurementName(path, aggregation));
-            TSDataType columnDataType = path.getSeriesType();
+            TSDataType columnDataType = getSeriesTypeByPath(path, aggregation);
             if (aggregation != null) {
-              columnDataType = getAggregationType(aggregation);
               aggregations.add(aggregation);
             }
             checkDataTypeConsistency(
