@@ -56,10 +56,23 @@ public class MemUtils {
   }
 
   /**
+   * function for getting the value size. If mem control enabled, do not add text data size here,
+   * the size will be added to memtable before inserting.
+   */
+  public static long getRecordsSize(
+      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    long memSize = 0L;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      memSize += getRecordSize(dataTypes.get(i), value[i], addingTextDataSize);
+    }
+    return memSize;
+  }
+
+  /**
    * function for getting the vector value size. If mem control enabled, do not add text data size
    * here, the size will be added to memtable before inserting.
    */
-  public static long getAlignedRecordSize(
+  public static long getAlignedRecordsSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
     // time and index size
     long memSize = 8L + 4L;

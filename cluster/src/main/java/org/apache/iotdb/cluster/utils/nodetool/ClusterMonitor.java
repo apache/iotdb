@@ -187,7 +187,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
           raftId++) {
         RaftNode raftNode = new RaftNode(header, raftId);
         raftGroupMapSlotNum.put(
-            partitionTable.getHeaderGroup(raftNode), nodeSlotMap.get(raftNode).size());
+            partitionTable.getPartitionGroup(raftNode), nodeSlotMap.get(raftNode).size());
       }
     }
     return raftGroupMapSlotNum;

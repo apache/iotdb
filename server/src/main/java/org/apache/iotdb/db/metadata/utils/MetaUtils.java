@@ -29,7 +29,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -91,27 +90,28 @@ public class MetaUtils {
    * root.sg.d1.vector1[s2], they will be organized to root.sg.d1.vector1 [s1,s2]
    *
    * @param fullPaths full path list without uniting the sub measurement under the same aligned time
-   *     series.
+   *     series. The list has been sorted by the alphabetical order, so all the aligned time series
+   *     of one device has already been placed contiguously.
    * @return Size of partial path list could NOT equal to the input list size. For example, the
    *     vector1 (s1,s2) would be returned once.
    */
   public static List<PartialPath> groupAlignedPaths(List<PartialPath> fullPaths) {
     List<PartialPath> result = new LinkedList<>();
-    Map<String, AlignedPath> alignedEntityToPath = new HashMap<>();
+    AlignedPath alignedPath = null;
     for (PartialPath path : fullPaths) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (!measurementPath.isUnderAlignedEntity()) {
         result.add(measurementPath);
+        alignedPath = null;
       } else {
-        String entity = measurementPath.getDevice();
-        if (!alignedEntityToPath.containsKey(entity)) {
-          alignedEntityToPath.put(entity, new AlignedPath(measurementPath));
+        if (alignedPath == null || !alignedPath.equals(measurementPath.getDevice())) {
+          alignedPath = new AlignedPath(measurementPath);
+          result.add(alignedPath);
         } else {
-          alignedEntityToPath.get(entity).addMeasurement(measurementPath);
+          alignedPath.addMeasurement(measurementPath);
         }
       }
     }
-    result.addAll(alignedEntityToPath.values());
     return result;
   }
 

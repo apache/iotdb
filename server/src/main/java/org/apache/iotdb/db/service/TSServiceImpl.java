@@ -1868,47 +1868,17 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
       if (AUDIT_LOGGER.isDebugEnabled()) {
         AUDIT_LOGGER.debug(
-            "Session-{} create device template {}.{}.{}.{}.{}.{}",
+            "Session-{} create schema template {}",
             sessionManager.getCurrSessionId(),
-            req.getName(),
-            req.getSchemaNames(),
-            req.getMeasurements(),
-            req.getDataTypes(),
-            req.getEncodings(),
-            req.getCompressors());
+            req.getName());
       }
 
       CreateTemplatePlan plan;
-      if (req.getMeasurements().size() == 0) {
-        // Construct plan from serialized request
-        ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
-        plan = CreateTemplatePlan.deserializeFromReq(buffer);
-      } else {
-        int size = req.getMeasurementsSize();
-        String[][] measurements = new String[size][];
-        TSDataType[][] dataTypes = new TSDataType[size][];
-        TSEncoding[][] encodings = new TSEncoding[size][];
-        CompressionType[][] compressionTypes = new CompressionType[size][];
-
-        for (int i = 0; i < size; i++) {
-          int alignedSize = req.getMeasurements().get(i).size();
-          measurements[i] = new String[alignedSize];
-          dataTypes[i] = new TSDataType[alignedSize];
-          encodings[i] = new TSEncoding[alignedSize];
-          compressionTypes[i] = new CompressionType[alignedSize];
-          for (int j = 0; j < alignedSize; j++) {
-            measurements[i][j] = req.getMeasurements().get(i).get(j);
-            dataTypes[i][j] = TSDataType.values()[req.getDataTypes().get(i).get(j)];
-            encodings[i][j] = TSEncoding.values()[req.getEncodings().get(i).get(j)];
-            compressionTypes[i][j] = CompressionType.values()[req.getCompressors().get(i).get(j)];
-          }
-        }
-
-        plan =
-            new CreateTemplatePlan(
-                req.getName(), measurements, dataTypes, encodings, compressionTypes);
-      }
+      // Construct plan from serialized request
+      ByteBuffer buffer = ByteBuffer.wrap(req.getSerializedTemplate());
+      plan = CreateTemplatePlan.deserializeFromReq(buffer);
       TSStatus status = checkAuthority(plan, req.getSessionId());
+
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (Exception e) {
       return onNPEOrUnexpectedException(

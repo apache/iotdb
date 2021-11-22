@@ -75,7 +75,7 @@ public class DefaultSlotBalancer implements SlotBalancer {
         newNodeSlotMap.get(curNode).addAll(slotsToMove);
         for (Integer slot : slotsToMove) {
           // record what node previously hold the integer
-          previousNodeMap.get(curNode).put(slot, table.getHeaderGroup(entry.getKey(), oldRing));
+          previousNodeMap.get(curNode).put(slot, table.getPartitionGroup(entry.getKey(), oldRing));
           slotNodes[slot] = curNode;
         }
         slotsToMove.clear();
@@ -86,7 +86,9 @@ public class DefaultSlotBalancer implements SlotBalancer {
           newNodeSlotMap.get(curNode).addAll(slotsToMove);
           for (Integer slot : slotsToMove) {
             // record what node previously hold the integer
-            previousNodeMap.get(curNode).put(slot, table.getHeaderGroup(entry.getKey(), oldRing));
+            previousNodeMap
+                .get(curNode)
+                .put(slot, table.getPartitionGroup(entry.getKey(), oldRing));
             slotNodes[slot] = curNode;
           }
           slotsToMove.clear();

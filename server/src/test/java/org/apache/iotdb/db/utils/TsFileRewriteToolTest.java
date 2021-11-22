@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -334,7 +334,7 @@ public class TsFileRewriteToolTest {
       String tsFilePath, int index, HashMap<String, List<String>> deviceSensorsMap)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
 
       int totalSensorCount = 0;
@@ -438,7 +438,7 @@ public class TsFileRewriteToolTest {
   public void queryAndCheckTsFile(String tsFilePath, int index, String device, String sensor)
       throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(tsFilePath);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       ArrayList<Path> paths = new ArrayList<>();
       paths.add(new Path(device, sensor));
 

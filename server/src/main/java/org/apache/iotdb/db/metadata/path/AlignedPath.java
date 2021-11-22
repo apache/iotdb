@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
@@ -50,6 +51,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -65,6 +69,8 @@ import java.util.Set;
  * s2]
  */
 public class AlignedPath extends PartialPath {
+
+  private static final Logger logger = LoggerFactory.getLogger(AlignedPath.class);
 
   // todo improve vector implementation by remove this placeholder
   public static final String VECTOR_PLACEHOLDER = "";
@@ -301,15 +307,19 @@ public class AlignedPath extends PartialPath {
       valueTimeSeriesMetadataList.add(valueMetadata);
     }
 
+    boolean[] exist = new boolean[schemaList.size()];
     for (IChunkMetadata chunkMetadata : chunkMetadataList) {
       AlignedChunkMetadata alignedChunkMetadata = (AlignedChunkMetadata) chunkMetadata;
       timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
       for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-        valueTimeSeriesMetadataList
-            .get(i)
-            .getStatistics()
-            .mergeStatistics(
-                alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+        if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+          exist[i] = true;
+          valueTimeSeriesMetadataList
+              .get(i)
+              .getStatistics()
+              .mergeStatistics(
+                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+        }
       }
     }
 
@@ -319,29 +329,38 @@ public class AlignedPath extends PartialPath {
             (AlignedChunkMetadata) memChunk.getChunkMetaData();
         timeStatistics.mergeStatistics(alignedChunkMetadata.getTimeChunkMetadata().getStatistics());
         for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-          valueTimeSeriesMetadataList
-              .get(i)
-              .getStatistics()
-              .mergeStatistics(
-                  alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          if (alignedChunkMetadata.getValueChunkMetadataList().get(i) != null) {
+            exist[i] = true;
+            valueTimeSeriesMetadataList
+                .get(i)
+                .getStatistics()
+                .mergeStatistics(
+                    alignedChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
+          }
         }
       }
     }
     timeTimeSeriesMetadata.setStatistics(timeStatistics);
+
+    for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
+      if (!exist[i]) {
+        valueTimeSeriesMetadataList.set(i, null);
+      }
+    }
 
     return new AlignedTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
   }
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     // check If memtable contains this path
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }
     AlignedWritableMemChunk alignedMemChunk =
-        ((AlignedWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
+        ((AlignedWritableMemChunkGroup) memTableMap.get(getDevice())).getAlignedMemChunk();
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (alignedMemChunk.containsMeasurement(measurement)) {
@@ -377,11 +396,17 @@ public class AlignedPath extends PartialPath {
 
     for (int i = 0; i < timeChunkMetadataList.size(); i++) {
       List<IChunkMetadata> valueChunkMetadata = new ArrayList<>();
+      // if all the sub sensors doesn't exist, it will be false
+      boolean exits = false;
       for (List<ChunkMetadata> chunkMetadata : valueChunkMetadataList) {
-        valueChunkMetadata.add(chunkMetadata.get(i));
+        boolean currentExist = i < chunkMetadata.size();
+        exits = (exits || currentExist);
+        valueChunkMetadata.add(currentExist ? chunkMetadata.get(i) : null);
       }
-      chunkMetadataList.add(
-          new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+      if (exits) {
+        chunkMetadataList.add(
+            new AlignedChunkMetadata(timeChunkMetadataList.get(i), valueChunkMetadata));
+      }
     }
 
     QueryUtils.modifyAlignedChunkMetaData(chunkMetadataList, modifications);
@@ -392,5 +417,20 @@ public class AlignedPath extends PartialPath {
   @Override
   public int getColumnNum() {
     return measurementList.size();
+  }
+
+  @Override
+  public AlignedPath clone() {
+    AlignedPath alignedPath = null;
+    try {
+      alignedPath =
+          new AlignedPath(
+              this.getDevice(),
+              new ArrayList<>(this.measurementList),
+              new ArrayList<>(this.schemaList));
+    } catch (IllegalPathException e) {
+      logger.warn("path is illegal: {}", this.getFullPath(), e);
+    }
+    return alignedPath;
   }
 }

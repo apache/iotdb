@@ -223,7 +223,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());

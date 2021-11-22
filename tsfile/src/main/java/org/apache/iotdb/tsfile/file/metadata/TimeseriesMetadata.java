@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.controller.IChunkMetadataLoader;
@@ -34,7 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
+public class TimeseriesMetadata implements ITimeSeriesMetadata {
 
   /** used for old version tsfile */
   private long startOffsetOfChunkMetaDataList;
@@ -217,16 +216,6 @@ public class TimeseriesMetadata implements Accountable, ITimeSeriesMetadata {
   @Override
   public void setModified(boolean modified) {
     this.modified = modified;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   @Override

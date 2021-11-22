@@ -3215,13 +3215,14 @@ public class StorageGroupProcessor {
     } else {
       for (String tsFilePath : tsFilePaths) {
         File fileToBeSettled = new File(tsFilePath);
-        if (fileToBeSettled
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getName()
-            .equals("sequence")) {
+        if ("sequence"
+            .equals(
+                fileToBeSettled
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getName())) {
           for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
             if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
               resource.setSettleTsFileCallBack(this::settleTsFileCallBack);

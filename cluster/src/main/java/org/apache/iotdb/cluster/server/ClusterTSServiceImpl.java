@@ -19,20 +19,12 @@
 
 package org.apache.iotdb.cluster.server;
 
-import org.apache.iotdb.cluster.ClusterIoTDB;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
+import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -43,16 +35,8 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
-import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * ClusterTSServiceImpl is the cluster version of TSServiceImpl, which is responsible for the
@@ -68,12 +52,6 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    * performs data manipulations to the cluster.
    */
   private Coordinator coordinator;
-
-  /**
-   * queryId -> queryContext map. When a query ends either normally or accidentally, the resources
-   * used by the query can be found in the context and then released.
-   */
-  private Map<Long, RemoteQueryContext> queryContextMap = new ConcurrentHashMap<>();
 
   public ClusterTSServiceImpl() throws QueryProcessException {}
 
@@ -111,62 +89,11 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    * @return a RemoteQueryContext using queryId
    */
   @Override
-  protected QueryContext genQueryContext(
+  public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     RemoteQueryContext context =
         new RemoteQueryContext(queryId, debug, startTime, statement, timeout);
-    queryContextMap.put(queryId, context);
+    ClusterSessionManager.getInstance().putContext(queryId, context);
     return context;
-  }
-
-  /** Release the local and remote resources used by a query. */
-  @Override
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
-    // release resources locally
-    super.releaseQueryResource(queryId);
-    // release resources remotely
-    RemoteQueryContext context = queryContextMap.remove(queryId);
-    if (context != null) {
-      // release the resources in every queried node
-      for (Entry<RaftNode, Set<Node>> headerEntry : context.getQueriedNodesMap().entrySet()) {
-        RaftNode header = headerEntry.getKey();
-        Set<Node> queriedNodes = headerEntry.getValue();
-        for (Node queriedNode : queriedNodes) {
-          releaseQueryResourceForOneNode(queryId, header, queriedNode);
-        }
-      }
-    }
-  }
-
-  protected void releaseQueryResourceForOneNode(long queryId, RaftNode header, Node queriedNode) {
-    if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
-      GenericHandler<Void> handler = new GenericHandler<>(queriedNode, new AtomicReference<>());
-      try {
-        AsyncDataClient client =
-            ClusterIoTDB.getInstance()
-                .getAsyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
-        client.endQuery(header, coordinator.getThisNode(), queryId, handler);
-      } catch (IOException | TException e) {
-        logger.error("Cannot end query {} in {}", queryId, queriedNode);
-      }
-    } else {
-      SyncDataClient syncDataClient = null;
-      try {
-        syncDataClient =
-            ClusterIoTDB.getInstance()
-                .getSyncDataClient(queriedNode, ClusterConstant.getReadOperationTimeoutMS());
-        syncDataClient.endQuery(header, coordinator.getThisNode(), queryId);
-      } catch (IOException | TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        if (syncDataClient != null) {
-          syncDataClient.close();
-        }
-        logger.error("Cannot end query {} in {}", queryId, queriedNode);
-      } finally {
-        if (syncDataClient != null) {
-          syncDataClient.returnSelf();
-        }
-      }
-    }
   }
 }

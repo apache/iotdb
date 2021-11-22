@@ -67,6 +67,21 @@ public class TsFileWriter implements AutoCloseable {
   private final int pageSize;
   private long recordCount = 0;
 
+  // deviceId -> measurementIdList
+  private Map<String, List<String>> flushedMeasurementsInDeviceMap = new HashMap<>();
+
+  // DeviceId -> LastTime
+  private Map<String, Long> alignedDeviceLastTimeMap = new HashMap<>();
+
+  // TimeseriesId -> LastTime
+  private Map<String, Map<String, Long>> nonAlignedTimeseriesLastTimeMap = new HashMap<>();
+
+  /**
+   * if true, this tsfile allow unsequential data when writing; Otherwise, it limits the user to
+   * write only sequential data
+   */
+  private boolean isUnseq = false;
+
   private Map<String, IChunkGroupWriter> groupWriters = new HashMap<>();
 
   /** min value of threshold of data points num check. */
@@ -295,7 +310,7 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private boolean checkIsTimeseriesExist(TSRecord record, boolean isAligned)
-      throws NoMeasurementException {
+      throws WriteProcessException {
     // initial ChunkGroupWriter of this device in the TSRecord
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(record.deviceId, isAligned);
 
@@ -306,6 +321,20 @@ public class TsFileWriter implements AutoCloseable {
       measurementSchemas =
           checkIsAllMeasurementsInGroup(
               record.dataPointList, schema.getSeriesSchema(devicePath), isAligned);
+      if (isAligned) {
+        for (IMeasurementSchema s : measurementSchemas) {
+          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+              && !flushedMeasurementsInDeviceMap
+                  .get(devicePath.getFullPath())
+                  .contains(s.getMeasurementId())) {
+            throw new WriteProcessException(
+                "TsFile has flushed chunk group and should not add new measurement "
+                    + s.getMeasurementId()
+                    + " in device "
+                    + devicePath.getFullPath());
+          }
+        }
+      }
       groupWriter.tryToAddSeriesWriter(measurementSchemas);
     } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
       // use the default template without needing to register device
@@ -321,13 +350,27 @@ public class TsFileWriter implements AutoCloseable {
   }
 
   private void checkIsTimeseriesExist(Tablet tablet, boolean isAligned)
-      throws NoMeasurementException {
+      throws WriteProcessException {
     IChunkGroupWriter groupWriter = tryToInitialGroupWriter(tablet.prefixPath, isAligned);
 
     Path devicePath = new Path(tablet.prefixPath);
     List<IMeasurementSchema> schemas = tablet.getSchemas();
     if (schema.containsDevice(devicePath)) {
       checkIsAllMeasurementsInGroup(schema.getSeriesSchema(devicePath), schemas, isAligned);
+      if (isAligned) {
+        for (IMeasurementSchema s : schemas) {
+          if (flushedMeasurementsInDeviceMap.containsKey(devicePath.getFullPath())
+              && !flushedMeasurementsInDeviceMap
+                  .get(devicePath.getFullPath())
+                  .contains(s.getMeasurementId())) {
+            throw new WriteProcessException(
+                "TsFile has flushed chunk group and should not add new measurement "
+                    + s.getMeasurementId()
+                    + " in device "
+                    + devicePath.getFullPath());
+          }
+        }
+      }
       groupWriter.tryToAddSeriesWriter(schemas);
     } else if (schema.getSchemaTemplates() != null && schema.getSchemaTemplates().size() == 1) {
       MeasurementGroup measurementGroup =
@@ -418,8 +461,17 @@ public class TsFileWriter implements AutoCloseable {
     if (!groupWriters.containsKey(deviceId)) {
       if (isAligned) {
         groupWriter = new AlignedChunkGroupWriterImpl(deviceId);
+        if (!isUnseq) { // Sequence File
+          ((AlignedChunkGroupWriterImpl) groupWriter)
+              .setLastTime(alignedDeviceLastTimeMap.getOrDefault(deviceId, -1L));
+        }
       } else {
         groupWriter = new NonAlignedChunkGroupWriterImpl(deviceId);
+        if (!isUnseq) { // Sequence File
+          ((NonAlignedChunkGroupWriterImpl) groupWriter)
+              .setLastTimeMap(
+                  nonAlignedTimeseriesLastTimeMap.getOrDefault(deviceId, new HashMap<>()));
+        }
       }
       groupWriters.put(deviceId, groupWriter);
     } else {
@@ -530,6 +582,30 @@ public class TsFileWriter implements AutoCloseable {
                   dataSize, fileWriter.getPos() - pos));
         }
         fileWriter.endChunkGroup();
+        if (groupWriter instanceof AlignedChunkGroupWriterImpl) {
+          // add flushed measurements
+          List<String> measurementList =
+              flushedMeasurementsInDeviceMap.computeIfAbsent(deviceId, p -> new ArrayList<>());
+          ((AlignedChunkGroupWriterImpl) groupWriter)
+              .getMeasurements()
+              .forEach(
+                  measurementId -> {
+                    if (!measurementList.contains(measurementId)) {
+                      measurementList.add(measurementId);
+                    }
+                  });
+          // add lastTime
+          if (!isUnseq) { // Sequence TsFile
+            this.alignedDeviceLastTimeMap.put(
+                deviceId, ((AlignedChunkGroupWriterImpl) groupWriter).getLastTime());
+          }
+        } else {
+          // add lastTime
+          if (!isUnseq) { // Sequence TsFile
+            this.nonAlignedTimeseriesLastTimeMap.put(
+                deviceId, ((NonAlignedChunkGroupWriterImpl) groupWriter).getLastTimeMap());
+          }
+        }
       }
       reset();
     }
@@ -561,5 +637,9 @@ public class TsFileWriter implements AutoCloseable {
    */
   public TsFileIOWriter getIOWriter() {
     return this.fileWriter;
+  }
+
+  public void setIsUnseq(boolean unseq) {
+    this.isUnseq = unseq;
   }
 }

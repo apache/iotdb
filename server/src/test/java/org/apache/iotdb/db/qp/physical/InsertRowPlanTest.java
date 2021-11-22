@@ -97,7 +97,7 @@ public class InsertRowPlanTest {
     Assert.assertEquals("[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.vector");
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
@@ -186,6 +186,79 @@ public class InsertRowPlanTest {
     Assert.assertEquals(plan1, plan2);
   }
 
+  @Test
+  public void testInsertRowPlanWithSchemaTemplateFormer()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<String> v1 = new ArrayList<>();
+    v1.add("GPS.s1");
+    v1.add("GPS.s2");
+    v1.add("GPS.s3");
+    measurementList.add(v1);
+    List<String> v2 = new ArrayList<>();
+    v2.add("GPS2.s4");
+    v2.add("GPS2.s5");
+    measurementList.add(v2);
+    measurementList.add(Collections.singletonList("s6"));
+
+    List<List<TSDataType>> dataTypesList = new ArrayList<>();
+    List<TSDataType> d1 = new ArrayList<>();
+    d1.add(TSDataType.DOUBLE);
+    d1.add(TSDataType.FLOAT);
+    d1.add(TSDataType.INT64);
+    dataTypesList.add(d1);
+    List<TSDataType> d2 = new ArrayList<>();
+    d2.add(TSDataType.INT32);
+    d2.add(TSDataType.BOOLEAN);
+    dataTypesList.add(d2);
+    dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<TSEncoding> e1 = new ArrayList<>();
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    encodingList.add(e1);
+    List<TSEncoding> e2 = new ArrayList<>();
+    e2.add(TSEncoding.PLAIN);
+    e2.add(TSEncoding.PLAIN);
+    encodingList.add(e2);
+    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      List<CompressionType> compressorList = new ArrayList<>();
+      for (int j = 0; j < 3; j++) {
+        compressorList.add(CompressionType.SNAPPY);
+      }
+      compressionTypes.add(compressorList);
+    }
+
+    CreateTemplatePlan plan =
+        new CreateTemplatePlan(
+            "template1", measurementList, dataTypesList, encodingList, compressionTypes);
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+
+    InsertRowPlan rowPlan = getInsertAlignedRowPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insert(rowPlan);
+
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select s1 from root.isp.d1.GPS");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(1, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(3, record.getFields().size());
+    }
+  }
+
   private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
     long time = 110L;
     TSDataType[] dataTypes =
@@ -225,7 +298,7 @@ public class InsertRowPlanTest {
     columns[2] = 10000 + "";
 
     return new InsertRowPlan(
-        new PartialPath("root.isp.d1.vector"),
+        new PartialPath("root.isp.d1.GPS"),
         time,
         new String[] {"s1", "s2", "s3"},
         dataTypes,

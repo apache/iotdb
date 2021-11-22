@@ -123,7 +123,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
     ReadWriteIOUtils.write(continuousQueryName, buffer);
     ReadWriteIOUtils.write(querySql, buffer);

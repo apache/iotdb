@@ -71,7 +71,7 @@ public class ChangeTagOffsetPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CHANGE_TAG_OFFSET.ordinal();
     buffer.put((byte) type);
     putString(buffer, path.getFullPath());

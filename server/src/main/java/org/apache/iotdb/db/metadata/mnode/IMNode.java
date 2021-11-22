@@ -61,6 +61,8 @@ public interface IMNode extends Serializable {
 
   boolean isUseTemplate();
 
+  void setUseTemplate(boolean useTemplate);
+
   Template getUpperTemplate();
 
   Template getSchemaTemplate();

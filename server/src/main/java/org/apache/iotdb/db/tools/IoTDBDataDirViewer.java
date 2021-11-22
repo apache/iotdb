@@ -64,8 +64,8 @@ public class IoTDBDataDirViewer {
         }
         List<File> fileList = Arrays.asList(seqAndUnseqDirs);
         fileList.sort((Comparator.comparing(File::getName)));
-        if (!seqAndUnseqDirs[0].getName().equals("sequence")
-            || !seqAndUnseqDirs[1].getName().equals("unsequence")) {
+        if (!"sequence".equals(seqAndUnseqDirs[0].getName())
+            || !"unsequence".equals(seqAndUnseqDirs[1].getName())) {
           throw new IOException(
               "Irregular data dir structure.There should be a sequence and unsequence directory "
                   + "under the data directory "

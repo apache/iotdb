@@ -119,16 +119,18 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
-          i + 10);
+          new Object[] {i + 10});
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
-          i);
+          new Object[] {i});
     }
     MeasurementPath fullPath =
         new MeasurementPath(
@@ -163,9 +165,9 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(sensorId, dataType, encoding),
+          Collections.singletonList(new UnaryMeasurementSchema(sensorId, dataType, encoding)),
           aRet.getTimestamp(),
-          aRet.getValue().getValue());
+          new Object[] {aRet.getValue().getValue()});
     }
     MeasurementPath fullPath =
         new MeasurementPath(

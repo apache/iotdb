@@ -241,11 +241,8 @@ public class InsertRowPlan extends InsertPlan {
           }
           continue;
         }
-        if (isAligned) {
-          dataTypes[i] = measurementMNodes[i].getSchema().getSubMeasurementsTSDataTypeList().get(i);
-        } else {
-          dataTypes[i] = measurementMNodes[i].getSchema().getType();
-        }
+
+        dataTypes[i] = measurementMNodes[i].getSchema().getType();
         try {
           values[i] = CommonUtils.parseValue(dataTypes[i], values[i].toString());
         } catch (Exception e) {
@@ -481,7 +478,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     subSerialize(buffer);

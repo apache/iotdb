@@ -84,7 +84,7 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(deletePathList.size());

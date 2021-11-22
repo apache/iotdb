@@ -28,7 +28,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -111,7 +111,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =
             new TsFileSequenceReader(targetTsFileResource.getTsFilePath());
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
       QueryExpression queryExpression =
           QueryExpression.create(Collections.singletonList(path), null);
       QueryDataSet queryDataSet = readTsFile.query(queryExpression);
