@@ -84,6 +84,13 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentFileModified();
   }
 
+  public boolean canUseCurrentTimeFileStatistics() throws IOException {
+    Statistics fileStatistics = seriesReader.currentFileStatistics();
+    return !seriesReader.isFileOverlapped()
+        && containedByTimeFilter(fileStatistics)
+        && !seriesReader.currentFileModified();
+  }
+
   @Override
   public Statistics currentFileStatistics() throws IOException {
     return seriesReader.currentFileStatistics(curIndex);
@@ -102,6 +109,13 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentChunkStatistics() throws IOException {
     Statistics chunkStatistics = currentChunkStatistics();
+    return !seriesReader.isChunkOverlapped()
+        && containedByTimeFilter(chunkStatistics)
+        && !seriesReader.currentChunkModified();
+  }
+
+  public boolean canUseCurrentTimeChunkStatistics() throws IOException {
+    Statistics chunkStatistics = seriesReader.currentChunkStatistics();
     return !seriesReader.isChunkOverlapped()
         && containedByTimeFilter(chunkStatistics)
         && !seriesReader.currentChunkModified();
@@ -133,6 +147,16 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentPageModified();
   }
 
+  public boolean canUseCurrentTimePageStatistics() throws IOException {
+    Statistics currentPageStatistics = seriesReader.currentPageStatistics();
+    if (currentPageStatistics == null) {
+      return false;
+    }
+    return !seriesReader.isPageOverlapped()
+        && containedByTimeFilter(currentPageStatistics)
+        && !seriesReader.currentPageModified();
+  }
+
   @Override
   public Statistics currentPageStatistics() throws IOException {
     return seriesReader.currentPageStatistics(curIndex);
@@ -150,11 +174,11 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   private boolean containedByTimeFilter(Statistics statistics) {
     Filter timeFilter = seriesReader.getTimeFilter();
-    if (statistics == null
-        || (statistics.getStartTime() == Long.MAX_VALUE
-            && statistics.getEndTime() == Long.MIN_VALUE)) {
-      return false;
-    }
+    //    if (statistics == null
+    //        || (statistics.getStartTime() == Long.MAX_VALUE
+    //            && statistics.getEndTime() == Long.MIN_VALUE)) {
+    //      return false;
+    //    }
     return timeFilter == null
         || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }

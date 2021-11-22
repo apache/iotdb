@@ -402,7 +402,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentFileStatistics()) {
+      if (seriesReader.canUseCurrentTimeFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -423,7 +423,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentChunkStatistics()) {
+        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -516,7 +516,7 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentPageStatistics()) {
+      if (seriesReader.canUseCurrentTimePageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =

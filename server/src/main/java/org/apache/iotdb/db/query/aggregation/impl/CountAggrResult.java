@@ -51,6 +51,7 @@ public class CountAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
     updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
+    //    setLongValue(getLongValue() + batchIterator.totalLength());
   }
 
   @Override
