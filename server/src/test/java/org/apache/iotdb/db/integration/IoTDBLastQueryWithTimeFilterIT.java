@@ -18,33 +18,30 @@
  */
 package org.apache.iotdb.db.integration;
 
-import static org.junit.Assert.fail;
-
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.Statement;
+
+import static org.junit.Assert.fail;
+
 public class IoTDBLastQueryWithTimeFilterIT {
 
   private static final String[] dataSet1 =
-      new String[] {
-          "INSERT INTO root.sg1.d1(timestamp,s1) "
-              + "values(1, 1)",
-          "flush"
-      };
+      new String[] {"INSERT INTO root.sg1.d1(timestamp,s1) " + "values(1, 1)", "flush"};
 
   private static final String TIMESEIRES_STR = "timeseries";
   private static final String VALUE_STR = "value";
   private static boolean enableLastCache;
-
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -66,7 +63,7 @@ public class IoTDBLastQueryWithTimeFilterIT {
   public void lastWithTimeFilterTest() throws Exception {
 
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("select last s1 from root.sg1.d1 where time > 1");
@@ -85,10 +82,10 @@ public class IoTDBLastQueryWithTimeFilterIT {
 
     String[] retArray =
         new String[] {
-            "root.sg1.d1.s1,1.0",
+          "root.sg1.d1.s1,1.0",
         };
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("select last s1 from root.sg1.d1");
@@ -106,8 +103,8 @@ public class IoTDBLastQueryWithTimeFilterIT {
 
   private static void prepareData() {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : dataSet1) {
