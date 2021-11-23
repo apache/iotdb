@@ -30,7 +30,6 @@ public enum TSEncoding {
   GORILLA((byte) 8),
   ZIGZAG((byte) 9);
 
-
   private final byte type;
 
   TSEncoding(byte type) {

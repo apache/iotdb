@@ -20,7 +20,6 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,68 +38,64 @@ import java.util.*;
  * <indexes> := [<index>]...
  * }</pre>
  */
-
 public class ZigzagEncoder extends Encoder {
-    private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
-    private List<Integer> values;
-    byte[] buf = new byte[5];
-    public ZigzagEncoder() {
-        super(TSEncoding.ZIGZAG);
-        this.values = new ArrayList<>();
-        logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
-    }
+  private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
+  private List<Integer> values;
+  byte[] buf = new byte[5];
 
-    /**
-     * transfer int to zigzag data
-     */
-    private int int_to_zigzag(int n){
-        return (n <<1) ^ (n >>31);
-    }
+  public ZigzagEncoder() {
+    super(TSEncoding.ZIGZAG);
+    this.values = new ArrayList<>();
+    logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
+  }
 
-    /**
-     * compression
-     */
-    private byte[] write_to_buffer(int n) {
-        int idx = 0;
-        while (true) {
-            if ((n & ~0x7F) == 0) {
-                buf[idx++] = (byte)n;
-                break;
-            } else {
-                buf[idx++] = (byte)((n & 0x7F) | 0x80);
-                n >>>= 7;
-            }
-        }
-        return Arrays.copyOfRange(buf, 0, idx);
-    }
+  /** transfer int to zigzag data */
+  private int int_to_zigzag(int n) {
+    return (n << 1) ^ (n >> 31);
+  }
 
-    /**
-     * input a integer.
-     *
-     * @param value value to encode
-     * @param out the ByteArrayOutputStream which data encode into
-     */
-    public void encodeValue(int value, ByteArrayOutputStream out) {
-        values.add(value);
+  /** compression */
+  private byte[] write_to_buffer(int n) {
+    int idx = 0;
+    while (true) {
+      if ((n & ~0x7F) == 0) {
+        buf[idx++] = (byte) n;
+        break;
+      } else {
+        buf[idx++] = (byte) ((n & 0x7F) | 0x80);
+        n >>>= 7;
+      }
     }
+    return Arrays.copyOfRange(buf, 0, idx);
+  }
 
-    @Override
-    public void flush(ByteArrayOutputStream out) throws IOException {
-        // byteCache stores all <encoded-data> and we know its size
-        ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
-        if (values.size() == 0) {
-            return;
-        }
-        for (int value : values) {
-            int n = int_to_zigzag(value);
-            byte[] bytes = write_to_buffer(n);
-            byteCache.write(bytes, 0, bytes.length);
-        }
-        byteCache.writeTo(out);
-        reset();
-    }
+  /**
+   * input a integer.
+   *
+   * @param value value to encode
+   * @param out the ByteArrayOutputStream which data encode into
+   */
+  public void encodeValue(int value, ByteArrayOutputStream out) {
+    values.add(value);
+  }
 
-    private void reset() {
-        values.clear();
+  @Override
+  public void flush(ByteArrayOutputStream out) throws IOException {
+    // byteCache stores all <encoded-data> and we know its size
+    ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
+    if (values.size() == 0) {
+      return;
     }
+    for (int value : values) {
+      int n = int_to_zigzag(value);
+      byte[] bytes = write_to_buffer(n);
+      byteCache.write(bytes, 0, bytes.length);
+    }
+    byteCache.writeTo(out);
+    reset();
+  }
+
+  private void reset() {
+    values.clear();
+  }
 }
