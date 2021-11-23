@@ -39,6 +39,7 @@ public class RawQueryWithValueFilterTest {
   public void setUp() throws Exception {
     config.setEnableSeqSpaceCompaction(false);
     config.setEnableUnseqSpaceCompaction(false);
+    config.setEnableCrossSpaceCompaction(false);
     EnvironmentUtils.envSetUp();
     for (String sql : sqls) {
       queryExecutor.processNonQuery(processor.parseSQLToPhysicalPlan(sql));

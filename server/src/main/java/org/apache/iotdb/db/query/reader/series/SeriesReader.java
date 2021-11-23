@@ -261,7 +261,10 @@ public class SeriesReader {
     }
 
     while (firstTimeSeriesMetadata == null
-        && (!seqFileResource.isEmpty() || !unseqFileResource.isEmpty())) {
+        && (!seqFileResource.isEmpty()
+            || !unseqFileResource.isEmpty()
+            || !seqTimeSeriesMetadata.isEmpty()
+            || !unSeqTimeSeriesMetadata.isEmpty())) {
       // init first time series metadata whose startTime is minimum
       tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
     }
