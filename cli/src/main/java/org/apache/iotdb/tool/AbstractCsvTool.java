@@ -23,7 +23,6 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 
-import jline.internal.Nullable;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
@@ -210,7 +209,7 @@ public abstract class AbstractCsvTool {
    * @param filePath the directory to save the file
    */
   public static Boolean writeCsvFile(
-      @Nullable List<String> headerNames, List<List<Object>> records, String filePath) {
+      List<String> headerNames, List<List<Object>> records, String filePath) {
     try {
       CSVPrinter printer =
           CSVFormat.DEFAULT
