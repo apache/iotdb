@@ -125,16 +125,20 @@ public class AggregationQueryOperator extends QueryOperator {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
     if (isGroupByLevel()) {
-      aggregationPlan.setLevels(specialClauseComponent.getLevels());
-      aggregationPlan.setGroupByLevelController(specialClauseComponent.groupByLevelController);
-      try {
-        if (!verifyAllAggregationDataTypesEqual()) {
-          throw new LogicalOperatorException("Aggregate among unmatched data types");
-        }
-      } catch (MetadataException e) {
-        throw new LogicalOperatorException(e);
-      }
+      initGroupByLevel(aggregationPlan);
     }
     return aggregationPlan;
+  }
+
+  protected void initGroupByLevel(AggregationPlan aggregationPlan) throws QueryProcessException{
+    aggregationPlan.setLevels(specialClauseComponent.getLevels());
+    aggregationPlan.setGroupByLevelController(specialClauseComponent.groupByLevelController);
+    try {
+      if (!verifyAllAggregationDataTypesEqual()) {
+        throw new LogicalOperatorException("Aggregate among unmatched data types");
+      }
+    } catch (MetadataException e) {
+      throw new LogicalOperatorException(e);
+    }
   }
 }

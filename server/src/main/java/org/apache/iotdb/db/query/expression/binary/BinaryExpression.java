@@ -48,6 +48,14 @@ public abstract class BinaryExpression extends Expression {
   protected final Expression leftExpression;
   protected final Expression rightExpression;
 
+  public Expression getLeftExpression() {
+    return leftExpression;
+  }
+
+  public Expression getRightExpression() {
+    return rightExpression;
+  }
+
   protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
     this.leftExpression = leftExpression;
     this.rightExpression = rightExpression;
@@ -60,7 +68,18 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
+    return leftExpression.isTimeSeriesGeneratingFunctionExpression() || rightExpression.isTimeSeriesGeneratingFunctionExpression();
+  }
+
+  @Override
+  public boolean isUDAFExpression(){
+    if(leftExpression.isAggregationFunctionExpression()||rightExpression.isAggregationFunctionExpression()){
+      return true;
+    }
+    if(leftExpression.isUDAFExpression() || rightExpression.isUDAFExpression()){
+      return true;
+    }
+    return false;
   }
 
   @Override
@@ -207,4 +226,8 @@ public abstract class BinaryExpression extends Expression {
   }
 
   protected abstract String operator();
+
+
+
+
 }

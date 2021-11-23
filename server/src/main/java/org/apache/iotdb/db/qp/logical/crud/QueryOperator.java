@@ -196,20 +196,7 @@ public class QueryOperator extends Operator {
 
     // transform filter operator to expression
     if (whereComponent != null) {
-      FilterOperator filterOperator = whereComponent.getFilterOperator();
-      List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
-      try {
-        List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPaths);
-        HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-        for (int i = 0; i < filterPaths.size(); i++) {
-          rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPaths.get(i));
-          pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
-        }
-        IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-        rawDataQueryPlan.setExpression(expression);
-      } catch (MetadataException e) {
-        throw new LogicalOptimizeException(e.getMessage());
-      }
+     transformFilterOperatorToExpression(generator,rawDataQueryPlan);
     }
 
     if (queryPlan instanceof QueryIndexPlan) {
@@ -228,6 +215,24 @@ public class QueryOperator extends Operator {
     convertSpecialClauseValues(rawDataQueryPlan);
 
     return rawDataQueryPlan;
+  }
+
+  protected void transformFilterOperatorToExpression(PhysicalGenerator generator,RawDataQueryPlan rawDataQueryPlan)
+      throws QueryProcessException {
+    FilterOperator filterOperator = whereComponent.getFilterOperator();
+    List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
+    try {
+      List<TSDataType> seriesTypes = generator.getSeriesTypes(filterPaths);
+      HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+      for (int i = 0; i < filterPaths.size(); i++) {
+        rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPaths.get(i));
+        pathTSDataTypeHashMap.put(filterPaths.get(i), seriesTypes.get(i));
+      }
+      IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
+      rawDataQueryPlan.setExpression(expression);
+    } catch (MetadataException | QueryProcessException e) {
+      throw new LogicalOptimizeException(e.getMessage());
+    }
   }
 
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
@@ -334,7 +339,7 @@ public class QueryOperator extends Operator {
     return alignByDevicePlan;
   }
 
-  private void convertSpecialClauseValues(QueryPlan queryPlan) {
+  protected void convertSpecialClauseValues(QueryPlan queryPlan) {
     if (specialClauseComponent != null) {
       queryPlan.setWithoutAllNull(specialClauseComponent.isWithoutAllNull());
       queryPlan.setWithoutAnyNull(specialClauseComponent.isWithoutAnyNull());

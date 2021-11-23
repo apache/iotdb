@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import com.sun.org.apache.bcel.internal.generic.INSTANCEOF;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -36,11 +37,13 @@ public final class SelectComponent {
 
   private boolean hasAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
+  private boolean hasUserDefinedAggregationFunction =false;
 
   private List<ResultColumn> resultColumns = new ArrayList<>();
 
   private List<PartialPath> pathsCache;
   private List<String> aggregationFunctionsCache;
+
 
   /** init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>. */
   public SelectComponent(ZoneId zoneId) {
@@ -66,8 +69,15 @@ public final class SelectComponent {
     return hasTimeSeriesGeneratingFunction;
   }
 
+  public boolean hasUserDefinedAggregationFunction(){
+    return hasUserDefinedAggregationFunction;
+  }
+
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
+    if(resultColumn.getExpression().isUDAFExpression()){
+      hasUserDefinedAggregationFunction = true;
+    }
     if (resultColumn.getExpression().isAggregationFunctionExpression()) {
       hasAggregationFunction = true;
     }

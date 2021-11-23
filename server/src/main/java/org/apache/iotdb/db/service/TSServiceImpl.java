@@ -61,6 +61,7 @@ import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
 import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
@@ -781,7 +782,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan) &&!(plan instanceof UDAFPlan)) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
       if (plan instanceof QueryPlan) {
@@ -809,13 +810,13 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDFPlan
+      } else if (plan instanceof UDFPlan || plan instanceof UDAFPlan
           || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
-      if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+      if (plan.getOperatorType() == OperatorType.AGGREGATION || plan.getOperatorType() ==OperatorType.UDAF) {
         resp.setIgnoreTimeStamp(true);
       } else if (plan instanceof ShowQueryProcesslistPlan) {
         resp.setIgnoreTimeStamp(false);
@@ -986,6 +987,14 @@ public class TSServiceImpl implements TSIService.Iface {
           respColumns.add(resultColumn.getResultColumnName());
         }
         seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
+        break;
+      case UDAF:
+        seriesTypes = new ArrayList<>();
+        UDAFPlan udafPlan = (UDAFPlan) plan;
+        for (int i = 0; i < paths.size(); i++) {
+          respColumns.add(resultColumns.get(i).getResultColumnName());
+          seriesTypes.add(resultColumns.get(i).getDataType());
+        }
         break;
       case UDTF:
         seriesTypes = new ArrayList<>();

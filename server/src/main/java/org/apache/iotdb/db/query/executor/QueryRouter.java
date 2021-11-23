@@ -22,15 +22,18 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
@@ -151,6 +154,22 @@ public class QueryRouter implements IQueryRouter {
       dataSet = engineExecutor.executeWithoutValueFilter(aggregationPlan);
     }
 
+    return dataSet;
+  }
+
+  @Override
+  public QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, IOException,
+      QueryProcessException{
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "paths:"
+              + udafPlan.getPaths());
+    }
+    UDAFQueryExecutor udafQueryExecutor = new UDAFQueryExecutor(udafPlan);
+    AggregationPlan innerAggregationPlan = udafPlan.getInnerAggregationPlan();
+    QueryDataSet innerQueryDataSet = aggregate(innerAggregationPlan,context);
+    QueryDataSet dataSet = udafQueryExecutor.convertInnerAggregationDataset((SingleDataSet) innerQueryDataSet);
     return dataSet;
   }
 
