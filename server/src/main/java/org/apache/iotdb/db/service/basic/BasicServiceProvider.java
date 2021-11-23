@@ -74,7 +74,7 @@ public class BasicServiceProvider {
   protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   protected final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  protected final SessionManager sessionManager = SessionManager.getInstance();
+  public static SessionManager sessionManager = SessionManager.getInstance();
   protected final TracingManager tracingManager = TracingManager.getInstance();
   protected final QueryFrequencyRecorder queryFrequencyRecorder;
 
@@ -102,7 +102,7 @@ public class BasicServiceProvider {
     return isLoggedIn;
   }
 
-  protected boolean checkAuthorization(
+  public boolean checkAuthorization(
       List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
@@ -111,7 +111,7 @@ public class BasicServiceProvider {
     return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
   }
 
-  protected TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
+  public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<? extends PartialPath> paths = plan.getPaths();
     try {
       if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
@@ -129,7 +129,7 @@ public class BasicServiceProvider {
     return null;
   }
 
-  protected BasicOpenSessionResp openSession(
+  public BasicOpenSessionResp openSession(
       String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
@@ -183,7 +183,7 @@ public class BasicServiceProvider {
     return openSessionResp.sessionId(sessionId);
   }
 
-  protected boolean closeSession(long sessionId) {
+  public boolean closeSession(long sessionId) {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
     sessionManager.removeCurrSessionId();
@@ -228,13 +228,13 @@ public class BasicServiceProvider {
     }
   }
 
-  protected QueryContext genQueryContext(
+  public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
     return new QueryContext(queryId, debug, startTime, statement, timeout);
   }
 
   /** create QueryDataSet and buffer it for fetchResults */
-  protected QueryDataSet createQueryDataSet(
+  public QueryDataSet createQueryDataSet(
       QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
           IOException, MetadataException, SQLException, TException, InterruptedException {
@@ -245,7 +245,7 @@ public class BasicServiceProvider {
     return queryDataSet;
   }
 
-  protected boolean executeNonQuery(PhysicalPlan plan)
+  public boolean executeNonQuery(PhysicalPlan plan)
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
     plan.checkIntegrity();
     if (!(plan instanceof SetSystemModePlan)
@@ -255,11 +255,6 @@ public class BasicServiceProvider {
           "Current system mode is read-only, does not support non-query operation");
     }
     return executor.processNonQuery(plan);
-  }
-
-  /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
-    sessionManager.releaseQueryResource(queryId);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {

@@ -1356,57 +1356,6 @@ public class SessionPool {
     return false;
   }
 
-  public void createSchemaTemplate(
-      String name,
-      List<String> schemaNames,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < RETRY; i++) {
-      Session session = getSession();
-      try {
-        session.createSchemaTemplate(
-            name, schemaNames, measurements, dataTypes, encodings, compressors);
-        putBack(session);
-        return;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException | RuntimeException e) {
-        putBack(session);
-        throw e;
-      }
-    }
-  }
-
-  /** New interface for no schemaNames */
-  public void createSchemaTemplate(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < RETRY; i++) {
-      Session session = getSession();
-      try {
-        session.createSchemaTemplate(name, measurements, dataTypes, encodings, compressors);
-        putBack(session);
-        return;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException | RuntimeException e) {
-        putBack(session);
-        throw e;
-      }
-    }
-  }
-
   /**
    * Construct Template at session and create it at server.
    *

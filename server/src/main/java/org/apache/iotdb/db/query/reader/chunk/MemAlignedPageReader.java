@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 
@@ -52,14 +53,26 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
 
   @Override
   public BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {
-    TSDataType dataType = chunkMetadata.getDataType();
-    BatchData batchData = BatchDataFactory.createBatchData(dataType, ascending, false);
+    BatchData batchData = BatchDataFactory.createBatchData(TSDataType.VECTOR, ascending, false);
     while (timeValuePairIterator.hasNextTimeValuePair()) {
       TimeValuePair timeValuePair = timeValuePairIterator.nextTimeValuePair();
-      if (valueFilter == null
-          || valueFilter.satisfy(
-              timeValuePair.getTimestamp(), timeValuePair.getValue().getValue())) {
-        batchData.putAnObject(timeValuePair.getTimestamp(), timeValuePair.getValue().getValue());
+      TsPrimitiveType[] values = timeValuePair.getValue().getVector();
+      // save the first not null value of each row
+      Object firstNotNullObject = null;
+      for (TsPrimitiveType value : values) {
+        if (value != null) {
+          firstNotNullObject = value.getValue();
+          break;
+        }
+      }
+      // if all the sub sensors' value are null in current time
+      // or current row is not satisfied with the filter, just discard it
+      // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
+      // accept AlignedPath with only one sub sensor
+      if (firstNotNullObject != null
+          && (valueFilter == null
+              || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject))) {
+        batchData.putVector(timeValuePair.getTimestamp(), values);
       }
     }
     return batchData.flip();

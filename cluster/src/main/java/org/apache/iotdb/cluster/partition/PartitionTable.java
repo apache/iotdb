@@ -34,7 +34,7 @@ import java.util.List;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
- * value is a PartitionGroup witch contains all nodes that manage the corresponding data.
+ * value is a PartitionGroup which contains all nodes that manage the corresponding data.
  */
 public interface PartitionTable {
 
@@ -88,10 +88,10 @@ public interface PartitionTable {
   List<PartitionGroup> getLocalGroups();
 
   /**
-   * @param raftNode
+   * @param headerNode from which node the partition starts
    * @return the partition group starting from the header.
    */
-  PartitionGroup getHeaderGroup(RaftNode raftNode);
+  PartitionGroup getPartitionGroup(RaftNode headerNode);
 
   ByteBuffer serialize();
 

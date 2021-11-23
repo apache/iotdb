@@ -53,8 +53,19 @@ public class DropwizardMetricManagerTest {
     assertEquals(counter1, counter2);
   }
 
+  private void getOrCreateDifferentMetricsWithSameName() {
+    Timer timer = metricManager.getOrCreateTimer("metric", "tag1", "tag2");
+    assertNotNull(timer);
+    metricManager.getOrCreateCounter("metric", "tag1", "tag2");
+  }
+
   @Test
-  public void getOrCreatGauge() {
+  public void getOrCreateDifferentMetricsWithSameNameTest() {
+    assertThrows(IllegalArgumentException.class, this::getOrCreateDifferentMetricsWithSameName);
+  }
+
+  @Test
+  public void getOrCreateGauge() {
     Gauge gauge1 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
     assertNotNull(gauge1);
     Gauge gauge2 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
@@ -62,7 +73,7 @@ public class DropwizardMetricManagerTest {
   }
 
   @Test
-  public void getOrCreatRate() {
+  public void getOrCreateRate() {
     Rate rate1 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");
     assertNotNull(rate1);
     Rate rate2 = metricManager.getOrCreateRate("rate_test", "tag1", "tag2");

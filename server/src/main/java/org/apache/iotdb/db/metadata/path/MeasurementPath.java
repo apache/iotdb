@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -246,14 +247,15 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     // check If Memtable Contains this path
     if (!memTableMap.containsKey(getDevice())
-        || !memTableMap.get(getDevice()).containsKey(getMeasurement())) {
+        || !memTableMap.get(getDevice()).contains(getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk = memTableMap.get(getDevice()).get(getMeasurement());
+    IWritableMemChunk memChunk =
+        memTableMap.get(getDevice()).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();
@@ -273,6 +275,7 @@ public class MeasurementPath extends PartialPath {
     try {
       newMeasurementPath =
           new MeasurementPath(this.getDevice(), this.getMeasurement(), this.getMeasurementSchema());
+      newMeasurementPath.setUnderAlignedEntity(this.isUnderAlignedEntity);
     } catch (IllegalPathException e) {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
     }

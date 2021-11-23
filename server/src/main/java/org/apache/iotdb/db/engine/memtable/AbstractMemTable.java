@@ -22,20 +22,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
-import org.apache.iotdb.db.utils.datastructure.TVList;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -47,7 +40,7 @@ import java.util.Map.Entry;
 
 public abstract class AbstractMemTable implements IMemTable {
 
-  private final Map<String, Map<String, IWritableMemChunk>> memTableMap;
+  private final Map<String, IWritableMemChunkGroup> memTableMap;
   /**
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */
@@ -80,12 +73,12 @@ public abstract class AbstractMemTable implements IMemTable {
     this.memTableMap = new HashMap<>();
   }
 
-  public AbstractMemTable(Map<String, Map<String, IWritableMemChunk>> memTableMap) {
+  public AbstractMemTable(Map<String, IWritableMemChunkGroup> memTableMap) {
     this.memTableMap = memTableMap;
   }
 
   @Override
-  public Map<String, Map<String, IWritableMemChunk>> getMemTableMap() {
+  public Map<String, IWritableMemChunkGroup> getMemTableMap() {
     return memTableMap;
   }
 
@@ -93,63 +86,65 @@ public abstract class AbstractMemTable implements IMemTable {
    * create this MemChunk if it's not exist
    *
    * @param deviceId device id
-   * @param schema measurement schema
-   * @return this MemChunk
+   * @param schemaList measurement schemaList
+   * @return this MemChunkGroup
    */
-  private IWritableMemChunk createMemChunkIfNotExistAndGet(
-      String deviceId, IMeasurementSchema schema) {
-    Map<String, IWritableMemChunk> memSeries =
-        memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
-
-    return memSeries.computeIfAbsent(
-        schema.getMeasurementId(),
-        k -> {
-          seriesNumber++;
-          totalPointsNumThreshold += avgSeriesPointNumThreshold;
-          return genMemSeries(schema);
-        });
+  private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
+      String deviceId, List<IMeasurementSchema> schemaList) {
+    IWritableMemChunkGroup memChunkGroup =
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k -> {
+              seriesNumber++;
+              totalPointsNumThreshold += avgSeriesPointNumThreshold;
+              return new WritableMemChunkGroup(schemaList);
+            });
+    for (IMeasurementSchema schema : schemaList) {
+      if (!memChunkGroup.contains(schema.getMeasurementId())) {
+        seriesNumber++;
+        totalPointsNumThreshold += avgSeriesPointNumThreshold;
+      }
+    }
+    return memChunkGroup;
   }
 
-  private IWritableMemChunk createAlignedMemChunkIfNotExistAndGet(
-      String deviceId, IMeasurementSchema schema) {
-    Map<String, IWritableMemChunk> memSeries =
-        memTableMap.computeIfAbsent(deviceId, k -> new HashMap<>());
-
-    VectorMeasurementSchema vectorSchema = (VectorMeasurementSchema) schema;
-    return memSeries.computeIfAbsent(
-        vectorSchema.getMeasurementId(),
-        k -> {
-          seriesNumber++;
-          totalPointsNumThreshold +=
-              avgSeriesPointNumThreshold * vectorSchema.getSubMeasurementsCount();
-          return genAlignedMemSeries(vectorSchema);
-        });
+  private IWritableMemChunkGroup createAlignedMemChunkGroupIfNotExistAndGet(
+      String deviceId, List<IMeasurementSchema> schemaList) {
+    IWritableMemChunkGroup memChunkGroup =
+        memTableMap.computeIfAbsent(
+            deviceId,
+            k -> {
+              seriesNumber++;
+              totalPointsNumThreshold += avgSeriesPointNumThreshold;
+              return new AlignedWritableMemChunkGroup(schemaList);
+            });
+    for (IMeasurementSchema schema : schemaList) {
+      if (!memChunkGroup.contains(schema.getMeasurementId())) {
+        seriesNumber++;
+        totalPointsNumThreshold += avgSeriesPointNumThreshold;
+      }
+    }
+    return memChunkGroup;
   }
-
-  protected abstract IWritableMemChunk genMemSeries(IMeasurementSchema schema);
-
-  protected abstract IWritableMemChunk genAlignedMemSeries(IMeasurementSchema schema);
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
+    String[] measurements = insertRowPlan.getMeasurements();
     Object[] values = insertRowPlan.getValues();
 
-    IMeasurementMNode[] measurementMNodes = insertRowPlan.getMeasurementMNodes();
-    for (int i = 0; i < measurementMNodes.length; i++) {
-      if (values[i] == null) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
+    for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
+      if (measurements[i] == null) {
         continue;
       }
-      memSize +=
-          MemUtils.getRecordSize(
-              measurementMNodes[i].getSchema().getType(), values[i], disableMemControl);
-
-      write(
-          insertRowPlan.getDeviceId().getFullPath(),
-          measurementMNodes[i].getSchema(),
-          insertRowPlan.getTime(),
-          values[i]);
+      IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
+      schemaList.add(schema);
+      dataTypes.add(schema.getType());
     }
+    memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
+    write(insertRowPlan.getDeviceId().getFullPath(), schemaList, insertRowPlan.getTime(), values);
     totalPointsNum +=
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
   }
@@ -157,35 +152,25 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertAlignedRow(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
-    // write vector
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    CompressionType compressionType = null;
+    String[] measurements = insertRowPlan.getMeasurements();
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
-      if (insertRowPlan.getMeasurements()[i] == null) {
+      if (measurements[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
-      measurements.add(schema.getMeasurementId());
-      types.add(schema.getType());
-      encodings.add(schema.getEncodingType());
-      compressionType = schema.getCompressor();
+      schemaList.add(schema);
+      dataTypes.add(schema.getType());
     }
-    if (measurements.isEmpty()) {
+    if (schemaList.isEmpty()) {
       return;
     }
-    VectorMeasurementSchema vectorSchema =
-        new VectorMeasurementSchema(
-            AlignedPath.VECTOR_PLACEHOLDER,
-            measurements.toArray(new String[measurements.size()]),
-            types.toArray(new TSDataType[measurements.size()]),
-            encodings.toArray(new TSEncoding[measurements.size()]),
-            compressionType);
-    memSize += MemUtils.getAlignedRecordSize(types, insertRowPlan.getValues(), disableMemControl);
+    memSize +=
+        MemUtils.getAlignedRecordsSize(dataTypes, insertRowPlan.getValues(), disableMemControl);
     writeAlignedRow(
         insertRowPlan.getDeviceId().getFullPath(),
-        vectorSchema,
+        schemaList,
         insertRowPlan.getTime(),
         insertRowPlan.getValues());
     totalPointsNum +=
@@ -198,7 +183,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
-      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
+      memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
@@ -213,7 +198,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
-      memSize += MemUtils.getAlignedRecordSize(insertTabletPlan, start, end, disableMemControl);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
@@ -224,92 +209,81 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void write(
-      String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue) {
-    IWritableMemChunk memSeries = createMemChunkIfNotExistAndGet(deviceId, schema);
-    memSeries.write(insertTime, objectValue);
+      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue) {
+    IWritableMemChunkGroup memChunkGroup =
+        createMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
+    memChunkGroup.write(insertTime, objectValue, schemaList);
   }
 
   @Override
   public void writeAlignedRow(
-      String deviceId, IMeasurementSchema schema, long insertTime, Object[] objectValue) {
-    IWritableMemChunk memSeries = createAlignedMemChunkIfNotExistAndGet(deviceId, schema);
-    memSeries.writeAlignedValue(insertTime, objectValue, schema);
+      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue) {
+    IWritableMemChunkGroup memChunkGroup =
+        createAlignedMemChunkGroupIfNotExistAndGet(deviceId, schemaList);
+    memChunkGroup.write(insertTime, objectValue, schemaList);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
   @Override
   public void write(InsertTabletPlan insertTabletPlan, int start, int end) {
-    updatePlanIndexes(insertTabletPlan.getIndex());
-    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getColumns()[i] == null) {
-        continue;
-      }
-      IWritableMemChunk memSeries =
-          createMemChunkIfNotExistAndGet(
-              insertTabletPlan.getDeviceId().getFullPath(),
-              insertTabletPlan.getMeasurementMNodes()[i].getSchema());
-      memSeries.write(
-          insertTabletPlan.getTimes(),
-          insertTabletPlan.getColumns()[i],
-          insertTabletPlan.getBitMaps() != null ? insertTabletPlan.getBitMaps()[i] : null,
-          insertTabletPlan.getDataTypes()[i],
-          start,
-          end);
-    }
-  }
-
-  public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
-    updatePlanIndexes(insertTabletPlan.getIndex());
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
-    List<TSEncoding> encodings = new ArrayList<>();
-    CompressionType compressionType = null;
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
       if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
-      measurements.add(schema.getMeasurementId());
-      types.add(schema.getType());
-      encodings.add(schema.getEncodingType());
-      compressionType = schema.getCompressor();
+      schemaList.add(schema);
     }
-    if (measurements.isEmpty()) {
-      return;
-    }
-    VectorMeasurementSchema vectorSchema =
-        new VectorMeasurementSchema(
-            AlignedPath.VECTOR_PLACEHOLDER,
-            measurements.toArray(new String[measurements.size()]),
-            types.toArray(new TSDataType[measurements.size()]),
-            encodings.toArray(new TSEncoding[measurements.size()]),
-            compressionType);
-    IWritableMemChunk memSeries =
-        createAlignedMemChunkIfNotExistAndGet(
-            insertTabletPlan.getDeviceId().getFullPath(), vectorSchema);
-    memSeries.writeAlignedValues(
+    IWritableMemChunkGroup memChunkGroup =
+        createMemChunkGroupIfNotExistAndGet(
+            insertTabletPlan.getDeviceId().getFullPath(), schemaList);
+    memChunkGroup.writeValues(
         insertTabletPlan.getTimes(),
         insertTabletPlan.getColumns(),
         insertTabletPlan.getBitMaps(),
-        vectorSchema,
+        schemaList,
+        start,
+        end);
+  }
+
+  @Override
+  public void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getColumns()[i] == null) {
+        continue;
+      }
+      IMeasurementSchema schema = insertTabletPlan.getMeasurementMNodes()[i].getSchema();
+      schemaList.add(schema);
+    }
+    if (schemaList.isEmpty()) {
+      return;
+    }
+    IWritableMemChunkGroup memChunkGroup =
+        createAlignedMemChunkGroupIfNotExistAndGet(
+            insertTabletPlan.getDeviceId().getFullPath(), schemaList);
+    memChunkGroup.writeValues(
+        insertTabletPlan.getTimes(),
+        insertTabletPlan.getColumns(),
+        insertTabletPlan.getBitMaps(),
+        schemaList,
         start,
         end);
   }
 
   @Override
   public boolean checkIfChunkDoesNotExist(String deviceId, String measurement) {
-    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
-    if (null == memSeries) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
+    if (null == memChunkGroup) {
       return true;
     }
-    return !memSeries.containsKey(measurement);
+    return !memChunkGroup.contains(measurement);
   }
 
   @Override
-  public int getCurrentChunkPointNum(String deviceId, String measurement) {
-    Map<String, IWritableMemChunk> memSeries = memTableMap.get(deviceId);
-    IWritableMemChunk memChunk = memSeries.get(measurement);
-    return (int) memChunk.count();
+  public long getCurrentChunkPointNum(String deviceId, String measurement) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
+    return memChunkGroup.getCurrentChunkPointNum(measurement);
   }
 
   @Override
@@ -325,10 +299,8 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long size() {
     long sum = 0;
-    for (Map<String, IWritableMemChunk> seriesMap : memTableMap.values()) {
-      for (IWritableMemChunk writableMemChunk : seriesMap.values()) {
-        sum += writableMemChunk.count();
-      }
+    for (IWritableMemChunkGroup writableMemChunkGroup : memTableMap.values()) {
+      sum += writableMemChunkGroup.count();
     }
     return sum;
   }
@@ -373,12 +345,13 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
-    Map<String, IWritableMemChunk> deviceMap = memTableMap.get(devicePath.getFullPath());
-    if (deviceMap == null) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(devicePath.getFullPath());
+    if (memChunkGroup == null) {
       return;
     }
 
-    Iterator<Entry<String, IWritableMemChunk>> iter = deviceMap.entrySet().iterator();
+    Iterator<Entry<String, IWritableMemChunk>> iter =
+        memChunkGroup.getMemChunkMap().entrySet().iterator();
     while (iter.hasNext()) {
       Entry<String, IWritableMemChunk> entry = iter.next();
       IWritableMemChunk chunk = entry.getValue();
@@ -433,13 +406,8 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void release() {
-    for (Entry<String, Map<String, IWritableMemChunk>> entry : memTableMap.entrySet()) {
-      for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
-        TVList list = subEntry.getValue().getTVList();
-        if (list.getReferenceCount() == 0) {
-          TVListAllocator.getInstance().release(list);
-        }
-      }
+    for (Entry<String, IWritableMemChunkGroup> entry : memTableMap.entrySet()) {
+      entry.getValue().release();
     }
   }
 

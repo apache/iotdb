@@ -23,6 +23,9 @@ import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.template.InternalNode;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,9 +34,9 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -274,39 +277,20 @@ public class AlignedTimeseriesSessionExample {
 
   // be sure template is coordinate with tablet
   private static void createTemplate()
-      throws StatementExecutionException, IoTDBConnectionException {
-    List<List<String>> measurementList = new ArrayList<>();
-    List<String> vectorMeasurement = new ArrayList<>();
-    for (int i = 1; i <= 2; i++) {
-      vectorMeasurement.add("s" + i);
-    }
-    measurementList.add(vectorMeasurement);
+      throws StatementExecutionException, IoTDBConnectionException, IOException {
+    Template template = new Template("template1");
+    InternalNode iNodeVector = new InternalNode("vector", true);
+    MeasurementNode mNodeS1 =
+        new MeasurementNode("s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    MeasurementNode mNodeS2 =
+        new MeasurementNode("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    List<TSDataType> vectorDatatype = new ArrayList<>();
-    vectorDatatype.add(TSDataType.INT64);
-    vectorDatatype.add(TSDataType.INT32);
-    dataTypeList.add(vectorDatatype);
+    iNodeVector.addChild(mNodeS1);
+    iNodeVector.addChild(mNodeS2);
 
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    List<TSEncoding> vectorEncoding = new ArrayList<>();
-    for (int i = 1; i <= 2; i++) {
-      vectorEncoding.add(TSEncoding.RLE);
-    }
-    encodingList.add(vectorEncoding);
+    template.addToTemplate(iNodeVector);
 
-    List<List<CompressionType>> compressionTypeList = new ArrayList<>();
-    List<CompressionType> vectorCompressions = new ArrayList<>();
-    vectorCompressions.add(CompressionType.SNAPPY);
-    vectorCompressions.add(CompressionType.SNAPPY);
-    compressionTypeList.add(Collections.singletonList(CompressionType.SNAPPY));
-    compressionTypeList.add(vectorCompressions);
-
-    List<String> schemaList = new ArrayList<>();
-    schemaList.add("vector");
-
-    session.createSchemaTemplate(
-        "template1", schemaList, measurementList, dataTypeList, encodingList, compressionTypeList);
+    session.createSchemaTemplate(template);
     session.setSchemaTemplate("template1", "root.sg_1");
   }
 

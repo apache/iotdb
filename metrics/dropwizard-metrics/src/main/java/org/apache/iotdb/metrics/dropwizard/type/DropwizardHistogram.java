@@ -31,11 +31,6 @@ public class DropwizardHistogram implements Histogram {
   }
 
   @Override
-  public void update(int value) {
-    histogram.update(value);
-  }
-
-  @Override
   public void update(long value) {
     histogram.update(value);
   }

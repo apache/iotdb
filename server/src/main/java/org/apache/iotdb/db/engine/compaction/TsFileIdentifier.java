@@ -68,7 +68,7 @@ public class TsFileIdentifier {
    */
   public static TsFileIdentifier getFileIdentifierFromFilePath(String filepath) {
     String splitter = File.separator;
-    if (splitter.equals("\\")) {
+    if ("\\".equals(splitter)) {
       // String.split use a regex way to split the string into array
       // "\" Should be escaped as "\\"
       splitter = "\\\\";

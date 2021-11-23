@@ -56,14 +56,33 @@ public class MemUtils {
   }
 
   /**
+   * function for getting the value size. If mem control enabled, do not add text data size here,
+   * the size will be added to memtable before inserting.
+   */
+  public static long getRecordsSize(
+      List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
+    long memSize = 0L;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      if (value[i] == null) {
+        continue;
+      }
+      memSize += getRecordSize(dataTypes.get(i), value[i], addingTextDataSize);
+    }
+    return memSize;
+  }
+
+  /**
    * function for getting the vector value size. If mem control enabled, do not add text data size
    * here, the size will be added to memtable before inserting.
    */
-  public static long getAlignedRecordSize(
+  public static long getAlignedRecordsSize(
       List<TSDataType> dataTypes, Object[] value, boolean addingTextDataSize) {
     // time and index size
     long memSize = 8L + 4L;
     for (int i = 0; i < dataTypes.size(); i++) {
+      if (value[i] == null) {
+        continue;
+      }
       if (dataTypes.get(i) == TSDataType.TEXT) {
         memSize += (addingTextDataSize ? getBinarySize((Binary) value[i]) : 0);
       } else {
@@ -90,13 +109,16 @@ public class MemUtils {
    * If mem control enabled, do not add text data size here, the size will be added to memtable
    * before inserting.
    */
-  public static long getRecordSize(
+  public static long getTabletSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getMeasurements()[i] == null) {
+        continue;
+      }
       // time column memSize
       memSize += (end - start) * 8L;
       if (insertTabletPlan.getDataTypes()[i] == TSDataType.TEXT && addingTextDataSize) {
@@ -110,13 +132,16 @@ public class MemUtils {
     return memSize;
   }
 
-  public static long getAlignedRecordSize(
+  public static long getAlignedTabletSize(
       InsertTabletPlan insertTabletPlan, int start, int end, boolean addingTextDataSize) {
     if (start >= end) {
       return 0L;
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
+      if (insertTabletPlan.getMeasurements()[i] == null) {
+        continue;
+      }
       TSDataType valueType;
       // value columns memSize
       valueType = insertTabletPlan.getDataTypes()[i];

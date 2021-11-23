@@ -20,7 +20,8 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
@@ -50,6 +51,9 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -65,6 +69,8 @@ import java.util.Set;
  * s2]
  */
 public class AlignedPath extends PartialPath {
+
+  private static final Logger logger = LoggerFactory.getLogger(AlignedPath.class);
 
   // todo improve vector implementation by remove this placeholder
   public static final String VECTOR_PLACEHOLDER = "";
@@ -133,8 +139,12 @@ public class AlignedPath extends PartialPath {
     this.measurementList = measurementList;
   }
 
-  public void addMeasurement(List<String> measurements) {
+  public void addMeasurements(List<String> measurements) {
     this.measurementList.addAll(measurements);
+  }
+
+  public void addSchemas(List<IMeasurementSchema> schemas) {
+    this.schemaList.addAll(schemas);
   }
 
   public void addMeasurement(MeasurementPath measurementPath) {
@@ -347,14 +357,14 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     // check If memtable contains this path
     if (!memTableMap.containsKey(getDevice())) {
       return null;
     }
     AlignedWritableMemChunk alignedMemChunk =
-        ((AlignedWritableMemChunk) memTableMap.get(getDevice()).get(VECTOR_PLACEHOLDER));
+        ((AlignedWritableMemChunkGroup) memTableMap.get(getDevice())).getAlignedMemChunk();
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (alignedMemChunk.containsMeasurement(measurement)) {
@@ -411,5 +421,20 @@ public class AlignedPath extends PartialPath {
   @Override
   public int getColumnNum() {
     return measurementList.size();
+  }
+
+  @Override
+  public AlignedPath clone() {
+    AlignedPath alignedPath = null;
+    try {
+      alignedPath =
+          new AlignedPath(
+              this.getDevice(),
+              new ArrayList<>(this.measurementList),
+              new ArrayList<>(this.schemaList));
+    } catch (IllegalPathException e) {
+      logger.warn("path is illegal: {}", this.getFullPath(), e);
+    }
+    return alignedPath;
   }
 }

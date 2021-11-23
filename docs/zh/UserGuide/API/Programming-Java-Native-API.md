@@ -211,27 +211,7 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-* 创建一个物理量模板
-
-```java
-* name: 物理量模板名称
-* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个 list 中再放入 measurements 中，
-*               如果该工况是对齐的，将所有对齐工况名称放入一个 list 再放入 measurements 中
-* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 dataTypes 中，
-             如果该工况是对齐的，将所有对齐工况的数据类型放入一个 list 再放入 dataTypes 中
-* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 encodings 中，
-             如果该工况是对齐的，将所有对齐工况的编码类型放入一个 list 再放入 encodings 中
-* compressors: 压缩方式列表
-             如果该工况是对齐的，将所有对齐工况的压缩方式放入一个 list 再放入 compressors 中
-void createSchemaTemplate(
-      String templateName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-```
-
-* 物理量模板内部支持树状结构，因此也可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
+* 物理量模板内部支持树状结构，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -359,6 +339,7 @@ void setSchemaTemplate(String templateName, String prefixPath)
 void unsetSchemaTemplate(String prefixPath, String templateName)
 ```
 
+* 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。
 * 卸载'prefixPath'路径下的名为'templateName'的物理量模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的物理量模板。
 
 注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。

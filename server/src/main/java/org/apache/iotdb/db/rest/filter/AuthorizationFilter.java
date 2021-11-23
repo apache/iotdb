@@ -51,7 +51,7 @@ public class AuthorizationFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext containerRequestContext) throws IOException {
     if ("OPTIONS".equals(containerRequestContext.getMethod())
-        || containerRequestContext.getUriInfo().getPath().equals("swagger.json")) {
+        || "swagger.json".equals(containerRequestContext.getUriInfo().getPath())) {
       return;
     }
 

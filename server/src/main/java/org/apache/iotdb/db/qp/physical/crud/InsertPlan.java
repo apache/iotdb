@@ -104,7 +104,13 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public abstract long getMinTime();
 
-  /** @param index failed measurement index */
+  /**
+   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
+   * measurements, the failed values or columns would be null as well. We'd better use
+   * "measurements[index] == null" to determine if the measurement failed.
+   *
+   * @param index failed measurement index
+   */
   public void markFailedMeasurementInsertion(int index, Exception e) {
     if (measurements[index] == null) {
       return;
@@ -118,24 +124,6 @@ public abstract class InsertPlan extends PhysicalPlan {
     failedExceptions.add(e);
     failedIndices.add(index);
     measurements[index] = null;
-  }
-
-  public void markFailedMeasurementAlignedInsertion(Exception e) {
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-      failedExceptions = new ArrayList<>();
-      failedIndices = new ArrayList<>();
-    }
-
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      failedMeasurements.add(measurements[i]);
-      failedExceptions.add(e);
-      failedIndices.add(i);
-      measurements[i] = null;
-    }
   }
 
   /**
