@@ -174,11 +174,6 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   private boolean containedByTimeFilter(Statistics statistics) {
     Filter timeFilter = seriesReader.getTimeFilter();
-    //    if (statistics == null
-    //        || (statistics.getStartTime() == Long.MAX_VALUE
-    //            && statistics.getEndTime() == Long.MIN_VALUE)) {
-    //      return false;
-    //    }
     return timeFilter == null
         || timeFilter.containStartEndTime(statistics.getStartTime(), statistics.getEndTime());
   }

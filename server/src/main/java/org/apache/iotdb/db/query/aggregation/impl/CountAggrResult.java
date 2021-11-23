@@ -65,10 +65,6 @@ public class CountAggrResult extends AggregateResult {
       cnt++;
       batchIterator.next();
     }
-    if (cnt != count) {
-      batchIterator.totalLength();
-      System.out.println("!");
-    }
     setLongValue(getLongValue() + cnt);
   }
 
