@@ -82,6 +82,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
       PartialPath fullPath = devicePath.concatNode(measurement);
       if (!originalPath.matchFullPath(fullPath)) {
         shouldDeleteAll = false;
+        break;
       }
     }
     if (shouldDeleteAll) {
