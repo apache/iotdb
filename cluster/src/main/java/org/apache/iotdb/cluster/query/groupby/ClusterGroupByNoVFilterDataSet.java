@@ -26,11 +26,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
-import java.util.Set;
 
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDataSet {
@@ -48,15 +46,13 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
     this.metaGroupMember = metaGroupMember;
   }
 
+  @Override
   protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
-      Set<String> deviceMeasurements,
-      TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
       boolean ascending) {
-    return new MergeGroupByExecutor(
-        path, deviceMeasurements, dataType, context, timeFilter, metaGroupMember, ascending);
+    return new MergeGroupByExecutor(path, context, timeFilter, metaGroupMember, ascending);
   }
 }

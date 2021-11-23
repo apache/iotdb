@@ -31,6 +31,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -93,7 +94,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         List<Integer> indexes = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
           pathExecutors.put(
-              path, new LocalGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+              path, getGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
         }
         for (int index : indexes) {
           AggregateResult aggrResult =
@@ -110,8 +111,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         List<List<Integer>> indexesList = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
           pathExecutors.put(
-              path,
-              new LocalAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+              path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
         }
         for (int i = 0; i < path.getMeasurementList().size(); i++) {
           List<AggregateResult> aggrResultList = new ArrayList<>();
@@ -210,5 +210,25 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       result = pathExecutors.get(path).peekNextNotNullValue(nextStartTime, nextEndTime);
     } while (result == null);
     return result;
+  }
+
+  protected GroupByExecutor getGroupByExecutor(
+      PartialPath path,
+      QueryContext context,
+      Filter timeFilter,
+      TsFileFilter fileFilter,
+      boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    return new LocalGroupByExecutor(path, context, timeFilter, fileFilter, ascending);
+  }
+
+  protected GroupByExecutor getAlignedGroupByExecutor(
+      PartialPath path,
+      QueryContext context,
+      Filter timeFilter,
+      TsFileFilter fileFilter,
+      boolean ascending)
+      throws StorageEngineException, QueryProcessException {
+    return new LocalAlignedGroupByExecutor(path, context, timeFilter, fileFilter, ascending);
   }
 }
