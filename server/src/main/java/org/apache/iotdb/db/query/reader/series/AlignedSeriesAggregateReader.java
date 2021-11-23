@@ -31,9 +31,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class VectorSeriesAggregateReader implements IAggregateReader {
+public class AlignedSeriesAggregateReader implements IAggregateReader {
 
-  private final SeriesReader seriesReader;
+  private final AlignedSeriesReader seriesReader;
   /**
    * Used to locate the subSensor that we are traversing now. Use hasNextSubSeries() method to check
    * if we have more sub series in one loop. And use nextSeries() method to move to next sub series.
@@ -42,7 +42,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   private final int subSensorSize;
 
-  public VectorSeriesAggregateReader(
+  public AlignedSeriesAggregateReader(
       AlignedPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,

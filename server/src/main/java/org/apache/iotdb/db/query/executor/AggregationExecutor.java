@@ -37,11 +37,11 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -305,8 +305,8 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (!isAggregateResultEmpty(ascAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -319,8 +319,8 @@ public class AggregationExecutor {
       aggregateFromVectorReader(seriesReader, ascAggregateResultList);
     }
     if (!isAggregateResultEmpty(descAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -389,7 +389,7 @@ public class AggregationExecutor {
   }
 
   private static void aggregateFromVectorReader(
-      VectorSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
+      AlignedSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
       throws QueryProcessException, IOException {
     int remainingToCalculate = 0;
     List<boolean[]> isCalculatedArray = new ArrayList<>();
@@ -508,7 +508,7 @@ public class AggregationExecutor {
   }
 
   private static int aggregateVectorPages(
-      VectorSeriesAggregateReader seriesReader,
+      AlignedSeriesAggregateReader seriesReader,
       List<List<AggregateResult>> aggregateResultList,
       List<boolean[]> isCalculatedArray,
       int remainingToCalculate)
