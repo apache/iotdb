@@ -213,7 +213,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextFile()) {
       Statistics fileStatistics = reader.currentFileStatistics();
       if (fileStatistics.getStartTime() >= curEndTime) {
-        return results;
+        if (ascending) {
+          return results;
+        } else {
+          reader.skipCurrentFile();
+          continue;
+        }
       }
       // calc from fileMetaData
       if (reader.canUseCurrentFileStatistics()
