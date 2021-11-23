@@ -148,6 +148,15 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         result.updateResultFromPageData(batchIterator, curStartTime, curEndTime);
       }
     }
+
+    // reset the last position to current Index
+    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+    lastReadCurListIndex = batchData.getReadCurListIndex();
+
+    // can calc for next interval
+    if (batchData.hasCurrent()) {
+      preCachedData = batchData;
+    }
   }
 
   private boolean satisfied(BatchData batchData, long curStartTime, long curEndTime) {
@@ -336,15 +345,6 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
       // calc from batch data
       calcFromBatch(batchData, curStartTime, curEndTime);
-
-      // reset the last position to current Index
-      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-      lastReadCurListIndex = batchData.getReadCurListIndex();
-
-      // can calc for next interval
-      if (batchData.hasCurrent()) {
-        preCachedData = batchData;
-      }
 
       // judge whether the calculation finished
       if (isEndCalc()

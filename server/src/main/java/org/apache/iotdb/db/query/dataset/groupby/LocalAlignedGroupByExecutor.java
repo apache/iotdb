@@ -126,21 +126,24 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     while (reader.hasNextFile()) {
       // try to calc from fileMetaData
       Statistics fileStatistics = reader.currentFileStatistics();
-      if (fileStatistics != null && !isEmpty(fileStatistics)) {
-        if (fileStatistics.getStartTime() >= curEndTime) {
+      if (fileStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
           return results;
-        }
-        if (reader.canUseCurrentFileStatistics()
-            && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
-          // calc from fileMetaData
-          while (reader.hasNextSubSeries()) {
-            Statistics currentFileStatistics = reader.currentFileStatistics();
-            calcFromStatistics(currentFileStatistics, results.get(reader.getCurIndex()));
-            reader.nextSeries();
-          }
+        } else {
           reader.skipCurrentFile();
           continue;
         }
+      }
+      if (reader.canUseCurrentFileStatistics()
+          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+        // calc from fileMetaData
+        while (reader.hasNextSubSeries()) {
+          Statistics currentFileStatistics = reader.currentFileStatistics();
+          calcFromStatistics(currentFileStatistics, results.get(reader.getCurIndex()));
+          reader.nextSeries();
+        }
+        reader.skipCurrentFile();
+        continue;
       }
       // read chunk
       if (readAndCalcFromChunk(curStartTime, curEndTime)) {
@@ -181,26 +184,24 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     while (reader.hasNextChunk()) {
       // try to calc from chunkMetaData
       Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics != null && !isEmpty(chunkStatistics)) {
-        if (chunkStatistics.getStartTime() >= curEndTime) {
-          if (ascending) {
-            return true;
-          } else {
-            reader.skipCurrentChunk();
-            continue;
-          }
-        }
-        if (reader.canUseCurrentChunkStatistics()
-            && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
-          // calc from chunkMetaData
-          while (reader.hasNextSubSeries()) {
-            Statistics currentChunkStatistics = reader.currentChunkStatistics();
-            calcFromStatistics(currentChunkStatistics, results.get(reader.getCurIndex()));
-            reader.nextSeries();
-          }
+      if (chunkStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
+          return true;
+        } else {
           reader.skipCurrentChunk();
           continue;
         }
+      }
+      if (reader.canUseCurrentChunkStatistics()
+          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+        // calc from chunkMetaData
+        while (reader.hasNextSubSeries()) {
+          Statistics currentChunkStatistics = reader.currentChunkStatistics();
+          calcFromStatistics(currentChunkStatistics, results.get(reader.getCurIndex()));
+          reader.nextSeries();
+        }
+        reader.skipCurrentChunk();
+        continue;
       }
       // read page
       if (readAndCalcFromPage(curStartTime, curEndTime)) {
@@ -215,31 +216,28 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     while (reader.hasNextPage()) {
       // try to calc from pageHeader
       Statistics pageStatistics = reader.currentPageStatistics();
-      // must be non overlapped page
-      if (pageStatistics != null && !isEmpty(pageStatistics)) {
-        // current page max than time range
-        if (pageStatistics.getStartTime() >= curEndTime) {
-          if (ascending) {
-            return true;
-          } else {
-            reader.skipCurrentPage();
-            continue;
-          }
-        }
-        if (reader.canUseCurrentPageStatistics()
-            && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
-          // calc from pageHeader
-          while (reader.hasNextSubSeries()) {
-            Statistics currentPageStatistics = reader.currentPageStatistics();
-            calcFromStatistics(currentPageStatistics, results.get(reader.getCurIndex()));
-            reader.nextSeries();
-          }
+      // current page max than time range
+      if (pageStatistics.getStartTime() >= curEndTime) {
+        if (ascending) {
+          return true;
+        } else {
           reader.skipCurrentPage();
-          if (isEndCalc()) {
-            return true;
-          }
           continue;
         }
+      }
+      if (reader.canUseCurrentPageStatistics()
+          && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
+        // calc from pageHeader
+        while (reader.hasNextSubSeries()) {
+          Statistics currentPageStatistics = reader.currentPageStatistics();
+          calcFromStatistics(currentPageStatistics, results.get(reader.getCurIndex()));
+          reader.nextSeries();
+        }
+        reader.skipCurrentPage();
+        if (isEndCalc()) {
+          return true;
+        }
+        continue;
       }
 
       // calc from page data
@@ -248,35 +246,18 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         continue;
       }
 
+      // reset the last position to current Index
+      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+      lastReadCurListIndex = batchData.getReadCurListIndex();
+
       // stop calc and cached current batchData
       if (ascending && batchData.currentTime() >= curEndTime) {
         preCachedData = batchData;
-        // reset the last position to current Index
-        lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-        lastReadCurListIndex = batchData.getReadCurListIndex();
         return true;
       }
 
-      // reset the last position to current Index
-      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-      lastReadCurListIndex = batchData.getReadCurListIndex();
-
       // calc from batch data
-      while (reader.hasNextSubSeries()) {
-        int subIndex = reader.getCurIndex();
-        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
-        calcFromBatch(batchData, subIndex, curStartTime, curEndTime, results.get(subIndex));
-        reader.nextSeries();
-      }
-
-      // reset the last position to current Index
-      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-      lastReadCurListIndex = batchData.getReadCurListIndex();
-
-      // can calc for next interval
-      if (batchData.hasCurrent()) {
-        preCachedData = batchData;
-      }
+      calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
       if (isEndCalc()
@@ -291,13 +272,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
   }
 
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
-    if (preCachedData == null) return false;
-    while (reader.hasNextSubSeries()) {
-      int subIndex = reader.getCurIndex();
-      preCachedData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
-      calcFromBatch(preCachedData, subIndex, curStartTime, curEndTime, results.get(subIndex));
-      reader.nextSeries();
-    }
+    calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache
     return (preCachedData != null
             && (ascending
@@ -306,40 +281,49 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         || isEndCalc();
   }
 
-  private void calcFromBatch(
-      BatchData batchData,
-      int curIndex,
-      long curStartTime,
-      long curEndTime,
-      List<AggregateResult> aggregateResultList)
+  private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
       throws IOException {
     // check if the batchData does not contain points in current interval
     if (!satisfied(batchData, curStartTime, curEndTime)) {
       return;
     }
 
-    for (AggregateResult result : aggregateResultList) {
-      // current agg method has been calculated
-      if (result.hasFinalResult()) {
-        continue;
-      }
-      // lazy reset batch data for calculation
+    while (reader.hasNextSubSeries()) {
+      int subIndex = reader.getCurIndex();
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
-      IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(curIndex);
-      if (ascending) {
-        // skip points that cannot be calculated
-        while (batchDataIterator.hasNext() && batchDataIterator.currentTime() < curStartTime) {
-          batchDataIterator.next();
+      List<AggregateResult> aggregateResultList = results.get(subIndex);
+      for (AggregateResult result : aggregateResultList) {
+        // current agg method has been calculated
+        if (result.hasFinalResult()) {
+          continue;
         }
-      } else {
-        while (batchDataIterator.hasNext() && batchDataIterator.currentTime() >= curEndTime) {
-          batchDataIterator.next();
+        // lazy reset batch data for calculation
+        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+        IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(subIndex);
+        if (ascending) {
+          // skip points that cannot be calculated
+          while (batchDataIterator.hasNext() && batchDataIterator.currentTime() < curStartTime) {
+            batchDataIterator.next();
+          }
+        } else {
+          while (batchDataIterator.hasNext() && batchDataIterator.currentTime() >= curEndTime) {
+            batchDataIterator.next();
+          }
+        }
+        if (batchDataIterator.hasNext()) {
+          result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
         }
       }
+      reader.nextSeries();
+    }
 
-      if (batchDataIterator.hasNext()) {
-        result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
-      }
+    // reset the last position to current Index
+    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+    lastReadCurListIndex = batchData.getReadCurListIndex();
+
+    // can calc for next interval
+    if (batchData.hasCurrent()) {
+      preCachedData = batchData;
     }
   }
 
@@ -358,12 +342,5 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       return false;
     }
     return true;
-  }
-
-  private boolean isEmpty(Statistics statistics) {
-    if (statistics.getStartTime() == Long.MAX_VALUE && statistics.getEndTime() == Long.MIN_VALUE) {
-      return true;
-    }
-    return false;
   }
 }
