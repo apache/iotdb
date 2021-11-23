@@ -19,6 +19,17 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -46,21 +57,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 public class LastQueryExecutor {
 
@@ -173,7 +171,7 @@ public class LastQueryExecutor {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
         LastPointReader lastReader =
             nonCachedPaths
                 .get(i)
@@ -184,7 +182,7 @@ public class LastQueryExecutor {
                     context,
                     dataSource,
                     Long.MAX_VALUE,
-                    null);
+                    filter);
         readerList.add(lastReader);
       }
     } finally {
@@ -227,8 +225,6 @@ public class LastQueryExecutor {
         cacheAccessors.add(new LastCacheAccessor(path));
       }
     } else {
-      restPaths.addAll(seriesPaths);
-      restDataType.addAll(dataTypes);
       for (int i = 0; i < seriesPaths.size(); i++) {
         resultContainer.add(new Pair<>(false, null));
         PartialPath p = ((MeasurementPath) seriesPaths.get(i)).transformToExactPath();
