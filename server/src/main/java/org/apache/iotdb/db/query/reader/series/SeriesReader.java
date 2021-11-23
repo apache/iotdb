@@ -1027,6 +1027,7 @@ public class SeriesReader {
       }
     }
     if (valueFilter != null
+        && firstTimeSeriesMetadata != null
         && !isFileOverlapped()
         && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
       firstTimeSeriesMetadata = null;
