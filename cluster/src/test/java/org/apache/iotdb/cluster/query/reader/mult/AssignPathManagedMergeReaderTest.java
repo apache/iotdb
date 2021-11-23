@@ -88,7 +88,8 @@ public class AssignPathManagedMergeReaderTest {
     batchData.add(TestUtils.genBatchData(TSDataType.INT32, 0, 100));
     batchUsed = false;
     metaGroupMember = new TestMetaGroupMember();
-    assignPathManagedMergeReader = new AssignPathManagedMergeReader("root.a.b", TSDataType.DOUBLE);
+    assignPathManagedMergeReader =
+        new AssignPathManagedMergeReader("root.a.b", TSDataType.DOUBLE, true);
   }
 
   @After
