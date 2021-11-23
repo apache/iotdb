@@ -95,6 +95,13 @@ public class LevelCompactionRestoreTest {
       Assert.assertTrue(dataDirectory.mkdirs());
     }
     IoTDB.metaManager.init();
+    try {
+      List<PartialPath> sg = new ArrayList<>();
+      sg.add(new PartialPath(COMPACTION_TEST_SG));
+      IoTDB.metaManager.deleteStorageGroups(sg);
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
     prevMergeChunkThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(-1);
