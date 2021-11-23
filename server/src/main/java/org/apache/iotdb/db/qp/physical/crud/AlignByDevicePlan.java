@@ -104,6 +104,7 @@ public class AlignByDevicePlan extends QueryPlan {
     return measurements;
   }
 
+  @Override
   public List<String> getAggregations() {
     return aggregations;
   }
