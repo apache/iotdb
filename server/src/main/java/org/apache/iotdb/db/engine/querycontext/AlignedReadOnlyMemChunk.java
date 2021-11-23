@@ -109,8 +109,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       if (alignedChunkData.getValues().get(column) == null) {
         valueStatistics.setEmpty(true);
         continue;
-      } else {
-        valueStatistics.setEmpty(false);
       }
       for (int row = 0; row < alignedChunkData.size(); row++) {
         long time = alignedChunkData.getTime(row);
@@ -148,6 +146,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
       }
+      valueStatistics.setEmpty(false);
     }
     IChunkMetadata vectorChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
