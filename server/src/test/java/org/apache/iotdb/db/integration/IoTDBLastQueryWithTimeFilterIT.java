@@ -85,7 +85,7 @@ public class IoTDBLastQueryWithTimeFilterIT {
 
     String[] retArray =
         new String[] {
-            "root.sg1,d1.s1,1",
+            "root.sg1.d1.s1,1.0",
         };
     try (Connection connection =
         DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -98,6 +98,7 @@ public class IoTDBLastQueryWithTimeFilterIT {
       while (resultSet.next()) {
         String ans = resultSet.getString(TIMESEIRES_STR) + "," + resultSet.getString(VALUE_STR);
         Assert.assertEquals(retArray[cnt], ans);
+        cnt++;
       }
       Assert.assertEquals(retArray.length, cnt);
     }
