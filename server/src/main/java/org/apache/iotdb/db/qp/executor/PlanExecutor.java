@@ -564,9 +564,9 @@ public class PlanExecutor implements IPlanExecutor {
         queryDataSet = queryRouter.groupBy(groupByTimePlan, context);
       } else if (queryPlan instanceof QueryIndexPlan) {
         throw new QueryProcessException("Query index hasn't been supported yet");
-      } else if (queryPlan instanceof UDAFPlan){
+      } else if (queryPlan instanceof UDAFPlan) {
         UDAFPlan udafPlan = (UDAFPlan) queryPlan;
-        queryDataSet = queryRouter.udafQuery(udafPlan,context);
+        queryDataSet = queryRouter.udafQuery(udafPlan, context);
       } else if (queryPlan instanceof AggregationPlan) {
         AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
         queryDataSet = queryRouter.aggregate(aggregationPlan, context);

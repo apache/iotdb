@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
@@ -160,16 +159,15 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException,
-      QueryProcessException{
+          QueryProcessException {
     if (logger.isDebugEnabled()) {
-      logger.debug(
-          "paths:"
-              + udafPlan.getPaths());
+      logger.debug("paths:" + udafPlan.getPaths());
     }
     UDAFQueryExecutor udafQueryExecutor = new UDAFQueryExecutor(udafPlan);
     AggregationPlan innerAggregationPlan = udafPlan.getInnerAggregationPlan();
-    QueryDataSet innerQueryDataSet = aggregate(innerAggregationPlan,context);
-    QueryDataSet dataSet = udafQueryExecutor.convertInnerAggregationDataset((SingleDataSet) innerQueryDataSet);
+    QueryDataSet innerQueryDataSet = aggregate(innerAggregationPlan, context);
+    QueryDataSet dataSet =
+        udafQueryExecutor.convertInnerAggregationDataset((SingleDataSet) innerQueryDataSet);
     return dataSet;
   }
 

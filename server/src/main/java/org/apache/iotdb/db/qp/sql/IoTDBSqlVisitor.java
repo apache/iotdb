@@ -2290,7 +2290,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
       // judge query type according to the first select element
       if (!hasDecidedQueryType()) {
-        if(selectComponent.hasUserDefinedAggregationFunction()){
+        if (selectComponent.hasUserDefinedAggregationFunction()) {
           queryOp = new UDAFQueryOperator(queryOp);
         } else if (selectComponent.hasAggregationFunction()) {
           queryOp = new AggregationQueryOperator(queryOp);

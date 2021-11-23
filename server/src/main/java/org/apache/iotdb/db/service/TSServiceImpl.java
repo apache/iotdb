@@ -782,7 +782,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan) &&!(plan instanceof UDAFPlan)) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan) && !(plan instanceof UDAFPlan)) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
       if (plan instanceof QueryPlan) {
@@ -810,13 +810,15 @@ public class TSServiceImpl implements TSIService.Iface {
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDFPlan || plan instanceof UDAFPlan
+      } else if (plan instanceof UDFPlan
+          || plan instanceof UDAFPlan
           || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
-      if (plan.getOperatorType() == OperatorType.AGGREGATION || plan.getOperatorType() ==OperatorType.UDAF) {
+      if (plan.getOperatorType() == OperatorType.AGGREGATION
+          || plan.getOperatorType() == OperatorType.UDAF) {
         resp.setIgnoreTimeStamp(true);
       } else if (plan instanceof ShowQueryProcesslistPlan) {
         resp.setIgnoreTimeStamp(false);

@@ -1,27 +1,20 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
-import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class UDAFPlan extends RawDataQueryPlan {
 
   // Construct an innerAggregationPlan using resultColumns of UDAFPlan
   private AggregationPlan innerAggregationPlan;
-  private Map<Expression,Integer> expressionToInnerResultIndexMap;
+  private Map<Expression, Integer> expressionToInnerResultIndexMap;
 
   public UDAFPlan() {
     super();
@@ -37,8 +30,7 @@ public class UDAFPlan extends RawDataQueryPlan {
     this.expressionToInnerResultIndexMap = expressionToInnerResultIndexMap;
   }
 
-  public void setInnerAggregationPlan(
-      AggregationPlan innerAggregationPlan) {
+  public void setInnerAggregationPlan(AggregationPlan innerAggregationPlan) {
     this.innerAggregationPlan = innerAggregationPlan;
   }
 
@@ -49,13 +41,13 @@ public class UDAFPlan extends RawDataQueryPlan {
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
     Set<String> columnForDisplaySet = new HashSet<>();
-    for(ResultColumn resultColumn:resultColumns){
+    for (ResultColumn resultColumn : resultColumns) {
       String columnForDisplay = resultColumn.getResultColumnName();
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         int datasetOutputIndex = getPathToIndex().size();
         setColumnNameToDatasetOutputIndex(columnForDisplay, datasetOutputIndex);
         columnForDisplaySet.add(columnForDisplay);
-    }
+      }
     }
   }
 }

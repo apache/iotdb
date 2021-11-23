@@ -68,15 +68,17 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return leftExpression.isTimeSeriesGeneratingFunctionExpression() || rightExpression.isTimeSeriesGeneratingFunctionExpression();
+    return leftExpression.isTimeSeriesGeneratingFunctionExpression()
+        || rightExpression.isTimeSeriesGeneratingFunctionExpression();
   }
 
   @Override
-  public boolean isUDAFExpression(){
-    if(leftExpression.isAggregationFunctionExpression()||rightExpression.isAggregationFunctionExpression()){
+  public boolean isUDAFExpression() {
+    if (leftExpression.isAggregationFunctionExpression()
+        || rightExpression.isAggregationFunctionExpression()) {
       return true;
     }
-    if(leftExpression.isUDAFExpression() || rightExpression.isUDAFExpression()){
+    if (leftExpression.isUDAFExpression() || rightExpression.isUDAFExpression()) {
       return true;
     }
     return false;
@@ -226,8 +228,4 @@ public abstract class BinaryExpression extends Expression {
   }
 
   protected abstract String operator();
-
-
-
-
 }

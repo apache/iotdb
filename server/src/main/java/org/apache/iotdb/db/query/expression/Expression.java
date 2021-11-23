@@ -47,9 +47,10 @@ public abstract class Expression {
     return false;
   }
 
-  public boolean isUDAFExpression(){
+  public boolean isUDAFExpression() {
     return false;
   }
+
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return false;
   }

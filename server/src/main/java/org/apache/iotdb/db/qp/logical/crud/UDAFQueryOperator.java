@@ -1,8 +1,5 @@
 package org.apache.iotdb.db.qp.logical.crud;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -17,14 +14,16 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
-import org.checkerframework.checker.units.qual.A;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
- * For a UDAFPlan, we construct an inner AggregationPlan for it.
- * Example: select count(a)/count(b),count(a)+sum(b) from root.sg
- * To init inner AggregationPlan, we will convert it to statement: select count(a),count(b),count(a),sum(b) from root.sg
- * innerResultColumnsCache will be [count(a),count(b),sum(b)]
- * innerPathCathe will be [root.sg.a,root.sg.b,root.sg.b]
+ * For a UDAFPlan, we construct an inner AggregationPlan for it. Example: select
+ * count(a)/count(b),count(a)+sum(b) from root.sg To init inner AggregationPlan, we will convert it
+ * to statement: select count(a),count(b),count(a),sum(b) from root.sg innerResultColumnsCache will
+ * be [count(a),count(b),sum(b)] innerPathCathe will be [root.sg.a,root.sg.b,root.sg.b]
  * innerAggregationsCache will be [count,count,sum]
  */
 public class UDAFQueryOperator extends AggregationQueryOperator {
@@ -35,7 +34,7 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
 
   private ArrayList<String> innerAggregationsCache;
 
-  private Map<Expression,Integer> expressionToInnerResultIndexMap = new HashMap<>();
+  private Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
 
   public UDAFQueryOperator() {
     super();
@@ -54,10 +53,10 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     }
   }
 
-  public ArrayList<PartialPath> getInnerPathCathe(){
-    if(innerPathsCache == null){
+  public ArrayList<PartialPath> getInnerPathCathe() {
+    if (innerPathsCache == null) {
       innerPathsCache = new ArrayList<>();
-      for(ResultColumn resultColumn : selectComponent.getResultColumns()){
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         addInnerPath(expression);
       }
@@ -65,10 +64,10 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     return innerPathsCache;
   }
 
-  public ArrayList<ResultColumn> getInnerResultColumnsCache(){
-    if(innerResultColumnsCache==null){
+  public ArrayList<ResultColumn> getInnerResultColumnsCache() {
+    if (innerResultColumnsCache == null) {
       innerResultColumnsCache = new ArrayList<>();
-      for(ResultColumn resultColumn : selectComponent.getResultColumns()){
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         addInnerResultColumn(expression);
       }
@@ -76,10 +75,10 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     return innerResultColumnsCache;
   }
 
-  public ArrayList<String> getInnerAggregationsCache(){
-    if(innerAggregationsCache==null){
+  public ArrayList<String> getInnerAggregationsCache() {
+    if (innerAggregationsCache == null) {
       innerAggregationsCache = new ArrayList<>();
-      for(ResultColumn resultColumn : selectComponent.getResultColumns()){
+      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
         Expression expression = resultColumn.getExpression();
         addInnerAggregations(expression);
       }
@@ -87,38 +86,39 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     return innerAggregationsCache;
   }
 
-  private void addInnerAggregations(Expression expression){
-    if(expression instanceof BinaryExpression){
+  private void addInnerAggregations(Expression expression) {
+    if (expression instanceof BinaryExpression) {
       addInnerAggregations(((BinaryExpression) expression).getLeftExpression());
       addInnerAggregations(((BinaryExpression) expression).getRightExpression());
       return;
     }
-    if(expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()){
+    if (expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()) {
       innerAggregationsCache.add(((FunctionExpression) expression).getFunctionName());
     }
   }
 
-  private void addInnerPath(Expression expression){
-    if(expression instanceof BinaryExpression){
+  private void addInnerPath(Expression expression) {
+    if (expression instanceof BinaryExpression) {
       addInnerPath(((BinaryExpression) expression).getLeftExpression());
       addInnerPath(((BinaryExpression) expression).getRightExpression());
       return;
     }
-    if(expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()){
-      innerPathsCache.add(((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
-          .getPath());
+    if (expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()) {
+      innerPathsCache.add(
+          ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
+              .getPath());
     }
   }
 
-  private void addInnerResultColumn(Expression expression){
-    if(expression instanceof BinaryExpression){
+  private void addInnerResultColumn(Expression expression) {
+    if (expression instanceof BinaryExpression) {
       addInnerResultColumn(((BinaryExpression) expression).getLeftExpression());
       addInnerResultColumn(((BinaryExpression) expression).getRightExpression());
       return;
     }
-    if(expression.isAggregationFunctionExpression()){
-      if(!expressionToInnerResultIndexMap.containsKey(expression)){
-        expressionToInnerResultIndexMap.put(expression,expressionToInnerResultIndexMap.size());
+    if (expression.isAggregationFunctionExpression()) {
+      if (!expressionToInnerResultIndexMap.containsKey(expression)) {
+        expressionToInnerResultIndexMap.put(expression, expressionToInnerResultIndexMap.size());
       }
       innerResultColumnsCache.add(new ResultColumn(expression));
     }
@@ -127,20 +127,23 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    AggregationPlan innerAggregationPlan = initInnerAggregationPlan(generator,new AggregationPlan());
+    AggregationPlan innerAggregationPlan =
+        initInnerAggregationPlan(generator, new AggregationPlan());
     PhysicalPlan physicalPlan;
-    if(!isAlignByDevice()){
-       physicalPlan = super.generateRawDataQueryPlan(generator,new UDAFPlan());
-      ((UDAFPlan)(physicalPlan)).setInnerAggregationPlan(innerAggregationPlan);
-      ((UDAFPlan)(physicalPlan)).setExpressionToInnerResultIndexMap(this.expressionToInnerResultIndexMap);
-    }else{
+    if (!isAlignByDevice()) {
+      physicalPlan = super.generateRawDataQueryPlan(generator, new UDAFPlan());
+      ((UDAFPlan) (physicalPlan)).setInnerAggregationPlan(innerAggregationPlan);
+      ((UDAFPlan) (physicalPlan))
+          .setExpressionToInnerResultIndexMap(this.expressionToInnerResultIndexMap);
+    } else {
       // todo: align by device
       physicalPlan = new AggregationPlan();
     }
     return physicalPlan;
   }
 
-  private AggregationPlan initInnerAggregationPlan(PhysicalGenerator generator,QueryPlan queryPlan) throws QueryProcessException {
+  private AggregationPlan initInnerAggregationPlan(PhysicalGenerator generator, QueryPlan queryPlan)
+      throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(getInnerAggregationsCache());
     aggregationPlan.setResultColumns(getInnerResultColumnsCache());
@@ -148,7 +151,7 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     aggregationPlan.setEnableTracing(enableTracing);
     // transform filter operator to expression
     if (whereComponent != null) {
-      transformFilterOperatorToExpression(generator,aggregationPlan);
+      transformFilterOperatorToExpression(generator, aggregationPlan);
     }
     if (isGroupByLevel()) {
       super.initGroupByLevel(aggregationPlan);
@@ -162,8 +165,9 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     convertSpecialClauseValues(aggregationPlan);
     return aggregationPlan;
   }
-  private void checkEachExpression(Expression expression) throws LogicalOperatorException{
-    if(expression instanceof BinaryExpression){
+
+  private void checkEachExpression(Expression expression) throws LogicalOperatorException {
+    if (expression instanceof BinaryExpression) {
       checkEachExpression(((BinaryExpression) expression).getLeftExpression());
       checkEachExpression(((BinaryExpression) expression).getRightExpression());
       return;
@@ -174,8 +178,8 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     // Currently, the aggregation function expression can only contain a timeseries operand.
     if (expression instanceof FunctionExpression
         && (((FunctionExpression) expression).getExpressions().size() != 1
-        || !(((FunctionExpression) expression).getExpressions().get(0)
-        instanceof TimeSeriesOperand))) {
+            || !(((FunctionExpression) expression).getExpressions().get(0)
+                instanceof TimeSeriesOperand))) {
       throw new LogicalOperatorException(
           "The argument of the aggregation function must be a time series.");
     }

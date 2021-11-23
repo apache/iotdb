@@ -1,13 +1,5 @@
 package org.apache.iotdb.db.query.executor;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
@@ -25,13 +17,20 @@ import org.apache.iotdb.db.query.udf.core.reader.ConstantLayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
-import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class UDAFQueryExecutor {
   protected UDAFPlan udafPlan;
-  private Map<Expression,Integer> expressionToInnerResultIndexMap;
-  private Map<Expression,TSDataType> expressionToDataTypeMap;
+  private Map<Expression, Integer> expressionToInnerResultIndexMap;
+  private Map<Expression, TSDataType> expressionToDataTypeMap;
   private Set<ResultColumn> deduplicatedResultColumns;
   private List<Field> innerFields;
 
@@ -40,11 +39,11 @@ public class UDAFQueryExecutor {
     init();
   }
 
-  private void init(){
+  private void init() {
     this.expressionToInnerResultIndexMap = udafPlan.getExpressionToInnerResultIndexMap();
     deduplicatedResultColumns = new LinkedHashSet<>();
     expressionToDataTypeMap = new HashMap<>();
-    for(ResultColumn resultColumn:udafPlan.getResultColumns()){
+    for (ResultColumn resultColumn : udafPlan.getResultColumns()) {
       deduplicatedResultColumns.add(resultColumn);
     }
   }
@@ -52,57 +51,63 @@ public class UDAFQueryExecutor {
   public SingleDataSet convertInnerAggregationDataset(SingleDataSet singleDataSet)
       throws QueryProcessException, IOException {
     RowRecord innerRowRecord = singleDataSet.nextWithoutConstraint();
-    innerFields =  innerRowRecord.getFields();
+    innerFields = innerRowRecord.getFields();
     RowRecord record = new RowRecord(0);
     ArrayList<TSDataType> dataTypes = new ArrayList<>();
     ArrayList<PartialPath> paths = new ArrayList<>();
-    for(ResultColumn resultColumn:deduplicatedResultColumns){
+    for (ResultColumn resultColumn : deduplicatedResultColumns) {
       Expression expression = resultColumn.getExpression();
-      Pair<TSDataType,Object> pair = calcUDAFExpression(expression);
+      Pair<TSDataType, Object> pair = calcUDAFExpression(expression);
       dataTypes.add(pair.left);
-      if(!expressionToDataTypeMap.containsKey(expression)){
-        expressionToDataTypeMap.put(expression,pair.left);
+      if (!expressionToDataTypeMap.containsKey(expression)) {
+        expressionToDataTypeMap.put(expression, pair.left);
       }
       paths.add(null);
-      record.addField(pair.right,pair.left);
+      record.addField(pair.right, pair.left);
     }
-    for(ResultColumn resultColumn : this.udafPlan.getResultColumns()){
+    for (ResultColumn resultColumn : this.udafPlan.getResultColumns()) {
       resultColumn.setDataType(expressionToDataTypeMap.get(resultColumn.getExpression()));
     }
-    SingleDataSet dataSet = new SingleDataSet(paths,dataTypes);
+    SingleDataSet dataSet = new SingleDataSet(paths, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
   }
 
-  private Pair<TSDataType,Object> calcUDAFExpression(Expression expression)
+  private Pair<TSDataType, Object> calcUDAFExpression(Expression expression)
       throws QueryProcessException, IOException {
     TSDataType dataType;
-    Object value =null;
-    if(expression instanceof BinaryExpression){
+    Object value = null;
+    if (expression instanceof BinaryExpression) {
       dataType = TSDataType.DOUBLE;
       Expression leftExpression = ((BinaryExpression) expression).getLeftExpression();
       Expression rightExpression = ((BinaryExpression) expression).getRightExpression();
       value = 0.0;
-      if(expression instanceof AdditionExpression){
-        value = Double.valueOf(calcUDAFExpression(leftExpression).right.toString())+
-            Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
-      }else if(expression instanceof SubtractionExpression){
-        value = Double.valueOf(calcUDAFExpression(leftExpression).right.toString())-
-            Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
-      }else if(expression instanceof MultiplicationExpression){
-        value = Double.valueOf(calcUDAFExpression(leftExpression).right.toString())*
-            Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
-      }else if(expression instanceof DivisionExpression){
-        value =Double.valueOf(calcUDAFExpression(leftExpression).right.toString())/
-            Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
-      }else if(expression instanceof ModuloExpression){
-        value =Double.valueOf(calcUDAFExpression(leftExpression).right.toString())%
-            Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
+      if (expression instanceof AdditionExpression) {
+        value =
+            Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
+                + Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
+      } else if (expression instanceof SubtractionExpression) {
+        value =
+            Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
+                - Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
+      } else if (expression instanceof MultiplicationExpression) {
+        value =
+            Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
+                * Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
+      } else if (expression instanceof DivisionExpression) {
+        value =
+            Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
+                / Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
+      } else if (expression instanceof ModuloExpression) {
+        value =
+            Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
+                % Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
       }
-    }else if(expression instanceof ConstantOperand){
-      ConstantLayerPointReader constantLayerPointReader = new ConstantLayerPointReader((ConstantOperand) expression);
+    } else if (expression instanceof ConstantOperand) {
+      ConstantLayerPointReader constantLayerPointReader =
+          new ConstantLayerPointReader((ConstantOperand) expression);
       dataType = constantLayerPointReader.getDataType();
-      switch (dataType){
+      switch (dataType) {
         case INT32:
           value = constantLayerPointReader.currentInt();
           break;
@@ -122,11 +127,11 @@ public class UDAFQueryExecutor {
           value = constantLayerPointReader.currentBinary();
           break;
       }
-    }else{
+    } else {
       // FunctionExpression
       Field field = innerFields.get(expressionToInnerResultIndexMap.get(expression));
       dataType = field.getDataType();
-      switch (dataType){
+      switch (dataType) {
         case INT32:
           value = field.getIntV();
           break;
@@ -147,6 +152,6 @@ public class UDAFQueryExecutor {
           break;
       }
     }
-    return new Pair<>(dataType,value);
+    return new Pair<>(dataType, value);
   }
 }

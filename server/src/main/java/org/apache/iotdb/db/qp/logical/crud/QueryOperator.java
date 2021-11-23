@@ -196,7 +196,7 @@ public class QueryOperator extends Operator {
 
     // transform filter operator to expression
     if (whereComponent != null) {
-     transformFilterOperatorToExpression(generator,rawDataQueryPlan);
+      transformFilterOperatorToExpression(generator, rawDataQueryPlan);
     }
 
     if (queryPlan instanceof QueryIndexPlan) {
@@ -217,8 +217,8 @@ public class QueryOperator extends Operator {
     return rawDataQueryPlan;
   }
 
-  protected void transformFilterOperatorToExpression(PhysicalGenerator generator,RawDataQueryPlan rawDataQueryPlan)
-      throws QueryProcessException {
+  protected void transformFilterOperatorToExpression(
+      PhysicalGenerator generator, RawDataQueryPlan rawDataQueryPlan) throws QueryProcessException {
     FilterOperator filterOperator = whereComponent.getFilterOperator();
     List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
     try {

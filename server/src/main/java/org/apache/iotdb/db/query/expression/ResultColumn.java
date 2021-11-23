@@ -155,7 +155,7 @@ public class ResultColumn {
 
   @Override
   public final int hashCode() {
-    return alias==null?getResultColumnName().hashCode():alias.hashCode();
+    return alias == null ? getResultColumnName().hashCode() : alias.hashCode();
   }
 
   @Override

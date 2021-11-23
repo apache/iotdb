@@ -48,7 +48,7 @@ public interface IQueryRouter {
   /** Execute UDAF query. */
   QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException,
-      QueryProcessException;
+          QueryProcessException;
 
   /** Execute groupBy query. */
   QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)

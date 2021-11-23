@@ -130,7 +130,7 @@ public class AggregationQueryOperator extends QueryOperator {
     return aggregationPlan;
   }
 
-  protected void initGroupByLevel(AggregationPlan aggregationPlan) throws QueryProcessException{
+  protected void initGroupByLevel(AggregationPlan aggregationPlan) throws QueryProcessException {
     aggregationPlan.setLevels(specialClauseComponent.getLevels());
     aggregationPlan.setGroupByLevelController(specialClauseComponent.groupByLevelController);
     try {
