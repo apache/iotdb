@@ -79,7 +79,7 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletion2IT
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(enableLastCache);
+    IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(enableLastCache);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }
