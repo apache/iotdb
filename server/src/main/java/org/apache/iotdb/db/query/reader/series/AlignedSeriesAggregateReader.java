@@ -174,8 +174,4 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
   public void resetIndex() {
     curIndex = 0;
   }
-
-  public int getSubSensorSize() {
-    return subSensorSize;
-  }
 }
