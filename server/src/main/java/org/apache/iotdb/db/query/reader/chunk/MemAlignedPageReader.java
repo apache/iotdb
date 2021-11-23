@@ -69,8 +69,9 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
       // or current row is not satisfied with the filter, just discard it
       // TODO fix value filter firstNotNullObject, currently, if it's a value filter, it will only
       // accept AlignedPath with only one sub sensor
-      if (firstNotNullObject != null && valueFilter == null
-          || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject)) {
+      if (firstNotNullObject != null
+          && (valueFilter == null
+              || valueFilter.satisfy(timeValuePair.getTimestamp(), firstNotNullObject))) {
         batchData.putVector(timeValuePair.getTimestamp(), values);
       }
     }
