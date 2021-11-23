@@ -19,7 +19,11 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;
@@ -39,14 +43,14 @@ public interface MetricManager {
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Gauge getOrCreatGauge(String metric, String... tags);
+  Gauge getOrCreateGauge(String metric, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Rate getOrCreatRate(String metric, String... tags);
+  Rate getOrCreateRate(String metric, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return

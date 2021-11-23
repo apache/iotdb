@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.TsFileNotCompleteException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -63,7 +60,7 @@ public class MergeFileTask {
 
   private String taskName;
   private CrossSpaceMergeContext context;
-  private MergeLogger mergeLogger;
+  private InplaceCompactionLogger inplaceCompactionLogger;
   private CrossSpaceMergeResource resource;
   private List<TsFileResource> unmergedFiles;
 
@@ -75,12 +72,12 @@ public class MergeFileTask {
   MergeFileTask(
       String taskName,
       CrossSpaceMergeContext context,
-      MergeLogger mergeLogger,
+      InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource resource,
       List<TsFileResource> unmergedSeqFiles) {
     this.taskName = taskName;
     this.context = context;
-    this.mergeLogger = mergeLogger;
+    this.inplaceCompactionLogger = inplaceCompactionLogger;
     this.resource = resource;
     this.unmergedFiles = unmergedSeqFiles;
   }
@@ -136,7 +133,7 @@ public class MergeFileTask {
       logger.info(
           "{} has merged all files after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logMergeEnd();
+    inplaceCompactionLogger.logMergeEnd();
   }
 
   private void logProgress() {
@@ -205,7 +202,7 @@ public class MergeFileTask {
       oldFileWriter.endFile();
       updatePlanIndexes(seqFile);
       seqFile.serialize();
-      mergeLogger.logFileMergeEnd();
+      inplaceCompactionLogger.logFileMergeEnd();
       logger.debug("{} moved merged chunks of {} to the old file", taskName, seqFile);
 
       if (!newFileWriter.getFile().delete()) {
@@ -269,7 +266,7 @@ public class MergeFileTask {
     TsFileIOWriter oldFileWriter;
     try {
       oldFileWriter = new ForceAppendTsFileWriter(seqFile.getTsFile());
-      mergeLogger.logFileMergeStart(
+      inplaceCompactionLogger.logFileMergeStart(
           seqFile.getTsFile(), ((ForceAppendTsFileWriter) oldFileWriter).getTruncatePosition());
       logger.debug("{} moving merged chunks of {} to the old file", taskName, seqFile);
       ((ForceAppendTsFileWriter) oldFileWriter).doTruncate();
@@ -312,7 +309,7 @@ public class MergeFileTask {
         context.getUnmergedChunkStartTimes().get(seqFile);
     RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile);
 
-    mergeLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
+    inplaceCompactionLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
     logger.debug("{} moving unmerged chunks of {} to the new file", taskName, seqFile);
 
     int unmergedChunkNum = context.getUnmergedChunkCnt().getOrDefault(seqFile, 0);
@@ -356,7 +353,7 @@ public class MergeFileTask {
       }
 
       seqFile.serialize();
-      mergeLogger.logFileMergeEnd();
+      inplaceCompactionLogger.logFileMergeEnd();
       logger.debug("{} moved unmerged chunks of {} to the new file", taskName, seqFile);
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
 
@@ -374,11 +371,6 @@ public class MergeFileTask {
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
     } finally {
-      // clean cache
-      if (IoTDBDescriptor.getInstance().getConfig().isMetaDataCacheEnable()) {
-        ChunkCache.getInstance().clear();
-        TimeSeriesMetadataCache.getInstance().clear();
-      }
       seqFile.writeUnlock();
     }
   }

@@ -126,7 +126,7 @@ public class UDTFCast implements UDTF {
         collector.putDouble(time, value);
         return;
       case BOOLEAN:
-        collector.putBoolean(time, value != 0l);
+        collector.putBoolean(time, value != 0L);
         return;
       case TEXT:
         collector.putString(time, String.valueOf(value));
@@ -247,7 +247,7 @@ public class UDTFCast implements UDTF {
         }
         return;
       case BOOLEAN:
-        collector.putBoolean(time, !(stringValue.equals("false") || stringValue.equals("")));
+        collector.putBoolean(time, !("false".equals(stringValue) || "".equals(stringValue)));
         return;
       case TEXT:
         collector.putBinary(time, value);

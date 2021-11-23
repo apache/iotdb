@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.utils;
 
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -56,10 +56,13 @@ public class CreateTemplatePlanUtil {
     }
     encodingList.add(encodings);
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    List<CompressionType> compressors = new ArrayList<>();
     for (int j = 0; j < 11; j++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      compressors.add(CompressionType.SNAPPY);
     }
+    compressionTypes.add(compressors);
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("template_sensor");

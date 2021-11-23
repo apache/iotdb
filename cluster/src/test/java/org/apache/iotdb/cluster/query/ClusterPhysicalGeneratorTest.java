@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
@@ -68,6 +68,5 @@ public class ClusterPhysicalGeneratorTest extends BaseQueryTest {
     RawDataQueryPlan plan = (RawDataQueryPlan) physicalGenerator.transformToPhysicalPlan(operator);
 
     assertEquals(pathList, plan.getDeduplicatedPaths());
-    assertEquals(dataTypes, plan.getDeduplicatedDataTypes());
   }
 }

@@ -20,8 +20,8 @@
 package org.apache.iotdb.cluster.query.reader.mult;
 
 import org.apache.iotdb.cluster.client.sync.SyncDataClient;
+import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
-import org.apache.iotdb.cluster.server.RaftServer;
 import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -73,7 +73,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     this.cachedBatchs = Maps.newHashMap();
     this.pathToDataType = Maps.newHashMap();
     for (int i = 0; i < sourceInfo.getPartialPaths().size(); i++) {
-      String fullPath = sourceInfo.getPartialPaths().get(i).getExactFullPath();
+      String fullPath = sourceInfo.getPartialPaths().get(i).getFullPath();
       this.cachedBatchs.put(fullPath, new ConcurrentLinkedQueue<>());
       this.pathToDataType.put(fullPath, sourceInfo.getDataTypes().get(i));
     }
@@ -91,10 +91,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
 
   private boolean checkPathBatchData(String fullPath) {
     BatchData batchData = cachedBatchs.get(fullPath).peek();
-    if (batchData != null && !batchData.isEmpty()) {
-      return true;
-    }
-    return false;
+    return batchData != null && !batchData.isEmpty();
   }
 
   @Override
@@ -132,7 +129,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       return;
     }
     List<String> paths = batchStrategy.selectBatchPaths(this.cachedBatchs);
-    if (paths.isEmpty()) return;
+    if (paths.isEmpty()) {
+      return;
+    }
 
     Map<String, ByteBuffer> result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
@@ -141,7 +140,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       result = fetchResultSync(paths);
     }
 
-    if (result == null) return;
+    if (result == null) {
+      return;
+    }
 
     for (String path : result.keySet()) {
 
@@ -169,9 +170,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
       fetchResult.set(null);
       try {
         sourceInfo
-            .getCurAsyncClient(RaftServer.getReadOperationTimeoutMS())
+            .getCurAsyncClient(ClusterConstant.getReadOperationTimeoutMS())
             .fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths, handler);
-        fetchResult.wait(RaftServer.getReadOperationTimeoutMS());
+        fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
       } catch (TException | InterruptedException e) {
         logger.error("Failed to fetch result async, connect to {}", sourceInfo, e);
         return null;
@@ -181,20 +182,18 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
   }
 
   private Map<String, ByteBuffer> fetchResultSync(List<String> paths) throws IOException {
-
-    try (SyncDataClient curSyncClient =
-        sourceInfo.getCurSyncClient(RaftServer.getReadOperationTimeoutMS()); ) {
-      try {
-        return curSyncClient.fetchMultSeries(
-            sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
-      } catch (TException e) {
-        // the connection may be broken, close it to avoid it being reused
-        curSyncClient.getInputProtocol().getTransport().close();
-        throw e;
-      }
+    SyncDataClient curSyncClient = null;
+    try {
+      curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
+      return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
     } catch (TException e) {
+      curSyncClient.close();
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
       return null;
+    } finally {
+      if (curSyncClient != null) {
+        curSyncClient.returnSelf();
+      }
     }
   }
 

@@ -76,6 +76,11 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   }
 
   @Override
+  public boolean isAscending() {
+    return false;
+  }
+
+  @Override
   public boolean hasFinalResult() {
     return false;
   }
