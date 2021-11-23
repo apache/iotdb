@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
@@ -124,9 +124,9 @@ public class IoTDBSessionSimpleIT {
     session.open();
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
@@ -389,9 +389,9 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     tablet.setAligned(true);
@@ -428,12 +428,12 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     for (long time = 0; time < 10; time++) {
@@ -888,8 +888,8 @@ public class IoTDBSessionSimpleIT {
           new Tablet(
               deviceId,
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       long ts = 7L;
       for (long row = 0; row < 8; row++) {
@@ -917,15 +917,15 @@ public class IoTDBSessionSimpleIT {
           new Tablet(
               deviceId,
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       Tablet tablet2 =
           new Tablet(
               "root.sg.d2",
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       HashMap<String, Tablet> tablets = new HashMap<>();
       tablets.put(deviceId, tablet1);
@@ -1191,8 +1191,8 @@ public class IoTDBSessionSimpleIT {
 
     // insert tablets
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("x", TSDataType.FLOAT));
-    schemaList.add(new UnaryMeasurementSchema("y", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
     Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
     tablet.setAligned(true);
 
@@ -1319,9 +1319,9 @@ public class IoTDBSessionSimpleIT {
           "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 

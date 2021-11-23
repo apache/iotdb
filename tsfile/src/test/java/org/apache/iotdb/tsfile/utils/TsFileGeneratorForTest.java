@@ -35,8 +35,8 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -204,41 +204,41 @@ public class TsFileGeneratorForTest {
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d1"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED,
             Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s6",
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
             Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
+        new Path("d1"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d2"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d2"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
@@ -298,22 +298,21 @@ public class TsFileGeneratorForTest {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
-      List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
 
       // register nonAlign timeseries
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
 
       writeWithTsRecord(tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
@@ -334,7 +333,7 @@ public class TsFileGeneratorForTest {
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue,
@@ -359,7 +358,7 @@ public class TsFileGeneratorForTest {
   public static void writeWithTablet(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowNum,
       long startTime,
       long startValue,

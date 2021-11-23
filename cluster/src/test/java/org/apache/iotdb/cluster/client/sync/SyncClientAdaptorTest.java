@@ -52,8 +52,8 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -113,7 +113,7 @@ public class SyncClientAdaptorTest {
     snapshotMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
       snapshotMap.put(i, new SimpleSnapshot(i, i));
-      measurementSchemas.add(new UnaryMeasurementSchema(String.valueOf(i), TSDataType.INT64));
+      measurementSchemas.add(new MeasurementSchema(String.valueOf(i), TSDataType.INT64));
       timeseriesSchemas.add(new TimeseriesSchema(String.valueOf(i), TSDataType.INT64));
     }
     lastResult = ByteBuffer.wrap("last".getBytes());

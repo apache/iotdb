@@ -27,7 +27,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +47,10 @@ public class TsFileWriteAlignedWithTablet {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
 
       // register align timeseries
       tsFileWriter.registerAlignedTimeseries(new Path(deviceId), measurementSchemas);
@@ -105,13 +105,13 @@ public class TsFileWriteAlignedWithTablet {
       throws WriteProcessException, IOException {
     // register nonAlign timeseries
     tsFileWriter.registerTimeseries(
-        new Path("root.sg.d2"), new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+        new Path("root.sg.d2"), new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
     tsFileWriter.registerTimeseries(
-        new Path("root.sg.d2"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+        new Path("root.sg.d2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     // construct Tablet
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
-    measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     Tablet tablet = new Tablet("root.sg.d2", measurementSchemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
