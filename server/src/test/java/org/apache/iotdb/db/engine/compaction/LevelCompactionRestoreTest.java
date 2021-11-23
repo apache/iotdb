@@ -28,13 +28,18 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -54,12 +59,14 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
+import static org.junit.Assert.assertEquals;
 
 public class LevelCompactionRestoreTest {
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static String dataDir =
       TestConstant.BASE_OUTPUT_PATH
           + "data".concat(File.separator)
+          + "sequence".concat(File.separator)
           + COMPACTION_TEST_SG.concat(File.separator)
           + "0".concat(File.separator)
           + "0";
@@ -94,7 +101,8 @@ public class LevelCompactionRestoreTest {
     prepareSeries();
     prepareFiles(seqFileNum, unseqFileNum);
     tsFileManagementForTest =
-        new LevelCompactionTsFileManagementForTest("root.compactionTest", "0", dataDir);
+        new LevelCompactionTsFileManagementForTest(
+            "root.compactionTest", "0", TestConstant.BASE_OUTPUT_PATH);
   }
 
   @After
@@ -222,6 +230,136 @@ public class LevelCompactionRestoreTest {
     TsFileManagement.CompactionMergeTask compactionMergeTask =
         tsFileManagementForTest.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
     compactionMergeTask.call();
+    QueryContext context = new QueryContext();
+    PartialPath path =
+        new PartialPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            context,
+            tsFileManagementForTest.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    Assert.assertEquals(count, 600);
+    // only target file exists
+    Assert.assertEquals(tsFileManagementForTest.getTsFileList(true).size(), 1);
+    File logFile =
+        new File(TestConstant.BASE_OUTPUT_PATH, COMPACTION_TEST_SG.concat(".compaction.log"));
+    // compaction log should be deleted
+    Assert.assertFalse(logFile.exists());
+  }
+
+  @Test
+  public void test2() throws Exception {
+    tsFileManagementForTest.addAll(seqResources, true);
+    tsFileManagementForTest.addAll(unseqResources, false);
+    tsFileManagementForTest.shouldThrowExceptionInDLFIL = true;
+    tsFileManagementForTest.forkCurrentFileList(0);
+    TsFileManagement.CompactionMergeTask compactionMergeTask =
+        tsFileManagementForTest.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeTask.call();
+    QueryContext context = new QueryContext();
+    PartialPath path =
+        new PartialPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            context,
+            tsFileManagementForTest.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    Assert.assertEquals(count, 600);
+    // only target file exists
+    Assert.assertEquals(tsFileManagementForTest.getTsFileList(true).size(), 1);
+    File logFile =
+        new File(TestConstant.BASE_OUTPUT_PATH, COMPACTION_TEST_SG.concat(".compaction.log"));
+    // compaction log should be deleted
+    Assert.assertFalse(logFile.exists());
+  }
+
+  @Test
+  public void test3() throws Exception {
+    tsFileManagementForTest.addAll(seqResources, true);
+    tsFileManagementForTest.addAll(unseqResources, false);
+    tsFileManagementForTest.shouldThrowExceptionInCheck = true;
+    tsFileManagementForTest.forkCurrentFileList(0);
+    TsFileManagement.CompactionMergeTask compactionMergeTask =
+        tsFileManagementForTest.new CompactionMergeTask(this::closeCompactionMergeCallBack, 0);
+    compactionMergeTask.call();
+    QueryContext context = new QueryContext();
+    PartialPath path =
+        new PartialPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            context,
+            tsFileManagementForTest.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    Assert.assertEquals(count, 600);
+    // only source files exists
+    Assert.assertEquals(tsFileManagementForTest.getTsFileList(true).size(), 6);
+    File logFile =
+        new File(TestConstant.BASE_OUTPUT_PATH, COMPACTION_TEST_SG.concat(".compaction.log"));
+    // compaction log should be deleted
+    Assert.assertFalse(logFile.exists());
   }
 
   private void closeCompactionMergeCallBack(
@@ -232,6 +370,7 @@ public class LevelCompactionRestoreTest {
 
     public boolean shouldThrowExceptionInDLFIL = false;
     public boolean shouldThrowExceptionInDLFID = false;
+    public boolean shouldThrowExceptionInCheck = false;
 
     public LevelCompactionTsFileManagementForTest(
         String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
@@ -275,6 +414,15 @@ public class LevelCompactionRestoreTest {
           throw new RuntimeException("test");
         }
       }
+    }
+
+    @Override
+    protected boolean checkAndSetFilesMergingIfNotSet(
+        Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles) {
+      if (shouldThrowExceptionInCheck) {
+        throw new RuntimeException("test");
+      }
+      return true;
     }
   }
 }

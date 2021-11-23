@@ -751,7 +751,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         resource.setMerging(false);
       }
       isMergeExecutedInCurrentTask = false;
-      restoreCompaction(mergingFiles, newResource);
+      restoreCompaction(mergingFiles, newResource, sequence);
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
       isSeqMerging = false;
@@ -861,7 +861,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   /** restore the files back to the status before the compaction task is submitted */
-  private void restoreCompaction(List<TsFileResource> sourceTsFiles, TsFileResource targetTsFile) {
+  private void restoreCompaction(
+      List<TsFileResource> sourceTsFiles, TsFileResource targetTsFile, boolean sequence) {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
@@ -902,6 +903,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                 virtualStorageGroupId,
                 sourceFile);
             sourceFile.remove();
+            remove(sourceFile, sequence);
           }
         }
       }
