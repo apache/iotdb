@@ -1033,12 +1033,13 @@ public class ClusterReaderFactory {
     } catch (CheckConsistencyException e) {
       throw new StorageEngineException(e);
     }
+    Filter timeFilter = TimeFilter.defaultTimeFilter(ascending);
     SeriesReader seriesReader =
         getSeriesReader(
             path,
             allSensors,
             dataType,
-            TimeFilter.gtEq(Long.MIN_VALUE),
+            timeFilter,
             null,
             context,
             dataGroupMember.getHeader(),
