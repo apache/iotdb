@@ -89,6 +89,11 @@ public class MemAlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
+  public Statistics getTimeStatistics() {
+    return chunkMetadata.getTimeStatistics();
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (valueFilter == null) {
       this.valueFilter = filter;
