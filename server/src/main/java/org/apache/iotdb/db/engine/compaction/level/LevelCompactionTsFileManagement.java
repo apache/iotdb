@@ -33,7 +33,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
@@ -510,8 +509,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
     } catch (IOException | InterruptedException e) {
-      logger.error("recover level tsfile management error ", e);
-      restoreCompaction();
+      logger.error("exception occurs during recovering compaction", e);
     } finally {
       if (logFile.exists()) {
         try {
@@ -542,24 +540,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       }
     }
     return null;
-  }
-
-  private void deleteAllSubLevelFiles(boolean isSeq, long timePartition) {
-    if (isSeq) {
-      for (int level = 0; level < sequenceTsFileResources.get(timePartition).size(); level++) {
-        SortedSet<TsFileResource> currLevelMergeFile =
-            sequenceTsFileResources.get(timePartition).get(level);
-        deleteLevelFilesInDisk(currLevelMergeFile);
-        deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
-      }
-    } else {
-      for (int level = 0; level < unSequenceTsFileResources.get(timePartition).size(); level++) {
-        SortedSet<TsFileResource> currLevelMergeFile =
-            sequenceTsFileResources.get(timePartition).get(level);
-        deleteLevelFilesInDisk(currLevelMergeFile);
-        deleteLevelFilesInList(timePartition, currLevelMergeFile, level, isSeq);
-      }
-    }
   }
 
   @Override
@@ -648,6 +628,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     // whether execute merge chunk in the loop below
     boolean isMergeExecutedInCurrentTask = false;
     CompactionLogger compactionLogger = null;
+    TsFileResource newResource = null;
     try {
       logger.debug("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
@@ -709,7 +690,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   "{} [Compaction] start to merge TsFile {}", storageGroupName, toMergeTsFile);
             }
 
-            TsFileResource newResource = new TsFileResource(newLevelFile);
+            newResource = new TsFileResource(newLevelFile);
             List<Modification> modifications = new ArrayList<>();
             // merge, read from source files and write to target file
             CompactionUtils.merge(
@@ -769,7 +750,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         resource.setMerging(false);
       }
       isMergeExecutedInCurrentTask = false;
-      restoreCompaction();
+      restoreCompaction(mergingFiles, newResource);
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
       isSeqMerging = false;
@@ -879,7 +860,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   /** restore the files back to the status before the compaction task is submitted */
-  private void restoreCompaction() {
+  private void restoreCompaction(List<TsFileResource> sourceTsFiles, TsFileResource targetTsFile) {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
@@ -887,100 +868,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         "{}-{} [Compaction][Restore] Start to restore compaction",
         storageGroupName,
         virtualStorageGroupId);
-    try {
-      if (logFile.exists()) {
-        CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
-        logAnalyzer.analyze();
-        CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
-        if (targetFileInfo == null) {
-          logger.info(
-              "{}-{} [Compaction][Restore] cannot get target file info from compaction log, stop restoration",
-              storageGroupName,
-              virtualStorageGroupId);
-          return;
-        }
-        File targetFile = null;
-        for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-          if ((targetFile = targetFileInfo.getFile(dataDir)) != null) {
-            break;
-          }
-        }
-        if (targetFile != null) {
-          // target file exists
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
-          if (writer.hasCrashed()) {
-            // target file is not completed
-            writer.close();
-            logger.info(
-                "{}-{} [Compaction][Restore] target file {} is not completed, delete it",
-                storageGroupName,
-                virtualStorageGroupId,
-                targetFile);
-            Files.delete(targetFile.toPath());
-          } else {
-            // target file is completed
-            // check if all the source files exists
-            // if true, delete target file
-            // else, delete source files remaining
-            List<CompactionFileInfo> sourceFileInfos = logAnalyzer.getSourceFileInfo();
-            List<File> sourceFiles = new ArrayList<>();
-            boolean allSourceFileExists = true;
-            for (CompactionFileInfo sourceFileInfo : sourceFileInfos) {
-              File sourceFile = null;
-              for (String dataDir : IoTDBDescriptor.getInstance().getConfig().getDataDirs()) {
-                if ((sourceFile = sourceFileInfo.getFile(dataDir)) != null) {
-                  sourceFiles.add(sourceFile);
-                  break;
-                }
-              }
-              if (sourceFile == null) {
-                // one of the source file does not exist
-                allSourceFileExists = false;
-              }
-            }
-            if (allSourceFileExists) {
-              // delete target file
-              logger.info(
-                  "{}-{} [Compaction][Restore] all source file exists, delete target file {}",
-                  storageGroupName,
-                  virtualStorageGroupId,
-                  targetFile);
-              Files.delete(targetFile.toPath());
-            } else {
-              logger.info(
-                  "{}-{} [Compaction][Restore] target file {} is completed, some source files does not exists, delete source files {}",
-                  storageGroupName,
-                  virtualStorageGroupId,
-                  targetFile,
-                  sourceFiles);
-              for (File sourceFile : sourceFiles) {
-                logger.info(
-                    "{}-{} [Compaction][Restore] delete source file {}",
-                    storageGroupName,
-                    virtualStorageGroupId,
-                    sourceFile);
-                Files.delete(sourceFile.toPath());
-              }
-            }
-          }
-        } else {
-          logger.info(
-              "{}-{} [Compaction][Restore] target file {} cannot be found from data dirs, stop restoration",
-              storageGroupName,
-              virtualStorageGroupId,
-              targetFileInfo);
-        }
-      }
-    } catch (IOException e) {
-      logger.error("restore compaction failed", e);
-    } finally {
-      if (logFile.exists()) {
-        try {
-          Files.delete(logFile.toPath());
-        } catch (IOException e) {
-          logger.error("delete compaction log file error ", e);
-        }
-      }
+    if (targetTsFile != null && targetTsFile.getTsFile().exists()) {
+      // target file exists
+
     }
   }
 
