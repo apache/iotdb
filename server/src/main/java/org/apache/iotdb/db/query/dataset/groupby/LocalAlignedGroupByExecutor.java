@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -43,7 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class LocalAlignedGroupByExecutor implements GroupByExecutor {
+public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
   private final AlignedSeriesAggregateReader reader;
   private BatchData preCachedData;
@@ -93,40 +92,11 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
   }
 
   @Override
-  public void addAggregateResult(AggregateResult aggrResult) {
-    throw new UnsupportedOperationException(
-        "This method is not supported in LocalAlignedGroupByExecutor");
+  public void addAggregateResult(List<AggregateResult> aggregateResults) {
+    results.add(aggregateResults);
   }
 
   @Override
-  public List<AggregateResult> calcResult(long curStartTime, long curEndTime)
-      throws IOException, QueryProcessException {
-    throw new UnsupportedOperationException(
-        "This method is not supported in LocalAlignedGroupByExecutor");
-  }
-
-  @Override
-  public Pair<Long, Object> peekNextNotNullValue(long nextStartTime, long nextEndTime)
-      throws IOException {
-    throw new UnsupportedOperationException(
-        "This method is not supported in LocalAlignedGroupByExecutor");
-  }
-
-  public void addAggregateResultList(List<AggregateResult> aggrResultList) {
-    results.add(aggrResultList);
-  }
-
-  private boolean isEndCalc() {
-    for (List<AggregateResult> resultsOfOneMeasurement : results) {
-      for (AggregateResult result : resultsOfOneMeasurement) {
-        if (!result.hasFinalResult()) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
   public List<List<AggregateResult>> calcAlignedResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException {
 
@@ -179,6 +149,17 @@ public class LocalAlignedGroupByExecutor implements GroupByExecutor {
     }
 
     return results;
+  }
+
+  private boolean isEndCalc() {
+    for (List<AggregateResult> resultsOfOneMeasurement : results) {
+      for (AggregateResult result : resultsOfOneMeasurement) {
+        if (!result.hasFinalResult()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   private void calcFromStatistics(Statistics statistics, List<AggregateResult> aggregateResultList)

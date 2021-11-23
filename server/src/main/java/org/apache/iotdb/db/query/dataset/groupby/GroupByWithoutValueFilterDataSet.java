@@ -54,10 +54,11 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
   private static final Logger logger =
       LoggerFactory.getLogger(GroupByWithoutValueFilterDataSet.class);
 
-  protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
-
   protected Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
   protected Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
+
+  protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
+  protected Map<AlignedPath, AlignedGroupByExecutor> alignedPathExecutors = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 
@@ -110,8 +111,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           alignedPathToAggrIndexesMap.entrySet()) {
         AlignedPath path = entry.getKey();
         List<List<Integer>> indexesList = entry.getValue();
-        if (!pathExecutors.containsKey(path)) {
-          pathExecutors.put(
+        if (!alignedPathExecutors.containsKey(path)) {
+          alignedPathExecutors.put(
               path, getAlignedGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
         }
         for (int i = 0; i < path.getMeasurementList().size(); i++) {
@@ -124,8 +125,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
                     ascending);
             aggrResultList.add(aggrResult);
           }
-          ((LocalAlignedGroupByExecutor) pathExecutors.get(path))
-              .addAggregateResultList(aggrResultList);
+          alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
         }
       }
     } finally {
@@ -165,7 +165,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         MeasurementPath path = (MeasurementPath) entry.getKey();
         List<Integer> indexes = entry.getValue();
-        LocalGroupByExecutor groupByExecutor = (LocalGroupByExecutor) pathExecutors.get(path);
+        GroupByExecutor groupByExecutor = pathExecutors.get(path);
         List<AggregateResult> aggregations = groupByExecutor.calcResult(curStartTime, curEndTime);
         for (int i = 0; i < aggregations.size(); i++) {
           int resultIndex = indexes.get(i);
@@ -177,8 +177,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           alignedPathToAggrIndexesMap.entrySet()) {
         AlignedPath path = entry.getKey();
         List<List<Integer>> indexesList = entry.getValue();
-        LocalAlignedGroupByExecutor groupByExecutor =
-            (LocalAlignedGroupByExecutor) pathExecutors.get(path);
+        AlignedGroupByExecutor groupByExecutor = alignedPathExecutors.get(path);
         List<List<AggregateResult>> aggregationsList =
             groupByExecutor.calcAlignedResult(curStartTime, curEndTime);
         for (int i = 0; i < path.getMeasurementList().size(); i++) {
@@ -224,7 +223,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     return new LocalGroupByExecutor(path, context, timeFilter, fileFilter, ascending);
   }
 
-  protected GroupByExecutor getAlignedGroupByExecutor(
+  protected AlignedGroupByExecutor getAlignedGroupByExecutor(
       PartialPath path,
       QueryContext context,
       Filter timeFilter,
