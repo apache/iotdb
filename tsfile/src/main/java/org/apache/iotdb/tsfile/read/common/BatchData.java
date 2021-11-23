@@ -32,6 +32,8 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -510,30 +512,37 @@ public class BatchData {
     return this.count;
   }
 
+  /** Get the idx th timestamp by the time ascending order */
   public long getTimeByIndex(int idx) {
     return this.timeRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th long value by the time ascending order */
   public long getLongByIndex(int idx) {
     return this.longRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th double value by the time ascending order */
   public double getDoubleByIndex(int idx) {
     return this.doubleRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th int value by the time ascending order */
   public int getIntByIndex(int idx) {
     return this.intRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th float value by the time ascending order */
   public float getFloatByIndex(int idx) {
     return this.floatRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th binary value by the time ascending order */
   public Binary getBinaryByIndex(int idx) {
     return binaryRet.get(idx / capacity)[idx % capacity];
   }
 
+  /** Get the idx th boolean value by the time ascending order */
   public boolean getBooleanByIndex(int idx) {
     return booleanRet.get(idx / capacity)[idx % capacity];
   }
@@ -574,6 +583,53 @@ public class BatchData {
 
   public BatchDataIterator getBatchDataIterator() {
     return new BatchDataIterator(this);
+  }
+
+  /**
+   * For any implementation of BatchData, the data serializing sequence must equal the one of
+   * writing, otherwise after deserializing the sequence will be reversed
+   */
+  public void serializeData(DataOutputStream outputStream) throws IOException {
+    switch (dataType) {
+      case BOOLEAN:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeBoolean(getBooleanByIndex(i));
+        }
+        break;
+      case DOUBLE:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeDouble(getDoubleByIndex(i));
+        }
+        break;
+      case FLOAT:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeFloat(getFloatByIndex(i));
+        }
+        break;
+      case TEXT:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          Binary binary = getBinaryByIndex(i);
+          outputStream.writeInt(binary.getLength());
+          outputStream.write(binary.getValues());
+        }
+        break;
+      case INT64:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeLong(getLongByIndex(i));
+        }
+        break;
+      case INT32:
+        for (int i = 0; i < length(); i++) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeInt(getIntByIndex(i));
+        }
+        break;
+    }
   }
 
   /**

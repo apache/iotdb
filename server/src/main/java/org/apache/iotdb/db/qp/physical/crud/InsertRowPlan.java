@@ -367,7 +367,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   private void putValues(ByteBuffer buffer) throws QueryProcessException {
-    for (int i = 0; i < values.length; i++) {
+    for (int i = 0; i < measurements.length; i++) {
       if (measurements[i] == null) {
         continue;
       }
@@ -442,7 +442,7 @@ public class InsertRowPlan extends InsertPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.INSERT.ordinal();
     buffer.put((byte) type);
     subSerialize(buffer);

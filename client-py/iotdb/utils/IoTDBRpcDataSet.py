@@ -41,10 +41,12 @@ class IoTDBRpcDataSet(object):
         ignore_timestamp,
         query_id,
         client,
+        statement_id,
         session_id,
         query_data_set,
         fetch_size,
     ):
+        self.__statement_id = statement_id
         self.__session_id = session_id
         self.__ignore_timestamp = ignore_timestamp
         self.__sql = sql
@@ -109,7 +111,7 @@ class IoTDBRpcDataSet(object):
         if self.__client is not None:
             try:
                 status = self.__client.closeOperation(
-                    TSCloseOperationReq(self.__session_id, self.__query_id)
+                    TSCloseOperationReq(self.__session_id, self.__query_id, self.__statement_id)
                 )
                 logger.debug(
                     "close session {}, message: {}".format(

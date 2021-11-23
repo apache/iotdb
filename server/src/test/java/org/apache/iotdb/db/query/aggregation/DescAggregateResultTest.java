@@ -24,6 +24,8 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
+import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
@@ -56,6 +58,20 @@ public class DescAggregateResultTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(10L, (long) result.getResult());
+
+    maxTimeDescAggrResult.reset();
+    BatchData batchData = BatchDataFactory.createBatchData(TSDataType.FLOAT, false, false);
+    batchData.putFloat(1, 1.0F);
+    batchData.putFloat(2, 2.0F);
+    batchData.putFloat(3, 3.0F);
+    batchData.putFloat(4, 4.0F);
+    batchData.putFloat(5, 5.0F);
+    batchData.resetBatchData();
+    maxTimeDescAggrResult.updateResultFromPageData(batchData);
+    Assert.assertEquals(5L, maxTimeDescAggrResult.getResult());
+    batchData.resetBatchData();
+    maxTimeDescAggrResult.updateResultFromPageData(batchData, 2, 5);
+    Assert.assertEquals(5L, maxTimeDescAggrResult.getResult());
   }
 
   @Test
@@ -78,6 +94,20 @@ public class DescAggregateResultTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(1L, (long) result.getResult());
+
+    minTimeDescAggrResult.reset();
+    BatchData batchData = BatchDataFactory.createBatchData(TSDataType.FLOAT, false, false);
+    batchData.putFloat(1, 1.0F);
+    batchData.putFloat(2, 2.0F);
+    batchData.putFloat(3, 3.0F);
+    batchData.putFloat(4, 4.0F);
+    batchData.putFloat(5, 5.0F);
+    batchData.resetBatchData();
+    minTimeDescAggrResult.updateResultFromPageData(batchData);
+    Assert.assertEquals(1L, minTimeDescAggrResult.getResult());
+    batchData.resetBatchData();
+    minTimeDescAggrResult.updateResultFromPageData(batchData, 1, 3);
+    Assert.assertEquals(1L, minTimeDescAggrResult.getResult());
   }
 
   @Test
@@ -101,6 +131,20 @@ public class DescAggregateResultTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals(false, result.getResult());
+
+    firstValueDescAggrResult.reset();
+    BatchData batchData = BatchDataFactory.createBatchData(TSDataType.BOOLEAN, false, false);
+    batchData.putBoolean(1, true);
+    batchData.putBoolean(2, false);
+    batchData.putBoolean(3, false);
+    batchData.putBoolean(4, true);
+    batchData.putBoolean(5, false);
+    batchData.resetBatchData();
+    firstValueDescAggrResult.updateResultFromPageData(batchData);
+    Assert.assertTrue((boolean) firstValueDescAggrResult.getResult());
+    batchData.resetBatchData();
+    firstValueDescAggrResult.updateResultFromPageData(batchData, 1, 3);
+    Assert.assertTrue((boolean) firstValueDescAggrResult.getResult());
   }
 
   @Test
@@ -123,5 +167,19 @@ public class DescAggregateResultTest {
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
     Assert.assertEquals("last", String.valueOf(result.getResult()));
+
+    lastValueDescAggrResult.reset();
+    BatchData batchData = BatchDataFactory.createBatchData(TSDataType.TEXT, false, false);
+    batchData.putBinary(1L, new Binary("a"));
+    batchData.putBinary(2L, new Binary("b"));
+    batchData.putBinary(3L, new Binary("c"));
+    batchData.putBinary(4L, new Binary("d"));
+    batchData.putBinary(5L, new Binary("e"));
+    batchData.resetBatchData();
+    lastValueDescAggrResult.updateResultFromPageData(batchData);
+    Assert.assertEquals("e", ((Binary) lastValueDescAggrResult.getResult()).getStringValue());
+    batchData.resetBatchData();
+    lastValueDescAggrResult.updateResultFromPageData(batchData, 3, 5);
+    Assert.assertEquals("e", ((Binary) lastValueDescAggrResult.getResult()).getStringValue());
   }
 }

@@ -125,46 +125,7 @@ public class SerializeUtils {
       outputStream.writeInt(length);
       outputStream.write(dataType.ordinal());
       outputStream.write(batchData.getBatchDataType().ordinal());
-      switch (dataType) {
-        case BOOLEAN:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            outputStream.writeBoolean(batchData.getBooleanByIndex(i));
-          }
-          break;
-        case DOUBLE:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            outputStream.writeDouble(batchData.getDoubleByIndex(i));
-          }
-          break;
-        case FLOAT:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            outputStream.writeFloat(batchData.getFloatByIndex(i));
-          }
-          break;
-        case TEXT:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            Binary binary = batchData.getBinaryByIndex(i);
-            outputStream.writeInt(binary.getLength());
-            outputStream.write(binary.getValues());
-          }
-          break;
-        case INT64:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            outputStream.writeLong(batchData.getLongByIndex(i));
-          }
-          break;
-        case INT32:
-          for (int i = 0; i < length; i++) {
-            outputStream.writeLong(batchData.getTimeByIndex(i));
-            outputStream.writeInt(batchData.getIntByIndex(i));
-          }
-          break;
-      }
+      batchData.serializeData(outputStream);
     } catch (IOException ignored) {
       // ignored
     }

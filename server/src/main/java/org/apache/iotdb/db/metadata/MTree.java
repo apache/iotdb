@@ -103,6 +103,8 @@ public class MTree implements Serializable {
   private static transient ThreadLocal<Integer> offset = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> count = new ThreadLocal<>();
   private static transient ThreadLocal<Integer> curOffset = new ThreadLocal<>();
+  private static final boolean CACHE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   private MNode root;
 
   MTree() {
@@ -134,6 +136,9 @@ public class MTree implements Serializable {
                 Long.MAX_VALUE,
                 null);
         last = lastReader.readLastPoint();
+        if (CACHE_ENABLED && last != null && last.getValue() != null) {
+          node.updateCachedLast(last, false, Long.MIN_VALUE);
+        }
         return (last != null ? last.getTimestamp() : Long.MIN_VALUE);
       } catch (Exception e) {
         logger.error(
