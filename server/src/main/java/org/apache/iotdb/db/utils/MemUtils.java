@@ -89,7 +89,7 @@ public class MemUtils {
     }
     long memSize = 0;
     for (int i = 0; i < insertTabletPlan.getMeasurements().length; i++) {
-      if (insertTabletPlan.getDataTypes()[i] == null) {
+      if (insertTabletPlan.getColumns()[i] == null) {
         continue;
       }
       switch (insertTabletPlan.getDataTypes()[i]) {
