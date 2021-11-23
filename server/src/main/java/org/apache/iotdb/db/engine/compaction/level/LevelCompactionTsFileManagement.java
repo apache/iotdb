@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
@@ -868,9 +869,62 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         "{}-{} [Compaction][Restore] Start to restore compaction",
         storageGroupName,
         virtualStorageGroupId);
-    if (targetTsFile != null && targetTsFile.getTsFile().exists()) {
-      // target file exists
-
+    try {
+      if (targetTsFile == null || !targetTsFile.getTsFile().exists()) {
+        // target file not exists
+        logger.warn(
+            "{}-{} [Compaction][Restore] Cannot find compaction target file {}",
+            storageGroupName,
+            virtualStorageGroupId,
+            targetTsFile);
+      } else {
+        RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetTsFile.getTsFile());
+        if (writer.hasCrashed()) {
+          // target file is incomplete
+          writer.close();
+          logger.info(
+              "{}-{} [Compaction][Restore] target file {} is incomplete, delete it",
+              storageGroupName,
+              virtualStorageGroupId,
+              targetTsFile);
+          Files.delete(targetTsFile.getTsFile().toPath());
+        } else {
+          // target file is complete, delete source files
+          logger.info(
+              "{}-{} [Compaction][Restore] target file {} is complete, delete source files",
+              storageGroupName,
+              virtualStorageGroupId,
+              targetTsFile);
+          for (TsFileResource sourceFile : sourceTsFiles) {
+            logger.info(
+                "{}-{} [Compaction][Restore] deleting source file {}",
+                storageGroupName,
+                virtualStorageGroupId,
+                sourceFile);
+            sourceFile.remove();
+          }
+        }
+      }
+    } catch (IOException e) {
+      logger.error(
+          "{}-{} [Compaction][Restore] exception occurs during restoring compaction with source files {}, target file {}",
+          storageGroupName,
+          virtualStorageGroupId,
+          sourceTsFiles,
+          targetTsFile,
+          e);
+    } finally {
+      try {
+        if (logFile.exists()) {
+          Files.delete(logFile.toPath());
+        }
+      } catch (IOException e) {
+        logger.error(
+            "{}-{} [Compaction][Restore] failed to delete log file {}",
+            storageGroupName,
+            virtualStorageGroupId,
+            logFile);
+      }
     }
   }
 
