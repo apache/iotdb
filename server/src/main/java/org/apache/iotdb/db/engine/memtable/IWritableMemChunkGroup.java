@@ -46,7 +46,8 @@ public interface IWritableMemChunkGroup {
 
   Map<String, IWritableMemChunk> getMemChunkMap();
 
-  int delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
+  int delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   long getCurrentChunkPointNum(String measurement);
 }

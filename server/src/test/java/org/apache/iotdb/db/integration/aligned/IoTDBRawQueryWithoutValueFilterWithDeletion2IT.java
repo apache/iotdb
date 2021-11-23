@@ -60,7 +60,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
         Statement statement = connection.createStatement()) {
       // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
       // disk before doing deletion
-      statement.execute("flush");
+      // statement.execute("flush");
       statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
     } catch (Exception e) {

@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.Set;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -29,6 +26,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -75,8 +73,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public int delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp,
-      long endTimestamp) {
+  public int delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     int deletedPointsNumber = 0;
     boolean shouldDeleteAll = true;
     Set<String> measurements = memChunk.getAllMeasurements();

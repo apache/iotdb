@@ -888,22 +888,35 @@ public class AlignedTVList extends TVList {
   }
 
   public IPointReader getAlignedIterator(
-      int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
+      int floatPrecision,
+      List<TSEncoding> encodingList,
+      int size,
+      List<List<TimeRange>> deletionList) {
     return new AlignedIte(floatPrecision, encodingList, size, deletionList);
   }
 
   private class AlignedIte extends Ite {
 
     private List<TSEncoding> encodingList;
+    private int[] deleteCursors;
+    /** this field is effective only in the AlignedTvlist in a AlignedRealOnlyMemChunk. */
+    private List<List<TimeRange>> deletionList;
 
     public AlignedIte() {
       super();
     }
 
     public AlignedIte(
-        int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
-      super(floatPrecision, null, size, deletionList);
+        int floatPrecision,
+        List<TSEncoding> encodingList,
+        int size,
+        List<List<TimeRange>> deletionList) {
+      super(floatPrecision, null, size, null);
       this.encodingList = encodingList;
+      this.deletionList = deletionList;
+      if (deletionList != null) {
+        deleteCursors = new int[deletionList.size()];
+      }
     }
 
     @Override
@@ -915,7 +928,7 @@ public class AlignedTVList extends TVList {
       List<Integer> timeDuplicatedAlignedRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (cur + 1 < size() && (time == getTime(cur + 1))) {
           if (timeDuplicatedAlignedRowIndexList == null) {
             timeDuplicatedAlignedRowIndexList = new ArrayList<>();
             timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur));
@@ -933,6 +946,7 @@ public class AlignedTVList extends TVList {
         } else {
           tvPair = getTimeValuePair(cur, time, floatPrecision, encodingList);
         }
+        deletePointsInDeletionList(time, tvPair);
         cur++;
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;
@@ -942,6 +956,21 @@ public class AlignedTVList extends TVList {
       }
 
       return false;
+    }
+
+    private void deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
+      if (deletionList == null) {
+        return;
+      }
+      for (int i = 0; i < deleteCursors.length; i++) {
+        while (deletionList.get(i) != null && deleteCursors[i] < deletionList.get(i).size()) {
+          if (deletionList.get(i).get(deleteCursors[i]).contains(timestamp)) {
+            tvPair.getValue().getVector()[i] = null;
+          } else if (deletionList.get(i).get(deleteCursors[i]).getMax() < timestamp) {
+            deleteCursors[i]++;
+          }
+        }
+      }
     }
   }
 }

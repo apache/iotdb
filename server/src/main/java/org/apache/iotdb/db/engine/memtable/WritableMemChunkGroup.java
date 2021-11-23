@@ -19,15 +19,15 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.Iterator;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -115,8 +115,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   }
 
   @Override
-  public int delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp,
-      long endTimestamp) {
+  public int delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     int deletedPointsNumber = 0;
     Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
     while (iter.hasNext()) {

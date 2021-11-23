@@ -66,11 +66,9 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
-      // disk before doing deletion
-      statement.execute("flush");
       statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s1 where time <= 21");
+      statement.execute("delete from root.sg1.d1.s5 where time <= 31");
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -273,11 +271,11 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
 
     String[] retArray =
         new String[] {
-          "9,null,9,false,aligned_test9",
-          "10,null,10,true,aligned_test10",
+          "9,null,9,false,null",
+          "10,null,10,true,null",
           "11,null,11,null,null",
           "12,null,12,null,null",
-          "13,null,130000,true,aligned_unseq_test13",
+          "13,null,130000,true,null",
           "14,null,14,null,null",
           "15,null,15,null,null",
           "16,null,16,null,null",
@@ -295,7 +293,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "28,null,28,false,null",
           "29,null,29,false,null",
           "30,null,30,false,null",
-          "31,null,null,null,aligned_test31",
+          "31,null,null,null,null",
           "32,null,null,null,aligned_test32",
           "33,null,null,null,aligned_test33",
         };
@@ -494,7 +492,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "28,null,false,null",
           "29,null,false,null",
           "30,null,false,null",
-          "31,null,null,aligned_test31",
+          "31,null,null,null",
           "32,null,null,aligned_test32",
           "33,null,null,aligned_test33",
           "34,null,null,aligned_test34",
@@ -559,7 +557,7 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletionIT {
           "28,null,false,null,null,false,null",
           "29,null,false,null,null,false,null",
           "30,null,false,null,null,false,null",
-          "31,non_aligned_test31,null,null,aligned_test31,null,null",
+          "31,non_aligned_test31,null,null,null,null,null",
           "32,non_aligned_test32,null,null,aligned_test32,null,null",
           "33,non_aligned_test33,null,null,aligned_test33,null,null",
           "34,non_aligned_test34,null,null,aligned_test34,null,null",
