@@ -68,6 +68,11 @@ public abstract class TsFileManagement {
   public volatile boolean isSeqMerging = false;
   public volatile boolean recovered = false;
   /**
+   * This flag is true by default, it means the compaction run without any problems. It is set to
+   * false if exception occurs and it cannot be handled correctly.
+   */
+  public volatile boolean canMerge = true;
+  /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
    */
@@ -175,8 +180,10 @@ public abstract class TsFileManagement {
     }
 
     public Void call() {
-      merge(timePartitionId);
-      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      if (canMerge) {
+        merge(timePartitionId);
+        closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      }
       return null;
     }
   }

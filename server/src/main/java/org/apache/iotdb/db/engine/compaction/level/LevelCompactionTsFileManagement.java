@@ -510,11 +510,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         }
       }
       if (logFile.exists()) {
-        try {
-          Files.delete(logFile.toPath());
-        } catch (IOException e) {
-          logger.error("delete level tsfile management log file error ", e);
-        }
+        Files.delete(logFile.toPath());
       }
       return true;
     } catch (Throwable e) {
@@ -913,12 +909,13 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       }
     } catch (IOException e) {
       logger.error(
-          "{}-{} [Compaction][Restore] exception occurs during restoring compaction with source files {}, target file {}",
+          "{}-{} [Compaction][Restore] exception occurs during restoring compaction with source files {}, target file {}, set canMerge to false",
           storageGroupName,
           virtualStorageGroupId,
           sourceTsFiles,
           targetTsFile,
           e);
+      canMerge = false;
     }
   }
 
