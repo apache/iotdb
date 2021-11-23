@@ -113,6 +113,12 @@ public class AlignedPath extends PartialPath {
     schemaList.add(path.getMeasurementSchema());
   }
 
+  public AlignedPath(String vectorPath) throws IllegalPathException {
+    super(vectorPath);
+    measurementList = new ArrayList<>();
+    schemaList = new ArrayList<>();
+  }
+
   @Override
   public String getDevice() {
     return getFullPath();

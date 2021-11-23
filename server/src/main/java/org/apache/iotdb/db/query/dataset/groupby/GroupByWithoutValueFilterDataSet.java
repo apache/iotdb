@@ -56,8 +56,8 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   protected Map<PartialPath, GroupByExecutor> pathExecutors = new HashMap<>();
 
-  protected Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
-  protected Map<PartialPath, List<List<Integer>>> alignedPathToIndexesMap = new HashMap<>();
+  protected Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
+  protected Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
 
   public GroupByWithoutValueFilterDataSet() {}
 
@@ -84,12 +84,12 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
 
     // init resultIndexes, group aligned series
-    resultIndexes = MetaUtils.groupAggregationsBySeries(paths);
-    alignedPathToIndexesMap = MetaUtils.groupAlignedSeries(resultIndexes);
+    pathToAggrIndexesMap = MetaUtils.groupAggregationsByPath(paths);
+    alignedPathToAggrIndexesMap = MetaUtils.groupAlignedPathsWithAggregations(pathToAggrIndexesMap);
 
     try {
       // init GroupByExecutor for non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : resultIndexes.entrySet()) {
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         MeasurementPath path = (MeasurementPath) entry.getKey();
         List<Integer> indexes = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
@@ -106,8 +106,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
       // init GroupByExecutor for aligned series
-      for (Map.Entry<PartialPath, List<List<Integer>>> entry : alignedPathToIndexesMap.entrySet()) {
-        AlignedPath path = (AlignedPath) entry.getKey();
+      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+          alignedPathToAggrIndexesMap.entrySet()) {
+        AlignedPath path = entry.getKey();
         List<List<Integer>> indexesList = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
           pathExecutors.put(
@@ -161,7 +162,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     curAggregateResults = new AggregateResult[paths.size()];
     try {
       // get aggregate results of non-aligned series
-      for (Map.Entry<PartialPath, List<Integer>> entry : resultIndexes.entrySet()) {
+      for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         MeasurementPath path = (MeasurementPath) entry.getKey();
         List<Integer> indexes = entry.getValue();
         LocalGroupByExecutor groupByExecutor = (LocalGroupByExecutor) pathExecutors.get(path);
@@ -172,8 +173,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
       // get aggregate results of aligned series
-      for (Map.Entry<PartialPath, List<List<Integer>>> entry : alignedPathToIndexesMap.entrySet()) {
-        AlignedPath path = (AlignedPath) entry.getKey();
+      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+          alignedPathToAggrIndexesMap.entrySet()) {
+        AlignedPath path = entry.getKey();
         List<List<Integer>> indexesList = entry.getValue();
         LocalAlignedGroupByExecutor groupByExecutor =
             (LocalAlignedGroupByExecutor) pathExecutors.get(path);
