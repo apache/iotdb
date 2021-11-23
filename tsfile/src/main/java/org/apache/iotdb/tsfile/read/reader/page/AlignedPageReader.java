@@ -132,6 +132,11 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
   }
 
   @Override
+  public Statistics getTimeStatistics() {
+    return timePageReader.getStatistics();
+  }
+
+  @Override
   public void setFilter(Filter filter) {
     if (this.filter == null) {
       this.filter = filter;
