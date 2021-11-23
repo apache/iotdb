@@ -29,9 +29,14 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan.PhysicalPlanType;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -47,6 +52,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public class InsertTabletPlanTest {
@@ -280,6 +286,137 @@ public class InsertTabletPlanTest {
     executor.insertTablet(plan2);
 
     Assert.assertEquals(plan1, plan2);
+  }
+
+  @Test
+  public void testInsertTabletPlanWithSchemaTemplateAndAutoCreateSchema()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+
+    // test recover
+    EnvironmentUtils.stopDaemon();
+    IoTDB.metaManager.clear();
+    // wait for close
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+      Thread.currentThread().interrupt();
+    }
+    EnvironmentUtils.activeDaemon();
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
+  @Test
+  public void testInsertTabletPlanWithSchemaTemplate()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    CreateTemplatePlan plan = getCreateTemplatePlan();
+
+    IoTDB.metaManager.createSchemaTemplate(plan);
+    IoTDB.metaManager.setSchemaTemplate(new SetTemplatePlan("template1", "root.isp.d1"));
+
+    InsertTabletPlan tabletPlan = getAlignedInsertTabletPlan();
+
+    PlanExecutor executor = new PlanExecutor();
+
+    // nothing can be found when we not insert data
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(0, dataSet.getPaths().size());
+
+    executor.insertTablet(tabletPlan);
+
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(3, dataSet.getPaths().size());
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      Assert.assertEquals(6, record.getFields().size());
+    }
+  }
+
+  private CreateTemplatePlan getCreateTemplatePlan() {
+    List<List<String>> measurementList = new ArrayList<>();
+    List<String> v1 = new ArrayList<>();
+    v1.add("vector.s1");
+    v1.add("vector.s2");
+    v1.add("vector.s3");
+    measurementList.add(v1);
+    List<String> v2 = new ArrayList<>();
+    v2.add("vector2.s4");
+    v2.add("vector2.s5");
+    measurementList.add(v2);
+    measurementList.add(Collections.singletonList("vector3.s6"));
+
+    List<List<TSDataType>> dataTypesList = new ArrayList<>();
+    List<TSDataType> d1 = new ArrayList<>();
+    d1.add(TSDataType.DOUBLE);
+    d1.add(TSDataType.FLOAT);
+    d1.add(TSDataType.INT64);
+    dataTypesList.add(d1);
+    List<TSDataType> d2 = new ArrayList<>();
+    d2.add(TSDataType.INT32);
+    d2.add(TSDataType.BOOLEAN);
+    dataTypesList.add(d2);
+    dataTypesList.add(Collections.singletonList(TSDataType.TEXT));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    List<TSEncoding> e1 = new ArrayList<>();
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    e1.add(TSEncoding.PLAIN);
+    encodingList.add(e1);
+    List<TSEncoding> e2 = new ArrayList<>();
+    e2.add(TSEncoding.PLAIN);
+    e2.add(TSEncoding.PLAIN);
+    encodingList.add(e2);
+    encodingList.add(Collections.singletonList(TSEncoding.PLAIN));
+
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    List<CompressionType> c1 = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      c1.add(CompressionType.SNAPPY);
+    }
+    List<CompressionType> c2 = new ArrayList<>();
+    for (int i = 0; i < 2; i++) {
+      c2.add(CompressionType.SNAPPY);
+    }
+    compressionTypes.add(c1);
+    compressionTypes.add(c2);
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("vector");
+    schemaNames.add("vector2");
+    schemaNames.add("s6");
+
+    return new CreateTemplatePlan(
+        "template1", schemaNames, measurementList, dataTypesList, encodingList, compressionTypes);
   }
 
   private InsertTabletPlan getAlignedInsertTabletPlan() throws IllegalPathException {

@@ -15,26 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
 
-package org.apache.iotdb.cluster.partition.slot;
+package org.apache.iotdb.db.exception.metadata;
 
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.util.Map;
-import java.util.Set;
+public class TemplateImcompatibeException extends MetadataException {
 
-public class SlotNodeAdditionResult extends NodeAdditionResult {
-
-  /** which slots will the old data groups transfer to the new one. */
-  private Map<RaftNode, Set<Integer>> lostSlots;
-
-  public Map<RaftNode, Set<Integer>> getLostSlots() {
-    return lostSlots;
+  public TemplateImcompatibeException(String path, String templateName) {
+    super(
+        String.format("Path [%s] already exists in [%s]", path, templateName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
   }
 
-  public void setLostSlots(Map<RaftNode, Set<Integer>> lostSlots) {
-    this.lostSlots = lostSlots;
+  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
+    super(
+        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
   }
 }

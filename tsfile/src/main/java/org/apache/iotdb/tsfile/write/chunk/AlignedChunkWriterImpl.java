@@ -18,10 +18,13 @@
  */
 package org.apache.iotdb.tsfile.write.chunk;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
+import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -58,6 +61,31 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
               valueTSDataTypeList.get(i),
               valueTSEncodingList.get(i),
               valueEncoderList.get(i)));
+    }
+
+    this.valueIndex = 0;
+  }
+
+  public AlignedChunkWriterImpl(List<IMeasurementSchema> schemaList) {
+    TSEncoding timeEncoding =
+        TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder());
+    TSDataType timeType = TSFileDescriptor.getInstance().getConfig().getTimeSeriesDataType();
+    timeChunkWriter =
+        new TimeChunkWriter(
+            "",
+            schemaList.get(0).getCompressor(),
+            timeEncoding,
+            TSEncodingBuilder.getEncodingBuilder(timeEncoding).getEncoder(timeType));
+
+    valueChunkWriterList = new ArrayList<>(schemaList.size());
+    for (int i = 0; i < schemaList.size(); i++) {
+      valueChunkWriterList.add(
+          new ValueChunkWriter(
+              schemaList.get(i).getMeasurementId(),
+              schemaList.get(i).getCompressor(),
+              schemaList.get(i).getType(),
+              schemaList.get(i).getEncodingType(),
+              schemaList.get(i).getValueEncoder()));
     }
 
     this.valueIndex = 0;

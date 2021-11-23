@@ -172,7 +172,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderFalse(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(new RaftNode(node, 0))) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {
@@ -209,7 +209,7 @@ public class RaftMemberTest extends BaseMember {
 
   private DataGroupMember newDataGroupMemberWithSyncLeaderTrue(Node node, boolean syncLeader) {
     DataGroupMember newMember =
-        new TestDataGroupMember(node, partitionTable.getHeaderGroup(new RaftNode(node, 0))) {
+        new TestDataGroupMember(node, partitionTable.getPartitionGroup(new RaftNode(node, 0))) {
 
           @Override
           public boolean syncLeader(RaftMember.CheckConsistency checkConsistency) {

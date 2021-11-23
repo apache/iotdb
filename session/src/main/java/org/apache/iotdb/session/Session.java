@@ -1989,57 +1989,13 @@ public class Session {
   }
 
   /**
-   * @param name template name
-   * @param schemaNames list of schema names, if this measurement is vector, name it. if this
-   *     measurement is not vector, keep this name as same as measurement's name
-   * @param measurements List of measurements, if it is a single measurement, just put it's name
-   *     into a list and add to measurements if it is a vector measurement, put all measurements of
-   *     the vector into a list and add to measurements
-   * @param dataTypes List of datatypes, if it is a single measurement, just put it's type into a
-   *     list and add to dataTypes if it is a vector measurement, put all types of the vector into a
-   *     list and add to dataTypes
-   * @param encodings List of encodings, if it is a single measurement, just put it's encoding into
-   *     a list and add to encodings if it is a vector measurement, put all encodings of the vector
-   *     into a list and add to encodings
-   * @param compressors List of compressors
-   * @throws IoTDBConnectionException
-   * @throws StatementExecutionException
-   */
-  public void createSchemaTemplate(
-      String name,
-      List<String> schemaNames,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateSchemaTemplateReq request =
-        getTSCreateSchemaTemplateReq(
-            name, schemaNames, measurements, dataTypes, encodings, compressors);
-    defaultSessionConnection.createSchemaTemplate(request);
-  }
-
-  /** Create schema template without schemaNames. */
-  public void createSchemaTemplate(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    TSCreateSchemaTemplateReq request =
-        getTSCreateSchemaTemplateReq(name, null, measurements, dataTypes, encodings, compressors);
-    defaultSessionConnection.createSchemaTemplate(request);
-  }
-
-  /**
    * Construct Template at session and create it at server.
    *
    * @see Template
    */
   public void createSchemaTemplate(Template template)
       throws IOException, IoTDBConnectionException, StatementExecutionException {
-    TSCreateSchemaTemplateReq req = getTSCreateSchemaTemplateReq();
+    TSCreateSchemaTemplateReq req = new TSCreateSchemaTemplateReq();
     req.setName(template.getName());
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     template.serialize(baos);
@@ -2215,56 +2171,6 @@ public class Session {
     TSSetSchemaTemplateReq request = new TSSetSchemaTemplateReq();
     request.setTemplateName(templateName);
     request.setPrefixPath(prefixPath);
-    return request;
-  }
-
-  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq(
-      String name,
-      List<String> schemaNames,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors) {
-    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
-    request.setName(name);
-    if (schemaNames != null) {
-      request.setSchemaNames(schemaNames);
-    }
-    request.setMeasurements(measurements);
-
-    List<List<Integer>> requestType = new ArrayList<>();
-    for (List<TSDataType> typesList : dataTypes) {
-      requestType.add(typesList.stream().map(TSDataType::ordinal).collect(Collectors.toList()));
-    }
-    request.setDataTypes(requestType);
-
-    List<List<Integer>> requestEncoding = new ArrayList<>();
-    for (List<TSEncoding> encodingList : encodings) {
-      requestEncoding.add(
-          encodingList.stream().map(TSEncoding::ordinal).collect(Collectors.toList()));
-    }
-    request.setEncodings(requestEncoding);
-
-    List<List<Integer>> requestCompressor = new ArrayList<>();
-    for (List<CompressionType> compressorList : compressors) {
-      requestCompressor.add(
-          compressorList.stream().map(CompressionType::ordinal).collect(Collectors.toList()));
-    }
-    request.setCompressors(requestCompressor);
-    return request;
-  }
-
-  private TSCreateSchemaTemplateReq getTSCreateSchemaTemplateReq() {
-    // Return a empty Request to construct by serialized binary
-    TSCreateSchemaTemplateReq request = new TSCreateSchemaTemplateReq();
-    List<String> emptyList = new ArrayList<>();
-    List<List<String>> emptyStringList = new ArrayList<>();
-    List<List<Integer>> emptyIntegerList = new ArrayList<>();
-    request.setMeasurements(emptyStringList);
-    request.setSchemaNames(emptyList);
-    request.setDataTypes(emptyIntegerList);
-    request.setEncodings(emptyIntegerList);
-    request.setCompressors(emptyIntegerList);
     return request;
   }
 

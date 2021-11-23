@@ -17,24 +17,33 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.partition.slot;
+package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.cluster.partition.NodeAdditionResult;
-import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
-public class SlotNodeAdditionResult extends NodeAdditionResult {
+public interface IWritableMemChunkGroup {
 
-  /** which slots will the old data groups transfer to the new one. */
-  private Map<RaftNode, Set<Integer>> lostSlots;
+  void writeValues(
+      long[] times,
+      Object[] columns,
+      BitMap[] bitMaps,
+      List<IMeasurementSchema> schemaList,
+      int start,
+      int end);
 
-  public Map<RaftNode, Set<Integer>> getLostSlots() {
-    return lostSlots;
-  }
+  void release();
 
-  public void setLostSlots(Map<RaftNode, Set<Integer>> lostSlots) {
-    this.lostSlots = lostSlots;
-  }
+  long count();
+
+  boolean contains(String measurement);
+
+  void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
+
+  Map<String, IWritableMemChunk> getMemChunkMap();
+
+  long getCurrentChunkPointNum(String measurement);
 }

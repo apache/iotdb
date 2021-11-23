@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.path;
 
-import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -423,7 +423,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
    * @return ReadOnlyMemChunk
    */
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, Map<String, IWritableMemChunk>> memTableMap, List<TimeRange> deletionList)
+      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
       throws QueryProcessException, IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
