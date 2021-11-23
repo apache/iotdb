@@ -453,9 +453,18 @@ public class AlignedTVList extends TVList {
     return deletedNumber * getTsDataTypes().size();
   }
 
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   public int delete(long lowerBound, long upperBound, int columnIndex) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
+    int deletedNumber = 0;
+    for (int i = 0; i < size; i++) {
+      long time = getTime(i);
+      if (time >= lowerBound && time <= upperBound) {
+        int arrayIndex = i / ARRAY_SIZE;
+        int elementIndex = i % ARRAY_SIZE;
+        markNullValue(columnIndex, arrayIndex, elementIndex);
+        deletedNumber++;
+      }
+    }
+    return deletedNumber;
   }
 
   protected void set(int index, long timestamp, int value) {

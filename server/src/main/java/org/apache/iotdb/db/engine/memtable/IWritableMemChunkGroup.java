@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -44,6 +45,8 @@ public interface IWritableMemChunkGroup {
   void write(long insertTime, Object[] objectValue, List<IMeasurementSchema> schemaList);
 
   Map<String, IWritableMemChunk> getMemChunkMap();
+
+  int delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp);
 
   long getCurrentChunkPointNum(String measurement);
 }

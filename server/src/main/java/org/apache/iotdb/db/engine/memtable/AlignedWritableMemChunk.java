@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.Set;
 import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -54,6 +55,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       dataTypeList.add(schemaList.get(i).getType());
     }
     this.list = TVListAllocator.getInstance().allocate(dataTypeList);
+  }
+
+  public Set<String> getAllMeasurements() {
+    return measurementIndexMap.keySet();
   }
 
   public boolean containsMeasurement(String measurementId) {
@@ -242,9 +247,8 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
   public int delete(long lowerBound, long upperBound, String measurementId) {
-    return 0;
+    return list.delete(lowerBound, upperBound, measurementIndexMap.get(measurementId));
   }
 
   @Override

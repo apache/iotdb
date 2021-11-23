@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.Iterator;
+import java.util.Map.Entry;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
@@ -109,6 +112,28 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
     return memChunkMap;
+  }
+
+  @Override
+  public int delete(PartialPath originalPath, PartialPath devicePath, long startTimestamp,
+      long endTimestamp) {
+    int deletedPointsNumber = 0;
+    Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
+    while (iter.hasNext()) {
+      Entry<String, IWritableMemChunk> entry = iter.next();
+      IWritableMemChunk chunk = entry.getValue();
+      // the key is measurement rather than component of multiMeasurement
+      PartialPath fullPath = devicePath.concatNode(entry.getKey());
+      if (originalPath.matchFullPath(fullPath)) {
+        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
+        // and delete timeseries
+        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+          iter.remove();
+        }
+        deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
+      }
+    }
+    return deletedPointsNumber;
   }
 
   @Override

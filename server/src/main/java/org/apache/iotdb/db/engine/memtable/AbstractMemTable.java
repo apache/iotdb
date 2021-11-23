@@ -348,24 +348,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (memChunkGroup == null) {
       return;
     }
-
-    Iterator<Entry<String, IWritableMemChunk>> iter =
-        memChunkGroup.getMemChunkMap().entrySet().iterator();
-    while (iter.hasNext()) {
-      Entry<String, IWritableMemChunk> entry = iter.next();
-      IWritableMemChunk chunk = entry.getValue();
-      // the key is measurement rather than component of multiMeasurement
-      PartialPath fullPath = devicePath.concatNode(entry.getKey());
-      if (originalPath.matchFullPath(fullPath)) {
-        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
-        // and delete timeseries or aligned timeseries
-        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-          iter.remove();
-        }
-        int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
-        totalPointsNum -= deletedPointsNumber;
-      }
-    }
+    totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
   }
 
   @Override
