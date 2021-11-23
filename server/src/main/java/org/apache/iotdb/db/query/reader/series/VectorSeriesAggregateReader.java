@@ -84,6 +84,13 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentFileModified();
   }
 
+  public boolean canUseCurrentTimeFileStatistics() throws IOException {
+    Statistics fileStatistics = seriesReader.currentFileStatistics();
+    return !seriesReader.isFileOverlapped()
+        && containedByTimeFilter(fileStatistics)
+        && !seriesReader.currentFileModified();
+  }
+
   @Override
   public Statistics currentFileStatistics() throws IOException {
     return seriesReader.currentFileStatistics(curIndex);
@@ -107,6 +114,13 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentChunkModified();
   }
 
+  public boolean canUseCurrentTimeChunkStatistics() throws IOException {
+    Statistics chunkStatistics = seriesReader.currentChunkStatistics();
+    return !seriesReader.isChunkOverlapped()
+        && containedByTimeFilter(chunkStatistics)
+        && !seriesReader.currentChunkModified();
+  }
+
   @Override
   public Statistics currentChunkStatistics() throws IOException {
     return seriesReader.currentChunkStatistics(curIndex);
@@ -125,6 +139,16 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
     Statistics currentPageStatistics = currentPageStatistics();
+    if (currentPageStatistics == null) {
+      return false;
+    }
+    return !seriesReader.isPageOverlapped()
+        && containedByTimeFilter(currentPageStatistics)
+        && !seriesReader.currentPageModified();
+  }
+
+  public boolean canUseCurrentTimePageStatistics() throws IOException {
+    Statistics currentPageStatistics = seriesReader.currentPageStatistics();
     if (currentPageStatistics == null) {
       return false;
     }

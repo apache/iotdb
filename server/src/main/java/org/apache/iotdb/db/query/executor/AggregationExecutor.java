@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -401,7 +402,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentFileStatistics()) {
+      if (seriesReader.canUseCurrentTimeFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -422,7 +423,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentChunkStatistics()) {
+        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -515,7 +516,7 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentPageStatistics()) {
+      if (seriesReader.canUseCurrentTimePageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
@@ -754,18 +755,21 @@ public class AggregationExecutor {
 
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof AlignedPath) {
+      if (seriesPath instanceof MeasurementPath
+          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
+        AlignedPath groupPath = temp.get(exactPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath.copy();
-          temp.put(seriesPath.getFullPath(), groupPath);
+          groupPath = exactPath;
+          temp.put(groupPath.getFullPath(), groupPath);
           result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
           // groupPath is changed here so we update it
           List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addMeasurement(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addMeasurements(exactPath.getMeasurementList());
+          groupPath.addSchemas(exactPath.getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }
