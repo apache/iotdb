@@ -32,11 +32,13 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -114,6 +116,14 @@ public class LevelCompactionRestoreTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMergeChunkPointNumberThreshold(prevMergeChunkThreshold);
+    ChunkCache.getInstance().clear();
+    TimeSeriesMetadataCache.getInstance().clear();
+    removeFiles();
+    seqResources.clear();
+    unseqResources.clear();
     File dataDirectory = new File(dataDir);
     if (dataDirectory.exists()) {
       FileUtils.deleteDirectory(dataDirectory);
@@ -123,6 +133,7 @@ public class LevelCompactionRestoreTest {
     if (tmpDataDir.exists()) {
       FileUtils.deleteDirectory(tmpDataDir);
     }
+    EnvironmentUtils.cleanAllDir();
     tsFileManagementForTest = null;
   }
 
@@ -149,6 +160,30 @@ public class LevelCompactionRestoreTest {
             Collections.emptyMap());
       }
     }
+  }
+
+  private void removeFiles() throws IOException {
+    for (TsFileResource tsFileResource : seqResources) {
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
+    }
+    for (TsFileResource tsFileResource : unseqResources) {
+      if (tsFileResource.getTsFile().exists()) {
+        tsFileResource.remove();
+      }
+    }
+    File[] files = FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".tsfile");
+    for (File file : files) {
+      file.delete();
+    }
+    File[] resourceFiles =
+        FSFactoryProducer.getFSFactory().listFilesBySuffix("target", ".resource");
+    for (File resourceFile : resourceFiles) {
+      resourceFile.delete();
+    }
+    FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
+    FileReaderManager.getInstance().stop();
   }
 
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {
