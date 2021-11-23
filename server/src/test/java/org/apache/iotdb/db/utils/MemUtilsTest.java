@@ -68,7 +68,7 @@ public class MemUtilsTest {
     sizeSum += 8 + TSDataType.TEXT.getDataTypeSize();
     InsertTabletPlan insertPlan = new InsertTabletPlan(device, measurements, dataTypes);
     insertPlan.setColumns(columns);
-    Assert.assertEquals(sizeSum, MemUtils.getRecordSize(insertPlan, 0, 1, false));
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertPlan, 0, 1, false));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */
