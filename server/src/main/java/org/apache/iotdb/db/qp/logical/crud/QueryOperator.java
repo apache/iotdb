@@ -219,16 +219,16 @@ public class QueryOperator extends Operator {
   protected void transformFilterOperatorToExpression(
       PhysicalGenerator generator, RawDataQueryPlan rawDataQueryPlan) throws QueryProcessException {
     FilterOperator filterOperator = whereComponent.getFilterOperator();
-      List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
-      HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
-      for (PartialPath filterPath : filterPaths) {
-        rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
-        pathTSDataTypeHashMap.put(
-            filterPath,
-            SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
-      }
-      IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
-      rawDataQueryPlan.setExpression(expression);
+    List<PartialPath> filterPaths = new ArrayList<>(filterOperator.getPathSet());
+    HashMap<PartialPath, TSDataType> pathTSDataTypeHashMap = new HashMap<>();
+    for (PartialPath filterPath : filterPaths) {
+      rawDataQueryPlan.addFilterPathInDeviceToMeasurements(filterPath);
+      pathTSDataTypeHashMap.put(
+          filterPath,
+          SQLConstant.isReservedPath(filterPath) ? TSDataType.INT64 : filterPath.getSeriesType());
+    }
+    IExpression expression = filterOperator.transformToExpression(pathTSDataTypeHashMap);
+    rawDataQueryPlan.setExpression(expression);
   }
 
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
