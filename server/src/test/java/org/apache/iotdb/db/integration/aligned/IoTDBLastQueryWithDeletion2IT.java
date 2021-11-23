@@ -18,15 +18,17 @@
  */
 package org.apache.iotdb.db.integration.aligned;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
 
 public class IoTDBLastQueryWithDeletion2IT extends IoTDBLastQueryWithDeletionIT {
 
@@ -51,8 +53,8 @@ public class IoTDBLastQueryWithDeletion2IT extends IoTDBLastQueryWithDeletionIT 
     AlignedWriteUtil.insertData();
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
       // disk before doing deletion

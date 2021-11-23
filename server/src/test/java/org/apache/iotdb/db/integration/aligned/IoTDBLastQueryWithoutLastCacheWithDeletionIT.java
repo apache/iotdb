@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.integration.aligned;
 
-import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
-import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
-import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.jdbc.Config;
+
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -34,16 +36,15 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
-
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
@@ -70,8 +71,8 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
       // disk before doing deletion
@@ -92,9 +93,7 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableLastCache);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(enableLastCache);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -109,8 +108,8 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root.sg1.d1");
@@ -156,8 +155,8 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root.sg1.*");
@@ -190,14 +189,12 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
   public void selectAllAlignedLastWithTimeFilterTest() throws ClassNotFoundException {
 
     Set<String> retSet =
-        new HashSet<>(
-            Collections.singletonList(
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+        new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last * from root.sg1.d1 where time > 30");
@@ -231,13 +228,12 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(
-                "30,root.sg1.d1.s4,false,BOOLEAN",
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+                "30,root.sg1.d1.s4,false,BOOLEAN", "40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last s1, s4, s5 from root.sg1.d1");
@@ -269,13 +265,12 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
   @Test
   public void selectSomeAlignedLastTest2() throws ClassNotFoundException {
     Set<String> retSet =
-        new HashSet<>(
-            Collections.singletonList("30,root.sg1.d1.s4,false,BOOLEAN"));
+        new HashSet<>(Collections.singletonList("30,root.sg1.d1.s4,false,BOOLEAN"));
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet = statement.execute("select last s1, s4 from root.sg1.d1");
@@ -308,14 +303,12 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
   public void selectSomeAlignedLastWithTimeFilterTest() throws ClassNotFoundException {
 
     Set<String> retSet =
-        new HashSet<>(
-            Collections.singletonList(
-                "40,root.sg1.d1.s5,aligned_test40,TEXT"));
+        new HashSet<>(Collections.singletonList("40,root.sg1.d1.s5,aligned_test40,TEXT"));
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -356,8 +349,8 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // 1 4 5

@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration.aligned;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -58,9 +59,7 @@ public class IoTDBLastQueryWithoutLastCache2IT extends IoTDBLastQueryWithoutLast
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableLastCache);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(enableLastCache);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }
