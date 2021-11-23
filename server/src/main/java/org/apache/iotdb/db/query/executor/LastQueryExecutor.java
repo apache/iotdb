@@ -177,7 +177,7 @@ public class LastQueryExecutor {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
         LastPointReader lastReader =
             new LastPointReader(
                 nonCachedPaths.get(i),
@@ -186,7 +186,7 @@ public class LastQueryExecutor {
                 context,
                 dataSource,
                 Long.MAX_VALUE,
-                null);
+                filter);
         readerList.add(lastReader);
       }
     } finally {
