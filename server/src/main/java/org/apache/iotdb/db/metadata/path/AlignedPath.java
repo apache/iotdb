@@ -139,8 +139,12 @@ public class AlignedPath extends PartialPath {
     this.measurementList = measurementList;
   }
 
-  public void addMeasurement(List<String> measurements) {
+  public void addMeasurements(List<String> measurements) {
     this.measurementList.addAll(measurements);
+  }
+
+  public void addSchemas(List<IMeasurementSchema> schemas) {
+    this.schemaList.addAll(schemas);
   }
 
   public void addMeasurement(MeasurementPath measurementPath) {
