@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -403,7 +402,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentTimeFileStatistics()) {
+      if (seriesReader.canUseCurrentFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -424,7 +423,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
+        if (seriesReader.canUseCurrentChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -517,7 +516,7 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentTimePageStatistics()) {
+      if (seriesReader.canUseCurrentPageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
