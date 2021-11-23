@@ -125,8 +125,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     // read from file
     while (reader.hasNextFile()) {
       // try to calc from fileMetaData
-      Statistics fileStatistics = reader.currentFileStatistics();
-      if (fileStatistics.getStartTime() >= curEndTime) {
+      Statistics fileTimeStatistics = reader.currentFileTimeStatistics();
+      if (fileTimeStatistics.getStartTime() >= curEndTime) {
         if (ascending) {
           return results;
         } else {
@@ -135,7 +135,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         }
       }
       if (reader.canUseCurrentFileStatistics()
-          && timeRange.contains(fileStatistics.getStartTime(), fileStatistics.getEndTime())) {
+          && timeRange.contains(
+              fileTimeStatistics.getStartTime(), fileTimeStatistics.getEndTime())) {
         // calc from fileMetaData
         while (reader.hasNextSubSeries()) {
           Statistics currentFileStatistics = reader.currentFileStatistics();
@@ -171,6 +172,9 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     if (statistics == null) {
       return;
     }
+    if (statistics.getStartTime() == Long.MAX_VALUE && statistics.getEndTime() == Long.MIN_VALUE) {
+      return;
+    }
     for (AggregateResult result : aggregateResultList) {
       if (result.hasFinalResult()) {
         continue;
@@ -183,8 +187,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       throws IOException, QueryProcessException {
     while (reader.hasNextChunk()) {
       // try to calc from chunkMetaData
-      Statistics chunkStatistics = reader.currentChunkStatistics();
-      if (chunkStatistics.getStartTime() >= curEndTime) {
+      Statistics chunkTimeStatistics = reader.currentChunkTimeStatistics();
+      if (chunkTimeStatistics.getStartTime() >= curEndTime) {
         if (ascending) {
           return true;
         } else {
@@ -193,7 +197,8 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         }
       }
       if (reader.canUseCurrentChunkStatistics()
-          && timeRange.contains(chunkStatistics.getStartTime(), chunkStatistics.getEndTime())) {
+          && timeRange.contains(
+              chunkTimeStatistics.getStartTime(), chunkTimeStatistics.getEndTime())) {
         // calc from chunkMetaData
         while (reader.hasNextSubSeries()) {
           Statistics currentChunkStatistics = reader.currentChunkStatistics();
@@ -215,29 +220,32 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       throws IOException, QueryProcessException {
     while (reader.hasNextPage()) {
       // try to calc from pageHeader
-      Statistics pageStatistics = reader.currentPageStatistics();
-      // current page max than time range
-      if (pageStatistics.getStartTime() >= curEndTime) {
-        if (ascending) {
-          return true;
-        } else {
+      Statistics pageTimeStatistics = reader.currentPageTimeStatistics();
+      if (pageTimeStatistics != null) {
+        // current page max than time range
+        if (pageTimeStatistics.getStartTime() >= curEndTime) {
+          if (ascending) {
+            return true;
+          } else {
+            reader.skipCurrentPage();
+            continue;
+          }
+        }
+        if (reader.canUseCurrentPageStatistics()
+            && timeRange.contains(
+                pageTimeStatistics.getStartTime(), pageTimeStatistics.getEndTime())) {
+          // calc from pageHeader
+          while (reader.hasNextSubSeries()) {
+            Statistics currentPageStatistics = reader.currentPageStatistics();
+            calcFromStatistics(currentPageStatistics, results.get(reader.getCurIndex()));
+            reader.nextSeries();
+          }
           reader.skipCurrentPage();
+          if (isEndCalc()) {
+            return true;
+          }
           continue;
         }
-      }
-      if (reader.canUseCurrentPageStatistics()
-          && timeRange.contains(pageStatistics.getStartTime(), pageStatistics.getEndTime())) {
-        // calc from pageHeader
-        while (reader.hasNextSubSeries()) {
-          Statistics currentPageStatistics = reader.currentPageStatistics();
-          calcFromStatistics(currentPageStatistics, results.get(reader.getCurIndex()));
-          reader.nextSeries();
-        }
-        reader.skipCurrentPage();
-        if (isEndCalc()) {
-          return true;
-        }
-        continue;
       }
 
       // calc from page data

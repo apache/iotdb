@@ -89,6 +89,10 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
     return seriesReader.currentFileStatistics(curIndex);
   }
 
+  public Statistics currentFileTimeStatistics() throws IOException {
+    return seriesReader.currentFileTimeStatistics();
+  }
+
   @Override
   public void skipCurrentFile() {
     seriesReader.skipCurrentFile();
@@ -110,6 +114,10 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
   @Override
   public Statistics currentChunkStatistics() throws IOException {
     return seriesReader.currentChunkStatistics(curIndex);
+  }
+
+  public Statistics currentChunkTimeStatistics() throws IOException {
+    return seriesReader.currentChunkTimeStatistics();
   }
 
   @Override
@@ -136,6 +144,10 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
   @Override
   public Statistics currentPageStatistics() throws IOException {
     return seriesReader.currentPageStatistics(curIndex);
+  }
+
+  public Statistics currentPageTimeStatistics() throws IOException {
+    return seriesReader.currentPageTimeStatistics();
   }
 
   @Override
