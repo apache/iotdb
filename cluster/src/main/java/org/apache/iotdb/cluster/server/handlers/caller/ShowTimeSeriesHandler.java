@@ -29,14 +29,33 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /** Handler for getting the schemas from each data group concurrently. */
-public class ShowTimeseriesHandler implements AsyncMethodCallback<List<ShowTimeSeriesResult>> {
+public class ShowTimeSeriesHandler implements AsyncMethodCallback<List<ShowTimeSeriesResult>> {
 
-  private static final Logger logger = LoggerFactory.getLogger(ShowTimeseriesHandler.class);
+  private static class ShowTimeSeriesResultComparator implements Comparator<ShowTimeSeriesResult> {
+
+    @Override
+    public int compare(ShowTimeSeriesResult o1, ShowTimeSeriesResult o2) {
+      if (o1 == null && o2 == null) {
+        return 0;
+      } else if (o1 == null) {
+        return -1;
+      } else if (o2 == null) {
+        return 1;
+      }
+      return o1.getName().compareTo(o2.getName());
+    }
+  }
+
+  private static final Logger logger = LoggerFactory.getLogger(ShowTimeSeriesHandler.class);
 
   /** String representation of a partial path for logging */
   private final String path;
@@ -44,10 +63,10 @@ public class ShowTimeseriesHandler implements AsyncMethodCallback<List<ShowTimeS
   private final CountDownLatch countDownLatch;
   private final long startTimeInMs;
 
-  private final List<ShowTimeSeriesResult> result = new ArrayList<>();
+  private final Map<String, ShowTimeSeriesResult> timeSeriesNameToResult = new HashMap<>();
   private final List<Exception> exceptions = new ArrayList<>();
 
-  public ShowTimeseriesHandler(int numGroup, PartialPath path) {
+  public ShowTimeSeriesHandler(int numGroup, PartialPath path) {
     this.countDownLatch = new CountDownLatch(numGroup);
     this.path = path.toString();
     this.startTimeInMs = System.currentTimeMillis();
@@ -55,7 +74,9 @@ public class ShowTimeseriesHandler implements AsyncMethodCallback<List<ShowTimeS
 
   @Override
   public synchronized void onComplete(List<ShowTimeSeriesResult> response) {
-    result.addAll(response);
+    for (ShowTimeSeriesResult r : response) {
+      timeSeriesNameToResult.put(r.getName(), r);
+    }
     countDownLatch.countDown();
     logger.debug(
         "Got {} timeseries in path {}. Remaining count: {}",
@@ -105,6 +126,8 @@ public class ShowTimeseriesHandler implements AsyncMethodCallback<List<ShowTimeS
       throw new MetadataException(errMsg);
     }
 
-    return result;
+    return timeSeriesNameToResult.values().stream()
+        .sorted(new ShowTimeSeriesResultComparator())
+        .collect(Collectors.toList());
   }
 }

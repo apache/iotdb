@@ -33,7 +33,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
-import org.apache.iotdb.cluster.server.handlers.caller.ShowTimeseriesHandler;
+import org.apache.iotdb.cluster.server.handlers.caller.ShowTimeSeriesHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
@@ -1424,7 +1424,7 @@ public class CMManager extends MManager {
       logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(), groups.size());
     }
 
-    ShowTimeseriesHandler handler = new ShowTimeseriesHandler(groups.size(), plan.getPath());
+    ShowTimeSeriesHandler handler = new ShowTimeSeriesHandler(groups.size(), plan.getPath());
     List<Future<Void>> futureList = new ArrayList<>();
     for (PartitionGroup group : groups) {
       futureList.add(
@@ -1479,7 +1479,7 @@ public class CMManager extends MManager {
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
       QueryContext context,
-      ShowTimeseriesHandler handler) {
+      ShowTimeSeriesHandler handler) {
     if (group.contains(metaGroupMember.getThisNode())) {
       showLocalTimeseries(group, plan, context, handler);
     } else {
@@ -1517,7 +1517,7 @@ public class CMManager extends MManager {
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
       QueryContext context,
-      ShowTimeseriesHandler handler) {
+      ShowTimeSeriesHandler handler) {
     try {
       DataGroupMember localDataMember =
           metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
@@ -1530,7 +1530,7 @@ public class CMManager extends MManager {
   }
 
   private void showRemoteTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeseriesHandler handler) {
+      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeSeriesHandler handler) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
