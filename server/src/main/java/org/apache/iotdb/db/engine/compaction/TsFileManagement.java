@@ -136,7 +136,7 @@ public abstract class TsFileManagement {
   public abstract int size(boolean sequence);
 
   /** recover TsFile list */
-  public abstract void recover();
+  public abstract boolean recover();
 
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
@@ -192,9 +192,16 @@ public abstract class TsFileManagement {
 
     @Override
     public Void call() {
-      recover();
-      // in recover logic, the param time partition is useless, we can just pass 0L
-      closeCompactionMergeCallBack.call(false, 0L);
+      boolean recoverSuccess = recover();
+      if (recoverSuccess) {
+        // in recover logic, the param time partition is useless, we can just pass 0L
+        closeCompactionMergeCallBack.call(false, 0L);
+      } else {
+        logger.warn(
+            "{}-{} [Compaction] failed to recover compaction, this storage group will not compact periodically",
+            storageGroupName,
+            virtualStorageGroupId);
+      }
       return null;
     }
   }

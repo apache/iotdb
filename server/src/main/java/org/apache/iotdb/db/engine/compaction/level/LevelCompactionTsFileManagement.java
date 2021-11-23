@@ -422,7 +422,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   /** recover files */
   @Override
   @SuppressWarnings("squid:S3776")
-  public void recover() {
+  public boolean recover() {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
@@ -437,7 +437,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         File targetFile = null;
         boolean isSeq = logAnalyzer.isSeq();
         if (targetFileInfo == null || sourceFileInfo.isEmpty()) {
-          return;
+          return true;
         }
         if (deviceSet.isEmpty() && targetFileInfo != null) {
           // if not in compaction, just delete the target file
@@ -448,7 +448,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                   "[Compaction][Recover] Target file {} found, device set is null, delete it",
                   targetFile);
               FileUtils.delete(targetFile.getPath());
-              return;
+              return true;
             }
           }
         }
@@ -509,9 +509,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
-    } catch (IOException | InterruptedException e) {
-      logger.error("exception occurs during recovering compaction", e);
-    } finally {
       if (logFile.exists()) {
         try {
           Files.delete(logFile.toPath());
@@ -519,6 +516,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           logger.error("delete level tsfile management log file error ", e);
         }
       }
+      return true;
+    } catch (Throwable e) {
+      logger.error("exception occurs during recovering compaction", e);
+      return false;
     }
   }
 
@@ -739,7 +740,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
-    } catch (Exception e) {
+    } catch (Throwable e) {
       if (compactionLogger != null) {
         try {
           compactionLogger.close();
@@ -751,7 +752,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         resource.setMerging(false);
       }
       isMergeExecutedInCurrentTask = false;
-      restoreCompaction(mergingFiles, newResource, sequence);
+      handleExceptionForCompaction(mergingFiles, newResource, sequence);
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
       isSeqMerging = false;
@@ -861,7 +862,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   /** restore the files back to the status before the compaction task is submitted */
-  private void restoreCompaction(
+  private void handleExceptionForCompaction(
       List<TsFileResource> sourceTsFiles, TsFileResource targetTsFile, boolean sequence) {
     File logFile =
         FSFactoryProducer.getFSFactory()
@@ -907,6 +908,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           }
         }
       }
+      if (logFile.exists()) {
+        Files.delete(logFile.toPath());
+      }
     } catch (IOException e) {
       logger.error(
           "{}-{} [Compaction][Restore] exception occurs during restoring compaction with source files {}, target file {}",
@@ -915,18 +919,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
           sourceTsFiles,
           targetTsFile,
           e);
-    } finally {
-      try {
-        if (logFile.exists()) {
-          Files.delete(logFile.toPath());
-        }
-      } catch (IOException e) {
-        logger.error(
-            "{}-{} [Compaction][Restore] failed to delete log file {}",
-            storageGroupName,
-            virtualStorageGroupId,
-            logFile);
-      }
     }
   }
 
