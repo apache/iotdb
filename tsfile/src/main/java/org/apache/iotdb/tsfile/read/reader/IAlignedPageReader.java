@@ -23,4 +23,6 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 public interface IAlignedPageReader {
 
   Statistics getStatistics(int index);
+
+  Statistics getTimeStatistics();
 }

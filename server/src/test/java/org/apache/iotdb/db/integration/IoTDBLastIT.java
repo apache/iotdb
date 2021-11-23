@@ -38,6 +38,10 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import static org.apache.iotdb.db.constant.TestConstant.DATA_TYPE_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESEIRES_STR;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertTrue;
 
 public class IoTDBLastIT {
@@ -85,11 +89,6 @@ public class IoTDBLastIT {
             + "values(300, 23.1, true, 8)",
         "flush",
       };
-
-  private static final String TIMESTAMP_STR = "Time";
-  private static final String TIMESEIRES_STR = "timeseries";
-  private static final String VALUE_STR = "value";
-  private static final String DATA_TYPE_STR = "dataType";
 
   @Before
   public void setUp() throws Exception {
