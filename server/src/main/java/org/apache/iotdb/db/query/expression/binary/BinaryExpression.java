@@ -68,8 +68,7 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return leftExpression.isTimeSeriesGeneratingFunctionExpression()
-        || rightExpression.isTimeSeriesGeneratingFunctionExpression();
+    return true;
   }
 
   @Override
