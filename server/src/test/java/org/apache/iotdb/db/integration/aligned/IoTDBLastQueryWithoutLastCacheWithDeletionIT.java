@@ -170,7 +170,6 @@ public class IoTDBLastQueryWithoutLastCacheWithDeletionIT {
                   + resultSet.getString(VALUE_STR)
                   + ","
                   + resultSet.getString(DATA_TYPE_STR);
-          System.out.println(ans);
           Assert.assertTrue(retSet.contains(ans));
           cnt++;
         }
