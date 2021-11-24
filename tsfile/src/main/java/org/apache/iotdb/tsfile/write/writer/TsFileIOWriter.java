@@ -216,26 +216,21 @@ public class TsFileIOWriter {
 
   /** Write a whole chunk in another file into this file. Providing fast merge for IoTDB. */
   public void writeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
-    try {
-      ChunkHeader chunkHeader = chunk.getHeader();
-      currentChunkMetadata =
-          new ChunkMetadata(
-              chunkHeader.getMeasurementID(),
-              chunkHeader.getDataType(),
-              out.getPosition(),
-              chunkMetadata.getStatistics());
-      chunkHeader.serializeTo(out.wrapAsStream());
-      out.write(chunk.getData());
-      endCurrentChunk();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "end flushing a chunk:{}, totalvalue:{}",
+    ChunkHeader chunkHeader = chunk.getHeader();
+    currentChunkMetadata =
+        new ChunkMetadata(
             chunkHeader.getMeasurementID(),
-            chunkMetadata.getNumOfPoints());
-      }
-    } catch (Exception e) {
-      logger.error("Exception occurs while writing to {}", file.getAbsolutePath(), e);
-      throw e;
+            chunkHeader.getDataType(),
+            out.getPosition(),
+            chunkMetadata.getStatistics());
+    chunkHeader.serializeTo(out.wrapAsStream());
+    out.write(chunk.getData());
+    endCurrentChunk();
+    if (logger.isDebugEnabled()) {
+      logger.debug(
+          "end flushing a chunk:{}, totalvalue:{}",
+          chunkHeader.getMeasurementID(),
+          chunkMetadata.getNumOfPoints());
     }
   }
 
