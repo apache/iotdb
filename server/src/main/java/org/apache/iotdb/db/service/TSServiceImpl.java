@@ -132,6 +132,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.filter.operator.Gt;
+import org.apache.iotdb.tsfile.read.filter.operator.GtEq;
+import org.apache.iotdb.tsfile.read.filter.operator.Lt;
+import org.apache.iotdb.tsfile.read.filter.operator.LtEq;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
@@ -1010,6 +1018,75 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     List<String> statements = new ArrayList<>();
 
     String prefix = statement.split("where")[0] + " where ";
+
+    IExpression iExpression = udtfPlan.getExpression();
+    if (iExpression instanceof GlobalTimeExpression) {
+      GlobalTimeExpression globalTimeExpression = (GlobalTimeExpression) iExpression;
+      if (globalTimeExpression.getFilter() instanceof AndFilter) {
+        AndFilter andFilter = (AndFilter) globalTimeExpression.getFilter();
+
+        if ((andFilter.getLeft() instanceof Lt || andFilter.getLeft() instanceof LtEq)
+            && (andFilter.getRight() instanceof Gt || andFilter.getRight() instanceof GtEq)) {
+          Filter filter = andFilter.getLeft();
+          andFilter.setLeft(andFilter.getRight());
+          andFilter.setRight(filter);
+        }
+
+        final long dayTimeDelta = 24 * 60 * 60 * 1000;
+
+        if (andFilter.getLeft() instanceof Gt && andFilter.getRight() instanceof Lt) {
+          long left = (Long) ((Gt) andFilter.getLeft()).getValue();
+          long right = (Long) ((Lt) andFilter.getRight()).getValue();
+          boolean first = true;
+
+          while (left < right) {
+            if (first) {
+              first = false;
+              statements.add(prefix + " time>" + left + " and time<" + (left + dayTimeDelta));
+            } else {
+              statements.add(prefix + " time>=" + left + " and time<" + (left + dayTimeDelta));
+            }
+            left += dayTimeDelta;
+          }
+        }
+
+        if (andFilter.getLeft() instanceof GtEq && andFilter.getRight() instanceof Lt) {
+          long left = (Long) ((GtEq) andFilter.getLeft()).getValue();
+          long right = (Long) ((Lt) andFilter.getRight()).getValue();
+
+          while (left < right) {
+            statements.add(prefix + " time>=" + left + " and time<" + (left + dayTimeDelta));
+            left += dayTimeDelta;
+          }
+        }
+
+        if (andFilter.getLeft() instanceof Gt && andFilter.getRight() instanceof LtEq) {
+          long left = (Long) ((Gt) andFilter.getLeft()).getValue();
+          long right = (Long) ((LtEq) andFilter.getRight()).getValue();
+
+          while (left <= right) {
+            statements.add(prefix + " time>" + left + " and time<=" + (left + dayTimeDelta));
+            left += dayTimeDelta;
+          }
+        }
+
+        if (andFilter.getLeft() instanceof GtEq && andFilter.getRight() instanceof LtEq) {
+          long left = (Long) ((GtEq) andFilter.getLeft()).getValue();
+          long right = (Long) ((LtEq) andFilter.getRight()).getValue();
+          boolean first = true;
+
+          while (left < right) {
+            if (first) {
+              first = false;
+              statements.add(prefix + " time>=" + left + " and time<=" + (left + dayTimeDelta));
+            } else {
+              statements.add(prefix + " time>" + left + " and time<=" + (left + dayTimeDelta));
+            }
+            left += dayTimeDelta;
+          }
+        }
+      }
+    }
 
     return statements;
   }
