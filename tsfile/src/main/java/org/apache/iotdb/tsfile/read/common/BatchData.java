@@ -870,5 +870,21 @@ public class BatchData {
       TsPrimitiveType v = getVector()[subIndex];
       return v == null ? null : v.getValue();
     }
+
+    @Override
+    public int totalLength() {
+      // aligned timeseries' BatchData length() may return the length of time column
+      // we need traverse to VectorBatchDataIterator calculate the actual value column's length
+      int cnt = 0;
+      int readCurArrayIndexSave = BatchData.this.readCurArrayIndex;
+      int readCurListIndexSave = BatchData.this.readCurListIndex;
+      while (hasNext()) {
+        cnt++;
+        next();
+      }
+      BatchData.this.readCurArrayIndex = readCurArrayIndexSave;
+      BatchData.this.readCurListIndex = readCurListIndexSave;
+      return cnt;
+    }
   }
 }

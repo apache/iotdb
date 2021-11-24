@@ -231,6 +231,9 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void setSchemaTemplate(Template schemaTemplate) {}
 
   @Override
+  public void setUseTemplate(boolean useTemplate) {}
+
+  @Override
   public boolean isMeasurement() {
     return true;
   }

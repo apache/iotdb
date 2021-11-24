@@ -57,6 +57,7 @@ public class CountAggrResult extends AggregateResult {
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     int cnt = 0;
+    int count = batchIterator.totalLength();
     while (batchIterator.hasNext()) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;

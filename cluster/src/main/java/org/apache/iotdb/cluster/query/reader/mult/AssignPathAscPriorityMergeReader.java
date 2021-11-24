@@ -20,47 +20,30 @@ package org.apache.iotdb.cluster.query.reader.mult;
 
 import org.apache.iotdb.db.query.reader.universal.Element;
 import org.apache.iotdb.db.query.reader.universal.PriorityMergeReader;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 
-import java.io.IOException;
+import java.util.PriorityQueue;
 
 /**
  * This class extends {@link extends PriorityMergeReader} for data sources with different
  * priorities.
  */
-public class AssignPathPriorityMergeReader extends PriorityMergeReader {
+public class AssignPathAscPriorityMergeReader extends PriorityMergeReader
+    implements IAssignPathPriorityMergeReader {
 
   private String fullPath;
 
-  public AssignPathPriorityMergeReader(String fullPath) {
+  public AssignPathAscPriorityMergeReader(String fullPath) {
     super();
     this.fullPath = fullPath;
   }
 
-  public void addReader(AbstractMultPointReader reader, long priority) throws IOException {
-    if (reader.hasNextTimeValuePair(fullPath)) {
-      heap.add(
-          new MultElement(
-              reader, reader.nextTimeValuePair(fullPath), new MergeReaderPriority(priority, 0)));
-    } else {
-      reader.close();
-    }
+  @Override
+  public PriorityQueue<Element> getHeap() {
+    return heap;
   }
 
-  public class MultElement extends Element {
-    public MultElement(
-        AbstractMultPointReader reader, TimeValuePair timeValuePair, MergeReaderPriority priority) {
-      super(reader, timeValuePair, priority);
-    }
-
-    @Override
-    public boolean hasNext() throws IOException {
-      return ((AbstractMultPointReader) reader).hasNextTimeValuePair(fullPath);
-    }
-
-    @Override
-    public void next() throws IOException {
-      timeValuePair = ((AbstractMultPointReader) reader).nextTimeValuePair(fullPath);
-    }
+  @Override
+  public String getFullPath() {
+    return fullPath;
   }
 }

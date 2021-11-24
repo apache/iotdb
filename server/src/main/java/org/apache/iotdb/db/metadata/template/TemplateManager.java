@@ -153,7 +153,7 @@ public class TemplateManager {
       String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
         throw new MetadataException(
-            "Schema name "
+            "Node name "
                 + directNodeName
                 + " in template has conflict with node's child "
                 + (node.getFullPath() + "." + directNodeName));
