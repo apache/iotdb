@@ -254,7 +254,7 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
         continue;
       }
 
-      // reset the last position to current Index
+      // set initial Index
       lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
       lastReadCurListIndex = batchData.getReadCurListIndex();
 
@@ -298,7 +298,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
-      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
       List<AggregateResult> aggregateResultList = results.get(subIndex);
       for (AggregateResult result : aggregateResultList) {
         // current agg method has been calculated
@@ -326,8 +325,13 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     // reset the last position to current Index
-    lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-    lastReadCurListIndex = batchData.getReadCurListIndex();
+    if (ascending) {
+      lastReadCurArrayIndex += (int) (curEndTime - batchData.getMinTimestamp());
+    } else {
+      lastReadCurArrayIndex -= (int) (batchData.getMaxTimestamp() - curStartTime + 1);
+    }
+    lastReadCurListIndex = 0;
+    batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
 
     // can calc for next interval
     if (batchData.hasCurrent()) {
@@ -339,7 +343,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     if (batchData == null || !batchData.hasCurrent()) {
       return false;
     }
-
     if (ascending
         && (batchData.getMaxTimestamp() < curStartTime || batchData.currentTime() >= curEndTime)) {
       return false;
