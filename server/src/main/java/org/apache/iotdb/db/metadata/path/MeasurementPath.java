@@ -252,8 +252,6 @@ public class MeasurementPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-
-    List<TimeRange> deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     // check If Memtable Contains this path
     if (!memTableMap.containsKey(getDevice())
@@ -265,6 +263,10 @@ public class MeasurementPath extends PartialPath {
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();
+    List<TimeRange> deletionList = null;
+    if (modsToMemtable != null) {
+      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+    }
     return new ReadOnlyMemChunk(
         getMeasurement(),
         measurementSchema.getType(),
@@ -276,16 +278,13 @@ public class MeasurementPath extends PartialPath {
   }
 
   /**
-   * construct a deletion list from a memtable
+   * construct a deletion list from a memtable.
    *
    * @param memTable memtable
    * @param timeLowerBound time water mark
    */
   private List<TimeRange> constructDeletionList(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    if (modsToMemtable == null) {
-      return null;
-    }
     List<TimeRange> deletionList = new ArrayList<>();
     deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
     for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {

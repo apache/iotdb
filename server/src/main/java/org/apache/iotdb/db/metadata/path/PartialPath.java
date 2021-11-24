@@ -428,7 +428,7 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
 
-  /** get modifications from a memtable */
+  /** get modifications from a memtable. */
   protected List<Modification> getModificationsForMemtable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable) {
     List<Modification> modifications = new ArrayList<>();

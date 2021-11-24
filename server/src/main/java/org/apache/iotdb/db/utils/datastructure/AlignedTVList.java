@@ -463,9 +463,9 @@ public class AlignedTVList extends TVList {
   /**
    * Delete points in a specific column.
    *
-   * @param lowerBound
-   * @param upperBound
-   * @param columnIndex
+   * @param lowerBound deletion lower bound
+   * @param upperBound deletion upper bound
+   * @param columnIndex column index to be deleted
    * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
    */
   public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
@@ -1010,8 +1010,10 @@ public class AlignedTVList extends TVList {
         } else {
           tvPair = getTimeValuePair(cur, time, floatPrecision, encodingList);
         }
-        deletePointsInDeletionList(time, tvPair);
         cur++;
+        if (deletePointsInDeletionList(time, tvPair)) {
+          continue;
+        }
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;
           hasCachedPair = true;
@@ -1022,19 +1024,25 @@ public class AlignedTVList extends TVList {
       return false;
     }
 
-    private void deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
+    private boolean deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
       if (deletionList == null) {
-        return;
+        return false;
       }
+      boolean deletedAll = true;
       for (int i = 0; i < deleteCursors.length; i++) {
         while (deletionList.get(i) != null && deleteCursors[i] < deletionList.get(i).size()) {
           if (deletionList.get(i).get(deleteCursors[i]).contains(timestamp)) {
             tvPair.getValue().getVector()[i] = null;
+            break;
           } else if (deletionList.get(i).get(deleteCursors[i]).getMax() < timestamp) {
             deleteCursors[i]++;
+          } else {
+            deletedAll = false;
+            break;
           }
         }
       }
+      return deletedAll;
     }
   }
 }

@@ -362,9 +362,6 @@ public class AlignedPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-
-    List<List<TimeRange>> deletionList =
-        constructDeletionList(memTable, modsToMemtable, timeLowerBound);
     Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     // check If memtable contains this path
     if (!memTableMap.containsKey(getDevice())) {
@@ -385,15 +382,16 @@ public class AlignedPath extends PartialPath {
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
     int curSize = alignedTvListCopy.size();
+    List<List<TimeRange>> deletionList = null;
+    if (modsToMemtable != null) {
+      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+    }
     return new AlignedReadOnlyMemChunk(
         getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
   }
 
   private List<List<TimeRange>> constructDeletionList(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
-    if (modsToMemtable == null) {
-      return null;
-    }
     List<List<TimeRange>> deletionList = new ArrayList<>();
     for (String measurement : measurementList) {
       List<TimeRange> columnDeletionList = new ArrayList<>();
