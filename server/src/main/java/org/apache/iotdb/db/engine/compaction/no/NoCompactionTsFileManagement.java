@@ -261,7 +261,9 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void recover() {}
+  public boolean recover() {
+    return true;
+  }
 
   @Override
   public void forkCurrentFileList(long timePartition) {}

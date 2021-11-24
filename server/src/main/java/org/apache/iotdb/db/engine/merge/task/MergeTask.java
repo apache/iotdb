@@ -104,7 +104,7 @@ public class MergeTask implements Callable<Void> {
   public Void call() throws Exception {
     try {
       doMerge();
-    } catch (Exception e) {
+    } catch (Throwable e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       abort();
     }
