@@ -950,12 +950,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     final SelectIntoPlan selectIntoPlan = (SelectIntoPlan) physicalPlan;
     final QueryPlan queryPlan = selectIntoPlan.getQueryPlan();
 
-    if (queryPlan instanceof UDTFPlan
-        && queryPlan
-            .getResultColumns()
-            .get(0)
-            .getExpression()
-            .isTimeSeriesGeneratingFunctionExpression()
+    if (shouldSplit(queryPlan)
     //        && ((FunctionExpression) queryPlan.getResultColumns().get(0).getExpression())
     //            .getFunctionName()
     //            .equalsIgnoreCase("en")
@@ -989,6 +984,58 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     } finally {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
     }
+  }
+
+  boolean shouldSplit(QueryPlan queryPlan) {
+    if (!(queryPlan instanceof UDTFPlan)) {
+      return false;
+    }
+
+    if (!queryPlan
+        .getResultColumns()
+        .get(0)
+        .getExpression()
+        .isTimeSeriesGeneratingFunctionExpression()) {
+      return false;
+    }
+
+    UDTFPlan udtfPlan = (UDTFPlan) queryPlan;
+    IExpression iExpression = udtfPlan.getExpression();
+    if (iExpression instanceof GlobalTimeExpression) {
+      GlobalTimeExpression globalTimeExpression = (GlobalTimeExpression) iExpression;
+      if (globalTimeExpression.getFilter() instanceof AndFilter) {
+        AndFilter andFilter = (AndFilter) globalTimeExpression.getFilter();
+
+        if ((andFilter.getLeft() instanceof Lt || andFilter.getLeft() instanceof LtEq)
+            && (andFilter.getRight() instanceof Gt || andFilter.getRight() instanceof GtEq)) {
+          Filter filter = andFilter.getLeft();
+          andFilter.setLeft(andFilter.getRight());
+          andFilter.setRight(filter);
+        }
+
+        final long dayTimeDelta = 24 * 60 * 60 * 1000;
+
+        long left = 0, right = 0;
+        if (andFilter.getLeft() instanceof Gt) {
+          left = (long) ((Gt) andFilter.getLeft()).getValue();
+        }
+        if (andFilter.getLeft() instanceof GtEq) {
+          left = (long) ((GtEq) andFilter.getLeft()).getValue();
+        }
+        if (andFilter.getRight() instanceof Lt) {
+          right = (long) ((Lt) andFilter.getRight()).getValue();
+        }
+        if (andFilter.getRight() instanceof LtEq) {
+          right = (long) ((LtEq) andFilter.getRight()).getValue();
+        }
+
+        if (right - left > dayTimeDelta) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   private TSExecuteStatementResp executeSelectIntoStatementXianyi(
