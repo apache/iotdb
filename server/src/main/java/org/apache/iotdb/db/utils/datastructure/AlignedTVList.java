@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
@@ -435,7 +436,7 @@ public class AlignedTVList extends TVList {
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
-        set(i, newSize++);
+        setValues(i, newSize++);
         minTime = Math.min(time, minTime);
       }
     }
@@ -453,25 +454,88 @@ public class AlignedTVList extends TVList {
     return deletedNumber * getTsDataTypes().size();
   }
 
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
+  private void setValues(int src, int dest) {
+    long srcT = getTime(src);
+    int srcI = getValueIndex(src);
+    setValues(dest, srcT, srcI);
+  }
+
+  /**
+   * Delete points in a specific column.
+   *
+   * @param lowerBound
+   * @param upperBound
+   * @param columnIndex
+   * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
+   */
+  public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
     int deletedNumber = 0;
+    boolean deleteColumn = true;
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
       if (time >= lowerBound && time <= upperBound) {
-        int arrayIndex = i / ARRAY_SIZE;
-        int elementIndex = i % ARRAY_SIZE;
+        int originRowIndex = getValueIndex(i);
+        int arrayIndex = originRowIndex / ARRAY_SIZE;
+        int elementIndex = originRowIndex % ARRAY_SIZE;
         markNullValue(columnIndex, arrayIndex, elementIndex);
         deletedNumber++;
+      } else {
+        deleteColumn = false;
       }
     }
-    return deletedNumber;
+    if (deleteColumn) {
+      dataTypes.remove(columnIndex);
+      for (Object array : values.get(columnIndex)) {
+        PrimitiveArrayManager.release(array);
+      }
+      values.remove(columnIndex);
+      bitMaps.remove(columnIndex);
+    }
+    return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  protected void set(int index, long timestamp, int value) {
+  private void setIndex(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     indices.get(arrayIndex)[elementIndex] = value;
+  }
+
+  private void setValues(int destIndex, long timestamp, int srcIndex) {
+    int arrayIndex = destIndex / ARRAY_SIZE;
+    int elementIndex = destIndex % ARRAY_SIZE;
+    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      List<Object> columnValues = values.get(i);
+      switch (dataTypes.get(i)) {
+        case TEXT:
+          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((Binary[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        case FLOAT:
+          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((float[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        case INT32:
+          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((int[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        case INT64:
+          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((long[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        case DOUBLE:
+          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((double[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        case BOOLEAN:
+          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
+              ((boolean[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+          break;
+        default:
+          break;
+      }
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -600,7 +664,7 @@ public class AlignedTVList extends TVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    set(
+    setIndex(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
         sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
@@ -610,7 +674,7 @@ public class AlignedTVList extends TVList {
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     int srcV = getValueIndex(src);
-    set(dest, srcT, srcV);
+    setIndex(dest, srcT, srcV);
   }
 
   @Override
@@ -627,8 +691,8 @@ public class AlignedTVList extends TVList {
       int loV = getValueIndex(lo);
       long hiT = getTime(hi);
       int hiV = getValueIndex(hi);
-      set(lo++, hiT, hiV);
-      set(hi--, loT, loV);
+      setIndex(lo++, hiT, hiV);
+      setIndex(hi--, loT, loV);
     }
   }
 
@@ -687,7 +751,7 @@ public class AlignedTVList extends TVList {
 
   @Override
   protected void setPivotTo(int pos) {
-    set(pos, pivotTime, pivotIndex);
+    setIndex(pos, pivotTime, pivotIndex);
   }
 
   @Override
