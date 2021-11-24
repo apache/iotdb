@@ -357,6 +357,17 @@ public class IoTDBDescriptor {
                   "max_select_unseq_file_num_in_each_unseq_compaction",
                   Integer.toString(conf.getMaxSelectUnseqFileNumInEachUnseqCompaction()))));
 
+      conf.setEnableCompactionMonitor(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_compaction_monitor",
+                  Boolean.toString(conf.isEnableCompactionMonitor()))));
+
+      conf.setCompactionMonitorPeriod(
+          Long.parseLong(
+              properties.getProperty(
+                  "compaction_monitor_period", Long.toString(conf.getCompactionMonitorPeriod()))));
+
       conf.setUnseqFileNumInEachLevel(
           Integer.parseInt(
               properties.getProperty(
