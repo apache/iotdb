@@ -35,8 +35,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
-  private volatile boolean useTemplate = false;
-
   private volatile boolean isAligned = false;
 
   private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
@@ -105,16 +103,6 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @Override
   public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
     this.aliasChildren = aliasChildren;
-  }
-
-  @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
-  }
-
-  @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
   }
 
   @Override

@@ -60,7 +60,7 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DELETE_STORAGE_GROUP.ordinal();
     buffer.put((byte) type);
     buffer.putInt(this.getPaths().size());

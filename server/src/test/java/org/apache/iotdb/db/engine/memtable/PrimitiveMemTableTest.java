@@ -119,16 +119,18 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           dataSize - i - 1,
-          i + 10);
+          new Object[] {i + 10});
     }
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN),
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
           i,
-          i);
+          new Object[] {i});
     }
     MeasurementPath fullPath =
         new MeasurementPath(
@@ -150,6 +152,50 @@ public class PrimitiveMemTableTest {
     }
   }
 
+  @Test
+  public void totalSeriesNumberTest() throws IOException, QueryProcessException, MetadataException {
+    IMemTable memTable = new PrimitiveMemTable();
+    int count = 10;
+    String deviceId = "d1";
+    String[] measurementId = new String[count];
+    for (int i = 0; i < measurementId.length; i++) {
+      measurementId[i] = "s" + i;
+    }
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
+        new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN));
+    schemaList.add(
+        new UnaryMeasurementSchema(measurementId[1], TSDataType.INT32, TSEncoding.PLAIN));
+    int dataSize = 10000;
+    for (int i = 0; i < dataSize; i++) {
+      memTable.write(
+          deviceId,
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+          i,
+          new Object[] {i});
+    }
+    deviceId = "d2";
+    for (int i = 0; i < dataSize; i++) {
+      memTable.write(deviceId, schemaList, i, new Object[] {i, i});
+    }
+    Assert.assertEquals(3, memTable.getSeriesNumber());
+    // aligned
+    deviceId = "d3";
+
+    for (int i = 0; i < dataSize; i++) {
+      memTable.writeAlignedRow(deviceId, schemaList, i, new Object[] {i, i});
+    }
+    Assert.assertEquals(5, memTable.getSeriesNumber());
+    memTable.writeAlignedRow(
+        deviceId,
+        Collections.singletonList(
+            new UnaryMeasurementSchema(measurementId[2], TSDataType.INT32, TSEncoding.PLAIN)),
+        0,
+        new Object[] {0});
+    Assert.assertEquals(6, memTable.getSeriesNumber());
+  }
+
   private void write(
       IMemTable memTable,
       String deviceId,
@@ -163,9 +209,9 @@ public class PrimitiveMemTableTest {
     for (TimeValuePair aRet : ret) {
       memTable.write(
           deviceId,
-          new UnaryMeasurementSchema(sensorId, dataType, encoding),
+          Collections.singletonList(new UnaryMeasurementSchema(sensorId, dataType, encoding)),
           aRet.getTimestamp(),
-          aRet.getValue().getValue());
+          new Object[] {aRet.getValue().getValue()});
     }
     MeasurementPath fullPath =
         new MeasurementPath(

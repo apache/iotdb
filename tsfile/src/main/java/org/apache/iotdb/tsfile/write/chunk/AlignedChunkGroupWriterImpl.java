@@ -19,6 +19,7 @@
 package org.apache.iotdb.tsfile.write.chunk;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.encoder.Encoder;
 import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -36,11 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   private static final Logger LOG = LoggerFactory.getLogger(AlignedChunkGroupWriterImpl.class);
@@ -101,9 +98,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
 
   @Override
   public int write(long time, List<DataPoint> data) throws WriteProcessException, IOException {
-    if (checkIsHistoryData("", time)) {
-      return 0;
-    }
+    checkIsHistoryData("", time);
+
     for (DataPoint point : data) {
       writenMeasurementSet.add(point.getMeasurementId());
       boolean isNull = point.getValue() == null;
@@ -147,9 +143,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
-      if (checkIsHistoryData("", time)) {
-        continue;
-      }
+      checkIsHistoryData("", time);
       for (int columnIndex = 0; columnIndex < measurementSchemas.size(); columnIndex++) {
         writenMeasurementSet.add(measurementSchemas.get(columnIndex).getMeasurementId());
         boolean isNull = false;
@@ -281,19 +275,27 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
     }
   }
 
-  private boolean checkIsHistoryData(String measurementId, long time) {
+  private void checkIsHistoryData(String measurementId, long time) throws WriteProcessException {
     if (time <= lastTime) {
-      LOG.warn(
-          "not allowed to write out-of-order data, time should later than "
-              + time
-              + ", skip dataPoint : "
+      throw new WriteProcessException(
+          "Not allowed to write out-of-order data in timeseries "
               + deviceId
-              + "."
+              + TsFileConstant.PATH_SEPARATOR
               + measurementId
-              + " at time "
-              + time);
-      return true;
+              + ", time should later than "
+              + lastTime);
     }
-    return false;
+  }
+
+  public List<String> getMeasurements() {
+    return new ArrayList<>(valueChunkWriterMap.keySet());
+  }
+
+  public Long getLastTime() {
+    return this.lastTime;
+  }
+
+  public void setLastTime(Long lastTime) {
+    this.lastTime = lastTime;
   }
 }

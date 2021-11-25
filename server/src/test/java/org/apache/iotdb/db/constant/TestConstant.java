@@ -47,6 +47,9 @@ public class TestConstant {
   public static boolean testFlag = true;
   public static String[] stringValue = new String[] {"A", "B", "C", "D", "E"};
   public static String[] booleanValue = new String[] {"true", "false"};
+  public static final String TIMESEIRES_STR = "timeseries";
+  public static final String VALUE_STR = "value";
+  public static final String DATA_TYPE_STR = "dataType";
 
   public static String[] create_sql =
       new String[] {

@@ -173,7 +173,7 @@ public class LastQueryExecutor {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
         LastPointReader lastReader =
             nonCachedPaths
                 .get(i)
@@ -184,7 +184,7 @@ public class LastQueryExecutor {
                     context,
                     dataSource,
                     Long.MAX_VALUE,
-                    null);
+                    filter);
         readerList.add(lastReader);
       }
     } finally {
@@ -227,8 +227,6 @@ public class LastQueryExecutor {
         cacheAccessors.add(new LastCacheAccessor(path));
       }
     } else {
-      restPaths.addAll(seriesPaths);
-      restDataType.addAll(dataTypes);
       for (int i = 0; i < seriesPaths.size(); i++) {
         resultContainer.add(new Pair<>(false, null));
         PartialPath p = ((MeasurementPath) seriesPaths.get(i)).transformToExactPath();

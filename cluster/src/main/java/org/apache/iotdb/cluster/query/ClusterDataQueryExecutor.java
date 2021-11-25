@@ -131,7 +131,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
       String fullPath = partialPath.getFullPath();
       AssignPathManagedMergeReader assignPathManagedMergeReader =
-          new AssignPathManagedMergeReader(fullPath, dataType);
+          new AssignPathManagedMergeReader(fullPath, dataType, queryPlan.isAscending());
       for (AbstractMultPointReader multPointReader : multPointReaders) {
         if (multPointReader.getAllPaths().contains(fullPath)) {
           assignPathManagedMergeReader.addReader(multPointReader, 0);

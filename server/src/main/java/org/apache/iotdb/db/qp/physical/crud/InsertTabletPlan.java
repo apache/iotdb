@@ -247,7 +247,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.BATCHINSERT.ordinal();
     buffer.put((byte) type);
     subSerialize(buffer);

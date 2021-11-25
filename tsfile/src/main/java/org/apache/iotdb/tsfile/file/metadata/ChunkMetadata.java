@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -37,7 +36,7 @@ import java.util.List;
 import java.util.Objects;
 
 /** Metadata of one chunk. */
-public class ChunkMetadata implements Accountable, IChunkMetadata {
+public class ChunkMetadata implements IChunkMetadata {
 
   private String measurementUid;
 
@@ -288,17 +287,6 @@ public class ChunkMetadata implements Accountable, IChunkMetadata {
     return CHUNK_METADATA_FIXED_RAM_SIZE
         + RamUsageEstimator.sizeOf(measurementId)
         + Statistics.getSizeByType(dataType);
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
-  }
-
-  /** must use calculate ram size first */
-  @Override
-  public long getRamSize() {
-    return ramSize;
   }
 
   public void mergeChunkMetadata(ChunkMetadata chunkMetadata) {

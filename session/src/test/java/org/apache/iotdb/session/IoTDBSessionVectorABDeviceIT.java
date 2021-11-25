@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.util.ArrayList;
@@ -38,6 +39,8 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+@Ignore
+// TODO: AlignByDevice
 public class IoTDBSessionVectorABDeviceIT {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String ROOT_SG1_D2 = "root.sg1.d2";

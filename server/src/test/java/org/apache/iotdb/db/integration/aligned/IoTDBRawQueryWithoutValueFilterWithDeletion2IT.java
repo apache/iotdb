@@ -49,8 +49,8 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
     AlignedWriteUtil.insertData();
     Class.forName(Config.JDBC_DRIVER_NAME);
@@ -73,10 +73,10 @@ public class IoTDBRawQueryWithoutValueFilterWithDeletion2IT
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableUnseqSpaceCompaction);
+        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableCrossSpaceCompaction);
+        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }

@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
+import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
@@ -35,7 +36,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AlignedPageReader implements IPageReader {
+public class AlignedPageReader implements IPageReader, IAlignedPageReader {
 
   private final TimePageReader timePageReader;
   private final List<ValuePageReader> valuePageReaderList;
@@ -124,9 +125,15 @@ public class AlignedPageReader implements IPageReader {
         : timePageReader.getStatistics();
   }
 
+  @Override
   public Statistics getStatistics(int index) {
     ValuePageReader valuePageReader = valuePageReaderList.get(index);
     return valuePageReader == null ? null : valuePageReader.getStatistics();
+  }
+
+  @Override
+  public Statistics getTimeStatistics() {
+    return timePageReader.getStatistics();
   }
 
   @Override

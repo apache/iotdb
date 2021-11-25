@@ -40,7 +40,6 @@ import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
-import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
@@ -1725,11 +1724,30 @@ public class MManager {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
+    // devicePath is a logical path which is parent of measurement, whether in template or not
     PartialPath devicePath = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
-    // 1. get device node
+    // 1. get device node, set using template if accessed.
+    boolean mountedNodeFound = false;
+    // check every measurement path
+    for (String measurementId : measurementList) {
+      PartialPath fullPath = devicePath.concatNode(measurementId);
+      int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
+      if (index != fullPath.getNodeLength() - 1) {
+        // this measurement is in template, need to assure mounted node exists and set using
+        // template.
+        if (!mountedNodeFound) {
+          // Without allowing overlap of template and MTree, this block run only once
+          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+          setUsingSchemaTemplate(mountedNode);
+          mountedNodeFound = true;
+        }
+      }
+    }
+    // get logical device node, may be in template. will be multiple if overlap is allowed.
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
@@ -1758,19 +1776,9 @@ public class MManager {
             if (!config.isEnablePartialInsert()) {
               throw mismatchException;
             } else {
-              if (plan.isAligned()) {
-                // mark failed measurement
-                plan.markFailedMeasurementAlignedInsertion(mismatchException);
-                for (int j = 0; j < i; j++) {
-                  // all the measurementMNodes should be null
-                  measurementMNodes[j] = null;
-                }
-                break;
-              } else {
-                // mark failed measurement
-                plan.markFailedMeasurementInsertion(i, mismatchException);
-                continue;
-              }
+              // mark failed measurement
+              plan.markFailedMeasurementInsertion(i, mismatchException);
+              continue;
             }
           }
           measurementMNodes[i] = measurementMNode;
@@ -1810,7 +1818,7 @@ public class MManager {
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);
     if (measurementMNode == null) {
-      measurementMNode = findTemplate(deviceMNode, measurement);
+      measurementMNode = findMeasurementInTemplate(deviceMNode, measurement);
     }
     if (measurementMNode == null) {
       if (!config.isAutoCreateSchemaEnabled()) {
@@ -1877,7 +1885,7 @@ public class MManager {
     return dataType;
   }
 
-  private IMeasurementMNode findTemplate(IMNode deviceMNode, String measurement)
+  private IMeasurementMNode findMeasurementInTemplate(IMNode deviceMNode, String measurement)
       throws MetadataException {
     Template curTemplate = deviceMNode.getUpperTemplate();
     if (curTemplate != null) {
@@ -1918,6 +1926,7 @@ public class MManager {
     }
     createAlignedTimeSeries(prefixPath, measurements, dataTypes, encodings, compressors);
   }
+
   // endregion
 
   // region Interfaces and Implementation for Template operations
@@ -2047,13 +2056,29 @@ public class MManager {
     }
   }
 
-  IEntityMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
+  IMNode setUsingSchemaTemplate(IMNode node) throws MetadataException {
     // this operation may change mtree structure and node type
     // invoke mnode.setUseTemplate is invalid
-    IEntityMNode entityMNode = mtree.setToEntity(node);
-    entityMNode.setUseTemplate(true);
-    if (node != entityMNode) {
-      mNodeCache.removeObject(entityMNode.getPartialPath());
+
+    // check alignment of template and mounted node
+    // if direct measurement exists, node will be replaced
+    IMNode mountedMNode =
+        mtree.checkTemplateAlignmentWithMountedNode(node, node.getUpperTemplate());
+
+    // if has direct measurement (be a EntityNode), to ensure alignment adapt with former node or
+    // template
+    if (mountedMNode.isEntity()) {
+      mountedMNode
+          .getAsEntityMNode()
+          .setAligned(
+              node.isEntity()
+                  ? node.getAsEntityMNode().isAligned()
+                  : node.getUpperTemplate().isDirectAligned());
+    }
+    mountedMNode.setUseTemplate(true);
+
+    if (node != mountedMNode) {
+      mNodeCache.removeObject(mountedMNode.getPartialPath());
     }
     if (!isRecovering) {
       try {
@@ -2062,7 +2087,7 @@ public class MManager {
         throw new MetadataException(e);
       }
     }
-    return entityMNode;
+    return mountedMNode;
   }
   // endregion
 

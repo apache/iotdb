@@ -259,7 +259,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       List<CompressionType> thisCompressors = new ArrayList<>();
 
       for (int i = 0; i < alignedPrefix.get(prefix).size(); i++) {
-        if (prefix.equals("")) {
+        if ("".equals(prefix)) {
           thisMeasurements.add(alignedPrefix.get(prefix).get(i));
         } else {
           thisMeasurements.add(
@@ -281,7 +281,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);

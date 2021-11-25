@@ -178,7 +178,9 @@ session.execute_non_query_statement(
 )
 
 # execute sql query statement
-with session.execute_query_statement("select * from root.sg_test_01.d_01") as session_data_set:
+with session.execute_query_statement(
+    "select * from root.sg_test_01.d_01"
+) as session_data_set:
     session_data_set.set_fetch_size(1024)
     while session_data_set.has_next():
         print(session_data_set.next())

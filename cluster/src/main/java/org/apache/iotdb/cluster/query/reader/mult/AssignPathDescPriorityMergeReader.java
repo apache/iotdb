@@ -16,49 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.cache;
+package org.apache.iotdb.cluster.query.reader.mult;
 
-import org.apache.iotdb.tsfile.common.cache.Accountable;
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.Element;
 
-import java.util.Objects;
+import java.util.PriorityQueue;
 
-public class AccountableString implements Accountable {
+/**
+ * This class extends {@link extends DescPriorityMergeReader} for data sources with different
+ * priorities.
+ */
+public class AssignPathDescPriorityMergeReader extends DescPriorityMergeReader
+    implements IAssignPathPriorityMergeReader {
 
-  private final String string;
-  private long ramSize;
+  private String fullPath;
 
-  public AccountableString(String string) {
-    this.string = string;
-  }
-
-  public String getString() {
-    return string;
-  }
-
-  @Override
-  public void setRamSize(long size) {
-    this.ramSize = size;
+  public AssignPathDescPriorityMergeReader(String fullPath) {
+    super();
+    this.fullPath = fullPath;
   }
 
   @Override
-  public long getRamSize() {
-    return ramSize;
+  public PriorityQueue<Element> getHeap() {
+    return heap;
   }
 
   @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    AccountableString that = (AccountableString) o;
-    return Objects.equals(string, that.string);
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(string);
+  public String getFullPath() {
+    return fullPath;
   }
 }

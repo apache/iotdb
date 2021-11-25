@@ -48,6 +48,8 @@ public class InternalMNode extends MNode {
   // schema template
   protected Template schemaTemplate = null;
 
+  private volatile boolean useTemplate = false;
+
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
     super(parent, name);
@@ -211,6 +213,16 @@ public class InternalMNode extends MNode {
   @Override
   public void setSchemaTemplate(Template schemaTemplate) {
     this.schemaTemplate = schemaTemplate;
+  }
+
+  @Override
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
   }
 
   @Override

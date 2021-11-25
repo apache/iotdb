@@ -69,7 +69,6 @@ public class TsFileSequenceRead {
       // Because we do not know how many chunks a ChunkGroup may have, we should read one byte (the
       // marker) ahead and judge accordingly.
       reader.position((long) TSFileConfig.MAGIC_STRING.getBytes().length + 1);
-      System.out.println("[Chunk Group]");
       System.out.println("position: " + reader.position());
       List<long[]> timeBatch = new ArrayList<>();
       int pageIndex = 0;
@@ -165,6 +164,7 @@ public class TsFileSequenceRead {
             }
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
+            System.out.println("[Chunk Group]");
             System.out.println("Chunk Group Header position: " + reader.position());
             ChunkGroupHeader chunkGroupHeader = reader.readChunkGroupHeader();
             System.out.println("device: " + chunkGroupHeader.getDeviceID());

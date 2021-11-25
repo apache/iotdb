@@ -107,7 +107,7 @@ public class AppendTemplatePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.APPEND_TEMPLATE.ordinal());
 
     ReadWriteIOUtils.write(name, buffer);

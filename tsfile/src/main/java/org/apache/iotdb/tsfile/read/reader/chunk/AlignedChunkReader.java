@@ -146,7 +146,7 @@ public class AlignedChunkReader implements IChunkReader {
   }
 
   /** used for value page filter */
-  private boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
+  protected boolean pageSatisfied(PageHeader pageHeader, List<TimeRange> valueDeleteInterval) {
     if (valueDeleteInterval != null) {
       for (TimeRange range : valueDeleteInterval) {
         if (range.contains(pageHeader.getStartTime(), pageHeader.getEndTime())) {
@@ -171,7 +171,8 @@ public class AlignedChunkReader implements IChunkReader {
     List<Decoder> valueDecoderList = new ArrayList<>();
     boolean exist = false;
     for (int i = 0; i < valuePageHeader.size(); i++) {
-      if (valuePageHeader.get(i) == null) {
+      if (valuePageHeader.get(i) == null
+          || valuePageHeader.get(i).getUncompressedSize() == 0) { // Empty Page
         valuePageHeaderList.add(null);
         valuePageDataList.add(null);
         valueDataTypeList.add(null);
@@ -233,7 +234,6 @@ public class AlignedChunkReader implements IChunkReader {
     pageInfo.dataType = chunkHeader.getDataType();
     int compressedPageBodyLength = pageHeader.getCompressedSize();
     byte[] compressedPageBody = new byte[compressedPageBodyLength];
-
     // doesn't has a complete page body
     if (compressedPageBodyLength > chunkBuffer.remaining()) {
       throw new IOException(

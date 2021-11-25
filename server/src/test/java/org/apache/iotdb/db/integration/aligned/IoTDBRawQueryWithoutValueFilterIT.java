@@ -57,8 +57,8 @@ public class IoTDBRawQueryWithoutValueFilterIT {
     enableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
     AlignedWriteUtil.insertData();
   }
 
@@ -67,10 +67,10 @@ public class IoTDBRawQueryWithoutValueFilterIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableUnseqSpaceCompaction);
+        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     IoTDBDescriptor.getInstance()
         .getConfig()
-        .setEnableSeqSpaceCompaction(enableCrossSpaceCompaction);
+        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     EnvironmentUtils.cleanEnv();
   }
 

@@ -15,12 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.tsfile.common.cache;
 
-public interface Accountable {
+package org.apache.iotdb.db.exception.metadata;
 
-  void setRamSize(long size);
+import org.apache.iotdb.rpc.TSStatusCode;
 
-  long getRamSize();
+public class TemplateImcompatibeException extends MetadataException {
+
+  public TemplateImcompatibeException(String path, String templateName) {
+    super(
+        String.format("Path [%s] already exists in [%s]", path, templateName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
+  }
+
+  public TemplateImcompatibeException(String path, String templateName, String overlapNodeName) {
+    super(
+        String.format("Path [%s] overlaps with [%s] on [%s]", path, templateName, overlapNodeName),
+        TSStatusCode.TEMPLATE_IMCOMPATIBLE.getStatusCode());
+    this.isUserException = true;
+  }
 }

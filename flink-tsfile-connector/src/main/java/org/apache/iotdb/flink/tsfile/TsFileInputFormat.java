@@ -22,7 +22,7 @@ package org.apache.iotdb.flink.tsfile;
 import org.apache.iotdb.flink.tsfile.util.TSFileConfigUtil;
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.QueryExpression;
@@ -61,7 +61,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
   @Nullable private final TSFileConfig config;
 
   private transient org.apache.hadoop.conf.Configuration hadoopConf = null;
-  private transient ReadOnlyTsFile readTsFile = null;
+  private transient TsFileReader readTsFile = null;
   private transient QueryDataSet queryDataSet = null;
 
   public TsFileInputFormat(
@@ -112,7 +112,7 @@ public class TsFileInputFormat<T> extends FileInputFormat<T> implements ResultTy
       throw new FlinkRuntimeException(e);
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(in)) {
-      readTsFile = new ReadOnlyTsFile(reader);
+      readTsFile = new TsFileReader(reader);
       queryDataSet =
           readTsFile.query(
               // The query method call will change the content of the param query expression,

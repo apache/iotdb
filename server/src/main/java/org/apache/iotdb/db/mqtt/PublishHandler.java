@@ -18,51 +18,78 @@
 package org.apache.iotdb.db.mqtt;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import io.moquette.interception.AbstractInterceptHandler;
+import io.moquette.interception.messages.InterceptConnectMessage;
+import io.moquette.interception.messages.InterceptDisconnectMessage;
 import io.moquette.interception.messages.InterceptPublishMessage;
 import io.netty.buffer.ByteBuf;
 import io.netty.handler.codec.mqtt.MqttQoS;
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.ZoneId;
 import java.util.List;
 
 /** PublishHandler handle the messages from MQTT clients. */
 public class PublishHandler extends AbstractInterceptHandler {
 
+  private final BasicServiceProvider basicServiceProvider;
+  private long sessionId;
+
   private static final Logger LOG = LoggerFactory.getLogger(PublishHandler.class);
 
-  private IPlanExecutor executor;
-  private PayloadFormatter payloadFormat;
+  private final PayloadFormatter payloadFormat;
 
   public PublishHandler(IoTDBConfig config) {
     this.payloadFormat = PayloadFormatManager.getPayloadFormat(config.getMqttPayloadFormatter());
     try {
-      this.executor = new PlanExecutor();
+      this.basicServiceProvider = new BasicServiceProvider();
     } catch (QueryProcessException e) {
       throw new RuntimeException(e);
     }
   }
 
-  protected PublishHandler(IPlanExecutor executor, PayloadFormatter payloadFormat) {
-    this.executor = executor;
+  protected PublishHandler(PayloadFormatter payloadFormat) {
+    try {
+      this.basicServiceProvider = new BasicServiceProvider();
+    } catch (QueryProcessException e) {
+      throw new RuntimeException(e);
+    }
     this.payloadFormat = payloadFormat;
   }
 
   @Override
   public String getID() {
-    return "iotdb-mqtt-broker-listener";
+    return "iotdb-mqtt-broker-listener-" + sessionId;
+  }
+
+  @Override
+  public void onConnect(InterceptConnectMessage msg) {
+    try {
+      BasicOpenSessionResp basicOpenSessionResp =
+          basicServiceProvider.openSession(
+              msg.getUsername(),
+              new String(msg.getPassword()),
+              ZoneId.systemDefault().toString(),
+              TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
+      sessionId = basicOpenSessionResp.getSessionId();
+    } catch (TException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Override
+  public void onDisconnect(InterceptDisconnectMessage msg) {
+    basicServiceProvider.closeSession(sessionId);
   }
 
   @Override
@@ -93,17 +120,21 @@ public class PublishHandler extends AbstractInterceptHandler {
         continue;
       }
 
-      InsertRowPlan plan = new InsertRowPlan();
-      plan.setTime(event.getTimestamp());
-      plan.setMeasurements(event.getMeasurements().toArray(new String[0]));
-      plan.setValues(event.getValues().toArray(new Object[0]));
-      plan.setDataTypes(new TSDataType[event.getValues().size()]);
-      plan.setNeedInferType(true);
-
       boolean status = false;
       try {
-        plan.setDeviceId(new PartialPath(event.getDevice()));
-        status = executeNonQuery(plan);
+        PartialPath path = new PartialPath(event.getDevice());
+        InsertRowPlan plan =
+            new InsertRowPlan(
+                path,
+                event.getTimestamp(),
+                event.getMeasurements().toArray(new String[0]),
+                event.getValues().toArray(new String[0]));
+        TSStatus tsStatus = basicServiceProvider.checkAuthority(plan, sessionId);
+        if (tsStatus != null) {
+          LOG.warn(tsStatus.message);
+        } else {
+          status = basicServiceProvider.executeNonQuery(plan);
+        }
       } catch (Exception e) {
         LOG.warn(
             "meet error when inserting device {}, measurements {}, at time {}, because ",
@@ -115,14 +146,5 @@ public class PublishHandler extends AbstractInterceptHandler {
 
       LOG.debug("event process result: {}", status);
     }
-  }
-
-  private boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new QueryProcessException(
-          "Current system mode is read-only, does not support non-query operation");
-    }
-    return executor.processNonQuery(plan);
   }
 }

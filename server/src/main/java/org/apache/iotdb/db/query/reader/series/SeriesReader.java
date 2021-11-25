@@ -42,8 +42,8 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.reader.IAlignedPageReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
-import org.apache.iotdb.tsfile.read.reader.page.AlignedPageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -285,9 +285,16 @@ public class SeriesReader {
 
   Statistics currentFileStatistics(int index) throws IOException {
     if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
-      throw new IOException("Can only get statistics by index from vectorTimeSeriesMetaData");
+      throw new IOException("Can only get statistics by index from alignedTimeSeriesMetaData");
     }
     return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getStatistics(index);
+  }
+
+  public Statistics currentFileTimeStatistics() throws IOException {
+    if (!(firstTimeSeriesMetadata instanceof AlignedTimeSeriesMetadata)) {
+      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
+    }
+    return ((AlignedTimeSeriesMetadata) firstTimeSeriesMetadata).getTimeStatistics();
   }
 
   boolean currentFileModified() throws IOException {
@@ -421,6 +428,13 @@ public class SeriesReader {
       throw new IOException("Can only get statistics by index from vectorChunkMetaData");
     }
     return ((AlignedChunkMetadata) firstChunkMetadata).getStatistics(index);
+  }
+
+  Statistics currentChunkTimeStatistics() throws IOException {
+    if (!(firstChunkMetadata instanceof AlignedChunkMetadata)) {
+      throw new IOException("Can only get statistics of time column from alignedChunkMetaData");
+    }
+    return ((AlignedChunkMetadata) firstChunkMetadata).getTimeStatistics();
   }
 
   boolean currentChunkModified() throws IOException {
@@ -653,10 +667,20 @@ public class SeriesReader {
     if (firstPageReader == null) {
       return null;
     }
-    if (!(firstPageReader.isVectorPageReader())) {
-      throw new IOException("Can only get statistics by index from VectorPageReader");
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics by index from AlignedPageReader");
     }
     return firstPageReader.getStatistics(index);
+  }
+
+  Statistics currentPageTimeStatistics() throws IOException {
+    if (firstPageReader == null) {
+      return null;
+    }
+    if (!(firstPageReader.isAlignedPageReader())) {
+      throw new IOException("Can only get statistics of time column from AlignedPageReader");
+    }
+    return firstPageReader.getTimeStatistics();
   }
 
   boolean currentPageModified() throws IOException {
@@ -1087,8 +1111,8 @@ public class SeriesReader {
       this.isSeq = isSeq;
     }
 
-    public boolean isVectorPageReader() {
-      return data instanceof AlignedPageReader;
+    public boolean isAlignedPageReader() {
+      return data instanceof IAlignedPageReader;
     }
 
     Statistics getStatistics() {
@@ -1096,10 +1120,17 @@ public class SeriesReader {
     }
 
     Statistics getStatistics(int index) throws IOException {
-      if (!(data instanceof AlignedPageReader)) {
-        throw new IOException("Can only get statistics by index from VectorPageReader");
+      if (!(data instanceof IAlignedPageReader)) {
+        throw new IOException("Can only get statistics by index from AlignedPageReader");
       }
-      return ((AlignedPageReader) data).getStatistics(index);
+      return ((IAlignedPageReader) data).getStatistics(index);
+    }
+
+    Statistics getTimeStatistics() throws IOException {
+      if (!(data instanceof IAlignedPageReader)) {
+        throw new IOException("Can only get statistics of time column from AlignedPageReader");
+      }
+      return ((IAlignedPageReader) data).getTimeStatistics();
     }
 
     BatchData getAllSatisfiedPageData(boolean ascending) throws IOException {

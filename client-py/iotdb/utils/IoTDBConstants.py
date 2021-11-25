@@ -41,6 +41,7 @@ class TSEncoding(Enum):
     REGULAR = 7
     GORILLA = 8
 
+
 @unique
 class Compressor(Enum):
     UNCOMPRESSED = 0

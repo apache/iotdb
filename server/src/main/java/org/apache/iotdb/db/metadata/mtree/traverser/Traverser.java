@@ -21,11 +21,13 @@ package org.apache.iotdb.db.metadata.mtree.traverser;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.Iterator;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
@@ -42,6 +44,9 @@ public abstract class Traverser {
   protected IMNode startNode;
   protected String[] nodes;
 
+  // to construct full path or find mounted node on MTree when traverse into template
+  protected Deque<IMNode> traverseContext;
+
   // if isMeasurementTraverser, measurement in template should be processed
   protected boolean isMeasurementTraverser = false;
 
@@ -56,6 +61,7 @@ public abstract class Traverser {
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    this.traverseContext = new ArrayDeque<>();
   }
 
   /**
@@ -136,27 +142,28 @@ public abstract class Traverser {
 
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)
       throws MetadataException {
+    traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
       traverse(child, idx + 1, level + 1);
     }
+    traverseContext.pop();
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 
     Template upperTemplate = node.getUpperTemplate();
-    for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-      traverse(
-          MeasurementMNode.getMeasurementMNode(
-              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
-          idx + 1,
-          level + 1);
+    traverseContext.push(node);
+    for (IMNode child : upperTemplate.getDirectNodes()) {
+      traverse(child, idx + 1, level + 1);
     }
+    traverseContext.pop();
   }
 
   protected void processOneLevelWildcard(IMNode node, int idx, int level) throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
+    traverseContext.push(node);
     for (IMNode child : node.getChildren().values()) {
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
@@ -171,77 +178,111 @@ public abstract class Traverser {
       }
       traverse(child, idx + 1, level + 1);
     }
+    traverseContext.pop();
+
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
         traverse(child, idx, level + 1);
       }
+      traverseContext.pop();
     }
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 
     Template upperTemplate = node.getUpperTemplate();
-    for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-      if (!Pattern.matches(targetNameRegex, schema.getMeasurementId())) {
+
+    traverseContext.push(node);
+    for (IMNode child : upperTemplate.getDirectNodes()) {
+      if (!Pattern.matches(targetNameRegex, child.getName())) {
         continue;
       }
-      traverse(
-          MeasurementMNode.getMeasurementMNode(
-              node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
-          idx + 1,
-          level + 1);
+      traverse(child, idx + 1, level + 1);
     }
+    traverseContext.pop();
+
     if (multiLevelWildcard) {
-      for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-        traverse(
-            MeasurementMNode.getMeasurementMNode(
-                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
-            idx,
-            level + 1);
+      traverseContext.push(node);
+      for (IMNode child : upperTemplate.getDirectNodes()) {
+        traverse(child, idx, level + 1);
       }
+      traverseContext.pop();
     }
   }
 
+  @SuppressWarnings("Duplicates")
   protected void processNameMatch(IMNode node, int idx, int level) throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
     IMNode next = node.getChild(targetName);
     if (next != null) {
+      traverseContext.push(node);
       traverse(next, idx + 1, level + 1);
+      traverseContext.pop();
     }
     if (multiLevelWildcard) {
+      traverseContext.push(node);
       for (IMNode child : node.getChildren().values()) {
         traverse(child, idx, level + 1);
       }
+      traverseContext.pop();
     }
 
-    if (!isMeasurementTraverser || !node.isUseTemplate()) {
+    if (!node.isUseTemplate()) {
       return;
     }
 
     Template upperTemplate = node.getUpperTemplate();
-    IMeasurementSchema targetSchema = upperTemplate.getSchemaMap().get(targetName);
-    if (targetSchema != null) {
-      traverse(
-          MeasurementMNode.getMeasurementMNode(
-              node.getAsEntityMNode(), targetSchema.getMeasurementId(), targetSchema, null),
-          idx + 1,
-          level + 1);
+
+    IMNode targetNode = upperTemplate.getDirectNode(targetName);
+    if (targetNode != null) {
+      traverseContext.push(node);
+      traverse(targetNode, idx + 1, level + 1);
+      traverseContext.pop();
     }
 
     if (multiLevelWildcard) {
-      for (IMeasurementSchema schema : upperTemplate.getSchemaMap().values()) {
-        traverse(
-            MeasurementMNode.getMeasurementMNode(
-                node.getAsEntityMNode(), schema.getMeasurementId(), schema, null),
-            idx,
-            level + 1);
+      traverseContext.push(node);
+      for (IMNode child : upperTemplate.getDirectNodes()) {
+        traverse(child, idx, level + 1);
       }
+      traverseContext.pop();
     }
   }
 
   public void setPrefixMatch(boolean isPrefixMatch) {
     this.isPrefixMatch = isPrefixMatch;
+  }
+
+  /**
+   * @param currentNode the node need to get the full path of
+   * @return full path from traverse start node to the current node
+   */
+  protected PartialPath getCurrentPartialPath(IMNode currentNode) throws IllegalPathException {
+    Iterator<IMNode> nodes = traverseContext.descendingIterator();
+    StringBuilder builder = new StringBuilder(nodes.next().getName());
+    while (nodes.hasNext()) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+      builder.append(nodes.next().getName());
+    }
+    if (builder.length() != 0) {
+      builder.append(TsFileConstant.PATH_SEPARATOR);
+    }
+    builder.append(currentNode.getName());
+    return new PartialPath(builder.toString());
+  }
+
+  /** @return the storage group node in the traverse path */
+  protected IMNode getStorageGroupNodeInTraversePath() {
+    Iterator<IMNode> nodes = traverseContext.iterator();
+    while (nodes.hasNext()) {
+      IMNode node = nodes.next();
+      if (node.isStorageGroup()) {
+        return node;
+      }
+    }
+    return null;
   }
 }
