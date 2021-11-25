@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.aggregation.impl;
 
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -65,10 +66,10 @@ public class FirstValueDescAggrResult extends FirstValueAggrResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     for (int i = length - 1; i >= 0; i--) {
-      if (values[i] != null) {
-        setValue(values[i]);
+      if (valueIterator.get(i) != null) {
+        setValue(valueIterator.get(i));
         timestamp = timestamps[i];
         return;
       }

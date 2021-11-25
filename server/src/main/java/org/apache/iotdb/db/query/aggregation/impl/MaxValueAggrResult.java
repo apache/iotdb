@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
@@ -83,11 +84,12 @@ public class MaxValueAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
     Comparable<Object> maxVal = null;
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null && (maxVal == null || maxVal.compareTo(values[i]) < 0)) {
-        maxVal = (Comparable<Object>) values[i];
+    while (valueIterator.hasNext()) {
+      Object value = valueIterator.next();
+      if (maxVal == null || maxVal.compareTo(value) < 0) {
+        maxVal = (Comparable<Object>) value;
       }
     }
     updateResult(maxVal);
