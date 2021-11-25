@@ -150,6 +150,7 @@ public class Cli extends AbstractCli {
                 Config.IOTDB_URL_PREFIX + host + ":" + port + "/", username, password)) {
       String s;
       properties = connection.getServerProperties();
+      nodeList = connection.getNodeList();
       AGGREGRATE_TIME_LIST.addAll(properties.getSupportedTimeAggregationOperations());
       timestampPrecision = properties.getTimestampPrecision();
 
