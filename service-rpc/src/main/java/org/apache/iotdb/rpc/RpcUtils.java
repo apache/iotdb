@@ -24,6 +24,9 @@ import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.lang.reflect.Proxy;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -36,6 +39,7 @@ import java.util.Map;
 
 public class RpcUtils {
 
+  private static final Logger logger = LoggerFactory.getLogger(RpcUtils.class);
   /** How big should the default read and write buffers be? Defaults to 1KB */
   public static final int THRIFT_DEFAULT_BUF_CAPACITY = 1024;
   /**
@@ -112,11 +116,13 @@ public class RpcUtils {
   }
 
   public static void verifySuccess(List<TSStatus> statuses) throws BatchExecutionException {
+    logger.info("Multiple error in executing insert tablet, sub status: {}", statuses.size());
     StringBuilder errMsgs = new StringBuilder();
     for (TSStatus status : statuses) {
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && status.getCode() != TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
         errMsgs.append(status.getMessage()).append(";");
+        logger.info("error status {} ", status.getCode());
       }
     }
     if (errMsgs.length() > 0) {

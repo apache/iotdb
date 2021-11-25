@@ -560,6 +560,7 @@ public class SessionConnection {
       throws IoTDBConnectionException, StatementExecutionException, RedirectException {
     request.setSessionId(sessionId);
     try {
+      logger.info("Execute insert tablet {}", request.getSize());
       RpcUtils.verifySuccessWithRedirection(client.insertTablet(request));
     } catch (TException e) {
       if (reconnect()) {

@@ -624,6 +624,7 @@ public class StorageEngine implements IService {
       try {
         blockInsertionIfReject(null);
       } catch (WriteProcessRejectException e) {
+        logger.info("Insert tablet reject");
         TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
         Arrays.fill(results, RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT));
         throw new BatchProcessException(results);

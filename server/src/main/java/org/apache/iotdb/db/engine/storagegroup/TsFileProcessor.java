@@ -286,6 +286,7 @@ public class TsFileProcessor {
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
+        logger.info("Insert tablet: write_process_reject");
         results[i] = RpcUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT, e.getMessage());
       }
       throw new WriteProcessException(e);
@@ -299,6 +300,7 @@ public class TsFileProcessor {
       }
     } catch (Exception e) {
       for (int i = start; i < end; i++) {
+        logger.info("Insert tablet: internal_server_error");
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       if (enableMemControl && memIncrements != null) {
@@ -315,6 +317,7 @@ public class TsFileProcessor {
       }
     } catch (WriteProcessException e) {
       for (int i = start; i < end; i++) {
+        logger.info("Insert tablet: internal_server_error");
         results[i] = RpcUtils.getStatus(TSStatusCode.INTERNAL_SERVER_ERROR, e.getMessage());
       }
       throw new WriteProcessException(e);
