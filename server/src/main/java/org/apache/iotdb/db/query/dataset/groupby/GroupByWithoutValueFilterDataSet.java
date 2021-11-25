@@ -146,6 +146,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
           }
           alignedPathExecutors.get(path).addAggregateResult(aggrResultList);
         }
+        alignedPathExecutors.get(path).init();
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
