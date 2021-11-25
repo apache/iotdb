@@ -144,6 +144,8 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("metrics_port", Integer.toString(conf.getMetricsPort()))));
 
+      conf.setNodeList(properties.getProperty("node_list", conf.getNodeList()));
+
       conf.setQueryCacheSizeInMetric(
           Integer.parseInt(
               properties.getProperty(

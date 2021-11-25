@@ -97,6 +97,8 @@ struct TSOpenSessionResp {
 
   // The configuration settings for this session.
   4: optional map<string, string> configuration
+
+  5: optional list<EndPoint> nodeList;
 }
 
 // OpenSession()

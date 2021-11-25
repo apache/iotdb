@@ -74,6 +74,8 @@ public class IoTDBConfig {
   /** Port which the metrics service listens to. */
   private int metricsPort = 8181;
 
+  private String nodeList = "127.0.0.1:6667,127.0.0.1:6668,127.0.0.1:6669";
+
   private boolean enableMetricService = false;
 
   /** whether to enable the mqtt service. */
@@ -1467,6 +1469,14 @@ public class IoTDBConfig {
 
   void setEnableExternalSort(boolean enableExternalSort) {
     this.enableExternalSort = enableExternalSort;
+  }
+
+  public String getNodeList() {
+    return nodeList;
+  }
+
+  public void setNodeList(String nodeList) {
+    this.nodeList = nodeList;
   }
 
   public int getExternalSortThreshold() {
