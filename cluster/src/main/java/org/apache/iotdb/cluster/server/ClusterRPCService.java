@@ -24,10 +24,10 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
-import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
 public class ClusterRPCService extends ThriftService implements ClusterRPCServiceMBean {

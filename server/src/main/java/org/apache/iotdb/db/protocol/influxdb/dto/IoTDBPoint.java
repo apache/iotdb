@@ -18,49 +18,48 @@
  */
 package org.apache.iotdb.db.protocol.influxdb.dto;
 
-
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
 public class IoTDBPoint {
 
-    private final String deviceId;
-    private final long time;
-    private final List<String> measurements;
-    private final List<TSDataType> types;
-    private final List<Object> values;
+  private final String deviceId;
+  private final long time;
+  private final List<String> measurements;
+  private final List<TSDataType> types;
+  private final List<Object> values;
 
-    public IoTDBPoint(
-            String deviceId,
-            long time,
-            List<String> measurements,
-            List<TSDataType> types,
-            List<Object> values) {
-        this.deviceId = deviceId;
-        this.time = time;
-        this.measurements = measurements;
-        this.types = types;
-        this.values = values;
-    }
+  public IoTDBPoint(
+      String deviceId,
+      long time,
+      List<String> measurements,
+      List<TSDataType> types,
+      List<Object> values) {
+    this.deviceId = deviceId;
+    this.time = time;
+    this.measurements = measurements;
+    this.types = types;
+    this.values = values;
+  }
 
-    public String getDeviceId() {
-        return deviceId;
-    }
+  public String getDeviceId() {
+    return deviceId;
+  }
 
-    public long getTime() {
-        return time;
-    }
+  public long getTime() {
+    return time;
+  }
 
-    public List<String> getMeasurements() {
-        return measurements;
-    }
+  public List<String> getMeasurements() {
+    return measurements;
+  }
 
-    public List<TSDataType> getTypes() {
-        return types;
-    }
+  public List<TSDataType> getTypes() {
+    return types;
+  }
 
-    public List<Object> getValues() {
-        return values;
-    }
+  public List<Object> getValues() {
+    return values;
+  }
 }

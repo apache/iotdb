@@ -19,39 +19,39 @@
 package org.apache.iotdb.db.protocol.influxdb.dto;
 
 public class SessionPoint {
-    private final String host;
-    private final int rpcPort;
-    private final String username;
-    private final String password;
+  private final String host;
+  private final int rpcPort;
+  private final String username;
+  private final String password;
 
-    public SessionPoint(String host, int rpcPort, String username, String password) {
-        this.host = host;
-        this.rpcPort = rpcPort;
-        this.username = username;
-        this.password = password;
-    }
+  public SessionPoint(String host, int rpcPort, String username, String password) {
+    this.host = host;
+    this.rpcPort = rpcPort;
+    this.username = username;
+    this.password = password;
+  }
 
-    public String getHost() {
-        return host;
-    }
+  public String getHost() {
+    return host;
+  }
 
-    public int getRpcPort() {
-        return rpcPort;
-    }
+  public int getRpcPort() {
+    return rpcPort;
+  }
 
-    public String getUsername() {
-        return username;
-    }
+  public String getUsername() {
+    return username;
+  }
 
-    public String getPassword() {
-        return password;
-    }
+  public String getPassword() {
+    return password;
+  }
 
-    public String ipAndPortToString() {
-        return host + '-' + rpcPort;
-    }
+  public String ipAndPortToString() {
+    return host + '-' + rpcPort;
+  }
 
-    public static String generateIpAndPortString(String host, int rpcPort) {
-        return host + '-' + rpcPort;
-    }
+  public static String generateIpAndPortString(String host, int rpcPort) {
+    return host + '-' + rpcPort;
+  }
 }

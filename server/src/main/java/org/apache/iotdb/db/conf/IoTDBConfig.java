@@ -1008,7 +1008,6 @@ public class IoTDBConfig {
     return rpcAddress;
   }
 
-
   public void setRpcAddress(String rpcAddress) {
     this.rpcAddress = rpcAddress;
   }
@@ -1026,9 +1025,8 @@ public class IoTDBConfig {
   }
 
   public void setInfluxDBRpcPort(int influxDBRpcPort) {
-    this.influxDBRpcPort= influxDBRpcPort;
+    this.influxDBRpcPort = influxDBRpcPort;
   }
-
 
   public String getTimestampPrecision() {
     return timestampPrecision;
@@ -2366,7 +2364,7 @@ public class IoTDBConfig {
   }
 
   public void setEnableInfluxDBRpcService(boolean enableInfluxDBRpcService) {
-    this.enableInfluxDBRpcService= enableInfluxDBRpcService;
+    this.enableInfluxDBRpcService = enableInfluxDBRpcService;
   }
 
   public int getIoTaskQueueSizeForFlushing() {

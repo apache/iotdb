@@ -19,7 +19,7 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
+
 import org.apache.thrift.TException;
 
 import java.lang.reflect.InvocationHandler;
