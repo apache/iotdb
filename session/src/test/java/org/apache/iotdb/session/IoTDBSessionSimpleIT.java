@@ -1300,6 +1300,74 @@ public class IoTDBSessionSimpleIT {
     assertTrue(checkSet.isEmpty());
   }
 
+  @Test
+  public void testInsertPartialTablet2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    if (!session.checkTimeseriesExists("root.sg.d.s1")) {
+      session.createTimeseries(
+          "root.sg.d.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+    if (!session.checkTimeseriesExists("root.sg.d.s2")) {
+      session.createTimeseries(
+          "root.sg.d.s2", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+    }
+    if (!session.checkTimeseriesExists("root.sg.d.s3")) {
+      session.createTimeseries(
+          "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+
+    Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 15; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue("s1", rowIndex, 1L);
+      tablet.addValue("s2", rowIndex, 1D);
+      tablet.addValue("s3", rowIndex, new Binary("1"));
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        try {
+          session.insertTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          Assert.assertEquals(
+              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+              e.getMessage());
+        }
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      try {
+        session.insertTablet(tablet);
+      } catch (StatementExecutionException e) {
+        Assert.assertEquals(
+            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+            e.getMessage());
+      }
+      tablet.reset();
+    }
+
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.sg.d");
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
+      Assert.assertEquals(0L, rowRecord.getFields().get(2).getLongV());
+    }
+    session.close();
+  }
+
   private void initTreeTemplate(String path)
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     Template sessionTemplate = new Template("treeTemplate", true);

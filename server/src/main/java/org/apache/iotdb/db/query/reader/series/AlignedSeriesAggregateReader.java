@@ -31,9 +31,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import java.io.IOException;
 import java.util.Set;
 
-public class VectorSeriesAggregateReader implements IAggregateReader {
+public class AlignedSeriesAggregateReader implements IAggregateReader {
 
-  private final SeriesReader seriesReader;
+  private final AlignedSeriesReader seriesReader;
   /**
    * Used to locate the subSensor that we are traversing now. Use hasNextSubSeries() method to check
    * if we have more sub series in one loop. And use nextSeries() method to move to next sub series.
@@ -42,7 +42,7 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   private final int subSensorSize;
 
-  public VectorSeriesAggregateReader(
+  public AlignedSeriesAggregateReader(
       AlignedPath seriesPath,
       Set<String> allSensors,
       TSDataType dataType,
@@ -78,7 +78,14 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentFileStatistics() throws IOException {
-    Statistics fileStatistics = currentFileStatistics();
+    Statistics fileStatistics = seriesReader.currentFileTimeStatistics();
+    return !seriesReader.isFileOverlapped()
+        && containedByTimeFilter(fileStatistics)
+        && !seriesReader.currentFileModified();
+  }
+
+  public boolean canUseCurrentTimeFileStatistics() throws IOException {
+    Statistics fileStatistics = seriesReader.currentFileStatistics();
     return !seriesReader.isFileOverlapped()
         && containedByTimeFilter(fileStatistics)
         && !seriesReader.currentFileModified();
@@ -101,7 +108,14 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentChunkStatistics() throws IOException {
-    Statistics chunkStatistics = currentChunkStatistics();
+    Statistics chunkStatistics = seriesReader.currentChunkTimeStatistics();
+    return !seriesReader.isChunkOverlapped()
+        && containedByTimeFilter(chunkStatistics)
+        && !seriesReader.currentChunkModified();
+  }
+
+  public boolean canUseCurrentTimeChunkStatistics() throws IOException {
+    Statistics chunkStatistics = seriesReader.currentChunkStatistics();
     return !seriesReader.isChunkOverlapped()
         && containedByTimeFilter(chunkStatistics)
         && !seriesReader.currentChunkModified();
@@ -124,7 +138,17 @@ public class VectorSeriesAggregateReader implements IAggregateReader {
 
   @Override
   public boolean canUseCurrentPageStatistics() throws IOException {
-    Statistics currentPageStatistics = currentPageStatistics();
+    Statistics currentPageStatistics = seriesReader.currentPageTimeStatistics();
+    if (currentPageStatistics == null) {
+      return false;
+    }
+    return !seriesReader.isPageOverlapped()
+        && containedByTimeFilter(currentPageStatistics)
+        && !seriesReader.currentPageModified();
+  }
+
+  public boolean canUseCurrentTimePageStatistics() throws IOException {
+    Statistics currentPageStatistics = seriesReader.currentPageStatistics();
     if (currentPageStatistics == null) {
       return false;
     }

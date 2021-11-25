@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -37,11 +38,11 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -305,8 +306,8 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (!isAggregateResultEmpty(ascAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -319,8 +320,8 @@ public class AggregationExecutor {
       aggregateFromVectorReader(seriesReader, ascAggregateResultList);
     }
     if (!isAggregateResultEmpty(descAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -389,7 +390,7 @@ public class AggregationExecutor {
   }
 
   private static void aggregateFromVectorReader(
-      VectorSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
+      AlignedSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
       throws QueryProcessException, IOException {
     int remainingToCalculate = 0;
     List<boolean[]> isCalculatedArray = new ArrayList<>();
@@ -401,7 +402,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentFileStatistics()) {
+      if (seriesReader.canUseCurrentTimeFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -422,7 +423,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentChunkStatistics()) {
+        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -508,14 +509,14 @@ public class AggregationExecutor {
   }
 
   private static int aggregateVectorPages(
-      VectorSeriesAggregateReader seriesReader,
+      AlignedSeriesAggregateReader seriesReader,
       List<List<AggregateResult>> aggregateResultList,
       List<boolean[]> isCalculatedArray,
       int remainingToCalculate)
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentPageStatistics()) {
+      if (seriesReader.canUseCurrentTimePageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
@@ -754,18 +755,21 @@ public class AggregationExecutor {
 
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof AlignedPath) {
+      if (seriesPath instanceof MeasurementPath
+          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
+        AlignedPath groupPath = temp.get(exactPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath.copy();
-          temp.put(seriesPath.getFullPath(), groupPath);
+          groupPath = exactPath;
+          temp.put(groupPath.getFullPath(), groupPath);
           result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
           // groupPath is changed here so we update it
           List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addMeasurement(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addMeasurements(exactPath.getMeasurementList());
+          groupPath.addSchemas(exactPath.getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }

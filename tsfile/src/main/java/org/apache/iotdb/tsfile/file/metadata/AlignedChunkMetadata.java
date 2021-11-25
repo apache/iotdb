@@ -54,6 +54,10 @@ public class AlignedChunkMetadata implements IChunkMetadata {
     return v == null ? null : v.getStatistics();
   }
 
+  public Statistics getTimeStatistics() {
+    return timeChunkMetadata.getStatistics();
+  }
+
   @Override
   public boolean isModified() {
     return timeChunkMetadata.isModified();

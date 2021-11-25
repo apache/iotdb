@@ -56,6 +56,10 @@ public class AlignedTimeSeriesMetadata implements ITimeSeriesMetadata {
     return v == null ? null : v.getStatistics();
   }
 
+  public Statistics getTimeStatistics() {
+    return timeseriesMetadata.getStatistics();
+  }
+
   @Override
   public boolean isModified() {
     return timeseriesMetadata.isModified();

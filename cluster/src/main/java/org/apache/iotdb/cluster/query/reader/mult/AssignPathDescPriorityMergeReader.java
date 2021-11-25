@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,32 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.cluster.query.reader.mult;
 
-package org.apache.iotdb.metrics.dropwizard.type;
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.Element;
 
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.HistogramSnapshot;
+import java.util.PriorityQueue;
 
-public class DropwizardHistogram implements Histogram {
+/**
+ * This class extends {@link extends DescPriorityMergeReader} for data sources with different
+ * priorities.
+ */
+public class AssignPathDescPriorityMergeReader extends DescPriorityMergeReader
+    implements IAssignPathPriorityMergeReader {
 
-  com.codahale.metrics.Histogram histogram;
+  private String fullPath;
 
-  public DropwizardHistogram(com.codahale.metrics.Histogram histogram) {
-    this.histogram = histogram;
+  public AssignPathDescPriorityMergeReader(String fullPath) {
+    super();
+    this.fullPath = fullPath;
   }
 
   @Override
-  public void update(long value) {
-    histogram.update(value);
+  public PriorityQueue<Element> getHeap() {
+    return heap;
   }
 
   @Override
-  public long count() {
-    return histogram.getCount();
-  }
-
-  @Override
-  public HistogramSnapshot takeSnapshot() {
-    return new DropwizardHistogramSnapshot(histogram.getSnapshot());
+  public String getFullPath() {
+    return fullPath;
   }
 }
