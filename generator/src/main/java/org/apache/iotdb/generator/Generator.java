@@ -19,37 +19,29 @@
 
 package org.apache.iotdb.generator;
 
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.ClusterSession;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.filter.operator.In;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.checkerframework.checker.units.qual.C;
 
-import javax.xml.ws.Endpoint;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 public class Generator {
 
-    public static Tablet generateTablet(String deviceId, String measurementId, long startTime, int pointNum){
-        List<IMeasurementSchema> schemaList = new ArrayList<>();
-        schemaList.add(new UnaryMeasurementSchema(measurementId, TSDataType.INT32));
-        Tablet tablet = new Tablet(deviceId,schemaList,pointNum);
+  public static Tablet generateTablet(
+      String deviceId, String measurementId, long startTime, int pointNum) {
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema(measurementId, TSDataType.INT32));
+    Tablet tablet = new Tablet(deviceId, schemaList, pointNum);
 
-        long timestamp = startTime;
-        for (long row = 0; row < pointNum; row++) {
-            int rowIndex = tablet.rowSize++;
-            tablet.addTimestamp(rowIndex, timestamp);
-            tablet.addValue(measurementId, rowIndex, 0);
-            timestamp += 1;
-        }
-        return tablet;
+    long timestamp = startTime;
+    for (long row = 0; row < pointNum; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(measurementId, rowIndex, 0);
+      timestamp += 1;
     }
-
+    return tablet;
+  }
 }

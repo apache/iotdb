@@ -129,7 +129,7 @@ public class SessionConnection {
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
-
+      session.setNodeList(openResp.nodeList);
       RpcUtils.verifySuccess(openResp.getStatus());
 
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
