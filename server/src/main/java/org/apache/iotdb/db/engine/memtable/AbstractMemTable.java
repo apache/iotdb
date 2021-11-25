@@ -94,11 +94,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
-            k -> {
-              seriesNumber++;
-              totalPointsNumThreshold += avgSeriesPointNumThreshold;
-              return new WritableMemChunkGroup(schemaList);
-            });
+            k -> new WritableMemChunkGroup());
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
@@ -113,11 +109,7 @@ public abstract class AbstractMemTable implements IMemTable {
     IWritableMemChunkGroup memChunkGroup =
         memTableMap.computeIfAbsent(
             deviceId,
-            k -> {
-              seriesNumber++;
-              totalPointsNumThreshold += avgSeriesPointNumThreshold;
-              return new AlignedWritableMemChunkGroup(schemaList);
-            });
+            k -> new AlignedWritableMemChunkGroup(schemaList));
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
