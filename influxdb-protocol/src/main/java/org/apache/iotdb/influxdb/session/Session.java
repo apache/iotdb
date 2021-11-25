@@ -1,6 +1,7 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -35,7 +36,7 @@ public class Session {
             transport =
                     RpcTransportFactory.INSTANCE.getTransport(
                             // as there is a try-catch already, we do not need to use TSocket.wrap
-                            "127.0.0.1", 8066, 0);
+                            "127.0.0.1", 8086, 0);
             transport.open();
         } catch (TTransportException e) {
             throw new IoTDBConnectionException(e);
@@ -48,6 +49,7 @@ public class Session {
         openReq.setUsername("root");
         openReq.setPassword("root");
         openReq.setZoneId(ZoneId.systemDefault().toString());
+        openReq.setClient_protocol(TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
 
         try {
             TSOpenSessionResp openResp = client.openSession(openReq);

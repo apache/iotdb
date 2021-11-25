@@ -6,10 +6,11 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
+import org.apache.iotdb.db.service.thrift.handler.InfluxDBServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService.Processor;
 
-public class InfluxDBRPCService extends ThriftService implements RPCServiceMBean{
+public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServiceMBean{
     private InfluxDBServiceImpl impl;
 
     public static InfluxDBRPCService getInstance(){

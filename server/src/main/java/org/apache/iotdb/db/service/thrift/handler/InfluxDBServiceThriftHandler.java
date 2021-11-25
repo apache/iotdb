@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.service.thrift.handler;
 
 import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
 import org.apache.thrift.protocol.TProtocol;
