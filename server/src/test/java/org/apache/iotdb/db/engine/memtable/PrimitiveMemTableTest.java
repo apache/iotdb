@@ -161,7 +161,11 @@ public class PrimitiveMemTableTest {
     for (int i = 0; i < measurementId.length; i++) {
       measurementId[i] = "s" + i;
     }
-
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
+        new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN));
+    schemaList.add(
+        new UnaryMeasurementSchema(measurementId[1], TSDataType.INT32, TSEncoding.PLAIN));
     int dataSize = 10000;
     for (int i = 0; i < dataSize; i++) {
       memTable.write(
@@ -173,32 +177,23 @@ public class PrimitiveMemTableTest {
     }
     deviceId = "d2";
     for (int i = 0; i < dataSize; i++) {
-      memTable.write(
-          deviceId,
-          Collections.singletonList(
-              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
-          i,
-          new Object[] {i});
+      memTable.write(deviceId, schemaList, i, new Object[] {i, i});
     }
-    Assert.assertEquals(2, memTable.getSeriesNumber());
+    Assert.assertEquals(3, memTable.getSeriesNumber());
     // aligned
     deviceId = "d3";
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN));
-    schemaList.add(
-        new UnaryMeasurementSchema(measurementId[1], TSDataType.INT32, TSEncoding.PLAIN));
+
     for (int i = 0; i < dataSize; i++) {
       memTable.writeAlignedRow(deviceId, schemaList, i, new Object[] {i, i});
     }
-    Assert.assertEquals(4, memTable.getSeriesNumber());
+    Assert.assertEquals(5, memTable.getSeriesNumber());
     memTable.writeAlignedRow(
         deviceId,
         Collections.singletonList(
             new UnaryMeasurementSchema(measurementId[2], TSDataType.INT32, TSEncoding.PLAIN)),
         0,
         new Object[] {0});
-    Assert.assertEquals(5, memTable.getSeriesNumber());
+    Assert.assertEquals(6, memTable.getSeriesNumber());
   }
 
   private void write(
