@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -162,6 +163,9 @@ public abstract class PhysicalPlan {
       serializeImpl(buffer);
     } catch (UnsupportedOperationException e) {
       // ignore and throw
+      throw e;
+    } catch (BufferOverflowException e) {
+      buffer.reset();
       throw e;
     } catch (Exception e) {
       logger.error(
