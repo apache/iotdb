@@ -21,11 +21,15 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
+import java.util.Arrays;
 
 public class FillQueryOperator extends QueryOperator {
 
@@ -41,9 +45,18 @@ public class FillQueryOperator extends QueryOperator {
       throw new LogicalOperatorException("Fill functions are not supported in UDF queries.");
     }
 
+    if (whereComponent == null || whereComponent.getFilterOperator() == null) {
+      throw new SQLParserException("FILL must be used with a WHERE clause");
+    }
+
     FilterOperator filterOperator = whereComponent.getFilterOperator();
-    if (!filterOperator.isLeaf() || filterOperator.getFilterType() != FilterType.EQUAL) {
-      throw new LogicalOperatorException("Only \"=\" can be used in fill function");
+    if (!filterOperator.isLeaf()
+        || filterOperator.getFilterType() != FilterType.EQUAL
+        || !Arrays.equals(
+            SQLConstant.getSingleTimeArray(),
+            whereComponent.getFilterOperator().getSinglePath().getNodes())) {
+      throw new LogicalOperatorException(
+          "The condition of WHERE clause must be like time=constant");
     } else if (!filterOperator.isSingle()) {
       throw new LogicalOperatorException("Slice query must select a single time point");
     }

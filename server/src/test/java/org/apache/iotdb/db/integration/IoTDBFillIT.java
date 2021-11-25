@@ -29,6 +29,7 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 
 import static org.junit.Assert.fail;
@@ -139,6 +140,55 @@ public class IoTDBFillIT {
   @After
   public void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
+  }
+
+  @Test
+  public void fillWithoutFilterTest() {
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "SELECT temperature, status, hardware"
+              + " FROM root.ln.wf01.wt01"
+              + " FILL(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertTrue(e.getMessage().contains("FILL must be used with a WHERE clause"));
+    }
+  }
+
+  @Test
+  public void fillWithInvalidFilterTest() {
+    // Test fill with where clause with condition other than time=constant
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "SELECT temperature, status, hardware"
+              + " FROM root.ln.wf01.wt01 WHERE status=true"
+              + " FILL(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("The condition of WHERE clause must be like time=constant"));
+    }
+  }
+
+  @Test
+  public void fillWithInvalidFilterTest2() {
+    // Test fill with where clause with condition other than time=constant
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "SELECT temperature, status, hardware"
+              + " FROM root.ln.wf01.wt01 WHERE time>0"
+              + " FILL(int32[linear, 5ms, 5ms], double[linear, 5ms, 5ms], boolean[previous, 5ms])");
+      fail();
+    } catch (SQLException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("The condition of WHERE clause must be like time=constant"));
+    }
   }
 
   @Test
