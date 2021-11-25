@@ -77,7 +77,7 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
 
   private final AtomicBoolean deleted = new AtomicBoolean(false);
 
-  private int bufferOverNum = 0;
+  private int bufferOverflowNum = 0;
 
   /**
    * constructor of ExclusiveWriteLogNode.
@@ -125,11 +125,11 @@ public class ExclusiveWriteLogNode implements WriteLogNode, Comparable<Exclusive
     try {
       plan.serialize(logBufferWorking);
     } catch (BufferOverflowException e) {
-      bufferOverNum++;
-      if (bufferedLogNum > 200) {
+      bufferOverflowNum++;
+      if (bufferOverflowNum > 200) {
         logger.info(
             "WAL bytebuffer overflows too many times. If this occurs frequently, please increase wal_buffer_size.");
-        bufferedLogNum = 0;
+        bufferOverflowNum = 0;
       }
       sync();
       plan.serialize(logBufferWorking);
