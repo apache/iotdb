@@ -758,7 +758,7 @@ public class Session {
     }
   }
 
-  private SessionConnection getSessionConnection(String deviceId) {
+  protected SessionConnection getSessionConnection(String deviceId) {
     EndPoint endPoint;
     if (enableCacheLeader
         && !deviceIdToEndpoint.isEmpty()

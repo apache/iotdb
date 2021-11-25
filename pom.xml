@@ -91,6 +91,7 @@
         <module>openapi</module>
         <module>server</module>
         <module>example</module>
+        <module>generator</module>
         <module>grafana</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
