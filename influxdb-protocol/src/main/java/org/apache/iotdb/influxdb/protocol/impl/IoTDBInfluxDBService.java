@@ -24,6 +24,7 @@ import org.apache.iotdb.influxdb.protocol.meta.MetaManager;
 import org.apache.iotdb.influxdb.protocol.meta.MetaManagerHolder;
 import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
+import org.apache.iotdb.influxdb.session.InfluxDBSession;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -41,26 +42,30 @@ import java.util.Map.Entry;
 
 public class IoTDBInfluxDBService {
 
-  private final Session session;
-  private final MetaManager metaManager;
+  private Session session;
+  private MetaManager metaManager;
   private String currentDatabase;
 
-  public IoTDBInfluxDBService(Session session) {
-    this.session = session;
-    metaManager = MetaManagerHolder.getInstance(DataTypeUtils.sessionToSessionPoint(session));
-    currentDatabase = null;
-  }
+  private final InfluxDBSession influxDBSession;
 
-  public void setDatabase(String database) {
-    currentDatabase = database;
+
+  public IoTDBInfluxDBService(String host, int rpcPort, String username, String password){
+    influxDBSession=new InfluxDBSession(host,rpcPort,username,password);
+    try {
+      influxDBSession.open();
+    } catch (IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
   }
 
   public void writePoints(
-      String database,
-      String retentionPolicy,
-      String precision,
-      String consistency,
-      BatchPoints batchPoints) {
+          String database,
+          String retentionPolicy,
+          String precision,
+          String consistency,
+          BatchPoints batchPoints) {
+//    influxDBSession.
+
     List<String> deviceIds = new ArrayList<>();
     List<Long> times = new ArrayList<>();
     List<List<String>> measurementsList = new ArrayList<>();
@@ -82,6 +87,11 @@ public class IoTDBInfluxDBService {
       throw new InfluxDBException(e.getMessage());
     }
   }
+
+  public void setDatabase(String database) {
+    currentDatabase = database;
+  }
+
 
   private IoTDBPoint convertToIoTDBPoint(String database, Point point) {
     String measurement = null;

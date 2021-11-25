@@ -20,8 +20,11 @@
 package org.apache.iotdb.influxdb;
 
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
+import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
 import org.apache.iotdb.influxdb.protocol.input.InfluxLineParser;
+import org.apache.iotdb.influxdb.protocol.meta.MetaManagerHolder;
+import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
@@ -48,7 +51,6 @@ import java.util.function.Consumer;
 
 public class IoTDBInfluxDB implements InfluxDB {
 
-  private final Session session;
 
   private final IoTDBInfluxDBService influxDBService;
 
@@ -59,36 +61,22 @@ public class IoTDBInfluxDB implements InfluxDB {
     } catch (URISyntaxException e) {
       throw new IllegalArgumentException("Unable to parse url: " + url, e);
     }
-    session = new Session(uri.getHost(), uri.getPort(), userName, password);
-    openSession();
-    influxDBService = new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService( uri.getHost(), uri.getPort(), userName, password);
   }
 
   public IoTDBInfluxDB(String host, int rpcPort, String userName, String password) {
-    session = new Session(host, rpcPort, userName, password);
-    openSession();
-    influxDBService = new IoTDBInfluxDBService(session);
-  }
-
-  public IoTDBInfluxDB(Session session) {
-    this.session = session;
-    openSession();
-    influxDBService = new IoTDBInfluxDBService(session);
+    influxDBService = new IoTDBInfluxDBService( host, rpcPort, userName, password);
   }
 
   public IoTDBInfluxDB(Session.Builder builder) {
-    session = builder.build();
-    openSession();
-    influxDBService = new IoTDBInfluxDBService(session);
+    this(builder.build());
   }
 
-  private void openSession() {
-    try {
-      session.open(false);
-    } catch (IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+  public IoTDBInfluxDB(Session session) {
+    SessionPoint sessionPoint= DataTypeUtils.sessionToSessionPoint(session);
+    influxDBService = new IoTDBInfluxDBService( sessionPoint.getHost(), sessionPoint.getRpcPort(), sessionPoint.getUsername(), sessionPoint.getPassword());
   }
+
 
   @Override
   public void write(final Point point) {
@@ -270,21 +258,21 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void flush() {
-    try {
-      session.executeNonQueryStatement("flush");
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
-      throw new InfluxDBException(e);
-    }
+//    try {
+//      session.executeNonQueryStatement("flush");
+//    } catch (IoTDBConnectionException | StatementExecutionException e) {
+//      throw new InfluxDBException(e);
+//    }
   }
 
   @Override
   public void close() {
-    try {
-      influxDBService.close();
-      session.close();
-    } catch (IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+//    try {
+//      influxDBService.close();
+//      session.close();
+//    } catch (IoTDBConnectionException e) {
+//      throw new InfluxDBException(e.getMessage());
+//    }
   }
 
   @Override
@@ -420,16 +408,17 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public String version() {
-    try {
-      SessionDataSet sessionDataSet = session.executeQueryStatement("show version");
-      String version = null;
-      while (sessionDataSet.hasNext()) {
-        version = sessionDataSet.next().getFields().get(0).getStringValue();
-      }
-      sessionDataSet.closeOperationHandle();
-      return version;
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+//    try {
+//      SessionDataSet sessionDataSet = session.executeQueryStatement("show version");
+//      String version = null;
+//      while (sessionDataSet.hasNext()) {
+//        version = sessionDataSet.next().getFields().get(0).getStringValue();
+//      }
+//      sessionDataSet.closeOperationHandle();
+//      return version;
+//    } catch (StatementExecutionException | IoTDBConnectionException e) {
+//      throw new InfluxDBException(e.getMessage());
+//    }
+    return null;
   }
 }

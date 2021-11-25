@@ -20,7 +20,6 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.db.service.thrift.*;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -74,7 +73,7 @@ public class RpcUtils {
     return (InfluxDBService.Iface)
             Proxy.newProxyInstance(
                     RpcUtils.class.getClassLoader(),
-                    new Class[] {TSIService.Iface.class},
+                    new Class[] {InfluxDBService.Iface.class},
                     new InfluxDBSynchronizedHandler(client));
   }
 
