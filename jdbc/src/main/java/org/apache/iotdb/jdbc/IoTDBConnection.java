@@ -21,6 +21,7 @@ package org.apache.iotdb.jdbc;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSIService;
@@ -55,6 +56,8 @@ import java.sql.Savepoint;
 import java.sql.Statement;
 import java.sql.Struct;
 import java.time.ZoneId;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executor;
@@ -72,6 +75,7 @@ public class IoTDBConnection implements Connection {
   private boolean isClosed = true;
   private SQLWarning warningChain = null;
   private TTransport transport;
+  private List<EndPoint> nodeList = Collections.emptyList();
   /**
    * Timeout of query can be set by users. Unit: s If not set, default value 0 will be used, which
    * will use server configuration.
@@ -114,6 +118,10 @@ public class IoTDBConnection implements Connection {
 
   public String getUrl() {
     return url;
+  }
+
+  public List<EndPoint> getNodeList() {
+    return nodeList;
   }
 
   @Override
@@ -468,6 +476,9 @@ public class IoTDBConnection implements Connection {
     try {
       openResp = client.openSession(openReq);
       sessionId = openResp.getSessionId();
+      if (openResp.isSetNodeList()) {
+        nodeList = openResp.nodeList;
+      }
       // validate connection
       RpcUtils.verifySuccess(openResp.getStatus());
 

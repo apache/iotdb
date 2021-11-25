@@ -20,10 +20,12 @@ package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
+import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
 
@@ -35,6 +37,7 @@ import org.apache.commons.lang3.ArrayUtils;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -42,6 +45,7 @@ import java.sql.Statement;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -83,6 +87,8 @@ public abstract class AbstractCli {
   static final String SHOW_TIMESTAMP_DISPLAY = "show time_display_type";
   static final String SET_TIME_ZONE = "set time_zone";
   static final String SHOW_TIMEZONE = "show time_zone";
+  static final String SHOW_CLUSTER_STATUS = "show cluster status";
+  static final String SELECT_COUNT = "select count(";
   static final String SET_FETCH_SIZE = "set fetch_size";
   static final String SHOW_FETCH_SIZE = "show fetch_size";
   private static final String HELP = "help";
@@ -111,6 +117,8 @@ public abstract class AbstractCli {
   static String password;
   static String execute;
   static boolean hasExecuteSQL = false;
+
+  static List<EndPoint> nodeList = Collections.emptyList();
 
   static Set<String> keywordSet = new HashSet<>();
 
@@ -332,6 +340,11 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
 
+    if (specialCmd.startsWith(SHOW_CLUSTER_STATUS)) {
+      showClusterStatus();
+      return OperationResult.CONTINUE_OPER;
+    }
+
     if (specialCmd.startsWith(SET_TIME_ZONE)) {
       setTimeZone(specialCmd, cmd, connection);
       return OperationResult.CONTINUE_OPER;
@@ -365,6 +378,30 @@ public abstract class AbstractCli {
       return OperationResult.CONTINUE_OPER;
     }
 
+    if (specialCmd.startsWith(SELECT_COUNT) && nodeList.size() != 0) {
+      String[] paths = specialCmd.split("\\.");
+      String deviceId = paths[paths.length - 1];
+      EndPoint endpoint = nodeList.get(deviceId.hashCode() % nodeList.size());
+      if (endpoint.port == Integer.parseInt(port)) {
+        executeQuery(connection, cmd);
+      } else {
+        try (IoTDBConnection nextConnection =
+            (IoTDBConnection)
+                DriverManager.getConnection(
+                    Config.IOTDB_URL_PREFIX + endpoint.ip + ":" + endpoint.port + "/",
+                    username,
+                    password)) {
+          executeQuery(nextConnection, cmd);
+        } catch (SQLException e) {
+          println(
+              String.format(
+                  "%s> %s Host is %s, port is %s.",
+                  IOTDB_CLI_PREFIX, e.getMessage(), endpoint.getIp(), endpoint.getPort()));
+        }
+      }
+      return OperationResult.NO_OPER;
+    }
+
     executeQuery(connection, cmd);
     return OperationResult.NO_OPER;
   }
@@ -388,6 +425,38 @@ public abstract class AbstractCli {
         String.format(
             "    %s=xxx\t eg. set max lines for cli to ouput, -1 equals to unlimited.",
             SET_MAX_DISPLAY_NUM));
+  }
+
+  private static void showClusterStatus() {
+    List<Integer> maxSizeList =
+        new ArrayList<Integer>() {
+          {
+            add(20);
+            add(10);
+          }
+        };
+    List<List<String>> lists = new ArrayList<>();
+    List<String> node =
+        new ArrayList<String>() {
+          {
+            add("node");
+          }
+        };
+    List<String> status =
+        new ArrayList<String>() {
+          {
+            add("status");
+          }
+        };
+    for (int i = 0; i < nodeList.size(); i++) {
+      node.add(String.format("%s:%s", nodeList.get(i).getIp(), nodeList.get(i).getPort()));
+      status.add("on");
+    }
+
+    lists.add(node);
+    lists.add(status);
+
+    output(lists, maxSizeList);
   }
 
   private static void setTimestampDisplay(String specialCmd, String cmd) {
