@@ -39,7 +39,7 @@ enum TSProtocolVersion {
 }
 
 struct TSOpenSessionResp {
-  1: required TSStatus status
+  1: required rpc.TSStatus status
 
   // The protocol version that the server is using.
   2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
@@ -72,17 +72,20 @@ struct TSCloseSessionReq {
 // WritePoints()
 // write points in influxdb
 struct TSWritePointsReq{
-  1: required string database,
-  2: required string retentionPolicy,
-  3: required string precision,
-  4: required string consistency,
-  5: required string lineProtocol,
+  // The session to execute the statement against
+  1: required i64 sessionId
+
+  2: required string database
+  3: required string retentionPolicy
+  4: required string precision
+  5: required string consistency
+  6: required string lineProtocol
 }
 
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-  TSStatus closeSession(1:TSCloseSessionReq req);
+  rpc.TSStatus closeSession(1:TSCloseSessionReq req);
 
-  TSStatus writePoints(1:TSWritePointsReq req);
+  rpc.TSStatus writePoints(1:TSWritePointsReq req);
 }

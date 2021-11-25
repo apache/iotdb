@@ -20,7 +20,6 @@
 package org.apache.iotdb.influxdb.example;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
-import org.apache.iotdb.influxdb.session.InfluxDBSession;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
@@ -36,7 +35,7 @@ public class InfluxDBExample {
   private static InfluxDB influxDB;
 
   public static void main(String[] args) throws Exception {
-     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
+    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     //    influxDB.createDatabase("database");
     //    influxDB.setDatabase("database");
     //    insertData();

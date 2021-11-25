@@ -1,15 +1,13 @@
 package org.apache.iotdb.influxdb.session;
 
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSProtocolVersion;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
-
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.EndPoint;
+import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
+
+import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -21,130 +19,157 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+import static org.apache.iotdb.session.SessionConnection.MSG_RECONNECTION_FAIL;
+
 public class InfluxDBSession {
-    private static final Logger logger = LoggerFactory.getLogger(InfluxDBSession.class);
+  private static final Logger logger = LoggerFactory.getLogger(InfluxDBSession.class);
 
-    private TTransport transport;
-    private InfluxDBService.Iface client;
-    private List<EndPoint> endPointList = new ArrayList<>();
-    private long sessionId;
+  private TTransport transport;
+  private InfluxDBService.Iface client;
+  private List<EndPoint> endPointList = new ArrayList<>();
+  private long sessionId;
 
-    protected String username;
-    protected String password;
-    protected int fetchSize;
-    protected ZoneId zoneId;
-    protected EndPoint defaultEndPoint;
-    protected int thriftDefaultBufferSize;
-    protected int thriftMaxFrameSize;
+  protected String username;
+  protected String password;
+  protected int fetchSize;
+  protected ZoneId zoneId;
+  protected EndPoint defaultEndPoint;
+  protected int thriftDefaultBufferSize;
+  protected int thriftMaxFrameSize;
 
+  private boolean isClosed = true;
+  protected boolean enableRPCCompression;
+  protected int connectionTimeoutInMs;
 
-    private boolean isClosed = true;
-    protected boolean enableRPCCompression;
-    protected int connectionTimeoutInMs;
+  public InfluxDBSession(String host, int rpcPort, String username, String password) {
+    this(
+        host,
+        rpcPort,
+        username,
+        password,
+        Config.DEFAULT_FETCH_SIZE,
+        ZoneId.systemDefault(),
+        Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
+        Config.DEFAULT_MAX_FRAME_SIZE);
+  }
 
+  public InfluxDBSession(
+      String host,
+      int rpcPort,
+      String username,
+      String password,
+      int fetchSize,
+      ZoneId zoneId,
+      int thriftDefaultBufferSize,
+      int thriftMaxFrameSize) {
+    this.defaultEndPoint = new EndPoint(host, rpcPort);
+    this.username = username;
+    this.password = password;
+    this.fetchSize = fetchSize;
+    this.zoneId = zoneId;
+    this.thriftDefaultBufferSize = thriftDefaultBufferSize;
+    this.thriftMaxFrameSize = thriftMaxFrameSize;
+  }
 
-    public InfluxDBSession(String host, int rpcPort, String username, String password) {
-        this(host, rpcPort, username, password, Config.DEFAULT_FETCH_SIZE, ZoneId.systemDefault(), Config.DEFAULT_INITIAL_BUFFER_CAPACITY, Config.DEFAULT_MAX_FRAME_SIZE);
+  public synchronized void open() throws IoTDBConnectionException {
+    open(false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
+  }
+
+  public synchronized void open(boolean enableRPCCompression, int connectionTimeoutInMs)
+      throws IoTDBConnectionException {
+    if (!isClosed) {
+      return;
+    }
+    this.enableRPCCompression = enableRPCCompression;
+    this.connectionTimeoutInMs = connectionTimeoutInMs;
+
+    init();
+    isClosed = false;
+  }
+
+  public void init() throws IoTDBConnectionException {
+    RpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
+    RpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
+    try {
+      transport =
+          RpcTransportFactory.INSTANCE.getTransport(
+              // as there is a try-catch already, we do not need to use TSocket.wrap
+              defaultEndPoint.getIp(), defaultEndPoint.getPort(), connectionTimeoutInMs);
+      transport.open();
+    } catch (TTransportException e) {
+      throw new IoTDBConnectionException(e);
     }
 
-    public InfluxDBSession(
-            String host,
-            int rpcPort,
-            String username,
-            String password,
-            int fetchSize,
-            ZoneId zoneId,
-            int thriftDefaultBufferSize,
-            int thriftMaxFrameSize) {
-        this.defaultEndPoint = new EndPoint(host, rpcPort);
-        this.username = username;
-        this.password = password;
-        this.fetchSize = fetchSize;
-        this.zoneId = zoneId;
-        this.thriftDefaultBufferSize = thriftDefaultBufferSize;
-        this.thriftMaxFrameSize = thriftMaxFrameSize;
+    client = new InfluxDBService.Client(new TCompactProtocol(transport));
+    client = RpcUtils.newSynchronizedClient(client);
+
+    TSOpenSessionReq openReq = new TSOpenSessionReq();
+    openReq.setUsername(username);
+    openReq.setPassword(password);
+    openReq.setZoneId(zoneId.toString());
+
+    try {
+      TSOpenSessionResp openResp = client.openSession(openReq);
+
+      sessionId = openResp.getSessionId();
+
+    } catch (Exception e) {
+      transport.close();
+      throw new IoTDBConnectionException(e);
     }
+    System.out.println(sessionId);
+  }
 
-    public synchronized void open() throws IoTDBConnectionException {
-        open( false, Config.DEFAULT_CONNECTION_TIMEOUT_MS);
-    }
-
-    public synchronized void open( boolean enableRPCCompression, int connectionTimeoutInMs) throws IoTDBConnectionException {
-        if (!isClosed) {
-            return;
-        }
-        this.enableRPCCompression = enableRPCCompression;
-        this.connectionTimeoutInMs = connectionTimeoutInMs;
-
-        init();
-        isClosed = false;
-    }
-
-    public void init() throws IoTDBConnectionException {
-        RpcTransportFactory.setDefaultBufferCapacity(thriftDefaultBufferSize);
-        RpcTransportFactory.setThriftMaxFrameSize(thriftMaxFrameSize);
+  public void writePoints(TSWritePointsReq request)
+      throws StatementExecutionException, IoTDBConnectionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.writePoints(request));
+    } catch (TException e) {
+      if (reconnect()) {
         try {
-            transport =
-                    RpcTransportFactory.INSTANCE.getTransport(
-                            // as there is a try-catch already, we do not need to use TSocket.wrap
-                            defaultEndPoint.getIp(), defaultEndPoint.getPort(), connectionTimeoutInMs);
-            transport.open();
-        } catch (TTransportException e) {
-            throw new IoTDBConnectionException(e);
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.writePoints(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
         }
-
-        client = new InfluxDBService.Client(new TCompactProtocol(transport));
-        client = RpcUtils.newSynchronizedClient(client);
-
-        TSOpenSessionReq openReq = new TSOpenSessionReq();
-        openReq.setUsername(username);
-        openReq.setPassword(password);
-        openReq.setZoneId(zoneId.toString());
-
-        try {
-            TSOpenSessionResp openResp = client.openSession(openReq);
-
-            sessionId = openResp.getSessionId();
-
-        } catch (Exception e) {
-            transport.close();
-            throw new IoTDBConnectionException(e);
-        }
-        System.out.println(sessionId);
-
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
     }
+  }
 
-    private boolean reconnect() {
-        boolean connectedSuccess = false;
-        Random random = new Random();
-        for (int i = 1; i <= Config.RETRY_NUM; i++) {
-            if (transport != null) {
-                transport.close();
-                int currHostIndex = random.nextInt(endPointList.size());
-                int tryHostNum = 0;
-                for (int j = currHostIndex; j < endPointList.size(); j++) {
-                    if (tryHostNum == endPointList.size()) {
-                        break;
-                    }
-                    defaultEndPoint = endPointList.get(j);
-                    if (j == endPointList.size() - 1) {
-                        j = -1;
-                    }
-                    tryHostNum++;
-                    try {
-                        init();
-                        connectedSuccess = true;
-                    } catch (IoTDBConnectionException e) {
-                        logger.error("The current node may have been down {},try next node", defaultEndPoint);
-                        continue;
-                    }
-                    break;
-                }
-            }
-            if (connectedSuccess) {
-                break;
-            }
+  private boolean reconnect() {
+    boolean connectedSuccess = false;
+    Random random = new Random();
+    for (int i = 1; i <= Config.RETRY_NUM; i++) {
+      if (transport != null) {
+        transport.close();
+        int currHostIndex = random.nextInt(endPointList.size());
+        int tryHostNum = 0;
+        for (int j = currHostIndex; j < endPointList.size(); j++) {
+          if (tryHostNum == endPointList.size()) {
+            break;
+          }
+          defaultEndPoint = endPointList.get(j);
+          if (j == endPointList.size() - 1) {
+            j = -1;
+          }
+          tryHostNum++;
+          try {
+            init();
+            connectedSuccess = true;
+          } catch (IoTDBConnectionException e) {
+            logger.error("The current node may have been down {},try next node", defaultEndPoint);
+            continue;
+          }
+          break;
         }
-        return connectedSuccess;
+      }
+      if (connectedSuccess) {
+        break;
+      }
     }
+    return connectedSuccess;
+  }
 }

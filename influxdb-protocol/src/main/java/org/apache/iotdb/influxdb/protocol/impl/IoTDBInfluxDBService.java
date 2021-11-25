@@ -25,6 +25,7 @@ import org.apache.iotdb.influxdb.protocol.meta.MetaManagerHolder;
 import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.influxdb.session.InfluxDBSession;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.TSWritePointsReq;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
@@ -48,9 +49,8 @@ public class IoTDBInfluxDBService {
 
   private final InfluxDBSession influxDBSession;
 
-
-  public IoTDBInfluxDBService(String host, int rpcPort, String username, String password){
-    influxDBSession=new InfluxDBSession(host,rpcPort,username,password);
+  public IoTDBInfluxDBService(String host, int rpcPort, String username, String password) {
+    influxDBSession = new InfluxDBSession(host, rpcPort, username, password);
     try {
       influxDBSession.open();
     } catch (IoTDBConnectionException e) {
@@ -59,12 +59,22 @@ public class IoTDBInfluxDBService {
   }
 
   public void writePoints(
-          String database,
-          String retentionPolicy,
-          String precision,
-          String consistency,
-          BatchPoints batchPoints) {
-//    influxDBSession.
+      String database,
+      String retentionPolicy,
+      String precision,
+      String consistency,
+      BatchPoints batchPoints) {
+    TSWritePointsReq tsWritePointsReq = new TSWritePointsReq();
+    tsWritePointsReq.setDatabase(database);
+    tsWritePointsReq.setRetentionPolicy(retentionPolicy);
+    tsWritePointsReq.setPrecision(precision);
+    tsWritePointsReq.setConsistency(consistency);
+    tsWritePointsReq.setLineProtocol(batchPoints.lineProtocol());
+    try {
+      influxDBSession.writePoints(tsWritePointsReq);
+    } catch (StatementExecutionException | IoTDBConnectionException e) {
+      throw new InfluxDBException(e.getMessage());
+    }
 
     List<String> deviceIds = new ArrayList<>();
     List<Long> times = new ArrayList<>();
@@ -91,7 +101,6 @@ public class IoTDBInfluxDBService {
   public void setDatabase(String database) {
     currentDatabase = database;
   }
-
 
   private IoTDBPoint convertToIoTDBPoint(String database, Point point) {
     String measurement = null;

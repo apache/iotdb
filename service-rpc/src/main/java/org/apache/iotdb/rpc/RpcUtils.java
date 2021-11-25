@@ -34,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 
 public class RpcUtils {
 
@@ -87,6 +88,20 @@ public class RpcUtils {
       verifySuccess(status.getSubStatus());
       return;
     }
+    if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
+      return;
+    }
+    if (status.code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
+      throw new StatementExecutionException(status);
+    }
+  }
+
+  /**
+   * verify success.
+   *
+   * @param status -status
+   */
+  public static void verifySuccess( org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status) throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
