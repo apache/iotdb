@@ -21,13 +21,6 @@ public class Session {
   private InfluxDBService.Iface client;
   private long sessionId;
 
-  public InfluxDBService.Iface newSynchronizedClient(InfluxDBService.Iface client) {
-    return (InfluxDBService.Iface)
-        Proxy.newProxyInstance(
-            RpcUtils.class.getClassLoader(),
-            new Class[] {InfluxDBService.Iface.class},
-            new SynchronizedHandler(client));
-  }
 
   public Session() throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(1024);
@@ -43,7 +36,7 @@ public class Session {
     }
 
     client = new InfluxDBService.Client(new TCompactProtocol(transport));
-    client = newSynchronizedClient(client);
+    client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
     openReq.setUsername("root");
