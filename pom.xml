@@ -137,7 +137,7 @@
         <common.pool2.version>2.11.1</common.pool2.version>
         <org.slf4j.version>1.7.32</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
-        <jline.version>2.14.6</jline.version>
+        <jline.version>3.21.0</jline.version>
         <jetty.version>9.4.35.v20201120</jetty.version>
         <metrics.version>4.2.4</metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
@@ -269,7 +269,7 @@
                 <version>${javax.xml.bind.version}</version>
             </dependency>
             <dependency>
-                <groupId>jline</groupId>
+                <groupId>org.jline</groupId>
                 <artifactId>jline</artifactId>
                 <version>${jline.version}</version>
             </dependency>
@@ -508,7 +508,7 @@
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
             </dependency>
-            <!-- for test container -->
+            <!-- for cli and test container -->
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>

@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.GetAllPathsResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.server.handlers.caller.ShowTimeSeriesHandler;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
@@ -1392,19 +1393,18 @@ public class CMManager extends MManager {
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
-    ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet = new ConcurrentSkipListSet<>();
     ExecutorService pool =
         new ThreadPoolExecutor(
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
 
-    List<PartitionGroup> globalGroups = new ArrayList<>();
+    List<PartitionGroup> groups = new ArrayList<>();
     try {
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
-      globalGroups.add(partitionGroup);
+      groups.add(partitionGroup);
     } catch (MetadataException e) {
       // if the path location is not find, obtain the path location from all groups.
-      globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
+      groups = metaGroupMember.getPartitionTable().getGlobalGroups();
     }
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
@@ -1421,35 +1421,31 @@ public class CMManager extends MManager {
     }
 
     if (logger.isDebugEnabled()) {
-      logger.debug(
-          "Fetch timeseries schemas of {} from {} groups", plan.getPath(), globalGroups.size());
+      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(), groups.size());
     }
 
+    ShowTimeSeriesHandler handler = new ShowTimeSeriesHandler(groups.size(), plan.getPath());
     List<Future<Void>> futureList = new ArrayList<>();
-    for (PartitionGroup group : globalGroups) {
+    for (PartitionGroup group : groups) {
       futureList.add(
           pool.submit(
               () -> {
-                try {
-                  showTimeseries(group, plan, resultSet, context);
-                } catch (CheckConsistencyException | MetadataException e) {
-                  logger.error("Cannot get show timeseries result of {} from {}", plan, group);
-                }
+                showTimeseries(group, plan, context, handler);
                 return null;
               }));
     }
 
     waitForThreadPool(futureList, pool, "showTimeseries()");
     List<ShowTimeSeriesResult> showTimeSeriesResults =
-        applyShowTimeseriesLimitOffset(resultSet, limit, offset);
+        applyShowTimeseriesLimitOffset(handler.getResult(), limit, offset);
     logger.debug("Show {} has {} results", plan.getPath(), showTimeSeriesResults.size());
     return showTimeSeriesResults;
   }
 
   private List<ShowTimeSeriesResult> applyShowTimeseriesLimitOffset(
-      ConcurrentSkipListSet<ShowTimeSeriesResult> resultSet, int limit, int offset) {
+      List<ShowTimeSeriesResult> results, int limit, int offset) {
     List<ShowTimeSeriesResult> showTimeSeriesResults = new ArrayList<>();
-    Iterator<ShowTimeSeriesResult> iterator = resultSet.iterator();
+    Iterator<ShowTimeSeriesResult> iterator = results.iterator();
     while (iterator.hasNext() && limit > 0) {
       if (offset > 0) {
         offset--;
@@ -1482,13 +1478,12 @@ public class CMManager extends MManager {
   private void showTimeseries(
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet,
-      QueryContext context)
-      throws CheckConsistencyException, MetadataException {
+      QueryContext context,
+      ShowTimeSeriesHandler handler) {
     if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalTimeseries(group, plan, resultSet, context);
+      showLocalTimeseries(group, plan, context, handler);
     } else {
-      showRemoteTimeseries(group, plan, resultSet);
+      showRemoteTimeseries(group, plan, handler);
     }
   }
 
@@ -1521,28 +1516,21 @@ public class CMManager extends MManager {
   private void showLocalTimeseries(
       PartitionGroup group,
       ShowTimeSeriesPlan plan,
-      Set<ShowTimeSeriesResult> resultSet,
-      QueryContext context)
-      throws CheckConsistencyException, MetadataException {
-    DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
-    localDataMember.syncLeaderWithConsistencyCheck(false);
+      QueryContext context,
+      ShowTimeSeriesHandler handler) {
     try {
+      DataGroupMember localDataMember =
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+      localDataMember.syncLeaderWithConsistencyCheck(false);
       List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
-      resultSet.addAll(localResult);
-      logger.debug(
-          "Fetched local timeseries {} schemas of {} from {}",
-          localResult.size(),
-          plan.getPath(),
-          group);
-    } catch (MetadataException e) {
-      logger.error("Cannot execute show timeseries plan  {} from {} locally.", plan, group);
-      throw e;
+      handler.onComplete(localResult);
+    } catch (MetadataException | CheckConsistencyException e) {
+      handler.onError(e);
     }
   }
 
   private void showRemoteTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, Set<ShowTimeSeriesResult> resultSet) {
+      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeSeriesHandler handler) {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
@@ -1560,13 +1548,17 @@ public class CMManager extends MManager {
 
     if (resultBinary != null) {
       int size = resultBinary.getInt();
+      List<ShowTimeSeriesResult> results = new ArrayList<>();
       logger.debug(
           "Fetched remote timeseries {} schemas of {} from {}", size, plan.getPath(), group);
       for (int i = 0; i < size; i++) {
-        resultSet.add(ShowTimeSeriesResult.deserialize(resultBinary));
+        results.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
+      handler.onComplete(results);
     } else {
-      logger.error("Failed to execute show timeseries {} in group: {}.", plan, group);
+      String errMsg =
+          String.format("Failed to get timeseries in path %s from group %s", plan.getPath(), group);
+      handler.onError(new MetadataException(errMsg));
     }
   }
 

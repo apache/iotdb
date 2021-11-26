@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.tool;
 
+import org.apache.iotdb.cli.utils.JlineUtils;
 import org.apache.iotdb.exception.ArgsErrorException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
@@ -28,7 +29,6 @@ import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 
-import jline.console.ConsoleReader;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.DefaultParser;
@@ -39,8 +39,13 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
+import org.jline.reader.LineReader;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -83,7 +88,7 @@ public class ExportCsv extends AbstractCsvTool {
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
   /** main function of export csv tool. */
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) {
     Options options = createOptions();
     HelpFormatter hf = new HelpFormatter();
     CommandLine commandLine;
@@ -124,15 +129,13 @@ public class ExportCsv extends AbstractCsvTool {
         String sql;
 
         if (sqlFile == null) {
-          ConsoleReader reader = new ConsoleReader();
-          reader.setExpandEvents(false);
-          sql = reader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
+          LineReader lineReader = JlineUtils.getLineReader();
+          sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");
           for (int i = 0; i < values.length; i++) {
             dumpResult(values[i], i);
           }
-          reader.close();
         } else {
           dumpFromSqlFile(sqlFile);
         }
@@ -335,7 +338,7 @@ public class ExportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      names.forEach(name -> headers.add(name));
+      headers.addAll(names);
     }
     printer.printRecord(headers);
 
