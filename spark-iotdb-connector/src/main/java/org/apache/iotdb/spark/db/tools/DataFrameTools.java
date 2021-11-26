@@ -17,11 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.spark.db;
+package org.apache.iotdb.spark.db.tools;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
+import org.apache.iotdb.spark.db.IoTDBOptions;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.spark.sql.Dataset;
