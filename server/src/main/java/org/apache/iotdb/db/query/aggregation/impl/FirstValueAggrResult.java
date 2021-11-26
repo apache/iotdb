@@ -65,13 +65,7 @@ public class FirstValueAggrResult extends AggregateResult {
 
   @Override
   public void updateResultFromPageData(IBatchDataIterator batchIterator) {
-    if (hasFinalResult()) {
-      return;
-    }
-    if (batchIterator.hasNext()) {
-      setValue(batchIterator.currentValue());
-      timestamp = batchIterator.currentTime();
-    }
+    updateResultFromPageData(batchIterator, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
   @Override

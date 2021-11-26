@@ -21,13 +21,13 @@ package org.apache.iotdb.db.metadata.template;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
-import org.apache.iotdb.db.qp.physical.crud.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.PruneTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -71,8 +71,9 @@ public class TemplateManager {
     }
 
     for (List<String> measurements : plan.getMeasurements()) {
-      for (String measurement : measurements)
+      for (String measurement : measurements) {
         MetaFormatUtils.checkTimeseries(new PartialPath(measurement));
+      }
     }
 
     Template template = new Template(plan);
@@ -152,7 +153,7 @@ public class TemplateManager {
       String directNodeName = MetaUtils.splitPathToDetachedPath(measurementPath)[0];
       if (node.hasChild(directNodeName)) {
         throw new MetadataException(
-            "Schema name "
+            "Node name "
                 + directNodeName
                 + " in template has conflict with node's child "
                 + (node.getFullPath() + "." + directNodeName));

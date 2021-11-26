@@ -79,7 +79,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -1464,7 +1464,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       }
       // translate the headers to groups
       for (RaftNode groupHeader : groupHeaders) {
-        partitionGroups.add(partitionTable.getHeaderGroup(groupHeader));
+        partitionGroups.add(partitionTable.getPartitionGroup(groupHeader));
       }
     }
     return partitionGroups;
@@ -1873,7 +1873,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     syncLocalApply(getPartitionTable().getLastMetaLogIndex(), false);
     synchronized (headerMap) {
       for (DataGroupMember dataMember : headerMap.values()) {
-        int num = dataMember.getSlotManager().getSloNumInDataMigration();
+        int num = dataMember.getSlotManager().getSlotNumInDataMigration();
         if (num > 0) {
           groupSlotMap.put(dataMember.getPartitionGroup(), num);
         }

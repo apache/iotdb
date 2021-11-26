@@ -23,13 +23,13 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.MergeLogger;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.IMergePathSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -39,7 +39,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -72,7 +72,7 @@ public class MergeMultiChunkTask {
   private static int minChunkPointNum =
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
-  private MergeLogger mergeLogger;
+  private InplaceCompactionLogger inplaceCompactionLogger;
   private List<PartialPath> unmergedSeries;
 
   private String taskName;
@@ -109,7 +109,7 @@ public class MergeMultiChunkTask {
   public MergeMultiChunkTask(
       CrossSpaceMergeContext context,
       String taskName,
-      MergeLogger mergeLogger,
+      InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource mergeResource,
       boolean fullMerge,
       List<PartialPath> unmergedSeries,
@@ -117,7 +117,7 @@ public class MergeMultiChunkTask {
       String storageGroupName) {
     this.mergeContext = context;
     this.taskName = taskName;
-    this.mergeLogger = mergeLogger;
+    this.inplaceCompactionLogger = inplaceCompactionLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
     this.unmergedSeries = unmergedSeries;
@@ -158,7 +158,7 @@ public class MergeMultiChunkTask {
       logger.info(
           "{} all series are merged after {}ms", taskName, System.currentTimeMillis() - startTime);
     }
-    mergeLogger.logAllTsEnd();
+    inplaceCompactionLogger.logAllTsEnd();
   }
 
   private void logMergeProgress() {
@@ -176,7 +176,7 @@ public class MergeMultiChunkTask {
   }
 
   private void mergePaths() throws IOException {
-    mergeLogger.logTSStart(currMergingPaths);
+    inplaceCompactionLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
     for (int i = 0; i < currMergingPaths.size(); i++) {
@@ -193,7 +193,7 @@ public class MergeMultiChunkTask {
         return;
       }
     }
-    mergeLogger.logTSEnd();
+    inplaceCompactionLogger.logTSEnd();
   }
 
   private String getMaxSensor(List<PartialPath> sensors) {
@@ -325,7 +325,7 @@ public class MergeMultiChunkTask {
             currTsFile);
     if (dataWritten) {
       mergeFileWriter.endChunkGroup();
-      mergeLogger.logFilePosition(mergeFileWriter.getFile());
+      inplaceCompactionLogger.logFilePosition(mergeFileWriter.getFile());
       currTsFile.updateStartTime(deviceId, currDeviceMinTime);
     }
   }
@@ -459,7 +459,7 @@ public class MergeMultiChunkTask {
       int pathIdx,
       TsFileIOWriter mergeFileWriter,
       IPointReader unseqReader,
-      IChunkWriter chunkWriter,
+      ChunkWriterImpl chunkWriter,
       TsFileResource currFile)
       throws IOException {
     int unclosedChunkPoint = lastUnclosedChunkPoint;
@@ -521,7 +521,7 @@ public class MergeMultiChunkTask {
   }
 
   private int writeRemainingUnseq(
-      IChunkWriter chunkWriter, IPointReader unseqReader, long timeLimit, int pathIdx)
+      ChunkWriterImpl chunkWriter, IPointReader unseqReader, long timeLimit, int pathIdx)
       throws IOException {
     int ptWritten = 0;
     while (currTimeValuePairs[pathIdx] != null
@@ -537,7 +537,7 @@ public class MergeMultiChunkTask {
 
   private int writeChunkWithUnseq(
       Chunk chunk,
-      IChunkWriter chunkWriter,
+      ChunkWriterImpl chunkWriter,
       IPointReader unseqReader,
       long chunkLimitTime,
       int pathIdx)
@@ -553,7 +553,7 @@ public class MergeMultiChunkTask {
   }
 
   private int mergeWriteBatch(
-      BatchData batchData, IChunkWriter chunkWriter, IPointReader unseqReader, int pathIdx)
+      BatchData batchData, ChunkWriterImpl chunkWriter, IPointReader unseqReader, int pathIdx)
       throws IOException {
     int cnt = 0;
     for (int i = 0; i < batchData.length(); i++) {
@@ -630,7 +630,7 @@ public class MergeMultiChunkTask {
         PartialPath path = currMergingPaths.get(pathIdx);
         IMeasurementSchema measurementSchema = resource.getSchema(path);
         // chunkWriter will keep the data in memory
-        IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
+        ChunkWriterImpl chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();
           return;

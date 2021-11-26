@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.cluster.query.fill;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Set;

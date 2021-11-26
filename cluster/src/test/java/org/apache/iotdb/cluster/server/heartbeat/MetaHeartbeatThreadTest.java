@@ -91,7 +91,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public PartitionGroup getHeaderGroup(RaftNode header) {
+        public PartitionGroup getPartitionGroup(RaftNode headerNode) {
           return null;
         }
 

@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.SystemInfo;
@@ -106,13 +107,13 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new UnaryMeasurementSchema(
+                measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -123,13 +124,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
     for (ReadOnlyMemChunk chunk : memChunks) {
@@ -146,20 +141,8 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(
-        measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(
-        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
     processor.syncClose();
   }
 
@@ -181,13 +164,13 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new UnaryMeasurementSchema(
+                measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -198,13 +181,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     int num = 1;
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();
@@ -222,20 +199,8 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertEquals(1, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(
-        measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(
-        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
 
     RestorableTsFileIOWriter tsFileIOWriter = processor.getWriter();
     Map<String, List<ChunkMetadata>> chunkMetaDataListInChunkGroups =
@@ -286,13 +251,13 @@ public class TsFileProcessorTest {
     this.sgInfo.initTsFileProcessorInfo(processor);
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new UnaryMeasurementSchema(
+                measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
@@ -306,21 +271,9 @@ public class TsFileProcessorTest {
     processor.syncFlush();
 
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertTrue(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
-    assertEquals(10, tsfileResourcesForQuery.get(0).getChunkMetadataList().size());
-    assertEquals(
-        measurementId,
-        tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getMeasurementUid());
-    assertEquals(
-        dataType, tsfileResourcesForQuery.get(0).getChunkMetadataList().get(0).getDataType());
     processor.syncClose();
   }
 
@@ -342,13 +295,13 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId,
+            new UnaryMeasurementSchema(
+                measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -359,13 +312,7 @@ public class TsFileProcessorTest {
 
     // query data in memory
     tsfileResourcesForQuery.clear();
-    processor.query(
-        deviceId,
-        measurementId,
-        new UnaryMeasurementSchema(
-            measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props),
-        context,
-        tsfileResourcesForQuery);
+    processor.query(fullPath, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
     assertFalse(tsfileResourcesForQuery.get(0).getReadOnlyMemChunk().isEmpty());
     List<ReadOnlyMemChunk> memChunks = tsfileResourcesForQuery.get(0).getReadOnlyMemChunk();

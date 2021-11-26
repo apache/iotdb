@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.write;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -78,8 +78,8 @@ public class SameMeasurementsWithDifferentDataTypesTest {
     pathList.add(new Path("d2", "s1"));
     QueryExpression queryExpression = QueryExpression.create(pathList, null);
     TsFileSequenceReader fileReader = new TsFileSequenceReader(tsfilePath);
-    ReadOnlyTsFile readOnlyTsFile = new ReadOnlyTsFile(fileReader);
-    QueryDataSet dataSet = readOnlyTsFile.query(queryExpression);
+    TsFileReader tsFileReader = new TsFileReader(fileReader);
+    QueryDataSet dataSet = tsFileReader.query(queryExpression);
     int i = 0;
     while (dataSet.hasNext()) {
       RowRecord r = dataSet.next();

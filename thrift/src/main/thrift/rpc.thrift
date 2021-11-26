@@ -303,7 +303,7 @@ struct TSCreateAlignedTimeseriesReq {
   3: required list<string> measurements
   4: required list<i32> dataTypes
   5: required list<i32> encodings
-  6: required i32 compressor
+  6: required list<i32> compressors
   7: optional list<string> measurementAlias
 }
 
@@ -362,12 +362,7 @@ struct TSSetSchemaTemplateReq {
 struct TSCreateSchemaTemplateReq {
   1: required i64 sessionId
   2: required string name
-  3: optional list<string> schemaNames
-  4: required list<list<string>> measurements
-  5: required list<list<i32>> dataTypes
-  6: required list<list<i32>> encodings
-  7: required list<list<i32>> compressors
-  8: optional binary serializedTemplate
+  3: required binary serializedTemplate
 }
 
 struct TSAppendSchemaTemplateReq {
