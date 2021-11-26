@@ -22,7 +22,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
+import org.apache.iotdb.db.query.dataset.show.ShowTimeSeriesResult;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;

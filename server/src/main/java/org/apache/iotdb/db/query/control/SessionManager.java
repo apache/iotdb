@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.query.dataset.UDTFDataSet;
+import org.apache.iotdb.db.query.dataset.udf.UDTFDataSet;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;

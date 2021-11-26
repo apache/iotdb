@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.query.dataset.show.ShowTimeSeriesResult;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;

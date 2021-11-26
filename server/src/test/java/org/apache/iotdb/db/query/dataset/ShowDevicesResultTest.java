@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
+import org.apache.iotdb.db.query.dataset.show.ShowDevicesResult;
+
 import org.junit.Assert;
 import org.junit.Test;
 

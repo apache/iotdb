@@ -7,7 +7,7 @@
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
@@ -16,34 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.query.dataset;
 
-public class ShowResult implements Comparable<ShowResult> {
+package org.apache.iotdb.db.query.dataset.udf;
 
-  protected String name;
-  protected String sgName;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-  public ShowResult(String name, String sgName) {
-    this.name = name;
-    this.sgName = sgName;
-  }
+import java.io.IOException;
+import java.util.List;
 
-  public ShowResult(String name) {
-    this.name = name;
-  }
+public interface UDFInputDataSet {
 
-  public ShowResult() {}
+  List<TSDataType> getDataTypes();
 
-  public String getName() {
-    return name;
-  }
+  boolean hasNextRowInObjects() throws IOException;
 
-  public String getSgName() {
-    return sgName;
-  }
-
-  @Override
-  public int compareTo(ShowResult o) {
-    return this.getName().compareTo(o.getName());
-  }
+  Object[] nextRowInObjects() throws IOException;
 }
