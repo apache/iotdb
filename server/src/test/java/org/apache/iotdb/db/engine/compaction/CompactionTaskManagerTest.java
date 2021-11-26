@@ -94,6 +94,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
       waitingTime += 100;
+      if (waitingTime % 10000 == 0) {
+        logger.warn("{}", manager.getRunningCompactionTaskList());
+      }
       if (waitingTime > MAX_WAITING_TIME) {
         Assert.fail();
       }
@@ -142,6 +145,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
       waitingTime += 100;
+      if (waitingTime % 10000 == 0) {
+        logger.warn("{}", CompactionTaskManager.getInstance().getRunningCompactionTaskList());
+      }
       if (waitingTime > MAX_WAITING_TIME) {
         Assert.fail();
       }
@@ -189,6 +195,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
       waitingTime += 100;
+      if (waitingTime % 10000 == 0) {
+        logger.warn("{}", manager.getRunningCompactionTaskList());
+      }
       if (waitingTime > MAX_WAITING_TIME) {
         Assert.fail();
       }
@@ -232,6 +241,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
       waitingTime += 100;
+      if (waitingTime % 10000 == 0) {
+        logger.warn("{}", manager.getRunningCompactionTaskList());
+      }
       if (waitingTime > MAX_WAITING_TIME) {
         Assert.fail();
       }
