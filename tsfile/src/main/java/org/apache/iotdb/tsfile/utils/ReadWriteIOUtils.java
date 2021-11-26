@@ -111,6 +111,10 @@ public class ReadWriteIOUtils {
   }
 
   public static int write(Map<String, String> map, DataOutputStream stream) throws IOException {
+    if (map == null) {
+      return write(-1, stream);
+    }
+
     int length = 0;
     stream.writeInt(map.size());
     length += 4;
@@ -129,6 +133,10 @@ public class ReadWriteIOUtils {
   }
 
   public static int write(Map<String, String> map, ByteBuffer buffer) {
+    if (map == null) {
+      return write(-1, buffer);
+    }
+
     int length = 0;
     byte[] bytes;
     buffer.putInt(map.size());
@@ -649,6 +657,9 @@ public class ReadWriteIOUtils {
 
   public static Map<String, String> readMap(ByteBuffer buffer) {
     int length = readInt(buffer);
+    if (length == -1) {
+      return null;
+    }
     Map<String, String> map = new HashMap<>(length);
     for (int i = 0; i < length; i++) {
       // key
