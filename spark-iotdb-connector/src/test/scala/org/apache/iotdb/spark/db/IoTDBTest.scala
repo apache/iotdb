@@ -23,9 +23,7 @@ import java.io.ByteArrayOutputStream
 import org.apache.iotdb.db.conf.IoTDBConstant
 import org.apache.iotdb.db.service.IoTDB
 import org.apache.iotdb.jdbc.Config
-import org.apache.spark.sql.catalyst.encoders.RowEncoder
-import org.apache.spark.sql.types.StructType
-import org.apache.spark.sql.{Row, SQLContext, SparkSession}
+import org.apache.spark.sql.{SQLContext, SparkSession}
 import org.junit._
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
