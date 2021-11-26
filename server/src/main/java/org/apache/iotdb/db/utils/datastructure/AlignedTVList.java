@@ -436,7 +436,7 @@ public class AlignedTVList extends TVList {
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
       if (time < lowerBound || time > upperBound) {
-        setValues(i, newSize++);
+        setValuesAndIndexes(i, newSize++);
         minTime = Math.min(time, minTime);
       }
     }
@@ -447,17 +447,18 @@ public class AlignedTVList extends TVList {
     if (newSize % ARRAY_SIZE != 0) {
       newArrayNum++;
     }
-    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
     return deletedNumber * getTsDataTypes().size();
   }
 
-  private void setValues(int src, int dest) {
+  private void setValuesAndIndexes(int src, int dest) {
     long srcT = getTime(src);
     int srcI = getValueIndex(src);
-    setValues(dest, srcT, srcI);
+    setValuesAndIndexes(dest, src, srcT, srcI);
   }
 
   /**
@@ -501,36 +502,38 @@ public class AlignedTVList extends TVList {
     indices.get(arrayIndex)[elementIndex] = value;
   }
 
-  private void setValues(int destIndex, long timestamp, int srcIndex) {
-    int arrayIndex = destIndex / ARRAY_SIZE;
-    int elementIndex = destIndex % ARRAY_SIZE;
-    timestamps.get(arrayIndex)[elementIndex] = timestamp;
+  private void setValuesAndIndexes(int destIndex, int srcIndex, long timestamp, int srcSortedIndex) {
+    timestamps.get(destIndex / ARRAY_SIZE)[destIndex % ARRAY_SIZE] = timestamp;
+    int destSortedIndex = getValueIndex(destIndex);
+    int arrayIndex = destSortedIndex / ARRAY_SIZE;
+    int elementIndex = destSortedIndex % ARRAY_SIZE;
+    indices.get(srcIndex / ARRAY_SIZE)[srcIndex % ARRAY_SIZE] = destIndex;
     for (int i = 0; i < dataTypes.size(); i++) {
       List<Object> columnValues = values.get(i);
       switch (dataTypes.get(i)) {
         case TEXT:
           ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((Binary[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((Binary[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         case FLOAT:
           ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((float[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((float[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         case INT32:
           ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((int[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((int[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         case INT64:
           ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((long[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((long[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         case DOUBLE:
           ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((double[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((double[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         case BOOLEAN:
           ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((boolean[]) columnValues.get(srcIndex / ARRAY_SIZE))[srcIndex % ARRAY_SIZE];
+              ((boolean[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
           break;
         default:
           break;
@@ -889,7 +892,7 @@ public class AlignedTVList extends TVList {
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(null);
+        columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
