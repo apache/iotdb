@@ -27,16 +27,27 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
+import static org.apache.iotdb.db.constant.TestConstant.max_value;
+import static org.apache.iotdb.db.constant.TestConstant.min_time;
+import static org.apache.iotdb.db.constant.TestConstant.min_value;
 
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
+
+  private static final String TIMESTAMP_STR = "Time";
 
   @BeforeClass
   public static void setUp() throws Exception {
@@ -104,7 +115,6 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + resultSet.getString(count("root.sg1.d1.s1"))
                   + ","
                   + resultSet.getString(avg("root.sg1.d1.s3"));
-          System.out.println(ans);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -513,8 +523,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + resultSet.getString(last_value("root.sg1.d1.s1"))
                   + ","
                   + resultSet.getString(first_value("root.sg1.d1.s3"));
-          System.out.println(ans);
-          // Assert.assertEquals(retArray[cnt], ans);
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(retArray.length, cnt);
@@ -522,7 +531,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
       hasResultSet =
           statement.execute(
-              "select last_value(s4), first_value(s5) from root.sg1.d1 "
+              "select last_value(s1), first_value(s3) from root.sg1.d1 "
                   + " where time > 5 and time < 38 GROUP BY ([1, 41), 5ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
@@ -532,9 +541,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s4"))
+                  + resultSet.getString(last_value("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s5"));
+                  + resultSet.getString(first_value("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -595,75 +604,6 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + resultSet.getString(last_value("root.sg1.d1.s1"))
                   + ","
                   + resultSet.getString(first_value("root.sg1.d1.s3"));
-          Assert.assertEquals(retArray[cnt - 1], ans);
-          cnt--;
-        }
-        Assert.assertEquals(0, cnt);
-      }
-    }
-  }
-
-  @Test
-  public void firstLastWithNonAlignedTimeseriesTest() throws SQLException {
-    String[] retArray =
-        new String[] {
-          "1,null,null,null,null",
-          "7,non_aligned_test10,false,aligned_test10,false",
-          "13,null,true,aligned_unseq_test13,null",
-          "19,null,true,null,true",
-          "25,null,true,null,true",
-          "31,non_aligned_test34,null,aligned_test34,null",
-          "37,non_aligned_test37,null,aligned_test37,null"
-        };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      boolean hasResultSet =
-          statement.execute(
-              "select last_value(d2.s5), first_value(d1.s4), last_value(d1.s5), first_value(d2.s4) "
-                  + "from root.sg1 where time > 5 and time < 38 GROUP BY ([1, 41), 4ms, 6ms)");
-      Assert.assertTrue(hasResultSet);
-
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(last_value("root.sg1.d2.s5"))
-                  + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s4"))
-                  + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"))
-                  + ","
-                  + resultSet.getString(first_value("root.sg1.d2.s4"));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(retArray.length, cnt);
-      }
-
-      hasResultSet =
-          statement.execute(
-              "select last_value(d2.s5), first_value(d1.s4), last_value(d1.s5), first_value(d2.s4) "
-                  + "from root.sg1 where time > 5 and time < 38 "
-                  + "GROUP BY ([1, 41), 4ms, 6ms) order by time desc");
-      Assert.assertTrue(hasResultSet);
-
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = retArray.length;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(last_value("root.sg1.d2.s5"))
-                  + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s4"))
-                  + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"))
-                  + ","
-                  + resultSet.getString(first_value("root.sg1.d2.s4"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
