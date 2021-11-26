@@ -211,12 +211,40 @@ public class FileReaderManager implements IService {
   void decreaseFileReaderReference(TsFileResource tsFile, boolean isClosed) {
     synchronized (this) {
       if (!isClosed && unclosedReferenceMap.containsKey(tsFile.getTsFilePath())) {
-        unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+        if (unclosedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
+          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), false);
+        }
       } else if (closedReferenceMap.containsKey(tsFile.getTsFilePath())) {
-        closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet();
+        if (closedReferenceMap.get(tsFile.getTsFilePath()).decrementAndGet() == 0) {
+          closeUnUsedReaderAndRemoveRef(tsFile.getTsFilePath(), true);
+        }
       }
     }
     tsFile.readUnlock();
+  }
+
+  private void closeUnUsedReaderAndRemoveRef(String tsFilePath, boolean isClosed) {
+    Map<String, TsFileSequenceReader> readerMap =
+        isClosed ? closedFileReaderMap : unclosedFileReaderMap;
+    Map<String, AtomicInteger> refMap = isClosed ? closedReferenceMap : unclosedReferenceMap;
+    synchronized (this) {
+      // check ref num again
+      if (refMap.get(tsFilePath).get() != 0) {
+        return;
+      }
+
+      TsFileSequenceReader reader = readerMap.get(tsFilePath);
+      try {
+        reader.close();
+      } catch (IOException e) {
+        logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+      }
+      readerMap.remove(tsFilePath);
+      refMap.remove(tsFilePath);
+      if (resourceLogger.isDebugEnabled()) {
+        resourceLogger.debug("{} TsFileReader is closed because of no reference.", tsFilePath);
+      }
+    }
   }
 
   /**
