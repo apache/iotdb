@@ -86,7 +86,10 @@ public class AggregationExecutor {
   private int aggregateFetchSize;
 
   protected AggregationExecutor(QueryContext context, AggregationPlan aggregationPlan) {
-    this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.selectedSeries = new ArrayList<>();
+    aggregationPlan
+        .getDeduplicatedPaths()
+        .forEach(k -> selectedSeries.add(((MeasurementPath) k).transformToExactPath()));
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
@@ -688,18 +691,20 @@ public class AggregationExecutor {
           int pathId = subIndexes.get(0);
           // if cached in timeGenerator
           if (cached.get(pathId)) {
-            // TODO: need to get exact path class?
             Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
             ValueIterator valueIterator = generateValueIterator(values);
             for (Integer index : subIndexes) {
               aggregateResultList[index].updateResultUsingValues(
                   timeArray, timeArrayLength, valueIterator);
+              valueIterator.reset();
             }
             cachedOrNot[i] = true;
           }
         }
-        // TODO: if size = 1, we only need to get the exact number of values for specific aggregate
+
         if (hasRemaining(cachedOrNot)) {
+          // TODO: if we only need to get firstValue/minTime that's not need to traverse all values,
+          //  it's enough to get the exact number of values for these specific aggregate func
           Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
           if (values != null) {
             ValueIterator valueIterator = generateValueIterator(values);
@@ -799,21 +804,19 @@ public class AggregationExecutor {
 
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof MeasurementPath
-          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+      if (seriesPath instanceof AlignedPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
-        AlignedPath groupPath = temp.get(exactPath.getFullPath());
+        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
-          groupPath = exactPath;
+          groupPath = (AlignedPath) seriesPath;
           temp.put(groupPath.getFullPath(), groupPath);
           result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
           // groupPath is changed here so we update it
-          List<List<Integer>> subIndexes = result.get(groupPath);
+          List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addMeasurements(exactPath.getMeasurementList());
-          groupPath.addSchemas(exactPath.getSchemaList());
+          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }

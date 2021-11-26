@@ -35,12 +35,24 @@ public class AlignedValueIterator extends ValueIterator {
   }
 
   @Override
+  public boolean hasNext() {
+    while (curPos < values.length
+        && ((TsPrimitiveType[]) values[curPos])[subMeasurementIndex] == null) {
+      curPos++;
+    }
+    return curPos < values.length;
+  }
+
+  @Override
   public Object next() {
-    return ((TsPrimitiveType[]) values[curPos++])[subMeasurementIndex];
+    return ((TsPrimitiveType[]) values[curPos++])[subMeasurementIndex].getValue();
   }
 
   @Override
   public Object get(int index) {
-    return ((TsPrimitiveType[]) values[index])[subMeasurementIndex];
+    if (((TsPrimitiveType[]) values[index])[subMeasurementIndex] == null) {
+      return null;
+    }
+    return ((TsPrimitiveType[]) values[index])[subMeasurementIndex].getValue();
   }
 }
