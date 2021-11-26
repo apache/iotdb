@@ -310,7 +310,6 @@ public class SizeTieredCompactionRecoverTest {
       resourceFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 
   /** Target file uncompleted, source files and log exists */
