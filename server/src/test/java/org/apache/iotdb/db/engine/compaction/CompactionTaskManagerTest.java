@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompactionTaskManagerTest extends InnerCompactionTest {
   static final Logger logger = LoggerFactory.getLogger(CompactionTaskManagerTest.class);
   File tempSGDir;
+  final long MAX_WAITING_TIME = 120_000;
 
   @Before
   public void setUp() throws Exception {
@@ -51,6 +52,7 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
 
   @Test
   public void testRepeatedSubmitBeforeExecution() throws Exception {
+    logger.warn("testRepeatedSubmitBeforeExecution");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -88,13 +90,19 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
     Thread.sleep(5000);
     Assert.assertEquals(0, manager.getTotalTaskCount());
+    long waitingTime = 0;
     while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+      }
     }
   }
 
   @Test
   public void testRepeatedSubmitWhenExecuting() throws Exception {
+    logger.warn("testRepeatedSubmitWhenExecuting");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -130,13 +138,19 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     } finally {
       tsFileManager.writeUnlock();
     }
+    long waitingTime = 0;
     while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+      }
     }
   }
 
   @Test
   public void testRepeatedSubmitAfterExecution() throws Exception {
+    logger.warn("testRepeatedSubmitAfterExecution");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -171,13 +185,19 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
     manager.submitTaskFromTaskQueue();
     Assert.assertEquals(manager.getExecutingTaskCount(), 0);
-    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
+    long waitingTime = 0;
+    while (manager.getRunningCompactionTaskList().size() > 0) {
       Thread.sleep(100);
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+      }
     }
   }
 
   @Test
   public void testRemoveSelfFromRunningList() throws Exception {
+    logger.warn("testRemoveSelfFromRunningList");
     TsFileManager tsFileManager =
         new TsFileManager("root.compactionTest", "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -208,5 +228,13 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     Thread.sleep(5000);
     List<AbstractCompactionTask> runningList = manager.getRunningCompactionTaskList();
     Assert.assertEquals(0, runningList.size());
+    long waitingTime = 0;
+    while (manager.getRunningCompactionTaskList().size() > 0) {
+      Thread.sleep(100);
+      waitingTime += 100;
+      if (waitingTime > MAX_WAITING_TIME) {
+        Assert.fail();
+      }
+    }
   }
 }
