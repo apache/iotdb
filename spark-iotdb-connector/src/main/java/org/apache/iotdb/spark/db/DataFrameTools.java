@@ -25,7 +25,6 @@ import org.apache.iotdb.session.Session;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.spark.sql.Dataset;
-import org.apache.spark.sql.RelationalGroupedDataset;
 import org.apache.spark.sql.Row;
 import scala.Tuple2;
 
@@ -37,10 +36,11 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
 
 public class DataFrameTools {
-  /***
-   * insert a narrow dataframe into IoTDB
-   * @param options     the options to create a IoTDB session
-   * @param dataFrame   a dataframe of narrow table
+  /**
+   * * insert a narrow dataframe into IoTDB
+   *
+   * @param options the options to create a IoTDB session
+   * @param dataFrame a dataframe of narrow table
    * @return
    */
   public static void insertDataFrame(IoTDBOptions options, Dataset<Row> dataFrame) {
@@ -59,7 +59,8 @@ public class DataFrameTools {
           .foreachPartition(
               partition -> {
                 String[] hostPort = options.url().split("//")[1].replace("/", "").split(":");
-                Session session = new Session.Builder()
+                Session session =
+                    new Session.Builder()
                         .host(hostPort[0])
                         .port(Integer.valueOf(hostPort[1]))
                         .username(String.valueOf(options.user()))
