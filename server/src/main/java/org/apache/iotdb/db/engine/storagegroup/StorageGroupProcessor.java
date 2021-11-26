@@ -808,7 +808,9 @@ public class StorageGroupProcessor {
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws BatchProcessException {
+    long beforeGetWriteLock = System.currentTimeMillis();
     writeLock("insertTablet");
+    logger.info("Get writeLock cost: {} ms", System.currentTimeMillis() - beforeGetWriteLock);
     try {
       TSStatus[] results = new TSStatus[insertTabletPlan.getRowCount()];
       Arrays.fill(results, RpcUtils.SUCCESS_STATUS);

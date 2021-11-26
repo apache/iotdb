@@ -255,6 +255,7 @@ public class TsFileProcessor {
       throw new WriteProcessException(e);
     }
 
+    long beforeWAL = System.currentTimeMillis();
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableWal()) {
         insertTabletPlan.setStart(start);
@@ -270,7 +271,8 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
-
+    long beforeMemtable = System.currentTimeMillis();
+    logger.info("write WAL cost: {} ms", beforeMemtable - beforeWAL);
     try {
       workMemTable.insertTablet(insertTabletPlan, start, end);
     } catch (WriteProcessException e) {
@@ -279,6 +281,7 @@ public class TsFileProcessor {
       }
       throw new WriteProcessException(e);
     }
+    logger.info("write memtable cost: {} ms", System.currentTimeMillis() - beforeMemtable);
 
     for (int i = start; i < end; i++) {
       results[i] = RpcUtils.SUCCESS_STATUS;
