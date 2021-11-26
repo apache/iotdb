@@ -24,17 +24,11 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMerg
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * MaxFileMergeFileSelector selects the most files from given seqFiles and unseqFiles which can be
@@ -130,6 +124,14 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
   }
 
+  /**
+   * In a preset time (30 seconds), for each unseqFile, find the list of seqFiles that overlap with
+   * it and have not been selected by the file selector of this compaction task. After finding each
+   * unseqFile and its corresponding overlap seqFile list, estimate the additional memory overhead
+   * that may be added by compacting them (preferably using the loop estimate), and if it does not
+   * exceed the memory overhead preset by the system for the compaction thread, put them into the
+   * selectedSeqFiles and selectedUnseqFiles.
+   */
   void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
@@ -221,6 +223,13 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     return isClosedAndNotMerging;
   }
 
+  /**
+   * Put the index of the seqFile that has an overlap with the specific unseqFile and has not been
+   * selected by the file selector of the compaction task into the tmpSelectedSeqFiles list. To
+   * determine whether overlap exists is to traverse each device ChunkGroup in unseqFiles, and
+   * determine whether it overlaps with the same device ChunkGroup of each seqFile that are not
+   * selected by the compaction task, if so, select this seqFile.
+   */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
     int tmpSelectedNum = 0;
     for (String deviceId : unseqFile.getDevices()) {

@@ -31,7 +31,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +61,12 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         taskFactory);
   }
 
+  /**
+   * This method creates a specific file selector according to the file selection strategy of
+   * crossSpace compaction, uses the file selector to select all unseqFiles and seqFiles to be
+   * compacted under the time partition of the virtual storage group, and creates a compaction task
+   * for them. The task is put into the compactionTaskQueue of the {@link CompactionTaskManager}.
+   */
   @Override
   public boolean selectAndSubmit() {
     boolean taskSubmitted = false;

@@ -29,16 +29,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
-import java.util.PriorityQueue;
+import java.util.*;
 
 /**
  * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
@@ -72,6 +67,12 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         taskFactory);
   }
 
+  /**
+   * This method searches for a batch of files to be compacted from layer 0 to the highest layer. If
+   * there are more than a batch of files to be merged on a certain layer, it does not search to
+   * higher layers. It creates a compaction thread for each batch of files and put it into the
+   * compactionTaskQueue of the {@link CompactionTaskManager}.
+   */
   @Override
   public boolean selectAndSubmit() {
     LOGGER.debug(
@@ -105,6 +106,14 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return true;
   }
 
+  /**
+   * This method searches for all files on the given level. If there are consecutive files on the
+   * level that meet the system preset conditions (the number exceeds 10 or the total file size
+   * exceeds 2G), a compaction task is created for the batch of files and placed in the
+   * taskPriorityQueue queue , and continue to search for the next batch. If at least one batch of
+   * files to be compacted is found on this layer, it will return false (indicating that it will no
+   * longer search for higher layers), otherwise it will return true.
+   */
   private boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
@@ -113,7 +122,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     long selectedFileSize = 0L;
     long targetCompactionFileSize = config.getTargetCompactionFileSize();
 
-    // this iterator traverses the list in reverse order
     for (TsFileResource currentFile : tsFileResources) {
       TsFileNameGenerator.TsFileName currentName =
           TsFileNameGenerator.getTsFileName(currentFile.getTsFile().getName());
