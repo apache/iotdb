@@ -1,0 +1,107 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.iotdb.cli.utils;
+
+import org.apache.iotdb.cli.IoTDBSyntaxHighlighter;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
+
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReader.Option;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.impl.DefaultParser.Bracket;
+import org.jline.reader.impl.completer.StringsCompleter;
+import org.jline.terminal.Size;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.Terminal.Signal;
+import org.jline.terminal.TerminalBuilder;
+import org.jline.utils.OSUtils;
+import org.jline.widget.AutopairWidgets;
+import org.jline.widget.AutosuggestionWidgets;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Objects;
+import java.util.Set;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public class JlineUtils {
+
+  public static final Pattern SQL_KEYWORD_PATTERN = Pattern.compile("([A-Z_]+)");
+  public static final Set<String> SQL_KEYWORDS =
+      IntStream.range(0, IoTDBSqlLexer.VOCABULARY.getMaxTokenType())
+          .mapToObj(IoTDBSqlLexer.VOCABULARY::getDisplayName)
+          .filter(Objects::nonNull)
+          .filter(w -> SQL_KEYWORD_PATTERN.matcher(w).matches())
+          .collect(Collectors.toSet());
+
+  public static LineReader getLineReader() throws IOException {
+    Terminal terminal = TerminalBuilder.builder().build();
+    if (terminal.getWidth() == 0 || terminal.getHeight() == 0) {
+      // Hard coded terminal size when redirecting.
+      terminal.setSize(new Size(120, 40));
+    }
+    Thread executeThread = Thread.currentThread();
+    // Register signal handler. Instead of shutting down the process, interrupt the current thread
+    // when signal INT is received (usually by pressing CTRL+C).
+    terminal.handle(Signal.INT, signal -> executeThread.interrupt());
+
+    LineReaderBuilder builder = LineReaderBuilder.builder();
+    builder.terminal(terminal);
+
+    // Handle the command history. By default, the number of commands will not exceed 500 and the
+    // size of the history fill will be less than 10 KB. See:
+    // org.jline.reader.impl.history#DefaultHistory
+    String historyFile = ".iotdb.history";
+    String historyFilePath = System.getProperty("user.home") + File.separator + historyFile;
+    builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
+
+    builder.highlighter(new IoTDBSyntaxHighlighter());
+
+    builder.completer(new StringsCompleter(SQL_KEYWORDS));
+
+    builder.option(Option.CASE_INSENSITIVE_SEARCH, true);
+    builder.option(Option.CASE_INSENSITIVE, true);
+    // See: https://www.gnu.org/software/bash/manual/html_node/Event-Designators.html
+    builder.option(Option.DISABLE_EVENT_EXPANSION, true);
+
+    org.jline.reader.impl.DefaultParser parser = new org.jline.reader.impl.DefaultParser();
+    // Make multi-line edition be triggered by unclosed brackets and unclosed quotes.
+    parser.setEofOnUnclosedBracket(Bracket.CURLY, Bracket.SQUARE, Bracket.ROUND);
+    parser.setEofOnUnclosedQuote(true);
+    builder.parser(parser);
+    LineReader lineReader = builder.build();
+    if (OSUtils.IS_WINDOWS) {
+      // If enabled cursor remains in begin parenthesis (gitbash).
+      lineReader.setVariable(LineReader.BLINK_MATCHING_PAREN, 0);
+    }
+
+    // Create auto-pair widgets
+    AutopairWidgets autopairWidgets = new AutopairWidgets(lineReader);
+    // Enable auto-pair
+    autopairWidgets.enable();
+    // Create autosuggestion widgets
+    AutosuggestionWidgets autosuggestionWidgets = new AutosuggestionWidgets(lineReader);
+    // Enable autosuggestions
+    autosuggestionWidgets.enable();
+    return lineReader;
+  }
+}

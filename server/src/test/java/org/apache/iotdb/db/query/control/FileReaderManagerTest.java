@@ -117,24 +117,13 @@ public class FileReaderManagerTest {
     t1.join();
     t2.join();
 
+    Thread.sleep(1000);
+    // Since we have closed the reader after reading the file, it should be false that the file is
+    // still contained by manager
     for (int i = 1; i <= MAX_FILE_SIZE; i++) {
       TsFileResource tsFile = new TsFileResource(SystemFileFactory.INSTANCE.getFile(filePath + i));
-      Assert.assertTrue(manager.contains(tsFile, false));
+      Assert.assertFalse(manager.contains(tsFile, false));
     }
-
-    // the code below is not valid because the cacheFileReaderClearPeriod config in this class is
-    // not valid
-
-    // TimeUnit.SECONDS.sleep(5);
-    //
-    // for (int i = 1; i <= MAX_FILE_SIZE; i++) {
-    //
-    // if (i == 4 || i == 5 || i == 6) {
-    // Assert.assertTrue(manager.contains(filePath + i));
-    // } else {
-    // Assert.assertFalse(manager.contains(filePath + i));
-    // }
-    // }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
     for (int i = 1; i < MAX_FILE_SIZE; i++) {
