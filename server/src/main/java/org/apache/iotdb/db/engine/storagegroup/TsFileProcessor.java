@@ -315,6 +315,9 @@ public class TsFileProcessor {
             ChunkMetadata.calculateRamSize(
                 insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
+        // Estimate Object[] Of ArrayList in TVList mem Increment
+        // there are 2 array lists in TVList
+        memTableIncrement += (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
       } else {
         // here currentChunkPointNum >= 1
         int currentChunkPointNum =
@@ -322,11 +325,10 @@ public class TsFileProcessor {
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
+                    + (NUM_BYTES_ARRAY_HEADER * 1.5) * 2
                 : 0;
       }
-      // Estimate Object[] Of ArrayList in TVList mem Increment
-      // there is 2 array lists in TVList
-      memTableIncrement += (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
+
       // TEXT data mem size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
@@ -378,23 +380,33 @@ public class TsFileProcessor {
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemSize(dataType);
+      // Estimate Object[] Of ArrayList in TVList mem Increment
+      // there are 2 array lists in TVList
+      memIncrements[0] +=
+          ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+              * (NUM_BYTES_ARRAY_HEADER * 1.5)
+              * 2;
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
                 * TVList.tvListArrayMemSize(dataType);
+        // Estimate Object[] Of ArrayList in TVList mem Increment
+        memIncrements[0] +=
+            ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * (NUM_BYTES_ARRAY_HEADER * 1.5)
+                * 2;
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
             acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemSize(dataType);
+        // Estimate Object[] Of ArrayList in TVList mem Increment
+        memIncrements[0] += acquireArray * (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
       }
     }
-    // Estimate Object[] Of ArrayList in TVList mem Increment
-    // there is 2 array lists in TVList
-    memIncrements[0] += (end - start) * (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
     // TEXT data size
     if (dataType == TSDataType.TEXT) {
       Binary[] binColumn = (Binary[]) column;
