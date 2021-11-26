@@ -185,10 +185,12 @@ public class FileReaderManager {
       }
 
       TsFileSequenceReader reader = readerMap.get(tsFilePath);
-      try {
-        reader.close();
-      } catch (IOException e) {
-        logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+      if (reader != null) {
+        try {
+          reader.close();
+        } catch (IOException e) {
+          logger.error("Can not close TsFileSequenceReader {} !", reader.getFileName(), e);
+        }
       }
       readerMap.remove(tsFilePath);
       refMap.remove(tsFilePath);
