@@ -139,4 +139,35 @@ public class AlignedWriteUtil {
       e.printStackTrace();
     }
   }
+
+  public static void main(String[] args) throws ClassNotFoundException {
+    insertData();
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
+      // disk before doing deletion
+      statement.execute("flush");
+      statement.execute("SET STORAGE GROUP TO root.sg2");
+      statement.execute("create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
+      for (int i = 31; i <=40 ; i++) {
+        statement.execute(String.format("insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",i,(double)i,i,i));
+      }
+      for (int i = 1; i <=10 ; i++) {
+        statement.execute(String.format("insert into root.sg2.d1(time, s1) aligned values(%d,%f)",i,(double)i));
+      }
+      for (int i = 11; i <=20 ; i++) {
+        statement.execute(String.format("insert into root.sg2.d1(time, s2) aligned values(%d,%d)",i,i));
+      }
+      for (int i = 21; i <=30 ; i++) {
+        statement.execute(String.format("insert into root.sg2.d1(time, s3) aligned values(%d,%d)",i,i));
+      }
+      statement.execute("flush");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
 }
