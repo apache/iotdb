@@ -94,7 +94,7 @@ public class CompactionSchedulerTest {
     }
     MergeManager.getINSTANCE().start();
     CompactionTaskManager.getInstance().start();
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(1000);
       } catch (InterruptedException e) {
@@ -216,7 +216,7 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -338,14 +338,14 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
 
       }
     }
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -468,7 +468,7 @@ public class CompactionSchedulerTest {
       }
     }
 
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -566,7 +566,7 @@ public class CompactionSchedulerTest {
           fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
       tsFileManager.add(tsFileResource, false);
     }
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -723,7 +723,7 @@ public class CompactionSchedulerTest {
       }
     }
 
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -968,7 +968,7 @@ public class CompactionSchedulerTest {
         e.printStackTrace();
       }
     }
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {
@@ -1064,7 +1064,7 @@ public class CompactionSchedulerTest {
       tsFileManager.add(tsFileResource, false);
     }
 
-    while (CompactionTaskManager.getInstance().getTaskCount() > 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
         Thread.sleep(10);
       } catch (InterruptedException e) {

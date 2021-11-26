@@ -244,8 +244,16 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public int getTaskCount() {
+  public int getExecutingTaskCount() {
     return taskExecutionPool.getActiveCount() + taskExecutionPool.getQueue().size();
+  }
+
+  public int getTotalTaskCount() {
+    return getExecutingTaskCount() + compactionTaskQueue.size();
+  }
+
+  public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
+    return new ArrayList<>(runningCompactionTaskList);
   }
 
   public long getFinishTaskNum() {
