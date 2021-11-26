@@ -28,6 +28,7 @@ import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -154,6 +155,25 @@ public class QueryRouter implements IQueryRouter {
     }
 
     return dataSet;
+  }
+
+  @Override
+  public QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
+      throws QueryFilterOptimizationException, StorageEngineException, IOException,
+          QueryProcessException {
+    if (logger.isDebugEnabled()) {
+      logger.debug("paths:" + udafPlan.getPaths());
+    }
+    AggregationPlan innerAggregationPlan = udafPlan.getInnerAggregationPlan();
+    QueryDataSet innerQueryDataSet = null;
+    if (innerAggregationPlan instanceof GroupByTimePlan) {
+      innerQueryDataSet = groupBy((GroupByTimePlan) innerAggregationPlan, context);
+    } else {
+      innerQueryDataSet = aggregate(innerAggregationPlan, context);
+    }
+
+    UDFQueryExecutor udfQueryExecutor = new UDFQueryExecutor(udafPlan);
+    return udfQueryExecutor.executeFromAlignedDataSet(context, innerQueryDataSet);
   }
 
   protected AggregationExecutor getAggregationExecutor(
@@ -316,7 +336,7 @@ public class QueryRouter implements IQueryRouter {
 
     boolean withValueFilter =
         optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
-    UDTFQueryExecutor udtfQueryExecutor = new UDTFQueryExecutor(udtfPlan);
+    UDFQueryExecutor udtfQueryExecutor = new UDFQueryExecutor(udtfPlan);
 
     if (udtfPlan.isAlignByTime()) {
       return withValueFilter

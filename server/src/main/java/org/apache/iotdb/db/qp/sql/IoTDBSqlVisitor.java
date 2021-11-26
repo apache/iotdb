@@ -49,6 +49,7 @@ import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
+import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
@@ -131,7 +132,15 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -2456,13 +2465,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     boolean isFirstElement = true;
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
-      // judge query type according to the first select element
-      if (!hasDecidedQueryType()) {
-        if (selectComponent.hasAggregationFunction()) {
-          queryOp = new AggregationQueryOperator(queryOp);
-        } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-          queryOp = new UDFQueryOperator(queryOp);
-        }
+    }
+
+    if (!hasDecidedQueryType()) {
+      if (selectComponent.hasUserDefinedAggregationFunction()) {
+        queryOp = new UDAFQueryOperator(queryOp);
+      } else if (selectComponent.hasAggregationFunction()) {
+        queryOp = new AggregationQueryOperator(queryOp);
+      } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        queryOp = new UDFQueryOperator(queryOp);
       }
     }
 

@@ -21,8 +21,8 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.UDFRawQueryInputDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -38,7 +38,7 @@ import java.util.List;
 
 public class RawQueryInputLayer {
 
-  private UDFInputDataSet queryDataSet;
+  private IUDFInputDataSet queryDataSet;
   private TSDataType[] dataTypes;
   private int timestampIndex;
 
@@ -75,7 +75,12 @@ public class RawQueryInputLayer {
         new RawQueryDataSetWithValueFilter(paths, dataTypes, timeGenerator, readers, cached, true));
   }
 
-  private void construct(long queryId, float memoryBudgetInMB, UDFInputDataSet queryDataSet)
+  public RawQueryInputLayer(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
+      throws QueryProcessException {
+    construct(queryId, memoryBudgetInMB, queryDataSet);
+  }
+
+  private void construct(long queryId, float memoryBudgetInMB, IUDFInputDataSet queryDataSet)
       throws QueryProcessException {
     this.queryDataSet = queryDataSet;
     dataTypes = queryDataSet.getDataTypes().toArray(new TSDataType[0]);

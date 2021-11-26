@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
+import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowWindow;
@@ -41,7 +41,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class MultiInputColumnIntermediateLayer extends IntermediateLayer
-    implements UDFInputDataSet {
+    implements IUDFInputDataSet {
 
   private final LayerPointReader[] layerPointReaders;
   private final TSDataType[] dataTypes;
@@ -191,7 +191,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       SlidingSizeWindowAccessStrategy strategy, float memoryBudgetInMB)
       throws QueryProcessException {
 
-    final UDFInputDataSet udfInputDataSet = this;
+    final IUDFInputDataSet udfInputDataSet = this;
 
     return new LayerRowWindowReader() {
 
@@ -260,7 +260,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
     final long slidingStep = strategy.getSlidingStep();
     final long displayWindowEnd = strategy.getDisplayWindowEnd();
 
-    final UDFInputDataSet udfInputDataSet = this;
+    final IUDFInputDataSet udfInputDataSet = this;
     final ElasticSerializableRowRecordList rowRecordList =
         new ElasticSerializableRowRecordList(
             dataTypes, queryId, memoryBudgetInMB, CACHE_BLOCK_SIZE);

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.TransparentTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
@@ -61,6 +62,8 @@ public class FunctionExpression extends Expression {
    */
   private final boolean isAggregationFunctionExpression;
 
+  private boolean isUDAFExpression;
+
   private final String functionName;
   private final Map<String, String> functionAttributes;
 
@@ -70,8 +73,6 @@ public class FunctionExpression extends Expression {
    * <p>3 expressions [root.sg.d.a, root.sg.d.b, udf(root.sg.d.c)] will be in this field.
    */
   private List<Expression> expressions;
-
-  private List<TSDataType> inputExpressionTypes;
 
   private List<PartialPath> paths;
 
@@ -94,6 +95,9 @@ public class FunctionExpression extends Expression {
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isUDAFExpression =
+        expressions.stream()
+            .anyMatch(v -> v.isUDAFExpression() || v.isAggregationFunctionExpression());
   }
 
   @Override
@@ -104,6 +108,11 @@ public class FunctionExpression extends Expression {
   @Override
   public boolean isConstantOperandInternal() {
     return isConstantOperandCache;
+  }
+
+  @Override
+  public boolean isUDAFExpression() {
+    return isUDAFExpression;
   }
 
   @Override
@@ -123,6 +132,10 @@ public class FunctionExpression extends Expression {
 
   public void addExpression(Expression expression) {
     isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
+    isUDAFExpression =
+        isUDAFExpression
+            || expression.isUDAFExpression()
+            || expression.isAggregationFunctionExpression();
     expressions.add(expression);
   }
 
@@ -210,20 +223,30 @@ public class FunctionExpression extends Expression {
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer udfInputIntermediateLayer =
-          constructUdfInputIntermediateLayer(
-              queryId,
-              udtfPlan,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          constructUdfTransformer(
-              queryId, udtfPlan, expressionDataTypeMap, memoryAssigner, udfInputIntermediateLayer);
+      Transformer transformer;
+      if (isAggregationFunctionExpression) {
+        transformer =
+            new TransparentTransformer(
+                rawTimeSeriesInputLayer.constructPointReader(
+                    udtfPlan.getReaderIndexByExpressionName(toString())));
+      } else {
+        IntermediateLayer udfInputIntermediateLayer =
+            constructUdfInputIntermediateLayer(
+                queryId,
+                udtfPlan,
+                rawTimeSeriesInputLayer,
+                expressionIntermediateLayerMap,
+                expressionDataTypeMap,
+                memoryAssigner);
+        transformer =
+            constructUdfTransformer(
+                queryId,
+                udtfPlan,
+                expressionDataTypeMap,
+                memoryAssigner,
+                udfInputIntermediateLayer);
+      }
       expressionDataTypeMap.put(this, transformer.getDataType());
-
       expressionIntermediateLayerMap.put(
           this,
           memoryAssigner.getReference(this) == 1

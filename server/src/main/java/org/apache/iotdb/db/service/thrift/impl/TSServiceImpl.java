@@ -604,7 +604,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
-      if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+      if (plan.getOperatorType() == OperatorType.AGGREGATION
+          || plan.getOperatorType() == OperatorType.UDAF) {
         resp.setIgnoreTimeStamp(true);
       } else if (plan instanceof ShowQueryProcesslistPlan) {
         resp.setIgnoreTimeStamp(false);
@@ -766,6 +767,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         }
         seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
         break;
+      case UDAF:
       case UDTF:
         seriesTypes = new ArrayList<>();
         for (int i = 0; i < paths.size(); i++) {

@@ -77,6 +77,13 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     initTimeHeap();
   }
 
+  public UDTFAlignByTimeDataSet(
+      QueryContext context, UDTFPlan udtfPlan, IUDFInputDataSet inputDataSet)
+      throws QueryProcessException, IOException {
+    super(context, udtfPlan, inputDataSet);
+    initTimeHeap();
+  }
+
   protected void initTimeHeap() throws IOException, QueryProcessException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
