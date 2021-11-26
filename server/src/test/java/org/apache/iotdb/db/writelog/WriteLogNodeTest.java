@@ -399,4 +399,53 @@ public class WriteLogNodeTest {
       MmapUtil.clean((MappedByteBuffer) byteBuffer);
     }
   }
+
+  @Test
+  public void testBufferOverflowAndRewrite() throws IOException, IllegalPathException {
+    String identifier = "root.logTestDevice";
+
+    InsertRowPlan insertPlan =
+        new InsertRowPlan(
+            new PartialPath(identifier),
+            100,
+            new String[] {"s1", "s2", "s3", "s4"},
+            new TSDataType[] {
+              TSDataType.DOUBLE, TSDataType.INT64, TSDataType.TEXT, TSDataType.BOOLEAN
+            },
+            new String[] {"1.0", "15", "str", "false"});
+
+    // get InsertRowPlan byte size
+    ByteBuffer tmpBuffer =
+        ByteBuffer.allocate(IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
+    insertPlan.serialize(tmpBuffer);
+    int size = tmpBuffer.position();
+    // allocate buffers
+    ByteBuffer[] byteBuffers = new ByteBuffer[2];
+    byteBuffers[0] = ByteBuffer.allocateDirect(size + 1);
+    byteBuffers[1] = ByteBuffer.allocateDirect(size + 1);
+    WriteLogNode logNode = new ExclusiveWriteLogNode(identifier);
+    logNode.initBuffer(byteBuffers);
+    // write InsertRowPlan to WAL buffer
+    logNode.write(insertPlan);
+    insertPlan.setTime(200);
+    logNode.write(insertPlan);
+
+    logNode.close();
+
+    File walFile =
+        new File(config.getWalDir() + File.separator + identifier + File.separator + "wal1");
+    assertTrue(walFile.exists());
+
+    ILogReader reader = logNode.getLogReader();
+    insertPlan.setTime(100);
+    assertEquals(insertPlan, reader.next());
+    insertPlan.setTime(200);
+    assertEquals(insertPlan, reader.next());
+    reader.close();
+
+    ByteBuffer[] array = logNode.delete();
+    for (ByteBuffer byteBuffer : array) {
+      MmapUtil.clean((MappedByteBuffer) byteBuffer);
+    }
+  }
 }

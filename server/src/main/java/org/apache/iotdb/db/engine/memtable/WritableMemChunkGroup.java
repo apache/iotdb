@@ -33,11 +33,8 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
 
-  public WritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
+  public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
-    for (IMeasurementSchema schema : schemaList) {
-      createMemChunkIfNotExistAndGet(schema);
-    }
   }
 
   @Override
@@ -68,10 +65,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementId(),
-        k -> {
-          return new WritableMemChunk(schema);
-        });
+        schema.getMeasurementId(), k -> new WritableMemChunk(schema));
   }
 
   @Override

@@ -16,22 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.common;
+package org.apache.iotdb.cluster.query.reader.mult;
 
-public class ExceptionBatchData extends BatchData {
+import org.apache.iotdb.db.query.reader.universal.DescPriorityMergeReader;
+import org.apache.iotdb.db.query.reader.universal.Element;
 
-  private Throwable throwable;
+import java.util.PriorityQueue;
 
-  public ExceptionBatchData(Throwable throwable) {
-    this.throwable = throwable;
+/**
+ * This class extends {@link extends DescPriorityMergeReader} for data sources with different
+ * priorities.
+ */
+public class AssignPathDescPriorityMergeReader extends DescPriorityMergeReader
+    implements IAssignPathPriorityMergeReader {
+
+  private String fullPath;
+
+  public AssignPathDescPriorityMergeReader(String fullPath) {
+    super();
+    this.fullPath = fullPath;
   }
 
   @Override
-  public boolean hasCurrent() {
-    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
+  public PriorityQueue<Element> getHeap() {
+    return heap;
   }
 
-  public Throwable getThrowable() {
-    return throwable;
+  @Override
+  public String getFullPath() {
+    return fullPath;
   }
 }

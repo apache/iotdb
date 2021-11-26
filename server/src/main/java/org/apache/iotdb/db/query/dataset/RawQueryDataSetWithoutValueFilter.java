@@ -116,12 +116,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             e,
             String.format(
                 "Something gets wrong while reading from the series reader %s: ", pathName));
-      } catch (Exception e) {
+      } catch (Throwable e) {
         putExceptionBatchData(e, "Something gets wrong: ");
       }
     }
 
-    private void putExceptionBatchData(Exception e, String logMessage) {
+    private void putExceptionBatchData(Throwable e, String logMessage) {
       try {
         LOGGER.error(logMessage, e);
         reader.setHasRemaining(false);
@@ -517,11 +517,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     } else if (batchData instanceof ExceptionBatchData) {
       // exception happened in producer thread
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
-      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
-      if (exceptionBatchData.getException() instanceof IOException) {
-        throw (IOException) exceptionBatchData.getException();
-      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
-        throw (RuntimeException) exceptionBatchData.getException();
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getThrowable());
+      if (exceptionBatchData.getThrowable() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getThrowable();
+      } else if (exceptionBatchData.getThrowable() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getThrowable();
       }
 
     } else { // there are more batch data in this time series queue
