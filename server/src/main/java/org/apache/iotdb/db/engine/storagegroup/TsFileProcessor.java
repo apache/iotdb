@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -322,6 +324,9 @@ public class TsFileProcessor {
                 ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
                 : 0;
       }
+      // Estimate Object[] Of ArrayList in TVList mem Increment
+      // there is 2 array lists in TVList
+      memTableIncrement += (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
       // TEXT data mem size
       if (insertRowPlan.getDataTypes()[i] == TSDataType.TEXT) {
         textDataIncrement += MemUtils.getBinarySize((Binary) insertRowPlan.getValues()[i]);
@@ -387,6 +392,9 @@ public class TsFileProcessor {
             acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemSize(dataType);
       }
     }
+    // Estimate Object[] Of ArrayList in TVList mem Increment
+    // there is 2 array lists in TVList
+    memIncrements[0] += (end - start) * (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
     // TEXT data size
     if (dataType == TSDataType.TEXT) {
       Binary[] binColumn = (Binary[]) column;
