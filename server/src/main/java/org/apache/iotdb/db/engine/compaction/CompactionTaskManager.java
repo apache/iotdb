@@ -55,7 +55,7 @@ public class CompactionTaskManager implements IService {
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue =
+  private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
@@ -175,9 +175,9 @@ public class CompactionTaskManager implements IService {
    * with last priority will be removed from the task.
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
-    if (!compactionTaskQueue.contains(compactionTask)
+    if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
-      compactionTaskQueue.add(compactionTask);
+      candidateCompactionTaskQueue.add(compactionTask);
       return true;
     }
     return false;
@@ -190,8 +190,8 @@ public class CompactionTaskManager implements IService {
   public synchronized void submitTaskFromTaskQueue() {
     while (currentTaskNum.get()
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-        && compactionTaskQueue.size() > 0) {
-      AbstractCompactionTask task = compactionTaskQueue.poll();
+        && candidateCompactionTaskQueue.size() > 0) {
+      AbstractCompactionTask task = candidateCompactionTaskQueue.poll();
       if (task != null && task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
         runningCompactionTaskList.add(task);
@@ -249,7 +249,7 @@ public class CompactionTaskManager implements IService {
   }
 
   public int getTotalTaskCount() {
-    return getExecutingTaskCount() + compactionTaskQueue.size();
+    return getExecutingTaskCount() + candidateCompactionTaskQueue.size();
   }
 
   public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {

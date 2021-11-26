@@ -88,6 +88,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     }
     Thread.sleep(5000);
     Assert.assertEquals(0, manager.getTotalTaskCount());
+    while (manager.getRunningCompactionTaskList().size() > 0) {
+      Thread.sleep(100);
+    }
   }
 
   @Test
@@ -127,6 +130,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     } finally {
       tsFileManager.writeUnlock();
     }
+    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
+      Thread.sleep(100);
+    }
   }
 
   @Test
@@ -165,6 +171,9 @@ public class CompactionTaskManagerTest extends InnerCompactionTest {
     Assert.assertTrue(manager.addTaskToWaitingQueue(task2));
     manager.submitTaskFromTaskQueue();
     Assert.assertEquals(manager.getExecutingTaskCount(), 0);
+    while (CompactionTaskManager.getInstance().getRunningCompactionTaskList().size() > 0) {
+      Thread.sleep(100);
+    }
   }
 
   @Test
