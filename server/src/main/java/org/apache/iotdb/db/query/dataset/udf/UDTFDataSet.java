@@ -126,4 +126,8 @@ public abstract class UDTFDataSet extends QueryDataSet {
   public void finalizeUDFs(long queryId) {
     udtfPlan.finalizeUDFExecutors(queryId);
   }
+
+  public UDTFPlan getUdtfPlan() {
+    return udtfPlan;
+  }
 }

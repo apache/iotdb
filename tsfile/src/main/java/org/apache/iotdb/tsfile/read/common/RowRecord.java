@@ -38,6 +38,11 @@ public class RowRecord {
     this.fields = new ArrayList<>();
   }
 
+  public RowRecord(long timestamp, int initCapacity) {
+    this.timestamp = timestamp;
+    this.fields = new ArrayList<>(initCapacity);
+  }
+
   public RowRecord(long timestamp, List<Field> fields) {
     this.timestamp = timestamp;
     this.fields = fields;
