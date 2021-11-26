@@ -68,6 +68,9 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
+    if (isUDAFExpression()) {
+      return false;
+    }
     return true;
   }
 

@@ -147,7 +147,12 @@ public class UDAFQueryExecutor {
       }
     } else {
       // FunctionExpression
-      Field field = innerFields.get(expressionToInnerResultIndexMap.get(expression));
+      Field field =
+          innerFields.get(
+              udafPlan
+                  .getInnerAggregationPlan()
+                  .getPathToIndex()
+                  .get(expression.getExpressionString()));
       dataType = field.getDataType();
       switch (dataType) {
         case INT32:

@@ -2457,15 +2457,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     boolean isFirstElement = true;
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
-      // judge query type according to the first select element
-      if (!hasDecidedQueryType()) {
-        if (selectComponent.hasUserDefinedAggregationFunction()) {
-          queryOp = new UDAFQueryOperator(queryOp);
-        } else if (selectComponent.hasAggregationFunction()) {
-          queryOp = new AggregationQueryOperator(queryOp);
-        } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-          queryOp = new UDFQueryOperator(queryOp);
-        }
+    }
+    // judge query type
+    if (!hasDecidedQueryType()) {
+      if (selectComponent.hasUserDefinedAggregationFunction()) {
+        queryOp = new UDAFQueryOperator(queryOp);
+      } else if (selectComponent.hasAggregationFunction()) {
+        queryOp = new AggregationQueryOperator(queryOp);
+      } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        queryOp = new UDFQueryOperator(queryOp);
       }
     }
 

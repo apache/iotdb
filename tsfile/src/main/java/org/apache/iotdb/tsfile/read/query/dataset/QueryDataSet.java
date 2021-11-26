@@ -102,7 +102,9 @@ public abstract class QueryDataSet {
     this.columnNum = 0;
     if (paths != null) {
       for (Path p : paths) {
-        columnNum += p.getColumnNum();
+        if (p != null) {
+          columnNum += p.getColumnNum();
+        }
       }
     }
   }
