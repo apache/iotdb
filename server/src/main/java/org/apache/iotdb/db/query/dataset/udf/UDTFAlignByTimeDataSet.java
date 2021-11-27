@@ -32,6 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
@@ -86,6 +87,11 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   }
 
   protected void initTimeHeap() throws IOException, QueryProcessException {
+    // if the dataset can be split, we use UDTFJoinDataSet to pack the results.
+    if (canBeSplitIntoFragments()) {
+      return;
+    }
+
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
       // Since a constant operand is not allowed to be a result column, the reader will not be
@@ -94,6 +100,14 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         timeHeap.add(reader.currentTime());
       }
     }
+  }
+
+  public boolean canBeSplitIntoFragments() {
+    return layerBuilder != null && layerBuilder.canBeSplitIntoFragments();
+  }
+
+  public QueryDataSet executeInFragmentsIfPossible() {
+    return canBeSplitIntoFragments() ? layerBuilder.generateJoinDataSet() : this;
   }
 
   @Override

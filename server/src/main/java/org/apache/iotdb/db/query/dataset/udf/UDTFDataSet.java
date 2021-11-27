@@ -26,7 +26,7 @@ import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.db.query.udf.core.layer.DAGBuilder;
+import org.apache.iotdb.db.query.udf.core.layer.LayerBuilder;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -53,6 +53,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
   protected final UDTFPlan udtfPlan;
   protected final RawQueryInputLayer rawQueryInputLayer;
 
+  protected LayerBuilder layerBuilder;
   protected LayerPointReader[] transformers;
 
   /** with value filters */
@@ -109,12 +110,14 @@ public abstract class UDTFDataSet extends QueryDataSet {
     UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
     try {
       // UDF executors will be initialized at the same time
+      layerBuilder =
+          new LayerBuilder(
+              queryId,
+              udtfPlan,
+              rawQueryInputLayer,
+              UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
       transformers =
-          new DAGBuilder(
-                  queryId,
-                  udtfPlan,
-                  rawQueryInputLayer,
-                  UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB + UDF_COLLECTOR_MEMORY_BUDGET_IN_MB)
+          layerBuilder
               .buildLayerMemoryAssigner()
               .buildResultColumnPointReaders()
               .setDataSetResultColumnDataTypes()
@@ -136,9 +139,5 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   public void finalizeUDFs(long queryId) {
     udtfPlan.finalizeUDFExecutors(queryId);
-  }
-
-  public UDTFPlan getUdtfPlan() {
-    return udtfPlan;
   }
 }

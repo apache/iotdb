@@ -25,12 +25,13 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class DAGBuilder {
+public class LayerBuilder {
 
   private final long queryId;
   private final UDTFPlan udtfPlan;
@@ -50,7 +51,7 @@ public class DAGBuilder {
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
   private final Map<Expression, TSDataType> expressionDataTypeMap;
 
-  public DAGBuilder(
+  public LayerBuilder(
       long queryId, UDTFPlan udtfPlan, RawQueryInputLayer inputLayer, float memoryBudgetInMB) {
     this.queryId = queryId;
     this.udtfPlan = udtfPlan;
@@ -69,7 +70,7 @@ public class DAGBuilder {
     expressionDataTypeMap = new HashMap<>();
   }
 
-  public DAGBuilder buildLayerMemoryAssigner() {
+  public LayerBuilder buildLayerMemoryAssigner() {
     for (Expression expression : resultColumnExpressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     }
@@ -77,7 +78,7 @@ public class DAGBuilder {
     return this;
   }
 
-  public DAGBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
+  public LayerBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
     for (int i = 0; i < resultColumnExpressions.length; ++i) {
       resultColumnPointReaders[i] =
           resultColumnExpressions[i]
@@ -93,7 +94,7 @@ public class DAGBuilder {
     return this;
   }
 
-  public DAGBuilder setDataSetResultColumnDataTypes() {
+  public LayerBuilder setDataSetResultColumnDataTypes() {
     for (ResultColumn resultColumn : udtfPlan.getResultColumns()) {
       resultColumn.setDataType(expressionDataTypeMap.get(resultColumn.getExpression()));
     }
@@ -102,5 +103,13 @@ public class DAGBuilder {
 
   public LayerPointReader[] getResultColumnPointReaders() {
     return resultColumnPointReaders;
+  }
+
+  public boolean canBeSplitIntoFragments() {
+    return false;
+  }
+
+  public QueryDataSet generateJoinDataSet() {
+    return null;
   }
 }
