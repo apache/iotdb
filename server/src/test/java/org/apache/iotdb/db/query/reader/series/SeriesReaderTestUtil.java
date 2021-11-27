@@ -235,6 +235,5 @@ public class SeriesReaderTestUtil {
     }
 
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 }
