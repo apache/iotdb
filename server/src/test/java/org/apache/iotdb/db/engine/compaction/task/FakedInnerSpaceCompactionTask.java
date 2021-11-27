@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -53,28 +54,37 @@ public class FakedInnerSpaceCompactionTask extends SizeTieredCompactionTask {
 
   @Override
   protected void doCompaction() throws IOException {
-    TsFileNameGenerator.TsFileName name =
-        TsFileNameGenerator.getTsFileName(selectedTsFileResourceList.get(0).getTsFile().getName());
-    String newName =
-        TsFileNameGenerator.generateNewTsFileName(
-            name.getTime(),
-            name.getVersion(),
-            name.getInnerCompactionCnt() + 1,
-            name.getCrossCompactionCnt());
-    FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0, newName);
-    long targetFileSize = 0;
-    for (TsFileResource resource : selectedTsFileResourceList) {
-      targetFileSize += resource.getTsFileSize();
-    }
-    targetTsFileResource.setTsFileSize(targetFileSize);
-    this.tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
-    for (TsFileResource tsFileResource : selectedTsFileResourceList) {
-      this.tsFileResourceList.remove(tsFileResource);
+    try {
+      TsFileNameGenerator.TsFileName name =
+          TsFileNameGenerator.getTsFileName(
+              selectedTsFileResourceList.get(0).getTsFile().getName());
+      String newName =
+          TsFileNameGenerator.generateNewTsFileName(
+              name.getTime(),
+              name.getVersion(),
+              name.getInnerCompactionCnt() + 1,
+              name.getCrossCompactionCnt());
+      FakedTsFileResource targetTsFileResource = new FakedTsFileResource(0, newName);
+      long targetFileSize = 0;
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        targetFileSize += resource.getTsFileSize();
+      }
+      targetTsFileResource.setTsFileSize(targetFileSize);
+      this.tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+      for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+        this.tsFileResourceList.remove(tsFileResource);
+      }
+    } finally {
+      CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
     }
   }
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask otherTask) {
+    if (otherTask instanceof FakedInnerSpaceCompactionTask) {
+      FakedInnerSpaceCompactionTask fakedOtherTask = (FakedInnerSpaceCompactionTask) otherTask;
+      return this.selectedTsFileResourceList.equals(fakedOtherTask.selectedTsFileResourceList);
+    }
     return false;
   }
 
