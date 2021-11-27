@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cli.utils;
 
-import org.apache.iotdb.cli.IoTDBSyntaxHighlighter;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
 
 import org.jline.reader.LineReader;
@@ -72,7 +71,9 @@ public class JlineUtils {
     String historyFilePath = System.getProperty("user.home") + File.separator + historyFile;
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
 
-    builder.highlighter(new IoTDBSyntaxHighlighter());
+    // TODO: since the lexer doesn't produce tokens for quotation marks, disable the highlighter to
+    // avoid incorrect inputs.
+    //    builder.highlighter(new IoTDBSyntaxHighlighter());
 
     builder.completer(new StringsCompleter(SQL_KEYWORDS));
 
@@ -82,8 +83,6 @@ public class JlineUtils {
     builder.option(Option.DISABLE_EVENT_EXPANSION, true);
 
     org.jline.reader.impl.DefaultParser parser = new org.jline.reader.impl.DefaultParser();
-    // Make multi-line edition be triggered and unclosed quotes.
-    parser.setEofOnUnclosedQuote(true);
     builder.parser(parser);
     LineReader lineReader = builder.build();
     if (OSUtils.IS_WINDOWS) {
