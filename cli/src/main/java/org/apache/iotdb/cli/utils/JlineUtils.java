@@ -25,14 +25,12 @@ import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReader.Option;
 import org.jline.reader.LineReaderBuilder;
-import org.jline.reader.impl.DefaultParser.Bracket;
 import org.jline.reader.impl.completer.StringsCompleter;
 import org.jline.terminal.Size;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.Terminal.Signal;
 import org.jline.terminal.TerminalBuilder;
 import org.jline.utils.OSUtils;
-import org.jline.widget.AutopairWidgets;
 import org.jline.widget.AutosuggestionWidgets;
 
 import java.io.File;
@@ -84,8 +82,7 @@ public class JlineUtils {
     builder.option(Option.DISABLE_EVENT_EXPANSION, true);
 
     org.jline.reader.impl.DefaultParser parser = new org.jline.reader.impl.DefaultParser();
-    // Make multi-line edition be triggered by unclosed brackets and unclosed quotes.
-    parser.setEofOnUnclosedBracket(Bracket.CURLY, Bracket.SQUARE, Bracket.ROUND);
+    // Make multi-line edition be triggered and unclosed quotes.
     parser.setEofOnUnclosedQuote(true);
     builder.parser(parser);
     LineReader lineReader = builder.build();
@@ -94,10 +91,6 @@ public class JlineUtils {
       lineReader.setVariable(LineReader.BLINK_MATCHING_PAREN, 0);
     }
 
-    // Create auto-pair widgets
-    AutopairWidgets autopairWidgets = new AutopairWidgets(lineReader);
-    // Enable auto-pair
-    autopairWidgets.enable();
     // Create autosuggestion widgets
     AutosuggestionWidgets autosuggestionWidgets = new AutosuggestionWidgets(lineReader);
     // Enable autosuggestions
