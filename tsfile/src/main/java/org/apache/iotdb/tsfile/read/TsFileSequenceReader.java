@@ -1051,6 +1051,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                   allocateSize, actualReadSize, position));
         }
       }
+      position += allocateSize;
     }
     buffer.flip();
     return buffer;
