@@ -103,9 +103,9 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
-@REM Max cached buffer size, Note: unit can only be B
+@REM Max cached buffer size, Note: unit can only be B!
 @REM which equals DIRECT_MEMORY_SIZE / threads number that may use direct memory / buffer cache size(IOV_MAX) depends on operating system
-set MAX_DIRECT_MEMORY_SIZE=%MAX_DIRECT_MEMORY_SIZE% / 16 / 1024
+set MAX_DIRECT_MEMORY_SIZE=%max_heap_size_in_mb% * 1024 * 1024 / 16 / 1024
 
 set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
