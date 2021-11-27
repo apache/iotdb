@@ -53,7 +53,7 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
   @Override
   public void start() {
     if (pool == null) {
-      int threadCnt = IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread();
+      int threadCnt = Math.min(Runtime.getRuntime().availableProcessors(), IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread());
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
     }

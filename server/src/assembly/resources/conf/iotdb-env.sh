@@ -208,6 +208,7 @@ calculate_heap_sizes
 # Maximum direct memory size
 MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 # Max cached buffer size, Note: unit can only be B
+# which equals DIRECT_MEMORY_SIZE / threads number that may use direct memory / buffer cache size(IOV_MAX) depends on operating system
 MAX_CACHED_BUFFER_SIZE=`expr $MAX_DIRECT_MEMORY_SIZE / 16 / 1024`
 
 #true or false
