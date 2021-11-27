@@ -385,6 +385,11 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "query_timeout_threshold", Integer.toString(conf.getQueryTimeoutThreshold()))));
 
+      conf.setMaxConcurrentSubQueryThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "max_concurrent_sub_query", Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
+
       conf.setSessionTimeoutThreshold(
           Integer.parseInt(
               properties.getProperty(
@@ -440,13 +445,13 @@ public class IoTDBDescriptor {
                   "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
       // end: index parameter setting
 
-      conf.setConcurrentQueryThread(
+      conf.setMaxConcurrentSubQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
+                  "concurrent_query_thread", Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
 
-      if (conf.getConcurrentQueryThread() <= 0) {
-        conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
+      if (conf.getMaxConcurrentSubQueryThread() <= 0) {
+        conf.setMaxConcurrentSubQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
       conf.setmManagerCacheSize(

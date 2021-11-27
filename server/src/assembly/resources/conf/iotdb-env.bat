@@ -103,9 +103,12 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
+@REM Max cached buffer size, Note: unit can only be B
+set MAX_DIRECT_MEMORY_SIZE=%MAX_DIRECT_MEMORY_SIZE% / 16 / 1024
 
 set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%
