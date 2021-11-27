@@ -33,10 +33,8 @@ import org.apache.iotdb.tsfile.fileSystem.FSType;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import com.google.common.net.InetAddresses;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.nio.ch.IOUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -445,7 +443,8 @@ public class IoTDBDescriptor {
       conf.setMaxConcurrentSubQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "max_concurrent_sub_query_thread", Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
+                  "max_concurrent_sub_query_thread",
+                  Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
 
       conf.setmManagerCacheSize(
           Integer.parseInt(
