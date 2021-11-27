@@ -34,6 +34,4 @@ public interface AlignedGroupByExecutor {
   /** calculate result in [curStartTime, curEndTime) */
   List<List<AggregateResult>> calcAlignedResult(long curStartTime, long curEndTime)
       throws IOException, QueryProcessException;
-
-  void init();
 }

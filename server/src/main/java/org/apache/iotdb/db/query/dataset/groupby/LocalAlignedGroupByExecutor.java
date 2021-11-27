@@ -49,13 +49,12 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
 
   // Aggregate result buffer
   private final List<List<AggregateResult>> results = new ArrayList<>();
-  private final List<List<Boolean>> isCalculatedArray = new ArrayList<>();
 
   private final TimeRange timeRange;
 
   // used for resetting the batch data to the last index
-  private final List<List<Integer>> cachedLastReadCurArrayIndex = new ArrayList<>();
-  private final List<List<Integer>> cachedLastReadCurListIndex = new ArrayList<>();
+  private int lastReadCurArrayIndex;
+  private int lastReadCurListIndex;
 
   private final boolean ascending;
 
@@ -91,22 +90,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     this.ascending = ascending;
   }
 
-  public void init() {
-    for (List<AggregateResult> resultsOfOneMeasurement : results) {
-      List<Boolean> isCalculatedArrayOfOneMeasurement = new ArrayList<>();
-      List<Integer> cachedLastReadCurArrayIndexOfOneMeasurement = new ArrayList<>();
-      List<Integer> cachedLastReadCurListIndexOfOneMeasurement = new ArrayList<>();
-      for (AggregateResult ignored : resultsOfOneMeasurement) {
-        isCalculatedArrayOfOneMeasurement.add(false);
-        cachedLastReadCurArrayIndexOfOneMeasurement.add(0);
-        cachedLastReadCurListIndexOfOneMeasurement.add(0);
-      }
-      isCalculatedArray.add(isCalculatedArrayOfOneMeasurement);
-      cachedLastReadCurArrayIndex.add(cachedLastReadCurArrayIndexOfOneMeasurement);
-      cachedLastReadCurListIndex.add(cachedLastReadCurListIndexOfOneMeasurement);
-    }
-  }
-
   @Override
   public void addAggregateResult(List<AggregateResult> aggregateResults) {
     results.add(aggregateResults);
@@ -117,12 +100,9 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       throws IOException, QueryProcessException {
 
     // clear result cache
-    for (int i = 0; i < results.size(); i++) {
-      List<AggregateResult> resultsOfOneMeasurement = results.get(i);
-      for (int j = 0; j < resultsOfOneMeasurement.size(); j++) {
-        AggregateResult result = resultsOfOneMeasurement.get(j);
+    for (List<AggregateResult> resultsOfOneMeasurement : results) {
+      for (AggregateResult result : resultsOfOneMeasurement) {
         result.reset();
-        isCalculatedArray.get(i).set(j, false);
       }
     }
 
@@ -172,17 +152,6 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     return results;
-  }
-
-  private boolean isAllEndCalc() {
-    for (List<Boolean> isCalculatedArrayOfOneMeasurement : isCalculatedArray) {
-      for (Boolean isCalculated : isCalculatedArrayOfOneMeasurement) {
-        if (!isCalculated) {
-          return false;
-        }
-      }
-    }
-    return true;
   }
 
   private void calcFromStatistics(Statistics statistics, List<AggregateResult> aggregateResultList)
@@ -272,15 +241,10 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       }
 
       // set initial Index
-      int readCurArrayIndex = batchData.getReadCurArrayIndex();
-      int readCurListIndex = batchData.getReadCurListIndex();
-      for (int i = 0; i < cachedLastReadCurArrayIndex.size(); i++) {
-        List<Integer> indexesOfOneMeasurement = cachedLastReadCurArrayIndex.get(i);
-        for (int j = 0; j < indexesOfOneMeasurement.size(); j++) {
-          cachedLastReadCurArrayIndex.get(i).set(j, readCurArrayIndex);
-          cachedLastReadCurListIndex.get(i).set(j, readCurListIndex);
-        }
-      }
+      lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
+      ;
+      lastReadCurListIndex = batchData.getReadCurListIndex();
+      ;
 
       // stop calc and cached current batchData
       if (ascending && batchData.currentTime() >= curEndTime) {
@@ -292,7 +256,10 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
-      if (isAllEndCalc()) {
+      if (batchData.hasCurrent()
+          && (ascending
+              ? batchData.currentTime() >= curEndTime
+              : batchData.currentTime() < curStartTime)) {
         return true;
       }
     }
@@ -302,7 +269,21 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache, judge whether the calculation finished
-    return isAllEndCalc();
+    return (preCachedData != null
+        && (ascending
+            ? preCachedData.getMaxTimestamp() >= curEndTime
+            : preCachedData.getMinTimestamp() < curStartTime));
+  }
+
+  private boolean isEndCalc() {
+    for (List<AggregateResult> resultsOfOneMeasurement : results) {
+      for (AggregateResult result : resultsOfOneMeasurement) {
+        if (!result.hasFinalResult()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
@@ -313,64 +294,63 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     }
 
     boolean hasCached = false;
+    int curReadCurArrayIndex = lastReadCurArrayIndex;
     while (reader.hasNextSubSeries()) {
       int subIndex = reader.getCurIndex();
+      batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
       List<AggregateResult> aggregateResultList = results.get(subIndex);
-      for (int i = 0; i < aggregateResultList.size(); i++) {
-        AggregateResult result = aggregateResultList.get(i);
+      for (AggregateResult result : aggregateResultList) {
         // current agg method has been calculated
-        if (isCalculatedArray.get(subIndex).get(i)) {
+        if (result.hasFinalResult()) {
           continue;
         }
         // lazy reset batch data for calculation
-        batchData.resetBatchData(
-            cachedLastReadCurArrayIndex.get(subIndex).get(i),
-            cachedLastReadCurListIndex.get(subIndex).get(i));
+        batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
         IBatchDataIterator batchDataIterator = batchData.getBatchDataIterator(subIndex);
         if (ascending) {
           // skip points that cannot be calculated
-          while (batchDataIterator.hasNext() && batchDataIterator.currentTime() < curStartTime) {
+          while (batchDataIterator.hasNext(curStartTime, curEndTime)
+              && batchDataIterator.currentTime() < curStartTime) {
             batchDataIterator.next();
           }
         } else {
-          while (batchDataIterator.hasNext() && batchDataIterator.currentTime() >= curEndTime) {
+          while (batchDataIterator.hasNext(curStartTime, curEndTime)
+              && batchDataIterator.currentTime() >= curEndTime) {
             batchDataIterator.next();
           }
         }
-        if (batchDataIterator.hasNext()) {
+        if (batchDataIterator.hasNext(curStartTime, curEndTime)) {
           result.updateResultFromPageData(batchDataIterator, curStartTime, curEndTime);
         }
-        cachedLastReadCurArrayIndex.get(subIndex).set(i, batchData.getReadCurArrayIndex());
-        cachedLastReadCurListIndex.get(subIndex).set(i, batchData.getReadCurListIndex());
-        if (result.hasFinalResult()
-            || (batchData.hasCurrent()
-                && (ascending
-                    ? batchData.currentTime() >= curEndTime
-                    : batchData.currentTime() < curStartTime))
-            || (!batchData.hasCurrent()
-                && (ascending
-                    ? batchData.getMaxTimestamp() >= curEndTime
-                    : batchData.getMinTimestamp() <= curStartTime))) {
-          isCalculatedArray.get(subIndex).set(i, true);
-        }
-        // can calc for next interval
-        if (!hasCached && batchData.hasCurrent()) {
-          preCachedData = batchData;
-          hasCached = true;
-        }
+        curReadCurArrayIndex =
+            ascending
+                ? Math.max(curReadCurArrayIndex, batchData.getReadCurArrayIndex())
+                : Math.min(curReadCurArrayIndex, batchData.getReadCurArrayIndex());
+      }
+      // can calc for next interval
+      if (!hasCached && batchData.hasCurrent()) {
+        preCachedData = batchData;
+        hasCached = true;
       }
       reader.nextSeries();
     }
+
+    // reset the last position to current Index
+    lastReadCurArrayIndex = curReadCurArrayIndex;
+    lastReadCurListIndex = batchData.getReadCurListIndex();
+    batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
   }
 
   private boolean satisfied(BatchData batchData, long curStartTime, long curEndTime) {
-    if (batchData == null) {
+    if (batchData == null || !batchData.hasCurrent()) {
       return false;
     }
-    if (ascending && batchData.getMaxTimestamp() < curStartTime) {
+    if (ascending
+        && (batchData.getMaxTimestamp() < curStartTime || batchData.currentTime() >= curEndTime)) {
       return false;
     }
-    if (!ascending && batchData.getMinTimestamp() >= curEndTime) {
+    if (!ascending
+        && (batchData.getTimeByIndex(0) >= curEndTime || batchData.currentTime() < curStartTime)) {
       preCachedData = batchData;
       return false;
     }
