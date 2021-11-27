@@ -440,14 +440,11 @@ public class IoTDBDescriptor {
                   "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
       // end: index parameter setting
 
-      conf.setConcurrentQueryThread(
+      conf.setMaxConcurrentSubQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
-
-      if (conf.getConcurrentQueryThread() <= 0) {
-        conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
-      }
+                  "max_concurrent_sub_query_thread",
+                  Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
 
       conf.setmManagerCacheSize(
           Integer.parseInt(
