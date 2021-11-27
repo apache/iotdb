@@ -46,7 +46,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
 
   protected TimeSelector timeHeap;
 
-  /** execute with value filter */
+  /** with value filter */
   public UDTFAlignByTimeDataSet(
       QueryContext context,
       UDTFPlan udtfPlan,
@@ -65,7 +65,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     initTimeHeap();
   }
 
-  /** execute without value filter */
+  /** without value filter */
   public UDTFAlignByTimeDataSet(
       QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
@@ -75,6 +75,13 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         udtfPlan.getDeduplicatedPaths(),
         udtfPlan.getDeduplicatedDataTypes(),
         readersOfSelectedSeries);
+    initTimeHeap();
+  }
+
+  /** for data set fragment */
+  protected UDTFAlignByTimeDataSet(LayerPointReader[] transformers)
+      throws QueryProcessException, IOException {
+    super(transformers);
     initTimeHeap();
   }
 

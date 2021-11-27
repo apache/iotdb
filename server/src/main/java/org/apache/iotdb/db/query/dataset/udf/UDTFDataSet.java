@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/** Used to construct UDTF transformers. */
 public abstract class UDTFDataSet extends QueryDataSet {
 
   protected static final float UDF_READER_MEMORY_BUDGET_IN_MB =
@@ -54,7 +55,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
 
   protected LayerPointReader[] transformers;
 
-  /** execute with value filters */
+  /** with value filters */
   protected UDTFDataSet(
       QueryContext queryContext,
       UDTFPlan udtfPlan,
@@ -80,7 +81,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     initTransformers();
   }
 
-  /** execute without value filters */
+  /** without value filters */
   protected UDTFDataSet(
       QueryContext queryContext,
       UDTFPlan udtfPlan,
@@ -102,7 +103,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     initTransformers();
   }
 
-  protected void initTransformers() throws QueryProcessException, IOException {
+  private void initTransformers() throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     // This statement must be surrounded by the registration lock.
     UDFClassLoaderManager.getInstance().initializeUDFQuery(queryId);
@@ -121,6 +122,16 @@ public abstract class UDTFDataSet extends QueryDataSet {
     } finally {
       UDFRegistrationService.getInstance().releaseRegistrationLock();
     }
+  }
+
+  /** for data set fragment */
+  protected UDTFDataSet(LayerPointReader[] transformers) {
+    // The following 3 fields are useless because they are recorded in their parent data set.
+    queryId = -1;
+    udtfPlan = null;
+    rawQueryInputLayer = null;
+
+    this.transformers = transformers;
   }
 
   public void finalizeUDFs(long queryId) {

@@ -51,7 +51,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
   protected int[] alreadyReturnedRowNumArray;
   protected int[] offsetArray;
 
-  /** execute with value filter */
+  /** with value filter */
   public UDTFNonAlignDataSet(
       QueryContext context,
       UDTFPlan udtfPlan,
@@ -70,7 +70,7 @@ public class UDTFNonAlignDataSet extends UDTFDataSet implements DirectNonAlignDa
     isInitialized = false;
   }
 
-  /** execute without value filter */
+  /** without value filter */
   public UDTFNonAlignDataSet(
       QueryContext context, UDTFPlan udtfPlan, List<ManagedSeriesReader> readersOfSelectedSeries)
       throws QueryProcessException, IOException, InterruptedException {
