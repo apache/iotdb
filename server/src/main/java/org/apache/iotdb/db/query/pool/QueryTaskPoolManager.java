@@ -32,7 +32,7 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(QueryTaskPoolManager.class);
 
   private QueryTaskPoolManager() {
-    int threadCnt = IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread();
+    int threadCnt = Math.min(Runtime.getRuntime().availableProcessors(), IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread());
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
   }
 
