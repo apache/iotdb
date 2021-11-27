@@ -70,7 +70,7 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext()) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }

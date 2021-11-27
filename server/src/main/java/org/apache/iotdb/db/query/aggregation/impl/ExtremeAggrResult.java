@@ -102,7 +102,7 @@ public class ExtremeAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> extVal = null;
 
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
 

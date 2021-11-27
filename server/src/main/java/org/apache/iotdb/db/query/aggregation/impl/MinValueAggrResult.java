@@ -56,7 +56,7 @@ public class MinValueAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       updateResult((Comparable<Object>) batchIterator.currentValue());

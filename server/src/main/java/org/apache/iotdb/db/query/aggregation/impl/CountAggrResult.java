@@ -58,7 +58,7 @@ public class CountAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     int cnt = 0;
     int count = batchIterator.totalLength();
-    while (batchIterator.hasNext()) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }

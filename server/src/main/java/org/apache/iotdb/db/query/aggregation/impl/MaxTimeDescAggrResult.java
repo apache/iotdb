@@ -40,7 +40,7 @@ public class MaxTimeDescAggrResult extends MaxTimeAggrResult {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       updateMaxTimeResult(batchIterator.currentTime());

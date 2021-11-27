@@ -69,7 +69,7 @@ public class LastValueAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       time = batchIterator.currentTime();

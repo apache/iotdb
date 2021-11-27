@@ -804,6 +804,11 @@ public class BatchData {
     }
 
     @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      return hasNext();
+    }
+
+    @Override
     public void next() {
       BatchData.this.next();
     }
@@ -860,6 +865,17 @@ public class BatchData {
     @Override
     public boolean hasNext() {
       while (BatchData.this.hasCurrent() && currentValue() == null) {
+        super.next();
+      }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        if (currentTime() < minBound || currentTime() >= maxBound) {
+          break;
+        }
         super.next();
       }
       return BatchData.this.hasCurrent();

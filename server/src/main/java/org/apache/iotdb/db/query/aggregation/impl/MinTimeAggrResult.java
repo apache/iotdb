@@ -62,7 +62,7 @@ public class MinTimeAggrResult extends AggregateResult {
     if (hasFinalResult()) {
       return;
     }
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       setLongValue(batchIterator.currentTime());
