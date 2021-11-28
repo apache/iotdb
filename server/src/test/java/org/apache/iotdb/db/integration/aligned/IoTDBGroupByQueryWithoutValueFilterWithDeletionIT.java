@@ -696,23 +696,23 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
   public void groupByWithWildcardTest2() throws SQLException {
     String[] retArray =
         new String[] {
-          "1,0,0,0,0,null,null,null,null",
-          "5,0,2,2,1,null,7,false,aligned_test7",
-          "9,0,3,2,2,null,11,true,aligned_test10",
-          "13,0,3,1,1,null,15,true,aligned_unseq_test13",
-          "17,3,3,0,0,19.0,19,null,null",
-          "21,1,3,3,0,230000.0,230000,false,null",
-          "25,0,1,3,0,null,25,false,null",
-          "29,0,0,2,1,null,null,false,aligned_test31",
-          "33,0,0,0,3,null,null,null,aligned_test35",
-          "37,0,0,0,1,null,null,null,aligned_test37"
+          "1,0,0,0,0",
+          "5,0,2,2,1",
+          "9,0,3,2,2",
+          "13,0,3,1,1",
+          "17,3,3,0,0",
+          "21,1,3,3,0",
+          "25,0,1,3,0",
+          "29,0,0,2,1",
+          "33,0,0,0,3",
+          "37,0,0,0,1"
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select count(*), last_value(*) from root.sg1.d1 "
+              "select count(*) from root.sg1.d1 "
                   + "where time > 5 and time < 38 GROUP BY ([1, 41), 3ms, 4ms)");
       Assert.assertTrue(hasResultSet);
 
@@ -729,7 +729,70 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + ","
                   + resultSet.getString(count("root.sg1.d1.s4"))
                   + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"))
+                  + resultSet.getString(count("root.sg1.d1.s5"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select count(*) from root.sg1.d1 "
+                  + " where time > 5 and time < 38 GROUP BY ([1, 41), 3ms, 4ms) order by time desc");
+      Assert.assertTrue(hasResultSet);
+
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = retArray.length;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s1"))
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s3"))
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s4"))
+                  + ","
+                  + resultSet.getString(count("root.sg1.d1.s5"));
+          Assert.assertEquals(retArray[cnt - 1], ans);
+          cnt--;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void groupByWithWildcardTest3() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,null,null,null,null",
+          "5,null,7,false,aligned_test7",
+          "9,null,11,true,aligned_test10",
+          "13,null,15,true,aligned_unseq_test13",
+          "17,19.0,19,null,null",
+          "21,230000.0,230000,false,null",
+          "25,null,25,false,null",
+          "29,null,null,false,aligned_test31",
+          "33,null,null,null,aligned_test35",
+          "37,null,null,null,aligned_test37"
+        };
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select last_value(*) from root.sg1.d1 "
+                  + "where time > 5 and time < 38 GROUP BY ([1, 41), 3ms, 4ms)");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
                   + ","
                   + resultSet.getString(last_value("root.sg1.d1.s1"))
                   + ","
@@ -746,7 +809,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
       hasResultSet =
           statement.execute(
-              "select count(*), last_value(*) from root.sg1.d1 "
+              "select last_value(*) from root.sg1.d1 "
                   + " where time > 5 and time < 38 GROUP BY ([1, 41), 3ms, 4ms) order by time desc");
       Assert.assertTrue(hasResultSet);
 
@@ -755,14 +818,6 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(count("root.sg1.d1.s1"))
-                  + ","
-                  + resultSet.getString(count("root.sg1.d1.s3"))
-                  + ","
-                  + resultSet.getString(count("root.sg1.d1.s4"))
-                  + ","
-                  + resultSet.getString(count("root.sg1.d1.s5"))
                   + ","
                   + resultSet.getString(last_value("root.sg1.d1.s1"))
                   + ","

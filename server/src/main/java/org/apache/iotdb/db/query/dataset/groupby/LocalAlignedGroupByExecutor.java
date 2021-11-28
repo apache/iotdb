@@ -230,6 +230,9 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
             reader.nextSeries();
           }
           reader.skipCurrentPage();
+          if (isEndCalc()) {
+            return true;
+          }
           continue;
         }
       }
@@ -256,10 +259,11 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished
-      if (batchData.hasCurrent()
-          && (ascending
-              ? batchData.currentTime() >= curEndTime
-              : batchData.currentTime() < curStartTime)) {
+      if (isEndCalc()
+          || (batchData.hasCurrent()
+              && (ascending
+                  ? batchData.currentTime() >= curEndTime
+                  : batchData.currentTime() < curStartTime))) {
         return true;
       }
     }
@@ -269,21 +273,11 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
   private boolean calcFromCacheData(long curStartTime, long curEndTime) throws IOException {
     calcFromBatch(preCachedData, curStartTime, curEndTime);
     // The result is calculated from the cache, judge whether the calculation finished
-    return (preCachedData != null
-        && (ascending
-            ? preCachedData.getMaxTimestamp() >= curEndTime
-            : preCachedData.getMinTimestamp() < curStartTime));
-  }
-
-  private boolean isEndCalc() {
-    for (List<AggregateResult> resultsOfOneMeasurement : results) {
-      for (AggregateResult result : resultsOfOneMeasurement) {
-        if (!result.hasFinalResult()) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return ((preCachedData != null
+            && (ascending
+                ? preCachedData.getMaxTimestamp() >= curEndTime
+                : preCachedData.getMinTimestamp() < curStartTime))
+        || isEndCalc());
   }
 
   private void calcFromBatch(BatchData batchData, long curStartTime, long curEndTime)
@@ -339,6 +333,17 @@ public class LocalAlignedGroupByExecutor implements AlignedGroupByExecutor {
     lastReadCurArrayIndex = curReadCurArrayIndex;
     lastReadCurListIndex = batchData.getReadCurListIndex();
     batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+  }
+
+  private boolean isEndCalc() {
+    for (List<AggregateResult> resultsOfOneMeasurement : results) {
+      for (AggregateResult result : resultsOfOneMeasurement) {
+        if (!result.hasFinalResult()) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   private boolean satisfied(BatchData batchData, long curStartTime, long curEndTime) {
