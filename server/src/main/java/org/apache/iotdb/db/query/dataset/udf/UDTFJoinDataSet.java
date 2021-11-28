@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.dataset.udf;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
@@ -54,17 +53,19 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
 
   public UDTFJoinDataSet(
       UDTFDataSet[] fragmentDataSets, int[][] resultColumnOutputIndexToFragmentDataSetOutputIndex)
-      throws QueryProcessException, IOException {
+      throws IOException {
     this.fragmentDataSets = fragmentDataSets;
     this.resultColumnOutputIndexToFragmentDataSetOutputIndex =
         resultColumnOutputIndexToFragmentDataSetOutputIndex;
     resultColumnsLength = resultColumnOutputIndexToFragmentDataSetOutputIndex.length;
     rowRecordsCache = new RowRecord[resultColumnsLength];
+
     initTimeHeap();
   }
 
-  private void initTimeHeap() throws IOException, QueryProcessException {
+  private void initTimeHeap() throws IOException {
     timeHeap = new TimeSelector(resultColumnsLength << 1, true);
+
     for (int i = 0; i < resultColumnsLength; ++i) {
       UDTFDataSet fragmentDataSet = fragmentDataSets[i];
       if (fragmentDataSet.hasNextWithoutConstraint()) {
