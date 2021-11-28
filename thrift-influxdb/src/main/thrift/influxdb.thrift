@@ -32,29 +32,19 @@ struct TSStatus {
   4: optional EndPoint redirectNode
 }
 
-enum TSProtocolVersion {
-  IOTDB_SERVICE_PROTOCOL_V1,
-  IOTDB_SERVICE_PROTOCOL_V2,//V2 is the first version that we can check version compatibility
-  IOTDB_SERVICE_PROTOCOL_V3,//V3 is incompatible with V2
-}
-
 struct TSOpenSessionResp {
-  1: required rpc.TSStatus status
-
-  // The protocol version that the server is using.
-  2: required TSProtocolVersion serverProtocolVersion = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V1
+  1: required TSStatus status
 
   // Session id
-  3: optional i64 sessionId
+  2: optional i64 sessionId
 
   // The configuration settings for this session.
-  4: optional map<string, string> configuration
+  3: optional map<string, string> configuration
 }
 
 // OpenSession()
 // Open a session (connection) on the server against which operations may be executed.
 struct TSOpenSessionReq {
-  1: required TSProtocolVersion client_protocol = TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3
   2: required string zoneId
   3: optional string username
   4: optional string password
@@ -76,16 +66,27 @@ struct TSWritePointsReq{
   1: required i64 sessionId
 
   2: required string database
-  3: required string retentionPolicy
-  4: required string precision
-  5: required string consistency
-  6: required string lineProtocol
+  3: optional string retentionPolicy
+  4: optional string precision
+  5: optional string consistency
+  6: optional string lineProtocol
+}
+
+// CreateDatabase()
+// create database in influxdb
+struct TSCreateDatabaseReq{
+  // The session to execute the statement against
+  1: required i64 sessionId
+
+  2: required string database
 }
 
 service InfluxDBService {
   TSOpenSessionResp openSession(1:TSOpenSessionReq req);
 
-  rpc.TSStatus closeSession(1:TSCloseSessionReq req);
+  TSStatus closeSession(1:TSCloseSessionReq req);
 
-  rpc.TSStatus writePoints(1:TSWritePointsReq req);
+  TSStatus writePoints(1:TSWritePointsReq req);
+
+  TSStatus createDatabase(1:TSCreateDatabaseReq req);
 }

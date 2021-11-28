@@ -1,5 +1,6 @@
 package org.apache.iotdb.influxdb.session;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -8,6 +9,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
 
 import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
@@ -100,7 +102,11 @@ public class InfluxDBSession {
       throw new IoTDBConnectionException(e);
     }
 
-    client = new InfluxDBService.Client(new TCompactProtocol(transport));
+    if (IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable()) {
+      client = new InfluxDBService.Client(new TCompactProtocol(transport));
+    } else {
+      client = new InfluxDBService.Client(new TBinaryProtocol(transport));
+    }
     client = RpcUtils.newSynchronizedClient(client);
 
     TSOpenSessionReq openReq = new TSOpenSessionReq();
@@ -126,6 +132,7 @@ public class InfluxDBSession {
     try {
       RpcUtils.verifySuccess(client.writePoints(request));
     } catch (TException e) {
+      logger.error(e.getMessage());
       if (reconnect()) {
         try {
           request.setSessionId(sessionId);
@@ -136,6 +143,34 @@ public class InfluxDBSession {
       } else {
         throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
       }
+    }
+  }
+
+  public void createDatabase(TSCreateDatabaseReq request)
+      throws StatementExecutionException, IoTDBConnectionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.createDatabase(request));
+    } catch (TException e) {
+      e.printStackTrace();
+      logger.error(e.getMessage());
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.createDatabase(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  public void close() {
+    if (isClosed) return;
+    if (transport != null) {
+      transport.close();
     }
   }
 

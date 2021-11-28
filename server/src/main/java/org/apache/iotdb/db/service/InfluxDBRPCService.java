@@ -48,7 +48,7 @@ public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServ
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
               new InfluxDBServiceThriftHandler(impl),
-              IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService());
+              IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }

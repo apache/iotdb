@@ -177,6 +177,12 @@ public class RpcUtils {
     return status;
   }
 
+  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(int code, String message) {
+    org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status = new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);
+    status.setMessage(message);
+    return status;
+  }
+
   public static TSExecuteStatementResp getTSExecuteStatementResp(TSStatusCode tsStatusCode) {
     TSStatus status = getStatus(tsStatusCode);
     return getTSExecuteStatementResp(status);

@@ -34,12 +34,13 @@ public class InfluxDBExample {
 
   private static InfluxDB influxDB;
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
-    //    influxDB.createDatabase("database");
-    //    influxDB.setDatabase("database");
-    //    insertData();
-    //    queryData();
+    influxDB.createDatabase("database");
+    influxDB.setDatabase("database");
+    //            insertData();
+    //        queryData();
+    influxDB.close();
   }
 
   private static void insertData() {

@@ -22,7 +22,6 @@ package org.apache.iotdb.influxdb;
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
-import org.apache.iotdb.influxdb.protocol.input.InfluxLineParser;
 import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.session.Session;
@@ -101,7 +100,7 @@ public class IoTDBInfluxDB implements InfluxDB {
         batchPoints.getRetentionPolicy(),
         TimeUtil.toTimePrecision(batchPoints.getPrecision()),
         batchPoints.getConsistency().value(),
-        batchPoints);
+        batchPoints.lineProtocol());
   }
 
   @Override
@@ -135,14 +134,12 @@ public class IoTDBInfluxDB implements InfluxDB {
       final ConsistencyLevel consistency,
       final TimeUnit precision,
       final String records) {
-    BatchPoints batchPoints =
-        BatchPoints.database(database)
-            .retentionPolicy(retentionPolicy)
-            .consistency(consistency)
-            .precision(precision)
-            .points(InfluxLineParser.parserRecordsToPoints(records, precision))
-            .build();
-    write(batchPoints);
+    influxDBService.writePoints(
+        database,
+        retentionPolicy,
+        consistency.value(),
+        precision == null ? null : TimeUtil.toTimePrecision(precision),
+        records);
   }
 
   @Override
@@ -265,12 +262,7 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void close() {
-    //    try {
-    //      influxDBService.close();
-    //      session.close();
-    //    } catch (IoTDBConnectionException e) {
-    //      throw new InfluxDBException(e.getMessage());
-    //    }
+    influxDBService.close();
   }
 
   @Override

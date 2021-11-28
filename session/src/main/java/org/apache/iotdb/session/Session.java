@@ -916,8 +916,7 @@ public class Session {
     request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
-    putValues(types, values, buffer);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types,values);
     request.setValues(buffer);
     request.setIsAligned(isAligned);
     return request;
@@ -1338,8 +1337,7 @@ public class Session {
       throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
-      ByteBuffer buffer = ByteBuffer.allocate(calculateLength(typesList.get(i), valuesList.get(i)));
-      putValues(typesList.get(i), valuesList.get(i), buffer);
+      ByteBuffer buffer = SessionUtils.getValueBuffer(typesList.get(i),valuesList.get(i));
       buffersList.add(buffer);
     }
     return buffersList;
@@ -1399,8 +1397,7 @@ public class Session {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
     request.addToMeasurementsList(measurements);
-    ByteBuffer buffer = ByteBuffer.allocate(calculateLength(types, values));
-    putValues(types, values, buffer);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types,values);
     request.addToValuesList(buffer);
   }
 
@@ -1762,83 +1759,6 @@ public class Session {
     request.setStartTime(startTime);
     request.setEndTime(endTime);
     return request;
-  }
-
-  private int calculateLength(List<TSDataType> types, List<Object> values)
-      throws IoTDBConnectionException {
-    int res = 0;
-    for (int i = 0; i < types.size(); i++) {
-      // types
-      res += Byte.BYTES;
-      switch (types.get(i)) {
-        case BOOLEAN:
-          res += 1;
-          break;
-        case INT32:
-          res += Integer.BYTES;
-          break;
-        case INT64:
-          res += Long.BYTES;
-          break;
-        case FLOAT:
-          res += Float.BYTES;
-          break;
-        case DOUBLE:
-          res += Double.BYTES;
-          break;
-        case TEXT:
-          res += Integer.BYTES;
-          res += ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET).length;
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-      }
-    }
-    return res;
-  }
-
-  /**
-   * put value in buffer
-   *
-   * @param types types list
-   * @param values values list
-   * @param buffer buffer to insert
-   * @throws IoTDBConnectionException
-   */
-  private void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
-      throws IoTDBConnectionException {
-    for (int i = 0; i < values.size(); i++) {
-      if (values.get(i) == null) {
-        ReadWriteIOUtils.write(TYPE_NULL, buffer);
-        continue;
-      }
-      ReadWriteIOUtils.write(types.get(i), buffer);
-      switch (types.get(i)) {
-        case BOOLEAN:
-          ReadWriteIOUtils.write((Boolean) values.get(i), buffer);
-          break;
-        case INT32:
-          ReadWriteIOUtils.write((Integer) values.get(i), buffer);
-          break;
-        case INT64:
-          ReadWriteIOUtils.write((Long) values.get(i), buffer);
-          break;
-        case FLOAT:
-          ReadWriteIOUtils.write((Float) values.get(i), buffer);
-          break;
-        case DOUBLE:
-          ReadWriteIOUtils.write((Double) values.get(i), buffer);
-          break;
-        case TEXT:
-          byte[] bytes = ((String) values.get(i)).getBytes(TSFileConfig.STRING_CHARSET);
-          ReadWriteIOUtils.write(bytes.length, buffer);
-          buffer.put(bytes);
-          break;
-        default:
-          throw new IoTDBConnectionException(MSG_UNSUPPORTED_DATA_TYPE + types.get(i));
-      }
-    }
-    buffer.flip();
   }
 
   /**

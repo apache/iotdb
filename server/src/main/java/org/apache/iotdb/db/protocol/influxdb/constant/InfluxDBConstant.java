@@ -20,7 +20,5 @@ package org.apache.iotdb.db.protocol.influxdb.constant;
 
 public class InfluxDBConstant {
 
-  public static final String METHOD_NOT_SUPPORTED = "Method not supported.";
-
   public static final String PLACE_HOLDER = "PH";
 }

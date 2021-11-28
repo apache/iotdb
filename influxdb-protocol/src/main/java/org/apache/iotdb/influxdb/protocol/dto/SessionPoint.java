@@ -46,12 +46,4 @@ public class SessionPoint {
   public String getPassword() {
     return password;
   }
-
-  public String ipAndPortToString() {
-    return host + '-' + rpcPort;
-  }
-
-  public static String generateIpAndPortString(String host, int rpcPort) {
-    return host + '-' + rpcPort;
-  }
 }
