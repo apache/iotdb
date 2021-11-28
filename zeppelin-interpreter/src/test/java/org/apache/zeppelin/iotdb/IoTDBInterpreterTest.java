@@ -332,9 +332,12 @@ public class IoTDBInterpreterTest {
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
     String gt = "devices\n" + "root.test.wf02.wt02\n" + "root.test.wf01.wt01";
+    String gt_alternative = "devices\n" + "root.test.wf01.wt01\n" + "root.test.wf02.wt02";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    Assert.assertEquals(gt, actual.message().get(0).getData());
+    Assert.assertTrue(
+        gt == actual.message().get(0).getData()
+            || gt_alternative == actual.message().get(0).getData());
   }
 
   @Test
@@ -345,10 +348,16 @@ public class IoTDBInterpreterTest {
         "devices\tstorage group\n"
             + "root.test.wf02.wt02\troot.test.wf02\n"
             + "root.test.wf01.wt01\troot.test.wf01";
+    String gt_alternative =
+        "devices\tstorage group\n"
+            + "root.test.wf01.wt01\troot.test.wf01\n"
+            + "root.test.wf02.wt02\troot.test.wf02";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     System.out.println(actual.message().get(0).getData());
-    Assert.assertEquals(gt, actual.message().get(0).getData());
+    Assert.assertTrue(
+        gt == actual.message().get(0).getData()
+            || gt_alternative == actual.message().get(0).getData());
   }
 
   @Test
@@ -356,9 +365,13 @@ public class IoTDBInterpreterTest {
     interpreter.internalInterpret("SET TTL TO root.test.wf01 12345", null);
     InterpreterResult actual = interpreter.internalInterpret("SHOW ALL TTL", null);
     String gt = "storage group\tttl\n" + "root.test.wf02\tnull\n" + "root.test.wf01\t12345";
+    String gt_alternative =
+        "storage group\tttl\n" + "root.test.wf01\t12345\n" + "root.test.wf02\tnull";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    Assert.assertEquals(gt, actual.message().get(0).getData());
+    Assert.assertTrue(
+        gt == actual.message().get(0).getData()
+            || gt_alternative == actual.message().get(0).getData());
   }
 
   @Test
@@ -375,9 +388,12 @@ public class IoTDBInterpreterTest {
   public void testShowStorageGroup() {
     InterpreterResult actual = interpreter.internalInterpret("SHOW STORAGE GROUP", null);
     String gt = "storage group\n" + "root.test.wf02\n" + "root.test.wf01";
+    String gt_alternative = "storage group\n" + "root.test.wf01\n" + "root.test.wf02";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
-    Assert.assertEquals(gt, actual.message().get(0).getData());
+    Assert.assertTrue(
+        gt == actual.message().get(0).getData()
+            || gt_alternative == actual.message().get(0).getData());
   }
 
   @Test
