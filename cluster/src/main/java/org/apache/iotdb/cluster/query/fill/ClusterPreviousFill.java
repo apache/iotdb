@@ -35,7 +35,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
@@ -80,14 +80,11 @@ public class ClusterPreviousFill extends PreviousFill {
       TSDataType dataType,
       long queryTime,
       Set<String> deviceMeasurements,
-      QueryContext context) {
-    try {
-      fillResult =
-          performPreviousFill(
-              path, dataType, queryTime, getBeforeRange(), deviceMeasurements, context);
-    } catch (StorageEngineException e) {
-      logger.error("Failed to configure previous fill for Path {}", path, e);
-    }
+      QueryContext context)
+      throws QueryProcessException, StorageEngineException {
+    fillResult =
+        performPreviousFill(
+            path, dataType, queryTime, getBeforeRange(), deviceMeasurements, context);
   }
 
   @Override
@@ -102,7 +99,7 @@ public class ClusterPreviousFill extends PreviousFill {
       long beforeRange,
       Set<String> deviceMeasurements,
       QueryContext context)
-      throws StorageEngineException {
+      throws StorageEngineException, QueryProcessException {
     // make sure the partition table is new
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -133,11 +130,14 @@ public class ClusterPreviousFill extends PreviousFill {
     }
     fillService.shutdown();
     try {
-      fillService.awaitTermination(
-          ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      boolean terminated =
+          fillService.awaitTermination(
+              ClusterConstant.getReadOperationTimeoutMS(), TimeUnit.MILLISECONDS);
+      if (!terminated) {
+        logger.warn("Executor service termination timed out");
+      }
     } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      logger.error("Unexpected interruption when waiting for fill pool to stop", e);
+      throw new QueryProcessException(e.getMessage());
     }
     return handler.getResult();
   }
@@ -160,7 +160,7 @@ public class ClusterPreviousFill extends PreviousFill {
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
     DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     try {
       fillHandler.onComplete(
           localDataMember

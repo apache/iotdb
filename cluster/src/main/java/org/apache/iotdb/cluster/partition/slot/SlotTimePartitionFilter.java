@@ -25,9 +25,10 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import java.util.Objects;
 import java.util.Set;
 
+/** Used for checking if a data partition belongs to the slotSet */
 public class SlotTimePartitionFilter implements TimePartitionFilter {
 
-  private Set<Integer> slotSet;
+  private final Set<Integer> slotSet;
 
   public SlotTimePartitionFilter(Set<Integer> slotSet) {
     this.slotSet = slotSet;

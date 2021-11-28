@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -217,11 +217,8 @@ public class IoTDBSessionVectorAggregationIT {
     // The schema of measurements of one device
     // only measurementId and data type in MeasurementSchema take effects in Tablet
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector1",
-            new String[] {"s1", "s2"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
 
     Tablet tablet = new Tablet(ROOT_SG1_D1_VECTOR1, schemaList);
     tablet.setAligned(true);
@@ -229,8 +226,8 @@ public class IoTDBSessionVectorAggregationIT {
     for (long row = 1; row <= 100; row++) {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, row);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(0), rowIndex, row + 1);
-      tablet.addValue(schemaList.get(0).getSubMeasurementsList().get(1), rowIndex, (int) (row + 2));
+      tablet.addValue(schemaList.get(0).getMeasurementId(), rowIndex, row + 1);
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, (int) (row + 2));
 
       if (tablet.rowSize == tablet.getMaxRowNumber()) {
         session.insertTablet(tablet, true);
@@ -239,7 +236,7 @@ public class IoTDBSessionVectorAggregationIT {
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
     session.executeNonQueryStatement("flush");

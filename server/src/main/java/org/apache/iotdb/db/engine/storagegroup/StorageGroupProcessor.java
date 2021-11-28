@@ -56,9 +56,8 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
@@ -83,7 +82,6 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -908,7 +906,7 @@ public class StorageGroupProcessor {
           insertRowPlan.getTime()
               > partitionLatestFlushedTimeForEachDevice
                   .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+                  .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -980,8 +978,7 @@ public class StorageGroupProcessor {
       long lastFlushTime =
           partitionLatestFlushedTimeForEachDevice
               .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-              .computeIfAbsent(
-                  insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
+              .computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -1004,7 +1001,7 @@ public class StorageGroupProcessor {
               partitionLatestFlushedTimeForEachDevice
                   .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
                   .computeIfAbsent(
-                      insertTabletPlan.getPrefixPath().getFullPath(), id -> Long.MIN_VALUE);
+                      insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
           isSequence = false;
         }
         // still in this partition
@@ -1036,7 +1033,7 @@ public class StorageGroupProcessor {
       }
       long globalLatestFlushedTime =
           globalLatestFlushedTimeForEachDevice.getOrDefault(
-              insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+              insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -1106,12 +1103,11 @@ public class StorageGroupProcessor {
     if (sequence
         && latestTimeForEachDevice
                 .get(timePartitionId)
-                .getOrDefault(insertTabletPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
+                .getOrDefault(insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
             < insertTabletPlan.getTimes()[end - 1]) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(
-              insertTabletPlan.getPrefixPath().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -1132,38 +1128,16 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        if (plan.isAligned()) {
-          IoTDB.metaManager.updateLastCache(
-              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        IoTDB.metaManager.updateLastCache(
+            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+            plan.composeLastTimeValuePair(i),
+            true,
+            latestFlushedTime);
       } else {
-        if (plan.isAligned()) {
-          // vector lastCache update need subMeasurement
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsMultiMeasurementMNode(),
-              plan.getMeasurements()[i],
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-
-        } else {
-          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-          // update last cache
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsUnaryMeasurementMNode(),
-              plan.composeLastTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+        // update last cache
+        IoTDB.metaManager.updateLastCache(
+            mNodes[i], plan.composeLastTimeValuePair(i), true, latestFlushedTime);
       }
     }
   }
@@ -1181,16 +1155,16 @@ public class StorageGroupProcessor {
     // try to update the latest time of the device of this tsRecord
     if (latestTimeForEachDevice
             .get(timePartitionId)
-            .getOrDefault(insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE)
+            .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
         < insertRowPlan.getTime()) {
       latestTimeForEachDevice
           .get(timePartitionId)
-          .put(insertRowPlan.getPrefixPath().getFullPath(), insertRowPlan.getTime());
+          .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
     }
 
     long globalLatestFlushTime =
         globalLatestFlushedTimeForEachDevice.getOrDefault(
-            insertRowPlan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+            insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1211,37 +1185,16 @@ public class StorageGroupProcessor {
       }
       // Update cached last value with high priority
       if (mNodes[i] == null) {
-        if (plan.isAligned()) {
-          IoTDB.metaManager.updateLastCache(
-              new VectorPartialPath(plan.getPrefixPath(), plan.getMeasurements()[i]),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          IoTDB.metaManager.updateLastCache(
-              plan.getPrefixPath().concatNode(plan.getMeasurements()[i]),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        IoTDB.metaManager.updateLastCache(
+            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+            plan.composeTimeValuePair(i),
+            true,
+            latestFlushedTime);
       } else {
-        if (plan.isAligned()) {
-          // vector lastCache update need subSensor path
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsMultiMeasurementMNode(),
-              plan.getMeasurements()[i],
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        } else {
-          // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
-          // update last cache
-          IoTDB.metaManager.updateLastCache(
-              mNodes[i].getAsUnaryMeasurementMNode(),
-              plan.composeTimeValuePair(i),
-              true,
-              latestFlushedTime);
-        }
+        // in stand alone version, the seriesPath is not needed, just use measurementMNodes[i] to
+        // update last cache
+        IoTDB.metaManager.updateLastCache(
+            mNodes[i], plan.composeTimeValuePair(i), true, latestFlushedTime);
       }
     }
   }
@@ -1860,8 +1813,6 @@ public class StorageGroupProcessor {
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    IMeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     long ttlLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
@@ -1892,7 +1843,7 @@ public class StorageGroupProcessor {
         } else {
           tsFileResource
               .getUnsealedFileProcessor()
-              .query(deviceId, fullPath.getMeasurement(), schema, context, tsfileResourcesForQuery);
+              .query(fullPath, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -3216,7 +3167,7 @@ public class StorageGroupProcessor {
               plan.getTime()
                   > partitionLatestFlushedTimeForEachDevice
                       .get(timePartitionId)
-                      .getOrDefault(plan.getPrefixPath().getFullPath(), Long.MIN_VALUE);
+                      .getOrDefault(plan.getDeviceId().getFullPath(), Long.MIN_VALUE);
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence
@@ -3264,13 +3215,14 @@ public class StorageGroupProcessor {
     } else {
       for (String tsFilePath : tsFilePaths) {
         File fileToBeSettled = new File(tsFilePath);
-        if (fileToBeSettled
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getParentFile()
-            .getName()
-            .equals("sequence")) {
+        if ("sequence"
+            .equals(
+                fileToBeSettled
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getParentFile()
+                    .getName())) {
           for (TsFileResource resource : tsFileManager.getTsFileList(true)) {
             if (resource.getTsFile().getAbsolutePath().equals(tsFilePath)) {
               resource.setSettleTsFileCallBack(this::settleTsFileCallBack);

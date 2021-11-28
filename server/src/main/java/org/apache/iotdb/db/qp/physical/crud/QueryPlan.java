@@ -19,13 +19,16 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,8 +36,8 @@ import java.util.Map;
 public abstract class QueryPlan extends PhysicalPlan {
 
   protected List<ResultColumn> resultColumns = null;
-  protected List<PartialPath> paths = null;
-  protected List<TSDataType> dataTypes = null;
+  protected List<MeasurementPath> paths = null;
+
   private boolean alignByTime = true; // for disable align sql
 
   private int rowLimit = 0;
@@ -65,21 +68,24 @@ public abstract class QueryPlan extends PhysicalPlan {
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
   @Override
-  public List<PartialPath> getPaths() {
+  public List<MeasurementPath> getPaths() {
     return paths;
   }
 
   @Override
   public void setPaths(List<PartialPath> paths) {
-    this.paths = paths;
+    if (paths == null) this.paths = null; // align by device
+    else {
+      List<MeasurementPath> measurementPaths = new ArrayList<>();
+      for (PartialPath path : paths) {
+        measurementPaths.add((MeasurementPath) path);
+      }
+      this.paths = measurementPaths;
+    }
   }
 
   public List<TSDataType> getDataTypes() {
-    return dataTypes;
-  }
-
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
+    return SchemaUtils.getSeriesTypesByPaths(paths);
   }
 
   public int getRowLimit() {
@@ -118,10 +124,6 @@ public abstract class QueryPlan extends PhysicalPlan {
     return false;
   }
 
-  public void setPathToIndex(Map<String, Integer> pathToIndex) {
-    this.pathToIndex = pathToIndex;
-  }
-
   public Map<String, Integer> getPathToIndex() {
     return pathToIndex;
   }
@@ -136,7 +138,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public String getColumnForReaderFromPath(PartialPath path, int pathIndex) {
     ResultColumn resultColumn = resultColumns.get(pathIndex);
-    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getExactFullPath();
+    return resultColumn.hasAlias() ? resultColumn.getAlias() : path.getFullPath();
   }
 
   public String getColumnForDisplay(String columnForReader, int pathIndex) {

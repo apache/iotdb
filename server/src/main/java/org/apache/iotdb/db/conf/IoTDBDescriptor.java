@@ -440,14 +440,11 @@ public class IoTDBDescriptor {
                   "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
       // end: index parameter setting
 
-      conf.setConcurrentQueryThread(
+      conf.setMaxConcurrentSubQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
-
-      if (conf.getConcurrentQueryThread() <= 0) {
-        conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
-      }
+                  "max_concurrent_sub_query_thread",
+                  Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
 
       conf.setmManagerCacheSize(
           Integer.parseInt(
@@ -1266,12 +1263,14 @@ public class IoTDBDescriptor {
       long maxMemoryAvailable = conf.getAllocateMemoryForRead();
       if (proportionSum != 0) {
         try {
-          conf.setAllocateMemoryForChunkCache(
+          conf.setAllocateMemoryForBloomFilterCache(
               maxMemoryAvailable * Integer.parseInt(proportions[0].trim()) / proportionSum);
-          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
+          conf.setAllocateMemoryForChunkCache(
               maxMemoryAvailable * Integer.parseInt(proportions[1].trim()) / proportionSum);
-          conf.setAllocateMemoryForReadWithoutCache(
+          conf.setAllocateMemoryForTimeSeriesMetaDataCache(
               maxMemoryAvailable * Integer.parseInt(proportions[2].trim()) / proportionSum);
+          conf.setAllocateMemoryForReadWithoutCache(
+              maxMemoryAvailable * Integer.parseInt(proportions[3].trim()) / proportionSum);
         } catch (Exception e) {
           throw new RuntimeException(
               "Each subsection of configuration item chunkmeta_chunk_timeseriesmeta_free_memory_proportion"
@@ -1279,10 +1278,13 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
-
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
+
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

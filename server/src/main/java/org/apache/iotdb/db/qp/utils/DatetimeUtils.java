@@ -459,7 +459,7 @@ public class DatetimeUtils {
     try {
       ZonedDateTime zonedDateTime = ZonedDateTime.parse(str, formatter);
       Instant instant = zonedDateTime.toInstant();
-      if (timestampPrecision.equals("us")) {
+      if ("us".equals(timestampPrecision)) {
         if (instant.getEpochSecond() < 0 && instant.getNano() > 0) {
           // adjustment can reduce the loss of the division
           long millis = Math.multiplyExact(instant.getEpochSecond() + 1, 1000_000);
@@ -469,7 +469,7 @@ public class DatetimeUtils {
           long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000);
           return Math.addExact(millis, instant.getNano() / 1000);
         }
-      } else if (timestampPrecision.equals("ns")) {
+      } else if ("ns".equals(timestampPrecision)) {
         long millis = Math.multiplyExact(instant.getEpochSecond(), 1000_000_000L);
         return Math.addExact(millis, instant.getNano());
       }
@@ -609,7 +609,7 @@ public class DatetimeUtils {
         break;
     }
 
-    if (timestampPrecision.equals("us")) {
+    if ("us".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value / 1000;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -617,7 +617,7 @@ public class DatetimeUtils {
       } else {
         return res * 1000;
       }
-    } else if (timestampPrecision.equals("ns")) {
+    } else if ("ns".equals(timestampPrecision)) {
       if (unit.equals(DurationUnit.ns.toString())) {
         return value;
       } else if (unit.equals(DurationUnit.us.toString())) {
@@ -637,9 +637,9 @@ public class DatetimeUtils {
   }
 
   public static TimeUnit timestampPrecisionStringToTimeUnit(String timestampPrecision) {
-    if (timestampPrecision.equals("us")) {
+    if ("us".equals(timestampPrecision)) {
       return TimeUnit.MICROSECONDS;
-    } else if (timestampPrecision.equals("ns")) {
+    } else if ("ns".equals(timestampPrecision)) {
       return TimeUnit.NANOSECONDS;
     } else {
       return TimeUnit.MILLISECONDS;

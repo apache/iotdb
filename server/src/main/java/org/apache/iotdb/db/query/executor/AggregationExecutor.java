@@ -26,8 +26,9 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -37,11 +38,11 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.query.reader.series.AlignedSeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
-import org.apache.iotdb.db.query.reader.series.VectorSeriesAggregateReader;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -120,7 +121,7 @@ public class AggregationExecutor {
             timeFilter);
       }
       for (Map.Entry<PartialPath, List<List<Integer>>> entry : vectorPathIndexesMap.entrySet()) {
-        VectorPartialPath vectorSeries = (VectorPartialPath) entry.getKey();
+        AlignedPath vectorSeries = (AlignedPath) entry.getKey();
         aggregateOneVectorSeries(
             vectorSeries,
             entry.getValue(),
@@ -182,7 +183,7 @@ public class AggregationExecutor {
   }
 
   protected void aggregateOneVectorSeries(
-      VectorPartialPath seriesPath,
+      AlignedPath seriesPath,
       List<List<Integer>> subIndexes,
       Set<String> allMeasurementsInDevice,
       Filter timeFilter)
@@ -285,7 +286,7 @@ public class AggregationExecutor {
   }
 
   public static void aggregateOneVectorSeries(
-      VectorPartialPath seriesPath,
+      AlignedPath seriesPath,
       Set<String> measurements,
       QueryContext context,
       Filter timeFilter,
@@ -305,8 +306,8 @@ public class AggregationExecutor {
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
     if (!isAggregateResultEmpty(ascAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -319,8 +320,8 @@ public class AggregationExecutor {
       aggregateFromVectorReader(seriesReader, ascAggregateResultList);
     }
     if (!isAggregateResultEmpty(descAggregateResultList)) {
-      VectorSeriesAggregateReader seriesReader =
-          new VectorSeriesAggregateReader(
+      AlignedSeriesAggregateReader seriesReader =
+          new AlignedSeriesAggregateReader(
               seriesPath,
               measurements,
               tsDataType,
@@ -389,7 +390,7 @@ public class AggregationExecutor {
   }
 
   private static void aggregateFromVectorReader(
-      VectorSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
+      AlignedSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
       throws QueryProcessException, IOException {
     int remainingToCalculate = 0;
     List<boolean[]> isCalculatedArray = new ArrayList<>();
@@ -401,7 +402,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentFileStatistics()) {
+      if (seriesReader.canUseCurrentTimeFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -422,7 +423,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentChunkStatistics()) {
+        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -458,6 +459,10 @@ public class AggregationExecutor {
       int remainingToCalculate,
       Statistics statistics)
       throws QueryProcessException {
+    // some aligned paths' statistics may be null
+    if (statistics == null) {
+      return remainingToCalculate;
+    }
     int newRemainingToCalculate = remainingToCalculate;
     for (int i = 0; i < aggregateResultList.size(); i++) {
       if (!isCalculatedArray[i]) {
@@ -504,14 +509,14 @@ public class AggregationExecutor {
   }
 
   private static int aggregateVectorPages(
-      VectorSeriesAggregateReader seriesReader,
+      AlignedSeriesAggregateReader seriesReader,
       List<List<AggregateResult>> aggregateResultList,
       List<boolean[]> isCalculatedArray,
       int remainingToCalculate)
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentPageStatistics()) {
+      if (seriesReader.canUseCurrentTimePageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
@@ -694,8 +699,7 @@ public class AggregationExecutor {
    * @param aggregateResultList aggregate result list
    */
   private QueryDataSet constructDataSet(
-      List<AggregateResult> aggregateResultList, AggregationPlan plan)
-      throws QueryProcessException {
+      List<AggregateResult> aggregateResultList, AggregationPlan plan) {
     SingleDataSet dataSet;
     RowRecord record = new RowRecord(0);
 
@@ -747,22 +751,25 @@ public class AggregationExecutor {
   private Map<PartialPath, List<List<Integer>>> groupVectorSeries(
       Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
     Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
-    Map<String, VectorPartialPath> temp = new HashMap<>();
+    Map<String, AlignedPath> temp = new HashMap<>();
 
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof VectorPartialPath) {
+      if (seriesPath instanceof MeasurementPath
+          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        VectorPartialPath groupPath = temp.get(seriesPath.getFullPath());
+        AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
+        AlignedPath groupPath = temp.get(exactPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (VectorPartialPath) seriesPath.copy();
-          temp.put(seriesPath.getFullPath(), groupPath);
+          groupPath = exactPath;
+          temp.put(groupPath.getFullPath(), groupPath);
           result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
           // groupPath is changed here so we update it
           List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addSubSensor(((VectorPartialPath) seriesPath).getSubSensorsList());
+          groupPath.addMeasurements(exactPath.getMeasurementList());
+          groupPath.addSchemas(exactPath.getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }

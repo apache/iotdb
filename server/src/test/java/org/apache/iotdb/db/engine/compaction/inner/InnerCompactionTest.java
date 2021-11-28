@@ -28,7 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -76,7 +76,7 @@ public abstract class InnerCompactionTest {
   private int prevMergeChunkThreshold;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =
@@ -205,7 +205,6 @@ public abstract class InnerCompactionTest {
       resourceFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
@@ -213,8 +212,7 @@ public abstract class InnerCompactionTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     for (String deviceId : deviceIds) {
       for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(
-            new Path(deviceId, measurementSchema.getMeasurementId()), measurementSchema);
+        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
     for (long i = timeOffset; i < timeOffset + ptNum; i++) {
@@ -257,8 +255,7 @@ public abstract class InnerCompactionTest {
     tsFileResource1.setClosed(true);
     tsFileResource1.updatePlanIndexes((long) 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
-    fileWriter1.registerTimeseries(
-        new Path(deviceIds[0], measurementSchemas[0].getMeasurementId()), measurementSchemas[0]);
+    fileWriter1.registerTimeseries(new Path(deviceIds[0]), measurementSchemas[0]);
     TSRecord record1 = new TSRecord(0, deviceIds[0]);
     record1.addTuple(
         DataPoint.getDataPoint(
@@ -284,8 +281,7 @@ public abstract class InnerCompactionTest {
     tsFileResource2.setClosed(true);
     tsFileResource2.updatePlanIndexes((long) 1);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
-    fileWriter2.registerTimeseries(
-        new Path(deviceIds[0], measurementSchemas[1].getMeasurementId()), measurementSchemas[1]);
+    fileWriter2.registerTimeseries(new Path(deviceIds[0]), measurementSchemas[1]);
     TSRecord record2 = new TSRecord(0, deviceIds[0]);
     record2.addTuple(
         DataPoint.getDataPoint(

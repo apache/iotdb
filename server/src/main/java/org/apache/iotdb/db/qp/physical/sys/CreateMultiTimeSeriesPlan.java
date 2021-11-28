@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -223,7 +223,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.CREATE_MULTI_TIMESERIES.ordinal();
     buffer.put((byte) type);
     buffer.putInt(paths.size());

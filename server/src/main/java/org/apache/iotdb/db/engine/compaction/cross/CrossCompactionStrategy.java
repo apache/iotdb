@@ -33,7 +33,7 @@ public enum CrossCompactionStrategy {
   INPLACE_COMPACTION;
 
   public static CrossCompactionStrategy getCrossCompactionStrategy(String name) {
-    if (name.equalsIgnoreCase("INPLACE_COMPACTION")) {
+    if ("INPLACE_COMPACTION".equalsIgnoreCase(name)) {
       return INPLACE_COMPACTION;
     }
     throw new RuntimeException("Illegal Cross Compaction Strategy " + name);

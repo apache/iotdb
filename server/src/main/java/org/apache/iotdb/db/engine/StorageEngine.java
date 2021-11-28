@@ -39,8 +39,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -57,7 +57,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -578,7 +578,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getPrefixPath());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
       storageGroupProcessor.insert(insertRowPlan);
@@ -586,7 +586,7 @@ public class StorageEngine implements IService {
         try {
           updateMonitorStatistics(
               processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getPrefixPath())),
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDeviceId())),
               insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
@@ -607,7 +607,7 @@ public class StorageEngine implements IService {
       }
     }
     StorageGroupProcessor storageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getPrefixPath());
+        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
@@ -631,12 +631,11 @@ public class StorageEngine implements IService {
     }
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getPrefixPath());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed",
-              insertTabletPlan.getPrefixPath()),
+              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
           e);
     }
 
@@ -646,7 +645,7 @@ public class StorageEngine implements IService {
       try {
         updateMonitorStatistics(
             processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getPrefixPath())),
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDeviceId())),
             insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
@@ -757,15 +756,11 @@ public class StorageEngine implements IService {
 
   /** query data. */
   public QueryDataSource query(
-      SingleSeriesExpression seriesExpression,
-      QueryContext context,
-      QueryFileManager filePathsManager)
+      PartialPath fullPath, Filter filter, QueryContext context, QueryFileManager filePathsManager)
       throws StorageEngineException, QueryProcessException {
-    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(
-        fullPath, context, filePathsManager, seriesExpression.getFilter());
+    return storageGroupProcessor.query(fullPath, context, filePathsManager, filter);
   }
 
   /**

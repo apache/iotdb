@@ -21,7 +21,7 @@ package org.apache.iotdb.db.qp.utils;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -81,7 +81,7 @@ public class GroupByLevelController {
         String functionName = ((FunctionExpression) expression).getFunctionName();
         String groupedPath =
             generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
-        String rawPath = String.format("%s(%s)", functionName, paths.get(0).getExactFullPath());
+        String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
         String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
         if (seriesLimit == 0 && seriesOffset == 0) {

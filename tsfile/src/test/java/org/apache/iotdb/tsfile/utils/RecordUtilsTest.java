@@ -43,26 +43,25 @@ public class RecordUtilsTest {
     Schema schema = new Schema();
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
-        new Path("d1", "s1"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1", "s2"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1", "s3"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s3", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1", "s4"),
+        new Path("d1"),
         new UnaryMeasurementSchema(
             "s4", TSDataType.DOUBLE, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1", "s5"),
-        new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1", "s6"), new UnaryMeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d1"), new UnaryMeasurementSchema("s6", TSDataType.TEXT, TSEncoding.PLAIN));
     return schema;
   }
 

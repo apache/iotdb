@@ -231,7 +231,7 @@ public class RpcUtils {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static String parseLongToDateWithPrecision(
       DateTimeFormatter formatter, long timestamp, ZoneId zoneid, String timestampPrecision) {
-    if (timestampPrecision.equals("ms")) {
+    if ("ms".equals(timestampPrecision)) {
       long integerofDate = timestamp / 1000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000));
       ZonedDateTime dateTime =
@@ -244,7 +244,7 @@ public class RpcUtils {
         }
       }
       return datetime.substring(0, 19) + "." + digits + datetime.substring(19);
-    } else if (timestampPrecision.equals("us")) {
+    } else if ("us".equals(timestampPrecision)) {
       long integerofDate = timestamp / 1000_000;
       StringBuilder digits = new StringBuilder(Long.toString(timestamp % 1000_000));
       ZonedDateTime dateTime =
