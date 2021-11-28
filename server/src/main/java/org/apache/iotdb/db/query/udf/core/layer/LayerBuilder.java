@@ -21,6 +21,9 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.query.dataset.udf.UDTFDataSet;
+import org.apache.iotdb.db.query.dataset.udf.UDTFFragmentDataSet;
+import org.apache.iotdb.db.query.dataset.udf.UDTFJoinDataSet;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
@@ -28,7 +31,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class LayerBuilder {
@@ -51,6 +56,11 @@ public class LayerBuilder {
   private final Map<Expression, IntermediateLayer> expressionIntermediateLayerMap;
   private final Map<Expression, TSDataType> expressionDataTypeMap;
 
+  // used to split query dataset into fragments.
+  // useless when the dataset can not be split into fragments.
+  private final List<List<LayerPointReader>> fragmentDataSetIndexToLayerPointReaders;
+  private final int[][] resultColumnOutputIndexToFragmentDataSetOutputIndex;
+
   public LayerBuilder(
       long queryId, UDTFPlan udtfPlan, RawQueryInputLayer inputLayer, float memoryBudgetInMB) {
     this.queryId = queryId;
@@ -68,6 +78,9 @@ public class LayerBuilder {
 
     expressionIntermediateLayerMap = new HashMap<>();
     expressionDataTypeMap = new HashMap<>();
+
+    fragmentDataSetIndexToLayerPointReaders = new ArrayList<>();
+    resultColumnOutputIndexToFragmentDataSetOutputIndex = new int[resultColumnExpressions.length][];
   }
 
   public LayerBuilder buildLayerMemoryAssigner() {
@@ -79,7 +92,19 @@ public class LayerBuilder {
   }
 
   public LayerBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
-    for (int i = 0; i < resultColumnExpressions.length; ++i) {
+    for (int i = 0, n = resultColumnExpressions.length; i < n; ++i) {
+      // resultColumnExpressions[i] -> the index of the fragment it belongs to
+      int fragmentDataSetIndex;
+      IntermediateLayer intermediateLayer =
+          expressionIntermediateLayerMap.get(resultColumnExpressions[i]);
+      if (intermediateLayer != null) {
+        fragmentDataSetIndex = intermediateLayer.getFragmentDataSetIndex();
+      } else {
+        fragmentDataSetIndex = fragmentDataSetIndexToLayerPointReaders.size();
+        fragmentDataSetIndexToLayerPointReaders.add(new ArrayList<>());
+      }
+
+      // build point readers
       resultColumnPointReaders[i] =
           resultColumnExpressions[i]
               .constructIntermediateLayer(
@@ -88,8 +113,18 @@ public class LayerBuilder {
                   rawTimeSeriesInputLayer,
                   expressionIntermediateLayerMap,
                   expressionDataTypeMap,
-                  memoryAssigner)
+                  memoryAssigner,
+                  fragmentDataSetIndex)
               .constructPointReader();
+
+      // collect layer point readers for fragments
+      List<LayerPointReader> layerPointReadersInFragmentDataSet =
+          fragmentDataSetIndexToLayerPointReaders.get(fragmentDataSetIndex);
+      // note that expressions in resultColumnExpressions are all unique
+      // see UDTFPlan#deduplicate() for more detail
+      resultColumnOutputIndexToFragmentDataSetOutputIndex[i] =
+          new int[] {fragmentDataSetIndex, layerPointReadersInFragmentDataSet.size()};
+      layerPointReadersInFragmentDataSet.add(resultColumnPointReaders[i]);
     }
     return this;
   }
@@ -105,11 +140,21 @@ public class LayerBuilder {
     return resultColumnPointReaders;
   }
 
+  /** TODO: make it configurable */
   public boolean canBeSplitIntoFragments() {
-    return false;
+    return 4 <= fragmentDataSetIndexToLayerPointReaders.size();
   }
 
-  public QueryDataSet generateJoinDataSet() {
-    return null;
+  public QueryDataSet generateJoinDataSet() throws QueryProcessException, IOException {
+    int n = fragmentDataSetIndexToLayerPointReaders.size();
+    UDTFDataSet[] fragmentDataSets = new UDTFDataSet[n];
+    for (int i = 0; i < n; ++i) {
+      fragmentDataSets[i] =
+          new UDTFFragmentDataSet(
+              fragmentDataSetIndexToLayerPointReaders.get(i).toArray(new LayerPointReader[0]));
+    }
+
+    return new UDTFJoinDataSet(
+        fragmentDataSets, resultColumnOutputIndexToFragmentDataSetOutputIndex);
   }
 }

@@ -86,22 +86,19 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
+  protected void constructIntermediateLayerInternal(
       long queryId,
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      expressionDataTypeMap.put(this, this.getDataType());
-      IntermediateLayer intermediateLayer =
-          new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign());
-      expressionIntermediateLayerMap.put(this, intermediateLayer);
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+    expressionDataTypeMap.put(this, this.getDataType());
+    IntermediateLayer intermediateLayer =
+        new ConstantIntermediateLayer(this, queryId, memoryAssigner.assign(), fragmentDataSetIndex);
+    expressionIntermediateLayerMap.put(this, intermediateLayer);
   }
 
   @Override

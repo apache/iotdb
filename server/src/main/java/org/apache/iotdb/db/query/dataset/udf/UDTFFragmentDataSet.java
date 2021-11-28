@@ -26,7 +26,7 @@ import java.io.IOException;
 
 public class UDTFFragmentDataSet extends UDTFAlignByTimeDataSet {
 
-  protected UDTFFragmentDataSet(LayerPointReader[] transformers)
+  public UDTFFragmentDataSet(LayerPointReader[] transformers)
       throws QueryProcessException, IOException {
     super(transformers);
   }

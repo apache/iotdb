@@ -20,15 +20,18 @@
 package org.apache.iotdb.db.query.dataset.udf;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 
-// TODO: implements DirectAlignByTimeDataSet
 // TODO: performances joining in pool, packing row records while calculating
-public class UDTFJoinDataSet extends QueryDataSet {
+public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDataSet {
 
   private final UDTFDataSet[] fragmentDataSets;
 
@@ -108,5 +111,10 @@ public class UDTFJoinDataSet extends QueryDataSet {
     }
 
     return rowRecord;
+  }
+
+  @Override
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) {
+    throw new NotImplementedException();
   }
 }

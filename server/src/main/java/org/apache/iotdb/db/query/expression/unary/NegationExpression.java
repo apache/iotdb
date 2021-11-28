@@ -101,42 +101,40 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
+  protected void constructIntermediateLayerInternal(
       long queryId,
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
+    float memoryBudgetInMB = memoryAssigner.assign();
 
-      IntermediateLayer parentLayerPointReader =
-          expression.constructIntermediateLayer(
-              queryId,
-              udtfPlan,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
-      expressionDataTypeMap.put(this, transformer.getDataType());
+    IntermediateLayer parentLayerPointReader =
+        expression.constructIntermediateLayer(
+            queryId,
+            udtfPlan,
+            rawTimeSeriesInputLayer,
+            expressionIntermediateLayerMap,
+            expressionDataTypeMap,
+            memoryAssigner,
+            fragmentDataSetIndex);
+    Transformer transformer =
+        new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
+    expressionDataTypeMap.put(this, transformer.getDataType());
 
-      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
-      // yet. And since a ConstantLayerPointReader won't produce too much IO,
-      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1 || isConstantOperand()
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+    // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+    // yet. And since a ConstantLayerPointReader won't produce too much IO,
+    // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
+    expressionIntermediateLayerMap.put(
+        this,
+        memoryAssigner.getReference(this) == 1 || isConstantOperand()
+            ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, transformer)
+            : new SingleInputColumnMultiReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, transformer));
   }
 
   @Override

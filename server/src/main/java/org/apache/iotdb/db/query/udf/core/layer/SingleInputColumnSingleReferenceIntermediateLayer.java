@@ -44,8 +44,9 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       Expression expression,
       long queryId,
       float memoryBudgetInMB,
+      int fragmentDataSetIndex,
       LayerPointReader parentLayerPointReader) {
-    super(expression, queryId, memoryBudgetInMB);
+    super(expression, queryId, memoryBudgetInMB, fragmentDataSetIndex);
     this.parentLayerPointReader = parentLayerPointReader;
     dataType = parentLayerPointReader.getDataType();
   }

@@ -48,9 +48,10 @@ public class SingleInputColumnMultiReferenceIntermediateLayer extends Intermedia
       Expression expression,
       long queryId,
       float memoryBudgetInMB,
+      int fragmentDataSetIndex,
       LayerPointReader parentLayerPointReader)
       throws QueryProcessException {
-    super(expression, queryId, memoryBudgetInMB);
+    super(expression, queryId, memoryBudgetInMB, fragmentDataSetIndex);
     this.parentLayerPointReader = parentLayerPointReader;
 
     dataType = parentLayerPointReader.getDataType();

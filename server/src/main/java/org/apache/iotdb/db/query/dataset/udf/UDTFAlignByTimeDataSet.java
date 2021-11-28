@@ -106,7 +106,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     return layerBuilder != null && layerBuilder.canBeSplitIntoFragments();
   }
 
-  public QueryDataSet executeInFragmentsIfPossible() {
+  public QueryDataSet executeInFragmentsIfPossible() throws QueryProcessException, IOException {
     return canBeSplitIntoFragments() ? layerBuilder.generateJoinDataSet() : this;
   }
 

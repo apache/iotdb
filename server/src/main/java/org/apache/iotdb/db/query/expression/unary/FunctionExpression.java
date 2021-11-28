@@ -200,40 +200,38 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
+  protected void constructIntermediateLayerInternal(
       long queryId,
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException, IOException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
+    float memoryBudgetInMB = memoryAssigner.assign();
 
-      IntermediateLayer udfInputIntermediateLayer =
-          constructUdfInputIntermediateLayer(
-              queryId,
-              udtfPlan,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          constructUdfTransformer(
-              queryId, udtfPlan, expressionDataTypeMap, memoryAssigner, udfInputIntermediateLayer);
-      expressionDataTypeMap.put(this, transformer.getDataType());
+    IntermediateLayer udfInputIntermediateLayer =
+        constructUdfInputIntermediateLayer(
+            queryId,
+            udtfPlan,
+            rawTimeSeriesInputLayer,
+            expressionIntermediateLayerMap,
+            expressionDataTypeMap,
+            memoryAssigner,
+            fragmentDataSetIndex);
+    Transformer transformer =
+        constructUdfTransformer(
+            queryId, udtfPlan, expressionDataTypeMap, memoryAssigner, udfInputIntermediateLayer);
+    expressionDataTypeMap.put(this, transformer.getDataType());
 
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, transformer));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+    expressionIntermediateLayerMap.put(
+        this,
+        memoryAssigner.getReference(this) == 1
+            ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, transformer)
+            : new SingleInputColumnMultiReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, transformer));
   }
 
   private IntermediateLayer constructUdfInputIntermediateLayer(
@@ -242,7 +240,8 @@ public class FunctionExpression extends Expression {
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException, IOException {
     List<IntermediateLayer> intermediateLayers = new ArrayList<>();
     for (Expression expression : expressions) {
@@ -253,7 +252,8 @@ public class FunctionExpression extends Expression {
               rawTimeSeriesInputLayer,
               expressionIntermediateLayerMap,
               expressionDataTypeMap,
-              memoryAssigner));
+              memoryAssigner,
+              fragmentDataSetIndex));
     }
     return intermediateLayers.size() == 1
         ? intermediateLayers.get(0)
@@ -261,6 +261,7 @@ public class FunctionExpression extends Expression {
             this,
             queryId,
             memoryAssigner.assign(),
+            fragmentDataSetIndex,
             intermediateLayers.stream()
                 .map(IntermediateLayer::constructPointReader)
                 .collect(Collectors.toList()));

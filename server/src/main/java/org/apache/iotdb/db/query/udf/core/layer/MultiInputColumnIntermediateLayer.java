@@ -51,9 +51,10 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       Expression expression,
       long queryId,
       float memoryBudgetInMB,
+      int fragmentDataSetIndex,
       List<LayerPointReader> parentLayerPointReaders)
       throws QueryProcessException, IOException {
-    super(expression, queryId, memoryBudgetInMB);
+    super(expression, queryId, memoryBudgetInMB, fragmentDataSetIndex);
 
     layerPointReaders = parentLayerPointReaders.toArray(new LayerPointReader[0]);
 

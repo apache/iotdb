@@ -92,31 +92,28 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public IntermediateLayer constructIntermediateLayer(
+  protected void constructIntermediateLayerInternal(
       long queryId,
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException {
-    if (!expressionIntermediateLayerMap.containsKey(this)) {
-      float memoryBudgetInMB = memoryAssigner.assign();
+    float memoryBudgetInMB = memoryAssigner.assign();
 
-      LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path));
-      expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
+    LayerPointReader parentLayerPointReader =
+        rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path));
+    expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
-      expressionIntermediateLayerMap.put(
-          this,
-          memoryAssigner.getReference(this) == 1
-              ? new SingleInputColumnSingleReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, parentLayerPointReader)
-              : new SingleInputColumnMultiReferenceIntermediateLayer(
-                  this, queryId, memoryBudgetInMB, parentLayerPointReader));
-    }
-
-    return expressionIntermediateLayerMap.get(this);
+    expressionIntermediateLayerMap.put(
+        this,
+        memoryAssigner.getReference(this) == 1
+            ? new SingleInputColumnSingleReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, parentLayerPointReader)
+            : new SingleInputColumnMultiReferenceIntermediateLayer(
+                this, queryId, memoryBudgetInMB, fragmentDataSetIndex, parentLayerPointReader));
   }
 
   public String getExpressionStringInternal() {

@@ -40,10 +40,15 @@ public abstract class IntermediateLayer {
   protected final long queryId;
   protected final float memoryBudgetInMB;
 
-  protected IntermediateLayer(Expression expression, long queryId, float memoryBudgetInMB) {
+  // used to mark the dataset fragment it belongs to
+  protected final int fragmentDataSetIndex;
+
+  protected IntermediateLayer(
+      Expression expression, long queryId, float memoryBudgetInMB, int fragmentDataSetIndex) {
     this.expression = expression;
     this.queryId = queryId;
     this.memoryBudgetInMB = memoryBudgetInMB;
+    this.fragmentDataSetIndex = fragmentDataSetIndex;
   }
 
   public abstract LayerPointReader constructPointReader();
@@ -72,6 +77,10 @@ public abstract class IntermediateLayer {
   protected abstract LayerRowWindowReader constructRowSlidingTimeWindowReader(
       SlidingTimeWindowAccessStrategy strategy, float memoryBudgetInMB)
       throws QueryProcessException, IOException;
+
+  public int getFragmentDataSetIndex() {
+    return fragmentDataSetIndex;
+  }
 
   @Override
   public String toString() {

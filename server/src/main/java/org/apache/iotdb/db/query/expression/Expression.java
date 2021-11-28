@@ -64,14 +64,37 @@ public abstract class Expression {
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
-  public abstract IntermediateLayer constructIntermediateLayer(
+  protected abstract void constructIntermediateLayerInternal(
       long queryId,
       UDTFPlan udtfPlan,
       RawQueryInputLayer rawTimeSeriesInputLayer,
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
       Map<Expression, TSDataType> expressionDataTypeMap,
-      LayerMemoryAssigner memoryAssigner)
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
       throws QueryProcessException, IOException;
+
+  public final IntermediateLayer constructIntermediateLayer(
+      long queryId,
+      UDTFPlan udtfPlan,
+      RawQueryInputLayer rawTimeSeriesInputLayer,
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap,
+      Map<Expression, TSDataType> expressionDataTypeMap,
+      LayerMemoryAssigner memoryAssigner,
+      int fragmentDataSetIndex)
+      throws QueryProcessException, IOException {
+    if (!expressionIntermediateLayerMap.containsKey(this)) {
+      constructIntermediateLayerInternal(
+          queryId,
+          udtfPlan,
+          rawTimeSeriesInputLayer,
+          expressionIntermediateLayerMap,
+          expressionDataTypeMap,
+          memoryAssigner,
+          fragmentDataSetIndex);
+    }
+    return expressionIntermediateLayerMap.get(this);
+  }
 
   /** Sub-classes should override this method indicating if the expression is a constant operand */
   protected abstract boolean isConstantOperandInternal();
