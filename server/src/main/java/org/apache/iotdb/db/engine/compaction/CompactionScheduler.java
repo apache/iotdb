@@ -106,7 +106,8 @@ public class CompactionScheduler {
     boolean taskSubmitted = true;
     int concurrentCompactionThread = config.getConcurrentCompactionThread();
     while (taskSubmitted
-        && CompactionTaskManager.getInstance().getTaskCount() < concurrentCompactionThread) {
+        && CompactionTaskManager.getInstance().getExecutingTaskCount()
+            < concurrentCompactionThread) {
       taskSubmitted =
           tryToSubmitInnerSpaceCompactionTask(
               logicalStorageGroupName,

@@ -66,7 +66,7 @@ public class CompactionRecoverTask implements Callable<Void> {
     compactionRecoverCallBack.call();
     logger.info(
         "recover task finish, current compaction thread is {}",
-        CompactionTaskManager.getInstance().getTaskCount());
+        CompactionTaskManager.getInstance().getExecutingTaskCount());
     return null;
   }
 

@@ -32,10 +32,15 @@ import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.ZoneId;
 import java.util.Map;
 
 public class UDTFExecutor {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(UDTFExecutor.class);
 
   protected final FunctionExpression expression;
   protected final UDTFConfigurations configurations;
@@ -104,6 +109,7 @@ public class UDTFExecutor {
   }
 
   private void onError(String methodName, Exception e) throws QueryProcessException {
+    LOGGER.warn("Error occurred during executing UDTF", e);
     throw new QueryProcessException(
         String.format(
                 "Error occurred during executing UDTF#%s: %s", methodName, System.lineSeparator())
