@@ -499,7 +499,11 @@ public class PhysicalGenerator {
           }
         }
       } else if (queryOperator.isGroupByLevel()) {
-        ((AggregationPlan) queryPlan).setLevel(queryOperator.getLevel());
+        ((AggregationPlan) queryPlan)
+            .setGroupByLevelController(
+                queryOperator.getSelectOperator().getGroupByLevelController());
+        ((AggregationPlan) queryPlan).setCountStar(queryOperator.isCountStar());
+        ((AggregationPlan) queryPlan).setLevels(queryOperator.getLevels());
         try {
           if (!verifyAllAggregationDataTypesEqual(queryOperator)) {
             throw new QueryProcessException("Aggregate among unmatched data types");
@@ -618,7 +622,7 @@ public class PhysicalGenerator {
     } else if (queryPlan instanceof FillQueryPlan) {
       alignByDevicePlan.setFillQueryPlan((FillQueryPlan) queryPlan);
     } else if (queryPlan instanceof AggregationPlan) {
-      if (((AggregationPlan) queryPlan).getLevel() >= 0) {
+      if (((AggregationPlan) queryPlan).isGroupByLevel()) {
         throw new QueryProcessException("group by level does not support align by device now.");
       }
       alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);

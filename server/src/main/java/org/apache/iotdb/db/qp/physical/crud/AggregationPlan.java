@@ -22,9 +22,9 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
-import org.apache.iotdb.db.utils.AggregateUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -40,8 +40,10 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   private List<String> aggregations = new ArrayList<>();
   private List<String> deduplicatedAggregations = new ArrayList<>();
+  private GroupByLevelController groupByLevelController;
+  private boolean isCountStar;
 
-  private int level = -1;
+  private int[] levels;
   // group by level aggregation result path
   private final Map<String, AggregateResult> levelAggPaths = new LinkedHashMap<>();
 
@@ -71,12 +73,24 @@ public class AggregationPlan extends RawDataQueryPlan {
     this.deduplicatedAggregations = deduplicatedAggregations;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public boolean isGroupByLevel() {
+    return !(levels == null || levels.length == 0);
+  }
+
+  public boolean isCountStar() {
+    return isCountStar;
+  }
+
+  public void setCountStar(boolean countStar) {
+    isCountStar = countStar;
   }
 
   public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
@@ -85,20 +99,14 @@ public class AggregationPlan extends RawDataQueryPlan {
     }
     List<PartialPath> seriesPaths = getPaths();
     List<TSDataType> dataTypes = getDataTypes();
-    try {
-      for (int i = 0; i < seriesPaths.size(); i++) {
-        String transformedPath =
-            AggregateUtils.generatePartialPathByLevel(seriesPaths.get(i).getFullPath(), getLevel());
-        String key = getAggregations().get(i) + "(" + transformedPath + ")";
-        if (!levelAggPaths.containsKey(key)) {
-          AggregateResult aggRet =
-              AggregateResultFactory.getAggrResultByName(
-                  getAggregations().get(i), dataTypes.get(i));
-          levelAggPaths.put(key, aggRet);
-        }
+    for (int i = 0; i < seriesPaths.size(); i++) {
+      String rawPath = getAggregations().get(i) + "(" + seriesPaths.get(i).getFullPath() + ")";
+      String key = groupByLevelController.getGroupedPath(rawPath);
+      if (!levelAggPaths.containsKey(key)) {
+        AggregateResult aggRet =
+            AggregateResultFactory.getAggrResultByName(getAggregations().get(i), dataTypes.get(i));
+        levelAggPaths.put(key, aggRet);
       }
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
     }
     return levelAggPaths;
   }
@@ -124,14 +132,17 @@ public class AggregationPlan extends RawDataQueryPlan {
   public String getColumnForDisplay(String columnForReader, int pathIndex)
       throws IllegalPathException {
     String columnForDisplay = columnForReader;
-    if (level >= 0) {
-      PartialPath path = paths.get(pathIndex);
-      String aggregatePath =
-          path.isMeasurementAliasExists()
-              ? AggregateUtils.generatePartialPathByLevel(path.getFullPathWithAlias(), level)
-              : AggregateUtils.generatePartialPathByLevel(path.toString(), level);
-      columnForDisplay = aggregations.get(pathIndex) + "(" + aggregatePath + ")";
+    if (isGroupByLevel()) {
+      columnForDisplay = groupByLevelController.getGroupedPath(columnForDisplay);
     }
     return columnForDisplay;
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
+  }
+
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
   }
 }

@@ -95,4 +95,14 @@ public abstract class SFWOperator extends RootOperator {
   public boolean isLastQuery() {
     return lastQuery;
   }
+
+  public boolean isCountStar() {
+    return selectOperator != null && selectOperator.isCountStar();
+  }
+
+  public void checkCountStar() {
+    if (selectOperator != null) {
+      selectOperator.checkCountStar();
+    }
+  }
 }
