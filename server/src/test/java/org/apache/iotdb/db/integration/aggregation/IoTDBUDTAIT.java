@@ -23,9 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -91,22 +91,22 @@ public class IoTDBUDTAIT {
   private final String d0s1 = "root.vehicle.d0.s1";
   private final String d0s2 = "root.vehicle.d0.s2";
   private final String d0s3 = "root.vehicle.d0.s3";
-  private String insertTemplate =
+  private static final String insertTemplate =
       "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4)" + " VALUES(%d,%d,%d,%f,%s,%s)";
-  private long prevPartitionInterval;
+  private static long prevPartitionInterval =
+      IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
-    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
@@ -704,7 +704,7 @@ public class IoTDBUDTAIT {
     }
   }
 
-  private void prepareData() {
+  private static void prepareData() {
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
