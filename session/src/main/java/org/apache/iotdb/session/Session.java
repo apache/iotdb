@@ -46,14 +46,12 @@ import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
@@ -916,7 +914,7 @@ public class Session {
     request.setPrefixPath(prefixPath);
     request.setTimestamp(time);
     request.setMeasurements(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types,values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
     request.setValues(buffer);
     request.setIsAligned(isAligned);
     return request;
@@ -1337,7 +1335,7 @@ public class Session {
       throws IoTDBConnectionException {
     List<ByteBuffer> buffersList = new ArrayList<>();
     for (int i = 0; i < valuesList.size(); i++) {
-      ByteBuffer buffer = SessionUtils.getValueBuffer(typesList.get(i),valuesList.get(i));
+      ByteBuffer buffer = SessionUtils.getValueBuffer(typesList.get(i), valuesList.get(i));
       buffersList.add(buffer);
     }
     return buffersList;
@@ -1397,7 +1395,7 @@ public class Session {
     request.addToPrefixPaths(deviceId);
     request.addToTimestamps(time);
     request.addToMeasurementsList(measurements);
-    ByteBuffer buffer = SessionUtils.getValueBuffer(types,values);
+    ByteBuffer buffer = SessionUtils.getValueBuffer(types, values);
     request.addToValuesList(buffer);
   }
 

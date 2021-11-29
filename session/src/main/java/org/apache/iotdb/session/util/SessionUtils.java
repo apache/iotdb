@@ -34,7 +34,6 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -88,14 +87,15 @@ public class SessionUtils {
     return valueBuffer;
   }
 
-  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values) throws IoTDBConnectionException {
+  public static ByteBuffer getValueBuffer(List<TSDataType> types, List<Object> values)
+      throws IoTDBConnectionException {
     ByteBuffer buffer = ByteBuffer.allocate(SessionUtils.calculateLength(types, values));
     SessionUtils.putValues(types, values, buffer);
     return buffer;
   }
 
   private static int calculateLength(List<TSDataType> types, List<Object> values)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     int res = 0;
     for (int i = 0; i < types.size(); i++) {
       // types
@@ -136,7 +136,7 @@ public class SessionUtils {
    * @throws IoTDBConnectionException
    */
   private static void putValues(List<TSDataType> types, List<Object> values, ByteBuffer buffer)
-          throws IoTDBConnectionException {
+      throws IoTDBConnectionException {
     for (int i = 0; i < values.size(); i++) {
       if (values.get(i) == null) {
         ReadWriteIOUtils.write(TYPE_NULL, buffer);
@@ -274,5 +274,4 @@ public class SessionUtils {
       throw new NumberFormatException("NodeUrl Incorrect format");
     }
   }
-
 }
