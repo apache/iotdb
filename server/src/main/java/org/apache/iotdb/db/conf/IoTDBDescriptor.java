@@ -443,8 +443,7 @@ public class IoTDBDescriptor {
       conf.setConcurrentQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "concurrent_query_thread",
-                  Integer.toString(conf.getConcurrentQueryThread()))));
+                  "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
 
       if (conf.getConcurrentQueryThread() <= 0) {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
