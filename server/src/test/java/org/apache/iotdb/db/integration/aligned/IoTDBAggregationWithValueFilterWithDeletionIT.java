@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -40,7 +40,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBAggregationWithValueFilterIT {
+public class IoTDBAggregationWithValueFilterWithDeletionIT {
 
   private static final double DELTA = 1e-6;
   protected static boolean enableSeqSpaceCompaction;
@@ -51,7 +51,7 @@ public class IoTDBAggregationWithValueFilterIT {
   public static void setUp() throws Exception {
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
-    // TODO When the aligned time series support compaction, we need to set compaction to true
+
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
@@ -61,19 +61,21 @@ public class IoTDBAggregationWithValueFilterIT {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
     IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-    AlignedWriteUtil.insertData();
-  }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    EnvironmentUtils.cleanEnv();
+    AlignedWriteUtil.insertData();
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
+      // disk before doing deletion
+      statement.execute("flush");
+      statement.execute("delete timeseries root.sg1.d1.s2");
+      statement.execute("delete from root.sg1.d1.s1 where time <= 21");
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
   }
 
   @Test
@@ -116,65 +118,10 @@ public class IoTDBAggregationWithValueFilterIT {
   }
 
   @Test
-  public void aggregationFuncAlignedWithValueFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"8", "42.0", "5.25", "1.0", "9.0", "1", "9", "1.0", "9.0"};
-    String[] columnNames = {
-      "count(root.sg1.d1.s1)",
-      "sum(root.sg1.d1.s1)",
-      "avg(root.sg1.d1.s1)",
-      "first_value(root.sg1.d1.s1)",
-      "last_value(root.sg1.d1.s1)",
-      "min_time(root.sg1.d1.s1)",
-      "max_time(root.sg1.d1.s1)",
-      "min_value(root.sg1.d1.s1)",
-      "max_value(root.sg1.d1.s1)",
-    };
-    Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
-          statement.execute(
-              "select count(s1), sum(s1), avg(s1), "
-                  + "first_value(s1), last_value(s1), "
-                  + "min_time(s1), max_time(s1),"
-                  + "max_value(s1), min_value(s1) from root.sg1.d1 where s1 < 10");
-      Assert.assertTrue(hasResultSet);
-      try (ResultSet resultSet = statement.getResultSet()) {
-        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
-        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-          map.put(resultSetMetaData.getColumnName(i), i);
-        }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
-        int cnt = 0;
-        while (resultSet.next()) {
-          String[] ans = new String[columnNames.length];
-          // No need to add time column for aggregation query
-          for (int i = 0; i < columnNames.length; i++) {
-            String columnName = columnNames[i];
-            int index = map.get(columnName);
-            ans[i] = resultSet.getString(index);
-          }
-          assertArrayEquals(retArray, ans);
-          cnt++;
-        }
-        assertEquals(1, cnt);
-      }
-    } catch (SQLException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"6", "6", "9", "11", "6"};
+    String[] retArray = new String[] {"0", "9", "11", "6"};
     String[] columnNames = {
       "count(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s2)",
       "count(root.sg1.d1.s3)",
       "count(root.sg1.d1.s4)",
       "count(root.sg1.d1.s5)"
@@ -216,12 +163,9 @@ public class IoTDBAggregationWithValueFilterIT {
 
   @Test
   public void aggregationAllAlignedWithValueFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"160016.0", "11", "1", "13"};
+    String[] retArray = new String[] {"0", "25", "1"};
     String[] columnNames = {
-      "sum(root.sg1.d1.s1)",
-      "count(root.sg1.d1.s4)",
-      "min_value(root.sg1.d1.s3)",
-      "max_time(root.sg1.d1.s2)",
+      "count(root.sg1.d1.s1)", "max_time(root.sg1.d1.s4)", "min_value(root.sg1.d1.s3)",
     };
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -231,7 +175,7 @@ public class IoTDBAggregationWithValueFilterIT {
 
       boolean hasResultSet =
           statement.execute(
-              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 = true");
+              "select count(s1), max_time(s4), min_value(s3) from root.sg1.d1 where s4 = true");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
