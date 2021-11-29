@@ -68,4 +68,9 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   public boolean hasFinalResult() {
     return false;
   }
+
+  @Override
+  public boolean isAscending() {
+    return false;
+  }
 }

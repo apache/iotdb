@@ -16,22 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.common;
+package org.apache.iotdb.tsfile.exception.compress;
 
-public class ExceptionBatchData extends BatchData {
+public class GZIPCompressOverflowException extends RuntimeException {
 
-  private Throwable throwable;
-
-  public ExceptionBatchData(Throwable throwable) {
-    this.throwable = throwable;
-  }
-
-  @Override
-  public boolean hasCurrent() {
-    throw new UnsupportedOperationException("hasCurrent is not supported for ExceptionBatchData");
-  }
-
-  public Throwable getThrowable() {
-    return throwable;
+  public GZIPCompressOverflowException() {
+    super("compressed data is larger than the given byte container.");
   }
 }
