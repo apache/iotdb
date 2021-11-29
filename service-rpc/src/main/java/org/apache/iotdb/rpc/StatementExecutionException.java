@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 public class StatementExecutionException extends Exception {
 
@@ -30,7 +30,8 @@ public class StatementExecutionException extends Exception {
     this.statusCode = status.code;
   }
 
-  public StatementExecutionException(org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status) {
+  public StatementExecutionException(
+      org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status) {
     super(String.format("%d: %s", status.code, status.message));
     this.statusCode = status.code;
   }

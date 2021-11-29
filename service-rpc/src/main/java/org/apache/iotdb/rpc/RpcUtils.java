@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.rpc;
 
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
@@ -34,7 +35,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 
 public class RpcUtils {
 
@@ -72,10 +72,10 @@ public class RpcUtils {
 
   public static InfluxDBService.Iface newSynchronizedClient(InfluxDBService.Iface client) {
     return (InfluxDBService.Iface)
-            Proxy.newProxyInstance(
-                    RpcUtils.class.getClassLoader(),
-                    new Class[] {InfluxDBService.Iface.class},
-                    new InfluxDBSynchronizedHandler(client));
+        Proxy.newProxyInstance(
+            RpcUtils.class.getClassLoader(),
+            new Class[] {InfluxDBService.Iface.class},
+            new InfluxDBSynchronizedHandler(client));
   }
 
   /**
@@ -101,7 +101,8 @@ public class RpcUtils {
    *
    * @param status -status
    */
-  public static void verifySuccess( org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status) throws StatementExecutionException {
+  public static void verifySuccess(org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status)
+      throws StatementExecutionException {
     if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
       return;
     }
@@ -177,8 +178,10 @@ public class RpcUtils {
     return status;
   }
 
-  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(int code, String message) {
-    org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status = new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);
+  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
+      int code, String message) {
+    org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status =
+        new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);
     status.setMessage(message);
     return status;
   }
