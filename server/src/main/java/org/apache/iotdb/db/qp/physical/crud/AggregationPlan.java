@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -93,7 +92,7 @@ public class AggregationPlan extends RawDataQueryPlan {
     isCountStar = countStar;
   }
 
-  public Map<String, AggregateResult> getAggPathByLevel() throws QueryProcessException {
+  public Map<String, AggregateResult> getAggPathByLevel() {
     if (!levelAggPaths.isEmpty()) {
       return levelAggPaths;
     }
@@ -102,11 +101,12 @@ public class AggregationPlan extends RawDataQueryPlan {
     for (int i = 0; i < seriesPaths.size(); i++) {
       String rawPath = getAggregations().get(i) + "(" + seriesPaths.get(i).getFullPath() + ")";
       String key = groupByLevelController.getGroupedPath(rawPath);
-      if (!levelAggPaths.containsKey(key)) {
-        AggregateResult aggRet =
-            AggregateResultFactory.getAggrResultByName(getAggregations().get(i), dataTypes.get(i));
-        levelAggPaths.put(key, aggRet);
-      }
+      int finalI = i;
+      levelAggPaths.computeIfAbsent(
+          key,
+          k ->
+              AggregateResultFactory.getAggrResultByName(
+                  getAggregations().get(finalI), dataTypes.get(finalI)));
     }
     return levelAggPaths;
   }
@@ -129,8 +129,7 @@ public class AggregationPlan extends RawDataQueryPlan {
   }
 
   @Override
-  public String getColumnForDisplay(String columnForReader, int pathIndex)
-      throws IllegalPathException {
+  public String getColumnForDisplay(String columnForReader, int pathIndex) {
     String columnForDisplay = columnForReader;
     if (isGroupByLevel()) {
       columnForDisplay = groupByLevelController.getGroupedPath(columnForDisplay);

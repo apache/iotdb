@@ -124,6 +124,7 @@ public final class SelectOperator extends Operator {
     return isCountStar;
   }
 
+  /** check whether is count star */
   public void checkCountStar() {
     if (hasAggregation()
         && getAggregations().size() == 1

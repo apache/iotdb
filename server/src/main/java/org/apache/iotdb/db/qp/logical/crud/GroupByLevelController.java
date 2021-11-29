@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -59,6 +60,14 @@ public class GroupByLevelController {
     return groupedPathMap.get(rawPath);
   }
 
+  /**
+   * control the output of group by level
+   *
+   * @param resultColumns
+   * @param isCountStar
+   * @param functionName
+   */
+  @SuppressWarnings("squid:S3776")
   public void control(List<PartialPath> resultColumns, boolean isCountStar, String functionName) {
     Iterator<PartialPath> iterator = resultColumns.iterator();
     for (int i = 0; i < prevSize; i++) {

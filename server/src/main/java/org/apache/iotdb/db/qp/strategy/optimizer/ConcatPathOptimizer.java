@@ -58,6 +58,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       "given SFWOperator doesn't have suffix paths, cannot concat seriesPath";
   private static final String WARNING_NO_PREFIX_PATHS =
       "given SFWOperator doesn't have prefix paths, cannot concat seriesPath";
+  private static final String ERROR_REMOVE_START = "error when remove star: ";
 
   private final int MAX_QUERY_PATH_NUM =
       IoTDBDescriptor.getInstance().getConfig().getMaxQueryDeduplicatedPathNum();
@@ -363,7 +364,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
       }
     } catch (MetadataException e) {
-      throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+      throw new LogicalOptimizeException(ERROR_REMOVE_START + e.getMessage());
     }
     return retPaths;
   }
@@ -406,7 +407,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
               resultColumns, selectOperator.isCountStar(), afterConcatAggregations.get(i));
 
         } catch (MetadataException e) {
-          throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+          throw new LogicalOptimizeException(ERROR_REMOVE_START + e.getMessage());
         }
 
         for (int j = preSize; j < resultColumns.size(); j++) {
@@ -493,7 +494,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           }
 
         } catch (MetadataException e) {
-          throw new LogicalOptimizeException("error when remove star: " + e.getMessage());
+          throw new LogicalOptimizeException(ERROR_REMOVE_START + e.getMessage());
         }
       }
     }

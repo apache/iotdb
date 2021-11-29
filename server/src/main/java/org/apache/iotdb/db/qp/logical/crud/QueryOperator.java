@@ -106,7 +106,7 @@ public class QueryOperator extends SFWOperator {
     if (getSelectOperator() != null) {
       return getSelectOperator().getLevels();
     }
-    return null;
+    return new int[0];
   }
 
   public void setLevels(int[] levels) {
