@@ -22,7 +22,6 @@ package org.apache.iotdb.influxdb;
 import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
 import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
 import org.apache.iotdb.influxdb.protocol.impl.IoTDBInfluxDBService;
-import org.apache.iotdb.influxdb.protocol.util.DataTypeUtils;
 import org.apache.iotdb.influxdb.protocol.util.ParameterUtils;
 import org.apache.iotdb.session.Session;
 
@@ -66,7 +65,7 @@ public class IoTDBInfluxDB implements InfluxDB {
   }
 
   public IoTDBInfluxDB(Session session) {
-    SessionPoint sessionPoint = DataTypeUtils.sessionToSessionPoint(session);
+    SessionPoint sessionPoint = new SessionPoint(session);
     influxDBService =
         new IoTDBInfluxDBService(
             sessionPoint.getHost(),
