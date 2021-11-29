@@ -52,8 +52,6 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
 
   private ArrayList<String> innerAggregationsCache;
 
-  private final Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
-
   public UDAFQueryOperator(QueryOperator queryOperator) {
     super(queryOperator);
   }
@@ -122,9 +120,6 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     for (Iterator<Expression> it = expression.iterator(); it.hasNext(); ) {
       Expression currentExp = it.next();
       if (currentExp.isAggregationFunctionExpression()) {
-        if (!expressionToInnerResultIndexMap.containsKey(currentExp)) {
-          expressionToInnerResultIndexMap.put(currentExp, expressionToInnerResultIndexMap.size());
-        }
         innerResultColumnsCache.add(new ResultColumn(currentExp));
       }
     }
@@ -141,7 +136,24 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
           super.generateRawDataQueryPlan(generator, new UDAFPlan(selectComponent.getZoneId()));
       UDAFPlan udafPlan = (UDAFPlan) physicalPlan;
       udafPlan.setInnerAggregationPlan(innerAggregationPlan);
-      udafPlan.setExpressionToInnerResultIndexMap(this.expressionToInnerResultIndexMap);
+
+      Map<String, Integer> aggrIndexMap = new HashMap<>();
+      for (int i = 0; i < innerAggregationPlan.getDeduplicatedPaths().size(); i++) {
+        aggrIndexMap.put(
+            innerAggregationPlan.getDeduplicatedAggregations().get(i)
+                + "("
+                + innerAggregationPlan.getDeduplicatedPaths().get(i)
+                + ")",
+            i);
+      }
+      Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
+      for (ResultColumn rc : getInnerResultColumnsCache()) {
+        expressionToInnerResultIndexMap.put(
+            rc.getExpression(),
+            aggrIndexMap.get(
+                ((FunctionExpression) rc.getExpression()).getExpressionStringInternal()));
+      }
+      udafPlan.setExpressionToInnerResultIndexMap(expressionToInnerResultIndexMap);
       udafPlan.constructUdfExecutors(selectComponent.getResultColumns());
     } else {
       // todo: align by device
