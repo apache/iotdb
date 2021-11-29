@@ -20,6 +20,7 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -32,6 +33,7 @@ import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
+import org.influxdb.InfluxDBException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -188,11 +190,18 @@ public class InfluxDBSession {
   }
 
   public void close() {
-    if (isClosed) return;
-    if (transport != null) {
-      transport.close();
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+    try {
+      client.closeSession(req);
+    } catch (TException e) {
+      throw new InfluxDBException("Error occurs when closing session at server. Maybe server is down.", e);
+    } finally {
+      if (isClosed) return;
+      if (transport != null) {
+        transport.close();
+      }
+      isClosed = true;
     }
-    isClosed = true;
   }
 
   private boolean reconnect() {

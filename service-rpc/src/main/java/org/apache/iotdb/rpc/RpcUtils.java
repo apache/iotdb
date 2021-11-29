@@ -179,6 +179,11 @@ public class RpcUtils {
   }
 
   public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
+      TSStatusCode tsStatusCode) {
+    return new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(tsStatusCode.getStatusCode());
+  }
+
+  public static org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus getInfluxDBStatus(
       int code, String message) {
     org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus status =
         new org.apache.iotdb.protocol.influxdb.rpc.thrift.TSStatus(code);

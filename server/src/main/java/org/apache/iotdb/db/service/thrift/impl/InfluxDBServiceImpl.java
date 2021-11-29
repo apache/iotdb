@@ -77,8 +77,11 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   @Override
-  public TSStatus closeSession(TSCloseSessionReq req) throws TException {
-    return null;
+  public TSStatus closeSession(TSCloseSessionReq req) {
+    return new TSStatus(
+        !basicServiceProvider.closeSession(req.sessionId)
+            ? RpcUtils.getInfluxDBStatus(TSStatusCode.NOT_LOGIN_ERROR)
+            : RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS));
   }
 
   @Override
@@ -163,7 +166,6 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     }
 
     database = database == null ? sessionIdToDatabase.get(sessionId) : database;
-    database = "database";
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
     String path = metaManager.generatePath(database, measurement, tags);
@@ -179,7 +181,13 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     return new IoTDBPoint(path, time, measurements, types, values);
   }
 
-  public void handleClientExit() {}
+  public void handleClientExit() {
+    Long sessionId = BasicServiceProvider.sessionManager.getCurrSessionId();
+    if (sessionId != null) {
+      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+      closeSession(req);
+    }
+  }
 
   private TSStatus getNotLoggedInStatus() {
     return RpcUtils.getInfluxDBStatus(
