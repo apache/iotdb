@@ -44,12 +44,13 @@ public class IoTDBDeletionIT {
 
   private static String[] creationSqls =
       new String[] {
-          "SET STORAGE GROUP TO root.vehicle",
-          "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
+        "SET STORAGE GROUP TO root.vehicle",
+        "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 ENCODING=RLE, s1 INT64 ENCODING=RLE, s2 FLOAT ENCODING=RLE, s3 TEXT ENCODING=PLAIN, s4 BOOLEAN ENCODING=PLAIN)",
       };
 
   private String insertTemplate =
-      "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4" + ") ALIGNED VALUES(%d,%d,%d,%f,%s,%b)";
+      "INSERT INTO root.vehicle.d0(timestamp,s0,s1,s2,s3,s4"
+          + ") ALIGNED VALUES(%d,%d,%d,%f,%s,%b)";
   private String deleteAllTemplate = "DELETE FROM root.vehicle.d0 WHERE time <= 10000";
   private long prevPartitionInterval;
 
@@ -78,8 +79,8 @@ public class IoTDBDeletionIT {
   @Test
   public void testUnsupportedValueFilter() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("insert into root.vehicle.d0(time,s0) aligned values (10,310)");
@@ -154,8 +155,8 @@ public class IoTDBDeletionIT {
   public void test() throws SQLException {
     prepareData();
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
@@ -192,13 +193,13 @@ public class IoTDBDeletionIT {
   }
 
   @Test
-  @Ignore //TODO
+  @Ignore // TODO
   public void testMerge() throws SQLException {
     prepareMerge();
 
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
@@ -227,8 +228,8 @@ public class IoTDBDeletionIT {
   @Test
   public void testDelAfterFlush() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
       statement.execute(
@@ -251,8 +252,8 @@ public class IoTDBDeletionIT {
   public void testRangeDelete() throws SQLException {
     prepareData();
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time <= 300");
@@ -288,8 +289,8 @@ public class IoTDBDeletionIT {
   @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE FROM root.vehicle.d0.s0");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
@@ -307,8 +308,8 @@ public class IoTDBDeletionIT {
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.* WHERE time <= 300 and time > 150");
@@ -338,8 +339,8 @@ public class IoTDBDeletionIT {
     // Adjust memstable threshold size to make it flush automatically
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(10000);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (int i = 1; i <= 10000; i++) {
@@ -366,8 +367,8 @@ public class IoTDBDeletionIT {
     // Adjust memstable threshold size to make it flush automatically
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1000000);
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (int i = 1; i <= 100000; i++) {
@@ -400,8 +401,8 @@ public class IoTDBDeletionIT {
   @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE TIMESERIES root.ln.d1.`\"status,01\"` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -441,8 +442,8 @@ public class IoTDBDeletionIT {
   private static void prepareSeries() {
     String sq = null;
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
@@ -457,8 +458,8 @@ public class IoTDBDeletionIT {
 
   private void prepareData() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite file
@@ -490,8 +491,8 @@ public class IoTDBDeletionIT {
 
   private void cleanData() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
     }
@@ -499,8 +500,8 @@ public class IoTDBDeletionIT {
 
   public void prepareMerge() throws SQLException {
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data

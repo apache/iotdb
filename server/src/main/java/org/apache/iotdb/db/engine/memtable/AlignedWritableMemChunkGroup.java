@@ -78,19 +78,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   public int delete(
       PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
     int deletedPointsNumber = 0;
-    boolean deleteAllColumns = true;
     Set<String> measurements = memChunk.getAllMeasurements();
-    for (String measurement : measurements) {
-      PartialPath fullPath = devicePath.concatNode(measurement);
-      if (!originalPath.matchFullPath(fullPath)) {
-        deleteAllColumns = false;
-        break;
-      }
-    }
-    if (deleteAllColumns) {
-      deletedPointsNumber += memChunk.delete(startTimestamp, endTimestamp);
-      return deletedPointsNumber;
-    }
     List<String> columnsToBeRemoved = new ArrayList<>();
     for (String measurement : measurements) {
       PartialPath fullPath = devicePath.concatNode(measurement);
@@ -98,7 +86,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
         Pair<Integer, Boolean> deleteInfo =
             memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
         deletedPointsNumber += deleteInfo.left;
-        if (deleteInfo.right) {
+        if (Boolean.TRUE.equals(deleteInfo.right)) {
           columnsToBeRemoved.add(measurement);
         }
       }

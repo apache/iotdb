@@ -177,10 +177,10 @@ public class AlignedTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (columnValues == null
+      if (validIndexesForTimeDuplicatedRows == null && (columnValues == null
           || bitMaps != null
               && bitMaps.get(columnIndex) != null
-              && isValueMarked(valueIndex, columnIndex)) {
+              && isValueMarked(valueIndex, columnIndex))) {
         continue;
       }
       if (validIndexesForTimeDuplicatedRows != null) {
@@ -268,8 +268,8 @@ public class AlignedTVList extends TVList {
 
   public void extendColumn(TSDataType dataType) {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(values.size() + 1);
-      for (int i = 0; i < values.size() + 1; i++) {
+      bitMaps = new ArrayList<>(values.size());
+      for (int i = 0; i < values.size(); i++) {
         bitMaps.add(null);
       }
     }
@@ -309,8 +309,7 @@ public class AlignedTVList extends TVList {
       }
       columnBitMaps.add(bitMap);
     }
-    // values.size() is the index of column
-    this.bitMaps.set(values.size(), columnBitMaps);
+    this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
   }
@@ -431,34 +430,11 @@ public class AlignedTVList extends TVList {
 
   @Override
   public int delete(long lowerBound, long upperBound) {
-    int newSize = 0;
-    minTime = Long.MAX_VALUE;
-    for (int i = 0; i < size; i++) {
-      long time = getTime(i);
-      if (time < lowerBound || time > upperBound) {
-        setValuesAndIndexes(i, newSize++);
-        minTime = Math.min(time, minTime);
-      }
+    int deletedNumber = 0;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      deletedNumber += delete(lowerBound, upperBound, i).left;
     }
-    int deletedNumber = size - newSize;
-    size = newSize;
-    // release primitive arrays that are empty
-    int newArrayNum = newSize / ARRAY_SIZE;
-    if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum++;
-    }
-    int oldArrayNum = timestamps.size();
-    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
-      releaseLastTimeArray();
-      releaseLastValueArray();
-    }
-    return deletedNumber * getTsDataTypes().size();
-  }
-
-  private void setValuesAndIndexes(int src, int dest) {
-    long srcT = getTime(src);
-    int srcI = getValueIndex(src);
-    setValuesAndIndexes(dest, src, srcT, srcI);
+    return deletedNumber;
   }
 
   /**
@@ -495,50 +471,11 @@ public class AlignedTVList extends TVList {
     return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  private void setIndex(int index, long timestamp, int value) {
+  private void set(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
     indices.get(arrayIndex)[elementIndex] = value;
-  }
-
-  private void setValuesAndIndexes(int destIndex, int srcIndex, long timestamp, int srcSortedIndex) {
-    timestamps.get(destIndex / ARRAY_SIZE)[destIndex % ARRAY_SIZE] = timestamp;
-    int destSortedIndex = getValueIndex(destIndex);
-    int arrayIndex = destSortedIndex / ARRAY_SIZE;
-    int elementIndex = destSortedIndex % ARRAY_SIZE;
-    indices.get(srcIndex / ARRAY_SIZE)[srcIndex % ARRAY_SIZE] = destIndex;
-    for (int i = 0; i < dataTypes.size(); i++) {
-      List<Object> columnValues = values.get(i);
-      switch (dataTypes.get(i)) {
-        case TEXT:
-          ((Binary[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((Binary[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        case FLOAT:
-          ((float[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((float[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        case INT32:
-          ((int[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((int[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        case INT64:
-          ((long[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((long[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        case DOUBLE:
-          ((double[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((double[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        case BOOLEAN:
-          ((boolean[]) columnValues.get(arrayIndex))[elementIndex] =
-              ((boolean[]) columnValues.get(srcSortedIndex / ARRAY_SIZE))[srcSortedIndex % ARRAY_SIZE];
-          break;
-        default:
-          break;
-      }
-    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -667,7 +604,7 @@ public class AlignedTVList extends TVList {
 
   @Override
   protected void setFromSorted(int src, int dest) {
-    setIndex(
+    set(
         dest,
         sortedTimestamps[src / ARRAY_SIZE][src % ARRAY_SIZE],
         sortedIndices[src / ARRAY_SIZE][src % ARRAY_SIZE]);
@@ -677,7 +614,7 @@ public class AlignedTVList extends TVList {
   protected void set(int src, int dest) {
     long srcT = getTime(src);
     int srcV = getValueIndex(src);
-    setIndex(dest, srcT, srcV);
+    set(dest, srcT, srcV);
   }
 
   @Override
@@ -694,8 +631,8 @@ public class AlignedTVList extends TVList {
       int loV = getValueIndex(lo);
       long hiT = getTime(hi);
       int hiV = getValueIndex(hi);
-      setIndex(lo++, hiT, hiV);
-      setIndex(hi--, loT, loV);
+      set(lo++, hiT, hiV);
+      set(hi--, loT, loV);
     }
   }
 
@@ -754,7 +691,7 @@ public class AlignedTVList extends TVList {
 
   @Override
   protected void setPivotTo(int pos) {
-    setIndex(pos, pivotTime, pivotIndex);
+    set(pos, pivotTime, pivotIndex);
   }
 
   @Override
