@@ -96,6 +96,7 @@
         <dependency>
             <groupId>net.jpountz.lz4</groupId>
             <artifactId>lz4</artifactId>
+            <version>1.8.0</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
