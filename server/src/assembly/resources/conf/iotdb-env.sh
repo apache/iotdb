@@ -209,13 +209,12 @@ calculate_heap_sizes
 MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
 
 # threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
-threads_number = 16
+threads_number="16"
 # the size of buffer cache pool(IOV_MAX) depends on operating system
-temp_buffer_pool_size = 1024
+temp_buffer_pool_size="1024"
 # Max cached buffer size, Note: unit can only be B!
 # which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
-MAX_CACHED_BUFFER_SIZE=`expr $max_heap_size_in_mb \* 1024 \* 1024 / threads_number / temp_buffer_pool_size`
-echo $MAX_CACHED_BUFFER_SIZE
+MAX_CACHED_BUFFER_SIZE=`expr $max_heap_size_in_mb \* 1024 \* 1024 / $threads_number / $temp_buffer_pool_size`
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
