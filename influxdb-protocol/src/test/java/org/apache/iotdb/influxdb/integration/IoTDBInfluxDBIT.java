@@ -58,7 +58,7 @@ public class IoTDBInfluxDBIT {
   @Before
   public void setUp() throws IoTDBConnectionException {
     host = iotdb.getContainerIpAddress();
-    port = iotdb.getMappedPort(6667);
+    port = iotdb.getMappedPort(8086);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);

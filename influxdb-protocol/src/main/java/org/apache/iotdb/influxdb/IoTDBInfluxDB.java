@@ -253,11 +253,7 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void flush() {
-    //    try {
-    //      session.executeNonQueryStatement("flush");
-    //    } catch (IoTDBConnectionException | StatementExecutionException e) {
-    //      throw new InfluxDBException(e);
-    //    }
+    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
@@ -389,26 +385,11 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public Pong ping() {
-    final long started = System.currentTimeMillis();
-    Pong pong = new Pong();
-    pong.setVersion(version());
-    pong.setResponseTime(System.currentTimeMillis() - started);
-    return pong;
+    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
   }
 
   @Override
   public String version() {
-    //    try {
-    //      SessionDataSet sessionDataSet = session.executeQueryStatement("show version");
-    //      String version = null;
-    //      while (sessionDataSet.hasNext()) {
-    //        version = sessionDataSet.next().getFields().get(0).getStringValue();
-    //      }
-    //      sessionDataSet.closeOperationHandle();
-    //      return version;
-    //    } catch (StatementExecutionException | IoTDBConnectionException e) {
-    //      throw new InfluxDBException(e.getMessage());
-    //    }
-    return null;
+    throw new UnsupportedOperationException(InfluxDBConstant.METHOD_NOT_SUPPORTED);
   }
 }
