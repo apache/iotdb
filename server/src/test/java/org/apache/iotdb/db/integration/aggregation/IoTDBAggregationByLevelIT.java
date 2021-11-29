@@ -185,13 +185,13 @@ public class IoTDBAggregationByLevelIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TestConstant.max_time("root.sg1.d1.status"))
+              resultSet.getString(TestConstant.max_time("root.*.d1.status"))
                   + ","
-                  + resultSet.getString(TestConstant.max_time("root.sg1.d2.status"))
+                  + resultSet.getString(TestConstant.max_time("root.*.d2.status"))
                   + ","
-                  + resultSet.getString(TestConstant.count("root.sg1.d1.temperature"))
+                  + resultSet.getString(TestConstant.count("root.*.d1.temperature"))
                   + ","
-                  + resultSet.getString(TestConstant.count("root.sg1.d2.temperature"));
+                  + resultSet.getString(TestConstant.count("root.*.d2.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -229,13 +229,13 @@ public class IoTDBAggregationByLevelIT {
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans =
-              resultSet.getString(TestConstant.last_value("root.sg1.d1.temperature"))
+              resultSet.getString(TestConstant.last_value("root.*.d1.temperature"))
                   + ","
-                  + resultSet.getString(TestConstant.last_value("root.sg1.d2.temperature"))
+                  + resultSet.getString(TestConstant.last_value("root.*.d2.temperature"))
                   + ","
-                  + resultSet.getString(TestConstant.max_value("root.sg1.d1.temperature"))
+                  + resultSet.getString(TestConstant.max_value("root.*.d1.temperature"))
                   + ","
-                  + resultSet.getString(TestConstant.max_value("root.sg1.d2.temperature"));
+                  + resultSet.getString(TestConstant.max_value("root.*.d2.temperature"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
