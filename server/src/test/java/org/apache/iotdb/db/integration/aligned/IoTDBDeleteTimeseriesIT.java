@@ -63,7 +63,7 @@ public class IoTDBDeleteTimeseriesIT {
     int cnt = 0;
 
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create aligned timeseries root.turbine1.d1(s1 INT64 encoding=PLAIN compression=SNAPPY, "
@@ -104,8 +104,8 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResult = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResult);
@@ -118,7 +118,7 @@ public class IoTDBDeleteTimeseriesIT {
     int cnt = 0;
 
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
           "create aligned timeseries root.turbine1.d1(s1 FLOAT encoding=PLAIN compression=SNAPPY, "
@@ -159,8 +159,8 @@ public class IoTDBDeleteTimeseriesIT {
     EnvironmentUtils.restartDaemon();
 
     try (Connection connection =
-        DriverManager.getConnection(
-            Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       boolean hasResult = statement.execute("SELECT * FROM root.**");
       Assert.assertTrue(hasResult);
@@ -174,7 +174,7 @@ public class IoTDBDeleteTimeseriesIT {
     int preAvgSeriesPointNumberThreshold =
         IoTDBDescriptor.getInstance().getConfig().getAvgSeriesPointNumberThreshold();
     try (Connection connection =
-        DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
 
       IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(2);

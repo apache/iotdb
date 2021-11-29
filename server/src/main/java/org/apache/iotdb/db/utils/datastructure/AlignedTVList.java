@@ -177,10 +177,11 @@ public class AlignedTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (validIndexesForTimeDuplicatedRows == null && (columnValues == null
-          || bitMaps != null
-              && bitMaps.get(columnIndex) != null
-              && isValueMarked(valueIndex, columnIndex))) {
+      if (validIndexesForTimeDuplicatedRows == null
+          && (columnValues == null
+              || bitMaps != null
+                  && bitMaps.get(columnIndex) != null
+                  && isValueMarked(valueIndex, columnIndex))) {
         continue;
       }
       if (validIndexesForTimeDuplicatedRows != null) {
