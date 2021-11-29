@@ -122,8 +122,6 @@ public class IoTDBConfig {
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
-  private int maxConcurrentSubQuery = 8;
-
   /** Ratio of memory allocated for buffered arrays */
   private double bufferedArraysMemoryProportion = 0.6;
 
@@ -236,7 +234,7 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+  private int concurrentQueryThread = 8;
 
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
@@ -755,14 +753,6 @@ public class IoTDBConfig {
 
   public int getConcurrentWritingTimePartition() {
     return concurrentWritingTimePartition;
-  }
-
-  public int getMaxConcurrentSubQuery() {
-    return maxConcurrentSubQuery;
-  }
-
-  public void setMaxConcurrentSubQuery(int maxConcurrentSubQuery) {
-    this.maxConcurrentSubQuery = maxConcurrentSubQuery;
   }
 
   public int getDefaultFillInterval() {
