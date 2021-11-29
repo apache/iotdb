@@ -151,12 +151,8 @@ public class AggregateUtils {
     List<PartialPath> dupPaths = plan.getDeduplicatedPaths();
     for (int i = 0; i < aggResults.size(); i++) {
       if (aggResults.get(i) != null) {
-        //          String transformedPath =
-        //              generatePartialPathByLevel(
-        //                  dupPaths.get(i).getFullPath(), plan.getLevels(), plan.isCountStar());
-        //          String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath +
-        // ")";
-        String rawPath = plan.getDeduplicatedAggregations().get(i) + "(" + dupPaths.get(i).getFullPath() + ")";
+        String rawPath =
+            plan.getDeduplicatedAggregations().get(i) + "(" + dupPaths.get(i).getFullPath() + ")";
         String key = plan.getGroupByLevelController().getGroupedPath(rawPath);
         AggregateResult tempAggResult = finalPaths.get(key);
         if (tempAggResult == null) {
