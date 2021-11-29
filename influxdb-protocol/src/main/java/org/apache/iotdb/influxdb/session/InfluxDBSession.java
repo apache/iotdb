@@ -103,6 +103,7 @@ public class InfluxDBSession {
     }
     this.enableRPCCompression = enableRPCCompression;
     this.connectionTimeoutInMs = connectionTimeoutInMs;
+    this.endPointList.add(defaultEndPoint);
 
     init();
     isClosed = false;
@@ -191,6 +192,7 @@ public class InfluxDBSession {
     if (transport != null) {
       transport.close();
     }
+    isClosed = true;
   }
 
   private boolean reconnect() {
