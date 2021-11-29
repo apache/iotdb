@@ -33,8 +33,13 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.*;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.DOUBLE;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.BOOLEAN;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
+import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
+
 
 public class DataFrameTools {
   /**

@@ -37,7 +37,7 @@ private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegis
 
     val iotdbOptions = new IoTDBOptions(parameters)
 
-    if (iotdbOptions.sql.equals("")) {
+    if ("".equals(iotdbOptions.sql)) {
       sys.error("sql not specified")
     }
 
