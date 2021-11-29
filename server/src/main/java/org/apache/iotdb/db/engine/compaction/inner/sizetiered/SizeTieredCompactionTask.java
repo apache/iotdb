@@ -245,6 +245,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   }
 
   public void handleException(File logFile, TsFileResource targetTsFile) {
+    boolean handleSuccess = true;
     if (logFile.exists()) {
       // if the compaction log file does not exist
       // it means the compaction process didn't start yet
@@ -271,6 +272,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
               fullStorageGroupName,
               targetTsFile);
           tsFileManager.setAllowCompaction(false);
+          handleSuccess = false;
         }
       } else {
         // some source file does not exists
@@ -297,6 +299,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                       fullStorageGroupName,
                       sourceFile);
                   tsFileManager.setAllowCompaction(false);
+                  handleSuccess = false;
                 }
               }
             } else {
@@ -307,6 +310,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   targetTsFile,
                   lostSourceFiles);
               tsFileManager.setAllowCompaction(false);
+              handleSuccess = false;
             }
           } catch (Throwable e) {
             LOGGER.error(
@@ -314,12 +318,30 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                 fullStorageGroupName,
                 e);
             tsFileManager.setAllowCompaction(false);
+            handleSuccess = false;
           }
         } else {
           LOGGER.warn(
               "{} [Compaction][ExceptionHandler] target file {} does not exist either, do nothing. Set allowCompaction to false",
               fullStorageGroupName,
               targetTsFile);
+          tsFileManager.setAllowCompaction(false);
+          handleSuccess = false;
+        }
+      }
+      if (handleSuccess) {
+        LOGGER.info(
+            "{} [Compaction][ExceptionHandler] Handle exception successfully, delete log file {}",
+            fullStorageGroupName,
+            logFile);
+        try {
+          FileUtils.delete(logFile);
+        } catch (IOException e) {
+          LOGGER.error(
+              "{} [Compaction][ExceptionHandler] Exception occurs while deleting log file {}, set allowCompaction to false",
+              fullStorageGroupName,
+              logFile,
+              e);
           tsFileManager.setAllowCompaction(false);
         }
       }
