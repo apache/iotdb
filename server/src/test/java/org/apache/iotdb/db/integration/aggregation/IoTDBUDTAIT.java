@@ -467,6 +467,38 @@ public class IoTDBUDTAIT {
   }
 
   @Test
+  public void polyNominalWithMaxMinTimeGroupByTest() {
+    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499"};
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_time(s2),((max_time(s0)+min_time(s2))*2+2)%10 "
+                  + "FROM root.vehicle.d0 GROUP BY ([0, 9000), 1s)");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(1)
+                  + ","
+                  + resultSet.getString(2);
+          System.out.println(ans);
+          // Assert.assertEquals(retArray[cnt], ans);
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void firstLastValueTest() throws SQLException {
     String[] retArray =
         new String[] {

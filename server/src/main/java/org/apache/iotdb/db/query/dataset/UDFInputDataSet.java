@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -52,7 +53,10 @@ public class UDFInputDataSet implements IUDFInputDataSet {
     Object[] nextRow = new Object[dataSet.getColumnNum() + 1];
     RowRecord r = dataSet.next();
     for (int i = 0; i < dataSet.getColumnNum(); i++) {
-      nextRow[i] = r.getFields().get(i).getObjectValue(dataSet.getDataTypes().get(i));
+      Field f = r.getFields().get(i);
+      if (f != null) {
+        nextRow[i] = f.getObjectValue(f.getDataType());
+      }
     }
     nextRow[dataSet.getColumnNum()] = r.getTimestamp();
     return nextRow;

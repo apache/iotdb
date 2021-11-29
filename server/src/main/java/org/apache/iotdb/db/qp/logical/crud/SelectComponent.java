@@ -117,9 +117,6 @@ public final class SelectComponent {
   }
 
   public List<String> getAggregationFunctions() {
-    if (!hasAggregationFunction()) {
-      return null;
-    }
     if (aggregationFunctionsCache == null) {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {

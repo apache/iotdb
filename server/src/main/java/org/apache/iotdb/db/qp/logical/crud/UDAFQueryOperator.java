@@ -18,13 +18,11 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
-import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -44,7 +42,7 @@ import java.util.Map;
  * be [count(a),count(b),sum(b)] innerPathCathe will be [root.sg.a,root.sg.b,root.sg.b]
  * innerAggregationsCache will be [count,count,sum]
  */
-public class UDAFQueryOperator extends AggregationQueryOperator {
+public class UDAFQueryOperator extends QueryOperator {
 
   private ArrayList<ResultColumn> innerResultColumnsCache;
 
@@ -52,12 +50,27 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
 
   private ArrayList<String> innerAggregationsCache;
 
-  public UDAFQueryOperator(QueryOperator queryOperator) {
+  private AggregationQueryOperator aggrOp;
+
+  public UDAFQueryOperator(AggregationQueryOperator queryOperator) {
     super(queryOperator);
+    this.aggrOp = queryOperator;
   }
 
   @Override
-  protected void checkSelectComponent(SelectComponent selectComponent)
+  public void check() throws LogicalOperatorException {
+    super.check();
+
+    if (!isAlignByTime()) {
+      throw new LogicalOperatorException("AGGREGATION doesn't support disable align clause.");
+    }
+    checkSelectComponent(selectComponent);
+    if (isGroupByLevel() && isAlignByDevice()) {
+      throw new LogicalOperatorException("group by level does not support align by device now.");
+    }
+  }
+
+  private void checkSelectComponent(SelectComponent selectComponent)
       throws LogicalOperatorException {
     for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
       Expression expression = resultColumn.getExpression();
@@ -128,8 +141,16 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    AggregationPlan innerAggregationPlan =
-        initInnerAggregationPlan(generator, new AggregationPlan());
+    SelectComponent copiedSelectComponent = new SelectComponent(getSelectComponent());
+    copiedSelectComponent.setResultColumns(getInnerResultColumnsCache());
+    aggrOp.setSelectComponent(copiedSelectComponent);
+    aggrOp.setFromComponent(getFromComponent());
+    aggrOp.setWhereComponent(getWhereComponent());
+    aggrOp.setSpecialClauseComponent(getSpecialClauseComponent());
+    aggrOp.setProps(getProps());
+    aggrOp.setIndexType(getIndexType());
+    aggrOp.setEnableTracing(isEnableTracing());
+    AggregationPlan innerAggregationPlan = (AggregationPlan) aggrOp.generatePhysicalPlan(generator);
     PhysicalPlan physicalPlan;
     if (!isAlignByDevice()) {
       physicalPlan =
@@ -162,32 +183,9 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     return physicalPlan;
   }
 
-  private AggregationPlan initInnerAggregationPlan(PhysicalGenerator generator, QueryPlan queryPlan)
-      throws QueryProcessException {
-    AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
-    aggregationPlan.setAggregations(getInnerAggregationsCache());
-    aggregationPlan.setResultColumns(getInnerResultColumnsCache());
-    aggregationPlan.setPaths(getInnerPathCathe());
-    aggregationPlan.setEnableTracing(enableTracing);
-    // transform filter operator to expression
-    if (whereComponent != null) {
-      transformFilterOperatorToExpression(generator, aggregationPlan);
-    }
-    if (isGroupByLevel()) {
-      super.initGroupByLevel(aggregationPlan);
-    }
-    try {
-      queryPlan.deduplicate(generator);
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    }
-    convertSpecialClauseValues(aggregationPlan);
-    return aggregationPlan;
-  }
-
   private void checkEachExpression(Expression expression) throws LogicalOperatorException {
     if (expression instanceof TimeSeriesOperand) {
-      throw new LogicalOperatorException(ERROR_MESSAGE1);
+      throw new LogicalOperatorException(AggregationQueryOperator.ERROR_MESSAGE1);
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
     if (expression.isAggregationFunctionExpression()) {

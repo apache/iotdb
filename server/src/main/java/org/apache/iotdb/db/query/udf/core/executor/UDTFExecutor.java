@@ -105,7 +105,9 @@ public class UDTFExecutor {
   }
 
   public void beforeDestroy() {
-    udtf.beforeDestroy();
+    if (udtf != null) {
+      udtf.beforeDestroy();
+    }
   }
 
   private void onError(String methodName, Exception e) throws QueryProcessException {
