@@ -198,16 +198,6 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<UDFContext> originUdfList = selectOperator.getUdfList();
     List<UDFContext> afterConcatUdfList = new ArrayList<>();
 
-    // TODO how to get the final result column of group by level
-
-    // 1. group by level, so need to get all measurements for each function one by one
-
-    // 2. group by level, and apply soffset and slimit
-
-    // 3. continue to step 1 or go to step 4 when slimit is arrived or function list is end
-
-    // 4. put all satisfied path to the operator and aggregation
-
     for (int i = 0; i < suffixPaths.size(); i++) {
       // selectPath cannot start with ROOT, which is guaranteed by TSParser
       PartialPath selectPath = suffixPaths.get(i);
@@ -425,6 +415,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         }
         preSize = resultColumns.size();
       }
+      // on means, just use it to judge the soffset
       consumed = resultColumns.size();
       newSuffixPathList.addAll(resultColumns);
     } else {

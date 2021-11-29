@@ -150,7 +150,7 @@ public class QueryRouter implements IQueryRouter {
           IOException {
 
     if (logger.isDebugEnabled()) {
-      logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + groupByTimePlan.getLevels());
+      logger.debug("paths:" + groupByTimePlan.getPaths() + " level:" + Arrays.toString(groupByTimePlan.getLevels()));
     }
 
     GroupByEngineDataSet dataSet = null;
