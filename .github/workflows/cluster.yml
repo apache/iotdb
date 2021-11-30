@@ -1,22 +1,16 @@
-# This workflow will build a Java project with Maven
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: Main Mac and Linux
+name: Cluster Test
 
 on:
   push:
     branches:
       - master
       - 'rel/*'
-      - Vector
     paths-ignore:
       - 'docs/**'
   pull_request:
     branches:
       - master
       - 'rel/*'
-      - cluster_new
-      - Vector
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
@@ -31,8 +25,8 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [ 8, 11, 17 ]
-        os: [ ubuntu-latest, macos-latest ]
+        java: [ 8 ]
+        os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os}}
 
     steps:
@@ -53,4 +47,4 @@ jobs:
         shell: bash
         # we do not compile client-cpp for saving time, it is tested in client.yml
         # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
-        run: mvn -B clean verify -Dtest.port.closed=true -P '!testcontainer,!influxdb-protocol'
+        run: mvn -B clean verify -Dsession.test.skip=true -Diotdb.test.skip=true -Dcluster.test.skip=true -Dtsfile.test.skip=true -pl integration -am -PCluster
