@@ -22,7 +22,6 @@ package org.apache.iotdb.db.integration.aligned;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
