@@ -557,6 +557,10 @@ public class StorageGroupProcessor {
       for (File timePartitionDir : timePartitionDirs) {
         File[] compactionLogs =
             InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
+        // In MacOS, compactionLogs could be null
+        if (compactionLogs == null) {
+          continue;
+        }
         for (File compactionLog : compactionLogs) {
           IoTDBDescriptor.getInstance()
               .getConfig()
