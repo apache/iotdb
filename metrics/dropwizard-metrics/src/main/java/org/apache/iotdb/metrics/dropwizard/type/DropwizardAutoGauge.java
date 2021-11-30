@@ -21,52 +21,44 @@ package org.apache.iotdb.metrics.dropwizard.type;
 
 import org.apache.iotdb.metrics.type.Gauge;
 
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.lang.ref.WeakReference;
+import java.util.function.ToLongFunction;
 
-public class DropwizardGauge implements Gauge {
+public class DropwizardAutoGauge<T> implements Gauge, com.codahale.metrics.Gauge<Long> {
 
-  AtomicLong atomicLong;
-  DropwizardCachedGauge dropwizardCachedGauge;
+  private final WeakReference<T> refObject;
+  private final ToLongFunction<T> mapper;
 
-  public DropwizardGauge() {
-    atomicLong = new AtomicLong(0);
-    dropwizardCachedGauge = new DropwizardCachedGauge(5, TimeUnit.MILLISECONDS);
+  public DropwizardAutoGauge(T obj, ToLongFunction<T> mapper) {
+    this.refObject = new WeakReference<>(obj);
+    this.mapper = mapper;
   }
 
-  public class DropwizardCachedGauge extends com.codahale.metrics.CachedGauge<Long> {
-
-    protected DropwizardCachedGauge(long timeout, TimeUnit timeoutUnit) {
-      super(timeout, timeoutUnit);
+  @Override
+  public Long getValue() {
+    if (refObject.get() == null) {
+      return 0L;
     }
-
-    @Override
-    protected Long loadValue() {
-      return atomicLong.get();
-    }
+    return mapper.applyAsLong(refObject.get());
   }
 
   @Override
   public long value() {
-    return dropwizardCachedGauge.getValue();
+    return getValue();
   }
 
   @Override
   public void incr(long value) {
-    atomicLong.addAndGet(value);
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 
   @Override
   public void decr(long value) {
-    atomicLong.addAndGet(-value);
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 
   @Override
   public void set(long value) {
-    atomicLong.set(value);
-  }
-
-  public com.codahale.metrics.Gauge<Long> getDropwizardCachedGauge() {
-    return dropwizardCachedGauge;
+    throw new UnsupportedOperationException("unsupported manually updating an exist obj's state");
   }
 }
