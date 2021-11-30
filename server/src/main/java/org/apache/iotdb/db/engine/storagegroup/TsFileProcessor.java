@@ -60,7 +60,6 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -1227,41 +1226,6 @@ public class TsFileProcessor {
     return storageGroupName;
   }
 
-  /** get modifications from a memtable */
-  private List<Modification> getModificationsForMemtable(IMemTable memTable) {
-    List<Modification> modifications = new ArrayList<>();
-    boolean foundMemtable = false;
-    for (Pair<Modification, IMemTable> entry : modsToMemtable) {
-      if (foundMemtable || entry.right.equals(memTable)) {
-        modifications.add(entry.left);
-        foundMemtable = true;
-      }
-    }
-    return modifications;
-  }
-
-  /**
-   * construct a deletion list from a memtable
-   *
-   * @param memTable memtable
-   * @param timeLowerBound time water mark
-   */
-  private List<TimeRange> constructDeletionList(
-      IMemTable memTable, PartialPath fullPath, long timeLowerBound) {
-    List<TimeRange> deletionList = new ArrayList<>();
-    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
-    for (Modification modification : getModificationsForMemtable(memTable)) {
-      if (modification instanceof Deletion) {
-        Deletion deletion = (Deletion) modification;
-        if (deletion.getPath().matchFullPath(fullPath) && deletion.getEndTime() > timeLowerBound) {
-          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
-          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
-        }
-      }
-    }
-    return TimeRange.sortAndMerge(deletionList);
-  }
-
   /**
    * get the chunk(s) in the memtable (one from work memtable and the other ones in flushing
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
@@ -1284,10 +1248,8 @@ public class TsFileProcessor {
         if (flushingMemTable.isSignalMemTable()) {
           continue;
         }
-        List<TimeRange> deletionList =
-            constructDeletionList(flushingMemTable, fullPath, context.getQueryTimeLowerBound());
         ReadOnlyMemChunk memChunk =
-            flushingMemTable.query(fullPath, context.getQueryTimeLowerBound(), deletionList);
+            flushingMemTable.query(fullPath, context.getQueryTimeLowerBound(), modsToMemtable);
         if (memChunk != null) {
           readOnlyMemChunks.add(memChunk);
         }
