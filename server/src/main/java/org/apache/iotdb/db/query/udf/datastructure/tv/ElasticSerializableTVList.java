@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 public class ElasticSerializableTVList implements PointCollector {
 
@@ -54,6 +56,12 @@ public class ElasticSerializableTVList implements PointCollector {
   protected int size;
   protected int evictionUpperBound;
 
+  /**
+   * the element in this set means that the corresponding index data is null. TODO: the memory cost
+   * of this field is not calculated in memoryLimitInMB, maybe we need more optimization later
+   */
+  protected SortedSet<Integer> nullIndices;
+
   protected ElasticSerializableTVList(
       TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize)
       throws QueryProcessException {
@@ -69,6 +77,7 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
+    nullIndices = new TreeSet<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -87,6 +96,7 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
+    nullIndices = new TreeSet<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -98,6 +108,10 @@ public class ElasticSerializableTVList implements PointCollector {
 
   public int size() {
     return size;
+  }
+
+  public boolean isNull(int index) throws IOException {
+    return nullIndices.contains(index);
   }
 
   public long getTime(int index) throws IOException {
@@ -218,6 +232,33 @@ public class ElasticSerializableTVList implements PointCollector {
     ++size;
   }
 
+  public void putNull(long timestamp) throws IOException, QueryProcessException {
+    nullIndices.add(size);
+    switch (dataType) {
+      case INT32:
+        putInt(timestamp, 0);
+        break;
+      case INT64:
+        putLong(timestamp, 0L);
+        break;
+      case FLOAT:
+        putFloat(timestamp, 0.0F);
+        break;
+      case DOUBLE:
+        putDouble(timestamp, 0.0D);
+        break;
+      case BOOLEAN:
+        putBoolean(timestamp, false);
+        break;
+      case TEXT:
+        putBinary(timestamp, Binary.EMPTY_VALUE);
+        break;
+      default:
+        throw new UnSupportedDataTypeException(
+            String.format("Data type %s is not supported.", dataType));
+    }
+  }
+
   private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
       tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
@@ -288,6 +329,11 @@ public class ElasticSerializableTVList implements PointCollector {
       public Binary currentBinary() throws IOException {
         return getBinary(currentPointIndex);
       }
+
+      @Override
+      public boolean isCurrentNull() throws IOException {
+        return isNull(currentPointIndex);
+      }
     };
   }
 
@@ -314,6 +360,16 @@ public class ElasticSerializableTVList implements PointCollector {
           } else {
             tvLists.get(lastIndex).serialize();
           }
+          // here we trigger the clear of nullIndices
+          List<Integer> removedIndices = new ArrayList<>();
+          for (Integer index : nullIndices) {
+            if (index < evictionUpperBound) {
+              removedIndices.add(index);
+            } else {
+              break;
+            }
+          }
+          removedIndices.forEach(nullIndices::remove);
         }
         tvLists.get(targetIndex).deserialize();
       }

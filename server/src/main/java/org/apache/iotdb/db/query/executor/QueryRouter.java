@@ -40,7 +40,9 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -164,16 +166,25 @@ public class QueryRouter implements IQueryRouter {
     if (logger.isDebugEnabled()) {
       logger.debug("paths:" + udafPlan.getPaths());
     }
-    AggregationPlan innerAggregationPlan = udafPlan.getInnerAggregationPlan();
+    AggregationPlan innerPlan = udafPlan.getInnerAggregationPlan();
+    // Infer aggregation data types for UDF input
+    List<TSDataType> aggregationResultTypes = new ArrayList<>();
+    for (int i = 0; i < innerPlan.getDeduplicatedPaths().size(); i++) {
+      aggregationResultTypes.add(
+          TypeInferenceUtils.getAggrDataType(
+              innerPlan.getDeduplicatedAggregations().get(i),
+              innerPlan.getDeduplicatedDataTypes().get(i)));
+    }
     QueryDataSet innerQueryDataSet = null;
-    if (innerAggregationPlan instanceof GroupByTimePlan) {
-      innerQueryDataSet = groupBy((GroupByTimePlan) innerAggregationPlan, context);
+    if (innerPlan instanceof GroupByTimePlan) {
+      innerQueryDataSet = groupBy((GroupByTimePlan) innerPlan, context);
     } else {
-      innerQueryDataSet = aggregate(innerAggregationPlan, context);
+      innerQueryDataSet = aggregate(innerPlan, context);
     }
 
     UDFQueryExecutor udfQueryExecutor = new UDFQueryExecutor(udafPlan);
-    return udfQueryExecutor.executeFromAlignedDataSet(context, innerQueryDataSet);
+    return udfQueryExecutor.executeFromAlignedDataSet(
+        context, innerQueryDataSet, aggregationResultTypes);
   }
 
   protected AggregationExecutor getAggregationExecutor(

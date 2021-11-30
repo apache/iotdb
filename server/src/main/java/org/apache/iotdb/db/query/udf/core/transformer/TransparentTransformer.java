@@ -55,29 +55,39 @@ public class TransparentTransformer extends Transformer {
     if (!reader.next()) {
       return false;
     }
-    switch (reader.getDataType()) {
-      case BOOLEAN:
-        cachedBoolean = reader.currentBoolean();
-        break;
-      case DOUBLE:
-        cachedDouble = reader.currentDouble();
-        break;
-      case FLOAT:
-        cachedFloat = reader.currentFloat();
-        break;
-      case INT32:
-        cachedInt = reader.currentInt();
-        break;
-      case INT64:
-        cachedLong = reader.currentLong();
-        break;
-      case TEXT:
-        cachedBinary = reader.currentBinary();
-        break;
-      default:
-        throw new QueryProcessException("unsupported data type: " + reader.getDataType());
+    if (reader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      switch (reader.getDataType()) {
+        case BOOLEAN:
+          cachedBoolean = reader.currentBoolean();
+          break;
+        case DOUBLE:
+          cachedDouble = reader.currentDouble();
+          break;
+        case FLOAT:
+          cachedFloat = reader.currentFloat();
+          break;
+        case INT32:
+          cachedInt = reader.currentInt();
+          break;
+        case INT64:
+          cachedLong = reader.currentLong();
+          break;
+        case TEXT:
+          cachedBinary = reader.currentBinary();
+          break;
+        default:
+          throw new QueryProcessException("unsupported data type: " + reader.getDataType());
+      }
     }
     cachedTime = reader.currentTime();
     return true;
+  }
+
+  @Override
+  public void readyForNext() {
+    super.readyForNext();
+    reader.readyForNext();
   }
 }

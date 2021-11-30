@@ -760,10 +760,8 @@ public class AggregationExecutor {
       }
       dataSet = new SingleDataSet(paths, dataTypes);
     } else {
-      List<TSDataType> dataTypes = new ArrayList<>();
       for (AggregateResult resultData : aggregateResultList) {
         TSDataType dataType = resultData.getResultDataType();
-        dataTypes.add(dataType);
         record.addField(resultData.getResult(), dataType);
       }
       dataSet = new SingleDataSet(selectedSeries, dataTypes);

@@ -33,14 +33,16 @@ import java.util.List;
 public class UDFInputDataSet implements IUDFInputDataSet {
 
   private final QueryDataSet dataSet;
+  private List<TSDataType> dataTypes;
 
-  public UDFInputDataSet(QueryDataSet dataSet) {
+  public UDFInputDataSet(QueryDataSet dataSet, List<TSDataType> dataTypes) {
     this.dataSet = dataSet;
+    this.dataTypes = dataTypes;
   }
 
   @Override
   public List<TSDataType> getDataTypes() {
-    return dataSet.getDataTypes();
+    return dataTypes;
   }
 
   @Override

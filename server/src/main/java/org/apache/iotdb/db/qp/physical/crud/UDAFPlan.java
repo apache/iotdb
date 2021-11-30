@@ -32,20 +32,14 @@ public class UDAFPlan extends UDTFPlan {
 
   // Construct an innerAggregationPlan using resultColumns of UDAFPlan
   private AggregationPlan innerAggregationPlan;
-  private Map<Expression, Integer> expressionToInnerResultIndexMap;
 
   public UDAFPlan(ZoneId zoneId) {
     super(zoneId);
     setOperatorType(OperatorType.UDAF);
   }
 
-  public Map<Expression, Integer> getExpressionToInnerResultIndexMap() {
-    return expressionToInnerResultIndexMap;
-  }
-
   public void setExpressionToInnerResultIndexMap(
       Map<Expression, Integer> expressionToInnerResultIndexMap) {
-    this.expressionToInnerResultIndexMap = expressionToInnerResultIndexMap;
     expressionToInnerResultIndexMap.forEach((k, v) -> pathNameToReaderIndex.put(k.toString(), v));
   }
 

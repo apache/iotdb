@@ -45,6 +45,8 @@ public class RawQueryInputLayer {
   private ElasticSerializableRowRecordList rowRecordList;
   private SafetyLine safetyLine;
 
+  public static final Object nullObject = new Object();
+
   /** InputLayerWithoutValueFilter */
   public RawQueryInputLayer(
       long queryId,
@@ -107,6 +109,7 @@ public class RawQueryInputLayer {
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
+    boolean isCurRowAllNull = true;
     private Object[] cachedRowRecord;
 
     InputLayerPointReader(int columnIndex) {
@@ -132,7 +135,7 @@ public class RawQueryInputLayer {
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (rowRecordCandidate[columnIndex] != null) {
+        if (isCurRowAllNull || rowRecordCandidate[columnIndex] != null) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -144,7 +147,8 @@ public class RawQueryInputLayer {
         while (queryDataSet.hasNextRowInObjects()) {
           Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
-          if (rowRecordCandidate[columnIndex] != null) {
+          isCurRowAllNull = InputRowUtils.isAllNull(rowRecordCandidate);
+          if (isCurRowAllNull || rowRecordCandidate[columnIndex] != null) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;
@@ -160,6 +164,7 @@ public class RawQueryInputLayer {
     public void readyForNext() {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
+      isCurRowAllNull = true;
 
       safetyPile.moveForwardTo(currentRowIndex + 1);
     }
@@ -197,6 +202,11 @@ public class RawQueryInputLayer {
     @Override
     public boolean currentBoolean() {
       return (boolean) cachedRowRecord[columnIndex];
+    }
+
+    @Override
+    public boolean isCurrentNull() {
+      return cachedRowRecord[columnIndex] == null;
     }
 
     @Override

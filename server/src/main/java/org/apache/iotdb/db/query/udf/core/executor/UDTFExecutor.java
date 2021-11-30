@@ -80,9 +80,14 @@ public class UDTFExecutor {
             configurations.getOutputDataType(), queryId, collectorMemoryBudgetInMB, 1);
   }
 
-  public void execute(Row row) throws QueryProcessException {
+  public void execute(Row row, boolean isCurrentRowNull) throws QueryProcessException {
     try {
-      udtf.transform(row, collector);
+      if (isCurrentRowNull) {
+        // A null row will never trigger any UDF computing
+        collector.putNull(row.getTime());
+      } else {
+        udtf.transform(row, collector);
+      }
     } catch (Exception e) {
       onError("transform(Row, PointCollector)", e);
     }

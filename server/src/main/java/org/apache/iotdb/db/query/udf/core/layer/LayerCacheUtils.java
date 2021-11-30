@@ -52,28 +52,31 @@ public class LayerCacheUtils {
     if (!source.next()) {
       return false;
     }
-
-    switch (dataType) {
-      case INT32:
-        target.putInt(source.currentTime(), source.currentInt());
-        break;
-      case INT64:
-        target.putLong(source.currentTime(), source.currentLong());
-        break;
-      case FLOAT:
-        target.putFloat(source.currentTime(), source.currentFloat());
-        break;
-      case DOUBLE:
-        target.putDouble(source.currentTime(), source.currentDouble());
-        break;
-      case BOOLEAN:
-        target.putBoolean(source.currentTime(), source.currentBoolean());
-        break;
-      case TEXT:
-        target.putBinary(source.currentTime(), source.currentBinary());
-        break;
-      default:
-        throw new UnsupportedOperationException(dataType.name());
+    if (source.isCurrentNull()) {
+      target.putNull(source.currentTime());
+    } else {
+      switch (dataType) {
+        case INT32:
+          target.putInt(source.currentTime(), source.currentInt());
+          break;
+        case INT64:
+          target.putLong(source.currentTime(), source.currentLong());
+          break;
+        case FLOAT:
+          target.putFloat(source.currentTime(), source.currentFloat());
+          break;
+        case DOUBLE:
+          target.putDouble(source.currentTime(), source.currentDouble());
+          break;
+        case BOOLEAN:
+          target.putBoolean(source.currentTime(), source.currentBoolean());
+          break;
+        case TEXT:
+          target.putBinary(source.currentTime(), source.currentBinary());
+          break;
+        default:
+          throw new UnsupportedOperationException(dataType.name());
+      }
     }
 
     source.readyForNext();

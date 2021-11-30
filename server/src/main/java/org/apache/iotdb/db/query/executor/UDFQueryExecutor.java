@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.dataset.UDTFAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFNonAlignDataSet;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -87,7 +88,9 @@ public class UDFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public final QueryDataSet executeFromAlignedDataSet(
-      QueryContext context, QueryDataSet sourceDataSet) throws QueryProcessException, IOException {
-    return new UDTFAlignByTimeDataSet(context, udtfPlan, new UDFInputDataSet(sourceDataSet));
+      QueryContext context, QueryDataSet sourceDataSet, List<TSDataType> fieldTypes)
+      throws QueryProcessException, IOException {
+    return new UDTFAlignByTimeDataSet(
+        context, udtfPlan, new UDFInputDataSet(sourceDataSet, fieldTypes));
   }
 }

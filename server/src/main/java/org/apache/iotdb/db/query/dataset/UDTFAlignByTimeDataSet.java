@@ -132,50 +132,55 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         }
 
         if (rowOffset == 0) {
-          currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
-          TSDataType type = reader.getDataType();
-          switch (type) {
-            case INT32:
-              int intValue = reader.currentInt();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeInt(intValue, minTime)
-                      : intValue,
-                  valueBAOSList[i]);
-              break;
-            case INT64:
-              long longValue = reader.currentLong();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeLong(longValue, minTime)
-                      : longValue,
-                  valueBAOSList[i]);
-              break;
-            case FLOAT:
-              float floatValue = reader.currentFloat();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeFloat(floatValue, minTime)
-                      : floatValue,
-                  valueBAOSList[i]);
-              break;
-            case DOUBLE:
-              double doubleValue = reader.currentDouble();
-              ReadWriteIOUtils.write(
-                  encoder != null && encoder.needEncode(minTime)
-                      ? encoder.encodeDouble(doubleValue, minTime)
-                      : doubleValue,
-                  valueBAOSList[i]);
-              break;
-            case BOOLEAN:
-              ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
-              break;
-            case TEXT:
-              ReadWriteIOUtils.write(reader.currentBinary(), valueBAOSList[i]);
-              break;
-            default:
-              throw new UnSupportedDataTypeException(
-                  String.format("Data type %s is not supported.", type));
+          if (!reader.isCurrentNull()) {
+            currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
+            TSDataType type = reader.getDataType();
+            switch (type) {
+              case INT32:
+                int intValue = reader.currentInt();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeInt(intValue, minTime)
+                        : intValue,
+                    valueBAOSList[i]);
+                break;
+              case INT64:
+                long longValue = reader.currentLong();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeLong(longValue, minTime)
+                        : longValue,
+                    valueBAOSList[i]);
+                break;
+              case FLOAT:
+                float floatValue = reader.currentFloat();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeFloat(floatValue, minTime)
+                        : floatValue,
+                    valueBAOSList[i]);
+                break;
+              case DOUBLE:
+                double doubleValue = reader.currentDouble();
+                ReadWriteIOUtils.write(
+                    encoder != null && encoder.needEncode(minTime)
+                        ? encoder.encodeDouble(doubleValue, minTime)
+                        : doubleValue,
+                    valueBAOSList[i]);
+                break;
+              case BOOLEAN:
+                ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
+                break;
+              case TEXT:
+                ReadWriteIOUtils.write(reader.currentBinary(), valueBAOSList[i]);
+                break;
+              default:
+                throw new UnSupportedDataTypeException(
+                    String.format("Data type %s is not supported.", type));
+            }
+          } else {
+            // there's no data in the current field, so put a null placeholder 0x00
+            currentBitmapList[i] = (currentBitmapList[i] << 1);
           }
         }
 

@@ -148,6 +148,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           new ElasticSerializableRowRecordListBackedMultiColumnRow(dataTypes);
 
       private boolean hasCached = false;
+      private boolean currentNull = false;
 
       @Override
       public boolean next() throws IOException {
@@ -158,8 +159,9 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
         if (!hasNextRowInObjects()) {
           return false;
         }
-
-        row.setRowRecord(nextRowInObjects());
+        Object[] rowRecords = nextRowInObjects();
+        currentNull = InputRowUtils.isAllNull(rowRecords);
+        row.setRowRecord(rowRecords);
         hasCached = true;
         return true;
       }
@@ -167,6 +169,7 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       @Override
       public void readyForNext() {
         hasCached = false;
+        currentNull = false;
       }
 
       @Override
@@ -182,6 +185,11 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
       @Override
       public Row currentRow() {
         return row;
+      }
+
+      @Override
+      public boolean isCurrentNull() {
+        return currentNull;
       }
     };
   }

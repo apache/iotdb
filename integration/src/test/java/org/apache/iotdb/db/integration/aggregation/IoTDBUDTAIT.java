@@ -20,26 +20,28 @@
 package org.apache.iotdb.db.integration.aggregation;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.db.constant.TestConstant;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
+@Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDTAIT {
 
   private static final double DETLA = 1e-6;
@@ -97,18 +99,16 @@ public class IoTDBUDTAIT {
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   // add test for part of points in page don't satisfy filter
@@ -116,8 +116,7 @@ public class IoTDBUDTAIT {
   @Test
   public void additionTest1() {
     String[] retArray = new String[] {"0,3.0", "0,6.0,7.0", "0,4.0,6.0"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -216,8 +215,7 @@ public class IoTDBUDTAIT {
         new String[] {
           "0,2002.0,2003.0,2004.0,2005.0", "0,15000.0,7500,7500", "0,7500,15000.0,7500"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -335,8 +333,7 @@ public class IoTDBUDTAIT {
   @Test
   public void polyNominalWithFirstAndLastValueTest() {
     String[] retArray = new String[] {"0,10001.0,2000"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -384,8 +381,7 @@ public class IoTDBUDTAIT {
   @Test
   public void polyNominalWithMaxMinTimeTest() {
     String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -467,45 +463,12 @@ public class IoTDBUDTAIT {
   }
 
   @Test
-  public void polyNominalWithMaxMinTimeGroupByTest() {
-    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT min_time(s2),((max_time(s0)+min_time(s2))*2+2)%10 "
-                  + "FROM root.vehicle.d0 GROUP BY ([0, 9000), 1s)");
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(1)
-                  + ","
-                  + resultSet.getString(2);
-          System.out.println(ans);
-          // Assert.assertEquals(retArray[cnt], ans);
-        }
-      }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void firstLastValueTest() throws SQLException {
     String[] retArray =
         new String[] {
           "0,2.2,4.4",
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -534,8 +497,7 @@ public class IoTDBUDTAIT {
   @Test
   public void maxminValueTest() {
     String[] retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -551,9 +513,9 @@ public class IoTDBUDTAIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value(d0s0))
+                  + resultSet.getString(TestConstant.maxValue(d0s0))
                   + ","
-                  + resultSet.getString(min_value(d0s2));
+                  + resultSet.getString(TestConstant.minValue(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -570,9 +532,9 @@ public class IoTDBUDTAIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value(d0s0))
+                  + resultSet.getString(TestConstant.maxValue(d0s0))
                   + ","
-                  + resultSet.getString(min_value(d0s2));
+                  + resultSet.getString(TestConstant.minValue(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -592,9 +554,9 @@ public class IoTDBUDTAIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value(d0s0))
+                  + resultSet.getString(TestConstant.maxValue(d0s0))
                   + ","
-                  + resultSet.getString(min_value(d0s2));
+                  + resultSet.getString(TestConstant.minValue(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -613,8 +575,7 @@ public class IoTDBUDTAIT {
       {0.0, 626750.0, 1250.9980039920158}
     };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
@@ -673,9 +634,138 @@ public class IoTDBUDTAIT {
   }
 
   @Test
+  public void polyNominalWithMaxMinTimeGroupByTest() {
+    Object[][] retArray =
+        new Object[][] {
+          {0L, 500L, 9.0},
+          {1000L, 1000L, 9.0},
+          {2000L, 2000L, 9.0},
+          {3000L, 3000L, 9.0},
+          {4000L, 4000L, 9.0},
+          {5000L, 5000L, 9.0},
+          {6000L, 6000L, 9.0},
+          {7000L, 7500L, 9.0},
+          {8000L, 8000L, 9.0},
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT min_time(s2),((max_time(s0)+min_time(s2))*2+1)%10 "
+                  + "FROM root.vehicle.d0 GROUP BY ([0, 9000), 1s)");
+      Assert.assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          Assert.assertEquals((long) retArray[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          Assert.assertEquals((long) retArray[cnt][1], resultSet.getLong(2));
+          Assert.assertEquals((double) retArray[cnt][2], resultSet.getDouble(3), DETLA);
+          cnt++;
+        }
+        Assert.assertFalse(resultSet.next());
+      }
+      Assert.assertEquals(retArray.length, cnt);
+      hasResultSet =
+          statement.execute(
+              "SELECT min_time(s2),((max_time(s0)+min_time(s2))*2+1)%10 "
+                  + "FROM root.vehicle.d0 GROUP BY ([0, 9000), 1s) ORDER BY TIME DESC");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = retArray.length;
+        while (resultSet.next()) {
+          cnt--;
+          Assert.assertEquals((long) retArray[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          Assert.assertEquals((long) retArray[cnt][1], resultSet.getLong(2));
+          Assert.assertEquals((double) retArray[cnt][2], resultSet.getDouble(3), DETLA);
+        }
+      }
+      Assert.assertEquals(0, cnt);
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void polynominalWithAvgAndSumGroupByTest() {
+    Object[][] retArray = {
+      {0L, null, null, null, null},
+      {1000L, null, null, null, null},
+      {2000L, null, null, null, null},
+      {3000L, null, null, null, null},
+      {4000L, null, null, null, null},
+      {5000L, null, null, null, null},
+      {6000L, -0.32466497009092804D, 6499500.0D, 1.64995E7D, 5499.5D},
+      {7000L, -0.6648173658103295D, 3874750.0D, 1.387475E7D, 6749.5D},
+      {8000L, 0.8033729538397475D, 4124750.0D, 1.412475E7D, 7249.5D},
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "SELECT sin(sum(s0)), sum(s0), sum(s0)+10000000, avg(s2)-1000 "
+                  + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 GROUP BY([0, 9000), 1s)");
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals((long) retArray[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          if (retArray[cnt][1] == null) {
+            Assert.assertNull(resultSet.getObject(2));
+            Assert.assertNull(resultSet.getObject(3));
+            Assert.assertNull(resultSet.getObject(4));
+            Assert.assertNull(resultSet.getObject(5));
+          } else {
+            Assert.assertEquals((double) retArray[cnt][1], resultSet.getDouble(2), DETLA);
+            Assert.assertEquals((double) retArray[cnt][2], resultSet.getDouble(3), DETLA);
+            Assert.assertEquals((double) retArray[cnt][3], resultSet.getDouble(4), DETLA);
+            Assert.assertEquals((double) retArray[cnt][4], resultSet.getDouble(5), DETLA);
+          }
+          cnt++;
+        }
+      }
+      Assert.assertEquals(retArray.length, cnt);
+      // keep the correctness of `order by time desc`
+      hasResultSet =
+          statement.execute(
+              "SELECT sin(sum(s0)), sum(s0), sum(s0)+10000000,avg(s2)-1000"
+                  + "FROM root.vehicle.d0 WHERE time >= 6000 AND time <= 9000 GROUP BY([0, 9000), 1s) ORDER BY TIME DESC");
+
+      Assert.assertTrue(hasResultSet);
+      cnt = retArray.length;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          cnt--;
+          Assert.assertEquals((long) retArray[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          if (retArray[cnt][1] == null) {
+            Assert.assertNull(resultSet.getObject(2));
+            Assert.assertNull(resultSet.getObject(3));
+            Assert.assertNull(resultSet.getObject(4));
+            Assert.assertNull(resultSet.getObject(5));
+          } else {
+            Assert.assertEquals((double) retArray[cnt][1], resultSet.getDouble(2), DETLA);
+            Assert.assertEquals((double) retArray[cnt][2], resultSet.getDouble(3), DETLA);
+            Assert.assertEquals((double) retArray[cnt][3], resultSet.getDouble(4), DETLA);
+            Assert.assertEquals((double) retArray[cnt][4], resultSet.getDouble(5), DETLA);
+          }
+        }
+      }
+      Assert.assertEquals(0, cnt);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
   public void avgSumErrorTest() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       try {
         statement.execute(
@@ -737,9 +827,7 @@ public class IoTDBUDTAIT {
   }
 
   private static void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
