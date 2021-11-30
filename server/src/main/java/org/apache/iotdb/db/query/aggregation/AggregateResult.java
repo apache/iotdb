@@ -70,7 +70,8 @@ public abstract class AggregateResult {
       throws QueryProcessException;
 
   /**
-   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page.
+   * This method is used in global aggregation query.
    *
    * @param batchIterator the data in Page
    */
@@ -78,7 +79,8 @@ public abstract class AggregateResult {
       throws IOException, QueryProcessException;
 
   /**
-   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page.
+   * This method is used in GROUP BY aggregation query.
    *
    * @param batchIterator the data in Page
    * @param minBound calculate points whose time >= bound
@@ -311,6 +313,10 @@ public abstract class AggregateResult {
     return aggregationType;
   }
 
+  /**
+   * Whether the AggregationResult accepts data in time ascending order, if it returns false, the
+   * data should be passed in time descending order.
+   */
   public boolean isAscending() {
     return true;
   }

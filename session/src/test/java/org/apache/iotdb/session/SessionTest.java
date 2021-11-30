@@ -22,6 +22,10 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
+import org.apache.iotdb.session.template.InternalNode;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateNode;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -36,11 +40,11 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -206,46 +210,184 @@ public class SessionTest {
   }
 
   @Test
-  public void createSchemaTemplate() throws IoTDBConnectionException, StatementExecutionException {
+  public void createSchemaTemplateWithTreeStructure()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s11"));
-    List<String> measurements = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      measurements.add("s" + i);
-    }
-    measurementList.add(measurements);
+    Template template = new Template("treeTemplate", true);
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
+        new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    TemplateNode mNodeY =
+        new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    template.addToTemplate(mNodeX);
+    iNodeGPS.addChild(mNodeX);
+    iNodeGPS.addChild(mNodeY);
+    iNodeV.addChild(mNodeX);
+    iNodeV.addChild(iNodeGPS);
+    iNodeV.addChild(mNodeY);
+    template.addToTemplate(iNodeGPS);
+    template.addToTemplate(iNodeV);
+    template.addToTemplate(mNodeY);
+
+    session.createSchemaTemplate(template);
+    assertEquals(
+        "[vehicle.GPS.y, x, vehicle.GPS.x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+    assertEquals(8, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.deleteNodeInTemplate("treeTemplate", "vehicle.GPS");
+    assertEquals(6, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.addAlignedMeasurementInTemplate(
+        "treeTemplate",
+        "vehicle.speed",
+        TSDataType.FLOAT,
+        TSEncoding.GORILLA,
+        CompressionType.SNAPPY);
+    assertEquals(
+        "[vehicle.speed, x, y, GPS.x, vehicle.x, GPS.y, vehicle.y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+
+    session.deleteNodeInTemplate("treeTemplate", "vehicle");
+    assertEquals(4, session.countMeasurementsInTemplate("treeTemplate"));
+
+    session.addUnalignedMeasurementInTemplate(
+        "treeTemplate",
+        "vehicle.speed",
+        TSDataType.FLOAT,
+        TSEncoding.GORILLA,
+        CompressionType.SNAPPY);
+    assertEquals(
+        "[vehicle.speed, x, y, GPS.x, GPS.y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+  }
+
+  @Test
+  public void treeStructuredSchemaTemplateTest()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    Template template = new Template("treeTemplate", true);
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
+        new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+
+    iNodeGPS.addChild(mNodeX);
+    iNodeV.addChild(mNodeX);
+    template.addToTemplate(iNodeGPS);
+    template.addToTemplate(iNodeV);
+    template.addToTemplate(mNodeX);
+
+    session.createSchemaTemplate(template);
+
+    List<String> measurementPaths = new ArrayList<>();
+    measurementPaths.add("GPS.X");
+    measurementPaths.add("GPS.Y");
+    measurementPaths.add("turbine.temperature");
+
     List<TSDataType> dataTypes = new ArrayList<>();
-    for (int i = 0; i < 10; i++) {
-      dataTypes.add(TSDataType.INT64);
-    }
-    dataTypeList.add(dataTypes);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.FLOAT);
+    dataTypes.add(TSDataType.FLOAT);
 
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
     List<TSEncoding> encodings = new ArrayList<>();
+    encodings.add(TSEncoding.GORILLA);
+    encodings.add(TSEncoding.GORILLA);
+    encodings.add(TSEncoding.GORILLA);
+
+    List<CompressionType> compressionTypeList = new ArrayList<>();
+    compressionTypeList.add(CompressionType.SNAPPY);
+    compressionTypeList.add(CompressionType.SNAPPY);
+    compressionTypeList.add(CompressionType.SNAPPY);
+
+    try {
+      session.addAlignedMeasurementsInTemplate(
+          "treeTemplate", measurementPaths, dataTypes, encodings, compressionTypeList);
+    } catch (Exception e) {
+      assertEquals(
+          "315: GPS is not a legal path, because path already exists but not aligned",
+          e.getMessage());
+    }
+
+    session.addUnalignedMeasurementsInTemplate(
+        "treeTemplate", measurementPaths, dataTypes, encodings, compressionTypeList);
+
+    try {
+      session.addUnalignedMeasurementInTemplate(
+          "treeTemplate", "GPS.X", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+    } catch (Exception e) {
+      assertEquals("315: Path duplicated: GPS.X is not a legal path", e.getMessage());
+    }
+
+    session.deleteNodeInTemplate("treeTemplate", "GPS.X");
+    session.addUnalignedMeasurementInTemplate(
+        "treeTemplate", "GPS.X", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+
+    assertEquals(6, session.countMeasurementsInTemplate("treeTemplate"));
+    assertEquals(false, session.isMeasurementInTemplate("treeTemplate", "turbine"));
+    assertEquals(true, session.isPathExistInTemplate("treeTemplate", "turbine"));
+    assertEquals(
+        "[turbine.temperature, x, GPS.x, vehicle.x, GPS.X, GPS.Y]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+    assertEquals(
+        "[GPS.Y, GPS.X, GPS.x]",
+        session.showMeasurementsInTemplate("treeTemplate", "GPS").toString());
+
+    session.deleteNodeInTemplate("treeTemplate", "GPS");
+    session.addAlignedMeasurementInTemplate(
+        "treeTemplate", "GPSX", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+    assertEquals(
+        "[turbine.temperature, x, vehicle.x, GPSX]",
+        session.showMeasurementsInTemplate("treeTemplate").toString());
+  }
+
+  @Test
+  public void createSchemaTemplate()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    InternalNode iNodeVector = new InternalNode("vector", true);
+
     for (int i = 0; i < 10; i++) {
-      encodings.add(TSEncoding.RLE);
-    }
-    encodingList.add(encodings);
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 11; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+      MeasurementNode mNodei =
+          new MeasurementNode("s" + i, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      iNodeVector.addChild(mNodei);
     }
 
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s11");
-    schemaNames.add("test_vector");
+    MeasurementNode mNode11 =
+        new MeasurementNode("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
 
-    session.createSchemaTemplate(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    Template template = new Template("template1");
+
+    template.addToTemplate(mNode11);
+    template.addToTemplate(iNodeVector);
+
+    session.createSchemaTemplate(template);
     session.setSchemaTemplate("template1", "root.sg.1");
+  }
+
+  @Test
+  public void testCreateEmptyTemplateAndAppend()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<TSDataType>> dataTypes = new ArrayList<>();
+    List<List<TSEncoding>> encodings = new ArrayList<>();
+    List<List<CompressionType>> compressors = new ArrayList<>();
+    Template template = new Template("emptyTemplate");
+    session.createSchemaTemplate(template);
+
+    session.addAlignedMeasurementInTemplate(
+        "emptyTemplate", "speed", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
   }
 
   @Test
@@ -291,36 +433,19 @@ public class SessionTest {
 
   @Test
   public void testUnsetSchemaTemplate()
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
 
-    List<List<String>> measurementList = new ArrayList<>();
-    measurementList.add(Collections.singletonList("s1"));
-    measurementList.add(Collections.singletonList("s2"));
-    measurementList.add(Collections.singletonList("s3"));
+    Template template = new Template("template1", false);
 
-    List<List<TSDataType>> dataTypeList = new ArrayList<>();
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
-
-    List<List<TSEncoding>> encodingList = new ArrayList<>();
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-    encodingList.add(Collections.singletonList(TSEncoding.RLE));
-
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    for (int i = 0; i < 3; i++) {
-      compressionTypes.add(CompressionType.SNAPPY);
+    for (int i = 1; i <= 3; i++) {
+      MeasurementNode mNodei =
+          new MeasurementNode("s" + i, TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+      template.addToTemplate(mNodei);
     }
-    List<String> schemaNames = new ArrayList<>();
-    schemaNames.add("s1");
-    schemaNames.add("s2");
-    schemaNames.add("s3");
 
-    session.createSchemaTemplate(
-        "template1", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    session.createSchemaTemplate(template);
 
     // path does not exist test
     try {

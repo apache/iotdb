@@ -20,29 +20,31 @@ package org.apache.iotdb.db.metadata.logfile;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.UnsetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
 import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetUsingSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
 import org.apache.iotdb.db.writelog.io.LogWriter;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -169,11 +171,19 @@ public class MLogWriter implements AutoCloseable {
     putLog(plan);
   }
 
-  public void setSchemaTemplate(SetSchemaTemplatePlan plan) throws IOException {
+  public void appendSchemaTemplate(AppendTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 
-  public void unsetSchemaTemplate(UnsetSchemaTemplatePlan plan) throws IOException {
+  public void pruneSchemaTemplate(PruneTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void setSchemaTemplate(SetTemplatePlan plan) throws IOException {
+    putLog(plan);
+  }
+
+  public void unsetSchemaTemplate(UnsetTemplatePlan plan) throws IOException {
     putLog(plan);
   }
 
@@ -212,7 +222,7 @@ public class MLogWriter implements AutoCloseable {
   }
 
   public void setUsingSchemaTemplate(PartialPath path) throws IOException {
-    SetUsingSchemaTemplatePlan plan = new SetUsingSchemaTemplatePlan(path);
+    ActivateTemplatePlan plan = new ActivateTemplatePlan(path);
     putLog(plan);
   }
 
@@ -246,7 +256,7 @@ public class MLogWriter implements AutoCloseable {
       case "2":
         return new MeasurementMNodePlan(
             words[1],
-            words[2].equals("") ? null : words[2],
+            "".equals(words[2]) ? null : words[2],
             Long.parseLong(words[words.length - 2]),
             Integer.parseInt(words[words.length - 1]),
             new UnaryMeasurementSchema(

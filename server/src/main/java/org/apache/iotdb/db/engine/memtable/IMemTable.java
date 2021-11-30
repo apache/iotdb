@@ -22,7 +22,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
@@ -42,15 +42,20 @@ import java.util.Map;
  */
 public interface IMemTable {
 
-  Map<String, Map<String, IWritableMemChunk>> getMemTableMap();
+  Map<String, IWritableMemChunkGroup> getMemTableMap();
 
-  void write(String deviceId, IMeasurementSchema schema, long insertTime, Object objectValue);
+  void write(
+      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
 
+  void writeAlignedRow(
+      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
   /**
    * write data in the range [start, end). Null value in each column values will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
    */
   void write(InsertTabletPlan insertTabletPlan, int start, int end);
+
+  void writeAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end);
 
   /** @return the number of points */
   long size();
@@ -85,6 +90,8 @@ public interface IMemTable {
    */
   void insert(InsertRowPlan insertRowPlan);
 
+  void insertAlignedRow(InsertRowPlan insertRowPlan);
+
   /**
    * insert tablet into this memtable. The rows to be inserted are in the range [start, end). Null
    * value in each column values will be replaced by the subsequent non-null value, e.g., {1, null,
@@ -97,12 +104,10 @@ public interface IMemTable {
   void insertTablet(InsertTabletPlan insertTabletPlan, int start, int end)
       throws WriteProcessException;
 
-  ReadOnlyMemChunk query(
-      String deviceId,
-      String measurement,
-      IMeasurementSchema schema,
-      long ttlLowerBound,
-      List<TimeRange> deletionList)
+  void insertAlignedTablet(InsertTabletPlan insertTabletPlan, int start, int end)
+      throws WriteProcessException;
+
+  ReadOnlyMemChunk query(PartialPath fullPath, long ttlLowerBound, List<TimeRange> deletionList)
       throws IOException, QueryProcessException, MetadataException;
 
   /** putBack all the memory resources. */
@@ -141,7 +146,7 @@ public interface IMemTable {
   boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
 
   /** only used when mem control enabled */
-  int getCurrentChunkPointNum(String deviceId, String measurement);
+  long getCurrentChunkPointNum(String deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

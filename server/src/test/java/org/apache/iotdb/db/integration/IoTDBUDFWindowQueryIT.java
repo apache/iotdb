@@ -21,7 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -557,6 +558,101 @@ public class IoTDBUDFWindowQueryIT {
       if (windowSize > 0) {
         fail(throwable.getMessage());
       }
+    }
+  }
+
+  @Test
+  public void testSizeWindowUDFWithConstants() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      String query =
+          "SELECT accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        int time = 0;
+        int value = 500500;
+        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(time, rs.getLong(1));
+          Assert.assertEquals(value, rs.getLong(2));
+          time += 1000;
+          value += 1000000;
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query =
+          "SELECT 1 + accumulator(s1 + 1, 'access'='size', 'windowSize'='1000') FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        int time = 0;
+        double value = 500501D;
+        for (int i = 0; i < ITERATION_TIMES / 1000; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(time, rs.getLong(1));
+          Assert.assertEquals(value, rs.getDouble(2), 0.001);
+          time += 1000;
+          value += 1000000D;
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testTimeWindowUDFWithConstants() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT accumulator("
+              + "s1 + 1, "
+              + "'access'='time', "
+              + "'timeInterval'='1000', "
+              + "'slidingStep'='1000', "
+              + "'displayWindowBegin'='0', "
+              + "'displayWindowEnd'='10000') FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        int time = 0;
+        int value = 500500;
+        for (int i = 0; i < 10; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(time, rs.getLong(1));
+          Assert.assertEquals(value, rs.getLong(2));
+          time += 1000;
+          value += 1000000;
+        }
+        Assert.assertFalse(rs.next());
+      }
+
+      query =
+          "SELECT 1 + accumulator("
+              + "s1 + 1, "
+              + "'access'='time', "
+              + "'timeInterval'='1000', "
+              + "'slidingStep'='1000', "
+              + "'displayWindowBegin'='0', "
+              + "'displayWindowEnd'='10000') FROM root.vehicle.d1";
+      try (ResultSet rs = statement.executeQuery(query)) {
+        int time = 0;
+        double value = 500501;
+        for (int i = 0; i < 10; i++) {
+          Assert.assertTrue(rs.next());
+          Assert.assertEquals(time, rs.getLong(1));
+          Assert.assertEquals(value, rs.getDouble(2), 0.001D);
+          time += 1000;
+          value += 1000000D;
+        }
+        Assert.assertFalse(rs.next());
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 }

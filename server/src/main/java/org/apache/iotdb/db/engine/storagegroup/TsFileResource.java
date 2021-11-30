@@ -36,11 +36,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.VectorTimeSeriesMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -54,7 +49,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -112,11 +106,9 @@ public class TsFileResource {
 
   private TsFileLock tsFileLock = new TsFileLock();
 
-  private Random random = new Random();
+  private final Random random = new Random();
 
   private boolean isSeq;
-
-  private Map<String, Integer> holderMap = new HashMap<>();
 
   /**
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
@@ -173,7 +165,6 @@ public class TsFileResource {
     this.isMerging = other.isMerging;
     this.chunkMetadataList = other.chunkMetadataList;
     this.readOnlyMemChunk = other.readOnlyMemChunk;
-    generateTimeSeriesMetadata();
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
@@ -211,7 +202,6 @@ public class TsFileResource {
     this.readOnlyMemChunk = readOnlyMemChunk;
     this.originTsFileResource = originTsFileResource;
     this.version = originTsFileResource.version;
-    generateTimeSeriesMetadata();
   }
 
   @TestOnly
@@ -220,113 +210,6 @@ public class TsFileResource {
     this.file = file;
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     this.timeIndexType = 1;
-  }
-
-  /**
-   * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
-   * have chunkMetadata, but query will use these, so we need to generate it for them.
-   */
-  @SuppressWarnings("squid:S3776") // high Cognitive Complexity
-  private void generateTimeSeriesMetadata() throws IOException {
-    TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
-    timeTimeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
-    timeTimeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
-
-    if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-      timeTimeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
-      TSDataType dataType = chunkMetadataList.get(0).getDataType();
-      timeTimeSeriesMetadata.setTSDataType(dataType);
-    } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeTimeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
-      TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
-      timeTimeSeriesMetadata.setTSDataType(dataType);
-    }
-    if (timeTimeSeriesMetadata.getTSDataType() != null) {
-      if (timeTimeSeriesMetadata.getTSDataType() == TSDataType.VECTOR) {
-        Statistics<? extends Serializable> timeStatistics =
-            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
-
-        List<TimeseriesMetadata> valueTimeSeriesMetadataList = new ArrayList<>();
-
-        if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadataList.get(0);
-          for (IChunkMetadata valueChunkMetadata :
-              vectorChunkMetadata.getValueChunkMetadataList()) {
-            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
-            valueMetadata.setOffsetOfChunkMetaDataList(-1);
-            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
-            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
-            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
-            valueTimeSeriesMetadataList.add(valueMetadata);
-            valueMetadata.setStatistics(
-                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
-          }
-        } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-          VectorChunkMetadata vectorChunkMetadata =
-              (VectorChunkMetadata) readOnlyMemChunk.get(0).getChunkMetaData();
-          for (IChunkMetadata valueChunkMetadata :
-              vectorChunkMetadata.getValueChunkMetadataList()) {
-            TimeseriesMetadata valueMetadata = new TimeseriesMetadata();
-            valueMetadata.setOffsetOfChunkMetaDataList(-1);
-            valueMetadata.setDataSizeOfChunkMetaDataList(-1);
-            valueMetadata.setMeasurementId(valueChunkMetadata.getMeasurementUid());
-            valueMetadata.setTSDataType(valueChunkMetadata.getDataType());
-            valueTimeSeriesMetadataList.add(valueMetadata);
-            valueMetadata.setStatistics(
-                Statistics.getStatsByType(valueChunkMetadata.getDataType()));
-          }
-        }
-
-        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-          VectorChunkMetadata vectorChunkMetadata = (VectorChunkMetadata) chunkMetadata;
-          timeStatistics.mergeStatistics(
-              vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
-          for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-            valueTimeSeriesMetadataList
-                .get(i)
-                .getStatistics()
-                .mergeStatistics(
-                    vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
-          }
-        }
-
-        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-          if (!memChunk.isEmpty()) {
-            VectorChunkMetadata vectorChunkMetadata =
-                (VectorChunkMetadata) memChunk.getChunkMetaData();
-            timeStatistics.mergeStatistics(
-                vectorChunkMetadata.getTimeChunkMetadata().getStatistics());
-            for (int i = 0; i < valueTimeSeriesMetadataList.size(); i++) {
-              valueTimeSeriesMetadataList
-                  .get(i)
-                  .getStatistics()
-                  .mergeStatistics(
-                      vectorChunkMetadata.getValueChunkMetadataList().get(i).getStatistics());
-            }
-          }
-        }
-        timeTimeSeriesMetadata.setStatistics(timeStatistics);
-        timeSeriesMetadata =
-            new VectorTimeSeriesMetadata(timeTimeSeriesMetadata, valueTimeSeriesMetadataList);
-      } else {
-        Statistics<? extends Serializable> seriesStatistics =
-            Statistics.getStatsByType(timeTimeSeriesMetadata.getTSDataType());
-        // flush chunkMetadataList one by one
-        for (IChunkMetadata chunkMetadata : chunkMetadataList) {
-          seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-        }
-
-        for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-          if (!memChunk.isEmpty()) {
-            seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
-          }
-        }
-        timeTimeSeriesMetadata.setStatistics(seriesStatistics);
-        this.timeSeriesMetadata = timeTimeSeriesMetadata;
-      }
-    } else {
-      this.timeSeriesMetadata = null;
-    }
   }
 
   public synchronized void serialize() throws IOException {
@@ -702,6 +585,10 @@ public class TsFileResource {
     return timeSeriesMetadata;
   }
 
+  public void setTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
+    this.timeSeriesMetadata = timeSeriesMetadata;
+  }
+
   public void setUpgradedResources(List<TsFileResource> upgradedResources) {
     this.upgradedResources = upgradedResources;
   }
@@ -921,7 +808,9 @@ public class TsFileResource {
   public long degradeTimeIndex() {
     TimeIndexLevel timeIndexLevel = TimeIndexLevel.valueOf(timeIndexType);
     // if current timeIndex is FileTimeIndex, no need to degrade
-    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) return 0;
+    if (timeIndexLevel == TimeIndexLevel.FILE_TIME_INDEX) {
+      return 0;
+    }
     // get the minimum startTime
     long startTime = timeIndex.getMinStartTime();
     // get the maximum endTime

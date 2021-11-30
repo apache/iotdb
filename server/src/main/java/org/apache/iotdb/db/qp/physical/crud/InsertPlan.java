@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,8 +32,7 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  protected PartialPath prefixPath;
-  protected PartialPath originalPrefixPath;
+  protected PartialPath deviceId;
   protected boolean isAligned;
   protected String[] measurements;
   // get from client
@@ -51,20 +50,12 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getPrefixPath() {
-    return prefixPath;
+  public PartialPath getDeviceId() {
+    return deviceId;
   }
 
-  public void setPrefixPath(PartialPath prefixPath) {
-    this.prefixPath = prefixPath;
-  }
-
-  /*
-  the original prefixPath needs to be recorded and recovered by recoverFromFailure because cluster may try to execute this plan twice
-   */
-  public void setPrefixPathForAlignTimeSeries(PartialPath prefixPath) {
-    this.originalPrefixPath = this.prefixPath;
-    this.prefixPath = prefixPath;
+  public void setDeviceId(PartialPath deviceId) {
+    this.deviceId = deviceId;
   }
 
   public String[] getMeasurements() {
@@ -113,7 +104,13 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public abstract long getMinTime();
 
-  /** @param index failed measurement index */
+  /**
+   * This method is overrided in InsertRowPlan and InsertTabletPlan. After marking failed
+   * measurements, the failed values or columns would be null as well. We'd better use
+   * "measurements[index] == null" to determine if the measurement failed.
+   *
+   * @param index failed measurement index
+   */
   public void markFailedMeasurementInsertion(int index, Exception e) {
     if (measurements[index] == null) {
       return;
@@ -129,33 +126,12 @@ public abstract class InsertPlan extends PhysicalPlan {
     measurements[index] = null;
   }
 
-  public void markFailedMeasurementAlignedInsertion(Exception e) {
-    if (failedMeasurements == null) {
-      failedMeasurements = new ArrayList<>();
-      failedExceptions = new ArrayList<>();
-      failedIndices = new ArrayList<>();
-    }
-
-    for (int i = 0; i < measurements.length; i++) {
-      if (measurements[i] == null) {
-        continue;
-      }
-      failedMeasurements.add(measurements[i]);
-      failedExceptions.add(e);
-      failedIndices.add(i);
-      measurements[i] = null;
-    }
-  }
-
   /**
    * Reconstruct this plan with the failed measurements.
    *
    * @return the plan itself, with measurements replaced with the previously failed ones.
    */
   public InsertPlan getPlanFromFailed() {
-    if (isAligned && originalPrefixPath != null) {
-      prefixPath = originalPrefixPath;
-    }
     if (failedMeasurements == null) {
       return null;
     }
@@ -183,9 +159,6 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   /** Reset measurements from failed measurements (if any), as if no failure had ever happened. */
   public void recoverFromFailure() {
-    if (isAligned && originalPrefixPath != null) {
-      prefixPath = originalPrefixPath;
-    }
     if (failedMeasurements == null) {
       return;
     }
@@ -201,7 +174,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (prefixPath == null) {
+    if (deviceId == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {

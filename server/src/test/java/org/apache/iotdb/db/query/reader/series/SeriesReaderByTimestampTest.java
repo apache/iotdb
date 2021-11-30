@@ -22,10 +22,9 @@ package org.apache.iotdb.db.query.reader.series;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
@@ -63,7 +62,7 @@ public class SeriesReaderByTimestampTest {
   }
 
   @Test
-  public void test() throws IOException, IllegalPathException {
+  public void test() throws IOException, MetadataException {
     QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
@@ -71,7 +70,7 @@ public class SeriesReaderByTimestampTest {
 
     SeriesReaderByTimestamp seriesReader =
         new SeriesReaderByTimestamp(
-            new PartialPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
+            SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0"),
             allSensors,
             TSDataType.INT32,
             EnvironmentUtils.TEST_QUERY_CONTEXT,

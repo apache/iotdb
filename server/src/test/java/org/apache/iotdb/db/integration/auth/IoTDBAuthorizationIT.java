@@ -178,18 +178,18 @@ public class IoTDBAuthorizationIT {
     adminStmt.execute(
         "create timeseries root.ln.wf03.wt03.software with datatype=DOUBLE,encoding=PLAIN");
     adminStmt.execute(
-        "create trigger started-trigger before insert on root.ln.wf01.wt01.temperature as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+        "create trigger `started-trigger` before insert on root.ln.wf01.wt01.temperature as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     adminStmt.execute(
-        "create trigger stopped-trigger after insert on root.ln.wf02.wt02.hardware as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-    adminStmt.execute("stop trigger stopped-trigger");
+        "create trigger `stopped-trigger` after insert on root.ln.wf02.wt02.hardware as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+    adminStmt.execute("stop trigger `stopped-trigger`");
   }
 
   private static void executeTriggerRelatedPrivilegesTests(Statement userStmt) throws SQLException {
     String[] statements = {
       "create trigger magic before insert on root.ln.wf03.wt03.software as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'",
-      "stop trigger started-trigger",
-      "drop trigger started-trigger",
-      "start trigger stopped-trigger",
+      "stop trigger `started-trigger`",
+      "drop trigger `started-trigger`",
+      "start trigger `stopped-trigger`",
     };
     for (String statement : statements) {
       try {
@@ -1146,6 +1146,33 @@ public class IoTDBAuthorizationIT {
       }
       assertEquals(expected.length, result.size());
       assertTrue(expectedList.containsAll(result));
+    }
+  }
+
+  /** ISSUE-4308 */
+  @Test
+  public void testSelectUDTF() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER a_application 'a_application'");
+      adminStatement.execute("CREATE ROLE application_role");
+      adminStatement.execute("GRANT ROLE application_role PRIVILEGES READ_TIMESERIES ON root.test");
+      adminStatement.execute("GRANT application_role TO a_application");
+
+      adminStatement.execute("INSERT INTO root.test(time, s1, s2, s3) VALUES(1, 2, 3, 4)");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "a_application", "a_application");
+        Statement userStatement = userConnection.createStatement();
+        ResultSet resultSet =
+            userStatement.executeQuery(
+                "SELECT s1, s1, s1 - s3, s2 * sin(s1), s1 + 1 / 2 * sin(s1), sin(s1), sin(s1) FROM root.test")) {
+      assertTrue(resultSet.next());
     }
   }
 }

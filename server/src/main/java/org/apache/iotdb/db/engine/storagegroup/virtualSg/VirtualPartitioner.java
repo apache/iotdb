@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 public interface VirtualPartitioner {
 

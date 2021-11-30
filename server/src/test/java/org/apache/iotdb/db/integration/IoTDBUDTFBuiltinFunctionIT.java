@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -360,6 +360,40 @@ public class IoTDBUDTFBuiltinFunctionIT {
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("java.lang.NumberFormatException"));
       }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConversionFunction() {
+    String[] expected = {
+      "0, 0, 0.0, 1, 0.0, ",
+      "2, 1, 1.0, 0, 1.0, ",
+      "4, 2, 2.0, 0, 2.0, ",
+      "6, 3, 3.0, 1, null, ",
+      "8, 4, 4.0, 1, null, ",
+    };
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet =
+          statement.executeQuery(
+              "select cast(s1, 'type'='TEXT'), cast(s3, 'type'='FLOAT'), cast(s5, 'type'='INT32'), cast(s7, 'type'='DOUBLE') from root.sg.d1");
+
+      int columnCount = resultSet.getMetaData().getColumnCount();
+      assertEquals(5, columnCount);
+
+      for (int i = 0; i < INSERTION_SQLS.length; ++i) {
+        resultSet.next();
+        StringBuilder actual = new StringBuilder();
+        for (int j = 0; j < 1 + 4; ++j) {
+          actual.append(resultSet.getString(1 + j)).append(", ");
+        }
+        assertEquals(expected[i], actual.toString());
+      }
+      resultSet.close();
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

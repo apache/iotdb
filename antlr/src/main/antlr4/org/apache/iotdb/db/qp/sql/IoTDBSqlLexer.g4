@@ -23,9 +23,11 @@ lexer grammar IoTDBSqlLexer;
  * 1. Whitespace
  */
 
+// Instead of discarding whitespace completely, send them to a channel invisable to the parser, so
+// that the lexer could still produce WS tokens for the CLI's highlighter.
 WS
     :
-    [ \t\r\n]+ -> skip
+    [ \u000B\t\r\n]+ -> channel(HIDDEN)
     ;
 
 
@@ -49,6 +51,10 @@ ALIAS
 
 ALIGN
     : A L I G N
+    ;
+
+ALIGNED
+    : A L I G N E D
     ;
 
 ALL
@@ -468,6 +474,10 @@ TASK
     : T A S K
     ;
 
+TEMPLATE
+    : T E M P L A T E
+    ;
+
 TIME
     : T I M E
     ;
@@ -840,25 +850,9 @@ RS_BRACKET : ']';
 // String Literal
 
 STRING_LITERAL
-    : SQUOTE_STRING
+    : '\'' ((~'\'') | '\'\'')* '\''
     ;
 
-QUOTED_STRING_LITERAL
-    : DQUOTE_STRING
-    | BQUOTE_STRING
-    ;
-
-fragment DQUOTE_STRING
-    : '"' ('\\' . | ~'"' )*? '"'
-    ;
-
-fragment SQUOTE_STRING
-    : '\'' ('\\' . | ~'\'' )*? '\''
-    ;
-
-fragment BQUOTE_STRING
-    : '`' ('\\' . | ~'`' )*? '`'
-    ;
 
 // Date & Time Literal
 
@@ -870,7 +864,6 @@ DATETIME_LITERAL
     : INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ('-'|'/') INTEGER_LITERAL ((T | WS)
       INTEGER_LITERAL ':' INTEGER_LITERAL ':' INTEGER_LITERAL (DOT INTEGER_LITERAL)?
       (('+' | '-') INTEGER_LITERAL ':' INTEGER_LITERAL)?)?
-    | NOW LR_BRACKET RR_BRACKET
     ;
 
 
@@ -914,42 +907,35 @@ NAN_LITERAL
 
 ID
     : FIRST_NAME_CHAR NAME_CHAR*
+    | '"' (~('"' | '.') | '""')+ '"'
+    | '`' (~('`' | '.') | '``')+ '`'
     ;
 
 fragment NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '-'
-    |   ':'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   '{'
-    |   '}'
-    |   CN_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
+    | '0'..'9'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    | CN_CHAR
     ;
 
 fragment FIRST_NAME_CHAR
-    :   'A'..'Z'
-    |   'a'..'z'
-    |   '0'..'9'
-    |   '_'
-    |   '/'
-    |   '@'
-    |   '#'
-    |   '$'
-    |   '%'
-    |   '&'
-    |   '+'
-    |   '{'
-    |   '}'
-    |   CN_CHAR
+    : 'A'..'Z'
+    | 'a'..'z'
+    | '_'
+    | ':'
+    | '@'
+    | '#'
+    | '$'
+    | '{'
+    | '}'
+    | CN_CHAR
     ;
 
 fragment CN_CHAR

@@ -36,10 +36,11 @@ statement
 
 ddlStatement
     : setStorageGroup | createStorageGroup | createTimeseries
+    | createSchemaTemplate | createTimeseriesOfSchemaTemplate
     | createFunction | createTrigger | createContinuousQuery | createSnapshot
     | alterTimeseries | deleteStorageGroup | deleteTimeseries | deletePartition
-    | dropFunction | dropTrigger | dropContinuousQuery
-    | setTTL | unsetTTL | startTrigger | stopTrigger
+    | dropFunction | dropTrigger | dropContinuousQuery | setTTL | unsetTTL
+    | setSchemaTemplate | unsetSchemaTemplate | startTrigger | stopTrigger
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | countStorageGroup | countDevices | countTimeseries | countNodes
@@ -77,20 +78,30 @@ createStorageGroup
 
 // Create Timeseries
 createTimeseries
-    : CREATE TIMESERIES fullPath alias? WITH attributeClauses
+    : CREATE ALIGNED TIMESERIES fullPath alignedMeasurements? #createAlignedTimeseries
+    | CREATE TIMESERIES fullPath attributeClauses  #createNonAlignedTimeseries
     ;
 
-alias
-    : LR_BRACKET ID RR_BRACKET
+alignedMeasurements
+    : LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
     ;
 
-attributeClauses
-    : DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
-    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
-    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
-    (COMMA propertyClause)*
-    tagClause?
-    attributeClause?
+// Create Schema Template
+createSchemaTemplate
+    : CREATE SCHEMA TEMPLATE templateName=ID
+    LR_BRACKET templateMeasurementClause (COMMA templateMeasurementClause)* RR_BRACKET
+    ;
+
+templateMeasurementClause
+    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
+    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
+    ;
+
+// Create Timeseries Of Schema Template
+createTimeseriesOfSchemaTemplate
+    : CREATE TIMESERIES OF SCHEMA TEMPLATE ON prefixPath
     ;
 
 // Create Function
@@ -193,6 +204,16 @@ setTTL
 // Unset TTL
 unsetTTL
     : UNSET TTL TO path=prefixPath
+    ;
+
+// Set Schema Template
+setSchemaTemplate
+    : SET SCHEMA TEMPLATE templateName=ID TO prefixPath
+    ;
+
+// Unset Schema Template
+unsetSchemaTemplate
+    : UNSET SCHEMA TEMPLATE templateName=ID FROM prefixPath
     ;
 
 // Start Trigger
@@ -339,7 +360,7 @@ groupByTimeClause
     ;
 
 groupByFillClause
-    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL  RR_BRACKET
+    : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
      FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
     ;
 
@@ -379,13 +400,19 @@ previousUntilLastClause
     ;
 
 timeInterval
-    : LS_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RR_BRACKET
-    | LR_BRACKET startTime=datetimeLiteral COMMA endTime=datetimeLiteral RS_BRACKET
+    : LS_BRACKET startTime=timeValue COMMA endTime=timeValue RR_BRACKET
+    | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
+    ;
+
+timeValue
+    : datetimeLiteral
+    | dateExpression
+    | INTEGER_LITERAL
     ;
 
 // Insert Statement
 insertStatement
-    : INSERT INTO prefixPath insertColumnsSpec VALUES insertValuesSpec
+    : INSERT INTO prefixPath insertColumnsSpec ALIGNED? VALUES insertValuesSpec
     ;
 
 insertColumnsSpec
@@ -397,14 +424,13 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET DATETIME_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET datetimeLiteral (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
 measurementName
     : nodeNameWithoutWildcard
-    | LR_BRACKET nodeNameWithoutWildcard (COMMA nodeNameWithoutWildcard)+ RR_BRACKET
     ;
 
 measurementValue
@@ -662,16 +688,10 @@ suffixPath
 nodeName
     : wildcard? ID wildcard?
     | wildcard
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 nodeNameWithoutWildcard
     : ID
-    | (ID | OPERATOR_IN)? LS_BRACKET INTEGER_LITERAL? ID? RS_BRACKET? ID?
-    | literalCanBeNodeName
-    | keywordsCanBeNodeName
     ;
 
 wildcard
@@ -679,35 +699,22 @@ wildcard
     | DOUBLE_STAR
     ;
 
-literalCanBeNodeName
-    : QUOTED_STRING_LITERAL
-    | datetimeLiteral
-    | DURATION_LITERAL
-    | (MINUS|PLUS)? INTEGER_LITERAL
-    | (MINUS|PLUS)? EXPONENT_NUM_PART
-    | BOOLEAN_LITERAL
-    ;
-
-keywordsCanBeNodeName
-    : DATATYPE_VALUE
-    | ENCODING_VALUE
-    | COMPRESSOR_VALUE
-    | ASC
-    | DESC
-    | DEVICE
-    ;
-
 
 // Constant & Literal
 
 constant
-    : STRING_LITERAL
-    | dateExpression
-    | (MINUS|PLUS)? INTEGER_LITERAL
+    : dateExpression
     | (MINUS|PLUS)? realLiteral
+    | (MINUS|PLUS)? INTEGER_LITERAL
+    | STRING_LITERAL
     | BOOLEAN_LITERAL
     | NULL_LITERAL
     | NAN_LITERAL
+    ;
+
+datetimeLiteral
+    : DATETIME_LITERAL
+    | NOW LR_BRACKET RR_BRACKET
     ;
 
 realLiteral
@@ -716,19 +723,15 @@ realLiteral
     | EXPONENT_NUM_PART
     ;
 
-datetimeLiteral
-    : DATETIME_LITERAL
-    | dateExpression
-    | INTEGER_LITERAL
-    ;
-
 
 // Expression & Predicate
 
 dateExpression
-    : DATETIME_LITERAL ((PLUS | MINUS) DURATION_LITERAL)*
+    : datetimeLiteral ((PLUS | MINUS) DURATION_LITERAL)*
     ;
 
+// The order of following expressions decides their priorities. Thus, the priority of
+// multiplication, division, and modulus higher than that of addition and substraction.
 expression
     : LR_BRACKET unaryInBracket=expression RR_BRACKET
     | (PLUS | MINUS) unaryAfterSign=expression
@@ -736,7 +739,7 @@ expression
     | leftExpression=expression (PLUS | MINUS) rightExpression=expression
     | functionName LR_BRACKET expression (COMMA expression)* functionAttribute* RR_BRACKET
     | suffixPath
-    | literal=STRING_LITERAL
+    | constant
     ;
 
 functionName
@@ -813,7 +816,27 @@ fromClause
     ;
 
 
-// Tag & Property Clause
+// Attribute Clause
+
+attributeClauses
+    : alias? WITH DATATYPE OPERATOR_EQ dataType=DATATYPE_VALUE
+    (COMMA ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
+    (COMMA (COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    (COMMA propertyClause)*
+    tagClause?
+    attributeClause?
+    // Simplified version (supported since v0.13)
+    | alias? dataType=DATATYPE_VALUE
+    (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
+    ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
+    propertyClause*
+    tagClause?
+    attributeClause?
+    ;
+
+alias
+    : LR_BRACKET ID RR_BRACKET
+    ;
 
 tagClause
     : TAGS LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
@@ -833,7 +856,6 @@ propertyValue
 attributeClause
     : ATTRIBUTES LR_BRACKET propertyClause (COMMA propertyClause)* RR_BRACKET
     ;
-
 
 // Limit & Offset Clause
 

@@ -40,13 +40,13 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSchemaResp;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -218,7 +218,8 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = getAssembledPathFromRequest(request.getPath());
+    MeasurementPath path =
+        getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -296,12 +297,14 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    List<PartialPath> paths = Lists.newArrayList();
-    request.getPath().forEach(path -> paths.add(getAssembledPathFromRequest(path)));
-
+    List<MeasurementPath> paths = Lists.newArrayList();
     List<TSDataType> dataTypes = Lists.newArrayList();
-    request.getDataTypeOrdinal().forEach(dataType -> dataTypes.add(TSDataType.values()[dataType]));
-
+    for (int i = 0; i < request.getPath().size(); i++) {
+      paths.add(
+          getAssembledPathFromRequest(
+              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue()));
+      dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
+    }
     Filter timeFilter = null;
     Filter valueFilter = null;
     if (request.isSetTimeFilterBytes()) {
@@ -538,7 +541,8 @@ public class LocalQueryExecutor {
         request.getQueryId());
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
-    PartialPath path = getAssembledPathFromRequest(request.getPath());
+    MeasurementPath path =
+        getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -636,7 +640,7 @@ public class LocalQueryExecutor {
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     PartialPath path;
     try {
-      path = new PartialPath(request.getPath());
+      path = new MeasurementPath(request.getPath(), dataType);
     } catch (IllegalPathException e) {
       logger.error(
           "{}: aggregation has error path: {}, queryId: {}",
@@ -705,35 +709,31 @@ public class LocalQueryExecutor {
       throw new QueryProcessException(e.getMessage());
     }
 
-    ClusterQueryUtils.checkPathExistence(path);
     List<AggregateResult> results = new ArrayList<>();
+    List<AggregateResult> ascResults = new ArrayList<>();
+    List<AggregateResult> descResults = new ArrayList<>();
     for (String aggregation : aggregations) {
-      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending));
+      AggregateResult ar =
+          AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending);
+      if (ar.isAscending()) {
+        ascResults.add(ar);
+      } else {
+        descResults.add(ar);
+      }
+      results.add(ar);
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getNodeSlots(dataGroupMember.getHeader());
-    if (ascending) {
-      AggregationExecutor.aggregateOneSeries(
-          path,
-          allSensors,
-          context,
-          timeFilter,
-          dataType,
-          results,
-          null,
-          new SlotTsFileFilter(nodeSlots));
-    } else {
-      AggregationExecutor.aggregateOneSeries(
-          path,
-          allSensors,
-          context,
-          timeFilter,
-          dataType,
-          null,
-          results,
-          new SlotTsFileFilter(nodeSlots));
-    }
+    AggregationExecutor.aggregateOneSeries(
+        path,
+        allSensors,
+        context,
+        timeFilter,
+        dataType,
+        ascResults,
+        descResults,
+        new SlotTsFileFilter(nodeSlots));
     return results;
   }
 
@@ -749,8 +749,8 @@ public class LocalQueryExecutor {
     List<String> result = new ArrayList<>();
     for (String seriesPath : timeseriesList) {
       try {
-        List<PartialPath> path =
-            getCMManager().getFlatMeasurementPaths(new PartialPath(seriesPath));
+        List<MeasurementPath> path =
+            getCMManager().getMeasurementPaths(new PartialPath(seriesPath));
         if (path.size() != 1) {
           throw new MetadataException(
               String.format("Timeseries number of the name [%s] is not 1.", seriesPath));
@@ -790,7 +790,6 @@ public class LocalQueryExecutor {
       throw new StorageEngineException(e);
     }
 
-    ClusterQueryUtils.checkPathExistence(path);
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getNodeSlots(dataGroupMember.getHeader());
@@ -820,14 +819,14 @@ public class LocalQueryExecutor {
    */
   public long getGroupByExecutor(GroupByRequest request)
       throws QueryProcessException, StorageEngineException {
+    List<Integer> aggregationTypeOrdinals = request.getAggregationTypeOrdinals();
+    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     PartialPath path;
     try {
-      path = new PartialPath(request.getPath());
+      path = new MeasurementPath(request.getPath(), dataType);
     } catch (IllegalPathException e) {
       throw new QueryProcessException(e);
     }
-    List<Integer> aggregationTypeOrdinals = request.getAggregationTypeOrdinals();
-    TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     if (request.isSetTimeFilterBytes()) {
       timeFilter = FilterFactory.deserialize(request.timeFilterBytes);
@@ -900,6 +899,10 @@ public class LocalQueryExecutor {
     return resultBuffers;
   }
 
+  /**
+   * returns a non-nul ByteBuffer as the thrift response, which not allows null objects. If the
+   * ByteBuffer data equals <0, null>, it means that the NextNotNullValue is null.
+   */
   public ByteBuffer peekNextNotNullValue(long executorId, long startTime, long endTime)
       throws ReaderNotFoundException, IOException {
     GroupByExecutor executor = queryManager.getGroupByExecutor(executorId);
@@ -907,6 +910,9 @@ public class LocalQueryExecutor {
       throw new ReaderNotFoundException(executorId);
     }
     Pair<Long, Object> pair = executor.peekNextNotNullValue(startTime, endTime);
+    if (pair == null) {
+      pair = new Pair<>(0L, null);
+    }
     ByteBuffer resultBuffer;
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
@@ -921,8 +927,8 @@ public class LocalQueryExecutor {
 
   public ByteBuffer previousFill(PreviousFillRequest request)
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
-    PartialPath path = new PartialPath(request.getPath());
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
+    PartialPath path = new MeasurementPath(request.getPath(), dataType);
     long queryId = request.getQueryId();
     long queryTime = request.getQueryTime();
     long beforeRange = request.getBeforeRange();
@@ -1013,7 +1019,7 @@ public class LocalQueryExecutor {
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
       dataTypes.add(TSDataType.values()[dataTypeOrdinal]);
     }
-    ClusterQueryUtils.checkPathExistence(partialPaths);
+
     IExpression expression = null;
     if (request.isSetFilterBytes()) {
       Filter filter = FilterFactory.deserialize(request.filterBytes);

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationInformation;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.TriggerManagementException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -97,14 +97,14 @@ public class IoTDBTriggerManagementIT {
 
       // create trigger
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       assertFalse(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
+          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
               .isStopped());
       assertFalse(
-          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-2"))
+          ((Counter) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_2"))
               .isStopped());
 
       // show
@@ -114,9 +114,9 @@ public class IoTDBTriggerManagementIT {
       assertFalse(resultSet.next());
 
       // stop trigger
-      statement.execute("stop trigger trigger-1");
+      statement.execute("stop trigger trigger_1");
       assertTrue(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
+          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
               .isStopped());
 
       // show
@@ -126,14 +126,14 @@ public class IoTDBTriggerManagementIT {
       assertFalse(resultSet.next());
 
       // start trigger
-      statement.execute("start trigger trigger-1");
+      statement.execute("start trigger trigger_1");
       assertFalse(
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
+          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
               .isStopped());
 
       // drop trigger
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
 
       // show
       resultSet = statement.executeQuery("show triggers");
@@ -150,7 +150,7 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-2 before insert on root.vehicle.d1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_2 before insert on root.vehicle.d1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (SQLException throwable) {
       assertTrue(
           throwable.getMessage().contains("MNode [root.vehicle.d1] is not a MeasurementMNode."));
@@ -164,7 +164,7 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-2 before insert on root.nonexistent.d1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_2 before insert on root.nonexistent.d1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (SQLException throwable) {
       assertTrue(throwable.getMessage().contains("Path [root.nonexistent.d1] does not exist"));
     }
@@ -177,9 +177,9 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-2 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Nonexistent'");
+          "create trigger trigger_2 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Nonexistent'");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Failed to reflect Trigger trigger-2"));
+      assertTrue(throwable.getMessage().contains("Failed to reflect Trigger trigger_2"));
     }
   }
 
@@ -190,9 +190,9 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-1 after insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 after insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (SQLException throwable) {
       assertTrue(
           throwable
@@ -209,9 +209,9 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-1 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
     } catch (SQLException throwable) {
       assertTrue(
           throwable
@@ -228,33 +228,33 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
-
-      statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
+
+      statement.execute(
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+      statement.execute(
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       ResultSet resultSet = statement.executeQuery("show triggers");
       assertTrue(resultSet.next());
       assertTrue(resultSet.next());
       assertFalse(resultSet.next());
 
-      statement.execute("drop trigger trigger-1");
-      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger_1");
+      statement.execute("drop trigger trigger_2");
 
       resultSet = statement.executeQuery("show triggers");
       assertFalse(resultSet.next());
@@ -270,20 +270,20 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+      ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
           .setAccumulator(1234);
 
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger-4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_4 after insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
 
       assertEquals(
           1234,
-          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger-1"))
+          ((Accumulator) TriggerRegistrationService.getInstance().getTriggerInstance("trigger_1"))
               .getAccumulator(),
           0);
     } catch (SQLException | TriggerManagementException throwable) {
@@ -297,9 +297,9 @@ public class IoTDBTriggerManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("drop trigger trigger-1");
+      statement.execute("drop trigger trigger_1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Trigger trigger-1 does not exist"));
+      assertTrue(throwable.getMessage().contains("Trigger trigger_1 does not exist"));
     }
   }
 
@@ -309,9 +309,9 @@ public class IoTDBTriggerManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("start trigger trigger-1");
+      statement.execute("start trigger trigger_1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Trigger trigger-1 does not exist"));
+      assertTrue(throwable.getMessage().contains("Trigger trigger_1 does not exist"));
     }
   }
 
@@ -322,10 +322,10 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      statement.execute("start trigger trigger-1");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+      statement.execute("start trigger trigger_1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Trigger trigger-1 has already been started"));
+      assertTrue(throwable.getMessage().contains("Trigger trigger_1 has already been started"));
     }
   }
 
@@ -335,9 +335,9 @@ public class IoTDBTriggerManagementIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute("stop trigger trigger-1");
+      statement.execute("stop trigger trigger_1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Trigger trigger-1 does not exist"));
+      assertTrue(throwable.getMessage().contains("Trigger trigger_1 does not exist"));
     }
   }
 
@@ -348,11 +348,11 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
-      statement.execute("stop trigger trigger-1");
-      statement.execute("stop trigger trigger-1");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+      statement.execute("stop trigger trigger_1");
+      statement.execute("stop trigger trigger_1");
     } catch (SQLException throwable) {
-      assertTrue(throwable.getMessage().contains("Trigger trigger-1 has already been stopped"));
+      assertTrue(throwable.getMessage().contains("Trigger trigger_1 has already been stopped"));
     }
   }
 
@@ -363,34 +363,34 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       assertFalse(
           TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger-1")
+              .getRegistrationInformation("trigger_1")
               .isStopped());
 
-      statement.execute("stop trigger trigger-1");
+      statement.execute("stop trigger trigger_1");
       assertTrue(
           TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger-1")
+              .getRegistrationInformation("trigger_1")
               .isStopped());
 
-      statement.execute("start trigger trigger-1");
+      statement.execute("start trigger trigger_1");
       assertFalse(
           TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger-1")
+              .getRegistrationInformation("trigger_1")
               .isStopped());
 
-      statement.execute("stop trigger trigger-1");
+      statement.execute("stop trigger trigger_1");
       assertTrue(
           TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger-1")
+              .getRegistrationInformation("trigger_1")
               .isStopped());
 
-      statement.execute("start trigger trigger-1");
+      statement.execute("start trigger trigger_1");
       assertFalse(
           TriggerRegistrationService.getInstance()
-              .getRegistrationInformation("trigger-1")
+              .getRegistrationInformation("trigger_1")
               .isStopped());
     } catch (SQLException | TriggerManagementException e) {
       fail(e.getMessage());
@@ -405,22 +405,22 @@ public class IoTDBTriggerManagementIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'='v1', 'k2'='v2')");
-      statement.execute("stop trigger trigger-1");
-      statement.execute("start trigger trigger-1");
-      statement.execute("drop trigger trigger-1");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k1'='v1', 'k2'='v2')");
+      statement.execute("stop trigger trigger_1");
+      statement.execute("start trigger trigger_1");
+      statement.execute("drop trigger trigger_1");
 
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter' with ('k3'='v3')");
-      statement.execute("stop trigger trigger-1");
-      statement.execute("start trigger trigger-1");
-      statement.execute("drop trigger trigger-1");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Counter' with ('k3'='v3')");
+      statement.execute("stop trigger trigger_1");
+      statement.execute("start trigger trigger_1");
+      statement.execute("drop trigger trigger_1");
 
       statement.execute(
-          "create trigger trigger-1 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+          "create trigger trigger_1 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
       statement.execute(
-          "create trigger trigger-2 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k4'='v4')");
-      statement.execute("stop trigger trigger-1");
+          "create trigger trigger_2 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k4'='v4')");
+      statement.execute("stop trigger trigger_1");
 
     } catch (Exception e) {
       fail(e.getMessage());
@@ -434,8 +434,8 @@ public class IoTDBTriggerManagementIT {
         Statement statement = connection.createStatement()) {
 
       TriggerRegistrationInformation trigger1Info =
-          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-1");
-      assertEquals("trigger-1", trigger1Info.getTriggerName());
+          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_1");
+      assertEquals("trigger_1", trigger1Info.getTriggerName());
       assertEquals("root.vehicle.d1.s3", trigger1Info.getFullPath().getFullPath());
       assertEquals(TriggerEvent.AFTER_INSERT, trigger1Info.getEvent());
       assertEquals(
@@ -444,8 +444,8 @@ public class IoTDBTriggerManagementIT {
       assertTrue(trigger1Info.isStopped());
 
       TriggerRegistrationInformation trigger2Info =
-          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-2");
-      assertEquals("trigger-2", trigger2Info.getTriggerName());
+          TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_2");
+      assertEquals("trigger_2", trigger2Info.getTriggerName());
       assertEquals("root.vehicle.d1.s4", trigger2Info.getFullPath().getFullPath());
       assertEquals(TriggerEvent.BEFORE_INSERT, trigger2Info.getEvent());
       assertEquals(
@@ -453,15 +453,15 @@ public class IoTDBTriggerManagementIT {
       assertEquals("{k4=v4}", trigger2Info.getAttributes().toString());
       assertFalse(trigger2Info.isStopped());
 
-      statement.execute("drop trigger trigger-2");
+      statement.execute("drop trigger trigger_2");
       statement.execute(
-          "create trigger trigger-2 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-      statement.execute("drop trigger trigger-1");
+          "create trigger trigger_2 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
+      statement.execute("drop trigger trigger_1");
       statement.execute(
-          "create trigger trigger-1 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k5'='v5')");
-      statement.execute("stop trigger trigger-2");
+          "create trigger trigger_1 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k5'='v5')");
+      statement.execute("stop trigger trigger_2");
       statement.execute(
-          "create trigger trigger-3 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_3 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (Exception e) {
       fail(e.getMessage());
     }
@@ -469,8 +469,8 @@ public class IoTDBTriggerManagementIT {
     EnvironmentUtils.restartDaemon();
 
     TriggerRegistrationInformation trigger1Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-1");
-    assertEquals("trigger-1", trigger1Info.getTriggerName());
+        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_1");
+    assertEquals("trigger_1", trigger1Info.getTriggerName());
     assertEquals("root.vehicle.d1.s4", trigger1Info.getFullPath().getFullPath());
     assertEquals(TriggerEvent.BEFORE_INSERT, trigger1Info.getEvent());
     assertEquals(
@@ -479,8 +479,8 @@ public class IoTDBTriggerManagementIT {
     assertFalse(trigger1Info.isStopped());
 
     TriggerRegistrationInformation trigger2Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-2");
-    assertEquals("trigger-2", trigger2Info.getTriggerName());
+        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_2");
+    assertEquals("trigger_2", trigger2Info.getTriggerName());
     assertEquals("root.vehicle.d1.s3", trigger2Info.getFullPath().getFullPath());
     assertEquals(TriggerEvent.AFTER_INSERT, trigger2Info.getEvent());
     assertEquals("org.apache.iotdb.db.engine.trigger.example.Counter", trigger2Info.getClassName());
@@ -488,8 +488,8 @@ public class IoTDBTriggerManagementIT {
     assertTrue(trigger2Info.isStopped());
 
     TriggerRegistrationInformation trigger3Info =
-        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger-3");
-    assertEquals("trigger-3", trigger3Info.getTriggerName());
+        TriggerRegistrationService.getInstance().getRegistrationInformation("trigger_3");
+    assertEquals("trigger_3", trigger3Info.getTriggerName());
     assertEquals("root.vehicle.d1.s2", trigger3Info.getFullPath().getFullPath());
     assertEquals(TriggerEvent.BEFORE_INSERT, trigger3Info.getEvent());
     assertEquals(

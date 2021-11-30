@@ -20,6 +20,9 @@
 package org.apache.iotdb.db.engine.compaction.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +59,11 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
     } finally {
-      CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
+      if (!(this instanceof InplaceCompactionRecoverTask)
+          && !(this instanceof SizeTieredCompactionRecoverTask)) {
+        CompactionScheduler.decPartitionCompaction(fullStorageGroupName, timePartition);
+        CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
+      }
       this.currentTaskNum.decrementAndGet();
     }
     return null;
@@ -80,6 +87,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
    */
   public abstract boolean checkValidAndSetMerging();
 
+  @Override
   public boolean equals(Object other) {
     if (other instanceof AbstractCompactionTask) {
       return equalsOtherTask((AbstractCompactionTask) other);

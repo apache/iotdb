@@ -23,13 +23,17 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.rpc.BatchExecutionException;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.session.template.InternalNode;
+import org.apache.iotdb.session.template.MeasurementNode;
+import org.apache.iotdb.session.template.Template;
+import org.apache.iotdb.session.template.TemplateNode;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -41,8 +45,8 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -50,6 +54,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -383,13 +389,11 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(
-        new VectorMeasurementSchema(
-            "vector",
-            new String[] {"s1", "s2", "s3"},
-            new TSDataType[] {TSDataType.INT64, TSDataType.INT32, TSDataType.TEXT}));
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
 
-    Tablet tablet = new Tablet("root.sg1.d1.vector", schemaList);
+    Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     tablet.setAligned(true);
     long timestamp = System.currentTimeMillis();
 
@@ -397,20 +401,14 @@ public class IoTDBSessionSimpleIT {
       int rowIndex = tablet.rowSize++;
       tablet.addTimestamp(rowIndex, timestamp);
       tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(0),
-          rowIndex,
-          new SecureRandom().nextLong());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(1),
-          rowIndex,
-          new SecureRandom().nextInt());
-      tablet.addValue(
-          schemaList.get(0).getSubMeasurementsList().get(2), rowIndex, new Binary("test"));
+          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextLong());
+      tablet.addValue(schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextInt());
+      tablet.addValue(schemaList.get(2).getMeasurementId(), rowIndex, new Binary("test"));
       timestamp++;
     }
 
     if (tablet.rowSize != 0) {
-      session.insertTablet(tablet);
+      session.insertAlignedTablet(tablet);
       tablet.reset();
     }
 
@@ -993,7 +991,7 @@ public class IoTDBSessionSimpleIT {
           measurements,
           tsDataTypes,
           tsEncodings,
-          CompressionType.SNAPPY,
+          compressionTypes,
           Arrays.asList("alias1", "alias2", "alias3"));
       fail("Exception expected");
     } catch (StatementExecutionException e) {
@@ -1058,6 +1056,343 @@ public class IoTDBSessionSimpleIT {
     }
 
     session.close();
+  }
+
+  @Test
+  public void testConversionFunction()
+      throws IoTDBConnectionException, StatementExecutionException {
+    // connect
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    // prepare data
+    String deviceId = "root.sg.d1";
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+
+    for (int i = 0; i <= 4; i++) {
+      times.add((long) i * 2);
+      measurementsList.add(Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6"));
+      typesList.add(
+          Arrays.asList(
+              TSDataType.INT32,
+              TSDataType.INT64,
+              TSDataType.FLOAT,
+              TSDataType.DOUBLE,
+              TSDataType.BOOLEAN,
+              TSDataType.TEXT));
+      valuesList.add(
+          Arrays.asList(
+              i,
+              (long) i + 1,
+              (float) i,
+              (double) i * 2,
+              new boolean[] {true, false}[i % 2],
+              String.valueOf(i)));
+    }
+    // insert data
+    session.insertRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList);
+
+    // excepted
+    String[] targetTypes = {"INT64", "INT32", "DOUBLE", "FLOAT", "TEXT", "BOOLEAN"};
+    String[] excepted = {
+      "0\t0\t1\t0.0\t0.0\ttrue\ttrue",
+      "2\t1\t2\t1.0\t2.0\tfalse\ttrue",
+      "4\t2\t3\t2.0\t4.0\ttrue\ttrue",
+      "6\t3\t4\t3.0\t6.0\tfalse\ttrue",
+      "8\t4\t5\t4.0\t8.0\ttrue\ttrue"
+    };
+
+    // query
+    String[] casts = new String[targetTypes.length];
+    StringBuffer buffer = new StringBuffer();
+    buffer.append("select ");
+    for (int i = 0; i < targetTypes.length; i++) {
+      casts[i] = String.format("cast(s%s, 'type'='%s')", i + 1, targetTypes[i]);
+    }
+    buffer.append(StringUtils.join(casts, ","));
+    buffer.append(" from root.sg.d1");
+    String sql = buffer.toString();
+    SessionDataSet sessionDataSet = session.executeQueryStatement(sql);
+
+    // compare types
+    List<String> columnTypes = sessionDataSet.getColumnTypes();
+    columnTypes.remove(0);
+    for (int i = 0; i < columnTypes.size(); i++) {
+      assertEquals(targetTypes[i], columnTypes.get(i));
+    }
+
+    // compare results
+    int index = 0;
+    while (sessionDataSet.hasNext()) {
+      RowRecord next = sessionDataSet.next();
+      assertEquals(excepted[index], next.toString());
+      index++;
+    }
+    session.close();
+  }
+
+  @Test
+  public void testInsertDeleteWithTemplate()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    initTreeTemplate("root.sg.loc1");
+    List<String> measurements = new ArrayList<>();
+    List<String> values = new ArrayList<>();
+    String deviceId = "root.sg.loc1.sector.GPS";
+    Set<String> checkSet = new HashSet<>();
+    SessionDataSet dataSet;
+
+    // insert record set using template
+
+    measurements.add("x");
+    measurements.add("y");
+    values.add("1.0");
+    values.add("2.0");
+
+    checkSet.add("root.sg.loc1.sector.GPS.x");
+    checkSet.add("root.sg.loc1.sector.GPS.y");
+    checkSet.add("root.sg.loc1.sector.y");
+    checkSet.add("root.sg.loc1.sector.x");
+    checkSet.add("root.sg.loc1.sector.vehicle.x");
+    checkSet.add("root.sg.loc1.sector.vehicle.y");
+    checkSet.add("root.sg.loc1.sector.vehicle.GPS.x");
+    checkSet.add("root.sg.loc1.sector.vehicle.GPS.y");
+
+    session.insertRecord(deviceId, 1L, measurements, values);
+    dataSet = session.executeQueryStatement("show timeseries");
+    while (dataSet.hasNext()) {
+      checkSet.remove(dataSet.next().getFields().get(0).toString());
+    }
+    assertTrue(checkSet.isEmpty());
+
+    // insert aligned under unaligned node
+    try {
+      session.insertAlignedRecord("root.sg.loc1.sector.GPS", 3L, measurements, values);
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "303: Timeseries under path [root.sg.loc1.sector.GPS] is not aligned , please set InsertPlan.isAligned() = false",
+          e.getMessage());
+    }
+
+    // insert overlap unmatched series
+    measurements.set(1, "speed");
+    try {
+      session.insertRecord(deviceId, 5L, measurements, values);
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "327: Path [root.sg.loc1.sector.GPS.speed] overlaps with [treeTemplate] on [GPS]",
+          e.getMessage());
+    }
+
+    // insert tablets
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("x", TSDataType.FLOAT));
+    schemaList.add(new UnaryMeasurementSchema("y", TSDataType.FLOAT));
+    Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
+    tablet.setAligned(true);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 10; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue(
+          schemaList.get(0).getMeasurementId(), rowIndex, new SecureRandom().nextFloat());
+      tablet.addValue(
+          schemaList.get(1).getMeasurementId(), rowIndex, new SecureRandom().nextFloat());
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      session.insertAlignedTablet(tablet);
+      tablet.reset();
+    }
+
+    dataSet = session.executeQueryStatement("select count(*) from root");
+
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(10L, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(10L, rowRecord.getFields().get(1).getLongV());
+    }
+
+    // delete series inside template
+    try {
+      session.deleteTimeseries("root.sg.loc1.sector.x");
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals(
+          "Cannot delete a timeseries inside a template: root.sg.loc1.sector.x;", e.getMessage());
+    }
+
+    session.close();
+  }
+
+  @Test
+  public void testCountWithTemplate()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    initTreeTemplate("root.sg.loc");
+
+    List<String> measurements = new ArrayList<>();
+    List<String> values = new ArrayList<>();
+    Set<String> checkSet = new HashSet<>();
+    SessionDataSet dataSet;
+
+    // invoke template template
+
+    measurements.add("x");
+    measurements.add("y");
+    values.add("1.0");
+    values.add("2.0");
+
+    session.insertRecord("root.sg.loc.area", 1L, measurements, values);
+    session.insertRecord("root.sg.loc", 1L, measurements, values);
+
+    dataSet = session.executeQueryStatement("show timeseries");
+
+    checkSet.add("root.sg.loc.x");
+    checkSet.add("root.sg.loc.y");
+    checkSet.add("root.sg.loc.GPS.x");
+    checkSet.add("root.sg.loc.GPS.y");
+    checkSet.add("root.sg.loc.vehicle.GPS.x");
+    checkSet.add("root.sg.loc.vehicle.GPS.y");
+    checkSet.add("root.sg.loc.vehicle.x");
+    checkSet.add("root.sg.loc.vehicle.x");
+
+    checkSet.add("root.sg.loc.area.x");
+    checkSet.add("root.sg.loc.area.y");
+    checkSet.add("root.sg.loc.area.GPS.x");
+    checkSet.add("root.sg.loc.area.GPS.y");
+    checkSet.add("root.sg.loc.area.vehicle.GPS.x");
+    checkSet.add("root.sg.loc.area.vehicle.GPS.y");
+    checkSet.add("root.sg.loc.area.vehicle.x");
+    checkSet.add("root.sg.loc.area.vehicle.x");
+
+    while (dataSet.hasNext()) {
+      checkSet.remove(dataSet.next().getFields().get(0).toString());
+    }
+
+    assertTrue(checkSet.isEmpty());
+
+    dataSet = session.executeQueryStatement("show devices");
+
+    checkSet.add("root.sg.loc");
+    checkSet.add("root.sg.loc.GPS");
+    checkSet.add("root.sg.loc.vehicle");
+    checkSet.add("root.sg.loc.vehicle.GPS");
+    checkSet.add("root.sg.loc.area");
+    checkSet.add("root.sg.loc.area.GPS");
+    checkSet.add("root.sg.loc.area.vehicle");
+    checkSet.add("root.sg.loc.area.vehicle.GPS");
+
+    while (dataSet.hasNext()) {
+      checkSet.remove(dataSet.next().getFields().get(0).toString());
+    }
+
+    assertTrue(checkSet.isEmpty());
+  }
+
+  @Test
+  public void testInsertPartialTablet2()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+
+    if (!session.checkTimeseriesExists("root.sg.d.s1")) {
+      session.createTimeseries(
+          "root.sg.d.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+    if (!session.checkTimeseriesExists("root.sg.d.s2")) {
+      session.createTimeseries(
+          "root.sg.d.s2", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
+    }
+    if (!session.checkTimeseriesExists("root.sg.d.s3")) {
+      session.createTimeseries(
+          "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    }
+    List<IMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+
+    Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
+
+    long timestamp = System.currentTimeMillis();
+
+    for (long row = 0; row < 15; row++) {
+      int rowIndex = tablet.rowSize++;
+      tablet.addTimestamp(rowIndex, timestamp);
+      tablet.addValue("s1", rowIndex, 1L);
+      tablet.addValue("s2", rowIndex, 1D);
+      tablet.addValue("s3", rowIndex, new Binary("1"));
+      if (tablet.rowSize == tablet.getMaxRowNumber()) {
+        try {
+          session.insertTablet(tablet, true);
+        } catch (StatementExecutionException e) {
+          Assert.assertEquals(
+              "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+              e.getMessage());
+        }
+        tablet.reset();
+      }
+      timestamp++;
+    }
+
+    if (tablet.rowSize != 0) {
+      try {
+        session.insertTablet(tablet);
+      } catch (StatementExecutionException e) {
+        Assert.assertEquals(
+            "313: failed to insert measurements [s3] caused by DataType mismatch, Insert measurement s3 type TEXT, metadata tree type INT64",
+            e.getMessage());
+      }
+      tablet.reset();
+    }
+
+    SessionDataSet dataSet =
+        session.executeQueryStatement("select count(s1), count(s2), count(s3) from root.sg.d");
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      Assert.assertEquals(15L, rowRecord.getFields().get(0).getLongV());
+      Assert.assertEquals(15L, rowRecord.getFields().get(1).getLongV());
+      Assert.assertEquals(0L, rowRecord.getFields().get(2).getLongV());
+    }
+    session.close();
+  }
+
+  private void initTreeTemplate(String path)
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    Template sessionTemplate = new Template("treeTemplate", true);
+    TemplateNode iNodeGPS = new InternalNode("GPS", false);
+    TemplateNode iNodeV = new InternalNode("vehicle", true);
+    TemplateNode mNodeX =
+        new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    TemplateNode mNodeY =
+        new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
+    ByteArrayOutputStream stream = new ByteArrayOutputStream();
+
+    iNodeGPS.addChild(mNodeX);
+    iNodeGPS.addChild(mNodeY);
+
+    iNodeV.addChild(mNodeX);
+    iNodeV.addChild(mNodeY);
+    iNodeV.addChild(iNodeGPS);
+
+    sessionTemplate.addToTemplate(iNodeGPS);
+    sessionTemplate.addToTemplate(iNodeV);
+    sessionTemplate.addToTemplate(mNodeX);
+    sessionTemplate.addToTemplate(mNodeY);
+
+    session.createSchemaTemplate(sessionTemplate);
+    session.setSchemaTemplate("treeTemplate", path);
   }
 
   private void checkResult(Session session)
