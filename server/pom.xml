@@ -223,6 +223,10 @@
             <artifactId>influxdb-java</artifactId>
             <version>2.21</version>
         </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

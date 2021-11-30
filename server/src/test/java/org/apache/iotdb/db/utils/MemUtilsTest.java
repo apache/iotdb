@@ -47,6 +47,13 @@ public class MemUtilsTest {
   public void getRecordSizeWithInsertPlanTest() throws IllegalPathException {
     PartialPath device = new PartialPath("root.sg.d1");
     String[] measurements = {"s1", "s2", "s3", "s4", "s5"};
+    Object[] columns = {
+      new int[] {1},
+      new long[] {2},
+      new float[] {3},
+      new double[] {4},
+      new Binary[] {new Binary("5")}
+    };
     List<Integer> dataTypes = new ArrayList<>();
     int sizeSum = 0;
     dataTypes.add(TSDataType.INT32.ordinal());
@@ -60,7 +67,8 @@ public class MemUtilsTest {
     dataTypes.add(TSDataType.TEXT.ordinal());
     sizeSum += 8 + TSDataType.TEXT.getDataTypeSize();
     InsertTabletPlan insertPlan = new InsertTabletPlan(device, measurements, dataTypes);
-    Assert.assertEquals(sizeSum, MemUtils.getRecordSize(insertPlan, 0, 1, false));
+    insertPlan.setColumns(columns);
+    Assert.assertEquals(sizeSum, MemUtils.getTabletSize(insertPlan, 0, 1, false));
   }
 
   /** This method tests MemUtils.getStringMem() and MemUtils.getDataPointMem() */

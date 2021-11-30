@@ -19,22 +19,22 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private Map<String, IWritableMemChunk> memChunkMap;
 
-  public WritableMemChunkGroup(List<IMeasurementSchema> schemaList) {
+  public WritableMemChunkGroup() {
     memChunkMap = new HashMap<>();
-    for (IMeasurementSchema schema : schemaList) {
-      createMemChunkIfNotExistAndGet(schema);
-    }
   }
 
   @Override
@@ -65,10 +65,7 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
 
   private IWritableMemChunk createMemChunkIfNotExistAndGet(IMeasurementSchema schema) {
     return memChunkMap.computeIfAbsent(
-        schema.getMeasurementId(),
-        k -> {
-          return new WritableMemChunk(schema);
-        });
+        schema.getMeasurementId(), k -> new WritableMemChunk(schema));
   }
 
   @Override
@@ -109,6 +106,28 @@ public class WritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
     return memChunkMap;
+  }
+
+  @Override
+  public int delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
+    int deletedPointsNumber = 0;
+    Iterator<Entry<String, IWritableMemChunk>> iter = memChunkMap.entrySet().iterator();
+    while (iter.hasNext()) {
+      Entry<String, IWritableMemChunk> entry = iter.next();
+      IWritableMemChunk chunk = entry.getValue();
+      // the key is measurement rather than component of multiMeasurement
+      PartialPath fullPath = devicePath.concatNode(entry.getKey());
+      if (originalPath.matchFullPath(fullPath)) {
+        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
+        // and delete timeseries
+        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
+          iter.remove();
+        }
+        deletedPointsNumber += chunk.delete(startTimestamp, endTimestamp);
+      }
+    }
+    return deletedPointsNumber;
   }
 
   @Override

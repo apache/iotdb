@@ -19,8 +19,10 @@
 package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
@@ -41,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -247,8 +250,9 @@ public class MeasurementPath extends PartialPath {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
+      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
+    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     // check If Memtable Contains this path
     if (!memTableMap.containsKey(getDevice())
         || !memTableMap.get(getDevice()).contains(getMeasurement())) {
@@ -259,6 +263,10 @@ public class MeasurementPath extends PartialPath {
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();
+    List<TimeRange> deletionList = null;
+    if (modsToMemtable != null) {
+      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+    }
     return new ReadOnlyMemChunk(
         getMeasurement(),
         measurementSchema.getType(),
@@ -267,6 +275,28 @@ public class MeasurementPath extends PartialPath {
         measurementSchema.getProps(),
         curSize,
         deletionList);
+  }
+
+  /**
+   * construct a deletion list from a memtable.
+   *
+   * @param memTable memtable
+   * @param timeLowerBound time water mark
+   */
+  private List<TimeRange> constructDeletionList(
+      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
+    List<TimeRange> deletionList = new ArrayList<>();
+    deletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+    for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+      if (modification instanceof Deletion) {
+        Deletion deletion = (Deletion) modification;
+        if (deletion.getPath().matchFullPath(this) && deletion.getEndTime() > timeLowerBound) {
+          long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+          deletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+        }
+      }
+    }
+    return TimeRange.sortAndMerge(deletionList);
   }
 
   @Override
