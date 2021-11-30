@@ -20,12 +20,14 @@ package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -35,12 +37,13 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
-import static org.apache.iotdb.db.constant.TestConstant.first_value;
-import static org.apache.iotdb.db.constant.TestConstant.last_value;
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_time;
-import static org.apache.iotdb.db.constant.TestConstant.min_value;
+import static org.apache.iotdb.db.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.constant.TestConstant.minValue;
 
+@Category({LocalStandaloneTest.class})
 public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
   protected static boolean enableSeqSpaceCompaction;
@@ -70,9 +73,6 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      // TODO currently aligned data in memory doesn't support deletion, so we flush all data to
-      // disk before doing deletion
-      statement.execute("flush");
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
       statement.execute("delete timeseries root.sg1.d1.s2");
       statement.execute("delete from root.sg1.d1.s3 where time > 25");
@@ -275,11 +275,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -298,11 +298,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -340,11 +340,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -363,11 +363,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -404,11 +404,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -427,11 +427,11 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value("root.sg1.d1.s3"))
+                  + resultSet.getString(maxValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(min_value("root.sg1.d1.s1"))
+                  + resultSet.getString(minValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(min_time("root.sg1.d1.s3"));
+                  + resultSet.getString(minTime("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -459,9 +459,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -480,9 +480,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -520,9 +520,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -541,9 +541,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -580,9 +580,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -601,9 +601,9 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(first_value("root.sg1.d1.s3"));
+                  + resultSet.getString(firstValue("root.sg1.d1.s3"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -644,13 +644,13 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + ","
                   + resultSet.getString(count("root.sg1.d1.s5"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -677,13 +677,13 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
                   + ","
                   + resultSet.getString(count("root.sg1.d1.s5"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
@@ -794,13 +794,13 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -819,13 +819,13 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s1"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s1"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s3"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s3"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s4"))
+                  + resultSet.getString(lastValue("root.sg1.d1.s4"))
                   + ","
-                  + resultSet.getString(last_value("root.sg1.d1.s5"));
+                  + resultSet.getString(lastValue("root.sg1.d1.s5"));
           Assert.assertEquals(retArray[cnt - 1], ans);
           cnt--;
         }
