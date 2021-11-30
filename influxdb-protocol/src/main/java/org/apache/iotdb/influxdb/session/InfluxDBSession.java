@@ -20,7 +20,6 @@
 package org.apache.iotdb.influxdb.session;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
@@ -190,11 +189,12 @@ public class InfluxDBSession {
   }
 
   public void close() {
-      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+    TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
     try {
       client.closeSession(req);
     } catch (TException e) {
-      throw new InfluxDBException("Error occurs when closing session at server. Maybe server is down.", e);
+      throw new InfluxDBException(
+          "Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
       if (isClosed) return;
       if (transport != null) {
