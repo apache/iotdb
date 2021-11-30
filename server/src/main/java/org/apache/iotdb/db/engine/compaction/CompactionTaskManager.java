@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
@@ -28,6 +27,8 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
+
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,11 +45,12 @@ public class CompactionTaskManager implements IService {
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
-  private MinMaxPriorityQueue<AbstractCompactionTask> compactionTaskQueue =
+  private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
+  private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
   // taskExecutionPool. The number of threads for this pool is 1.
@@ -172,13 +174,9 @@ public class CompactionTaskManager implements IService {
    * with last priority will be removed from the task.
    */
   public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
-    if (!compactionTaskQueue.contains(compactionTask)) {
-      logger.debug(
-          "Add a compaction task {} to queue, current queue size is {}, current task num is {}",
-          compactionTask,
-          compactionTaskQueue.size(),
-          currentTaskNum.get());
-      compactionTaskQueue.add(compactionTask);
+    if (!candidateCompactionTaskQueue.contains(compactionTask)
+        && !runningCompactionTaskList.contains(compactionTask)) {
+      candidateCompactionTaskQueue.add(compactionTask);
       return true;
     }
     return false;
@@ -191,12 +189,17 @@ public class CompactionTaskManager implements IService {
   public synchronized void submitTaskFromTaskQueue() {
     while (currentTaskNum.get()
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
-        && compactionTaskQueue.size() > 0) {
-      AbstractCompactionTask task = compactionTaskQueue.poll();
-      if (task.checkValidAndSetMerging()) {
+        && candidateCompactionTaskQueue.size() > 0) {
+      AbstractCompactionTask task = candidateCompactionTaskQueue.poll();
+      if (task != null && task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
+        runningCompactionTaskList.add(task);
       }
     }
+  }
+
+  public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
+    runningCompactionTaskList.remove(task);
   }
 
   /**
@@ -240,8 +243,16 @@ public class CompactionTaskManager implements IService {
     }
   }
 
-  public int getTaskCount() {
+  public int getExecutingTaskCount() {
     return taskExecutionPool.getActiveCount() + taskExecutionPool.getQueue().size();
+  }
+
+  public int getTotalTaskCount() {
+    return getExecutingTaskCount() + candidateCompactionTaskQueue.size();
+  }
+
+  public synchronized List<AbstractCompactionTask> getRunningCompactionTaskList() {
+    return new ArrayList<>(runningCompactionTaskList);
   }
 
   public long getFinishTaskNum() {

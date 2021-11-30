@@ -76,7 +76,7 @@ public abstract class InnerCompactionTest {
   private int prevMergeChunkThreshold;
 
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp() throws IOException, WriteProcessException, MetadataException, Exception {
     EnvironmentUtils.envSetUp();
     IoTDB.metaManager.init();
     prevMergeChunkThreshold =

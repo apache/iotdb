@@ -137,62 +137,65 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       sizeTieredCompactionLogger.close();
+
+      LOGGER.info(
+          "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
+      if (Thread.currentThread().isInterrupted()) {
+        throw new InterruptedException(
+            String.format("%s [Compaction] abort", fullStorageGroupName));
+      }
+      // get write lock for TsFileResource list with timeout
+      try {
+        tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
+      } catch (WriteLockFailedException e) {
+        // if current compaction thread couldn't get writelock
+        // a WriteLockFailException will be thrown, then terminate the thread itself
+        LOGGER.warn(
+            "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
+            fullStorageGroupName,
+            targetTsFileResource.getTsFile(),
+            e);
+        targetTsFileResource.getTsFile().delete();
+        logFile.delete();
+        throw new InterruptedException(
+            String.format(
+                "%s [Compaction] compaction abort because cannot acquire write lock",
+                fullStorageGroupName));
+      }
+      try {
+        // replace the old files with new file, the new is in same position as the old
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          TsFileResourceManager.getInstance().removeTsFileResource(resource);
+        }
+        tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+        TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          tsFileResourceList.remove(resource);
+        }
+      } finally {
+        tsFileManager.writeUnlock();
+      }
+      // delete the old files
+      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+          selectedTsFileResourceList, fullStorageGroupName);
+      LOGGER.info(
+          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
+          fullStorageGroupName);
+      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
+      long costTime = System.currentTimeMillis() - startTime;
+      LOGGER.info(
+          "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
+              + "time cost is {} s",
+          fullStorageGroupName,
+          targetFileName,
+          costTime / 1000);
+      if (logFile.exists()) {
+        logFile.delete();
+      }
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
         resource.setMerging(false);
       }
-    }
-    LOGGER.info(
-        "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
-    if (Thread.currentThread().isInterrupted()) {
-      throw new InterruptedException(String.format("%s [Compaction] abort", fullStorageGroupName));
-    }
-    // get write lock for TsFileResource list with timeout
-    try {
-      tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
-    } catch (WriteLockFailedException e) {
-      // if current compaction thread couldn't get writelock
-      // a WriteLockFailException will be thrown, then terminate the thread itself
-      LOGGER.warn(
-          "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
-          fullStorageGroupName,
-          targetTsFileResource.getTsFile(),
-          e);
-      targetTsFileResource.getTsFile().delete();
-      logFile.delete();
-      throw new InterruptedException(
-          String.format(
-              "%s [Compaction] compaction abort because cannot acquire write lock",
-              fullStorageGroupName));
-    }
-    try {
-      // replace the old files with new file, the new is in same position as the old
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        TsFileResourceManager.getInstance().removeTsFileResource(resource);
-      }
-      tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
-      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
-      for (TsFileResource resource : selectedTsFileResourceList) {
-        tsFileResourceList.remove(resource);
-      }
-    } finally {
-      tsFileManager.writeUnlock();
-    }
-    // delete the old files
-    InnerSpaceCompactionUtils.deleteTsFilesInDisk(selectedTsFileResourceList, fullStorageGroupName);
-    LOGGER.info(
-        "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-        fullStorageGroupName);
-    combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
-    long costTime = System.currentTimeMillis() - startTime;
-    LOGGER.info(
-        "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
-            + "time cost is {} s",
-        fullStorageGroupName,
-        targetFileName,
-        costTime / 1000);
-    if (logFile.exists()) {
-      logFile.delete();
     }
   }
 
