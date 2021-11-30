@@ -271,16 +271,12 @@ org.xerial.snappy:snappy-java:1.1.8.4
 io.airlift.airline:0.8
 net.minidev:accessors-smart:1.2
 
-BSD 2-Clause
-------------
-jline:jline:2.14.5
-
 
 BSD 3-Clause
 ------------
 org.antlr:antlr-runtime:4.8-1
 org.ow2.asm:asm:5.0.4
-org.jline:jline:3.10.0
+org.jline:jline:3.21.0
 
 
 MIT License

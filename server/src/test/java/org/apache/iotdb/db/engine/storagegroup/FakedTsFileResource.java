@@ -73,4 +73,15 @@ public class FakedTsFileResource extends TsFileResource {
   public File getTsFile() {
     return new File(fakeTsfileName);
   }
+
+  @Override
+  public boolean equals(Object otherObject) {
+    if (otherObject instanceof FakedTsFileResource) {
+      FakedTsFileResource otherResource = (FakedTsFileResource) otherObject;
+      return this.fakeTsfileName.equals(otherResource.fakeTsfileName)
+          && this.tsFileSize == otherResource.tsFileSize;
+    }
+
+    return false;
+  }
 }
