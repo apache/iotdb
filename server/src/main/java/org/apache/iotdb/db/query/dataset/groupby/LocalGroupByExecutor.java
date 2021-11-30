@@ -38,8 +38,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class LocalGroupByExecutor implements GroupByExecutor {
 
@@ -59,6 +59,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
 
   public LocalGroupByExecutor(
       PartialPath path,
+      Set<String> allSensors,
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
@@ -72,7 +73,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     reader =
         new SeriesAggregateReader(
             path,
-            Collections.singleton(path.getMeasurement()),
+            allSensors,
             path.getSeriesType(),
             context,
             queryDataSource,

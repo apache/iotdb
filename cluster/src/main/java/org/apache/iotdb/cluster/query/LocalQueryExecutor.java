@@ -795,7 +795,12 @@ public class LocalQueryExecutor {
             .getNodeSlots(dataGroupMember.getHeader());
     LocalGroupByExecutor executor =
         new LocalGroupByExecutor(
-            path, context, timeFilter, new SlotTsFileFilter(nodeSlots), ascending);
+            path,
+            deviceMeasurements,
+            context,
+            timeFilter,
+            new SlotTsFileFilter(nodeSlots),
+            ascending);
     for (Integer aggregationType : aggregationTypes) {
       executor.addAggregateResult(
           AggregateResultFactory.getAggrResultByType(

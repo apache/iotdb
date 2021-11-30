@@ -44,6 +44,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataSet {
@@ -90,9 +91,13 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
   }
 
   protected GroupByExecutor getGroupByExecutor(
-      PartialPath path, QueryContext context, Filter timeFilter, boolean ascending)
+      PartialPath path,
+      Set<String> allSensors,
+      QueryContext context,
+      Filter timeFilter,
+      boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(path, context, timeFilter, null, ascending);
+    return new LocalGroupByExecutor(path, allSensors, context, timeFilter, null, ascending);
   }
 
   private void getGroupByExecutors(
@@ -112,7 +117,13 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
         if (!extraExecutors.containsKey(path)) {
           // init GroupByExecutor
           extraExecutors.put(
-              path, getGroupByExecutor(path, context, timeFilter.copy(), isAscending));
+              path,
+              getGroupByExecutor(
+                  path,
+                  groupByTimeFillPlan.getAllMeasurementsInDevice(path.getDevice()),
+                  context,
+                  timeFilter.copy(),
+                  isAscending));
         }
         AggregateResult aggregateResult =
             AggregateResultFactory.getAggrResultByName(

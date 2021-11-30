@@ -43,10 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
@@ -114,7 +111,14 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         List<Integer> indexes = entry.getValue();
         if (!pathExecutors.containsKey(path)) {
           pathExecutors.put(
-              path, getGroupByExecutor(path, context, timeFilter.copy(), null, ascending));
+              path,
+              getGroupByExecutor(
+                  path,
+                  groupByTimePlan.getAllMeasurementsInDevice(path.getDevice()),
+                  context,
+                  timeFilter.copy(),
+                  null,
+                  ascending));
         }
         for (int index : indexes) {
           AggregateResult aggrResult =
@@ -234,12 +238,13 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
   protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
+      Set<String> allSensors,
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(path, context, timeFilter, fileFilter, ascending);
+    return new LocalGroupByExecutor(path, allSensors, context, timeFilter, fileFilter, ascending);
   }
 
   protected AlignedGroupByExecutor getAlignedGroupByExecutor(
