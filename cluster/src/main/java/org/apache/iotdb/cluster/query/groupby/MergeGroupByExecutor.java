@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -58,12 +57,13 @@ public class MergeGroupByExecutor implements GroupByExecutor {
 
   MergeGroupByExecutor(
       PartialPath path,
+      Set<String> deviceMeasurements,
       QueryContext context,
       Filter timeFilter,
       MetaGroupMember metaGroupMember,
       boolean ascending) {
     this.path = path;
-    this.deviceMeasurements = Collections.singleton(path.getMeasurement());
+    this.deviceMeasurements = deviceMeasurements;
     this.dataType = path.getSeriesType();
     this.context = context;
     this.timeFilter = timeFilter;

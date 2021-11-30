@@ -58,7 +58,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
       deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
-          new MergeGroupByExecutor(path, context, timeFilter, testMetaMember, true);
+          new MergeGroupByExecutor(
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
@@ -92,7 +93,8 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
       deviceMeasurements.add(path.getMeasurement());
 
       MergeGroupByExecutor groupByExecutor =
-          new MergeGroupByExecutor(path, context, timeFilter, testMetaMember, true);
+          new MergeGroupByExecutor(
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(

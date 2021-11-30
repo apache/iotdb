@@ -26,6 +26,8 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithoutValueFilterDataSet;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import java.util.Set;
+
 /** the cluster implementation of GroupByFillWithoutValueFilterDataSet */
 public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueFilterDataSet {
 
@@ -41,7 +43,12 @@ public class ClusterGroupByFillNoVFilterDataSet extends GroupByFillWithoutValueF
 
   @Override
   protected GroupByExecutor getGroupByExecutor(
-      PartialPath path, QueryContext context, Filter timeFilter, boolean ascending) {
-    return new MergeGroupByExecutor(path, context, timeFilter, metaGroupMember, ascending);
+      PartialPath path,
+      Set<String> deviceMeasurements,
+      QueryContext context,
+      Filter timeFilter,
+      boolean ascending) {
+    return new MergeGroupByExecutor(
+        path, deviceMeasurements, context, timeFilter, metaGroupMember, ascending);
   }
 }

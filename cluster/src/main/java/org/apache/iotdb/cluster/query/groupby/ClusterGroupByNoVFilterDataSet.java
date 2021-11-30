@@ -29,6 +29,7 @@ import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.util.ArrayList;
+import java.util.Set;
 
 @SuppressWarnings("common-java:DuplicatedBlocks")
 public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDataSet {
@@ -49,10 +50,12 @@ public class ClusterGroupByNoVFilterDataSet extends GroupByWithoutValueFilterDat
   @Override
   protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
+      Set<String> deviceMeasurements,
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
       boolean ascending) {
-    return new MergeGroupByExecutor(path, context, timeFilter, metaGroupMember, ascending);
+    return new MergeGroupByExecutor(
+        path, deviceMeasurements, context, timeFilter, metaGroupMember, ascending);
   }
 }
