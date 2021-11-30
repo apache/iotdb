@@ -607,13 +607,14 @@ public class AggregationExecutor {
         readerToAggrIndexesMap.put(
             seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
       }
-      pathToAggrIndexesMap.clear();
+      // assign null to be friendly for GC
+      pathToAggrIndexesMap = null;
       for (PartialPath vectorPath : vectorPathIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
             getReaderByTime(vectorPath, queryPlan, vectorPath.getSeriesType(), context);
         readerToAggrIndexesMap.put(seriesReaderByTimestamp, vectorPathIndexesMap.get(vectorPath));
       }
-      vectorPathIndexesMap.clear();
+      vectorPathIndexesMap = null;
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
