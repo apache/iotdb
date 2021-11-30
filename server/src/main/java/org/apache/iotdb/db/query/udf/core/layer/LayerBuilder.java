@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.query.dataset.udf.UDTFDataSet;
 import org.apache.iotdb.db.query.dataset.udf.UDTFFragmentDataSet;
 import org.apache.iotdb.db.query.dataset.udf.UDTFJoinDataSet;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -147,7 +146,7 @@ public class LayerBuilder {
 
   public QueryDataSet generateJoinDataSet() throws QueryProcessException, IOException {
     int n = fragmentDataSetIndexToLayerPointReaders.size();
-    UDTFDataSet[] fragmentDataSets = new UDTFDataSet[n];
+    UDTFFragmentDataSet[] fragmentDataSets = new UDTFFragmentDataSet[n];
     for (int i = 0; i < n; ++i) {
       fragmentDataSets[i] =
           new UDTFFragmentDataSet(

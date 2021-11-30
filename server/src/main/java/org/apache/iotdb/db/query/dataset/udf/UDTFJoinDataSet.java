@@ -32,7 +32,7 @@ import java.io.IOException;
 // TODO: performances joining in pool, packing row records while calculating
 public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDataSet {
 
-  private final UDTFDataSet[] fragmentDataSets;
+  private final UDTFFragmentDataSet[] fragmentDataSets;
 
   /**
    * Each output column of the UDTFJoinDataSet corresponds to a two-tuple ({@code int[]}) instance
@@ -52,7 +52,8 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
   private TimeSelector timeHeap;
 
   public UDTFJoinDataSet(
-      UDTFDataSet[] fragmentDataSets, int[][] resultColumnOutputIndexToFragmentDataSetOutputIndex)
+      UDTFFragmentDataSet[] fragmentDataSets,
+      int[][] resultColumnOutputIndexToFragmentDataSetOutputIndex)
       throws IOException {
     this.fragmentDataSets = fragmentDataSets;
     this.resultColumnOutputIndexToFragmentDataSetOutputIndex =
