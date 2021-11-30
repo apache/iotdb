@@ -36,8 +36,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class CompactionMonitor {
-  private final Logger LOGGER = LoggerFactory.getLogger(CompactionMonitor.class);
-  private final CompactionMonitor INSTANCE = new CompactionMonitor();
+  private final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
+  private static final CompactionMonitor INSTANCE = new CompactionMonitor();
   private ScheduledExecutorService threadPool =
       IoTDBThreadPoolFactory.newScheduledThreadPool(1, "CompactionMonitor");
   // storage group name -> file level -> compacted file num
@@ -48,9 +48,21 @@ public class CompactionMonitor {
   // threadId -> cpu time
   private Map<Long, Long> cpuTimeForCompactionThread = new HashMap<>();
   private Set<Long> compactionThreadIdSet = new HashSet<>();
-  private final PlanExecutor planExecutor = new PlanExecutor();
+  private Set<Long> mergeThreadIdSet = new HashSet<>();
+  private Map<Long, Long> cpuTimeForMergeThread = new HashMap<>();
+  private PlanExecutor planExecutor;
 
-  private CompactionMonitor() throws QueryProcessException {}
+  private CompactionMonitor() {
+    try {
+      this.planExecutor = new PlanExecutor();
+    } catch (QueryProcessException e) {
+      LOGGER.error("Failed to initialize CompactionMonitor", e);
+    }
+  }
+
+  public static CompactionMonitor getInstance() {
+    return INSTANCE;
+  }
 
   public synchronized void start() {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
@@ -62,7 +74,22 @@ public class CompactionMonitor {
     }
   }
 
+  public synchronized void stop() {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+      threadPool.shutdownNow();
+      try {
+        threadPool.awaitTermination(Long.MAX_VALUE, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+
+      }
+      System.out.println("thread pool is stop");
+    }
+  }
+
   public synchronized void sealedCompactionStatusPeriodically() {
+    if (Thread.interrupted()) {
+      Thread.currentThread().interrupt();
+    }
     Map<Long, Double> cpuConsumptionForCompactionThread =
         calculateCpuConsumptionForCompactionThreads();
   }
@@ -72,8 +99,15 @@ public class CompactionMonitor {
     compactionThreadIdSet.add(threadId);
   }
 
+  public synchronized void registerMergeThread(long threadId) {
+    mergeThreadIdSet.add(threadId);
+  }
+
   public synchronized void reportCompactionStatus(
       String storageGroupName, int compactionLevel, int fileNum) {
+    if (!compactionThreadIdSet.contains(Thread.currentThread().getId())) {
+      registerCompactionThread(Thread.currentThread().getId());
+    }
     Map<Integer, Integer> levelFileCountMap =
         compactionFileCountMap.computeIfAbsent(storageGroupName, x -> new HashMap<>());
     int newCompactedFileCount = levelFileCountMap.getOrDefault(compactionLevel, 0) + fileNum;
@@ -100,7 +134,7 @@ public class CompactionMonitor {
     Map<Long, Double> cpuConsumptionForCompactionThread = new HashMap<>();
     // calculate the cpu consumption of each compaction thread in this period
     // and update the total cpu time for each compaction thread
-    for (long threadId : cpuTimeForCompactionThreadInThisPeriod.keySet()) {
+    for (long threadId : compactionThreadIdSet) {
       cpuConsumptionForCompactionThread.put(
           threadId,
           (double)
@@ -111,5 +145,28 @@ public class CompactionMonitor {
           threadId, cpuTimeForCompactionThreadInThisPeriod.get(threadId));
     }
     return cpuConsumptionForCompactionThread;
+  }
+
+  public static class CompactionMonitorRegisterTask implements Runnable {
+    public boolean isCompactionThread = true;
+
+    public CompactionMonitorRegisterTask(boolean isCompactionThread) {
+      this.isCompactionThread = isCompactionThread;
+    }
+
+    @Override
+    public void run() {
+      CompactionMonitor monitor = CompactionMonitor.getInstance();
+      try {
+        // Sleep for 10 seconds to avoid registering twice in the same thread
+        Thread.sleep(10_000);
+      } catch (Exception e) {
+      }
+      if (isCompactionThread) {
+        monitor.registerCompactionThread(Thread.currentThread().getId());
+      } else {
+        monitor.registerMergeThread(Thread.currentThread().getId());
+      }
+    }
   }
 }

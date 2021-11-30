@@ -23,6 +23,7 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -65,10 +66,13 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void start() {
     if (pool == null) {
+      int threadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum();
       pool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
+              threadNum, ThreadName.COMPACTION_SERVICE.getName());
+      for (int i = 0; i < threadNum; ++i) {
+        pool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(true));
+      }
     }
     logger.info("Compaction task manager started.");
   }
