@@ -19,12 +19,16 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
@@ -68,6 +72,29 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
     return Collections.singletonMap("", memChunk);
+  }
+
+  @Override
+  public int delete(
+      PartialPath originalPath, PartialPath devicePath, long startTimestamp, long endTimestamp) {
+    int deletedPointsNumber = 0;
+    Set<String> measurements = memChunk.getAllMeasurements();
+    List<String> columnsToBeRemoved = new ArrayList<>();
+    for (String measurement : measurements) {
+      PartialPath fullPath = devicePath.concatNode(measurement);
+      if (originalPath.matchFullPath(fullPath)) {
+        Pair<Integer, Boolean> deleteInfo =
+            memChunk.deleteDataFromAColumn(startTimestamp, endTimestamp, measurement);
+        deletedPointsNumber += deleteInfo.left;
+        if (Boolean.TRUE.equals(deleteInfo.right)) {
+          columnsToBeRemoved.add(measurement);
+        }
+      }
+    }
+    if (!columnsToBeRemoved.isEmpty()) {
+      memChunk.removeColumns(columnsToBeRemoved);
+    }
+    return deletedPointsNumber;
   }
 
   @Override
