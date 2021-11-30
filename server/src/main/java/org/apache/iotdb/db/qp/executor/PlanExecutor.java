@@ -277,11 +277,7 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException(e.getMessage());
     }
 
-    int threadCnt =
-            Math.min(
-                    Runtime.getRuntime().availableProcessors(),
-                    IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
-    insertTabletsPool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.INSERT_SERVICE.getName());
+    insertTabletsPool = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
 
   }
 
