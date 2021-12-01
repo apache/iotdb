@@ -42,9 +42,9 @@ public interface MetricManager {
   /**
    * Get Gauge If exists, then return or create one to return
    *
-   * This type of gauge will keep a weak reference of the obj, so it will not prevent the obj's gc.
-   * NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then you
-   * will get 0L;
+   * <p>This type of gauge will keep a weak reference of the obj, so it will not prevent the obj's
+   * gc. NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then
+   * you will get 0L;
    *
    * @param obj which will be monitored automatically
    * @param mapper use which to map the obj to a long value
