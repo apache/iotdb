@@ -34,7 +34,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * SizeTieredCompactionSelector selects files to be compacted based on the size of files. The
@@ -72,7 +76,7 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * This method searches for a batch of files to be compacted from layer 0 to the highest layer. If
    * there are more than a batch of files to be merged on a certain layer, it does not search to
    * higher layers. It creates a compaction thread for each batch of files and put it into the
-   * compactionTaskQueue of the {@link CompactionTaskManager}.
+   * candidateCompactionTaskQueue of the {@link CompactionTaskManager}.
    */
   @Override
   public boolean selectAndSubmit() {

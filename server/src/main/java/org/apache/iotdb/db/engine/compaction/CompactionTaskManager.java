@@ -32,8 +32,20 @@ import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
@@ -53,7 +65,7 @@ public class CompactionTaskManager implements IService {
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
-  // taskExecutionPool. The number of threads for this pool is 1.
+  // candidateCompactionTaskQueue to taskExecutionPool. The number of threads for this pool is 1.
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
 
   private final long TASK_SUBMIT_INTERVAL =
@@ -77,7 +89,8 @@ public class CompactionTaskManager implements IService {
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
 
       // Periodically do the following: fetch the highest priority thread from the
-      // compactionTaskQueue, check that all tsfiles in the compaction task are valid, and if there
+      // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
+      // if there
       // is thread space available in the taskExecutionPool, put the compaction task thread into the
       // taskExecutionPool and perform the compaction.
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
