@@ -41,6 +41,9 @@ import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.VotingLogList;
+import org.apache.iotdb.cluster.log.appender.BlockingLogAppender;
+import org.apache.iotdb.cluster.log.appender.LogAppender;
+import org.apache.iotdb.cluster.log.appender.LogAppenderFactory;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -134,8 +137,8 @@ public abstract class RaftMember implements RaftMemberMBean {
   public static boolean USE_LOG_DISPATCHER = false;
   public static boolean USE_INDIRECT_LOG_DISPATCHER = false;
   public static boolean ENABLE_WEAK_ACCEPTANCE = true;
-  public static boolean ENABLE_COMMIT_RETURN = false;
 
+  private static final LogAppenderFactory APPENDER_FACTORY = new BlockingLogAppender.Factory();
   protected static final LogSequencerFactory SEQUENCER_FACTORY =
       ClusterDescriptor.getInstance().getConfig().isUseAsyncSequencing()
           ? new Factory()
@@ -253,7 +256,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * logDispatcher buff the logs orderly according to their log indexes and send them sequentially,
    * which avoids the followers receiving out-of-order logs, forcing them to wait for previous logs.
    */
-  private LogDispatcher logDispatcher;
+  private volatile LogDispatcher logDispatcher;
 
   /** If this node can not be the leader, this parameter will be set true. */
   private volatile boolean skipElection = false;
@@ -270,6 +273,8 @@ public abstract class RaftMember implements RaftMemberMBean {
   protected VotingLogList votingLogList;
 
   protected LogSequencer logSequencer;
+
+  private volatile LogAppender logAppender;
 
   protected RaftMember() {}
 
@@ -327,6 +332,17 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (logSequencer != null) {
       logSequencer.setLogManager(logManager);
     }
+  }
+
+  public LogAppender getLogAppender() {
+    if (logAppender == null) {
+      synchronized (this) {
+        if (logAppender == null) {
+          logAppender = APPENDER_FACTORY.create(this);
+        }
+      }
+    }
+    return logAppender;
   }
 
   /**
@@ -548,7 +564,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
     AppendEntryResult result =
-        appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
+        getLogAppender()
+            .appendEntry(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, log);
     result.setHeader(request.getHeader());
 
     logger.debug("{} AppendEntryRequest of {} completed with result {}", name, log, result.status);
@@ -646,7 +663,9 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     Timer.Statistic.RAFT_RECEIVER_LOG_PARSE.calOperationCostTimeFromStart(startTime);
 
-    response = appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit, logs);
+    response = getLogAppender()
+        .appendEntries(request.prevLogIndex, request.prevLogTerm, request.leaderCommit,
+            logs);
     if (logger.isDebugEnabled()) {
       logger.debug(
           "{} AppendEntriesRequest of log size {} completed with result {}",
@@ -1021,12 +1040,11 @@ public abstract class RaftMember implements RaftMemberMBean {
     long waitedTime = 0;
     long localAppliedId;
 
-    if (fastFail) {
-      if (leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > config.getMaxSyncLogLag()) {
-        logger.info(
-            "{}: The raft log of this member is too backward to provide service directly.", name);
-        return false;
-      }
+    if (fastFail
+        && leaderCommitId - logManager.getMaxHaveAppliedCommitIndex() > config.getMaxSyncLogLag()) {
+      logger.info(
+          "{}: The raft log of this member is too backward to provide service directly.", name);
+      return false;
     }
 
     while (waitedTime < ClusterConstant.getSyncLeaderMaxWaitMs()) {
@@ -1605,7 +1623,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     return term;
   }
 
-  public synchronized LogDispatcher getLogDispatcher() {
+  public LogDispatcher getLogDispatcher() {
     if (logDispatcher == null) {
       if (USE_INDIRECT_LOG_DISPATCHER) {
         logDispatcher = new IndirectLogDispatcher(this);
@@ -1717,9 +1735,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       }
       Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.calOperationCostTimeFromStart(startTime);
     }
-    if (ENABLE_COMMIT_RETURN) {
-      return;
-    }
+
     // when using async applier, the log here may not be applied. To return the execution
     // result, we must wait until the log is applied.
     startTime = Statistic.RAFT_SENDER_COMMIT_WAIT_LOG_APPLY.getOperationStartTime();
@@ -2127,127 +2143,6 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public Object getSnapshotApplyLock() {
     return snapshotApplyLock;
-  }
-
-  /**
-   * Find the local previous log of "log". If such log is found, discard all local logs behind it
-   * and append "log" to it. Otherwise report a log mismatch.
-   *
-   * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
-   */
-  protected AppendEntryResult appendEntry(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
-    long resp = checkPrevLogIndex(prevLogIndex);
-    if (resp != Response.RESPONSE_AGREE) {
-      return new AppendEntryResult(resp).setHeader(getHeader());
-    }
-
-    long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-    long success;
-    AppendEntryResult result = new AppendEntryResult();
-    synchronized (logManager) {
-      success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
-      if (success != -1) {
-        result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
-      }
-    }
-    Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-    if (success != -1) {
-      logger.debug("{} append a new log {}", name, log);
-      result.status = Response.RESPONSE_STRONG_ACCEPT;
-    } else {
-      // the incoming log points to an illegal position, reject it
-      result.status = Response.RESPONSE_LOG_MISMATCH;
-    }
-    return result;
-  }
-
-  /** Wait until all logs before "prevLogIndex" arrive or a timeout is reached. */
-  private boolean waitForPrevLog(long prevLogIndex) {
-    long waitStart = System.currentTimeMillis();
-    long alreadyWait = 0;
-    Object logUpdateCondition = logManager.getLogUpdateCondition(prevLogIndex);
-    long lastLogIndex = logManager.getLastLogIndex();
-    Timer.Statistic.RAFT_RECEIVER_INDEX_DIFF.add(prevLogIndex - lastLogIndex);
-    while (lastLogIndex < prevLogIndex
-        && alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS()) {
-      try {
-        // each time new logs are appended, this will be notified
-        synchronized (logUpdateCondition) {
-          logUpdateCondition.wait(1);
-        }
-        lastLogIndex = logManager.getLastLogIndex();
-        if (lastLogIndex >= prevLogIndex) {
-          return true;
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        return false;
-      }
-      alreadyWait = System.currentTimeMillis() - waitStart;
-    }
-
-    return alreadyWait <= ClusterConstant.getWriteOperationTimeoutMS();
-  }
-
-  protected long checkPrevLogIndex(long prevLogIndex) {
-    long lastLogIndex = logManager.getLastLogIndex();
-    long startTime = Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.getOperationStartTime();
-    if (lastLogIndex < prevLogIndex && !waitForPrevLog(prevLogIndex)) {
-      // there are logs missing between the incoming log and the local last log, and such logs
-      // did not come within a timeout, report a mismatch to the sender and it shall fix this
-      // through catch-up
-      return Response.RESPONSE_LOG_MISMATCH;
-    }
-    Timer.Statistic.RAFT_RECEIVER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
-    return Response.RESPONSE_AGREE;
-  }
-
-  /**
-   * Find the local previous log of "log". If such log is found, discard all local logs behind it
-   * and append "log" to it. Otherwise report a log mismatch.
-   *
-   * @param logs append logs
-   * @return Response.RESPONSE_AGREE when the log is successfully appended or Response
-   *     .RESPONSE_LOG_MISMATCH if the previous log of "log" is not found.
-   */
-  protected AppendEntryResult appendEntries(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
-    logger.debug(
-        "{}, prevLogIndex={}, prevLogTerm={}, leaderCommit={}",
-        name,
-        prevLogIndex,
-        prevLogTerm,
-        leaderCommit);
-    if (logs.isEmpty()) {
-      return new AppendEntryResult(Response.RESPONSE_AGREE).setHeader(getHeader());
-    }
-
-    long resp = checkPrevLogIndex(prevLogIndex);
-    if (resp != Response.RESPONSE_AGREE) {
-      return new AppendEntryResult(resp).setHeader(getHeader());
-    }
-
-    AppendEntryResult result = new AppendEntryResult();
-    synchronized (logManager) {
-      long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-      if (resp != -1) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
-        }
-        result.status = Response.RESPONSE_STRONG_ACCEPT;
-        result.setLastLogIndex(logManager.getLastLogIndex());
-        result.setLastLogTerm(logManager.getLastLogTerm());
-      } else {
-        // the incoming log points to an illegal position, reject it
-        result.status = Response.RESPONSE_LOG_MISMATCH;
-      }
-    }
-    return result;
   }
 
   /**

@@ -17,21 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.expr;
+package org.apache.iotdb.cluster.log.appender;
 
-import org.apache.iotdb.cluster.client.ClientManager;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
+import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
-import java.util.Arrays;
-import java.util.List;
-
-public abstract class SWRaftMember extends RaftMember {
+public class SlidingWindowLogAppender implements LogAppender {
 
   private int windowCapacity =
       ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem() * 2;
@@ -40,13 +39,12 @@ public abstract class SWRaftMember extends RaftMember {
   private long firstPosPrevIndex;
   private long[] prevTerms = new long[windowCapacity];
 
-  public SWRaftMember(String name, ClientManager clientManager) {
-    super(name, clientManager);
-  }
+  private RaftMember member;
+  private RaftLogManager logManager;
 
-  @Override
-  public void start() {
-    super.start();
+  public SlidingWindowLogAppender(RaftMember member) {
+    this.member = member;
+    this.logManager = member.getLogManager();
     this.firstPosPrevIndex = logManager.getLastLogIndex();
     this.prevTerms[0] = logManager.getLastLogTerm();
   }
@@ -135,10 +133,10 @@ public abstract class SWRaftMember extends RaftMember {
   }
 
   @Override
-  protected AppendEntryResult appendEntries(
+  public AppendEntryResult appendEntries(
       long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs) {
     if (logs.isEmpty()) {
-      return new AppendEntryResult(Response.RESPONSE_AGREE).setHeader(getHeader());
+      return new AppendEntryResult(Response.RESPONSE_AGREE).setHeader(member.getHeader());
     }
 
     AppendEntryResult result = null;
@@ -158,9 +156,8 @@ public abstract class SWRaftMember extends RaftMember {
   }
 
   @Override
-  protected AppendEntryResult appendEntry(
+  public AppendEntryResult appendEntry(
       long prevLogIndex, long prevLogTerm, long leaderCommit, Log log) {
-
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
     long appendedPos = 0;
 
@@ -191,7 +188,7 @@ public abstract class SWRaftMember extends RaftMember {
       } else {
         Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
         result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);
-        result.setHeader(getHeader());
+        result.setHeader(member.getHeader());
         return result;
       }
     }
@@ -202,5 +199,13 @@ public abstract class SWRaftMember extends RaftMember {
       result.status = Response.RESPONSE_LOG_MISMATCH;
     }
     return result;
+  }
+
+  public static class Factory implements LogAppenderFactory {
+
+    @Override
+    public LogAppender create(RaftMember member) {
+      return new SlidingWindowLogAppender(member);
+    }
   }
 }
