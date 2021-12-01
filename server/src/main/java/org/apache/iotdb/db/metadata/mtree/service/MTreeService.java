@@ -664,7 +664,7 @@ public class MTreeService implements Serializable {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern) {
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
@@ -692,7 +692,7 @@ public class MTreeService implements Serializable {
   public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
     Map<String, String> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
-        new StorageGroupCollector<Map<String, String>>(root, path) {
+        new StorageGroupCollector<Map<String, String>>(root, path, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
@@ -716,7 +716,7 @@ public class MTreeService implements Serializable {
       throws MetadataException {
     Set<PartialPath> result = new TreeSet<>();
     EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(root, pathPattern) {
+        new EntityCollector<Set<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
             result.add(getCurrentPartialPath(node));
@@ -731,7 +731,7 @@ public class MTreeService implements Serializable {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
-            root, plan.getPath(), plan.getLimit(), plan.getOffset()) {
+            root, plan.getPath(), store, plan.getLimit(), plan.getOffset()) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
             PartialPath device = getCurrentPartialPath(node);
@@ -751,7 +751,7 @@ public class MTreeService implements Serializable {
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     MeasurementCollector<Set<PartialPath>> collector =
-        new MeasurementCollector<Set<PartialPath>>(root, timeseries) {
+        new MeasurementCollector<Set<PartialPath>>(root, timeseries, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             result.add(getCurrentPartialPath(node).getDevicePath());
@@ -784,7 +784,7 @@ public class MTreeService implements Serializable {
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
+        new MeasurementCollector<List<PartialPath>>(root, pathPattern, store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
@@ -842,7 +842,7 @@ public class MTreeService implements Serializable {
     List<Pair<PartialPath, String[]>> result = new LinkedList<>();
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
-            root, pathPattern, limit, offset) {
+            root, pathPattern, store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema measurementSchema = node.getSchema();
@@ -884,7 +884,7 @@ public class MTreeService implements Serializable {
       PartialPath prefixPath) throws MetadataException {
     Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             result.put(getCurrentPartialPath(node), node.getSchema());
@@ -904,7 +904,7 @@ public class MTreeService implements Serializable {
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas)
       throws MetadataException {
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementSchemas.add(node.getSchema());
@@ -923,7 +923,7 @@ public class MTreeService implements Serializable {
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas)
       throws MetadataException {
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema nodeSchema = node.getSchema();
@@ -956,7 +956,8 @@ public class MTreeService implements Serializable {
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               try {
@@ -989,7 +990,8 @@ public class MTreeService implements Serializable {
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(node.getName());
@@ -1007,7 +1009,7 @@ public class MTreeService implements Serializable {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(root, pathPattern) {
+        new MNodeCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void transferToResult(IMNode node) {
             try {
@@ -1032,7 +1034,7 @@ public class MTreeService implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    CounterTraverser counter = new MeasurementCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1043,7 +1045,7 @@ public class MTreeService implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new EntityCounter(root, pathPattern);
+    CounterTraverser counter = new EntityCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1054,7 +1056,7 @@ public class MTreeService implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
   public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
+    CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1062,7 +1064,7 @@ public class MTreeService implements Serializable {
   /** Get the count of nodes in the given level matching the given path. */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, store, level);
     counter.traverse();
     return counter.getCount();
   }
@@ -1199,7 +1201,7 @@ public class MTreeService implements Serializable {
   public List<IStorageGroupMNode> getAllStorageGroupNodes() throws MetadataException {
     List<IStorageGroupMNode> result = new LinkedList<>();
     StorageGroupCollector<List<IStorageGroupMNode>> collector =
-        new StorageGroupCollector<List<IStorageGroupMNode>>(root, ALL_MATCH_PATTERN) {
+        new StorageGroupCollector<List<IStorageGroupMNode>>(root, ALL_MATCH_PATTERN, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node);
