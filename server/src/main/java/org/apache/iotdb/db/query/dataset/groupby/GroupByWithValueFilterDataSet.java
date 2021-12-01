@@ -37,11 +37,14 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.AlignedValueIterator;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -94,9 +97,9 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         .forEach(k -> selectedSeries.add(((MeasurementPath) k).transformToExactPath()));
 
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
-        MetaUtils.groupAggregationsByPath(selectedSeries);
+        MetaUtils.groupAggregationsBySeries(selectedSeries);
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
-        MetaUtils.groupAlignedPathsWithAggregations(pathToAggrIndexesMap);
+        MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
@@ -205,11 +208,18 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       throws IOException {
     for (Entry<IReaderByTimestamp, List<List<Integer>>> entry : readerToAggrIndexesMap.entrySet()) {
       IReaderByTimestamp reader = entry.getKey();
-      for (int i = 0; i < entry.getValue().size(); i++) {
-        List<Integer> subIndexes = entry.getValue().get(i);
-        for (Integer index : subIndexes) {
-          curAggregateResults[index].updateResultUsingTimestamps(
-              timestampArray, timeArrayLength, reader);
+      List<List<Integer>> subIndexes = entry.getValue();
+      int subSensorSize = subIndexes.size();
+
+      Object[] values = reader.getValuesInTimestamps(timestampArray, timeArrayLength);
+      ValueIterator valueIterator = generateValueIterator(values);
+
+      for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
+        valueIterator.setSubMeasurementIndex(curIndex);
+        for (Integer index : subIndexes.get(curIndex)) {
+          curAggregateResults[index].updateResultUsingValues(
+              timestampArray, timeArrayLength, valueIterator);
+          valueIterator.reset();
         }
       }
     }
@@ -310,5 +320,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
     }
     return record;
+  }
+
+  private ValueIterator generateValueIterator(Object[] values) {
+    if (values[0] instanceof TsPrimitiveType[]) {
+      return new AlignedValueIterator(values);
+    } else {
+      return new ValueIterator(values);
+    }
   }
 }
