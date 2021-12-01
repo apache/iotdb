@@ -235,6 +235,7 @@ public class MTreeService implements Serializable {
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      store.updateMNode(entityMNode);
 
       IMeasurementMNode measurementMNode =
           MeasurementMNode.getMeasurementMNode(
@@ -300,6 +301,7 @@ public class MTreeService implements Serializable {
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      store.updateMNode(entityMNode);
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
@@ -391,6 +393,7 @@ public class MTreeService implements Serializable {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = MNodeUtils.setToInternal(parent);
+          store.updateMNode(curNode);
         }
       }
     }
@@ -451,7 +454,9 @@ public class MTreeService implements Serializable {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      return MNodeUtils.setToEntity(node);
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(node);
+      store.updateMNode(entityMNode);
+      return entityMNode;
     }
   }
   // endregion
