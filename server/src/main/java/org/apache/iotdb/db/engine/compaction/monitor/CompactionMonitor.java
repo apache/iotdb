@@ -21,10 +21,13 @@ package org.apache.iotdb.db.engine.compaction.monitor;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
@@ -41,7 +44,7 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class CompactionMonitor {
+public class CompactionMonitor implements IService {
   private final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionMonitor INSTANCE = new CompactionMonitor();
   // These are constant
@@ -94,6 +97,9 @@ public class CompactionMonitor {
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           TimeUnit.MILLISECONDS);
+      LOGGER.info(
+          "[CompactionMonitor] Start to monitor compaction, period is {} ms",
+          IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod());
     }
   }
 
@@ -107,6 +113,21 @@ public class CompactionMonitor {
       }
       System.out.println("thread pool is stop");
     }
+  }
+
+  @Override
+  public void waitAndStop(long milliseconds) {
+    IService.super.waitAndStop(milliseconds);
+  }
+
+  @Override
+  public void shutdown(long milliseconds) throws ShutdownException {
+    IService.super.shutdown(milliseconds);
+  }
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.COMPACTION_MONITOR_SERVICE;
   }
 
   /** Register compaction thread id to id set */
@@ -125,7 +146,7 @@ public class CompactionMonitor {
   public synchronized void sealedMonitorStatusPeriodically() {
     lastUpdateTime = System.currentTimeMillis();
     Map<Long, Double> cpuConsumptionForCompactionThread =
-        calculateCpuConsumptionForCompactionThreads();
+        calculateCpuConsumptionForCompactionAndMergeThreads();
     saveCpuConsumption(cpuConsumptionForCompactionThread);
     saveCompactionInfo();
     saveMergeInfo();
@@ -164,7 +185,7 @@ public class CompactionMonitor {
    * @return A map from threadId to percentage of cpu consumption for each compaction and merge
    *     thread in last monitor period.
    */
-  public synchronized Map<Long, Double> calculateCpuConsumptionForCompactionThreads() {
+  public synchronized Map<Long, Double> calculateCpuConsumptionForCompactionAndMergeThreads() {
     ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
     Map<Long, Long> cpuTimeForCompactionThreadInThisPeriod = new HashMap<>();
     Map<Long, Long> cpuTimeForMergeThreadInThisPeriod = new HashMap<>();
@@ -223,7 +244,8 @@ public class CompactionMonitor {
         List<String> compactionCpuConsumptionValues = new ArrayList<>();
         for (long threadId : compactionThreadIdSet) {
           compactionCpuConsumptionMeasurements.add(mxBean.getThreadInfo(threadId).getThreadName());
-          compactionCpuConsumptionValues.add(Double.toString(consumptionMap.get(threadId)));
+          compactionCpuConsumptionValues.add(
+              Double.toString(consumptionMap.getOrDefault(threadId, 0.0)));
         }
         InsertRowPlan insertPlanForCompaction =
             new InsertRowPlan(
@@ -239,9 +261,10 @@ public class CompactionMonitor {
         PartialPath mergePath = new PartialPath(MERGE_CPU_CONSUMPTION_DEVICE);
         List<String> mergeCpuConsumptionMeasurements = new ArrayList<>();
         List<String> mergeCpuConsumptionValues = new ArrayList<>();
-        for (long threadId : compactionThreadIdSet) {
+        for (long threadId : mergeThreadIdSet) {
           mergeCpuConsumptionMeasurements.add(mxBean.getThreadInfo(threadId).getThreadName());
-          mergeCpuConsumptionValues.add(Double.toString(consumptionMap.get(threadId)));
+          mergeCpuConsumptionValues.add(
+              Double.toString(consumptionMap.getOrDefault(threadId, 0.0)));
         }
         InsertRowPlan insertPlanForMerge =
             new InsertRowPlan(
@@ -263,7 +286,7 @@ public class CompactionMonitor {
       List<String> valuesForCompactionCount = new ArrayList<>();
       for (String sgName : compactionStartCountForEachSg.keySet()) {
         // remove "root." in sg name
-        measurementsForCompactionCount.add(sgName.substring(5));
+        measurementsForCompactionCount.add(sgName.substring(5).replaceAll("\\.", "#"));
         valuesForCompactionCount.add(Integer.toString(compactionStartCountForEachSg.get(sgName)));
       }
       InsertRowPlan insertRowPlanForCompactionCount =
@@ -282,10 +305,10 @@ public class CompactionMonitor {
       int maxCompactionCount = Math.max(config.getSeqLevelNum(), config.getUnseqLevelNum());
       for (String sgName : compactionStartFileCountMap.keySet()) {
         Map<Integer, Integer> countMap = compactionStartFileCountMap.get(sgName);
-        String subPartOfSg = sgName.substring(5);
+        String subPartOfSg = sgName.substring(5).replaceAll("\\.", "#");
         for (int i = 0; i < maxCompactionCount - 1; ++i) {
           int fileCount = countMap.getOrDefault(i, 0);
-          measurementForCompactionFiles.add(subPartOfSg + "." + i);
+          measurementForCompactionFiles.add(subPartOfSg + "#level-" + i);
           valuesForCompactionFiles.add(Integer.toString(fileCount));
         }
       }
@@ -311,7 +334,7 @@ public class CompactionMonitor {
       List<String> valuesForMergeCount = new ArrayList<>();
       for (String sgName : mergeStartCountForEachSg.keySet()) {
         // remove "root." in sg name
-        measurementsForMergeCount.add(sgName.substring(5));
+        measurementsForMergeCount.add(sgName.substring(5).replaceAll("\\.", "#"));
         valuesForMergeCount.add(Integer.toString(mergeStartCountForEachSg.get(sgName)));
       }
       InsertRowPlan insertRowPlanForMergeCount =
@@ -329,9 +352,9 @@ public class CompactionMonitor {
       for (String sgName : mergeStartFileNumForEachSg.keySet()) {
         Pair<Integer, Integer> fileNumPair = mergeStartFileNumForEachSg.get(sgName);
         // remove "root." in sg name
-        measurementsForMergeFiles.add(sgName.substring(5) + "-seq");
+        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-seq");
         valuesForMergeFiles.add(Integer.toString(fileNumPair.left));
-        measurementsForMergeFiles.add(sgName.substring(5) + "-unseq");
+        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-unseq");
         valuesForMergeFiles.add(Integer.toString(fileNumPair.right));
       }
 
