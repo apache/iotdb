@@ -20,16 +20,19 @@ package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
+@Category({LocalStandaloneTest.class})
 /** Let One chunk has more than one page. */
 public class IoTDBAggregationWithValueFilterWithDeletion2IT
     extends IoTDBAggregationWithValueFilterWithDeletionIT {
