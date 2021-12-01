@@ -46,6 +46,7 @@ public class LastPointReader {
   // if it is a common path, it will be MeasurementPath
   // if it is a measurement of an aligned device, it will be AlignedPath with only one measurement
   private final PartialPath seriesPath;
+  // only used for linear fill and previous fill, otherwise, it will be Long.MAX_VALUE
   long queryTime;
   TSDataType dataType;
   private final QueryContext context;

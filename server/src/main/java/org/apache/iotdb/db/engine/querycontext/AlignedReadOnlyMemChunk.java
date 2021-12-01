@@ -45,7 +45,7 @@ import java.util.List;
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   // deletion list for this chunk
-  private final List<TimeRange> deletionList;
+  private final List<List<TimeRange>> deletionList;
 
   private String measurementUid;
   private TSDataType dataType;
@@ -68,7 +68,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
    * @param deletionList The timeRange of deletionList
    */
   public AlignedReadOnlyMemChunk(
-      IMeasurementSchema schema, TVList tvList, int size, List<TimeRange> deletionList)
+      IMeasurementSchema schema, TVList tvList, int size, List<List<TimeRange>> deletionList)
       throws IOException, QueryProcessException {
     super();
     this.measurementUid = schema.getMeasurementId();

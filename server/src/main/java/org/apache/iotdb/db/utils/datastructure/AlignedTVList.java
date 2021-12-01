@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
@@ -176,10 +177,11 @@ public class AlignedTVList extends TVList {
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (columnValues == null
-          || bitMaps != null
-              && bitMaps.get(columnIndex) != null
-              && isValueMarked(valueIndex, columnIndex)) {
+      if (validIndexesForTimeDuplicatedRows == null
+          && (columnValues == null
+              || bitMaps != null
+                  && bitMaps.get(columnIndex) != null
+                  && isValueMarked(valueIndex, columnIndex))) {
         continue;
       }
       if (validIndexesForTimeDuplicatedRows != null) {
@@ -267,8 +269,8 @@ public class AlignedTVList extends TVList {
 
   public void extendColumn(TSDataType dataType) {
     if (bitMaps == null) {
-      bitMaps = new ArrayList<>(values.size() + 1);
-      for (int i = 0; i < values.size() + 1; i++) {
+      bitMaps = new ArrayList<>(values.size());
+      for (int i = 0; i < values.size(); i++) {
         bitMaps.add(null);
       }
     }
@@ -308,8 +310,7 @@ public class AlignedTVList extends TVList {
       }
       columnBitMaps.add(bitMap);
     }
-    // values.size() is the index of column
-    this.bitMaps.set(values.size(), columnBitMaps);
+    this.bitMaps.add(columnBitMaps);
     this.values.add(columnValue);
     this.dataTypes.add(dataType);
   }
@@ -430,35 +431,48 @@ public class AlignedTVList extends TVList {
 
   @Override
   public int delete(long lowerBound, long upperBound) {
-    int newSize = 0;
-    minTime = Long.MAX_VALUE;
+    int deletedNumber = 0;
+    for (int i = 0; i < dataTypes.size(); i++) {
+      deletedNumber += delete(lowerBound, upperBound, i).left;
+    }
+    return deletedNumber;
+  }
+
+  /**
+   * Delete points in a specific column.
+   *
+   * @param lowerBound deletion lower bound
+   * @param upperBound deletion upper bound
+   * @param columnIndex column index to be deleted
+   * @return Delete info pair. Left: deletedNumber int; right: ifDeleteColumn boolean
+   */
+  public Pair<Integer, Boolean> delete(long lowerBound, long upperBound, int columnIndex) {
+    int deletedNumber = 0;
+    boolean deleteColumn = true;
     for (int i = 0; i < size; i++) {
       long time = getTime(i);
-      if (time < lowerBound || time > upperBound) {
-        set(i, newSize++);
-        minTime = Math.min(time, minTime);
+      if (time >= lowerBound && time <= upperBound) {
+        int originRowIndex = getValueIndex(i);
+        int arrayIndex = originRowIndex / ARRAY_SIZE;
+        int elementIndex = originRowIndex % ARRAY_SIZE;
+        markNullValue(columnIndex, arrayIndex, elementIndex);
+        deletedNumber++;
+      } else {
+        deleteColumn = false;
       }
     }
-    int deletedNumber = size - newSize;
-    size = newSize;
-    // release primitive arrays that are empty
-    int newArrayNum = newSize / ARRAY_SIZE;
-    if (newSize % ARRAY_SIZE != 0) {
-      newArrayNum++;
+    if (deleteColumn) {
+      dataTypes.remove(columnIndex);
+      for (Object array : values.get(columnIndex)) {
+        PrimitiveArrayManager.release(array);
+      }
+      values.remove(columnIndex);
+      bitMaps.remove(columnIndex);
     }
-    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
-      releaseLastTimeArray();
-      releaseLastValueArray();
-    }
-    return deletedNumber * getTsDataTypes().size();
+    return new Pair<>(deletedNumber, deleteColumn);
   }
 
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
-  public int delete(long lowerBound, long upperBound, int columnIndex) {
-    throw new UnsupportedOperationException(ERR_DATATYPE_NOT_CONSISTENT);
-  }
-
-  protected void set(int index, long timestamp, int value) {
+  private void set(int index, long timestamp, int value) {
     int arrayIndex = index / ARRAY_SIZE;
     int elementIndex = index % ARRAY_SIZE;
     timestamps.get(arrayIndex)[elementIndex] = timestamp;
@@ -816,7 +830,7 @@ public class AlignedTVList extends TVList {
     if (bitMaps.get(columnIndex) == null) {
       List<BitMap> columnBitMaps = new ArrayList<>();
       for (int i = 0; i < values.get(columnIndex).size(); i++) {
-        columnBitMaps.add(null);
+        columnBitMaps.add(new BitMap(ARRAY_SIZE));
       }
       bitMaps.set(columnIndex, columnBitMaps);
     }
@@ -879,22 +893,35 @@ public class AlignedTVList extends TVList {
   }
 
   public IPointReader getAlignedIterator(
-      int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
+      int floatPrecision,
+      List<TSEncoding> encodingList,
+      int size,
+      List<List<TimeRange>> deletionList) {
     return new AlignedIte(floatPrecision, encodingList, size, deletionList);
   }
 
   private class AlignedIte extends Ite {
 
     private List<TSEncoding> encodingList;
+    private int[] deleteCursors;
+    /** this field is effective only in the AlignedTvlist in a AlignedRealOnlyMemChunk. */
+    private List<List<TimeRange>> deletionList;
 
     public AlignedIte() {
       super();
     }
 
     public AlignedIte(
-        int floatPrecision, List<TSEncoding> encodingList, int size, List<TimeRange> deletionList) {
-      super(floatPrecision, null, size, deletionList);
+        int floatPrecision,
+        List<TSEncoding> encodingList,
+        int size,
+        List<List<TimeRange>> deletionList) {
+      super(floatPrecision, null, size, null);
       this.encodingList = encodingList;
+      this.deletionList = deletionList;
+      if (deletionList != null) {
+        deleteCursors = new int[deletionList.size()];
+      }
     }
 
     @Override
@@ -906,7 +933,7 @@ public class AlignedTVList extends TVList {
       List<Integer> timeDuplicatedAlignedRowIndexList = null;
       while (cur < iteSize) {
         long time = getTime(cur);
-        if (isPointDeleted(time) || (cur + 1 < size() && (time == getTime(cur + 1)))) {
+        if (cur + 1 < size() && (time == getTime(cur + 1))) {
           if (timeDuplicatedAlignedRowIndexList == null) {
             timeDuplicatedAlignedRowIndexList = new ArrayList<>();
             timeDuplicatedAlignedRowIndexList.add(getValueIndex(cur));
@@ -925,6 +952,9 @@ public class AlignedTVList extends TVList {
           tvPair = getTimeValuePair(cur, time, floatPrecision, encodingList);
         }
         cur++;
+        if (deletePointsInDeletionList(time, tvPair)) {
+          continue;
+        }
         if (tvPair.getValue() != null) {
           cachedTimeValuePair = tvPair;
           hasCachedPair = true;
@@ -933,6 +963,27 @@ public class AlignedTVList extends TVList {
       }
 
       return false;
+    }
+
+    private boolean deletePointsInDeletionList(long timestamp, TimeValuePair tvPair) {
+      if (deletionList == null) {
+        return false;
+      }
+      boolean deletedAll = true;
+      for (int i = 0; i < deleteCursors.length; i++) {
+        while (deletionList.get(i) != null && deleteCursors[i] < deletionList.get(i).size()) {
+          if (deletionList.get(i).get(deleteCursors[i]).contains(timestamp)) {
+            tvPair.getValue().getVector()[i] = null;
+            break;
+          } else if (deletionList.get(i).get(deleteCursors[i]).getMax() < timestamp) {
+            deleteCursors[i]++;
+          } else {
+            deletedAll = false;
+            break;
+          }
+        }
+      }
+      return deletedAll;
     }
   }
 }

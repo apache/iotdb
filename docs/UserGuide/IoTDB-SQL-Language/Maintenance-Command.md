@@ -24,6 +24,10 @@
 
 Persist all the data points in the memory table of the storage group to the disk, and seal the data file.
 
+Note: This command does not need to be invoked manually by the client. IoTDB has WAL to ensure data security
+and IoTDB will flush when appropriate.
+Frequently call flush can result in small data files that degrade query performance.
+
 ```sql
 IoTDB> FLUSH 
 IoTDB> FLUSH root.ln

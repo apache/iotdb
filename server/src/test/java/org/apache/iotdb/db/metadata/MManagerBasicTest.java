@@ -1794,10 +1794,6 @@ public class MManagerBasicTest {
       // call getSeriesSchemasAndReadLockDevice
       IMNode node = manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
       assertEquals(3, manager.getAllTimeseriesCount(node.getPartialPath().concatNode("**")));
-      assertNull(insertRowPlan.getMeasurementMNodes()[0]);
-      assertNull(insertRowPlan.getMeasurementMNodes()[1]);
-      assertNull(insertRowPlan.getMeasurementMNodes()[2]);
-      assertEquals(3, insertRowPlan.getFailedMeasurementNumber());
 
     } catch (Exception e) {
       e.printStackTrace();
