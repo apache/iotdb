@@ -19,15 +19,19 @@
 
 package org.apache.iotdb.db.query.dataset.udf;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
+import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
+import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.IOException;
 
-public class UDTFJoinDataSet extends QueryDataSet
-//    implements DirectAlignByTimeDataSet
-{
+public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDataSet {
 
   private final UDTFFragmentDataSet[] fragmentDataSets;
 
@@ -77,6 +81,131 @@ public class UDTFJoinDataSet extends QueryDataSet
   }
 
   @Override
+  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder)
+      throws IOException, QueryProcessException {
+    TSQueryDataSet tsQueryDataSet = new TSQueryDataSet();
+
+    PublicBAOS timeBAOS = new PublicBAOS();
+    PublicBAOS[] valueBAOSList = new PublicBAOS[resultColumnsLength];
+    PublicBAOS[] bitmapBAOSList = new PublicBAOS[resultColumnsLength];
+    for (int i = 0; i < resultColumnsLength; ++i) {
+      valueBAOSList[i] = new PublicBAOS();
+      bitmapBAOSList[i] = new PublicBAOS();
+    }
+    int[] currentBitmapList = new int[resultColumnsLength];
+
+    //    int rowCount = 0;
+    //    while (rowCount < fetchSize
+    //        && (rowLimit <= 0 || alreadyReturnedRowNum < rowLimit)
+    //        && !timeHeap.isEmpty()) {
+    //
+    //      long minTime = timeHeap.pollFirst();
+    //      if (rowOffset == 0) {
+    //        timeBAOS.write(BytesUtils.longToBytes(minTime));
+    //      }
+    //
+    //      for (int i = 0; i < resultColumnsLength; ++i) {
+    //        LayerPointReader reader = transformers[i];
+    //
+    //        if (!reader.next() || reader.currentTime() != minTime) {
+    //          if (rowOffset == 0) {
+    //            currentBitmapList[i] = (currentBitmapList[i] << 1);
+    //          }
+    //          continue;
+    //        }
+    //
+    //        if (rowOffset == 0) {
+    //          currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
+    //          TSDataType type = reader.getDataType();
+    //          switch (type) {
+    //            case INT32:
+    //              int intValue = reader.currentInt();
+    //              ReadWriteIOUtils.write(
+    //                  encoder != null && encoder.needEncode(minTime)
+    //                      ? encoder.encodeInt(intValue, minTime)
+    //                      : intValue,
+    //                  valueBAOSList[i]);
+    //              break;
+    //            case INT64:
+    //              long longValue = reader.currentLong();
+    //              ReadWriteIOUtils.write(
+    //                  encoder != null && encoder.needEncode(minTime)
+    //                      ? encoder.encodeLong(longValue, minTime)
+    //                      : longValue,
+    //                  valueBAOSList[i]);
+    //              break;
+    //            case FLOAT:
+    //              float floatValue = reader.currentFloat();
+    //              ReadWriteIOUtils.write(
+    //                  encoder != null && encoder.needEncode(minTime)
+    //                      ? encoder.encodeFloat(floatValue, minTime)
+    //                      : floatValue,
+    //                  valueBAOSList[i]);
+    //              break;
+    //            case DOUBLE:
+    //              double doubleValue = reader.currentDouble();
+    //              ReadWriteIOUtils.write(
+    //                  encoder != null && encoder.needEncode(minTime)
+    //                      ? encoder.encodeDouble(doubleValue, minTime)
+    //                      : doubleValue,
+    //                  valueBAOSList[i]);
+    //              break;
+    //            case BOOLEAN:
+    //              ReadWriteIOUtils.write(reader.currentBoolean(), valueBAOSList[i]);
+    //              break;
+    //            case TEXT:
+    //              ReadWriteIOUtils.write(reader.currentBinary(), valueBAOSList[i]);
+    //              break;
+    //            default:
+    //              throw new UnSupportedDataTypeException(
+    //                  String.format("Data type %s is not supported.", type));
+    //          }
+    //        }
+    //
+    //        reader.readyForNext();
+    //
+    //        if (reader.next()) {
+    //          timeHeap.add(reader.currentTime());
+    //        }
+    //      }
+    //
+    //      if (rowOffset == 0) {
+    //        ++rowCount;
+    //        if (rowCount % 8 == 0) {
+    //          for (int i = 0; i < resultColumnsLength; ++i) {
+    //            ReadWriteIOUtils.write((byte) currentBitmapList[i], bitmapBAOSList[i]);
+    //            currentBitmapList[i] = 0;
+    //          }
+    //        }
+    //        if (rowLimit > 0) {
+    //          ++alreadyReturnedRowNum;
+    //        }
+    //      } else {
+    //        --rowOffset;
+    //      }
+    //
+    //      rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
+    //    }
+    //
+    //    /*
+    //     * feed the bitmap with remaining 0 in the right
+    //     * if current bitmap is 00011111 and remaining is 3, after feeding the bitmap is 11111000
+    //     */
+    //    if (rowCount > 0) {
+    //      int remaining = rowCount % 8;
+    //      if (remaining != 0) {
+    //        for (int i = 0; i < resultColumnsLength; ++i) {
+    //          ReadWriteIOUtils.write(
+    //              (byte) (currentBitmapList[i] << (8 - remaining)), bitmapBAOSList[i]);
+    //        }
+    //      }
+    //    }
+
+    return QueryDataSetUtils.packBuffer(
+        tsQueryDataSet, timeBAOS, valueBAOSList, bitmapBAOSList, resultColumnsLength);
+  }
+
+  @Override
   public boolean hasNextWithoutConstraint() throws IOException {
     return !timeHeap.isEmpty();
   }
@@ -114,9 +243,4 @@ public class UDTFJoinDataSet extends QueryDataSet
 
     return rowRecord;
   }
-
-  //  @Override
-  //  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) {
-  //    throw new NotImplementedException();
-  //  }
 }

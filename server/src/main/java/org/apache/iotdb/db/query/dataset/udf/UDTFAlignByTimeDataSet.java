@@ -28,6 +28,7 @@ import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
+import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
 import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -40,8 +41,6 @@ import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 
 public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignByTimeDataSet {
@@ -109,8 +108,6 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   }
 
   public QueryDataSet executeInFragmentsIfPossible() throws QueryProcessException, IOException {
-    // TODO make the behaviour of the return value of layerBuilder.generateJoinDataSet() the same as
-    // TODO the original dataset
     return canBeSplitIntoFragments() ? layerBuilder.generateJoinDataSet(this) : this;
   }
 
@@ -237,39 +234,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       }
     }
 
-    return packBuffer(tsQueryDataSet, timeBAOS, valueBAOSList, bitmapBAOSList);
-  }
-
-  protected TSQueryDataSet packBuffer(
-      TSQueryDataSet tsQueryDataSet,
-      PublicBAOS timeBAOS,
-      PublicBAOS[] valueBAOSList,
-      PublicBAOS[] bitmapBAOSList) {
-    int columnsNum = transformers.length;
-
-    ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
-    timeBuffer.put(timeBAOS.getBuf(), 0, timeBAOS.size());
-    timeBuffer.flip();
-    tsQueryDataSet.setTime(timeBuffer);
-
-    List<ByteBuffer> valueBufferList = new ArrayList<>();
-    List<ByteBuffer> bitmapBufferList = new ArrayList<>();
-    for (int i = 0; i < columnsNum; ++i) {
-      putPBOSToBuffer(valueBAOSList, valueBufferList, i);
-      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, i);
-    }
-    tsQueryDataSet.setValueList(valueBufferList);
-    tsQueryDataSet.setBitmapList(bitmapBufferList);
-
-    return tsQueryDataSet;
-  }
-
-  protected void putPBOSToBuffer(
-      PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList, int tsIndex) {
-    ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
-    bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
-    bitmapBuffer.flip();
-    bitmapBufferList.add(bitmapBuffer);
+    return QueryDataSetUtils.packBuffer(
+        tsQueryDataSet, timeBAOS, valueBAOSList, bitmapBAOSList, transformers.length);
   }
 
   @Override

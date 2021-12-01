@@ -28,11 +28,13 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.PublicBAOS;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -268,5 +270,36 @@ public class QueryDataSetUtils {
       }
     }
     return values;
+  }
+
+  public static TSQueryDataSet packBuffer(
+      TSQueryDataSet tsQueryDataSet,
+      PublicBAOS timeBAOS,
+      PublicBAOS[] valueBAOSList,
+      PublicBAOS[] bitmapBAOSList,
+      int columnsLength) {
+    ByteBuffer timeBuffer = ByteBuffer.allocate(timeBAOS.size());
+    timeBuffer.put(timeBAOS.getBuf(), 0, timeBAOS.size());
+    timeBuffer.flip();
+    tsQueryDataSet.setTime(timeBuffer);
+
+    List<ByteBuffer> valueBufferList = new ArrayList<>();
+    List<ByteBuffer> bitmapBufferList = new ArrayList<>();
+    for (int i = 0; i < columnsLength; ++i) {
+      putPBOSToBuffer(valueBAOSList, valueBufferList, i);
+      putPBOSToBuffer(bitmapBAOSList, bitmapBufferList, i);
+    }
+    tsQueryDataSet.setValueList(valueBufferList);
+    tsQueryDataSet.setBitmapList(bitmapBufferList);
+
+    return tsQueryDataSet;
+  }
+
+  public static void putPBOSToBuffer(
+      PublicBAOS[] bitmapBAOSList, List<ByteBuffer> bitmapBufferList, int tsIndex) {
+    ByteBuffer bitmapBuffer = ByteBuffer.allocate(bitmapBAOSList[tsIndex].size());
+    bitmapBuffer.put(bitmapBAOSList[tsIndex].getBuf(), 0, bitmapBAOSList[tsIndex].size());
+    bitmapBuffer.flip();
+    bitmapBufferList.add(bitmapBuffer);
   }
 }
