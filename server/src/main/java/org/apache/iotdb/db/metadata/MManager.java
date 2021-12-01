@@ -1007,7 +1007,12 @@ public class MManager {
 
   /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() {
-    return mtree.getAllStorageGroupPaths();
+    try {
+      return mtree.getAllStorageGroupPaths();
+    } catch (MetadataException e) {
+      logger.warn("Something wrong when collecting storage groups");
+      return Collections.emptyList();
+    }
   }
 
   /**
@@ -1264,7 +1269,12 @@ public class MManager {
 
   /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return mtree.getAllStorageGroupNodes();
+    try {
+      return mtree.getAllStorageGroupNodes();
+    } catch (MetadataException e) {
+      logger.warn("Something wrong when collecting storage groups");
+      return Collections.emptyList();
+    }
   }
 
   IMNode getDeviceNode(PartialPath path) throws MetadataException {

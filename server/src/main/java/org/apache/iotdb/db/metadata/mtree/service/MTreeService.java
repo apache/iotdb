@@ -73,14 +73,13 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -91,6 +90,7 @@ import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
@@ -265,9 +265,7 @@ public class MTreeService implements Serializable {
         }
       }
 
-      if (device.isEntity()
-          && !device.getAsEntityMNode().isAligned()
-          && (!store.getChildren(device).isEmpty() || device.isUseTemplate())) {
+      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }
@@ -363,7 +361,10 @@ public class MTreeService implements Serializable {
     IMNode curNode = parent;
     if (!parent.isUseTemplate()) {
       boolean hasMeasurement = false;
-      for (IMNode child : store.getChildren(parent).values()) {
+      IMNode child;
+      Iterator<IMNode> iterator = store.getChildrenIterator(parent);
+      while (iterator.hasNext()) {
+        child = iterator.next();
         if (child.isMeasurement()) {
           hasMeasurement = true;
           break;
@@ -516,7 +517,10 @@ public class MTreeService implements Serializable {
     queue.add(cur);
     while (!queue.isEmpty()) {
       IMNode node = queue.poll();
-      for (IMNode child : store.getChildren(node).values()) {
+      Iterator<IMNode> iterator = store.getChildrenIterator(node);
+      IMNode child;
+      while (iterator.hasNext()) {
+        child = iterator.next();
         if (child.isMeasurement()) {
           leafMNodes.add(child.getAsMeasurementMNode());
         } else {
@@ -527,7 +531,7 @@ public class MTreeService implements Serializable {
 
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
-    while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && store.getChildren(cur).size() == 0) {
+    while (cur.isEmptyInternal()) {
       store.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
@@ -676,19 +680,8 @@ public class MTreeService implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  public List<PartialPath> getAllStorageGroupPaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        res.add(current.getPartialPath());
-      } else {
-        nodeStack.addAll(store.getChildren(current).values());
-      }
-    }
-    return res;
+  public List<PartialPath> getAllStorageGroupPaths() throws MetadataException {
+    return getMatchedStorageGroups(ALL_MATCH_PATTERN);
   }
 
   /**
@@ -1203,19 +1196,17 @@ public class MTreeService implements Serializable {
   }
 
   /** Get all storage group MNodes */
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    List<IStorageGroupMNode> ret = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        ret.add(current.getAsStorageGroupMNode());
-      } else {
-        nodeStack.addAll(store.getChildren(current).values());
-      }
-    }
-    return ret;
+  public List<IStorageGroupMNode> getAllStorageGroupNodes() throws MetadataException {
+    List<IStorageGroupMNode> result = new LinkedList<>();
+    StorageGroupCollector<List<IStorageGroupMNode>> collector =
+        new StorageGroupCollector<List<IStorageGroupMNode>>(root, ALL_MATCH_PATTERN) {
+          @Override
+          protected void collectStorageGroup(IStorageGroupMNode node) {
+            result.add(node);
+          }
+        };
+    collector.traverse();
+    return result;
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException {
@@ -1290,7 +1281,10 @@ public class MTreeService implements Serializable {
       if (!mountedNode.isEntity()) {
         return setToEntity(mountedNode);
       } else {
-        for (IMNode child : store.getChildren(mountedNode).values()) {
+        IMNode child;
+        Iterator<IMNode> iterator = store.getChildrenIterator(mountedNode);
+        while (iterator.hasNext()) {
+          child = iterator.next();
           if (child.isMeasurement()) {
             if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
               throw new MetadataException(
@@ -1313,7 +1307,10 @@ public class MTreeService implements Serializable {
     if (node.isMeasurement()) {
       return;
     }
-    for (IMNode child : store.getChildren(node).values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       if (child.isMeasurement()) {
         continue;
       }
@@ -1328,7 +1325,10 @@ public class MTreeService implements Serializable {
     if (node.isMeasurement()) {
       return;
     }
-    for (IMNode child : store.getChildren(node).values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       if (child.isMeasurement()) {
         continue;
       }
