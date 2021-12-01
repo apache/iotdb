@@ -177,42 +177,9 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    IMNode cur = root;
-    boolean hasSetStorageGroup = false;
-    Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length - 1; i++) {
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-      String childName = nodeNames[i];
-
-      // even template not in use, measurement path shall not be conflict with MTree
-      if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-        throw new TemplateImcompatibeException(
-            path.getFullPath(), upperTemplate.getName(), childName);
-      }
-
-      if (!store.hasChild(cur, childName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-
-        store.addChild(cur, childName, new InternalMNode(cur, childName));
-      }
-      cur = store.getChild(cur, childName);
-
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-    }
-
-    if (cur.isMeasurement()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
-    }
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(path.getDevicePath());
+    IMNode device = pair.left;
+    Template upperTemplate = pair.right;
 
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -221,11 +188,11 @@ public class MTreeService implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (store.hasChild(cur, leafName)) {
+      if (store.hasChild(device, leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
-      if (alias != null && store.hasChild(cur, alias)) {
+      if (alias != null && store.hasChild(device, alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
@@ -234,8 +201,13 @@ public class MTreeService implements Serializable {
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
       }
 
-      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
-      store.updateMNode(entityMNode);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = MNodeUtils.setToEntity(device);
+        store.updateMNode(entityMNode);
+      }
 
       IMeasurementMNode measurementMNode =
           MeasurementMNode.getMeasurementMNode(
@@ -271,14 +243,14 @@ public class MTreeService implements Serializable {
       throws MetadataException {
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
-    IMNode cur = pair.left;
+    IMNode device = pair.left;
     Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
       for (String measurement : measurements) {
-        if (store.hasChild(cur, measurement)) {
+        if (store.hasChild(device, measurement)) {
           throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
         }
       }
@@ -293,15 +265,20 @@ public class MTreeService implements Serializable {
         }
       }
 
-      if (cur.isEntity()
-          && !cur.getAsEntityMNode().isAligned()
-          && (!store.getChildren(cur).isEmpty() || cur.isUseTemplate())) {
+      if (device.isEntity()
+          && !device.getAsEntityMNode().isAligned()
+          && (!store.getChildren(device).isEmpty() || device.isUseTemplate())) {
         throw new AlignedTimeseriesException(
             "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }
 
-      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
-      store.updateMNode(entityMNode);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = MNodeUtils.setToEntity(device);
+        store.updateMNode(entityMNode);
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
@@ -325,23 +302,25 @@ public class MTreeService implements Serializable {
     }
     MetaFormatUtils.checkTimeseries(devicePath);
     IMNode cur = root;
+    IMNode child;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
-      if (!store.hasChild(cur, childName)) {
+      child = store.getChild(cur, childName);
+      if (child == null) {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
         if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(childName).getFullPath()
-                  + " ( which is incompatible with template )");
+          throw new TemplateImcompatibeException(
+              devicePath.getFullPath(), upperTemplate.getName(), childName);
         }
-        store.addChild(cur, childName, new InternalMNode(cur, childName));
+        child = new InternalMNode(cur, childName);
+        store.addChild(cur, childName, child);
       }
-      cur = store.getChild(cur, childName);
+      cur = child;
 
       if (cur.isMeasurement()) {
         throw new PathAlreadyExistException(cur.getFullPath());
@@ -425,24 +404,25 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(deviceId.getFullPath());
     }
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!store.hasChild(cur, nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
         if (i == sgLevel) {
-          store.addChild(
-              cur,
-              nodeNames[i],
+          child =
               new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
+                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         } else {
-          store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          child = new InternalMNode(cur, nodeNames[i]);
         }
+        store.addChild(cur, nodeNames[i], child);
       }
-      cur = store.getChild(cur, nodeNames[i]);
+      cur = child;
       // update upper template
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
@@ -474,22 +454,24 @@ public class MTreeService implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      IMNode temp = store.getChild(cur, nodeNames[i]);
-      if (temp == null) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        store.addChild(cur, nodeNames[i], new InternalMNode(cur, nodeNames[i]));
-      } else if (temp.isStorageGroup()) {
+        child = new InternalMNode(cur, nodeNames[i]);
+        store.addChild(cur, nodeNames[i], child);
+      } else if (child.isStorageGroup()) {
         // before set storage group, check whether the exists or not
-        throw new StorageGroupAlreadySetException(temp.getFullPath());
+        throw new StorageGroupAlreadySetException(child.getFullPath());
       }
-      cur = store.getChild(cur, nodeNames[i]);
+      cur = child;
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       i++;
     }
@@ -497,9 +479,10 @@ public class MTreeService implements Serializable {
     // synchronize check and add, we need addChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (store.hasChild(cur, nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child != null) {
         // node b has child sg
-        if (store.getChild(cur, nodeNames[i]).isStorageGroup()) {
+        if (child.isStorageGroup()) {
           throw new StorageGroupAlreadySetException(path.getFullPath());
         } else {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -560,19 +543,21 @@ public class MTreeService implements Serializable {
    */
   public boolean isPathExist(PartialPath path) {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
+    IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!store.hasChild(cur, nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (!cur.isUseTemplate() || upperTemplate.getDirectNode(nodeNames[i]) == null) {
           return false;
         }
-        cur = upperTemplate.getDirectNode(nodeNames[i]);
+        child = upperTemplate.getDirectNode(nodeNames[i]);
       }
-      cur = store.getChild(cur, nodeNames[i]);
+      cur = child;
       if (cur.isMeasurement()) {
         return i == nodeNames.length - 1;
       }
@@ -1252,21 +1237,23 @@ public class MTreeService implements Serializable {
    */
   public void checkTemplateOnPath(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return;
     }
+    IMNode cur = root;
     if (cur.getSchemaTemplate() != null) {
       throw new MetadataException("Template already exists on " + cur.getFullPath());
     }
+    IMNode child;
     for (int i = 1; i < nodeNames.length; i++) {
       if (cur.isMeasurement()) {
         return;
       }
-      if (!store.hasChild(cur, nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         return;
       }
-      cur = store.getChild(cur, nodeNames[i]);
+      cur = child;
       if (cur.getSchemaTemplate() != null) {
         throw new MetadataException("Template already exists on " + cur.getFullPath());
       }
@@ -1363,10 +1350,12 @@ public class MTreeService implements Serializable {
     }
     String[] pathNodes = path.getNodes();
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getUpperTemplate();
     for (int i = 1; i < pathNodes.length; i++) {
-      if (store.hasChild(cur, pathNodes[i])) {
-        cur = store.getChild(cur, pathNodes[i]);
+      child = store.getChild(cur, pathNodes[i]);
+      if (child != null) {
+        cur = child;
         if (cur.isMeasurement()) {
           return false;
         }
@@ -1399,16 +1388,17 @@ public class MTreeService implements Serializable {
   public int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath)
       throws MetadataException {
     String[] fullPathNodes = measurementPath.getNodes();
-    IMNode cur = root;
-    Template upperTemplate = cur.getSchemaTemplate();
-
-    if (!cur.getName().equals(fullPathNodes[0])) {
+    if (!root.getName().equals(fullPathNodes[0])) {
       throw new IllegalPathException(measurementPath.toString());
     }
 
+    IMNode cur = root;
+    IMNode child;
+    Template upperTemplate = cur.getSchemaTemplate();
     for (int index = 1; index < fullPathNodes.length; index++) {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
-      if (!store.hasChild(cur, fullPathNodes[index])) {
+      child = store.getChild(cur, fullPathNodes[index]);
+      if (child == null) {
         if (upperTemplate != null) {
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
@@ -1431,7 +1421,7 @@ public class MTreeService implements Serializable {
         }
       } else {
         // has child on MTree
-        cur = store.getChild(cur, fullPathNodes[index]);
+        cur = child;
       }
     }
     // all nodes on path exist in MTree, device node should be the penultimate one
