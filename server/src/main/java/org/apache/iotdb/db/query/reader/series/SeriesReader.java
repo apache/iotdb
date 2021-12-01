@@ -456,8 +456,6 @@ public class SeriesReader {
   // Suppress high Cognitive Complexity warning
   boolean hasNextPage() throws IOException {
     if (!QueryTimeManager.checkQueryAlive(context.getQueryId())) {
-      System.out.println(
-          "Query Id - " + context.getQueryId() + " hasNextPage(): Check query alive - false");
       return false;
     }
 
@@ -699,12 +697,7 @@ public class SeriesReader {
   /** This method should only be used when the method isPageOverlapped() return true. */
   BatchData nextPage() throws IOException {
 
-    if (!hasNextPage()) {
-      System.out.println(
-          "Query Id - "
-              + context.getQueryId()
-              + " nextPage(): Check query alive - "
-              + QueryTimeManager.checkQueryAlive(context.getQueryId()));
+    if (!hasNextPage() && QueryTimeManager.checkQueryAlive(context.getQueryId())) {
       throw new IOException("no next page, neither non-overlapped nor overlapped");
     }
 
