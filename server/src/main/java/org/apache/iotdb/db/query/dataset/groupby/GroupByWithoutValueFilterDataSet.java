@@ -105,8 +105,9 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
             .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
 
     // init resultIndexes, group aligned series
-    pathToAggrIndexesMap = MetaUtils.groupAggregationsByPath(paths);
-    alignedPathToAggrIndexesMap = MetaUtils.groupAlignedPathsWithAggregations(pathToAggrIndexesMap);
+    pathToAggrIndexesMap = MetaUtils.groupAggregationsBySeries(paths);
+    alignedPathToAggrIndexesMap =
+        MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
     try {
       // init GroupByExecutor for non-aligned series

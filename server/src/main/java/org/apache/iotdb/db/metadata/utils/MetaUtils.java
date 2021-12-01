@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -157,7 +156,7 @@ public class MetaUtils {
    * @param selectedPaths selected series
    * @return path to aggregation indexes map
    */
-  public static Map<PartialPath, List<Integer>> groupAggregationsByPath(
+  public static Map<PartialPath, List<Integer>> groupAggregationsBySeries(
       List<? extends Path> selectedPaths) {
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
     for (int i = 0; i < selectedPaths.size(); i++) {
@@ -172,32 +171,30 @@ public class MetaUtils {
    * pathToAggrIndexesMap. For example, input map: d1[s1] -> [1, 3], d1[s2] -> [2,4], will return
    * d1[s1,s2], [[1,3], [2,4]]
    */
-  public static Map<AlignedPath, List<List<Integer>>> groupAlignedPathsWithAggregations(
+  public static Map<AlignedPath, List<List<Integer>>> groupAlignedSeriesWithAggregations(
       Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
-    Map<String, Pair<AlignedPath, List<List<Integer>>>> tempMap = new HashMap<>();
+    Map<String, AlignedPath> temp = new HashMap<>();
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
-        String alignedDevice = seriesPath.getDevice();
+      if (seriesPath instanceof AlignedPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        Pair<AlignedPath, List<List<Integer>>> tempPair =
-            tempMap.computeIfAbsent(
-                alignedDevice,
-                key -> {
-                  try {
-                    return new Pair(new AlignedPath(key), new ArrayList<>());
-                  } catch (IllegalPathException e) {
-                    e.printStackTrace();
-                  }
-                  return null;
-                });
-        tempPair.left.addMeasurement((MeasurementPath) seriesPath);
-        tempPair.right.add(indexes);
+        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        if (groupPath == null) {
+          groupPath = (AlignedPath) seriesPath;
+          temp.put(groupPath.getFullPath(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
       }
-    }
-    for (Pair<AlignedPath, List<List<Integer>>> pair : tempMap.values()) {
-      alignedPathToAggrIndexesMap.put(pair.left, pair.right);
     }
     return alignedPathToAggrIndexesMap;
   }
