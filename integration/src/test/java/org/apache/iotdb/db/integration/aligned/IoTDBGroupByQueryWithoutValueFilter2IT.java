@@ -20,6 +20,8 @@ package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
@@ -34,8 +36,7 @@ public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWit
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
+    EnvFactory.getEnv().initBeforeClass();
     // TODO When the aligned time series support compaction, we need to set compaction to true
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
@@ -43,23 +44,21 @@ public class IoTDBGroupByQueryWithoutValueFilter2IT extends IoTDBGroupByQueryWit
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
     numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(3);
     AlignedWriteUtil.insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }

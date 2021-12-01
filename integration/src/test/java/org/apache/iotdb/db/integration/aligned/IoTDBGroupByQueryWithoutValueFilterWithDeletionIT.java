@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
@@ -30,7 +31,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -49,29 +49,26 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
+  protected static long prevPartitionInterval;
 
   private static final String TIMESTAMP_STR = "Time";
 
   @BeforeClass
   public static void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-
+    EnvFactory.getEnv().initBeforeClass();
     enableSeqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
     enableUnseqSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
     enableCrossSpaceCompaction =
         IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-    IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-
+    prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(false);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(false);
     AlignedWriteUtil.insertData();
     Class.forName(Config.JDBC_DRIVER_NAME);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("delete from root.sg1.d1.s1 where time <= 15");
       statement.execute("delete timeseries root.sg1.d1.s2");
@@ -83,21 +80,17 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
-    EnvironmentUtils.cleanEnv();
+    ConfigFactory.getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    ConfigFactory.getConfig().setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
   public void countSumAvgTest1() throws SQLException {
     String[] retArray = new String[] {"1,0,8.0", "11,5,13014.2", "21,1,46018.4", "31,0,null"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -151,8 +144,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "1,0,null", "6,0,8.0", "11,0,26010.4", "16,5,18.0",
           "21,1,46018.4", "26,0,null", "31,0,null", "36,0,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -205,8 +197,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
         new String[] {
           "1,0,null", "7,0,8.5", "13,1,32511.25", "19,2,20.5", "25,0,25.0", "31,0,null", "37,0,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -259,8 +250,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
         new String[] {
           "1,10,null,6", "11,130000,16.0,11", "21,230000,230000.0,21", "31,null,null,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -324,8 +314,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "31,null,null,null",
           "36,null,null,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -388,8 +377,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "31,null,null,null",
           "37,null,null,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -443,8 +431,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
   @Test
   public void firstLastTest1() throws SQLException {
     String[] retArray = new String[] {"1,null,6", "11,20.0,11", "21,230000.0,21", "31,null,null"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -504,8 +491,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "31,null,null",
           "36,null,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -564,8 +550,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "31,null,null",
           "37,null,null"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -621,8 +606,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "21,1,5,10,0,230000.0,25,false,null",
           "31,0,0,0,10,null,null,null,aligned_test40"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -707,8 +691,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "33,0,0,0,3",
           "37,0,0,0,1"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
@@ -778,8 +761,7 @@ public class IoTDBGroupByQueryWithoutValueFilterWithDeletionIT {
           "33,null,null,null,aligned_test35",
           "37,null,null,null,aligned_test37"
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
