@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree;
+package org.apache.iotdb.db.metadata.mtree.service;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -34,8 +33,6 @@ import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -44,28 +41,25 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.EntityCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MNodeCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MeasurementCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.StorageGroupCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.CounterTraverser;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.MTreeStoreFactory;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -74,17 +68,11 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -99,7 +87,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
@@ -131,187 +118,36 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
  *   <li>Interfaces and Implementation for Template check
- *   <li>TestOnly Interface
  * </ol>
  */
-public class MTree implements Serializable {
+public class MTreeService implements Serializable {
 
-  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-  private static final long serialVersionUID = -4200394435237291964L;
-  private static final Logger logger = LoggerFactory.getLogger(MTree.class);
+  private static final Logger logger = LoggerFactory.getLogger(MTreeService.class);
   private IMNode root;
-
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
+  private IMTreeStore store;
 
   // region MTree initialization, clear and serialization
-  public MTree() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-  }
-
-  private MTree(InternalMNode root) {
-    this.root = root;
+  public MTreeService() {
+    store = MTreeStoreFactory.getMTreeStore();
+    this.root = store.getRoot();
   }
 
   public void init() throws IOException {
-    mtreeSnapshotPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT;
-    mtreeSnapshotTmpPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT_TMP;
-
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-    if (tmpFile.exists()) {
-      logger.warn("Creating MTree snapshot not successful before crashing...");
-      Files.delete(tmpFile.toPath());
-    }
-
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-    long time = System.currentTimeMillis();
-    if (mtreeSnapshot.exists()) {
-      this.root = deserializeFrom(mtreeSnapshot).root;
-      logger.debug(
-          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-    }
+    store.init();
   }
 
   public void clear() {
-    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    store.clear();
+    root = store.getRoot();
   }
 
   public void createSnapshot() throws IOException {
-    long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
-    try {
-      serializeTo(mtreeSnapshotTmpPath);
-      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-      if (snapshotFile.exists()) {
-        Files.delete(snapshotFile.toPath());
-      }
-      if (tmpFile.renameTo(snapshotFile)) {
-        logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
-      }
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
-        } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
-        }
-      }
-      throw e;
-    }
-  }
-
-  private static String jsonToString(JsonObject jsonObject) {
-    return GSON.toJson(jsonObject);
-  }
-
-  public void serializeTo(String snapshotPath) throws IOException {
-    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
-      root.serializeTo(mLogWriter);
-    }
-  }
-
-  public static MTree deserializeFrom(File mtreeSnapshot) {
-    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return new MTree(deserializeFromReader(mLogReader));
-    } catch (IOException e) {
-      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
-      return new MTree();
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static InternalMNode deserializeFromReader(MLogReader mLogReader) {
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    IMNode node = null;
-    while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
-      try {
-        plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        int childrenSize = 0;
-        if (plan instanceof StorageGroupMNodePlan) {
-          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
-          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MeasurementMNodePlan) {
-          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
-          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MNodePlan) {
-          node = InternalMNode.deserializeFrom((MNodePlan) plan);
-          childrenSize = ((MNodePlan) plan).getChildSize();
-        }
-
-        if (childrenSize != 0) {
-          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
-          for (int i = 0; i < childrenSize; i++) {
-            IMNode child = nodeStack.removeFirst();
-            childrenMap.put(child.getName(), child);
-            if (child.isMeasurement()) {
-              if (!node.isEntity()) {
-                node = MNodeUtils.setToEntity(node);
-              }
-              String alias = child.getAsMeasurementMNode().getAlias();
-              if (alias != null) {
-                node.getAsEntityMNode().addAlias(alias, child.getAsMeasurementMNode());
-              }
-            }
-            child.setParent(node);
-          }
-          node.setChildren(childrenMap);
-        }
-        nodeStack.push(node);
-      } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
-    if (!IoTDBConstant.PATH_ROOT.equals(node.getName())) {
-      logger.error("Snapshot file corrupted!");
-      //      throw new MetadataException("Snapshot file corrupted!");
-    }
-
-    return (InternalMNode) node;
+    store.createSnapshot();
   }
 
   @Override
   public String toString() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(root.getName(), mNodeToJSON(root, null));
-    return jsonToString(jsonObject);
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-      }
-    } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    }
-    return jsonObject;
+    return store.toString();
   }
   // endregion
 
@@ -1595,52 +1431,5 @@ public class MTree implements Serializable {
     return fullPathNodes.length - 1;
   }
 
-  // endregion
-
-  // region TestOnly Interface
-  /** combine multiple metadata in string format */
-  @TestOnly
-  public static JsonObject combineMetadataInStrings(String[] metadataStrs) {
-    JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
-    for (int i = 0; i < jsonObjects.length; i++) {
-      jsonObjects[i] = GSON.fromJson(metadataStrs[i], JsonObject.class);
-    }
-
-    JsonObject root = jsonObjects[0];
-    for (int i = 1; i < jsonObjects.length; i++) {
-      root = combineJsonObjects(root, jsonObjects[i]);
-    }
-
-    return root;
-  }
-
-  private static JsonObject combineJsonObjects(JsonObject a, JsonObject b) {
-    JsonObject res = new JsonObject();
-
-    Set<String> retainSet = new HashSet<>(a.keySet());
-    retainSet.retainAll(b.keySet());
-    Set<String> aCha = new HashSet<>(a.keySet());
-    Set<String> bCha = new HashSet<>(b.keySet());
-    aCha.removeAll(retainSet);
-    bCha.removeAll(retainSet);
-
-    for (String key : aCha) {
-      res.add(key, a.get(key));
-    }
-
-    for (String key : bCha) {
-      res.add(key, b.get(key));
-    }
-    for (String key : retainSet) {
-      JsonElement v1 = a.get(key);
-      JsonElement v2 = b.get(key);
-      if (v1 instanceof JsonObject && v2 instanceof JsonObject) {
-        res.add(key, combineJsonObjects((JsonObject) v1, (JsonObject) v2));
-      } else {
-        res.add(v1.getAsString(), v2);
-      }
-    }
-    return res;
-  }
   // endregion
 }

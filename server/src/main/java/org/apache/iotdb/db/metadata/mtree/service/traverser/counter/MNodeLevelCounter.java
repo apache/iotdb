@@ -16,45 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implements storage group path collection function.
-public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
+// This node implements node count function.
+public class MNodeLevelCounter extends CounterTraverser {
 
-  protected boolean collectInternal = false;
+  // level query option
+  protected int targetLevel;
 
-  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
+  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
+      throws MetadataException {
     super(startNode, path);
+    this.targetLevel = targetLevel;
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      if (collectInternal) {
-        collectStorageGroup(node.getAsStorageGroupMNode());
-      }
-      return true;
-    }
     return false;
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      collectStorageGroup(node.getAsStorageGroupMNode());
+    if (level == targetLevel) {
+      count++;
       return true;
+    } else {
+      return false;
     }
-    return false;
-  }
-
-  protected abstract void collectStorageGroup(IStorageGroupMNode node);
-
-  public void setCollectInternal(boolean collectInternal) {
-    this.collectInternal = collectInternal;
   }
 }

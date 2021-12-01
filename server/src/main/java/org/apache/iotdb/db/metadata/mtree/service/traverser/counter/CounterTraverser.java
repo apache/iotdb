@@ -16,36 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.Traverser;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This node implements node count function.
-public class MNodeLevelCounter extends CounterTraverser {
+// This class define the count as traversal result.
+public abstract class CounterTraverser extends Traverser {
 
-  // level query option
-  protected int targetLevel;
+  protected int count;
 
-  public MNodeLevelCounter(IMNode startNode, PartialPath path, int targetLevel)
-      throws MetadataException {
+  public CounterTraverser(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
-    this.targetLevel = targetLevel;
   }
 
-  @Override
-  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
-  }
-
-  @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (level == targetLevel) {
-      count++;
-      return true;
-    } else {
-      return false;
-    }
+  public int getCount() {
+    return count;
   }
 }

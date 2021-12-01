@@ -16,29 +16,45 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implements the entity count function.
-public class EntityCounter extends CounterTraverser {
+// This class implements storage group path collection function.
+public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
 
-  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
+  protected boolean collectInternal = false;
+
+  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      if (collectInternal) {
+        collectStorageGroup(node.getAsStorageGroupMNode());
+      }
+      return true;
+    }
     return false;
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isEntity()) {
-      count++;
+    if (node.isStorageGroup()) {
+      collectStorageGroup(node.getAsStorageGroupMNode());
+      return true;
     }
     return false;
+  }
+
+  protected abstract void collectStorageGroup(IStorageGroupMNode node);
+
+  public void setCollectInternal(boolean collectInternal) {
+    this.collectInternal = collectInternal;
   }
 }

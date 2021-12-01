@@ -16,23 +16,31 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class define the count as traversal result.
-public abstract class CounterTraverser extends Traverser {
+// This class implements storage group count function.
+public class StorageGroupCounter extends CounterTraverser {
 
-  protected int count;
-
-  public CounterTraverser(IMNode startNode, PartialPath path) throws MetadataException {
+  public StorageGroupCounter(IMNode startNode, PartialPath path) throws MetadataException {
     super(startNode, path);
   }
 
-  public int getCount() {
-    return count;
+  @Override
+  protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
+    return node.isStorageGroup();
+  }
+
+  @Override
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
+    if (node.isStorageGroup()) {
+      count++;
+      return true;
+    } else {
+      return false;
+    }
   }
 }

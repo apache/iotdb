@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.mtree.service.MTreeService;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -67,7 +67,7 @@ public class MTreeTest {
   @Test
   @SuppressWarnings("squid:S5783")
   public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       root.setStorageGroup(new PartialPath("root.edge1"));
@@ -93,7 +93,7 @@ public class MTreeTest {
 
   @Test
   public void testAddLeftNodePathWithAlias() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.laptop"));
     try {
       root.createTimeseries(
@@ -122,7 +122,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isPathExist(new PartialPath(path1)));
@@ -156,7 +156,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndQueryPath() {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -223,7 +223,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndQueryPathWithAlias() {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -311,112 +311,8 @@ public class MTreeTest {
   }
 
   @Test
-  public void testCombineMetadataInStrings() {
-    MTree root = new MTree();
-    MTree root1 = new MTree();
-    MTree root2 = new MTree();
-    MTree root3 = new MTree();
-    try {
-      CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
-
-      root.setStorageGroup(new PartialPath("root.a.d0"));
-      root.createTimeseries(
-          new PartialPath("root.a.d0.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-      root.createTimeseries(
-          new PartialPath("root.a.d0.s1"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      root.setStorageGroup(new PartialPath("root.a.d1"));
-      root.createTimeseries(
-          new PartialPath("root.a.d1.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-      root.createTimeseries(
-          new PartialPath("root.a.d1.s1"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      root.setStorageGroup(new PartialPath("root.a.b.d0"));
-      root.createTimeseries(
-          new PartialPath("root.a.b.d0.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      root1.setStorageGroup(new PartialPath("root.a.d0"));
-      root1.createTimeseries(
-          new PartialPath("root.a.d0.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-      root1.createTimeseries(
-          new PartialPath("root.a.d0.s1"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      root2.setStorageGroup(new PartialPath("root.a.d1"));
-      root2.createTimeseries(
-          new PartialPath("root.a.d1.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-      root2.createTimeseries(
-          new PartialPath("root.a.d1.s1"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      root3.setStorageGroup(new PartialPath("root.a.b.d0"));
-      root3.createTimeseries(
-          new PartialPath("root.a.b.d0.s0"),
-          TSDataType.valueOf("INT32"),
-          TSEncoding.valueOf("RLE"),
-          compressionType,
-          Collections.emptyMap(),
-          null);
-
-      String[] metadatas = new String[3];
-      metadatas[0] = root1.toString();
-      metadatas[1] = root2.toString();
-      metadatas[2] = root3.toString();
-      assertEquals(
-          MTree.combineMetadataInStrings(metadatas),
-          MTree.combineMetadataInStrings(new String[] {root.toString()}));
-    } catch (MetadataException e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
   public void testGetAllChildNodeNamesByPath() {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.a.d0"));
       root.createTimeseries(
@@ -460,7 +356,7 @@ public class MTreeTest {
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
     // set storage group first
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
@@ -562,7 +458,7 @@ public class MTreeTest {
   @Test
   public void testCheckStorageGroup() {
     // set storage group first
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       assertFalse(root.isStorageGroup(new PartialPath("root")));
       assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
@@ -589,7 +485,7 @@ public class MTreeTest {
   @Test
   public void testGetAllFileNamesByPath() {
     // set storage group first
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -626,7 +522,7 @@ public class MTreeTest {
   @Test
   public void testCheckStorageExistOfPath() {
     // set storage group first
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
@@ -656,7 +552,7 @@ public class MTreeTest {
   @Test
   public void testGetAllTimeseriesCount() {
     // set storage group first
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
       root.createTimeseries(
@@ -706,7 +602,7 @@ public class MTreeTest {
 
   @Test
   public void testAddSubDevice() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.laptop"));
     root.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
@@ -733,7 +629,7 @@ public class MTreeTest {
 
   @Test
   public void testIllegalStorageGroup() {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
@@ -745,7 +641,7 @@ public class MTreeTest {
 
   @Test
   public void testSearchStorageGroup() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     String path1 = "root";
     String sgPath1 = "root.vehicle";
     root.setStorageGroup(new PartialPath(sgPath1));
@@ -776,7 +672,7 @@ public class MTreeTest {
 
   @Test
   public void testCreateTimeseries() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
 
@@ -807,7 +703,7 @@ public class MTreeTest {
 
   @Test
   public void testCountEntity() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.laptop"));
     root.createTimeseries(
         new PartialPath("root.laptop.s1"),
@@ -865,7 +761,7 @@ public class MTreeTest {
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.setStorageGroup(new PartialPath("root.a.sg1"));
     root.setStorageGroup(new PartialPath("root.a.b.sg1"));
@@ -894,7 +790,7 @@ public class MTreeTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.d1.s1"),
@@ -940,7 +836,7 @@ public class MTreeTest {
 
   @Test
   public void testGetDeviceForTimeseries() throws MetadataException {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.d1.s1"),
