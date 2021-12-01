@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
@@ -39,6 +40,15 @@ import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.constant.TestConstant.maxTime;
+import static org.apache.iotdb.db.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -51,6 +61,7 @@ import static org.junit.Assert.fail;
 public class IoTDBAlignByDeviceIT {
 
   private static final double DELTA = 1e-6;
+  private static final String TIMESTAMP_STR = "Time";
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
@@ -950,6 +961,224 @@ public class IoTDBAlignByDeviceIT {
     } catch (SQLException e) {
       e.printStackTrace();
       fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void countSumAvgGroupByTimeTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,4,40.0,7.5",
+          "11,root.sg1.d1,10,130142.0,13014.2",
+          "21,root.sg1.d1,1,null,230000.0",
+          "31,root.sg1.d1,0,355.0,null"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
+                  + "where time > 5 GROUP BY ([1, 41), 10ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(count("s1"))
+                  + ","
+                  + resultSet.getString(sum("s2"))
+                  + ","
+                  + resultSet.getString(avg("s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void maxMinValueGroupByTimeTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,10,6.0,10,6",
+          "11,root.sg1.d1,130000,11.0,20,11",
+          "21,root.sg1.d1,230000,230000.0,null,21",
+          "31,root.sg1.d1,null,null,40,null"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where time > 5 GROUP BY ([1, 41), 10ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(maxValue("s3"))
+                  + ","
+                  + resultSet.getString(minValue("s1"))
+                  + ","
+                  + resultSet.getString(maxTime("s2"))
+                  + ","
+                  + resultSet.getString(minTime("s3"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void firstLastGroupByTimeTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,null,null", "6,root.sg1.d1,true,aligned_test7",
+              "11,root.sg1.d1,true,aligned_unseq_test13", "16,root.sg1.d1,null,null",
+          "21,root.sg1.d1,true,null", "26,root.sg1.d1,false,null",
+              "31,root.sg1.d1,null,aligned_test31", "36,root.sg1.d1,null,aligned_test36"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select last_value(s4), first_value(s5) from root.sg1.d1 "
+                  + "where time > 5 and time < 38 GROUP BY ([1, 41), 5ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(lastValue("s4"))
+                  + ","
+                  + resultSet.getString(firstValue("s5"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void groupByWithWildcardTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,9,9,8,8,9,9.0,10,10,true,aligned_test10",
+          "11,root.sg1.d1,10,10,10,1,1,20.0,20,20,true,aligned_unseq_test13",
+          "21,root.sg1.d1,1,0,10,10,0,230000.0,null,30,false,null",
+          "31,root.sg1.d1,0,10,0,0,10,null,40,null,null,aligned_test40"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select count(*), last_value(*) from root.sg1.d1 GROUP BY ([1, 41), 10ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(count("s1"))
+                  + ","
+                  + resultSet.getString(count("s2"))
+                  + ","
+                  + resultSet.getString(count("s3"))
+                  + ","
+                  + resultSet.getString(count("s4"))
+                  + ","
+                  + resultSet.getString(count("s5"))
+                  + ","
+                  + resultSet.getString(lastValue("s1"))
+                  + ","
+                  + resultSet.getString(lastValue("s2"))
+                  + ","
+                  + resultSet.getString(lastValue("s3"))
+                  + ","
+                  + resultSet.getString(lastValue("s4"))
+                  + ","
+                  + resultSet.getString(lastValue("s5"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void groupByWithNonAlignedTimeseriesTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,0,null,null",
+          "7,root.sg1.d1,3,34.0,8.0",
+          "13,root.sg1.d1,4,130045.0,32511.25",
+          "19,root.sg1.d1,2,39.0,19.5",
+          "25,root.sg1.d1,0,null,null",
+          "31,root.sg1.d1,0,130.0,null",
+          "37,root.sg1.d1,0,154.0,null",
+          "1,root.sg1.d2,0,null,null",
+          "7,root.sg1.d2,3,34.0,8.0",
+          "13,root.sg1.d2,4,58.0,14.5",
+          "19,root.sg1.d2,2,39.0,19.5",
+          "25,root.sg1.d2,0,null,null",
+          "31,root.sg1.d2,0,130.0,null",
+          "37,root.sg1.d2,0,154.0,null"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1), sum(s2), avg(s1) from root.sg1.* "
+                  + "where time > 5 GROUP BY ([1, 41), 4ms, 6ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(count("s1"))
+                  + ","
+                  + resultSet.getString(sum("s2"))
+                  + ","
+                  + resultSet.getString(avg("s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
     }
   }
 }
