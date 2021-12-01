@@ -84,7 +84,7 @@ createTimeseries
 
 alignedMeasurements
     : LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
+    (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET
     ;
 
 // Create Schema Template
