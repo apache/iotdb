@@ -106,4 +106,23 @@ public class StandaloneEnvConfig implements BaseConfig {
         .setUdfReaderMemoryBudgetInMB(udfReaderMemoryBudgetInMB);
     return this;
   }
+
+  public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
+    IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    return this;
+  }
+
+  public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
+    return this;
+  }
+
+  public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    return this;
+  }
 }

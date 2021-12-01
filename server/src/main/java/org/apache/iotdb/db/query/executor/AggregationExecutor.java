@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -110,14 +111,14 @@ public class AggregationExecutor {
 
     // TODO use multi-thread
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
-        groupAggregationsBySeries(selectedSeries);
+        MetaUtils.groupAggregationsBySeries(selectedSeries);
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
 
-    // Attention: this method will REMOVE vector path from pathToAggrIndexesMap
-    Map<PartialPath, List<List<Integer>>> vectorPathIndexesMap =
-        groupVectorSeries(pathToAggrIndexesMap);
+    // Attention: this method will REMOVE aligned path from pathToAggrIndexesMap
+    Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
+        MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         PartialPath seriesPath = entry.getKey();
@@ -127,12 +128,13 @@ public class AggregationExecutor {
             aggregationPlan.getAllMeasurementsInDevice(seriesPath.getDevice()),
             timeFilter);
       }
-      for (Map.Entry<PartialPath, List<List<Integer>>> entry : vectorPathIndexesMap.entrySet()) {
-        AlignedPath vectorSeries = (AlignedPath) entry.getKey();
-        aggregateOneVectorSeries(
-            vectorSeries,
+      for (Map.Entry<AlignedPath, List<List<Integer>>> entry :
+          alignedPathToAggrIndexesMap.entrySet()) {
+        AlignedPath alignedPath = entry.getKey();
+        aggregateOneAlignedSeries(
+            alignedPath,
             entry.getValue(),
-            aggregationPlan.getAllMeasurementsInDevice(vectorSeries.getDevice()),
+            aggregationPlan.getAllMeasurementsInDevice(alignedPath.getDevice()),
             timeFilter);
       }
     } finally {
@@ -189,8 +191,8 @@ public class AggregationExecutor {
     }
   }
 
-  protected void aggregateOneVectorSeries(
-      AlignedPath seriesPath,
+  protected void aggregateOneAlignedSeries(
+      AlignedPath alignedPath,
       List<List<Integer>> subIndexes,
       Set<String> allMeasurementsInDevice,
       Filter timeFilter)
@@ -218,8 +220,8 @@ public class AggregationExecutor {
       descAggregateResultList.add(subDescResultList);
     }
 
-    aggregateOneVectorSeries(
-        seriesPath,
+    aggregateOneAlignedSeries(
+        alignedPath,
         allMeasurementsInDevice,
         context,
         timeFilter,
@@ -292,8 +294,8 @@ public class AggregationExecutor {
     }
   }
 
-  public static void aggregateOneVectorSeries(
-      AlignedPath seriesPath,
+  public static void aggregateOneAlignedSeries(
+      AlignedPath alignedPath,
       Set<String> measurements,
       QueryContext context,
       Filter timeFilter,
@@ -305,7 +307,7 @@ public class AggregationExecutor {
 
     // construct series reader without value filter
     QueryDataSource queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(alignedPath, context, timeFilter);
     if (fileFilter != null) {
       QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
     }
@@ -315,7 +317,7 @@ public class AggregationExecutor {
     if (!isAggregateResultEmpty(ascAggregateResultList)) {
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
-              seriesPath,
+              alignedPath,
               measurements,
               tsDataType,
               context,
@@ -324,12 +326,12 @@ public class AggregationExecutor {
               null,
               null,
               true);
-      aggregateFromVectorReader(seriesReader, ascAggregateResultList);
+      aggregateFromAlignedReader(seriesReader, ascAggregateResultList);
     }
     if (!isAggregateResultEmpty(descAggregateResultList)) {
       AlignedSeriesAggregateReader seriesReader =
           new AlignedSeriesAggregateReader(
-              seriesPath,
+              alignedPath,
               measurements,
               tsDataType,
               context,
@@ -338,7 +340,7 @@ public class AggregationExecutor {
               null,
               null,
               false);
-      aggregateFromVectorReader(seriesReader, descAggregateResultList);
+      aggregateFromAlignedReader(seriesReader, descAggregateResultList);
     }
   }
 
@@ -396,7 +398,7 @@ public class AggregationExecutor {
     }
   }
 
-  private static void aggregateFromVectorReader(
+  private static void aggregateFromAlignedReader(
       AlignedSeriesAggregateReader seriesReader, List<List<AggregateResult>> aggregateResultList)
       throws QueryProcessException, IOException {
     int remainingToCalculate = 0;
@@ -409,7 +411,7 @@ public class AggregationExecutor {
 
     while (seriesReader.hasNextFile()) {
       // cal by file statistics
-      if (seriesReader.canUseCurrentTimeFileStatistics()) {
+      if (seriesReader.canUseCurrentFileStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics fileStatistics = seriesReader.currentFileStatistics();
           remainingToCalculate =
@@ -430,7 +432,7 @@ public class AggregationExecutor {
 
       while (seriesReader.hasNextChunk()) {
         // cal by chunk statistics
-        if (seriesReader.canUseCurrentTimeChunkStatistics()) {
+        if (seriesReader.canUseCurrentChunkStatistics()) {
           while (seriesReader.hasNextSubSeries()) {
             Statistics chunkStatistics = seriesReader.currentChunkStatistics();
             remainingToCalculate =
@@ -450,7 +452,7 @@ public class AggregationExecutor {
         }
 
         remainingToCalculate =
-            aggregateVectorPages(
+            aggregateAlignedPages(
                 seriesReader, aggregateResultList, isCalculatedArray, remainingToCalculate);
         if (remainingToCalculate == 0) {
           return;
@@ -515,7 +517,7 @@ public class AggregationExecutor {
     return remainingToCalculate;
   }
 
-  private static int aggregateVectorPages(
+  private static int aggregateAlignedPages(
       AlignedSeriesAggregateReader seriesReader,
       List<List<AggregateResult>> aggregateResultList,
       List<boolean[]> isCalculatedArray,
@@ -523,7 +525,7 @@ public class AggregationExecutor {
       throws IOException, QueryProcessException {
     while (seriesReader.hasNextPage()) {
       // cal by page statistics
-      if (seriesReader.canUseCurrentTimePageStatistics()) {
+      if (seriesReader.canUseCurrentPageStatistics()) {
         while (seriesReader.hasNextSubSeries()) {
           Statistics pageStatistic = seriesReader.currentPageStatistics();
           remainingToCalculate =
@@ -594,9 +596,9 @@ public class AggregationExecutor {
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
     // group by path name
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
-        groupAggregationsBySeries(selectedSeries);
-    Map<PartialPath, List<List<Integer>>> vectorPathIndexesMap =
-        groupVectorSeries(pathToAggrIndexesMap);
+        MetaUtils.groupAggregationsBySeries(selectedSeries);
+    Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
+        MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
     Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap = new HashMap<>();
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
 
@@ -609,12 +611,13 @@ public class AggregationExecutor {
       }
       // assign null to be friendly for GC
       pathToAggrIndexesMap = null;
-      for (PartialPath vectorPath : vectorPathIndexesMap.keySet()) {
+      for (AlignedPath vectorPath : alignedPathToAggrIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
             getReaderByTime(vectorPath, queryPlan, vectorPath.getSeriesType(), context);
-        readerToAggrIndexesMap.put(seriesReaderByTimestamp, vectorPathIndexesMap.get(vectorPath));
+        readerToAggrIndexesMap.put(
+            seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(vectorPath));
       }
-      vectorPathIndexesMap = null;
+      alignedPathToAggrIndexesMap = null;
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
@@ -774,54 +777,5 @@ public class AggregationExecutor {
     dataSet.setRecord(record);
 
     return dataSet;
-  }
-
-  /**
-   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
-   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
-   *
-   * @param selectedSeries selected series
-   * @return path to aggregation indexes map
-   */
-  private Map<PartialPath, List<Integer>> groupAggregationsBySeries(
-      List<PartialPath> selectedSeries) {
-    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
-    for (int i = 0; i < selectedSeries.size(); i++) {
-      PartialPath series = selectedSeries.get(i);
-      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
-    }
-    return pathToAggrIndexesMap;
-  }
-
-  /**
-   * Group all the subSensors of one vector into one VectorPartialPath and Remove vectorPartialPath
-   * from pathToAggrIndexesMap. For example, input map: vector1[s1] -> [1, 3], vector1[s2] -> [2,4],
-   * will return vector1[s1,s2], [[1,3], [2,4]]
-   */
-  private Map<PartialPath, List<List<Integer>>> groupVectorSeries(
-      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
-    Map<PartialPath, List<List<Integer>>> result = new HashMap<>();
-    Map<String, AlignedPath> temp = new HashMap<>();
-
-    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
-    for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof AlignedPath) {
-        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
-        if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath;
-          temp.put(groupPath.getFullPath(), groupPath);
-          result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
-        } else {
-          // groupPath is changed here so we update it
-          List<List<Integer>> subIndexes = result.remove(groupPath);
-          subIndexes.add(indexes);
-          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
-          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
-          result.put(groupPath, subIndexes);
-        }
-      }
-    }
-    return result;
   }
 }

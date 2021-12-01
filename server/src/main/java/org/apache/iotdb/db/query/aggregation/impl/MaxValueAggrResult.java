@@ -59,7 +59,7 @@ public class MaxValueAggrResult extends AggregateResult {
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
     Comparable<Object> maxVal = null;
 
-    while (batchIterator.hasNext()
+    while (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       if (maxVal == null || maxVal.compareTo(batchIterator.currentValue()) < 0) {
