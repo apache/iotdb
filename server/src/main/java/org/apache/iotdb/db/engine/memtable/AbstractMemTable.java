@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -27,13 +28,12 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.TimeRange;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -92,13 +92,7 @@ public abstract class AbstractMemTable implements IMemTable {
   private IWritableMemChunkGroup createMemChunkGroupIfNotExistAndGet(
       String deviceId, List<IMeasurementSchema> schemaList) {
     IWritableMemChunkGroup memChunkGroup =
-        memTableMap.computeIfAbsent(
-            deviceId,
-            k -> {
-              seriesNumber++;
-              totalPointsNumThreshold += avgSeriesPointNumThreshold;
-              return new WritableMemChunkGroup(schemaList);
-            });
+        memTableMap.computeIfAbsent(deviceId, k -> new WritableMemChunkGroup());
     for (IMeasurementSchema schema : schemaList) {
       if (!memChunkGroup.contains(schema.getMeasurementId())) {
         seriesNumber++;
@@ -114,8 +108,8 @@ public abstract class AbstractMemTable implements IMemTable {
         memTableMap.computeIfAbsent(
             deviceId,
             k -> {
-              seriesNumber++;
-              totalPointsNumThreshold += avgSeriesPointNumThreshold;
+              seriesNumber += schemaList.size();
+              totalPointsNumThreshold += ((long) avgSeriesPointNumThreshold) * schemaList.size();
               return new AlignedWritableMemChunkGroup(schemaList);
             });
     for (IMeasurementSchema schema : schemaList) {
@@ -130,12 +124,13 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
+    String[] measurements = insertRowPlan.getMeasurements();
     Object[] values = insertRowPlan.getValues();
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
-      if (values[i] == null) {
+      if (measurements[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -151,11 +146,11 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public void insertAlignedRow(InsertRowPlan insertRowPlan) {
     updatePlanIndexes(insertRowPlan.getIndex());
-    // write vector
+    String[] measurements = insertRowPlan.getMeasurements();
     List<IMeasurementSchema> schemaList = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     for (int i = 0; i < insertRowPlan.getMeasurements().length; i++) {
-      if (insertRowPlan.getValues()[i] == null) {
+      if (measurements[i] == null) {
         continue;
       }
       IMeasurementSchema schema = insertRowPlan.getMeasurementMNodes()[i].getSchema();
@@ -182,7 +177,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       write(insertTabletPlan, start, end);
-      memSize += MemUtils.getRecordSize(insertTabletPlan, start, end, disableMemControl);
+      memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
@@ -197,7 +192,7 @@ public abstract class AbstractMemTable implements IMemTable {
     updatePlanIndexes(insertTabletPlan.getIndex());
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
-      memSize += MemUtils.getAlignedRecordSize(insertTabletPlan, start, end, disableMemControl);
+      memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
       totalPointsNum +=
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
@@ -335,9 +330,9 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public ReadOnlyMemChunk query(
-      PartialPath fullPath, long ttlLowerBound, List<TimeRange> deletionList)
+      PartialPath fullPath, long ttlLowerBound, List<Pair<Modification, IMemTable>> modsToMemtable)
       throws IOException, QueryProcessException {
-    return fullPath.getReadOnlyMemChunkFromMemTable(memTableMap, deletionList);
+    return fullPath.getReadOnlyMemChunkFromMemTable(this, modsToMemtable, ttlLowerBound);
   }
 
   @SuppressWarnings("squid:S3776") // high Cognitive Complexity
@@ -348,24 +343,7 @@ public abstract class AbstractMemTable implements IMemTable {
     if (memChunkGroup == null) {
       return;
     }
-
-    Iterator<Entry<String, IWritableMemChunk>> iter =
-        memChunkGroup.getMemChunkMap().entrySet().iterator();
-    while (iter.hasNext()) {
-      Entry<String, IWritableMemChunk> entry = iter.next();
-      IWritableMemChunk chunk = entry.getValue();
-      // the key is measurement rather than component of multiMeasurement
-      PartialPath fullPath = devicePath.concatNode(entry.getKey());
-      if (originalPath.matchFullPath(fullPath)) {
-        // matchFullPath ensures this branch could work on delete data of unary or multi measurement
-        // and delete timeseries or aligned timeseries
-        if (startTimestamp == Long.MIN_VALUE && endTimestamp == Long.MAX_VALUE) {
-          iter.remove();
-        }
-        int deletedPointsNumber = chunk.delete(startTimestamp, endTimestamp);
-        totalPointsNum -= deletedPointsNumber;
-      }
-    }
+    totalPointsNum -= memChunkGroup.delete(originalPath, devicePath, startTimestamp, endTimestamp);
   }
 
   @Override

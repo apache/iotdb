@@ -1776,19 +1776,9 @@ public class MManager {
             if (!config.isEnablePartialInsert()) {
               throw mismatchException;
             } else {
-              if (plan.isAligned()) {
-                // mark failed measurement
-                plan.markFailedMeasurementAlignedInsertion(mismatchException);
-                for (int j = 0; j < i; j++) {
-                  // all the measurementMNodes should be null
-                  measurementMNodes[j] = null;
-                }
-                break;
-              } else {
-                // mark failed measurement
-                plan.markFailedMeasurementInsertion(i, mismatchException);
-                continue;
-              }
+              // mark failed measurement
+              plan.markFailedMeasurementInsertion(i, mismatchException);
+              continue;
             }
           }
           measurementMNodes[i] = measurementMNode;

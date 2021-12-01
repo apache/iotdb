@@ -38,6 +38,10 @@ public class QueryProcessException extends IoTDBException {
     super(message, errorCode);
   }
 
+  public QueryProcessException(String message, Throwable cause) {
+    super(message, cause, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
+  }
+
   public QueryProcessException(IoTDBException e) {
     super(e, e.getErrorCode(), e.isUserException());
   }
