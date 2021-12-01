@@ -293,6 +293,24 @@ public class FunctionExpression extends Expression {
     }
   }
 
+  @Override
+  public Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
+    IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
+    if (intermediateLayer != null) {
+      return intermediateLayer.getFragmentDataSetIndex();
+    }
+
+    for (Expression expression : expressions) {
+      Integer index = expression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+      if (index != null) {
+        return index;
+      }
+    }
+
+    return null;
+  }
+
   public List<PartialPath> getPaths() {
     if (paths == null) {
       paths = new ArrayList<>();

@@ -29,7 +29,6 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 
-// TODO: performances joining in pool, packing row records while calculating
 public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDataSet {
 
   private final UDTFFragmentDataSet[] fragmentDataSets;
@@ -68,7 +67,7 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
     timeHeap = new TimeSelector(resultColumnsLength << 1, true);
 
     for (int i = 0; i < resultColumnsLength; ++i) {
-      UDTFDataSet fragmentDataSet = fragmentDataSets[i];
+      QueryDataSet fragmentDataSet = fragmentDataSets[i];
       if (fragmentDataSet.hasNextWithoutConstraint()) {
         rowRecordsCache[i] = fragmentDataSet.nextWithoutConstraint();
         timeHeap.add(rowRecordsCache[i].getTimestamp());

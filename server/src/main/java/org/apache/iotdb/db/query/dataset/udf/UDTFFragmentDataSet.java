@@ -21,8 +21,10 @@ package org.apache.iotdb.db.query.dataset.udf;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.pool.DataSetFragmentExecutionPoolManager;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +33,7 @@ import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-public class UDTFFragmentDataSet extends UDTFAlignByTimeDataSet {
+public class UDTFFragmentDataSet extends QueryDataSet {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(UDTFFragmentDataSet.class);
 
@@ -39,6 +41,7 @@ public class UDTFFragmentDataSet extends UDTFAlignByTimeDataSet {
   private static final DataSetFragmentExecutionPoolManager
       DATA_SET_FRAGMENT_EXECUTION_POOL_MANAGER = DataSetFragmentExecutionPoolManager.getInstance();
 
+  private final QueryDataSet fragmentDataSet;
   private final BlockingQueue<Object[]> productionBlockingQueue;
 
   private RowRecord[] rowRecords = null;
@@ -47,9 +50,9 @@ public class UDTFFragmentDataSet extends UDTFAlignByTimeDataSet {
 
   private boolean hasNextRowRecords = true;
 
-  public UDTFFragmentDataSet(LayerPointReader[] transformers)
+  public UDTFFragmentDataSet(RawQueryInputLayer rawQueryInputLayer, LayerPointReader[] transformers)
       throws QueryProcessException, IOException {
-    super(transformers);
+    fragmentDataSet = new UDTFAlignByTimeDataSet(rawQueryInputLayer, transformers);
     productionBlockingQueue = new LinkedBlockingQueue<>(BLOCKING_QUEUE_CAPACITY);
     submitTask();
   }
@@ -105,7 +108,7 @@ public class UDTFFragmentDataSet extends UDTFAlignByTimeDataSet {
   private void submitTask() {
     if (productionBlockingQueue.remainingCapacity() > 0) {
       DATA_SET_FRAGMENT_EXECUTION_POOL_MANAGER.submit(
-          new UDTFFragmentDataSetTask(fetchSize, this, productionBlockingQueue));
+          new UDTFFragmentDataSetTask(fetchSize, fragmentDataSet, productionBlockingQueue));
     }
   }
 

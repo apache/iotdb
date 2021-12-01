@@ -102,6 +102,13 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
+  public Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
+    IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
+    return intermediateLayer == null ? null : intermediateLayer.getFragmentDataSetIndex();
+  }
+
+  @Override
   public String getExpressionStringInternal() {
     return valueString;
   }

@@ -35,7 +35,9 @@ public class DataSetFragmentExecutionPoolManager extends AbstractPoolManager {
   private DataSetFragmentExecutionPoolManager() {
     pool =
         IoTDBThreadPoolFactory.newFixedThreadPool(
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread(),
+            Math.min(
+                Runtime.getRuntime().availableProcessors(),
+                IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread()),
             ThreadName.QUERY_FRAGMENT_SERVICE.getName());
   }
 
@@ -58,7 +60,9 @@ public class DataSetFragmentExecutionPoolManager extends AbstractPoolManager {
     if (pool == null) {
       pool =
           IoTDBThreadPoolFactory.newFixedThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread(),
+              Math.min(
+                  Runtime.getRuntime().availableProcessors(),
+                  IoTDBDescriptor.getInstance().getConfig().getMaxConcurrentSubQueryThread()),
               ThreadName.QUERY_FRAGMENT_SERVICE.getName());
     }
   }

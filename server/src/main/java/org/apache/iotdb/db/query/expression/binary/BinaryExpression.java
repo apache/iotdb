@@ -188,6 +188,20 @@ public abstract class BinaryExpression extends Expression {
       LayerPointReader leftParentLayerPointReader, LayerPointReader rightParentLayerPointReader);
 
   @Override
+  public Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
+    IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
+    if (intermediateLayer != null) {
+      return intermediateLayer.getFragmentDataSetIndex();
+    }
+
+    Integer index = leftExpression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+    return index != null
+        ? index
+        : rightExpression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+  }
+
+  @Override
   public final String getExpressionStringInternal() {
     StringBuilder builder = new StringBuilder();
     if (leftExpression instanceof BinaryExpression) {

@@ -87,7 +87,9 @@ public class RawQueryInputLayer {
   }
 
   public void updateRowRecordListEvictionUpperBound() {
-    rowRecordList.setEvictionUpperBound(safetyLine.getSafetyLine());
+    synchronized (rowRecordList) {
+      rowRecordList.setEvictionUpperBound(safetyLine.getSafetyLine());
+    }
   }
 
   public LayerPointReader constructPointReader(int columnIndex) {
@@ -125,25 +127,27 @@ public class RawQueryInputLayer {
         return true;
       }
 
-      for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
-        Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (rowRecordCandidate[columnIndex] != null) {
-          hasCachedRowRecord = true;
-          cachedRowRecord = rowRecordCandidate;
-          currentRowIndex = i;
-          break;
-        }
-      }
-
-      if (!hasCachedRowRecord) {
-        while (queryDataSet.hasNextRowInObjects()) {
-          Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
-          rowRecordList.put(rowRecordCandidate);
+      synchronized (rowRecordList) {
+        for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
+          Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
           if (rowRecordCandidate[columnIndex] != null) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
-            currentRowIndex = rowRecordList.size() - 1;
+            currentRowIndex = i;
             break;
+          }
+        }
+
+        if (!hasCachedRowRecord) {
+          while (queryDataSet.hasNextRowInObjects()) {
+            Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
+            rowRecordList.put(rowRecordCandidate);
+            if (rowRecordCandidate[columnIndex] != null) {
+              hasCachedRowRecord = true;
+              cachedRowRecord = rowRecordCandidate;
+              currentRowIndex = rowRecordList.size() - 1;
+              break;
+            }
           }
         }
       }

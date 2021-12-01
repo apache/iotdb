@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.dataset.udf;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,22 +33,20 @@ public class UDTFFragmentDataSetTask extends WrappedRunnable {
   private static final Logger LOGGER = LoggerFactory.getLogger(UDTFFragmentDataSetTask.class);
 
   private final int fetchSize;
-  private final UDTFFragmentDataSet fragmentDataSet;
+  private final QueryDataSet queryDataSet;
 
   // there are 3 elements in Object[].
   // [0]: RowRecord[] or Throwable.
   // [2]: Integer. actual length of produced row records in [0]. note that the element is -1 when
   // the [0] element is a Throwable.
-  // [1]: Boolean. true if the fragmentDataSet still has next RowRecord to be consumed, otherwise
+  // [1]: Boolean. true if the queryDataSet still has next RowRecord to be consumed, otherwise
   // false. note that the element is false when the [0] element is a Throwable.
   private final BlockingQueue<Object[]> productionBlockingQueue;
 
   public UDTFFragmentDataSetTask(
-      int fetchSize,
-      UDTFFragmentDataSet fragmentDataSet,
-      BlockingQueue<Object[]> productionBlockingQueue) {
+      int fetchSize, QueryDataSet queryDataSet, BlockingQueue<Object[]> productionBlockingQueue) {
     this.fetchSize = fetchSize;
-    this.fragmentDataSet = fragmentDataSet;
+    this.queryDataSet = queryDataSet;
     this.productionBlockingQueue = productionBlockingQueue;
   }
 
@@ -56,13 +55,13 @@ public class UDTFFragmentDataSetTask extends WrappedRunnable {
     try {
       int rowRecordCount = 0;
       RowRecord[] rowRecords = new RowRecord[fetchSize];
-      while (rowRecordCount < fetchSize && fragmentDataSet.hasNextWithoutConstraint()) {
-        rowRecords[rowRecordCount++] = fragmentDataSet.nextWithoutConstraint();
+      while (rowRecordCount < fetchSize && queryDataSet.hasNextWithoutConstraint()) {
+        rowRecords[rowRecordCount++] = queryDataSet.nextWithoutConstraint();
       }
 
       // if a task is submitted, there must be free space in the queue
       productionBlockingQueue.put(
-          new Object[] {rowRecords, rowRecordCount, fragmentDataSet.hasNextWithoutConstraint()});
+          new Object[] {rowRecords, rowRecordCount, queryDataSet.hasNextWithoutConstraint()});
     } catch (Throwable e) {
       onThrowable(e);
     }

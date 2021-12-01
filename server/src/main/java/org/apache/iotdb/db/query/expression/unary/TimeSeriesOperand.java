@@ -116,6 +116,13 @@ public class TimeSeriesOperand extends Expression {
                 this, queryId, memoryBudgetInMB, fragmentDataSetIndex, parentLayerPointReader));
   }
 
+  @Override
+  public Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
+    IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
+    return intermediateLayer == null ? null : intermediateLayer.getFragmentDataSetIndex();
+  }
+
   public String getExpressionStringInternal() {
     return path.isMeasurementAliasExists() ? path.getFullPathWithAlias() : path.getFullPath();
   }

@@ -138,6 +138,15 @@ public class NegationExpression extends Expression {
   }
 
   @Override
+  public Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
+    IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
+    return intermediateLayer != null
+        ? intermediateLayer.getFragmentDataSetIndex()
+        : expression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+  }
+
+  @Override
   public String getExpressionStringInternal() {
     return "-" + expression.toString();
   }

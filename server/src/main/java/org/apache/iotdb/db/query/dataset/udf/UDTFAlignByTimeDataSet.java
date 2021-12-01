@@ -25,6 +25,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
@@ -80,9 +81,10 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   }
 
   /** for data set fragment */
-  protected UDTFAlignByTimeDataSet(LayerPointReader[] transformers)
+  protected UDTFAlignByTimeDataSet(
+      RawQueryInputLayer rawQueryInputLayer, LayerPointReader[] transformers)
       throws QueryProcessException, IOException {
-    super(transformers);
+    super(rawQueryInputLayer, transformers);
     initTimeHeap();
   }
 

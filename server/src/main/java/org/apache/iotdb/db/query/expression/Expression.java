@@ -96,6 +96,9 @@ public abstract class Expression {
     return expressionIntermediateLayerMap.get(this);
   }
 
+  public abstract Integer tryToGetFragmentDataSetIndex(
+      Map<Expression, IntermediateLayer> expressionIntermediateLayerMap);
+
   /** Sub-classes should override this method indicating if the expression is a constant operand */
   protected abstract boolean isConstantOperandInternal();
 

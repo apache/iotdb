@@ -128,12 +128,12 @@ public abstract class UDTFDataSet extends QueryDataSet {
   }
 
   /** for data set fragment */
-  protected UDTFDataSet(LayerPointReader[] transformers) {
-    // The following 3 fields are useless because they are recorded in their parent data set.
+  protected UDTFDataSet(RawQueryInputLayer rawQueryInputLayer, LayerPointReader[] transformers) {
+    // The following 2 fields are useless.
     queryId = -1;
     udtfPlan = null;
-    rawQueryInputLayer = null;
 
+    this.rawQueryInputLayer = rawQueryInputLayer;
     this.transformers = transformers;
   }
 

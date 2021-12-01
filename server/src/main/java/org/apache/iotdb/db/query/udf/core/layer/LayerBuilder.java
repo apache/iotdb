@@ -93,12 +93,9 @@ public class LayerBuilder {
   public LayerBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
     for (int i = 0, n = resultColumnExpressions.length; i < n; ++i) {
       // resultColumnExpressions[i] -> the index of the fragment it belongs to
-      int fragmentDataSetIndex;
-      IntermediateLayer intermediateLayer =
-          expressionIntermediateLayerMap.get(resultColumnExpressions[i]);
-      if (intermediateLayer != null) {
-        fragmentDataSetIndex = intermediateLayer.getFragmentDataSetIndex();
-      } else {
+      Integer fragmentDataSetIndex =
+          resultColumnExpressions[i].tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+      if (fragmentDataSetIndex == null) {
         fragmentDataSetIndex = fragmentDataSetIndexToLayerPointReaders.size();
         fragmentDataSetIndexToLayerPointReaders.add(new ArrayList<>());
       }
@@ -150,6 +147,7 @@ public class LayerBuilder {
     for (int i = 0; i < n; ++i) {
       fragmentDataSets[i] =
           new UDTFFragmentDataSet(
+              rawTimeSeriesInputLayer,
               fragmentDataSetIndexToLayerPointReaders.get(i).toArray(new LayerPointReader[0]));
     }
 
