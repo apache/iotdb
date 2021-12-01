@@ -184,6 +184,10 @@ public class ClusterConfig {
 
   private boolean useAsyncSequencing = true;
 
+  private boolean useFollowerSlidingWindow = true;
+
+  private boolean enableWeakAcceptance = true;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -549,5 +553,21 @@ public class ClusterConfig {
 
   public void setUseAsyncSequencing(boolean useAsyncSequencing) {
     this.useAsyncSequencing = useAsyncSequencing;
+  }
+
+  public boolean isUseFollowerSlidingWindow() {
+    return useFollowerSlidingWindow;
+  }
+
+  public void setUseFollowerSlidingWindow(boolean useFollowerSlidingWindow) {
+    this.useFollowerSlidingWindow = useFollowerSlidingWindow;
+  }
+
+  public boolean isEnableWeakAcceptance() {
+    return enableWeakAcceptance;
+  }
+
+  public void setEnableWeakAcceptance(boolean enableWeakAcceptance) {
+    this.enableWeakAcceptance = enableWeakAcceptance;
   }
 }
