@@ -285,7 +285,7 @@ public class ExprMember extends MetaGroupMember {
         Statistic.RAFT_WINDOW_LENGTH.add(windowLength);
       } else {
         Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-        result.setStatus(Response.RESPONSE_LOG_MISMATCH);
+        result.setStatus(Response.RESPONSE_OUT_OF_WINDOW);
         result.setHeader(getHeader());
         return result;
       }

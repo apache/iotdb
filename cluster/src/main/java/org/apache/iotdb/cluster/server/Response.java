@@ -52,6 +52,7 @@ public class Response {
   public static final long RESPONSE_NODE_IS_NOT_IN_GROUP = -11;
   public static final long RESPONSE_STRONG_ACCEPT = -12;
   public static final long RESPONSE_WEAK_ACCEPT = -13;
+  public static final long RESPONSE_OUT_OF_WINDOW = -14;
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
 

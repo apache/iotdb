@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
+import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.handlers.caller.AppendNodeEntryHandler;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
@@ -422,11 +423,20 @@ public class LogDispatcher {
               logRequest.newLeaderTerm,
               peer,
               logRequest.quorumSize);
+      // TODO add async interface
+      int retries = 5;
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
-        AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
-        Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
-        handler.onComplete(result);
+        for (int i = 0; i < retries; i++) {
+          AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
+          if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
+            Thread.sleep(100);
+          } else {
+            Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(operationStartTime);
+            handler.onComplete(result);
+            break;
+          }
+        }
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         ClientUtils.putBackSyncClient(client);
