@@ -51,11 +51,20 @@ public class RawQueryWithValueFilterTest {
     "insert into root.test.d0(timestamp,s0) values(5,5)",
     "flush"
   };
+  protected static boolean enableSeqSpaceCompaction;
+  protected static boolean enableUnseqSpaceCompaction;
+  protected static boolean enableCrossSpaceCompaction;
 
   public RawQueryWithValueFilterTest() throws QueryProcessException {}
 
   @Before
   public void setUp() throws Exception {
+    enableSeqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+    enableUnseqSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+    enableCrossSpaceCompaction =
+        IoTDBDescriptor.getInstance().getConfig().isEnableCrossSpaceCompaction();
     config.setEnableSeqSpaceCompaction(false);
     config.setEnableUnseqSpaceCompaction(false);
     config.setEnableCrossSpaceCompaction(false);
@@ -67,6 +76,9 @@ public class RawQueryWithValueFilterTest {
 
   @After
   public void tearDown() throws Exception {
+    config.setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
+    config.setEnableSeqSpaceCompaction(enableSeqSpaceCompaction);
+    config.setEnableUnseqSpaceCompaction(enableUnseqSpaceCompaction);
     EnvironmentUtils.cleanEnv();
   }
 
