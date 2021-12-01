@@ -56,6 +56,9 @@ public class Response {
   // the request is not executed locally anc should be forwarded
   public static final long RESPONSE_NULL = Long.MIN_VALUE;
 
+  // the meta engine is not ready (except for the partitionTable is ready)
+  public static final long RESPONSE_META_NOT_READY = -12;
+
   private Response() {
     // enum-like class
   }

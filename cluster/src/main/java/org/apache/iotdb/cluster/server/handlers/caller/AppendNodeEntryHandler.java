@@ -79,7 +79,7 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       return;
     }
     logger.debug(
-        "{}: Append response {} from {} for {}", member.getName(), response, receiver, log);
+        "{}: Append response {} from {} for log {}", member.getName(), response, receiver, log);
     if (leaderShipStale.get()) {
       // someone has rejected this log because the leadership is stale
       return;
@@ -108,11 +108,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
       // the leader ship is stale, wait for the new leader's heartbeat
       long prevReceiverTerm = receiverTerm.get();
       logger.debug(
-          "{}: Received a rejection from {} because term is stale: {}/{}",
+          "{}: Received a rejection from {} because term is stale: {}/{}, log: {}",
           member.getName(),
           receiver,
           prevReceiverTerm,
-          resp);
+          resp,
+          log);
       if (resp > prevReceiverTerm) {
         receiverTerm.set(resp);
       }

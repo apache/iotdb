@@ -23,6 +23,7 @@ import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Config;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,6 +32,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
@@ -238,8 +240,7 @@ public class SessionPool {
             }
           }
         } catch (InterruptedException e) {
-          logger.error("the SessionPool is damaged", e);
-          Thread.currentThread().interrupt();
+          // wake up from this.wait(1000) by this.notify()
         }
 
         session = queue.poll();
@@ -457,6 +458,33 @@ public class SessionPool {
   }
 
   /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   */
+  public void insertAlignedTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, false);
+  }
+
+  /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   * @param sorted whether times in Tablet are in ascending order
+   */
+  public void insertAlignedTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, sorted);
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param tablets multiple batch
@@ -468,6 +496,19 @@ public class SessionPool {
 
   /**
    * use batch interface to insert data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, false);
+  }
+
+  /**
+   * use batch interface to insert aligned data
    *
    * @param tablets multiple batch
    */
@@ -488,6 +529,19 @@ public class SessionPool {
         throw e;
       }
     }
+  }
+
+  /**
+   * use batch interface to insert aligned data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, sorted);
   }
 
   /**
@@ -1300,6 +1354,249 @@ public class SessionPool {
     }
     // never go here.
     return false;
+  }
+
+  /**
+   * Construct Template at session and create it at server.
+   *
+   * @see Template
+   */
+  public void createSchemaTemplate(Template template)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createSchemaTemplate(template);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createSchemaTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void addAlignedMeasurementsInTemplate(
+      String templateName,
+      List<String> measurementsPath,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.addAlignedMeasurementsInTemplate(
+            templateName, measurementsPath, dataTypes, encodings, compressors);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("addAlignedMeasurementsInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void addAlignedMeasurementInTemplate(
+      String templateName,
+      String measurementPath,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.addAlignedMeasurementInTemplate(
+            templateName, measurementPath, dataType, encoding, compressor);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("addAlignedMeasurementInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void addUnalignedMeasurementsInTemplate(
+      String templateName,
+      List<String> measurementsPath,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.addUnalignedMeasurementsInTemplate(
+            templateName, measurementsPath, dataTypes, encodings, compressors);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("addUnalignedMeasurementsInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void addUnalignedMeasurementInTemplate(
+      String templateName,
+      String measurementPath,
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressor)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.addUnalignedMeasurementInTemplate(
+            templateName, measurementPath, dataType, encoding, compressor);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("addUnalignedMeasurementInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public void deleteNodeInTemplate(String templateName, String path)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.deleteNodeInTemplate(templateName, path);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("deleteNodeInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  public int countMeasurementsInTemplate(String name)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        int resp = session.countMeasurementsInTemplate(name);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("countMeasurementsInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return -1;
+  }
+
+  public boolean isMeasurementInTemplate(String templateName, String path)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        boolean resp = session.isMeasurementInTemplate(templateName, path);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("isMeasurementInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return false;
+  }
+
+  public boolean isPathExistInTemplate(String templateName, String path)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        boolean resp = session.isPathExistInTemplate(templateName, path);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("isPathExistInTemplata failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return false;
+  }
+
+  public List<String> showMeasurementsInTemplate(String templateName)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<String> resp = session.showMeasurementsInTemplate(templateName);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("showMeasurementsInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
+  }
+
+  public List<String> showMeasurementsInTemplate(String templateName, String pattern)
+      throws StatementExecutionException, IoTDBConnectionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        List<String> resp = session.showMeasurementsInTemplate(templateName, pattern);
+        putBack(session);
+        return resp;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("showMeasurementsInTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+    return null;
   }
 
   /**

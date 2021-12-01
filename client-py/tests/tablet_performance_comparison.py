@@ -27,15 +27,17 @@ from iotdb.utils.IoTDBConstants import TSDataType
 from iotdb.utils.Tablet import Tablet
 
 # the data type specified the byte order (i.e. endian)
-FORMAT_CHAR_OF_TYPES = {TSDataType.BOOLEAN: ">?",
-                        TSDataType.FLOAT: ">f4",
-                        TSDataType.DOUBLE: ">f8",
-                        TSDataType.INT32: ">i4",
-                        TSDataType.INT64: ">i8",
-                        TSDataType.TEXT: "str"}
+FORMAT_CHAR_OF_TYPES = {
+    TSDataType.BOOLEAN: ">?",
+    TSDataType.FLOAT: ">f4",
+    TSDataType.DOUBLE: ">f8",
+    TSDataType.INT32: ">i4",
+    TSDataType.INT64: ">i8",
+    TSDataType.TEXT: "str",
+}
 
 # the time column name in the csv file.
-TIME_STR = 'time'
+TIME_STR = "time"
 
 
 def load_csv_data(measure_tstype_infos: dict, data_file_name: str) -> pd.DataFrame:
@@ -52,7 +54,9 @@ def load_csv_data(measure_tstype_infos: dict, data_file_name: str) -> pd.DataFra
     return df
 
 
-def generate_csv_data(measure_tstype_infos: dict, data_file_name: str, _row: int, seed=0) -> None:
+def generate_csv_data(
+    measure_tstype_infos: dict, data_file_name: str, _row: int, seed=0
+) -> None:
     """
     generate csv data randomly according to given measurements and their data types.
     :param measure_tstype_infos: key(str): measurement name, value(TSDataType): measurement data type
@@ -61,29 +65,38 @@ def generate_csv_data(measure_tstype_infos: dict, data_file_name: str, _row: int
     :param seed: random seed
     """
     import random
+
     random.seed(seed)
 
-    CHAR_BASE = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    CHAR_BASE = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
     def generate_data(_type: TSDataType):
         if _type == TSDataType.BOOLEAN:
             return [random.randint(0, 1) == 1 for _ in range(_row)]
         elif _type == TSDataType.INT32:
-            return [random.randint(-2 ** 31, 2 ** 31) for _ in range(_row)]
+            return [random.randint(-(2 ** 31), 2 ** 31) for _ in range(_row)]
         elif _type == TSDataType.INT64:
-            return [random.randint(-2 ** 63, 2 ** 63) for _ in range(_row)]
+            return [random.randint(-(2 ** 63), 2 ** 63) for _ in range(_row)]
         elif _type == TSDataType.FLOAT:
             return [1.5 for _ in range(_row)]
         elif _type == TSDataType.DOUBLE:
             return [0.844421 for _ in range(_row)]
         elif _type == TSDataType.TEXT:
-            return [''.join(random.choice(CHAR_BASE) for _ in range(5)) for _ in range(_row)]
+            return [
+                "".join(random.choice(CHAR_BASE) for _ in range(5)) for _ in range(_row)
+            ]
         else:
-            raise TypeError('not support type:' + str(_type))
+            raise TypeError("not support type:" + str(_type))
 
-    values = {TIME_STR: pd.Series(np.arange(_row), dtype=FORMAT_CHAR_OF_TYPES[TSDataType.INT64])}
+    values = {
+        TIME_STR: pd.Series(
+            np.arange(_row), dtype=FORMAT_CHAR_OF_TYPES[TSDataType.INT64]
+        )
+    }
     for column, data_type in measure_tstype_infos.items():
-        values[column] = pd.Series(generate_data(data_type), dtype=FORMAT_CHAR_OF_TYPES[data_type])
+        values[column] = pd.Series(
+            generate_data(data_type), dtype=FORMAT_CHAR_OF_TYPES[data_type]
+        )
 
     df = pd.DataFrame(values)
     df.to_csv(data_file_name, index=False)
@@ -119,7 +132,9 @@ def check_count(expect, _session, _sql):
             assert False, "select count return more than one line"
         line = session_data_set.next()
         actual = line.get_fields()[0].get_long_value()
-        assert expect == actual, f"count error: expect {expect} lines, actual {actual} lines"
+        assert (
+            expect == actual
+        ), f"count error: expect {expect} lines, actual {actual} lines"
         get_count_line = True
     if not get_count_line:
         assert False, "select count has no result"
@@ -138,13 +153,22 @@ def check_query_result(expect, _session, _sql):
     idx = 0
     while session_data_set.has_next():
         line = session_data_set.next()
-        assert str(line) == expect[idx], f"line {idx}: actual {str(line)} != expect ({expect[idx]})"
+        assert (
+            str(line) == expect[idx]
+        ), f"line {idx}: actual {str(line)} != expect ({expect[idx]})"
         idx += 1
     assert idx == len(expect), f"result rows: actual ({idx}) != expect ({len(expect)})"
     session_data_set.close_operation_handle()
 
 
-def performance_test(measure_tstype_infos, data_file_name, use_new=True, check_result=False, row=10000, col=5000):
+def performance_test(
+    measure_tstype_infos,
+    data_file_name,
+    use_new=True,
+    check_result=False,
+    row=10000,
+    col=5000,
+):
     """
     execute tablet insert using original or new methods.
     :param measure_tstype_infos: key(str): measurement name, value(TSDataType): measurement data type
@@ -153,12 +177,14 @@ def performance_test(measure_tstype_infos, data_file_name, use_new=True, check_r
     :param row: tablet row number
     :param col: tablet column number
     """
-    print(f"Test python: use new: {use_new}, row: {row}, col: {col}. measurements: {measure_tstype_infos}")
+    print(
+        f"Test python: use new: {use_new}, row: {row}, col: {col}. measurements: {measure_tstype_infos}"
+    )
     print(f"Total points: {len(measure_tstype_infos) * row * col}")
 
     # open the session and clean data
     session = create_open_session()
-    session.execute_non_query_statement(f'delete timeseries root.*')
+    session.execute_non_query_statement("delete timeseries root.*")
 
     # test start
     st = time.perf_counter()
@@ -195,7 +221,9 @@ def performance_test(measure_tstype_infos, data_file_name, use_new=True, check_r
                         value_array = value_array.astype(type_char)
                 values.append(value_array)
 
-        tablet = Tablet(device_id, measurements, data_types, values, timestamps_, use_new=use_new)
+        tablet = Tablet(
+            device_id, measurements, data_types, values, timestamps_, use_new=use_new
+        )
         cost_st = time.perf_counter()
         session.insert_tablet(tablet)
         insert_cost += time.perf_counter() - cost_st
@@ -208,12 +236,14 @@ def performance_test(measure_tstype_infos, data_file_name, use_new=True, check_r
                 for m in measurements:
                     line.append(str(csv_data.at[t, m]))
                 expect.append("\t\t".join([v for v in line]))
-            check_query_result(expect, session, f"select {','.join(measurements)} from {device_id}")
+            check_query_result(
+                expect, session, f"select {','.join(measurements)} from {device_id}"
+            )
             print("query validation have passed")
     end = time.perf_counter()
 
     # clean data and close the session
-    session.execute_non_query_statement(f'delete timeseries root.*')
+    session.execute_non_query_statement("delete timeseries root.*")
     session.close()
 
     print("load cost: %.3f s" % load_cost)
@@ -222,27 +252,48 @@ def performance_test(measure_tstype_infos, data_file_name, use_new=True, check_r
     print("total cost: %.3f s" % (end - st))
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='tablet performance comparison')
-    parser.add_argument('--row', type=int, default=10000, help="the row number of the input tablet")
-    parser.add_argument('--col', type=int, default=5000, help="the column number of the input tablet")
-    parser.add_argument('--check_result', '-c', action="store_true", help="True if check out the result")
-    parser.add_argument('--use_new', '-n', action="store_false", help="True if use the new tablet insert")
-    parser.add_argument('--seed', type=int, default=0, help="the random seed for generating csv data")
-    parser.add_argument('--data_file_name', type=str, default='sample.csv', help="the path of csv data")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="tablet performance comparison")
+    parser.add_argument(
+        "--row", type=int, default=10000, help="the row number of the input tablet"
+    )
+    parser.add_argument(
+        "--col", type=int, default=5000, help="the column number of the input tablet"
+    )
+    parser.add_argument(
+        "--check_result", "-c", action="store_true", help="True if check out the result"
+    )
+    parser.add_argument(
+        "--use_new",
+        "-n",
+        action="store_false",
+        help="True if use the new tablet insert",
+    )
+    parser.add_argument(
+        "--seed", type=int, default=0, help="the random seed for generating csv data"
+    )
+    parser.add_argument(
+        "--data_file_name", type=str, default="sample.csv", help="the path of csv data"
+    )
     args = parser.parse_args()
 
     measure_tstype_infos = {
-        's0': TSDataType.BOOLEAN,
-        's1': TSDataType.FLOAT,
-        's2': TSDataType.INT32,
-        's3': TSDataType.DOUBLE,
-        's4': TSDataType.INT64,
-        's5': TSDataType.TEXT,
+        "s0": TSDataType.BOOLEAN,
+        "s1": TSDataType.FLOAT,
+        "s2": TSDataType.INT32,
+        "s3": TSDataType.DOUBLE,
+        "s4": TSDataType.INT64,
+        "s5": TSDataType.TEXT,
     }
     # if not os.path.exists(args.data_file_name):
     random.seed(a=args.seed, version=2)
     generate_csv_data(measure_tstype_infos, args.data_file_name, args.row, args.seed)
 
-    performance_test(measure_tstype_infos, data_file_name=args.data_file_name, use_new=args.use_new,
-                     check_result=args.check_result, row=args.row, col=args.col)
+    performance_test(
+        measure_tstype_infos,
+        data_file_name=args.data_file_name,
+        use_new=args.use_new,
+        check_result=args.check_result,
+        row=args.row,
+        col=args.col,
+    )

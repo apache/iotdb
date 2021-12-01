@@ -19,13 +19,8 @@
 
 package org.apache.iotdb.cluster.server.member;
 
-import org.apache.iotdb.cluster.client.async.AsyncClientPool;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient;
-import org.apache.iotdb.cluster.client.async.AsyncDataClient.SingleManagerFactory;
-import org.apache.iotdb.cluster.client.async.AsyncDataHeartbeatClient;
-import org.apache.iotdb.cluster.client.sync.SyncClientPool;
-import org.apache.iotdb.cluster.client.sync.SyncDataClient;
-import org.apache.iotdb.cluster.client.sync.SyncDataHeartbeatClient;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
@@ -77,6 +72,8 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
@@ -86,7 +83,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -94,6 +91,7 @@ import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
@@ -123,12 +121,13 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_TERMINATION_TIME_S;
 
-public class DataGroupMember extends RaftMember {
+public class DataGroupMember extends RaftMember implements DataGroupMemberMBean {
+
+  private final String mbeanName;
 
   private static final Logger logger = LoggerFactory.getLogger(DataGroupMember.class);
 
@@ -174,33 +173,49 @@ public class DataGroupMember extends RaftMember {
   @TestOnly
   public DataGroupMember(PartitionGroup nodes) {
     // constructor for test
+    this.name =
+        "Data-"
+            + nodes.getHeader().getNode().getInternalIp()
+            + "-"
+            + nodes.getHeader().getNode().getDataPort()
+            + "-raftId-"
+            + nodes.getRaftId()
+            + "";
     allNodes = nodes;
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     localQueryExecutor = new LocalQueryExecutor(this);
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
   }
 
-  DataGroupMember(
-      TProtocolFactory factory,
-      PartitionGroup nodes,
-      Node thisNode,
-      MetaGroupMember metaGroupMember) {
+  DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
+    // The name is used in JMX, so we have to avoid to use "(" "," "=" ")"
     super(
-        "Data("
+        "Data-"
             + nodes.getHeader().getNode().getInternalIp()
-            + ":"
-            + nodes.getHeader().getNode().getMetaPort()
-            + ", raftId="
-            + nodes.getId()
-            + ")",
-        new AsyncClientPool(new AsyncDataClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataClient.FactorySync(factory)),
-        new AsyncClientPool(new AsyncDataHeartbeatClient.FactoryAsync(factory)),
-        new SyncClientPool(new SyncDataHeartbeatClient.FactorySync(factory)),
-        new AsyncClientPool(new SingleManagerFactory(factory)));
-    this.thisNode = thisNode;
+            + "-"
+            + nodes.getHeader().getNode().getDataPort()
+            + "-raftId-"
+            + nodes.getRaftId()
+            + "",
+        new ClientManager(
+            ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+            ClientManager.Type.DataGroupClient));
     this.metaGroupMember = metaGroupMember;
     setAllNodes(nodes);
+    mbeanName =
+        String.format(
+            "%s:%s=%s%d",
+            "org.apache.iotdb.cluster.service",
+            IoTDBConstant.JMX_TYPE,
+            "DataMember",
+            getRaftGroupId());
     setQueryManager(new ClusterQueryManager());
     slotManager = new SlotManager(ClusterConstant.SLOT_NUM, getMemberDir(), getName());
     dataLogApplier = new DataLogApplier(metaGroupMember, this);
@@ -228,9 +243,13 @@ public class DataGroupMember extends RaftMember {
     if (heartBeatService != null) {
       return;
     }
+    logger.info("Starting DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.registerMBean(this, mbeanName);
     super.start();
     heartBeatService.submit(new DataHeartbeatThread(this));
-    pullSnapshotService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+    pullSnapshotService =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), "pullSnapshot");
     pullSnapshotHintService = new PullSnapshotHintService(this);
     pullSnapshotHintService.start();
     resumePullSnapshotTasks();
@@ -242,7 +261,8 @@ public class DataGroupMember extends RaftMember {
    */
   @Override
   public void stop() {
-    logger.info("{}: stopping...", name);
+    logger.info("Stopping DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
+    JMXService.deregisterMBean(mbeanName);
     super.stop();
     if (pullSnapshotService != null) {
       pullSnapshotService.shutdownNow();
@@ -303,13 +323,13 @@ public class DataGroupMember extends RaftMember {
     private TProtocolFactory protocolFactory;
     private MetaGroupMember metaGroupMember;
 
-    Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
+    public Factory(TProtocolFactory protocolFactory, MetaGroupMember metaGroupMember) {
       this.protocolFactory = protocolFactory;
       this.metaGroupMember = metaGroupMember;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup, Node thisNode) {
-      return new DataGroupMember(protocolFactory, partitionGroup, thisNode, metaGroupMember);
+    public DataGroupMember create(PartitionGroup partitionGroup) {
+      return new DataGroupMember(protocolFactory, partitionGroup, metaGroupMember);
     }
   }
 
@@ -747,6 +767,16 @@ public class DataGroupMember extends RaftMember {
     }
   }
 
+  @Override
+  ClientCategory getClientCategory() {
+    return ClientCategory.DATA;
+  }
+
+  @Override
+  public String getMBeanName() {
+    return mbeanName;
+  }
+
   private void handleChangeMembershipLogWithoutRaft(Log log) {
     if (log instanceof AddNodeLog) {
       if (!metaGroupMember
@@ -901,7 +931,8 @@ public class DataGroupMember extends RaftMember {
     synchronized (allNodes) {
       if (containsNode(removedNode) && allNodes.size() == config.getReplicationNum()) {
         // update the group if the deleted node was in it
-        PartitionGroup newGroup = metaGroupMember.getPartitionTable().getHeaderGroup(getHeader());
+        PartitionGroup newGroup =
+            metaGroupMember.getPartitionTable().getPartitionGroup(getHeader());
         if (newGroup == null) {
           return;
         }

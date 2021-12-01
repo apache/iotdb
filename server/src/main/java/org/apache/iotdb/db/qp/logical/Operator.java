@@ -148,8 +148,8 @@ public abstract class Operator {
     STOP_TRIGGER,
 
     CREATE_TEMPLATE,
-    SET_SCHEMA_TEMPLATE,
-    SET_USING_SCHEMA_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
 
     MERGE,
     FULL_MERGE,
@@ -176,6 +176,8 @@ public abstract class Operator {
     EMPTY,
     SETTLE,
 
-    UNSET_SCHEMA_TEMPLATE
+    UNSET_TEMPLATE,
+    PRUNE_TEMPLATE,
+    APPEND_TEMPLATE
   }
 }

@@ -35,12 +35,11 @@ import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.CommonUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -52,7 +51,6 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -74,15 +72,16 @@ public class LogDispatcher {
   List<BlockingQueue<SendLogRequest>> nodesLogQueues = new ArrayList<>();
   ExecutorService executorService;
   private static ExecutorService serializationService =
-      Executors.newFixedThreadPool(
-          CommonUtils.getCpuCores() * 2,
-          new ThreadFactoryBuilder().setDaemon(true).setNameFormat("DispatcherEncoder-%d").build());
+      IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
+          Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
+
   public static int bindingThreadNum = 1;
   public static int maxBatchSize = 1;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;
-    executorService = Executors.newCachedThreadPool();
+    executorService =
+        IoTDBThreadPoolFactory.newCachedThreadPool("LogDispatcher-" + member.getName());
     createQueueAndBindingThreads();
   }
 

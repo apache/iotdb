@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.cluster.common;
 
+import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
@@ -64,7 +65,7 @@ public class TestAsyncDataClient extends AsyncDataClient {
 
   public TestAsyncDataClient(Node node, Map<RaftNode, DataGroupMember> dataGroupMemberMap)
       throws IOException {
-    super(null, null, node, null);
+    super(null, null, node, ClientCategory.DATA);
     this.dataGroupMemberMap = dataGroupMemberMap;
     try {
       this.planExecutor = new PlanExecutor();

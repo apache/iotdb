@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
@@ -83,6 +83,7 @@ public class FunctionExpression extends Expression {
     expressions = new ArrayList<>();
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = true;
   }
 
   public FunctionExpression(
@@ -92,11 +93,17 @@ public class FunctionExpression extends Expression {
     this.expressions = expressions;
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
+    isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
   }
 
   @Override
   public boolean isAggregationFunctionExpression() {
     return isAggregationFunctionExpression;
+  }
+
+  @Override
+  public boolean isConstantOperandInternal() {
+    return isConstantOperandCache;
   }
 
   @Override
@@ -115,6 +122,7 @@ public class FunctionExpression extends Expression {
   }
 
   public void addExpression(Expression expression) {
+    isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
     expressions.add(expression);
   }
 
@@ -298,7 +306,7 @@ public class FunctionExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return functionName + "(" + getParametersString() + ")";
   }
 
@@ -311,7 +319,7 @@ public class FunctionExpression extends Expression {
    *
    * <p>The parameter part -> root.sg.d.s1, sin(root.sg.d.s1), 'key1'='value1', 'key2'='value2'
    */
-  public String getParametersString() {
+  private String getParametersString() {
     if (parametersString == null) {
       StringBuilder builder = new StringBuilder();
       if (!expressions.isEmpty()) {

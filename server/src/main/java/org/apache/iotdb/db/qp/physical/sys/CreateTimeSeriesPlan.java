@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -208,7 +208,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_TIMESERIES.ordinal());
     byte[] bytes = path.getFullPath().getBytes();
     buffer.putInt(bytes.length);

@@ -44,7 +44,6 @@ public class ClusterConfig {
   private List<String> seedNodeUrls;
 
   @ClusterConsistent private boolean isRpcThriftCompressionEnabled = false;
-  private int maxConcurrentClientNum = 10000;
 
   @ClusterConsistent private int replicationNum = 1;
 
@@ -242,14 +241,6 @@ public class ClusterConfig {
 
   void setRpcThriftCompressionEnabled(boolean rpcThriftCompressionEnabled) {
     isRpcThriftCompressionEnabled = rpcThriftCompressionEnabled;
-  }
-
-  public int getMaxConcurrentClientNum() {
-    return maxConcurrentClientNum;
-  }
-
-  void setMaxConcurrentClientNum(int maxConcurrentClientNum) {
-    this.maxConcurrentClientNum = maxConcurrentClientNum;
   }
 
   public List<String> getSeedNodeUrls() {

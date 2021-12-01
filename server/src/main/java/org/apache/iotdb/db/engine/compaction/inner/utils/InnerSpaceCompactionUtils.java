@@ -20,8 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.cache.ChunkCache;
-import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
@@ -34,7 +32,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -46,7 +44,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
@@ -202,11 +199,11 @@ public class InnerSpaceCompactionUtils {
     if (isChunkMetadataEmpty) {
       return;
     }
-    IChunkWriter chunkWriter;
+    ChunkWriterImpl chunkWriter;
     try {
       chunkWriter =
           new ChunkWriterImpl(
-              IoTDB.metaManager.getSeriesSchema(new PartialPath(device), entry.getKey()), true);
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())), true);
     } catch (MetadataException e) {
       // this may caused in IT by restart
       logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
@@ -253,16 +250,12 @@ public class InnerSpaceCompactionUtils {
    * @param targetResource the target resource to be merged to
    * @param tsFileResources the source resource to be merged
    * @param storageGroup the storage group name
-   * @param sizeTieredCompactionLogger the logger
-   * @param devices the devices to be skipped(used by recover)
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static void compact(
       TsFileResource targetResource,
       List<TsFileResource> tsFileResources,
       String storageGroup,
-      SizeTieredCompactionLogger sizeTieredCompactionLogger,
-      Set<String> devices,
       boolean sequence)
       throws IOException, IllegalPathException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
@@ -275,9 +268,6 @@ public class InnerSpaceCompactionUtils {
       Set<String> tsFileDevicesMap =
           getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap, storageGroup);
       for (String device : tsFileDevicesMap) {
-        if (devices.contains(device)) {
-          continue;
-        }
         writer.startChunkGroup(device);
         // tsfile -> measurement -> List<ChunkMetadata>
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
@@ -551,7 +541,7 @@ public class InnerSpaceCompactionUtils {
 
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.debug("{} [compaction] merge starts to delete real file", storageGroupName);
+    logger.info("{} [compaction] merge starts to delete real file ", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteTsFile(mergeTsFile);
       logger.info(
@@ -562,8 +552,6 @@ public class InnerSpaceCompactionUtils {
   public static void deleteTsFile(TsFileResource seqFile) {
     seqFile.writeLock();
     try {
-      ChunkCache.getInstance().clear();
-      TimeSeriesMetadataCache.getInstance().clear();
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();

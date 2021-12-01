@@ -48,5 +48,6 @@ public abstract class AbstractInnerSpaceCompactionSelector extends AbstractCompa
     this.taskFactory = taskFactory;
   }
 
+  @Override
   public abstract boolean selectAndSubmit();
 }

@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 
 import java.io.DataOutputStream;
@@ -67,7 +67,7 @@ public class StorageGroupMNodePlan extends MNodePlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.STORAGE_GROUP_MNODE.ordinal());
     putString(buffer, name);
     buffer.putLong(dataTTL);

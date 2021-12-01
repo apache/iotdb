@@ -4,111 +4,107 @@
 
 package org.apache.iotdb.cluster.client.sync;
 
-import org.apache.iotdb.cluster.client.sync.SyncMetaClient.FactorySync;
-import org.apache.iotdb.cluster.rpc.thrift.Node;
-import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
-import org.apache.iotdb.rpc.TSocketWrapper;
+import org.apache.iotdb.cluster.client.BaseClientTest;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 
 import org.apache.thrift.protocol.TBinaryProtocol;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
+import org.apache.thrift.transport.TTransportException;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.net.ServerSocket;
+import java.net.SocketException;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
-public class SyncMetaClientTest {
+public class SyncMetaClientTest extends BaseClientTest {
+
+  private TProtocolFactory protocolFactory;
+
+  @Before
+  public void setUp() {
+    protocolFactory =
+        ClusterDescriptor.getInstance().getConfig().isRpcThriftCompressionEnabled()
+            ? new TCompactProtocol.Factory()
+            : new TBinaryProtocol.Factory();
+  }
 
   @Test
-  public void test() throws IOException, InterruptedException {
-    Node node = new Node();
-    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
-    ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
-    Thread listenThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  serverSocket.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    listenThread.start();
-
+  public void testMetaClient() throws IOException, InterruptedException, TTransportException {
     try {
-      SyncClientPool syncClientPool = new SyncClientPool(new FactorySync(new Factory()));
-      SyncMetaClient client;
-      client = (SyncMetaClient) syncClientPool.getClient(node);
+      startMetaServer();
+      SyncMetaClient metaClient =
+          new SyncMetaClient(protocolFactory, defaultNode, ClientCategory.META);
 
-      assertEquals(node, client.getNode());
+      assertEquals(
+          "SyncMetaClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+              + "dataPort:40010, clientPort:0, clientIp:localhost),port=9003}",
+          metaClient.toString());
 
-      client.putBack();
-      Client newClient = syncClientPool.getClient(node);
-      assertEquals(client, newClient);
-      assertTrue(client.getInputProtocol().getTransport().isOpen());
+      assertCheck(metaClient);
 
-      client =
-          new SyncMetaClient(
-              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())));
-      // client without a belong pool will be closed after putBack()
-      client.putBack();
-      assertFalse(client.getInputProtocol().getTransport().isOpen());
+      metaClient =
+          new SyncMetaClient.SyncMetaClientFactory(protocolFactory, ClientCategory.META)
+              .makeObject(defaultNode)
+              .getObject();
+
+      assertEquals(
+          "SyncMetaClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+              + "dataPort:40010, clientPort:0, clientIp:localhost),port=9003}",
+          metaClient.toString());
+
+      assertCheck(metaClient);
+    } catch (Exception e) {
+      e.printStackTrace();
     } finally {
-      serverSocket.close();
-      listenThread.interrupt();
-      listenThread.join();
+      stopMetaServer();
     }
   }
 
   @Test
-  public void testTryClose() throws IOException, InterruptedException {
-    Node node = new Node();
-    node.setMetaPort(9003).setInternalIp("localhost").setClientIp("localhost");
-    ServerSocket serverSocket = new ServerSocket(node.getMetaPort());
-    Thread listenThread =
-        new Thread(
-            () -> {
-              while (!Thread.interrupted()) {
-                try {
-                  serverSocket.accept();
-                } catch (IOException e) {
-                  return;
-                }
-              }
-            });
-    listenThread.start();
-
+  public void testDataHeartbeatClient()
+      throws IOException, InterruptedException, TTransportException {
     try {
-      SyncClientPool syncClientPool = new SyncClientPool(new FactorySync(new Factory()));
-      SyncMetaClient clientOut;
-      try (SyncMetaClient clientIn = (SyncMetaClient) syncClientPool.getClient(node); ) {
-        assertEquals(node, clientIn.getNode());
-        clientOut = clientIn;
-      }
+      startMetaHeartbeatServer();
+      SyncMetaClient metaHeartbeatClient =
+          new SyncMetaClient(protocolFactory, defaultNode, ClientCategory.META_HEARTBEAT);
 
-      try (SyncMetaClient newClientIn = (SyncMetaClient) syncClientPool.getClient(node)) {
-        assertEquals(node, newClientIn.getNode());
-        assertEquals(clientOut, newClientIn);
-      }
-      assertTrue(clientOut.getInputProtocol().getTransport().isOpen());
+      assertCheck(metaHeartbeatClient);
+      assertEquals(
+          "SyncMetaHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+              + "dataPort:40010, clientPort:0, clientIp:localhost),port=9004}",
+          metaHeartbeatClient.toString());
 
-      try (SyncMetaClient clientIn =
-          new SyncMetaClient(
-              new TBinaryProtocol(TSocketWrapper.wrap(node.getInternalIp(), node.getDataPort())))) {
-        clientOut = clientIn;
-      }
-
-      // client without a belong pool will be closed after putBack()
-      assertFalse(clientOut.getInputProtocol().getTransport().isOpen());
+      metaHeartbeatClient =
+          new SyncMetaClient.SyncMetaClientFactory(protocolFactory, ClientCategory.META_HEARTBEAT)
+              .makeObject(defaultNode)
+              .getObject();
+      assertCheck(metaHeartbeatClient);
+      assertEquals(
+          "SyncMetaHeartbeatClient{node=Node(internalIp:localhost, metaPort:9003, nodeIdentifier:0, "
+              + "dataPort:40010, clientPort:0, clientIp:localhost),port=9004}",
+          metaHeartbeatClient.toString());
+    } catch (Exception e) {
+      e.printStackTrace();
     } finally {
-      serverSocket.close();
-      listenThread.interrupt();
-      listenThread.join();
+      stopMetaHeartbeatServer();
     }
+  }
+
+  private void assertCheck(SyncMetaClient metaClient) throws SocketException {
+    Assert.assertNotNull(metaClient);
+    Assert.assertTrue(metaClient.getInputProtocol().getTransport().isOpen());
+    Assert.assertEquals(metaClient.getNode(), defaultNode);
+
+    metaClient.setTimeout(ClusterConstant.getConnectionTimeoutInMS());
+    Assert.assertEquals(metaClient.getTimeout(), ClusterConstant.getConnectionTimeoutInMS());
+
+    metaClient.close();
+    Assert.assertFalse(metaClient.getInputProtocol().getTransport().isOpen());
   }
 }

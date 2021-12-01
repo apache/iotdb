@@ -32,15 +32,17 @@ public class IoTDBConstant {
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
   public static final String MAJOR_VERSION =
-      VERSION.equals("UNKNOWN")
+      "UNKNOWN".equals(VERSION)
           ? "UNKNOWN"
           : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+  public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+  public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
   public static final long GB = 1024 * 1024 * 1024L;
@@ -157,6 +159,8 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;

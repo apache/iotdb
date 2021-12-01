@@ -61,6 +61,7 @@ public class SyncServerManager extends ThriftService implements SyncServerManage
 
   @Override
   public void initTProcessor() {
+    initSyncedServiceImpl(null);
     serviceImpl = new SyncServiceImpl();
     processor = new SyncService.Processor<>(serviceImpl);
   }
@@ -90,6 +91,11 @@ public class SyncServerManager extends ThriftService implements SyncServerManage
   @Override
   public int getBindPort() {
     return IoTDBDescriptor.getInstance().getConfig().getSyncServerPort();
+  }
+
+  @Override
+  public int getRPCPort() {
+    return getBindPort();
   }
 
   @Override

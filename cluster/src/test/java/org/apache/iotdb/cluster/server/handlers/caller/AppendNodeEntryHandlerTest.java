@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Peer;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -54,7 +55,7 @@ public class AppendNodeEntryHandlerTest {
   }
 
   @After
-  public void tearDown() throws IOException {
+  public void tearDown() throws IOException, StorageEngineException {
     member.closeLogManager();
     member.stop();
     EnvironmentUtils.cleanAllDir();
