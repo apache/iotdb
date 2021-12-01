@@ -51,6 +51,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
 
   public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -123,11 +124,6 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child) {
     parent.addAlias(alias, child);
-  }
-
-  @Override
-  public void replaceChild(IMNode parent, String oldChildName, IMNode newChild) {
-    parent.replaceChild(oldChildName, newChild);
   }
 
   @Override

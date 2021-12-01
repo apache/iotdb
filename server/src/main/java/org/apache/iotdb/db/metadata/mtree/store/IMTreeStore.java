@@ -26,6 +26,11 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ * This interface defines the basic access methods of a MTreeStore.
+ *
+ * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
+ */
 public interface IMTreeStore {
 
   void init() throws IOException;
@@ -43,8 +48,6 @@ public interface IMTreeStore {
   void addChild(IMNode parent, String childName, IMNode child);
 
   void addAlias(IEntityMNode parent, String alias, IMeasurementMNode child);
-
-  void replaceChild(IMNode parent, String oldChildName, IMNode newChild);
 
   void deleteChild(IMNode parent, String childName);
 
