@@ -217,13 +217,13 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       int subSensorSize = subIndexes.size();
 
       Object[] values = reader.getValuesInTimestamps(timestampArray, timeArrayLength);
-      if(values != null) {
+      if (values != null && hasNotNullValue(values)) {
         ValueIterator valueIterator = generateValueIterator(values);
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
           valueIterator.setSubMeasurementIndex(curIndex);
           for (Integer index : subIndexes.get(curIndex)) {
             curAggregateResults[index].updateResultUsingValues(
-                    timestampArray, timeArrayLength, valueIterator);
+                timestampArray, timeArrayLength, valueIterator);
             valueIterator.reset();
           }
         }
@@ -343,5 +343,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     } else {
       return new ValueIterator(values);
     }
+  }
+
+  private boolean hasNotNullValue(Object[] values) {
+    for (Object value : values) {
+      if (value != null) {
+        return true;
+      }
+    }
+    return false;
   }
 }

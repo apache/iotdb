@@ -37,7 +37,8 @@ public class AlignedValueIterator extends ValueIterator {
   @Override
   public boolean hasNext() {
     while (curPos < values.length
-        && ((TsPrimitiveType[]) values[curPos])[subMeasurementIndex] == null) {
+        && (values[curPos] == null
+            || ((TsPrimitiveType[]) values[curPos])[subMeasurementIndex] == null)) {
       curPos++;
     }
     return curPos < values.length;
