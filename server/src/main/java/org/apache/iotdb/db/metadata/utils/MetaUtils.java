@@ -177,6 +177,7 @@ public class MetaUtils {
     Map<String, AlignedPath> temp = new HashMap<>();
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
+      // for with value filter
       if (seriesPath instanceof AlignedPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         AlignedPath groupPath = temp.get(seriesPath.getFullPath());
@@ -192,6 +193,23 @@ public class MetaUtils {
           subIndexes.add(indexes);
           groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
           groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
+      } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+        // for without value filter
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        if (groupPath == null) {
+          groupPath = new AlignedPath((MeasurementPath) seriesPath);
+          temp.put(seriesPath.getDevice(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurement((MeasurementPath) seriesPath);
           alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
         }
       }
