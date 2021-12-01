@@ -217,14 +217,15 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       int subSensorSize = subIndexes.size();
 
       Object[] values = reader.getValuesInTimestamps(timestampArray, timeArrayLength);
-      ValueIterator valueIterator = generateValueIterator(values);
-
-      for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
-        valueIterator.setSubMeasurementIndex(curIndex);
-        for (Integer index : subIndexes.get(curIndex)) {
-          curAggregateResults[index].updateResultUsingValues(
-              timestampArray, timeArrayLength, valueIterator);
-          valueIterator.reset();
+      if(values != null) {
+        ValueIterator valueIterator = generateValueIterator(values);
+        for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
+          valueIterator.setSubMeasurementIndex(curIndex);
+          for (Integer index : subIndexes.get(curIndex)) {
+            curAggregateResults[index].updateResultUsingValues(
+                    timestampArray, timeArrayLength, valueIterator);
+            valueIterator.reset();
+          }
         }
       }
     }
@@ -333,7 +334,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   }
 
   private ValueIterator generateValueIterator(Object[] values) {
-    if (values[0] instanceof TsPrimitiveType[]) {
+    int index = 0;
+    while (index < values.length && values[index] == null) {
+      index++;
+    }
+    if (values[index] instanceof TsPrimitiveType[]) {
       return new AlignedValueIterator(values);
     } else {
       return new ValueIterator(values);
