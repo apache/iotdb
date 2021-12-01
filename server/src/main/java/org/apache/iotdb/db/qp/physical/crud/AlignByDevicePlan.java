@@ -43,7 +43,7 @@ public class AlignByDevicePlan extends QueryPlan {
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
   private Map<String, MeasurementInfo> measurementInfoMap;
-  private List<PartialPath> deduplicatePaths;
+  private List<PartialPath> deduplicatePaths = new ArrayList<>();
   private List<String> aggregations;
 
   // paths index of each device that need to execute
@@ -60,11 +60,14 @@ public class AlignByDevicePlan extends QueryPlan {
 
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
-    Set<PartialPath> deduplicatePaths = new LinkedHashSet<>();
+    Set<String> pathWithAggregationSet = new LinkedHashSet<>();
     List<String> deduplicatedAggregations = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = paths.get(i);
-      if (!deduplicatePaths.contains(path)) {
+      String aggregation = aggregations != null ? aggregations.get(i) : null;
+      String pathStrWithAggregation = getPathStrWithAggregation(path, aggregation);
+      if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
+        pathWithAggregationSet.add(pathStrWithAggregation);
         deduplicatePaths.add(path);
         if (this.aggregations != null) {
           deduplicatedAggregations.add(this.aggregations.get(i));
@@ -74,8 +77,6 @@ public class AlignByDevicePlan extends QueryPlan {
             .add(deduplicatePaths.size() - 1);
       }
     }
-    // paths are deduplicated from here
-    this.deduplicatePaths = new ArrayList<>(deduplicatePaths);
     setAggregations(deduplicatedAggregations);
     this.paths = null;
   }
@@ -154,5 +155,13 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setAggregationPlan(AggregationPlan aggregationPlan) {
     this.aggregationPlan = aggregationPlan;
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  private String getPathStrWithAggregation(PartialPath path, String aggregation) {
+    String initialPath = path.getFullPath();
+    if (aggregation != null) {
+      initialPath = aggregation + "(" + initialPath + ")";
+    }
+    return initialPath;
   }
 }

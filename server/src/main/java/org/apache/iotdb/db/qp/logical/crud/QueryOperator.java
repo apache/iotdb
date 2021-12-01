@@ -23,7 +23,6 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -40,7 +39,6 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
@@ -379,10 +377,6 @@ public class QueryOperator extends Operator {
    */
   private String getMeasurementName(PartialPath path, String aggregation) {
     String initialMeasurement = path.getMeasurement();
-    if (path instanceof AlignedPath) {
-      String subMeasurement = ((AlignedPath) path).getMeasurement(0);
-      initialMeasurement += TsFileConstant.PATH_SEPARATOR + subMeasurement;
-    }
     if (aggregation != null) {
       initialMeasurement = aggregation + "(" + initialMeasurement + ")";
     }
