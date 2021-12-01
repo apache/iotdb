@@ -61,7 +61,12 @@ public class NegationExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
+    return !isUDAFExpression();
+  }
+
+  @Override
+  public boolean isUDAFExpression() {
+    return expression.isUDAFExpression() || expression.isAggregationFunctionExpression();
   }
 
   @Override

@@ -31,12 +31,9 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Locale;
 
-import static org.apache.iotdb.db.constant.TestConstant.max_value;
-import static org.apache.iotdb.db.constant.TestConstant.min_value;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
@@ -121,7 +118,8 @@ public class IoTDBUDTAIT {
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-          statement.execute("SELECT count(temperature) + 1 FROM root.ln.wf01.wt01 WHERE time > 3");
+          statement.execute(
+              "SELECT count(temperature) + 1 FROM root.ln.wf01.wt01 WHERE hardware > 35");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -137,7 +135,7 @@ public class IoTDBUDTAIT {
 
       hasResultSet =
           statement.execute(
-              "SELECT count(temperature) + 1 FROM root.ln.wf01.wt01 WHERE time > 3 order by time desc");
+              "SELECT count(temperature) + 1 FROM root.ln.wf01.wt01 WHERE hardware > 35 order by time desc");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -240,7 +238,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(4);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
       // keep the correctness of `order by time desc`
       hasResultSet =
@@ -262,7 +262,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(4);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
 
       hasResultSet =
@@ -282,7 +284,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(3);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(2, cnt);
       }
 
       hasResultSet =
@@ -303,7 +307,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(3);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(2, cnt);
       }
 
       hasResultSet =
@@ -323,7 +329,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(3);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(3, cnt);
       }
 
     } catch (Exception e) {
@@ -355,7 +363,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
 
       hasResultSet =
@@ -373,7 +383,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -383,7 +395,7 @@ public class IoTDBUDTAIT {
 
   @Test
   public void polyNominalWithMaxMinTimeTest() {
-    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499"};
+    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499", "0,-100.0,-2499"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -404,7 +416,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
 
       hasResultSet =
@@ -422,7 +436,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
 
       hasResultSet =
@@ -440,7 +456,9 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(2, cnt);
       }
 
       hasResultSet =
@@ -458,32 +476,17 @@ public class IoTDBUDTAIT {
                   + ","
                   + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
         }
+        Assert.assertEquals(2, cnt);
       }
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  @Test
-  public void firstLastValueTest() throws SQLException {
-    String[] retArray =
-        new String[] {
-          "0,2.2,4.4",
-        };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
+      hasResultSet =
           statement.execute(
-              "SELECT first_value(temperature),last_value(temperature) "
-                  + "FROM root.ln.wf01.wt01 WHERE time > 1 AND time < 5");
+              "SELECT -((max_time(s0)-min_time(s2))+1)/5,-max_time(s0) "
+                  + "FROM root.vehicle.d0 WHERE time <= 2500 AND time > 1800");
       Assert.assertTrue(hasResultSet);
-      int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
+        cnt = 2;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
@@ -494,79 +497,27 @@ public class IoTDBUDTAIT {
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(1, cnt);
-      }
-    }
-  }
-
-  @Test
-  public void maxminValueTest() {
-    String[] retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-
-      boolean hasResultSet =
-          statement.execute(
-              "SELECT max_value(s0),min_value(s2) "
-                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000");
-
-      Assert.assertTrue(hasResultSet);
-      int cnt;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        cnt = 0;
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(max_value(d0s0))
-                  + ","
-                  + resultSet.getString(min_value(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(3, cnt);
       }
 
       hasResultSet =
           statement.execute(
-              "SELECT max_value(s0),min_value(s2) " + "FROM root.vehicle.d0 WHERE time < 2500");
-
+              "SELECT -((max_time(s0)-min_time(s2))+1)/5,-max_time(s0) "
+                  + "FROM root.vehicle.d0 WHERE time <= 2500 AND time > 1800 order by time desc");
       Assert.assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 2;
         while (resultSet.next()) {
           String ans =
               resultSet.getString(TIMESTAMP_STR)
                   + ","
-                  + resultSet.getString(max_value(d0s0))
+                  + resultSet.getString(1)
                   + ","
-                  + resultSet.getString(min_value(d0s2));
+                  + resultSet.getString(2);
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
-        Assert.assertEquals(2, cnt);
-      }
-
-      // keep the correctness of `order by time desc`
-      hasResultSet =
-          statement.execute(
-              "SELECT max_value(s0),min_value(s2) "
-                  + "FROM root.vehicle.d0 WHERE time >= 100 AND time < 9000 order by time desc");
-
-      Assert.assertTrue(hasResultSet);
-      cnt = 0;
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          String ans =
-              resultSet.getString(TIMESTAMP_STR)
-                  + ","
-                  + resultSet.getString(max_value(d0s0))
-                  + ","
-                  + resultSet.getString(min_value(d0s2));
-          Assert.assertEquals(retArray[cnt], ans);
-          cnt++;
-        }
-        Assert.assertEquals(1, cnt);
+        Assert.assertEquals(3, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -599,7 +550,9 @@ public class IoTDBUDTAIT {
           ans[1] = Double.valueOf(resultSet.getString(1));
           ans[2] = Double.valueOf(resultSet.getString(2));
           assertArrayEquals(retArray[cnt], ans, DETLA);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
       // keep the correctness of `order by time desc`
       hasResultSet =
@@ -616,7 +569,9 @@ public class IoTDBUDTAIT {
           ans[1] = Double.valueOf(resultSet.getString(1));
           ans[2] = Double.valueOf(resultSet.getString(2));
           assertArrayEquals(retArray[cnt], ans, DETLA);
+          cnt++;
         }
+        Assert.assertEquals(1, cnt);
       }
 
       hasResultSet =
@@ -632,7 +587,9 @@ public class IoTDBUDTAIT {
           ans[1] = Double.valueOf(resultSet.getString(1));
           ans[2] = Double.valueOf(resultSet.getString(2));
           assertArrayEquals(retArray[cnt], ans, DETLA);
+          cnt++;
         }
+        Assert.assertEquals(2, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

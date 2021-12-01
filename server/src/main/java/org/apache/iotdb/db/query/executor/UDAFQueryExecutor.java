@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.expression.binary.ModuloExpression;
 import org.apache.iotdb.db.query.expression.binary.MultiplicationExpression;
 import org.apache.iotdb.db.query.expression.binary.SubtractionExpression;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.udf.core.reader.ConstantLayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -46,6 +47,10 @@ import java.util.Map;
 import java.util.Set;
 
 public class UDAFQueryExecutor {
+  private final String WRONG_BOOLEAN_TYPE_MESSAGE =
+      "Boolean type is not supported in nested aggregation expression.";
+  private final String WRONG_TEXT_TYPE_MESSAGE =
+      "Text type is not supported in nested aggregation expression.";
   protected UDAFPlan udafPlan;
   private Map<Expression, Integer> expressionToInnerResultIndexMap;
   private Map<Expression, TSDataType> expressionToDataTypeMap;
@@ -121,6 +126,28 @@ public class UDAFQueryExecutor {
             Double.valueOf(calcUDAFExpression(leftExpression).right.toString())
                 % Double.valueOf(calcUDAFExpression(rightExpression).right.toString());
       }
+    } else if (expression instanceof NegationExpression) {
+      Pair<TSDataType, Object> pair =
+          calcUDAFExpression(((NegationExpression) expression).getExpression());
+      dataType = pair.left;
+      switch (dataType) {
+        case INT32:
+          value = -Integer.valueOf(pair.right.toString());
+          break;
+        case INT64:
+          value = -Long.valueOf(pair.right.toString());
+          break;
+        case FLOAT:
+          value = -Float.valueOf(pair.right.toString());
+          break;
+        case DOUBLE:
+          value = -Double.valueOf(pair.right.toString());
+          break;
+        case BOOLEAN:
+          throw new QueryProcessException(WRONG_BOOLEAN_TYPE_MESSAGE);
+        case TEXT:
+          throw new QueryProcessException(WRONG_TEXT_TYPE_MESSAGE);
+      }
     } else if (expression instanceof ConstantOperand) {
       ConstantLayerPointReader constantLayerPointReader =
           new ConstantLayerPointReader((ConstantOperand) expression);
@@ -139,11 +166,9 @@ public class UDAFQueryExecutor {
           value = constantLayerPointReader.currentDouble();
           break;
         case BOOLEAN:
-          value = constantLayerPointReader.currentBoolean();
-          break;
+          throw new QueryProcessException(WRONG_BOOLEAN_TYPE_MESSAGE);
         case TEXT:
-          value = constantLayerPointReader.currentBinary();
-          break;
+          throw new QueryProcessException(WRONG_TEXT_TYPE_MESSAGE);
       }
     } else {
       // FunctionExpression
@@ -168,11 +193,9 @@ public class UDAFQueryExecutor {
           value = field.getDoubleV();
           break;
         case BOOLEAN:
-          value = field.getBoolV();
-          break;
+          throw new QueryProcessException(WRONG_BOOLEAN_TYPE_MESSAGE);
         case TEXT:
-          value = field.getBinaryV();
-          break;
+          throw new QueryProcessException(WRONG_TEXT_TYPE_MESSAGE);
       }
     }
     return new Pair<>(dataType, value);

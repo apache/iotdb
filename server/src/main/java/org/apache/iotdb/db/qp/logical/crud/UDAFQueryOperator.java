@@ -31,6 +31,7 @@ import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
+import org.apache.iotdb.db.query.expression.unary.NegationExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.util.ArrayList;
@@ -110,6 +111,9 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
       addInnerAggregations(((BinaryExpression) expression).getRightExpression());
       return;
     }
+    if (expression instanceof NegationExpression) {
+      addInnerAggregations(((NegationExpression) expression).getExpression());
+    }
     if (expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()) {
       innerAggregationsCache.add(((FunctionExpression) expression).getFunctionName());
     }
@@ -120,6 +124,9 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
       addInnerPath(((BinaryExpression) expression).getLeftExpression());
       addInnerPath(((BinaryExpression) expression).getRightExpression());
       return;
+    }
+    if (expression instanceof NegationExpression) {
+      addInnerPath(((NegationExpression) expression).getExpression());
     }
     if (expression instanceof FunctionExpression && expression.isAggregationFunctionExpression()) {
       innerPathsCache.add(
@@ -132,6 +139,10 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
     if (expression instanceof BinaryExpression) {
       addInnerResultColumn(((BinaryExpression) expression).getLeftExpression());
       addInnerResultColumn(((BinaryExpression) expression).getRightExpression());
+      return;
+    }
+    if (expression instanceof NegationExpression) {
+      addInnerResultColumn(((NegationExpression) expression).getExpression());
       return;
     }
     if (expression.isAggregationFunctionExpression()) {
