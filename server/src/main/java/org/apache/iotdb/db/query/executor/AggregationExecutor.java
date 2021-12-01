@@ -44,7 +44,9 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
+import org.apache.iotdb.db.utils.AlignedValueIterator;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -55,10 +57,12 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,7 +86,10 @@ public class AggregationExecutor {
   private int aggregateFetchSize;
 
   protected AggregationExecutor(QueryContext context, AggregationPlan aggregationPlan) {
-    this.selectedSeries = aggregationPlan.getDeduplicatedPaths();
+    this.selectedSeries = new ArrayList<>();
+    aggregationPlan
+        .getDeduplicatedPaths()
+        .forEach(k -> selectedSeries.add(((MeasurementPath) k).transformToExactPath()));
     this.dataTypes = aggregationPlan.getDeduplicatedDataTypes();
     this.aggregations = aggregationPlan.getDeduplicatedAggregations();
     this.expression = aggregationPlan.getExpression();
@@ -588,18 +595,26 @@ public class AggregationExecutor {
     // group by path name
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         groupAggregationsBySeries(selectedSeries);
-    Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap = new HashMap<>();
+    Map<PartialPath, List<List<Integer>>> vectorPathIndexesMap =
+        groupVectorSeries(pathToAggrIndexesMap);
+    Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap = new HashMap<>();
     List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+
     try {
-      for (int i = 0; i < selectedSeries.size(); i++) {
-        PartialPath path = selectedSeries.get(i);
-        List<Integer> indexes = pathToAggrIndexesMap.remove(path);
-        if (indexes != null) {
-          IReaderByTimestamp seriesReaderByTimestamp =
-              getReaderByTime(path, queryPlan, dataTypes.get(i), context);
-          readerToAggrIndexesMap.put(seriesReaderByTimestamp, indexes);
-        }
+      for (PartialPath path : pathToAggrIndexesMap.keySet()) {
+        IReaderByTimestamp seriesReaderByTimestamp =
+            getReaderByTime(path, queryPlan, path.getSeriesType(), context);
+        readerToAggrIndexesMap.put(
+            seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
       }
+      // assign null to be friendly for GC
+      pathToAggrIndexesMap = null;
+      for (PartialPath vectorPath : vectorPathIndexesMap.keySet()) {
+        IReaderByTimestamp seriesReaderByTimestamp =
+            getReaderByTime(vectorPath, queryPlan, vectorPath.getSeriesType(), context);
+        readerToAggrIndexesMap.put(seriesReaderByTimestamp, vectorPathIndexesMap.get(vectorPath));
+      }
+      vectorPathIndexesMap = null;
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
@@ -649,7 +664,7 @@ public class AggregationExecutor {
   /** calculate aggregation result with value filter. */
   private void aggregateWithValueFilter(
       TimeGenerator timestampGenerator,
-      Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap)
+      Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap)
       throws IOException {
     List<Boolean> cached =
         markFilterdPaths(
@@ -668,29 +683,64 @@ public class AggregationExecutor {
       }
 
       // cal part of aggregate result
-      for (Entry<IReaderByTimestamp, List<Integer>> entry : readerToAggrIndexesMap.entrySet()) {
-        int pathId = entry.getValue().get(0);
-        // cache in timeGenerator
-        if (cached.get(pathId)) {
-          Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
-          for (Integer i : entry.getValue()) {
-            aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+      for (Entry<IReaderByTimestamp, List<List<Integer>>> entry :
+          readerToAggrIndexesMap.entrySet()) {
+        // use cache data as much as possible
+        boolean[] cachedOrNot = new boolean[entry.getValue().size()];
+        for (int i = 0; i < entry.getValue().size(); i++) {
+          List<Integer> subIndexes = entry.getValue().get(i);
+          int pathId = subIndexes.get(0);
+          // if cached in timeGenerator
+          if (cached.get(pathId)) {
+            Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
+            ValueIterator valueIterator = generateValueIterator(values);
+            for (Integer index : subIndexes) {
+              aggregateResultList[index].updateResultUsingValues(
+                  timeArray, timeArrayLength, valueIterator);
+              valueIterator.reset();
+            }
+            cachedOrNot[i] = true;
           }
-        } else {
-          if (entry.getValue().size() == 1) {
-            aggregateResultList[entry.getValue().get(0)].updateResultUsingTimestamps(
-                timeArray, timeArrayLength, entry.getKey());
-          } else {
-            Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-            if (values != null) {
-              for (Integer i : entry.getValue()) {
-                aggregateResultList[i].updateResultUsingValues(timeArray, timeArrayLength, values);
+        }
+
+        if (hasRemaining(cachedOrNot)) {
+          // TODO: if we only need to get firstValue/minTime that's not need to traverse all values,
+          //  it's enough to get the exact number of values for these specific aggregate func
+          Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
+          if (values != null) {
+            ValueIterator valueIterator = generateValueIterator(values);
+            for (int i = 0; i < entry.getValue().size(); i++) {
+              if (!cachedOrNot[i]) {
+                valueIterator.setSubMeasurementIndex(i);
+                for (Integer index : entry.getValue().get(i)) {
+                  aggregateResultList[index].updateResultUsingValues(
+                      timeArray, timeArrayLength, valueIterator);
+                  valueIterator.reset();
+                }
               }
             }
           }
         }
       }
     }
+  }
+
+  private ValueIterator generateValueIterator(Object[] values) {
+    if (values[0] instanceof TsPrimitiveType[]) {
+      return new AlignedValueIterator(values);
+    } else {
+      return new ValueIterator(values);
+    }
+  }
+
+  /** Return whether there is result that has not been cached */
+  private boolean hasRemaining(boolean[] cachedOrNot) {
+    for (int i = 0; i < cachedOrNot.length; i++) {
+      if (!cachedOrNot[i]) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -755,21 +805,19 @@ public class AggregationExecutor {
 
     List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
     for (PartialPath seriesPath : seriesPaths) {
-      if (seriesPath instanceof MeasurementPath
-          && ((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+      if (seriesPath instanceof AlignedPath) {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
-        AlignedPath exactPath = (AlignedPath) ((MeasurementPath) seriesPath).transformToExactPath();
-        AlignedPath groupPath = temp.get(exactPath.getFullPath());
+        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
-          groupPath = exactPath;
+          groupPath = (AlignedPath) seriesPath;
           temp.put(groupPath.getFullPath(), groupPath);
           result.computeIfAbsent(groupPath, key -> new ArrayList<>()).add(indexes);
         } else {
           // groupPath is changed here so we update it
           List<List<Integer>> subIndexes = result.remove(groupPath);
           subIndexes.add(indexes);
-          groupPath.addMeasurements(exactPath.getMeasurementList());
-          groupPath.addSchemas(exactPath.getSchemaList());
+          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
           result.put(groupPath, subIndexes);
         }
       }
