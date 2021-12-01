@@ -855,7 +855,7 @@ public class TSServiceImpl implements TSIService.Iface {
       // because the query dataset and query id is different although the header of last query is
       // same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).isGroupByLevel()) {
       Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
         respColumns.add(entry.getKey());

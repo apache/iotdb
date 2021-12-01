@@ -147,5 +147,15 @@ public class GroupByLevelDataSetTest {
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
+
+    // multi level
+    queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select count(s1) from root.test.*,root.vehicle.* group by level=1,2");
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+
+    assertTrue(dataSet.hasNext());
+    assertEquals("0\t12\t10", dataSet.next().toString());
   }
 }
