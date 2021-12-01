@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.selector.IMergeFileSelector;
@@ -258,6 +259,8 @@ public abstract class TsFileManagement {
         } finally {
           compactionSelectionLock.unlock();
         }
+        CompactionMonitor.getInstance()
+            .reportMergeStartStatus(storageGroupName, mergeFiles[0].size(), mergeFiles[1].size());
         // avoid pending tasks holds the metadata and streams
         mergeResource.clear();
         String taskName = storageGroupName + "-" + System.currentTimeMillis();

@@ -49,19 +49,21 @@ public class CompactionMonitor {
   private static final String COMPACTION_CPU_CONSUMPTION_DEVICE =
       MONITOR_SG_NAME.concat(".compaction.cpu");
   private static final String MERGE_CPU_CONSUMPTION_DEVICE = MONITOR_SG_NAME.concat(".merge.cpu");
-  private static final String COMPACTION_FILE_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.files");
-  private static final String COMPACTION_TASK_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.task_num");
-  private static final String MERGE_FILE_NUM_DEVICE = MONITOR_SG_NAME.concat(".merge.files");
-  private static final String MERGE_TASK_NUM_DEVICE = MONITOR_SG_NAME.concat(".merge.task_num");
+  private static final String COMPACTION_START_FILE_NUM_DEVICE =
+      MONITOR_SG_NAME.concat(".compaction.start.files");
+  private static final String COMPACTION_START_TASK_NUM_DEVICE =
+      MONITOR_SG_NAME.concat(".compaction.start.task_num");
+  private static final String MERGE_START_FILE_NUM_DEVICE =
+      MONITOR_SG_NAME.concat(".merge.start.files");
+  private static final String MERGE_START_TASK_NUM_DEVICE =
+      MONITOR_SG_NAME.concat(".merge.start.task_num");
 
   private ScheduledExecutorService threadPool =
       IoTDBThreadPoolFactory.newScheduledThreadPool(1, "CompactionMonitor");
   private long lastUpdateTime = 0L;
   // storage group name -> file level -> compacted file num
-  private Map<String, Map<Integer, Integer>> compactionFileCountMap = new HashMap<>();
-  private Map<String, Integer> compactionCountForEachSg = new HashMap<>();
+  private Map<String, Map<Integer, Integer>> compactionStartFileCountMap = new HashMap<>();
+  private Map<String, Integer> compactionStartCountForEachSg = new HashMap<>();
   // it records the total cpu time for all threads
   private long lastCpuTotalTime = 0L;
   // threadId -> cpu time
@@ -69,8 +71,8 @@ public class CompactionMonitor {
   private Set<Long> compactionThreadIdSet = new HashSet<>();
   private Set<Long> mergeThreadIdSet = new HashSet<>();
   private Map<Long, Long> cpuTimeForMergeThread = new HashMap<>();
-  private Map<String, Pair<Integer, Integer>> mergeFileNumForEachSg = new HashMap<>();
-  private Map<String, Integer> mergeCountForEachSg = new HashMap<>();
+  private Map<String, Pair<Integer, Integer>> mergeStartFileNumForEachSg = new HashMap<>();
+  private Map<String, Integer> mergeStartCountForEachSg = new HashMap<>();
   private PlanExecutor planExecutor;
 
   private CompactionMonitor() {
@@ -129,26 +131,26 @@ public class CompactionMonitor {
     saveMergeInfo();
   }
 
-  public synchronized void reportCompactionStatus(
+  public synchronized void reportCompactionStartStatus(
       String storageGroupName, int compactionLevel, int fileNum) {
     if (!compactionThreadIdSet.contains(Thread.currentThread().getId())) {
       registerCompactionThread(Thread.currentThread().getId());
     }
     Map<Integer, Integer> levelFileCountMap =
-        compactionFileCountMap.computeIfAbsent(storageGroupName, x -> new HashMap<>());
+        compactionStartFileCountMap.computeIfAbsent(storageGroupName, x -> new HashMap<>());
     int newCompactedFileCount = levelFileCountMap.getOrDefault(compactionLevel, 0) + fileNum;
     levelFileCountMap.put(compactionLevel, newCompactedFileCount);
-    int newCompactionCount = compactionCountForEachSg.getOrDefault(storageGroupName, 0) + 1;
-    compactionCountForEachSg.put(storageGroupName, newCompactionCount);
+    int newCompactionCount = compactionStartCountForEachSg.getOrDefault(storageGroupName, 0) + 1;
+    compactionStartCountForEachSg.put(storageGroupName, newCompactionCount);
   }
 
-  public synchronized void reportMergeStatus(
+  public synchronized void reportMergeStartStatus(
       String storageGroupName, int seqFileNum, int unseqFileNum) {
-    mergeCountForEachSg.put(
-        storageGroupName, mergeCountForEachSg.getOrDefault(storageGroupName, 0) + 1);
+    mergeStartCountForEachSg.put(
+        storageGroupName, mergeStartCountForEachSg.getOrDefault(storageGroupName, 0) + 1);
     Pair<Integer, Integer> mergeFileNumForCurrSg =
-        mergeFileNumForEachSg.getOrDefault(storageGroupName, new Pair<>(0, 0));
-    mergeFileNumForEachSg.put(
+        mergeStartFileNumForEachSg.getOrDefault(storageGroupName, new Pair<>(0, 0));
+    mergeStartFileNumForEachSg.put(
         storageGroupName,
         new Pair<>(
             mergeFileNumForCurrSg.left + seqFileNum, mergeFileNumForCurrSg.right + unseqFileNum));
@@ -256,13 +258,13 @@ public class CompactionMonitor {
 
   private void saveCompactionInfo() {
     try {
-      PartialPath deviceForCompactionCount = new PartialPath(COMPACTION_TASK_NUM_DEVICE);
+      PartialPath deviceForCompactionCount = new PartialPath(COMPACTION_START_TASK_NUM_DEVICE);
       List<String> measurementsForCompactionCount = new ArrayList<>();
       List<String> valuesForCompactionCount = new ArrayList<>();
-      for (String sgName : compactionCountForEachSg.keySet()) {
+      for (String sgName : compactionStartCountForEachSg.keySet()) {
         // remove "root." in sg name
         measurementsForCompactionCount.add(sgName.substring(5));
-        valuesForCompactionCount.add(Integer.toString(compactionCountForEachSg.get(sgName)));
+        valuesForCompactionCount.add(Integer.toString(compactionStartCountForEachSg.get(sgName)));
       }
       InsertRowPlan insertRowPlanForCompactionCount =
           new InsertRowPlan(
@@ -271,15 +273,15 @@ public class CompactionMonitor {
               measurementsForCompactionCount.toArray(new String[0]),
               valuesForCompactionCount.toArray(new String[0]));
       planExecutor.processNonQuery(insertRowPlanForCompactionCount);
-      compactionCountForEachSg.clear();
+      compactionStartCountForEachSg.clear();
 
-      PartialPath deviceForCompactionFiles = new PartialPath(COMPACTION_FILE_NUM_DEVICE);
+      PartialPath deviceForCompactionFiles = new PartialPath(COMPACTION_START_FILE_NUM_DEVICE);
       List<String> measurementForCompactionFiles = new ArrayList<>();
       List<String> valuesForCompactionFiles = new ArrayList<>();
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       int maxCompactionCount = Math.max(config.getSeqLevelNum(), config.getUnseqLevelNum());
-      for (String sgName : compactionFileCountMap.keySet()) {
-        Map<Integer, Integer> countMap = compactionFileCountMap.get(sgName);
+      for (String sgName : compactionStartFileCountMap.keySet()) {
+        Map<Integer, Integer> countMap = compactionStartFileCountMap.get(sgName);
         String subPartOfSg = sgName.substring(5);
         for (int i = 0; i < maxCompactionCount - 1; ++i) {
           int fileCount = countMap.getOrDefault(i, 0);
@@ -295,7 +297,7 @@ public class CompactionMonitor {
               valuesForCompactionFiles.toArray(new String[0]));
 
       planExecutor.processNonQuery(insertRowPlanForCompactionFileCount);
-      compactionFileCountMap.clear();
+      compactionStartFileCountMap.clear();
 
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving compaction info", e);
@@ -304,31 +306,51 @@ public class CompactionMonitor {
 
   private void saveMergeInfo() {
     try {
-      PartialPath deviceForMergeCount = new PartialPath(MERGE_TASK_NUM_DEVICE);
+      PartialPath deviceForMergeCount = new PartialPath(MERGE_START_TASK_NUM_DEVICE);
       List<String> measurementsForMergeCount = new ArrayList<>();
       List<String> valuesForMergeCount = new ArrayList<>();
-      for (String sgName : mergeCountForEachSg.keySet()) {
+      for (String sgName : mergeStartCountForEachSg.keySet()) {
         // remove "root." in sg name
         measurementsForMergeCount.add(sgName.substring(5));
-        valuesForMergeCount.add(Integer.toString(mergeCountForEachSg.get(sgName)));
+        valuesForMergeCount.add(Integer.toString(mergeStartCountForEachSg.get(sgName)));
       }
-      InsertRowPlan insertRowPlanForCompactionCount =
+      InsertRowPlan insertRowPlanForMergeCount =
           new InsertRowPlan(
               deviceForMergeCount,
               lastUpdateTime,
               measurementsForMergeCount.toArray(new String[0]),
               valuesForMergeCount.toArray(new String[0]));
-      planExecutor.processNonQuery(insertRowPlanForCompactionCount);
-      mergeCountForEachSg.clear();
+      planExecutor.processNonQuery(insertRowPlanForMergeCount);
+      mergeStartCountForEachSg.clear();
 
-      // TODO: save merge file info
+      PartialPath deviceForMergeFiles = new PartialPath(MERGE_START_FILE_NUM_DEVICE);
+      List<String> measurementsForMergeFiles = new ArrayList<>();
+      List<String> valuesForMergeFiles = new ArrayList<>();
+      for (String sgName : mergeStartFileNumForEachSg.keySet()) {
+        Pair<Integer, Integer> fileNumPair = mergeStartFileNumForEachSg.get(sgName);
+        // remove "root." in sg name
+        measurementsForMergeFiles.add(sgName.substring(5) + "-seq");
+        valuesForMergeFiles.add(Integer.toString(fileNumPair.left));
+        measurementsForMergeFiles.add(sgName.substring(5) + "-unseq");
+        valuesForMergeFiles.add(Integer.toString(fileNumPair.right));
+      }
+
+      InsertRowPlan insertRowPlanForMergeFiles =
+          new InsertRowPlan(
+              deviceForMergeFiles,
+              lastUpdateTime,
+              measurementsForMergeFiles.toArray(new String[0]),
+              valuesForMergeFiles.toArray(new String[0]));
+
+      planExecutor.processNonQuery(insertRowPlanForMergeFiles);
+      mergeStartFileNumForEachSg.clear();
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving merge info", e);
     }
   }
 
   public static class CompactionMonitorRegisterTask implements Runnable {
-    public boolean isCompactionThread = true;
+    public boolean isCompactionThread;
 
     public CompactionMonitorRegisterTask(boolean isCompactionThread) {
       this.isCompactionThread = isCompactionThread;

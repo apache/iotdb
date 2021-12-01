@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileInfo;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
@@ -677,6 +678,8 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             } finally {
               compactionSelectionLock.unlock();
             }
+            CompactionMonitor.getInstance()
+                .reportCompactionStartStatus(storageGroupName, i, toMergeTsFiles.size());
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
