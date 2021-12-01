@@ -17,21 +17,21 @@
  * under the License.
  */
 
-package org.apache.iotdb.tsfile.read.common;
+package org.apache.iotdb.db.query.dataset.groupby;
 
-public interface IBatchDataIterator {
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 
-  boolean hasNext();
+import java.io.IOException;
+import java.util.List;
 
-  boolean hasNext(long minBound, long maxBound);
+/** Each executor calculates results of all aggregations on this aligned series */
+public interface AlignedGroupByExecutor {
 
-  void next();
+  /** add reusable result cache in executor */
+  void addAggregateResult(List<AggregateResult> aggregateResults);
 
-  long currentTime();
-
-  Object currentValue();
-
-  void reset();
-
-  int totalLength();
+  /** calculate result in [curStartTime, curEndTime) */
+  List<List<AggregateResult>> calcAlignedResult(long curStartTime, long curEndTime)
+      throws IOException, QueryProcessException;
 }
