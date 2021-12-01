@@ -768,4 +768,188 @@ public class IoTDBAlignByDeviceIT {
       fail(e.getMessage());
     }
   }
+
+  @Test
+  public void countAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"root.sg1.d1", "11"};
+    String[] columnNames = {"Device", "count(s4)"};
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute("select count(s4) from root.sg1.d1 where s4 = true align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void aggregationFuncAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray =
+        new String[] {"root.sg1.d1", "8", "42.0", "5.25", "1.0", "9.0", "1", "9", "1.0", "9.0"};
+    String[] columnNames = {
+      "Device",
+      "count(s1)",
+      "sum(s1)",
+      "avg(s1)",
+      "first_value(s1)",
+      "last_value(s1)",
+      "min_time(s1)",
+      "max_time(s1)",
+      "min_value(s1)",
+      "max_value(s1)",
+    };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1), sum(s1), avg(s1), "
+                  + "first_value(s1), last_value(s1), "
+                  + "min_time(s1), max_time(s1),"
+                  + "max_value(s1), min_value(s1) from root.sg1.d1 where s1 < 10 "
+                  + "align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void countAllAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"root.sg1.d1", "6", "6", "9", "11", "6"};
+    String[] columnNames = {
+      "Device", "count(s1)", "count(s2)", "count(s3)", "count(s4)", "count(s5)"
+    };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select count(*) from root.sg1.d1 where s4 = true " + "align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void aggregationAllAlignedWithValueFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"root.sg1.d1", "160016.0", "11", "1", "13"};
+    String[] columnNames = {
+      "Device", "sum(s1)", "count(s4)", "min_value(s3)", "max_time(s2)",
+    };
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResultSet =
+          statement.execute(
+              "select sum(s1), count(s4), min_value(s3), max_time(s2) from root.sg1.d1 where s4 = true "
+                  + "align by device");
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+        Map<String, Integer> map = new HashMap<>(); // used to adjust result sequence
+        for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+          map.put(resultSetMetaData.getColumnName(i), i);
+        }
+        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        int cnt = 0;
+        while (resultSet.next()) {
+          String[] ans = new String[columnNames.length];
+          // No need to add time column for aggregation query
+          for (int i = 0; i < columnNames.length; i++) {
+            String columnName = columnNames[i];
+            int index = map.get(columnName);
+            ans[i] = resultSet.getString(index);
+          }
+          assertArrayEquals(retArray, ans);
+          cnt++;
+        }
+        assertEquals(1, cnt);
+      }
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 }
