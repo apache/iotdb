@@ -61,7 +61,7 @@ public class MemMTreeStore implements IMTreeStore {
   private String mtreeSnapshotPath;
   private String mtreeSnapshotTmpPath;
 
-  MemMTreeStore() {
+  public MemMTreeStore() {
     this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
   }
 
