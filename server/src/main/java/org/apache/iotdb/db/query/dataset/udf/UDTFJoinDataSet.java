@@ -19,17 +19,15 @@
 
 package org.apache.iotdb.db.query.dataset.udf;
 
-import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
-import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.datastructure.TimeSelector;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 
-public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDataSet {
+public class UDTFJoinDataSet extends QueryDataSet
+//    implements DirectAlignByTimeDataSet
+{
 
   private final UDTFFragmentDataSet[] fragmentDataSets;
 
@@ -51,9 +49,12 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
   private TimeSelector timeHeap;
 
   public UDTFJoinDataSet(
+      UDTFAlignByTimeDataSet udtfAlignByTimeDataSet,
       UDTFFragmentDataSet[] fragmentDataSets,
       int[][] resultColumnOutputIndexToFragmentDataSetOutputIndex)
       throws IOException {
+    super(udtfAlignByTimeDataSet);
+
     this.fragmentDataSets = fragmentDataSets;
     this.resultColumnOutputIndexToFragmentDataSetOutputIndex =
         resultColumnOutputIndexToFragmentDataSetOutputIndex;
@@ -114,8 +115,8 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
     return rowRecord;
   }
 
-  @Override
-  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) {
-    throw new NotImplementedException();
-  }
+  //  @Override
+  //  public TSQueryDataSet fillBuffer(int fetchSize, WatermarkEncoder encoder) {
+  //    throw new NotImplementedException();
+  //  }
 }

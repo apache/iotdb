@@ -50,6 +50,24 @@ public abstract class QueryDataSet {
 
   protected int columnNum;
 
+  public QueryDataSet(QueryDataSet that) {
+    this.paths = that.paths;
+    this.dataTypes = that.dataTypes;
+
+    this.rowLimit = that.rowLimit;
+    this.rowOffset = that.rowOffset;
+    this.alreadyReturnedRowNum = that.alreadyReturnedRowNum;
+    this.fetchSize = that.fetchSize;
+    this.ascending = that.ascending;
+
+    this.endPoint = that.endPoint;
+
+    this.withoutAnyNull = that.withoutAnyNull;
+    this.withoutAllNull = that.withoutAllNull;
+
+    this.columnNum = that.columnNum;
+  }
+
   /** For redirect query. Need keep consistent with EndPoint in rpc.thrift. */
   public static class EndPoint {
     private String ip = null;
