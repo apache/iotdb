@@ -52,7 +52,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -817,6 +816,9 @@ public class StorageGroupProcessorTest {
     config.setEnableTimedCloseTsFile(prevEnableTimedCloseTsFile);
     config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
   }
+
+  @Test
+  public void testRecoverInnerSpaceCompaction() {}
 
   class DummySGP extends StorageGroupProcessor {
 

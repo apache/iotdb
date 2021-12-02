@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -83,8 +84,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -555,8 +554,15 @@ public class StorageGroupProcessor {
         return;
       }
       for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()) {
+          continue;
+        }
         File[] compactionLogs =
             InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
+        // In MacOS, compactionLogs could be null
+        if (compactionLogs == null) {
+          continue;
+        }
         for (File compactionLog : compactionLogs) {
           IoTDBDescriptor.getInstance()
               .getConfig()
