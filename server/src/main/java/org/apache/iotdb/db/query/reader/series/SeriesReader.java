@@ -697,7 +697,7 @@ public class SeriesReader {
   /** This method should only be used when the method isPageOverlapped() return true. */
   BatchData nextPage() throws IOException {
 
-    if (!hasNextPage()) {
+    if (!hasNextPage() && QueryTimeManager.checkQueryAlive(context.getQueryId())) {
       throw new IOException("no next page, neither non-overlapped nor overlapped");
     }
 
