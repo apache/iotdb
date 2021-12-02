@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.constant.PhysicalConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -95,6 +95,8 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   private List<PartialPath> prefixPaths;
 
   boolean[] isExecuted;
+
+  Boolean needMulti;
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
@@ -386,22 +388,31 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public boolean needMultiThread() {
-    Set<String> insertPlanSGSet = new HashSet<>();
-    int BigPlanCountNum = 0;
-    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      IStorageGroupMNode storageGroupMNode = null;
-      try {
-        storageGroupMNode =
-            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
-      } catch (MetadataException e) {
-        return false;
+    if (needMulti == null) {
+      Set<String> insertPlanSGSet = new HashSet<>();
+      int BigPlanCountNum = 0;
+      for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+        IStorageGroupMNode storageGroupMNode = null;
+        try {
+          storageGroupMNode =
+              IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+          insertPlanSGSet.add(storageGroupMNode.getFullPath());
+        } catch (MetadataException ignored) {
+        }
+        if (insertTabletPlan.getRowCount()
+            > IoTDBDescriptor.getInstance()
+                .getConfig()
+                .getInsertMultiTabletEnableThreadPoolRowCountThreshold()) {
+          BigPlanCountNum++;
+        }
       }
-      insertPlanSGSet.add(storageGroupMNode.getFullPath());
-      if (insertTabletPlan.getRowCount() > PhysicalConstant.INSERT_MULTI_TABLET_COUNT_THRESHOLD) {
-        BigPlanCountNum++;
-      }
+      needMulti =
+          insertPlanSGSet.size()
+                  >= IoTDBDescriptor.getInstance()
+                      .getConfig()
+                      .getInsertMultiTabletEnableThreadPoolSGNum()
+              && BigPlanCountNum * 2 >= insertTabletPlanList.size();
     }
-    return insertPlanSGSet.size() >= PhysicalConstant.INSERT_MULTI_TABLET_SG_NUM
-        && BigPlanCountNum * 2 >= insertTabletPlanList.size();
+    return needMulti;
   }
 }

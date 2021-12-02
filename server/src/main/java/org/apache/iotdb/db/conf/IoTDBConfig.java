@@ -607,6 +607,18 @@ public class IoTDBConfig {
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
+  /**
+   * When the number of different sg in the insertMultiTablet reaches this value, turn on
+   * Multithreading acceleration
+   */
+  private int insertMultiTabletEnableThreadPoolSGNum = 5;
+
+  /**
+   * When the insert plan rowcount reaches a certain quantity and exceeds a certain ratio, turn on
+   * Multithreading acceleration
+   */
+  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 25;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -1549,12 +1561,31 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  }
+
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
-    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  public int getInsertMultiTabletEnableThreadPoolSGNum() {
+    return insertMultiTabletEnableThreadPoolSGNum;
+  }
+
+  public int getInsertMultiTabletEnableThreadPoolRowCountThreshold() {
+    return insertMultiTabletEnableThreadPoolRowCountThreshold;
+  }
+
+  public void setInsertMultiTabletEnableThreadPoolSGNum(
+      int insertMultiTabletEnableThreadPoolSGNum) {
+    this.insertMultiTabletEnableThreadPoolSGNum = insertMultiTabletEnableThreadPoolSGNum;
+  }
+
+  public void setInsertMultiTabletEnableThreadPoolRowCountThreshold(
+      int insertMultiTabletEnableThreadPoolRowCountThreshold) {
+    this.insertMultiTabletEnableThreadPoolRowCountThreshold =
+        insertMultiTabletEnableThreadPoolRowCountThreshold;
   }
 
   public int getMergeWriteThroughputMbPerSec() {
