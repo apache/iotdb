@@ -31,12 +31,12 @@ import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import org.apache.commons.lang3.Validate;
-
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.commons.lang3.Validate;
 
 /** Constant operand */
 public class ConstantOperand extends Expression {
@@ -105,7 +105,11 @@ public class ConstantOperand extends Expression {
   public Integer tryToGetFragmentDataSetIndex(
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
     IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
-    return intermediateLayer == null ? null : intermediateLayer.getFragmentDataSetIndex();
+    if (intermediateLayer != null) {
+      return intermediateLayer.getFragmentDataSetIndex();
+    }
+
+    return null;
   }
 
   @Override

@@ -196,9 +196,11 @@ public abstract class BinaryExpression extends Expression {
     }
 
     Integer index = leftExpression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
-    return index != null
-        ? index
-        : rightExpression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+    if (index != null) {
+      return index;
+    }
+
+    return rightExpression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
   }
 
   @Override

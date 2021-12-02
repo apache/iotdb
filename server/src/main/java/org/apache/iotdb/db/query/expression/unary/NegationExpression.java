@@ -141,9 +141,11 @@ public class NegationExpression extends Expression {
   public Integer tryToGetFragmentDataSetIndex(
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
     IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
-    return intermediateLayer != null
-        ? intermediateLayer.getFragmentDataSetIndex()
-        : expression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
+    if (intermediateLayer != null) {
+      return intermediateLayer.getFragmentDataSetIndex();
+    }
+
+    return expression.tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
   }
 
   @Override

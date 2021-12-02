@@ -120,7 +120,11 @@ public class TimeSeriesOperand extends Expression {
   public Integer tryToGetFragmentDataSetIndex(
       Map<Expression, IntermediateLayer> expressionIntermediateLayerMap) {
     IntermediateLayer intermediateLayer = expressionIntermediateLayerMap.get(this);
-    return intermediateLayer == null ? null : intermediateLayer.getFragmentDataSetIndex();
+    if (intermediateLayer != null) {
+      return intermediateLayer.getFragmentDataSetIndex();
+    }
+
+    return null;
   }
 
   public String getExpressionStringInternal() {
