@@ -453,7 +453,8 @@ SHOW FUNCTIONS
 
 ## 配置项
 
-在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
+* 在 SQL 语句中使用自定义函数时，可能提示内存不足。这种情况下，您可以通过更改配置文件`iotdb-engine.properties`中的`udf_initial_byte_array_length_for_memory_control`，`udf_memory_budget_in_mb`和`udf_reader_transformer_collector_memory_proportion`并重启服务来解决此问题。
+* UDTFPlan 可以拆分成多个分片计划，当分片计划的数量超过`udf_min_fragment_number_to_trigger_parallel_execution`时，执行器会触发分片计划的并行执行。 该属性应该是一个大于 1 的整数，默认值为 2。
 
 ## 贡献 UDF
 

@@ -510,7 +510,8 @@ For more user permissions related content, please refer to [Account Management S
 
 ## Configurable Properties
 
-When querying by a UDF, IoTDB may prompt that there is insufficient memory. You can resolve the issue by configuring `udf_initial_byte_array_length_for_memory_control`, `udf_memory_budget_in_mb` and `udf_reader_transformer_collector_memory_proportion` in `iotdb-engine.properties` and restarting the server.
+* When querying by a UDF, IoTDB may prompt that there is insufficient memory. You can resolve the issue by configuring `udf_initial_byte_array_length_for_memory_control`, `udf_memory_budget_in_mb` and `udf_reader_transformer_collector_memory_proportion` in `iotdb-engine.properties` and restarting the server.
+* UDTFPlan can be split into several fragment plans, when the number of the fragment plans is over `udf_min_fragment_number_to_trigger_parallel_execution`, the executor would trigger a parallel execution. The property should be an integer and larger than 1. The default value is 2.
 
 
 
