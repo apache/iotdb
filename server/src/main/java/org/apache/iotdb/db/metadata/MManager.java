@@ -1010,7 +1010,7 @@ public class MManager {
     try {
       return mtree.getAllStorageGroupPaths();
     } catch (MetadataException e) {
-      logger.warn("Something wrong when collecting storage groups");
+      logger.error("Something wrong when collecting storage groups");
       return Collections.emptyList();
     }
   }
@@ -1272,7 +1272,7 @@ public class MManager {
     try {
       return mtree.getAllStorageGroupNodes();
     } catch (MetadataException e) {
-      logger.warn("Something wrong when collecting storage groups");
+      logger.error("Something wrong when collecting storage groups");
       return Collections.emptyList();
     }
   }

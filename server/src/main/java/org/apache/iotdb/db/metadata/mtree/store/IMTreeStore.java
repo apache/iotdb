@@ -27,7 +27,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
- * This interface defines the basic access methods of a MTreeStore.
+ * This interface defines the basic access methods of an MTreeStore.
  *
  * <p>MTreeStore could be implemented as memory-based or disk-based for different scenarios.
  */
