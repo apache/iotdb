@@ -678,8 +678,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             } finally {
               compactionSelectionLock.unlock();
             }
-            CompactionMonitor.getInstance()
-                .reportCompactionStartStatus(storageGroupName, i, toMergeTsFiles.size());
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+              CompactionMonitor.getInstance()
+                  .reportCompactionStatus(storageGroupName, i, toMergeTsFiles.size(), true);
+            }
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
@@ -755,6 +757,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
             if (logFile.exists()) {
               Files.delete(logFile.toPath());
+            }
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+              CompactionMonitor.getInstance()
+                  .reportCompactionStatus(storageGroupName, i, toMergeTsFiles.size(), false);
             }
           }
         }
