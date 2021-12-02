@@ -26,8 +26,11 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompacti
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
+import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -37,6 +40,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
@@ -126,6 +130,20 @@ public class SizeTieredCompactionRecoverTest {
     Field dataDirsField = configClass.getDeclaredField("dataDirs");
     dataDirsField.setAccessible(true);
     dataDirsField.set(config, dataDirs);
+  }
+
+  /** Test when a file that is not a directory exists under the parent dir of timePartitionDir */
+  @Test
+  public void testRecoverWithUncorrectTimePartionDir()
+      throws StorageGroupProcessorException, IOException {
+    File timePartitionDir = new File(SEQ_FILE_DIR);
+    File f = new File(timePartitionDir.getParent() + File.separator + "test.tmp");
+    f.createNewFile();
+    new StorageGroupProcessor(
+        TestConstant.BASE_OUTPUT_PATH + File.separator + "data" + File.separator + "sequence",
+        "0",
+        new TsFileFlushPolicy.DirectFlushPolicy(),
+        COMPACTION_TEST_SG);
   }
 
   /**

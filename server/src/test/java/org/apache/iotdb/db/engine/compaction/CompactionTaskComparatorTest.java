@@ -18,11 +18,12 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
