@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.query.udf.core.layer;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.dataset.udf.UDTFAlignByTimeDataSet;
@@ -37,6 +39,8 @@ import java.util.List;
 import java.util.Map;
 
 public class LayerBuilder {
+
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private final long queryId;
   private final UDTFPlan udtfPlan;
@@ -137,9 +141,9 @@ public class LayerBuilder {
     return resultColumnPointReaders;
   }
 
-  /** TODO: make it configurable */
   public boolean canBeSplitIntoFragments() {
-    return 2 <= fragmentDataSetIndexToLayerPointReaders.size();
+    return Math.min(2, CONFIG.getUdfMinFragmentNumberToTriggerParallelExecution())
+        <= fragmentDataSetIndexToLayerPointReaders.size();
   }
 
   public QueryDataSet generateJoinDataSet(UDTFAlignByTimeDataSet udtfAlignByTimeDataSet)

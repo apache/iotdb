@@ -740,6 +740,13 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
+  /**
+   * UDTFPlan can be split into several fragment plans, when the number of the fragment plans is
+   * over udfMinFragmentNumberToTriggerParallelExecution, the executor would trigger a parallel
+   * execution.
+   */
+  private int udfMinFragmentNumberToTriggerParallelExecution = 2;
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -813,6 +820,16 @@ public class IoTDBConfig {
   public void setUdfInitialByteArrayLengthForMemoryControl(
       int udfInitialByteArrayLengthForMemoryControl) {
     this.udfInitialByteArrayLengthForMemoryControl = udfInitialByteArrayLengthForMemoryControl;
+  }
+
+  public int getUdfMinFragmentNumberToTriggerParallelExecution() {
+    return udfMinFragmentNumberToTriggerParallelExecution;
+  }
+
+  public void setUdfMinFragmentNumberToTriggerParallelExecution(
+      int udfMinFragmentNumberToTriggerParallelExecution) {
+    this.udfMinFragmentNumberToTriggerParallelExecution =
+        udfMinFragmentNumberToTriggerParallelExecution;
   }
 
   public int getConcurrentWritingTimePartition() {

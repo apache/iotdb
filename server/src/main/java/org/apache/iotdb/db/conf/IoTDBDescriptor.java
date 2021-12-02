@@ -1200,6 +1200,13 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
+
+      // udf
+      conf.setUdfMinFragmentNumberToTriggerParallelExecution(
+          Integer.parseInt(
+              properties.getProperty(
+                  "udf_min_fragment_number_to_trigger_parallel_execution",
+                  String.valueOf(conf.getUdfMinFragmentNumberToTriggerParallelExecution()))));
     } catch (Exception e) {
       throw new QueryProcessException(String.format("Fail to reload configuration because %s", e));
     }
@@ -1328,6 +1335,12 @@ public class IoTDBDescriptor {
                 + readerTransformerCollectorMemoryProportion);
       }
     }
+
+    conf.setUdfMinFragmentNumberToTriggerParallelExecution(
+        Integer.parseInt(
+            properties.getProperty(
+                "udf_min_fragment_number_to_trigger_parallel_execution",
+                String.valueOf(conf.getUdfMinFragmentNumberToTriggerParallelExecution()))));
   }
 
   private void loadTriggerProps(Properties properties) {
