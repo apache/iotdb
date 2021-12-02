@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -179,8 +180,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.*;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
@@ -230,44 +230,6 @@ public class PlanExecutor implements IPlanExecutor {
   private IAuthorizer authorizer;
 
   private ExecutorService insertTabletsPool;
-
-  private class InsertTableTask implements Runnable {
-    private InsertTabletPlan insertTabletPlan;
-    private CountDownLatch latch;
-
-    public InsertTableTask(InsertTabletPlan insertTabletPlan, CountDownLatch latch) {
-      this.insertTabletPlan = insertTabletPlan;
-      this.latch = latch;
-    }
-
-    @Override
-    public void run() {
-      try {
-        insertTablet(insertTabletPlan);
-      } catch (QueryProcessException e) {
-        throw new ThreadException(e.getErrorCode(), e.getMessage());
-      } finally {
-        latch.countDown();
-      }
-    }
-
-    class ThreadException extends RuntimeException {
-      private int errorCode;
-
-      ThreadException(int errorCode, String errMsg) {
-        super(errMsg);
-        this.errorCode = errorCode;
-      }
-
-      public int getErrorCode() {
-        return errorCode;
-      }
-
-      public String getMessage() {
-        return super.getMessage();
-      }
-    }
-  }
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
@@ -1553,49 +1515,57 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
-    CountDownLatch latch = null;
-    if (insertMultiTabletPlan.needMultiThread()) {
-      latch = new CountDownLatch(insertMultiTabletPlan.getInsertTabletPlanList().size());
-    }
 
-    for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
-      if (insertMultiTabletPlan.getResults().containsKey(i)
+    List<InsertTabletPlan> planList = insertMultiTabletPlan.getInsertTabletPlanList();
+    List<Future<?>> futureList = new ArrayList<>();
+
+    Map<Integer, TSStatus> results = insertMultiTabletPlan.getResults();
+    for (int i = 0; i < planList.size(); i++) {
+      if (results.containsKey(i)
           || insertMultiTabletPlan.isExecuted(i)) {
         continue;
       }
+      InsertTabletPlan plan = planList.get(i);
       if (insertMultiTabletPlan.needMultiThread()) {
-        try {
-          insertTabletsPool.submit(
-              new InsertTableTask(insertMultiTabletPlan.getInsertTabletPlanList().get(i), latch));
-        } catch (InsertTableTask.ThreadException e) {
-          insertMultiTabletPlan
-              .getResults()
-              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
-        }
+        Future<?> f = insertTabletsPool.submit(() -> asyncInsertTablet(plan));
+        futureList.add(f);
       } else {
         try {
-          insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+          insertTablet(plan);
         } catch (QueryProcessException e) {
-          insertMultiTabletPlan
-              .getResults()
+          results
               .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
       }
     }
-    if (insertMultiTabletPlan.needMultiThread()) {
-      try {
-        latch.await();
-      } catch (InterruptedException e) {
-        logger.error(e.getMessage());
-      }
+    if(CollectionUtils.isNotEmpty(futureList)){
+      futureList.forEach(f -> {
+        try {
+          f.get(1,TimeUnit.SECONDS);
+        } catch (InterruptedException | TimeoutException e) {
+          //todo
+        } catch (ExecutionException e) {
+          if(e.getCause() instanceof QueryProcessException) {
+            QueryProcessException qe = (QueryProcessException) e.getCause();
+            results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
+          }
+        }
+      });
     }
-    if (!insertMultiTabletPlan.getResults().isEmpty()) {
+
+    if (!results.isEmpty()) {
       throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
     }
   }
 
+  private Integer asyncInsertTablet(InsertTabletPlan plan) throws QueryProcessException {
+    insertTablet(plan);
+    return null;
+  }
+
   @Override
   public void insertTablet(InsertTabletPlan insertTabletPlan) throws QueryProcessException {
+
     if (insertTabletPlan.getRowCount() == 0) {
       return;
     }
