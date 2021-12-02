@@ -77,15 +77,15 @@ brew link boost
 
 Linux 下需要确保 g++已被安装。
 
-Debian/Ubuntu:
+Ubuntu 20:
 
 ```shell
 sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev npm nodejs
 ```
 
-CentOS:
+CentOS 7.x:
 
-使用yum安装的GCC、boost、npm版本过低，在编译客户端时会报错，以上软件需自行安装
+在centos 7.x里，使用yum安装的GCC、boost、npm版本过低，在编译客户端时会报错，需自行安装。
 ```shell
 yum install gcc g++ bison flex openssl-devel
 ```
