@@ -215,7 +215,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.MetaGroupClient));
-    allNodes = new PartitionGroup();
+    setAllNodes(new PartitionGroup());
     initPeerMap();
 
     // committed logs are applied to the state machine (the IoTDB instance) through the applier
@@ -237,22 +237,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     this.coordinator = coordinator;
     coordinator.linkMetaGroupMember(this);
     loadPartitionTable();
-  }
-
-  /**
-   * Find the DataGroupMember that manages the partition of "storageGroupName"@"partitionId", and
-   * close the partition through that member. Notice: only partitions owned by this node can be
-   * closed by the method.
-   */
-  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    RaftNode raftNode =
-        partitionTable.routeToHeaderByTime(
-            storageGroupName, partitionId * StorageEngine.getTimePartitionInterval());
-    DataGroupMember localDataMember = getLocalDataMember(raftNode);
-    if (localDataMember == null || localDataMember.getCharacter() != NodeCharacter.LEADER) {
-      return false;
-    }
-    return localDataMember.closePartition(storageGroupName, partitionId, isSeq);
   }
 
   DataGroupEngine getDataGroupEngine() {
@@ -650,16 +634,19 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       // register the follower, the response.getFollower() contains the node information of the
       // receiver.
       Node localNode = null;
+      Node follower = response.getFollower();
       for (Node node : allNodes) {
-        if (node.getInternalIp().equals(response.getFollower().internalIp)
-            && node.getMetaPort() == response.getFollower().getMetaPort()) {
+        if (node.getInternalIp().equals(follower.internalIp)
+            && node.getMetaPort() == follower.getMetaPort()) {
           localNode = node;
+          localNode.setDataPort(follower.dataPort);
+          localNode.setClientIp(follower.clientIp);
+          localNode.setClientPort(follower.clientPort);
         }
       }
       if (localNode == null) {
         logger.warn(
-            "Received a heartbeat response from a node that is not in the node list: {}",
-            response.getFollower());
+            "Received a heartbeat response from a node that is not in the node list: {}", follower);
         return;
       }
       registerNodeIdentifier(localNode, response.getFollowerIdentifier());

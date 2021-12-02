@@ -183,7 +183,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getRaftId()
             + "";
-    allNodes = nodes;
+    setAllNodes(nodes);
     mbeanName =
         String.format(
             "%s:%s=%s%d",
@@ -637,33 +637,6 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
   public MetaGroupMember getMetaGroupMember() {
     return metaGroupMember;
-  }
-
-  /**
-   * If the member is the leader, let all members in the group close the specified partition of a
-   * storage group, else just return false.
-   */
-  boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
-    if (character != NodeCharacter.LEADER) {
-      return false;
-    }
-    CloseFileLog log = new CloseFileLog(storageGroupName, partitionId, isSeq);
-    VotingLog votingLog;
-    synchronized (logManager) {
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      logManager.append(log);
-      votingLog = buildVotingLog(log);
-      votingLogList.insert(votingLog);
-      logger.info("Send the close file request of {} to other nodes", log);
-    }
-    try {
-      return appendLogInGroup(votingLog);
-    } catch (LogExecutionException e) {
-      logger.error("Cannot close partition {}#{} seq:{}", storageGroupName, partitionId, isSeq, e);
-    }
-    return false;
   }
 
   public boolean flushFileWhenDoSnapshot(

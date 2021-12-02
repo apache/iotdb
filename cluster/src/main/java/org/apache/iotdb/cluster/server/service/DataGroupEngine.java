@@ -122,7 +122,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   public <T> DataAsyncService getDataAsyncService(
-      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request) {
+      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request)
+      throws PartitionTableUnavailableException {
+    if (!metaGroupMember.isReady()) {
+      throw new PartitionTableUnavailableException(thisNode);
+    }
     return asyncServiceMap.computeIfAbsent(
         header,
         h -> {
@@ -131,7 +135,11 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
         });
   }
 
-  public DataSyncService getDataSyncService(RaftNode header) {
+  public DataSyncService getDataSyncService(RaftNode header)
+      throws PartitionTableUnavailableException {
+    if (!metaGroupMember.isReady()) {
+      throw new PartitionTableUnavailableException(thisNode);
+    }
     return syncServiceMap.computeIfAbsent(
         header,
         h -> {

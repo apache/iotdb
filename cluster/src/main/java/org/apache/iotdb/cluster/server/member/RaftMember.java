@@ -1139,13 +1139,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
-      if (appendLogInGroup(votingLog)) {
-        return StatusUtils.OK;
-      }
+      return appendLogInGroup(votingLog);
     } catch (LogExecutionException e) {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
-    return StatusUtils.TIME_OUT;
   }
 
   protected TSStatus processPlanLocallyV2(PhysicalPlan plan) {
@@ -1893,7 +1890,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *
    * @return true if the log is accepted by the quorum of the group, false otherwise
    */
-  boolean appendLogInGroup(VotingLog log) throws LogExecutionException {
+  TSStatus appendLogInGroup(VotingLog log) throws LogExecutionException {
     long totalStartTime = Statistic.LOG_DISPATCHER_TOTAL.getOperationStartTime();
     if (allNodes.size() == 1) {
       // single node group, no followers
@@ -1901,7 +1898,9 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
       commitLog(log.getLog());
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
-      return true;
+      return StatusUtils.OK
+          .deepCopy()
+          .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
     }
 
     int retryTime = 0;
@@ -1910,7 +1909,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.debug("{}: Send log {} to other nodes, retry times: {}", name, log, retryTime);
       if (character != NodeCharacter.LEADER) {
         logger.debug("{}: Has lose leadership, so need not to send log", name);
-        return false;
+        return StatusUtils.NO_LEADER;
       }
       AppendLogResult result = sendLogToFollowers(log);
       Timer.Statistic.RAFT_SENDER_SEND_LOG_TO_FOLLOWERS.calOperationCostTimeFromStart(startTime);
@@ -1921,14 +1920,17 @@ public abstract class RaftMember implements RaftMemberMBean {
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
               log.getLog().getCreateTime());
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return true;
+          return StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED)
+              .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
         case OK:
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           commitLog(log.getLog());
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return true;
+          return StatusUtils.OK
+              .deepCopy()
+              .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
           try {
@@ -1938,13 +1940,13 @@ public abstract class RaftMember implements RaftMemberMBean {
           }
           retryTime++;
           if (retryTime > 5) {
-            return false;
+            return StatusUtils.TIME_OUT;
           }
           break;
         case LEADERSHIP_STALE:
           // abort the appending, the new leader will fix the local logs by catch-up
         default:
-          return false;
+          return StatusUtils.NO_LEADER;
       }
     }
   }
