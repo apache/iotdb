@@ -25,8 +25,10 @@
 - Maven 3.5+
 - Flex
 - Bison 2.7+
-- Boost
+- Boost 1.56+
 - OpenSSL 1.0+
+- GCC 5.5.0+
+- node.js
 
 
 
@@ -100,12 +102,13 @@ To install all dependencies, run:
 Debian/Ubuntu:
 
 ```shell
-sudo apt-get install gcc g++ bison flex libboost-all-dev
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev npm nodejs
 ```
 
-CentOS:
+CentOS:  
+In CentOS 7.x, the version is to low use yum install gcc,boost and npm, you should compile or download binary package. 
 ```shell
-yum install gcc g++ bison flex boost-devel
+yum install gcc g++ bison flex openssl-devel
 ```
 
 

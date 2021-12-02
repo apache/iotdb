@@ -27,8 +27,10 @@
 - Maven 3.5+
 - Flex
 - Bison 2.7+
-- Boost
+- Boost 1.56+
 - OpenSSL 1.0+
+- GCC 5.5.0+
+- node.js
 
 ### 安装方法
 
@@ -75,18 +77,17 @@ brew link boost
 
 Linux 下需要确保 g++已被安装。
 
-一条命令安装所有依赖库：
-
 Debian/Ubuntu:
 
 ```shell
-sudo apt-get install gcc g++ bison flex libboost-all-dev
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev npm nodejs
 ```
 
 CentOS:
 
+使用yum安装的GCC、boost、npm版本过低，在编译客户端时会报错，以上软件需自行安装
 ```shell
-yum install gcc g++ bison flex boost-devel
+yum install gcc g++ bison flex openssl-devel
 ```
 
 #### 在 Windows 上编译 Thrift
