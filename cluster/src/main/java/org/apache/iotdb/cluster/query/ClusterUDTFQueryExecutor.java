@@ -51,7 +51,8 @@ public class ClusterUDTFQueryExecutor extends ClusterDataQueryExecutor {
   public QueryDataSet executeWithoutValueFilterAlignByTime(QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException, InterruptedException {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
-    return new UDTFAlignByTimeDataSet(context, udtfPlan, readersOfSelectedSeries);
+    return new UDTFAlignByTimeDataSet(context, udtfPlan, readersOfSelectedSeries)
+        .executeInFragmentsIfPossible();
   }
 
   public QueryDataSet executeWithValueFilterAlignByTime(QueryContext context)
@@ -65,7 +66,8 @@ public class ClusterUDTFQueryExecutor extends ClusterDataQueryExecutor {
     List<IReaderByTimestamp> readersOfSelectedSeries =
         initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFAlignByTimeDataSet(
-        context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
+            context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached)
+        .executeInFragmentsIfPossible();
   }
 
   public QueryDataSet executeWithoutValueFilterNonAlign(QueryContext context)
