@@ -65,8 +65,9 @@ public class UDAFQueryOperator extends QueryOperator {
       throw new LogicalOperatorException("AGGREGATION doesn't support disable align clause.");
     }
     checkSelectComponent(selectComponent);
-    if (isGroupByLevel() && isAlignByDevice()) {
-      throw new LogicalOperatorException("group by level does not support align by device now.");
+    if (isGroupByLevel()) {
+      throw new LogicalOperatorException(
+          "UDF nesting aggregations in GROUP BY LEVEL query does not support now.");
     }
   }
 
@@ -157,7 +158,17 @@ public class UDAFQueryOperator extends QueryOperator {
           super.generateRawDataQueryPlan(generator, new UDAFPlan(selectComponent.getZoneId()));
       UDAFPlan udafPlan = (UDAFPlan) physicalPlan;
       udafPlan.setInnerAggregationPlan(innerAggregationPlan);
-
+      Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
+      // The following codes are used to establish a link from AggregationResult to expression tree
+      // input.
+      // For example:
+      // Expressions           [   avg(s1) + 1, avg(s1) + avg(s2), sin(avg(s2)) ]
+      //                                  |       |          |           |
+      // Inner result columns  [      avg(s1) , avg(s1)  , avg(s2)     avg(s2)  ]
+      //                                   \      /            \         /
+      // deduplicated          [            avg(s1),             avg(s2)        ]
+      //                                         \                /
+      // expressionToInnerResultIndexMap        {avg(s1): 0, avg(s2): 1}
       Map<String, Integer> aggrIndexMap = new HashMap<>();
       for (int i = 0; i < innerAggregationPlan.getDeduplicatedPaths().size(); i++) {
         aggrIndexMap.put(
@@ -167,7 +178,6 @@ public class UDAFQueryOperator extends QueryOperator {
                 + ")",
             i);
       }
-      Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
       for (ResultColumn rc : getInnerResultColumnsCache()) {
         expressionToInnerResultIndexMap.put(
             rc.getExpression(),
