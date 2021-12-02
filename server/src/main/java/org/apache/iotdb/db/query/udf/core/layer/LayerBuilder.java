@@ -139,7 +139,7 @@ public class LayerBuilder {
 
   /** TODO: make it configurable */
   public boolean canBeSplitIntoFragments() {
-    return 4 <= fragmentDataSetIndexToLayerPointReaders.size();
+    return 2 <= fragmentDataSetIndexToLayerPointReaders.size();
   }
 
   public QueryDataSet generateJoinDataSet(UDTFAlignByTimeDataSet udtfAlignByTimeDataSet)
