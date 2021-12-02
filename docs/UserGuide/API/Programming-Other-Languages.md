@@ -65,8 +65,11 @@ We provided an example of how to use the thrift library to connect to IoTDB in `
 - Maven 3.5+
 - Flex
 - Bison 2.7+
-- Boost
+- Boost 1.56+
 - OpenSSL 1.0+
+- GCC 5.5.0+
+- node.js
+
 
 ### Installation
 
@@ -129,15 +132,18 @@ to specify the OpenSSL installation directory on your Mac.
 
 To install all dependencies, run:
 
-Debian/Ubuntu:
+Ubuntu 20:
 
 ```
-sudo apt-get install gcc g++ bison flex libboost-all-dev
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev npm nodejs
 ```
 
-CentOS:
+CentOS 7.x:  
+
+In CentOS 7.x, the version of gcc, boost and npm installed by yum is too low, therefore you should compile or download these binary packages by yourself.  
+
 ```
-yum install gcc g++ bison flex boost-devel
+sudo yum install gcc g++ bison flex openssl-devel
 ```
 
 #### Build Thrift on Windows
