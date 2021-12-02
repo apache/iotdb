@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
@@ -27,8 +28,6 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
-
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +52,8 @@ public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
 
-  // The thread pool that executes the compaction task. The number of threads for this pool is 10.
+  // The thread pool that executes the compaction task. The default number of threads for this pool
+  // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   // TODO: record the task in time partition
@@ -65,7 +65,8 @@ public class CompactionTaskManager implements IService {
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
-  // candidateCompactionTaskQueue to taskExecutionPool. The number of threads for this pool is 1.
+  // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
+  // is 1.
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
 
   private final long TASK_SUBMIT_INTERVAL =
