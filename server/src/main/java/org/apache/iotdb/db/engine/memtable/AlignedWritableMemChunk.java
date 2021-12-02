@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AlignedWritableMemChunk implements IWritableMemChunk {
 
@@ -54,6 +56,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       dataTypeList.add(schemaList.get(i).getType());
     }
     this.list = TVListAllocator.getInstance().allocate(dataTypeList);
+  }
+
+  public Set<String> getAllMeasurements() {
+    return measurementIndexMap.keySet();
   }
 
   public boolean containsMeasurement(String measurementId) {
@@ -241,10 +247,23 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return list.delete(lowerBound, upperBound);
   }
 
-  @Override
-  // TODO: THIS METHOLD IS FOR DELETING ONE COLUMN OF A VECTOR
-  public int delete(long lowerBound, long upperBound, String measurementId) {
-    return 0;
+  public Pair<Integer, Boolean> deleteDataFromAColumn(
+      long lowerBound, long upperBound, String measurementId) {
+    return list.delete(lowerBound, upperBound, measurementIndexMap.get(measurementId));
+  }
+
+  public void removeColumns(List<String> measurements) {
+    List<IMeasurementSchema> schemasToBeRemoved = new ArrayList<>();
+    for (String measurement : measurements) {
+      schemasToBeRemoved.add(schemaList.get(measurementIndexMap.get(measurement)));
+    }
+    for (IMeasurementSchema schema : schemasToBeRemoved) {
+      schemaList.remove(schema);
+    }
+    measurementIndexMap.clear();
+    for (int i = 0; i < schemaList.size(); i++) {
+      measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
+    }
   }
 
   @Override

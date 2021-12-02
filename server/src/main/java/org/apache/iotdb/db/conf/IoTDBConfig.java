@@ -252,8 +252,8 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can concurrently query. */
-  private int maxConcurrentSubQueryThread = 8;
+  /** How many threads can concurrently query. When <= 0, use CPU core number. */
+  private int concurrentQueryThread = 8;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
@@ -1176,12 +1176,12 @@ public class IoTDBConfig {
     this.concurrentFlushThread = concurrentFlushThread;
   }
 
-  public int getMaxConcurrentSubQueryThread() {
-    return maxConcurrentSubQueryThread;
+  public int getConcurrentQueryThread() {
+    return concurrentQueryThread;
   }
 
-  void setMaxConcurrentSubQueryThread(int maxConcurrentSubQueryThread) {
-    this.maxConcurrentSubQueryThread = maxConcurrentSubQueryThread;
+  void setConcurrentQueryThread(int concurrentQueryThread) {
+    this.concurrentQueryThread = concurrentQueryThread;
   }
 
   public int getConcurrentWindowEvaluationThread() {

@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -37,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
@@ -194,6 +197,114 @@ public class PrimitiveMemTableTest {
         0,
         new Object[] {0});
     Assert.assertEquals(6, memTable.getSeriesNumber());
+  }
+
+  @Test
+  public void queryWithDeletionTest() throws IOException, QueryProcessException, MetadataException {
+    IMemTable memTable = new PrimitiveMemTable();
+    int count = 10;
+    String deviceId = "d1";
+    String[] measurementId = new String[count];
+    for (int i = 0; i < measurementId.length; i++) {
+      measurementId[i] = "s" + i;
+    }
+
+    int dataSize = 10000;
+    for (int i = 0; i < dataSize; i++) {
+      memTable.write(
+          deviceId,
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+          dataSize - i - 1,
+          new Object[] {i + 10});
+    }
+    for (int i = 0; i < dataSize; i++) {
+      memTable.write(
+          deviceId,
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+          i,
+          new Object[] {i});
+    }
+    MeasurementPath fullPath =
+        new MeasurementPath(
+            deviceId,
+            measurementId[0],
+            new UnaryMeasurementSchema(
+                measurementId[0],
+                TSDataType.INT32,
+                TSEncoding.RLE,
+                CompressionType.UNCOMPRESSED,
+                Collections.emptyMap()));
+    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+    Modification deletion =
+        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    modsToMemtable.add(new Pair<>(deletion, memTable));
+    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, modsToMemtable);
+    IPointReader iterator = memChunk.getPointReader();
+    int cnt = 0;
+    while (iterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+      Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+      Assert.assertEquals(cnt, timeValuePair.getValue().getValue());
+      cnt++;
+    }
+    Assert.assertEquals(10, cnt);
+  }
+
+  @Test
+  public void queryAlignChuckWithDeletionTest()
+      throws IOException, QueryProcessException, MetadataException {
+    IMemTable memTable = new PrimitiveMemTable();
+    int count = 10;
+    String deviceId = "d1";
+    String[] measurementId = new String[count];
+    for (int i = 0; i < measurementId.length; i++) {
+      measurementId[i] = "s" + i;
+    }
+
+    int dataSize = 10000;
+    for (int i = 0; i < dataSize; i++) {
+      memTable.writeAlignedRow(
+          deviceId,
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+          dataSize - i - 1,
+          new Object[] {i + 10});
+    }
+    for (int i = 0; i < dataSize; i++) {
+      memTable.writeAlignedRow(
+          deviceId,
+          Collections.singletonList(
+              new UnaryMeasurementSchema(measurementId[0], TSDataType.INT32, TSEncoding.PLAIN)),
+          i,
+          new Object[] {i});
+    }
+    AlignedPath fullPath =
+        new AlignedPath(
+            deviceId,
+            Collections.singletonList(measurementId[0]),
+            Collections.singletonList(
+                new UnaryMeasurementSchema(
+                    measurementId[0],
+                    TSDataType.INT32,
+                    TSEncoding.RLE,
+                    CompressionType.UNCOMPRESSED,
+                    Collections.emptyMap())));
+    List<Pair<Modification, IMemTable>> modsToMemtable = new ArrayList<>();
+    Modification deletion =
+        new Deletion(new PartialPath(deviceId, measurementId[0]), Long.MAX_VALUE, 10, dataSize);
+    modsToMemtable.add(new Pair<>(deletion, memTable));
+    ReadOnlyMemChunk memChunk = memTable.query(fullPath, Long.MIN_VALUE, modsToMemtable);
+    IPointReader iterator = memChunk.getPointReader();
+    int cnt = 0;
+    while (iterator.hasNextTimeValuePair()) {
+      TimeValuePair timeValuePair = iterator.nextTimeValuePair();
+      Assert.assertEquals(cnt, timeValuePair.getTimestamp());
+      Assert.assertEquals(cnt, timeValuePair.getValue().getVector()[0].getInt());
+      cnt++;
+    }
+    Assert.assertEquals(10, cnt);
   }
 
   private void write(

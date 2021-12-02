@@ -265,11 +265,6 @@ public class WritableMemChunk implements IWritableMemChunk {
   }
 
   @Override
-  public int delete(long lowerBound, long upperBound, String measurementId) {
-    throw new UnSupportedDataTypeException(UNSUPPORTED_TYPE + schema.getType());
-  }
-
-  @Override
   public IChunkWriter createIChunkWriter() {
     return new ChunkWriterImpl(schema);
   }

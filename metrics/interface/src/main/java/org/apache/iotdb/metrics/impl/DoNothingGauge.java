@@ -28,6 +28,12 @@ public class DoNothingGauge implements Gauge {
   }
 
   @Override
+  public void incr(long value) {}
+
+  @Override
+  public void decr(long value) {}
+
+  @Override
   public void set(long value) {
     // do nothing
   }
