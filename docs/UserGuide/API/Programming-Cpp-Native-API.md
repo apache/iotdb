@@ -106,7 +106,7 @@ sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev lib
 ```
 
 CentOS:  
-In CentOS 7.x, the version is to low use yum install gcc,boost and npm, you should compile or download binary package. 
+In CentOS 7.x, the version of gcc, boost and npm installed by yum is too low, therefore you should compile or download these binary packages by yourself. 
 ```shell
 yum install gcc g++ bison flex openssl-devel
 ```
