@@ -18,22 +18,22 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.constant.PhysicalConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TreeMap;
+import java.util.*;
 
 /**
  * Mainly used in the distributed version, when multiple InsertTabletPlans belong to a raft
@@ -383,5 +383,25 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     } else {
       results.remove(i);
     }
+  }
+
+  public boolean needMultiThread() {
+    Set<String> insertPlanSGSet = new HashSet<>();
+    int BigPlanCountNum = 0;
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      IStorageGroupMNode storageGroupMNode = null;
+      try {
+        storageGroupMNode =
+            IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
+      } catch (MetadataException e) {
+        return false;
+      }
+      insertPlanSGSet.add(storageGroupMNode.getFullPath());
+      if (insertTabletPlan.getRowCount() > PhysicalConstant.INSERT_MULTI_TABLET_COUNT_THRESHOLD) {
+        BigPlanCountNum++;
+      }
+    }
+    return insertPlanSGSet.size() >= PhysicalConstant.INSERT_MULTI_TABLET_SG_NUM
+        && BigPlanCountNum * 2 >= insertTabletPlanList.size();
   }
 }

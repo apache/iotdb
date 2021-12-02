@@ -181,7 +181,6 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
@@ -232,40 +231,42 @@ public class PlanExecutor implements IPlanExecutor {
 
   private ExecutorService insertTabletsPool;
 
-  private class InsertTableTask implements Runnable{
-      private InsertTabletPlan insertTabletPlan ;
-      private CountDownLatch latch;
-      public InsertTableTask(InsertTabletPlan insertTabletPlan,CountDownLatch latch){
-        this.insertTabletPlan=insertTabletPlan;
-        this.latch=latch;
-      }
-      @Override
-      public void run(){
-        try {
-          insertTablet(insertTabletPlan);
-          latch.countDown();
-        } catch (QueryProcessException e) {
-          throw new ThreadException(e.getErrorCode(),e.getMessage());
-        }
-      }
-      class ThreadException extends RuntimeException {
-        private int errorCode;
-        ThreadException(int errorCode,String errMsg){
-          super(errMsg);
-          this.errorCode=errorCode;
-        }
+  private class InsertTableTask implements Runnable {
+    private InsertTabletPlan insertTabletPlan;
+    private CountDownLatch latch;
 
-        public int getErrorCode() {
-          return errorCode;
-        }
+    public InsertTableTask(InsertTabletPlan insertTabletPlan, CountDownLatch latch) {
+      this.insertTabletPlan = insertTabletPlan;
+      this.latch = latch;
+    }
 
-        public String getMessage() {
-          return super.getMessage();
-        }
+    @Override
+    public void run() {
+      try {
+        insertTablet(insertTabletPlan);
+        latch.countDown();
+      } catch (QueryProcessException e) {
+        throw new ThreadException(e.getErrorCode(), e.getMessage());
       }
     }
 
+    class ThreadException extends RuntimeException {
+      private int errorCode;
 
+      ThreadException(int errorCode, String errMsg) {
+        super(errMsg);
+        this.errorCode = errorCode;
+      }
+
+      public int getErrorCode() {
+        return errorCode;
+      }
+
+      public String getMessage() {
+        return super.getMessage();
+      }
+    }
+  }
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
@@ -276,9 +277,9 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }
-
-    insertTabletsPool = IoTDBThreadPoolFactory.newFixedThreadPool(Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
-
+    insertTabletsPool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
   }
 
   @Override
@@ -1551,28 +1552,44 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
-    CountDownLatch latch = new CountDownLatch(insertMultiTabletPlan.getInsertTabletPlanList().size());
+    CountDownLatch latch = null;
+    if (insertMultiTabletPlan.needMultiThread()) {
+      latch = new CountDownLatch(insertMultiTabletPlan.getInsertTabletPlanList().size());
+    }
 
     for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
       if (insertMultiTabletPlan.getResults().containsKey(i)
           || insertMultiTabletPlan.isExecuted(i)) {
         continue;
       }
-      try {
-        insertTabletsPool.submit(new InsertTableTask(insertMultiTabletPlan.getInsertTabletPlanList().get(i),latch));
-      } catch (InsertTableTask.ThreadException e) {
-        insertMultiTabletPlan
-            .getResults()
-            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      if (insertMultiTabletPlan.needMultiThread()) {
+        try {
+          insertTabletsPool.submit(
+              new InsertTableTask(insertMultiTabletPlan.getInsertTabletPlanList().get(i), latch));
+        } catch (InsertTableTask.ThreadException e) {
+          insertMultiTabletPlan
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
+      } else {
+        try {
+          insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+        } catch (QueryProcessException e) {
+          insertMultiTabletPlan
+              .getResults()
+              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+        }
       }
     }
-    try {
-      latch.await();
-    } catch (InterruptedException e) {
-      logger.error(e.getMessage());
-      if (!insertMultiTabletPlan.getResults().isEmpty()) {
-        throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
+    if (insertMultiTabletPlan.needMultiThread()) {
+      try {
+        latch.await();
+      } catch (InterruptedException e) {
+        logger.error(e.getMessage());
       }
+    }
+    if (!insertMultiTabletPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
     }
   }
 

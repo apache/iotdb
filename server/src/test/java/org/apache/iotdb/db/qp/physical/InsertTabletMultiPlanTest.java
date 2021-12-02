@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.service.TSServiceImpl;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -37,8 +36,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -48,10 +45,9 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
   private final Planner processor = new Planner();
 
-
   @Test
   public void testInsertMultiTabletPlanSpeed()
-          throws QueryProcessException, MetadataException, InterruptedException,
+      throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
@@ -79,12 +75,12 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
     }
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
-    for (int i = 0; i < 50000; i++) {
+    for (int i = 0; i < 10; i++) {
       InsertTabletPlan tabletPlan =
-              new InsertTabletPlan(
-                      new PartialPath("root.multi.d" + i),
-                      new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-                      dataTypes);
+          new InsertTabletPlan(
+              new PartialPath("root.multi.d" + i),
+              new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+              dataTypes);
       tabletPlan.setTimes(times);
       tabletPlan.setColumns(columns);
       tabletPlan.setRowCount(times.length);
@@ -96,8 +92,9 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
     InsertMultiTabletPlan insertMultiTabletPlan = new InsertMultiTabletPlan(insertTabletPlanList);
     executor.insertTablet(insertMultiTabletPlan);
-    System.out.println("result"+ String.valueOf( System.currentTimeMillis()-before));
+    System.out.println("result" + String.valueOf(System.currentTimeMillis() - before));
   }
+
   @Test
   public void testInsertMultiTabletPlan()
       throws QueryProcessException, MetadataException, InterruptedException,
