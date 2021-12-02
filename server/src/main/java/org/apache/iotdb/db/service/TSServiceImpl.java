@@ -380,6 +380,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       try {
         PhysicalPlan physicalPlan =
             processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.sessionId));
+        physicalPlan.setTargetedTerm(req.latestTerm);
+
         if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
         }
@@ -480,6 +482,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.getSessionId()));
+      physicalPlan.setTargetedTerm(req.latestTerm);
 
       return physicalPlan.isQuery()
           ? internalExecuteQueryStatement(
@@ -1112,6 +1115,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     try {
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(req.statement, sessionManager.getZoneId(req.sessionId));
+      physicalPlan.setTargetedTerm(req.latestTerm);
       return physicalPlan.isQuery()
           ? RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
@@ -1155,7 +1159,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     return status != null
         ? new TSExecuteStatementResp(status)
         : RpcUtils.getTSExecuteStatementResp(executeNonQueryPlan(plan))
-            .setQueryId(sessionManager.requestQueryId(false));
+            .setQueryId(sessionManager.requestQueryId(false))
+            .setOperationType(plan.getOperatorType().name());
   }
 
   protected void handleClientExit() {
@@ -1263,6 +1268,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
                     e, OperationType.INSERT_RECORDS, TSStatusCode.INTERNAL_SERVER_ERROR));
       }
     }
+    insertRowsPlan.setTargetedTerm(req.latestTerm);
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
@@ -1314,6 +1320,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.getValuesList().toArray(new ByteBuffer[0]),
               req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
+      plan.setTargetedTerm(req.latestTerm);
       statusList.add(status != null ? status : executeNonQueryPlan(plan));
     } catch (IoTDBException e) {
       statusList.add(
@@ -1383,6 +1390,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         allCheckSuccess = false;
       }
     }
+    insertRowsPlan.setTargetedTerm(req.latestTerm);
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
 
     return judgeFinalTsStatus(
@@ -1470,6 +1478,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.values,
               req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
+      plan.setTargetedTerm(req.latestTerm);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_RECORD, e.getErrorCode());
@@ -1501,6 +1510,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       plan.setNeedInferType(true);
       plan.setAligned(req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
+      plan.setTargetedTerm(req.latestTerm);
       return status != null ? status : executeNonQueryPlan(plan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_STRING_RECORD, e.getErrorCode());
@@ -1556,7 +1566,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       insertTabletPlan.setDataTypes(req.types);
       insertTabletPlan.setAligned(req.isAligned);
       TSStatus status = checkAuthority(insertTabletPlan, req.getSessionId());
-
+      insertTabletPlan.setTargetedTerm(req.latestTerm);
       return status != null ? status : executeNonQueryPlan(insertTabletPlan);
     } catch (IoTDBException e) {
       return onIoTDBException(e, OperationType.INSERT_TABLET, e.getErrorCode());
@@ -1626,6 +1636,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
 
     insertMultiTabletPlan.setInsertTabletPlanList(insertTabletPlanList);
+    insertMultiTabletPlan.setTargetedTerm(req.latestTerm);
     return executeNonQueryPlan(insertMultiTabletPlan);
   }
 

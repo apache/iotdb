@@ -32,6 +32,8 @@ import org.apache.iotdb.cluster.log.LogApplier;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.VotingLog;
+import org.apache.iotdb.cluster.log.appender.BlockingLogAppender;
+import org.apache.iotdb.cluster.log.appender.SlidingWindowLogAppender;
 import org.apache.iotdb.cluster.log.applier.AsyncDataLogApplier;
 import org.apache.iotdb.cluster.log.applier.DataLogApplier;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
@@ -192,6 +194,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     setQueryManager(new ClusterQueryManager());
     localQueryExecutor = new LocalQueryExecutor(this);
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
+    appenderFactory =
+        ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()
+            ? new SlidingWindowLogAppender.Factory()
+            : new BlockingLogAppender.Factory();
   }
 
   DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
@@ -232,6 +238,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     voteFor = logManager.getHardState().getVoteFor();
     localQueryExecutor = new LocalQueryExecutor(this);
     lastAppliedPartitionTableVersion = new LastAppliedPatitionTableVersion(getMemberDir());
+    appenderFactory =
+        ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()
+            ? new SlidingWindowLogAppender.Factory()
+            : new BlockingLogAppender.Factory();
   }
 
   /**
@@ -801,6 +811,10 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
+      if (plan.getTargetedTerm() > 0 && plan.getTargetedTerm() != term.get()) {
+        return StatusUtils.getStatus(TSStatusCode.LEADER_CHANGED).setMessage(term.get() + "");
+      }
+
       long startTime = Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.getOperationStartTime();
       TSStatus status = processPlanLocally(plan);
       boolean hasCreated = false;

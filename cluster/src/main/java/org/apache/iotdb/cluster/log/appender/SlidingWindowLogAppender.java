@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.cluster.log.appender;
 
-import java.util.Arrays;
-import java.util.List;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
@@ -29,6 +27,9 @@ import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
+
+import java.util.Arrays;
+import java.util.List;
 
 public class SlidingWindowLogAppender implements LogAppender {
 

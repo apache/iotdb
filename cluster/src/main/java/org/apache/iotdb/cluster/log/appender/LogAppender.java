@@ -17,12 +17,12 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.log.appender;
 
-import java.util.List;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryResult;
+
+import java.util.List;
 
 /**
  * LogAppender appends newly incoming entries to the local log of a member, providing different
@@ -33,6 +33,5 @@ public interface LogAppender {
   AppendEntryResult appendEntries(
       long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs);
 
-  AppendEntryResult appendEntry(
-      long prevLogIndex, long prevLogTerm, long leaderCommit, Log log);
+  AppendEntryResult appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log);
 }

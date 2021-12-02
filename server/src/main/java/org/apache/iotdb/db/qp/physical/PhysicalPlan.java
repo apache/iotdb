@@ -103,6 +103,9 @@ public abstract class PhysicalPlan {
 
   // a bridge from a cluster raft log to a physical plan
   protected long index;
+  // if set, only the associated leader can execute the plan to guarantee serializability and other
+  // leaders should return a LEADER_CHANGED response
+  protected long targetedTerm = -1;
 
   private boolean debug;
 
@@ -564,4 +567,12 @@ public abstract class PhysicalPlan {
    * @throws QueryProcessException when the check fails
    */
   public void checkIntegrity() throws QueryProcessException {}
+
+  public long getTargetedTerm() {
+    return targetedTerm;
+  }
+
+  public void setTargetedTerm(long targetedTerm) {
+    this.targetedTerm = targetedTerm;
+  }
 }

@@ -17,7 +17,6 @@
  * under the License.
  */
 
-
 package org.apache.iotdb.cluster.log.appender;
 
 import org.apache.iotdb.cluster.server.member.RaftMember;

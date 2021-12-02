@@ -138,6 +138,8 @@ struct TSExecuteStatementReq {
   6: optional bool enableRedirectQuery;
 
   7: optional bool jdbcQuery;
+
+  8: optional i64 latestTerm
 }
 
 struct TSExecuteBatchStatementReq{
@@ -146,6 +148,8 @@ struct TSExecuteBatchStatementReq{
 
   // The statements to be executed (DML, DDL, SET, etc)
   2: required list<string> statements
+
+  3: optional i64 latestTerm
 }
 
 struct TSGetOperationStatusReq {
@@ -218,6 +222,7 @@ struct TSInsertRecordReq {
   4: required binary values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional i64 latestTerm
 }
 
 struct TSInsertStringRecordReq {
@@ -227,6 +232,7 @@ struct TSInsertStringRecordReq {
   4: required list<string> values
   5: required i64 timestamp
   6: optional bool isAligned
+  7: optional i64 latestTerm
 }
 
 struct TSInsertTabletReq {
@@ -238,6 +244,7 @@ struct TSInsertTabletReq {
   6: required list<i32> types
   7: required i32 size
   8: optional bool isAligned
+  9: optional i64 latestTerm
 }
 
 struct TSInsertTabletsReq {
@@ -249,6 +256,7 @@ struct TSInsertTabletsReq {
   6: required list<list<i32>> typesList
   7: required list<i32> sizeList
   8: optional bool isAligned
+  9: optional i64 latestTerm
 }
 
 struct TSInsertRecordsReq {
@@ -258,6 +266,7 @@ struct TSInsertRecordsReq {
   4: required list<binary> valuesList
   5: required list<i64> timestamps
   6: optional bool isAligned
+  7: optional i64 latestTerm
 }
 
 struct TSInsertRecordsOfOneDeviceReq {
@@ -267,6 +276,7 @@ struct TSInsertRecordsOfOneDeviceReq {
     4: required list<binary> valuesList
     5: required list<i64> timestamps
     6: optional bool isAligned
+    7: optional i64 latestTerm
 }
 
 struct TSInsertStringRecordsReq {
@@ -276,6 +286,7 @@ struct TSInsertStringRecordsReq {
   4: required list<list<string>> valuesList
   5: required list<i64> timestamps
   6: optional bool isAligned
+  7: optional i64 latestTerm
 }
 
 struct TSDeleteDataReq {
