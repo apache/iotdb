@@ -66,7 +66,6 @@ pip install apache-iotdb
 - Boost 1.56+
 - OpenSSL 1.0+
 - GCC 5.5.0+
-- node.js
 
 ### 安装方法
 
@@ -121,12 +120,12 @@ Linux下需要确保g++已被安装。
 Ubuntu 20:
 
 ```
-sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev npm nodejs
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev
 ```
 
 CentOS 7.x:  
 
-在centos 7.x里，使用yum安装的GCC、boost、npm版本过低，在编译客户端时会报错，需自行安装。  
+在centos 7.x里，使用yum安装的GCC和boost版本过低，在编译客户端时会报错，需自行安装。  
 
 ```
 yum install gcc g++ bison flex openssl-devel
