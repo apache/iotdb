@@ -127,14 +127,16 @@ public class UDTFJoinDataSet extends QueryDataSet implements DirectAlignByTimeDa
           continue;
         }
 
+        Field field = fragmentRowRecord.getFields().get(outputColumnIndexInFragmentDataSet);
+        if (field == null || field.getDataType() == null) {
+          if (rowOffset == 0) {
+            currentBitmapList[i] = (currentBitmapList[i] << 1);
+          }
+          continue;
+        }
+
         if (rowOffset == 0) {
           currentBitmapList[i] = (currentBitmapList[i] << 1) | FLAG;
-
-          Field field = fragmentRowRecord.getFields().get(outputColumnIndexInFragmentDataSet);
-          if (field == null || field.getDataType() == null) {
-            currentBitmapList[i] = (currentBitmapList[i] << 1);
-            continue;
-          }
 
           TSDataType type = field.getDataType();
           switch (type) {
