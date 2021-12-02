@@ -244,9 +244,10 @@ public class PlanExecutor implements IPlanExecutor {
     public void run() {
       try {
         insertTablet(insertTabletPlan);
-        latch.countDown();
       } catch (QueryProcessException e) {
         throw new ThreadException(e.getErrorCode(), e.getMessage());
+      } finally {
+        latch.countDown();
       }
     }
 
