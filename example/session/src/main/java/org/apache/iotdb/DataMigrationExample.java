@@ -71,9 +71,22 @@ public class DataMigrationExample {
     writerPool = new SessionPool("127.0.0.1", 6668, "root", "root", concurrency);
 
     SessionDataSetWrapper schemaDataSet =
-        readerPool.executeQueryStatement("count timeseries " + path + ".**");
+        readerPool.executeQueryStatement("count devices " + path + ".**");
+
     DataIterator schemaIter = schemaDataSet.iterator();
     int total;
+    if (schemaIter.next()) {
+      total = schemaIter.getInt(1);
+      System.out.println("Total devices: " + total);
+    } else {
+      System.out.println("Can not get devices schema");
+      System.exit(1);
+    }
+    readerPool.closeResultSet(schemaDataSet);
+
+    schemaDataSet = readerPool.executeQueryStatement("count timeseries " + path + ".**");
+
+    schemaIter = schemaDataSet.iterator();
     if (schemaIter.next()) {
       total = schemaIter.getInt(1);
       System.out.println("Total timeseries: " + total);
@@ -83,7 +96,7 @@ public class DataMigrationExample {
     }
     readerPool.closeResultSet(schemaDataSet);
 
-    schemaDataSet = readerPool.executeQueryStatement("show timeseries " + path + ".**");
+    schemaDataSet = readerPool.executeQueryStatement("show devices " + path + ".**");
     schemaIter = schemaDataSet.iterator();
 
     List<Future> futureList = new ArrayList<>();
@@ -93,32 +106,26 @@ public class DataMigrationExample {
     List<String> measurementsInCurrentDevice = new ArrayList<>();
     List<TSDataType> dataTypesInCurrentDevice = new ArrayList<>();
     while (schemaIter.next()) {
-      Path currentPath = new Path(schemaIter.getString("timeseries"), true);
-      if (!currentDevice.equals(currentPath.getDevice())) {
-        if (!currentDevice.equals("") || seriesNumInOneTask > 300) {
-          count++;
-          Future future =
-              executorService.submit(
-                  new LoadThread(
-                      count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
-          futureList.add(future);
-          seriesNumInOneTask = 0;
-        }
+      Path currentPath = new Path(schemaIter.getString("devices"), true);
+      currentDevice = currentPath.getDevice();
+      SessionDataSetWrapper currentDivice_DataSet =
+          readerPool.executeQueryStatement("show timeseries " + currentPath + ".**");
+      DataIterator currentDivice_Iter = currentDivice_DataSet.iterator();
+      while (currentDivice_Iter.next()) {
+        Path currenttimePath = new Path(currentDivice_Iter.getString("timeseries"), true);
+        measurementsInCurrentDevice.add(currenttimePath.getMeasurement());
+        dataTypesInCurrentDevice.add(TSDataType.valueOf(currentDivice_Iter.getString("dataType")));
         seriesNumInOneTask++;
-        currentDevice = currentPath.getDevice();
-        measurementsInCurrentDevice = new ArrayList<>();
-        dataTypesInCurrentDevice = new ArrayList<>();
       }
-      measurementsInCurrentDevice.add(currentPath.getMeasurement());
-      dataTypesInCurrentDevice.add(TSDataType.valueOf(schemaIter.getString("dataType")));
-    }
-    if (measurementsInCurrentDevice.size() > 0) {
       count++;
-      Future future1 =
+      Future future =
           executorService.submit(
               new LoadThread(
                   count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
-      futureList.add(future1);
+      futureList.add(future);
+      measurementsInCurrentDevice = new ArrayList<>();
+      dataTypesInCurrentDevice = new ArrayList<>();
+      readerPool.closeResultSet(currentDivice_DataSet);
     }
     readerPool.closeResultSet(schemaDataSet);
 
@@ -166,10 +173,7 @@ public class DataMigrationExample {
       SessionDataSetWrapper dataSet = null;
 
       try {
-
-        dataSet =
-            readerPool.executeQueryStatement(
-                String.format("select %s from %s", measurementsString.toString(), device));
+        dataSet = readerPool.executeQueryStatement(String.format("select ** from %s", device));
 
         DataIterator dataIter = dataSet.iterator();
         while (dataIter.next()) {
