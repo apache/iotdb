@@ -66,7 +66,7 @@ object Converter {
 
       val colCount = resultSetMetaData.getColumnCount
       var startIndex = 2
-      if (options.sql.toLowerCase.contains("count")) {
+      if (!"Time".equals(resultSetMetaData.getColumnName(1))) {
         startIndex = 1
       }
       for (i <- startIndex to colCount) {
