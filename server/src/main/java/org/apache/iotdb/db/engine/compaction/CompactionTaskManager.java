@@ -57,7 +57,8 @@ public class CompactionTaskManager implements IService {
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
   private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
-  //
+  // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
+  // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
