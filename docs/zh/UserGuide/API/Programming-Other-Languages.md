@@ -130,7 +130,7 @@ CentOS 7.x:
 在centos 7.x里，可用yum命令安装部分依赖。  
 
 ```
-yum install bison flex openssl-devel
+sudo yum install bison flex openssl-devel
 ```
 
 使用yum安装的GCC、boost版本过低，在编译时会报错，需自行安装或升级。  

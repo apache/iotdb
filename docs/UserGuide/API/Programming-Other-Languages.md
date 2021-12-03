@@ -142,7 +142,7 @@ CentOS 7.x:
 In CentOS 7.x, Some packages can be installed using Yum:
 
 ```
-sudo yum install gcc g++ bison flex openssl-devel
+sudo yum install bison flex openssl-devel
 ```
 
 The version of gcc and boost installed by yum is too low, therefore you should compile or download these binary packages by yourself. 
