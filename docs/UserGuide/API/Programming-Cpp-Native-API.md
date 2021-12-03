@@ -95,18 +95,23 @@ to specify the OpenSSL installation directory on your Mac.
 
 #### Build Thrift on Linux
 
-To install all dependencies, run:
+Ubuntu 20:  
 
-Ubuntu 20:
+To install all dependencies, run:  
+
 ```shell
 sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev
 ```
 
 CentOS 7.x:  
-In CentOS 7.x, the version of gcc and boost installed by yum is too low, therefore you should compile or download these binary packages by yourself. 
+
+In CentOS 7.x, Some packages can be installed using Yum:
+
 ```shell
-sudo yum install gcc g++ bison flex openssl-devel
+sudo yum install bison flex openssl-devel
 ```
+
+The version of gcc and boost installed by yum is too low, therefore you should compile or download these binary packages by yourself. 
 
 
 
