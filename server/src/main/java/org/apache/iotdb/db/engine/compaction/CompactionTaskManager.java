@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction;
 
+import com.google.common.collect.MinMaxPriorityQueue;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
@@ -27,14 +28,11 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.TestOnly;
-
-import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -57,12 +55,10 @@ public class CompactionTaskManager implements IService {
   // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  // TODO: record the task in time partition
   private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
+  //
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
-  private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
-      new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -226,12 +222,8 @@ public class CompactionTaskManager implements IService {
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
+      taskExecutionPool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
-      compactionTaskFutures
-          .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
-          .computeIfAbsent(timePartition, k -> new HashSet<>())
-          .add(future);
       return;
     }
     logger.warn(
