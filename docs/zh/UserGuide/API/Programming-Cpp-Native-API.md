@@ -88,9 +88,11 @@ sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev lib
 CentOS 7.x:
 
 在centos 7.x里，可用yum命令安装部分依赖。  
+
 ```shell
-yum install bison flex openssl-devel
+sudo yum install bison flex openssl-devel
 ```
+
 使用yum安装的GCC、boost版本过低，在编译时会报错，需自行安装或升级。  
 
 #### 在 Windows 上编译 Thrift
