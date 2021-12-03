@@ -142,7 +142,7 @@ public class LayerBuilder {
   }
 
   public boolean canBeSplitIntoFragments() {
-    return Math.min(2, CONFIG.getUdfMinFragmentNumberToTriggerParallelExecution())
+    return Math.max(2, CONFIG.getUdfMinFragmentNumberToTriggerParallelExecution())
         <= fragmentDataSetIndexToLayerPointReaders.size();
   }
 
