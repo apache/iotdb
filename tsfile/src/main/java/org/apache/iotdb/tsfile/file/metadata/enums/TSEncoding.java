@@ -66,6 +66,8 @@ public enum TSEncoding {
         return TSEncoding.REGULAR;
       case 8:
         return TSEncoding.GORILLA;
+      case 9:
+        return TSEncoding.ZIGZAG;
       default:
         throw new IllegalArgumentException("Invalid input: " + encoding);
     }

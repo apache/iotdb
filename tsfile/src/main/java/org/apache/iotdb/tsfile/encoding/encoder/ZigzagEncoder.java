@@ -21,12 +21,15 @@ package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * An encoder implementing Zigzag encoding.
@@ -49,23 +52,30 @@ public class ZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
   }
 
-  /** transfer int to zigzag data */
-  private int int_to_zigzag(int n) {
-    return (n << 1) ^ (n >> 31);
-  }
 
-  /** compression */
-  private byte[] write_to_buffer(int n) {
+
+  /** encoding */
+  private byte[] encodeInt(int n) {
+    n = (n << 1) ^ (n >> 31);
     int idx = 0;
-    while (true) {
-      if ((n & ~0x7F) == 0) {
-        buf[idx++] = (byte) n;
-        break;
-      } else {
-        buf[idx++] = (byte) ((n & 0x7F) | 0x80);
+    if ((n & ~0x7F) != 0) {
+      buf[idx++] = (byte)((n | 0x80) & 0xFF);
+      n >>>= 7;
+      if (n > 0x7F) {
+        buf[idx++] = (byte)((n | 0x80) & 0xFF);
         n >>>= 7;
+        if (n > 0x7F) {
+          buf[idx++] = (byte)((n | 0x80) & 0xFF);
+          n >>>= 7;
+          if (n > 0x7F) {
+            buf[idx++] = (byte)((n | 0x80) & 0xFF);
+            n >>>= 7;
+          }
+        }
       }
     }
+    buf[idx++] = (byte) n;
+//    System.out.println("index " + idx);
     return Arrays.copyOfRange(buf, 0, idx);
   }
 
@@ -75,27 +85,48 @@ public class ZigzagEncoder extends Encoder {
    * @param value value to encode
    * @param out the ByteArrayOutputStream which data encode into
    */
-  public void encodeValue(int value, ByteArrayOutputStream out) {
+  public void encode(int value, ByteArrayOutputStream out) {
     values.add(value);
+  }
+
+  private String printBinary(byte[] buf) {
+    String s = "" ;
+    for(byte b: buf) {
+      s += String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0');
+      s += ' ';
+    }
+    return s;
   }
 
   @Override
   public void flush(ByteArrayOutputStream out) throws IOException {
     // byteCache stores all <encoded-data> and we know its size
     ByteArrayOutputStream byteCache = new ByteArrayOutputStream();
+    int len = values.size();
     if (values.size() == 0) {
       return;
     }
     for (int value : values) {
-      int n = int_to_zigzag(value);
-      byte[] bytes = write_to_buffer(n);
+      byte[] bytes = encodeInt(value);
       byteCache.write(bytes, 0, bytes.length);
+//      System.out.println("real value: " + value + " binary encoding " + bytes.length + printBinary(bytes));
     }
-    byteCache.writeTo(out);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
+    ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
+    out.write(byteCache.toByteArray());
     reset();
   }
 
   private void reset() {
     values.clear();
+  }
+
+  @Override
+  public long getMaxByteSize() {
+    if (values == null) {
+      return 0;
+    }
+    // try to caculate max value
+    return (long) 8  + values.size() * 5;
   }
 }

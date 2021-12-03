@@ -72,17 +72,20 @@
   - **7: REGULAR** 
 
   - **8: GORILLA**
+	
+  - **9: ZIGZAG**
+	- ZigZag encoding maps signed integers to unsigned integers so that numbers with a small absolute value have a small varint encoded value too.
 
 - **The correspondence between the data type and its supported encodings**
 
-	| Data Type |      Supported Encoding       |
-	| :-------: | :---------------------------: |
-	|  BOOLEAN  |          PLAIN, RLE           |
-	|   INT32   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|   INT64   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|   FLOAT   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|  DOUBLE   | PLAIN, RLE, TS_2DIFF, GORILLA |
-	|   TEXT    |       PLAIN, DICTIONARY       |
+	| Data Type |          Supported Encoding           |
+	| :-------: | :-----------------------------------: |
+	|  BOOLEAN  |              PLAIN, RLE               |
+	|   INT32   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
+	|   INT64   | PLAIN, RLE, TS_2DIFF, GORILLA, ZIGZAG |
+	|   FLOAT   |    PLAIN, RLE, TS_2DIFF, GORILLA	    |
+	|  DOUBLE   |    PLAIN, RLE, TS_2DIFF, GORILLA      |
+	|   TEXT    |          PLAIN, DICTIONARY            |
 
 ### 1.2 TsFile Overview
 
