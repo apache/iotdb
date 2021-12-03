@@ -132,18 +132,21 @@ public class SizeTieredCompactionRecoverTest {
     dataDirsField.set(config, dataDirs);
   }
 
-  /** Test when a file that is not a directory exists under the parent dir of timePartitionDir */
+  /** Test when a file that is not a directory exists under virtual storageGroup dir. */
   @Test
-  public void testRecoverWithUncorrectTimePartionDir()
-      throws StorageGroupProcessorException, IOException {
-    File timePartitionDir = new File(SEQ_FILE_DIR);
-    File f = new File(timePartitionDir.getParent() + File.separator + "test.tmp");
-    f.createNewFile();
-    new StorageGroupProcessor(
-        TestConstant.BASE_OUTPUT_PATH + File.separator + "data" + File.separator + "sequence",
-        "0",
-        new TsFileFlushPolicy.DirectFlushPolicy(),
-        COMPACTION_TEST_SG);
+  public void testRecoverWithUncorrectTimePartionDir() {
+    try {
+      File timePartitionDir = new File(SEQ_FILE_DIR);
+      File f = new File(timePartitionDir.getParent() + File.separator + "test.tmp");
+      f.createNewFile();
+      new StorageGroupProcessor(
+          TestConstant.BASE_OUTPUT_PATH + File.separator + "data" + File.separator + "sequence",
+          "0",
+          new TsFileFlushPolicy.DirectFlushPolicy(),
+          COMPACTION_TEST_SG);
+    } catch (StorageGroupProcessorException | IOException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   /**
