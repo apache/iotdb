@@ -32,12 +32,10 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -222,23 +220,6 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throw new IOException(e.getMessage(), e);
     }
     return curAggregateResults;
-  }
-
-  @Override
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    Pair<Long, Object> result = null;
-    long nextStartTime = curStartTime;
-    long nextEndTime;
-    do {
-      nextStartTime -= slidingStep;
-      if (nextStartTime >= startTime) {
-        nextEndTime = Math.min(nextStartTime + interval, endTime);
-      } else {
-        return null;
-      }
-      result = pathExecutors.get(path).peekNextNotNullValue(nextStartTime, nextEndTime);
-    } while (result == null);
-    return result;
   }
 
   protected GroupByExecutor getGroupByExecutor(

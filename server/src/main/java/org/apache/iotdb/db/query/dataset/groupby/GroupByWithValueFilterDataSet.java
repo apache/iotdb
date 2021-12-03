@@ -40,10 +40,8 @@ import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.AlignedValueIterator;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
@@ -59,7 +57,6 @@ import java.util.stream.Collectors;
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
   private Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap;
-  private Map<String, IReaderByTimestamp> pathToReaderMap;
 
   protected GroupByTimePlan groupByTimePlan;
   private TimeGenerator timestampGenerator;
@@ -82,7 +79,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
   public GroupByWithValueFilterDataSet(long queryId, GroupByTimePlan groupByTimePlan) {
     super(new QueryContext(queryId), groupByTimePlan);
     this.readerToAggrIndexesMap = new HashMap<>();
-    this.pathToReaderMap = new HashMap<>();
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
   }
 
@@ -91,7 +87,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       throws StorageEngineException, QueryProcessException {
     this.timestampGenerator = getTimeGenerator(context, groupByTimePlan);
     this.readerToAggrIndexesMap = new HashMap<>();
-    this.pathToReaderMap = new HashMap<>();
     this.groupByTimePlan = groupByTimePlan;
 
     List<PartialPath> selectedSeries = new ArrayList<>();
@@ -114,7 +109,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
             getReaderByTime(path, groupByTimePlan, context);
         readerToAggrIndexesMap.put(
             seriesReaderByTimestamp, Collections.singletonList(pathToAggrIndexesMap.get(path)));
-        pathToReaderMap.put(path.getFullPath(), seriesReaderByTimestamp);
       }
       // init aligned series reader
       for (PartialPath alignedPath : alignedPathToAggrIndexesMap.keySet()) {
@@ -122,7 +116,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
             getReaderByTime(alignedPath, groupByTimePlan, context);
         readerToAggrIndexesMap.put(
             seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
-        pathToReaderMap.put(alignedPath.getDevice(), seriesReaderByTimestamp);
       }
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
@@ -229,58 +222,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
     }
-  }
-
-  @Override
-  @SuppressWarnings("squid:S3776")
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    IReaderByTimestamp readerByTimestamp =
-        pathToReaderMap.get(
-            ((MeasurementPath) path).isUnderAlignedEntity()
-                ? path.getDevice()
-                : path.getFullPath());
-
-    if ((!timestampGenerator.hasNext() && cachedTimestamps.isEmpty())
-        || readerByTimestamp.readerIsEmpty()) {
-      return null;
-    }
-
-    long[] timestampArray = new long[1];
-    AggregateResult aggrResultByName =
-        AggregateResultFactory.getAggrResultByName(
-            groupByTimePlan.getDeduplicatedAggregations().get(i),
-            groupByTimePlan.getDeduplicatedDataTypes().get(i),
-            ascending);
-
-    long tmpStartTime = curStartTime - slidingStep;
-    int index = 0;
-    while (tmpStartTime >= startTime
-        && (timestampGenerator.hasNext() || !cachedTimestamps.isEmpty())) {
-      long timestamp = Long.MIN_VALUE;
-      if (timestampGenerator.hasNext()) {
-        cachedTimestamps.add(timestampGenerator.next());
-      }
-      if (!cachedTimestamps.isEmpty() && index < cachedTimestamps.size()) {
-        timestamp = cachedTimestamps.get(index++);
-      }
-      if (timestamp >= tmpStartTime) {
-        timestampArray[0] = timestamp;
-      } else {
-        do {
-          tmpStartTime -= slidingStep;
-          if (timestamp >= tmpStartTime) {
-            timestampArray[0] = timestamp;
-            break;
-          }
-        } while (tmpStartTime >= startTime);
-      }
-      aggrResultByName.updateResultUsingTimestamps(timestampArray, 1, readerByTimestamp);
-
-      if (aggrResultByName.getResult() != null) {
-        return new Pair<>(tmpStartTime, aggrResultByName.getResult());
-      }
-    }
-    return null;
   }
 
   /**
