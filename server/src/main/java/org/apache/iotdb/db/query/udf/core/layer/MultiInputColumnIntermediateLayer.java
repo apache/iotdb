@@ -99,28 +99,31 @@ public class MultiInputColumnIntermediateLayer extends IntermediateLayer
           continue;
         }
 
-        switch (reader.getDataType()) {
-          case INT32:
-            row[i] = reader.currentInt();
-            break;
-          case INT64:
-            row[i] = reader.currentLong();
-            break;
-          case FLOAT:
-            row[i] = reader.currentFloat();
-            break;
-          case DOUBLE:
-            row[i] = reader.currentDouble();
-            break;
-          case BOOLEAN:
-            row[i] = reader.currentBoolean();
-            break;
-          case TEXT:
-            row[i] = reader.currentBinary();
-            break;
-          default:
-            throw new UnSupportedDataTypeException("Unsupported data type.");
+        if (!reader.isCurrentNull()) {
+          switch (reader.getDataType()) {
+            case INT32:
+              row[i] = reader.currentInt();
+              break;
+            case INT64:
+              row[i] = reader.currentLong();
+              break;
+            case FLOAT:
+              row[i] = reader.currentFloat();
+              break;
+            case DOUBLE:
+              row[i] = reader.currentDouble();
+              break;
+            case BOOLEAN:
+              row[i] = reader.currentBoolean();
+              break;
+            case TEXT:
+              row[i] = reader.currentBinary();
+              break;
+            default:
+              throw new UnSupportedDataTypeException("Unsupported data type.");
+          }
         }
+
         reader.readyForNext();
 
         if (!(reader.isConstantPointReader()) && reader.next()) {

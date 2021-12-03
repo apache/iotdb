@@ -274,30 +274,34 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
           rowRecord.addField(null);
           continue;
         }
-        Object value;
-        switch (reader.getDataType()) {
-          case INT32:
-            value = reader.currentInt();
-            break;
-          case INT64:
-            value = reader.currentLong();
-            break;
-          case FLOAT:
-            value = reader.currentFloat();
-            break;
-          case DOUBLE:
-            value = reader.currentDouble();
-            break;
-          case BOOLEAN:
-            value = reader.currentBoolean();
-            break;
-          case TEXT:
-            value = reader.currentBinary();
-            break;
-          default:
-            throw new UnSupportedDataTypeException("Unsupported data type.");
+        if (reader.isCurrentNull()) {
+          rowRecord.addField(null);
+        } else {
+          Object value;
+          switch (reader.getDataType()) {
+            case INT32:
+              value = reader.currentInt();
+              break;
+            case INT64:
+              value = reader.currentLong();
+              break;
+            case FLOAT:
+              value = reader.currentFloat();
+              break;
+            case DOUBLE:
+              value = reader.currentDouble();
+              break;
+            case BOOLEAN:
+              value = reader.currentBoolean();
+              break;
+            case TEXT:
+              value = reader.currentBinary();
+              break;
+            default:
+              throw new UnSupportedDataTypeException("Unsupported data type.");
+          }
+          rowRecord.addField(value, reader.getDataType());
         }
-        rowRecord.addField(value, reader.getDataType());
         reader.readyForNext();
 
         if (reader.next()) {
