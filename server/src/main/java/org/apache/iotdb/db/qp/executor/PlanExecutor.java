@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.qp.executor;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.AuthorityChecker;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
@@ -165,6 +164,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1521,12 +1521,17 @@ public class PlanExecutor implements IPlanExecutor {
     List<Future<?>> futureList = new ArrayList<>();
 
     Map<Integer, TSStatus> results = insertMultiTabletPlan.getResults();
+
+    List<InsertTabletPlan> runPlanList = new ArrayList<>();
+    Map<Integer, Integer> runIndexToRealIndex = new HashMap<>();
     for (int i = 0; i < planList.size(); i++) {
-      if (results.containsKey(i)
-          || insertMultiTabletPlan.isExecuted(i)) {
-        continue;
+      if (!(results.containsKey(i) || insertMultiTabletPlan.isExecuted(i))) {
+        runPlanList.add(planList.get(i));
+        runIndexToRealIndex.put(runPlanList.size() - 1, i);
       }
-      InsertTabletPlan plan = planList.get(i);
+    }
+    for (int i = 0; i < runPlanList.size(); i++) {
+      InsertTabletPlan plan = runPlanList.get(i);
       if (insertMultiTabletPlan.needMultiThread()) {
         Future<?> f = insertTabletsPool.submit(() -> asyncInsertTablet(plan));
         futureList.add(f);
@@ -1534,20 +1539,20 @@ public class PlanExecutor implements IPlanExecutor {
         try {
           insertTablet(plan);
         } catch (QueryProcessException e) {
-          results
-              .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+          results.put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
         }
       }
     }
-    if(CollectionUtils.isNotEmpty(futureList)){
-      for (int i=0;i<futureList.size();i++){
+    if (CollectionUtils.isNotEmpty(futureList)) {
+      for (int i = 0; i < futureList.size(); i++) {
         try {
           futureList.get(i).get();
         } catch (InterruptedException ignored) {
         } catch (ExecutionException e) {
-          if(e.getCause() instanceof QueryProcessException) {
+          if (e.getCause() instanceof QueryProcessException) {
             QueryProcessException qe = (QueryProcessException) e.getCause();
-            results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
+            results.put(
+                runIndexToRealIndex.get(i), RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
           }
         }
       }
