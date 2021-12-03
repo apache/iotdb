@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,8 @@ public class CompactionTaskManager implements IService {
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
+  private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
+      new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
   // The thread pool that periodically fetches and executes the compaction task from
@@ -90,9 +93,8 @@ public class CompactionTaskManager implements IService {
 
       // Periodically do the following: fetch the highest priority thread from the
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
-      // if there
-      // is thread space available in the taskExecutionPool, put the compaction task thread into the
-      // taskExecutionPool and perform the compaction.
+      // if there is thread space available in the taskExecutionPool, put the compaction task thread
+      // into the taskExecutionPool and perform the compaction.
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
           this::submitTaskFromTaskQueue,
           TASK_SUBMIT_INTERVAL,
@@ -224,8 +226,12 @@ public class CompactionTaskManager implements IService {
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
-      taskExecutionPool.submit(compactionMergeTask);
+      Future<Void> future = taskExecutionPool.submit(compactionMergeTask);
       CompactionScheduler.addPartitionCompaction(fullStorageGroupName, timePartition);
+      compactionTaskFutures
+          .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(timePartition, k -> new HashSet<>())
+          .add(future);
       return;
     }
     logger.warn(

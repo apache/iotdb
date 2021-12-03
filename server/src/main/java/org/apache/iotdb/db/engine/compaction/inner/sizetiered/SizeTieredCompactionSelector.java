@@ -77,6 +77,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * there are more than a batch of files to be merged on a certain layer, it does not search to
    * higher layers. It creates a compaction thread for each batch of files and put it into the
    * candidateCompactionTaskQueue of the {@link CompactionTaskManager}.
+   *
+   * @return Returns whether the file was found and submits the merge task
    */
   @Override
   public boolean selectAndSubmit() {
@@ -118,7 +120,14 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * taskPriorityQueue queue , and continue to search for the next batch. If at least one batch of
    * files to be compacted is found on this layer, it will return false (indicating that it will no
    * longer search for higher layers), otherwise it will return true.
+   *
+   * @param level the level to be searched
+   * @param taskPriorityQueue it stores the batches of files to be compacted and the total size of
+   *     each batch
+   * @return return whether to continue the search to higher levels
+   * @throws IOException
    */
+  /** */
   private boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {

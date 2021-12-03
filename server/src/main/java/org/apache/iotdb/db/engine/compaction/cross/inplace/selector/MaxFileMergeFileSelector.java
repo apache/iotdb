@@ -137,6 +137,9 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
    * that may be added by compacting them (preferably using the loop estimate), and if it does not
    * exceed the memory overhead preset by the system for the compaction thread, put them into the
    * selectedSeqFiles and selectedUnseqFiles.
+   *
+   * @param useTightBound whether is tight estimate or loop estimate
+   * @throws IOException
    */
   void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
@@ -235,6 +238,8 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
    * determine whether overlap exists is to traverse each device ChunkGroup in unseqFiles, and
    * determine whether it overlaps with the same device ChunkGroup of each seqFile that are not
    * selected by the compaction task, if so, select this seqFile.
+   *
+   * @param unseqFile the tsFileResource of unseqFile to be compacted
    */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
     int tmpSelectedNum = 0;

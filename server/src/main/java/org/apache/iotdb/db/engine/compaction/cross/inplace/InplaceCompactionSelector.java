@@ -67,6 +67,8 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
    * crossSpace compaction, uses the file selector to select all unseqFiles and seqFiles to be
    * compacted under the time partition of the virtual storage group, and creates a compaction task
    * for them. The task is put into the compactionTaskQueue of the {@link CompactionTaskManager}.
+   *
+   * @return Returns whether the file was found and submits the merge task
    */
   @Override
   public boolean selectAndSubmit() {
