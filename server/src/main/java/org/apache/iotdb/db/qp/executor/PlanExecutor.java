@@ -146,6 +146,7 @@ import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -1539,18 +1540,17 @@ public class PlanExecutor implements IPlanExecutor {
       }
     }
     if(CollectionUtils.isNotEmpty(futureList)){
-      futureList.forEach(f -> {
+      for (int i=0;i<futureList.size();i++){
         try {
-          f.get(1,TimeUnit.SECONDS);
-        } catch (InterruptedException | TimeoutException e) {
-          //todo
+          futureList.get(i).get();
+        } catch (InterruptedException ignored) {
         } catch (ExecutionException e) {
           if(e.getCause() instanceof QueryProcessException) {
             QueryProcessException qe = (QueryProcessException) e.getCause();
             results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
           }
         }
-      });
+      }
     }
 
     if (!results.isEmpty()) {
