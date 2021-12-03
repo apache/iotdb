@@ -70,7 +70,9 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
         if (!hasCached) {
           hasCached = parentLayerPointReader.next();
         }
-        isCurrentNull = parentLayerPointReader.isCurrentNull();
+        if (hasCached) {
+          isCurrentNull = parentLayerPointReader.isCurrentNull();
+        }
         return hasCached;
       }
 

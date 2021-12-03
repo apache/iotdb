@@ -109,6 +109,8 @@ public class RawQueryInputLayer {
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
+    // This field must be true by default, as it may use cached data in rowRecordList to check
+    // whether this reader has next row
     boolean isCurRowAllNull = true;
     private Object[] cachedRowRecord;
 
