@@ -29,7 +29,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,21 +52,25 @@ public class CompactionMonitor implements IService {
       MONITOR_SG_NAME.concat(".compaction.cpu");
   private static final String MERGE_CPU_CONSUMPTION_DEVICE = MONITOR_SG_NAME.concat(".merge.cpu");
   private static final String COMPACTION_BEGIN_FILE_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.begin.files");
+      MONITOR_SG_NAME.concat("%s.compaction.begin.files");
   private static final String COMPACTION_BEGIN_TASK_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.begin.task_num");
+      MONITOR_SG_NAME.concat("%s.compaction.begin.task_num");
   private static final String COMPACTION_FINISH_FILE_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.finish.files");
+      MONITOR_SG_NAME.concat("%s.compaction.finish.files");
   private static final String COMPACTION_FINISH_TASK_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".compaction.finish.task_num");
+      MONITOR_SG_NAME.concat("%s.compaction.finish.task_num");
   private static final String MERGE_BEGIN_FILE_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".merge.begin.files");
+      MONITOR_SG_NAME.concat("%s.merge.begin.files");
   private static final String MERGE_BEGIN_TASK_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".merge.begin.task_num");
+      MONITOR_SG_NAME.concat("%s.merge.begin.task_num");
   private static final String MERGE_FINISH_FILE_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".merge.finish.files");
+      MONITOR_SG_NAME.concat("%s.merge.finish.files");
   private static final String MERGE_FINISH_TASK_NUM_DEVICE =
-      MONITOR_SG_NAME.concat(".merge.finish.task_num");
+      MONITOR_SG_NAME.concat("%s.merge.finish.task_num");
+  private static final String COMPACTION_CPU_CONSUMPTION_SUM_MEASUREMENT = "Compaction-Total";
+  private static final String MERGE_CPU_CONSUMPTION_SUM_MEASUREMENT = "Merge-Total";
+  private static final long COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY = -1;
+  private static final long MERGE_CPU_CONSUMPTION_TOTAL_MAP_KEY = -2;
 
   private ScheduledExecutorService threadPool =
       IoTDBThreadPoolFactory.newScheduledThreadPool(1, "CompactionMonitor");
@@ -124,7 +127,6 @@ public class CompactionMonitor implements IService {
       } catch (InterruptedException e) {
 
       }
-      System.out.println("thread pool is stop");
     }
   }
 
@@ -234,32 +236,43 @@ public class CompactionMonitor implements IService {
     }
     long cpuTimeInThisPeriod = totalCpuTime - lastCpuTotalTime;
     lastCpuTotalTime = totalCpuTime;
+    double compactionThreadsTotalCpuConsumption = 0.0;
     // we use this map to store the cpu consumption percentage of each compaction or merge thread
     Map<Long, Double> cpuConsumptionForCompactionAndMergeThread = new HashMap<>();
     // calculate the cpu consumption of each compaction thread in this period
     // and update the total cpu time for each compaction thread
     for (long threadId : compactionThreadIdSet) {
-      cpuConsumptionForCompactionAndMergeThread.put(
-          threadId,
+      double cpuConsumptionForCurrentThread =
           (double)
                   (cpuTimeForCompactionThreadInThisPeriod.get(threadId)
                       - cpuTimeForCompactionThread.getOrDefault(threadId, 0L))
-              / (double) (cpuTimeInThisPeriod));
+              / (double) (cpuTimeInThisPeriod);
+      cpuConsumptionForCompactionAndMergeThread.put(threadId, cpuConsumptionForCurrentThread);
+      compactionThreadsTotalCpuConsumption += cpuConsumptionForCurrentThread;
       // update the total cpu time for each compaction thread
       cpuTimeForCompactionThread.put(
           threadId, cpuTimeForCompactionThreadInThisPeriod.get(threadId));
     }
 
+    cpuConsumptionForCompactionAndMergeThread.put(
+        COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY, compactionThreadsTotalCpuConsumption);
+
+    double mergeThreadsTotalCpuConsumption = 0.0;
+
     for (long threadId : mergeThreadIdSet) {
-      cpuConsumptionForCompactionAndMergeThread.put(
-          threadId,
+      double cpuConsumptionForCurrentThread =
           (double)
                   (cpuTimeForMergeThreadInThisPeriod.get(threadId)
                       - cpuTimeForMergeThread.getOrDefault(threadId, 0L))
-              / (double) (cpuTimeInThisPeriod));
+              / (double) (cpuTimeInThisPeriod);
+      cpuConsumptionForCompactionAndMergeThread.put(threadId, compactionThreadsTotalCpuConsumption);
+      mergeThreadsTotalCpuConsumption += cpuConsumptionForCurrentThread;
       // update the total cpu time for each merge thread
       cpuTimeForMergeThread.put(threadId, cpuTimeForMergeThreadInThisPeriod.get(threadId));
     }
+
+    cpuConsumptionForCompactionAndMergeThread.put(
+        MERGE_CPU_CONSUMPTION_TOTAL_MAP_KEY, mergeThreadsTotalCpuConsumption);
     return cpuConsumptionForCompactionAndMergeThread;
   }
 
@@ -281,6 +294,10 @@ public class CompactionMonitor implements IService {
           compactionCpuConsumptionValues.add(
               Double.toString(consumptionMap.getOrDefault(threadId, 0.0)));
         }
+        compactionCpuConsumptionMeasurements.add(COMPACTION_CPU_CONSUMPTION_SUM_MEASUREMENT);
+        compactionCpuConsumptionValues.add(
+            Double.toString(
+                consumptionMap.getOrDefault(COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY, 0.0)));
         InsertRowPlan insertPlanForCompaction =
             new InsertRowPlan(
                 compactionPath,
@@ -305,6 +322,10 @@ public class CompactionMonitor implements IService {
           mergeCpuConsumptionValues.add(
               Double.toString(consumptionMap.getOrDefault(threadId, 0.0)));
         }
+        mergeCpuConsumptionMeasurements.add(MERGE_CPU_CONSUMPTION_SUM_MEASUREMENT);
+        mergeCpuConsumptionValues.add(
+            Double.toString(consumptionMap.getOrDefault(MERGE_CPU_CONSUMPTION_TOTAL_MAP_KEY, 0.0)));
+
         InsertRowPlan insertPlanForMerge =
             new InsertRowPlan(
                 mergePath,
@@ -323,49 +344,47 @@ public class CompactionMonitor implements IService {
       Map<String, Map<Integer, Integer>> compactionFileCountMap,
       boolean begin) {
     try {
-      PartialPath deviceForCompactionCount =
-          new PartialPath(
-              begin ? COMPACTION_BEGIN_TASK_NUM_DEVICE : COMPACTION_FINISH_TASK_NUM_DEVICE);
-      List<String> measurementsForCompactionCount = new ArrayList<>();
-      List<String> valuesForCompactionCount = new ArrayList<>();
+      String[] measurementName = {"task_num"};
       for (String sgName : compactionCountForSg.keySet()) {
-        // remove "root." in sg name
-        measurementsForCompactionCount.add(sgName.substring(5).replaceAll("\\.", "#"));
-        valuesForCompactionCount.add(Integer.toString(compactionCountForSg.get(sgName)));
+        PartialPath deviceName =
+            new PartialPath(
+                String.format(
+                    begin ? COMPACTION_BEGIN_TASK_NUM_DEVICE : COMPACTION_FINISH_TASK_NUM_DEVICE,
+                    sgName.replaceAll("root\\.", "")));
+        InsertRowPlan insertRowPlanForCompactionCount =
+            new InsertRowPlan(
+                deviceName,
+                lastUpdateTime,
+                measurementName,
+                new String[] {Integer.toString(compactionCountForSg.get(sgName))});
+        planExecutor.processNonQuery(insertRowPlanForCompactionCount);
       }
-      InsertRowPlan insertRowPlanForCompactionCount =
-          new InsertRowPlan(
-              deviceForCompactionCount,
-              lastUpdateTime,
-              measurementsForCompactionCount.toArray(new String[0]),
-              valuesForCompactionCount.toArray(new String[0]));
-      planExecutor.processNonQuery(insertRowPlanForCompactionCount);
       compactionCountForSg.clear();
 
-      PartialPath deviceForCompactionFiles =
-          new PartialPath(
-              begin ? COMPACTION_BEGIN_FILE_NUM_DEVICE : COMPACTION_FINISH_FILE_NUM_DEVICE);
-      List<String> measurementForCompactionFiles = new ArrayList<>();
-      List<String> valuesForCompactionFiles = new ArrayList<>();
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       int maxCompactionCount = Math.max(config.getSeqLevelNum(), config.getUnseqLevelNum());
       for (String sgName : compactionFileCountMap.keySet()) {
+        PartialPath device =
+            new PartialPath(
+                String.format(
+                    begin ? COMPACTION_BEGIN_FILE_NUM_DEVICE : COMPACTION_FINISH_FILE_NUM_DEVICE,
+                    sgName.replaceAll("root\\.", "")));
         Map<Integer, Integer> countMap = compactionFileCountMap.get(sgName);
-        String subPartOfSg = sgName.substring(5).replaceAll("\\.", "#");
-        for (int i = 0; i < maxCompactionCount - 1; ++i) {
-          int fileCount = countMap.getOrDefault(i, 0);
-          measurementForCompactionFiles.add(subPartOfSg + "#level-" + i);
-          valuesForCompactionFiles.add(Integer.toString(fileCount));
+        String measurementPattern = "level-%d";
+        List<String> measurements = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        for (int i = 0; i < maxCompactionCount; ++i) {
+          measurements.add(String.format(measurementPattern, i));
+          values.add(Integer.toString(countMap.getOrDefault(i, 0)));
         }
+        InsertRowPlan plan =
+            new InsertRowPlan(
+                device,
+                lastUpdateTime,
+                measurements.toArray(new String[0]),
+                values.toArray(new String[0]));
+        planExecutor.processNonQuery(plan);
       }
-      InsertRowPlan insertRowPlanForCompactionFileCount =
-          new InsertRowPlan(
-              deviceForCompactionFiles,
-              lastUpdateTime,
-              measurementForCompactionFiles.toArray(new String[0]),
-              valuesForCompactionFiles.toArray(new String[0]));
-
-      planExecutor.processNonQuery(insertRowPlanForCompactionFileCount);
       compactionFileCountMap.clear();
 
     } catch (Throwable e) {
@@ -378,45 +397,48 @@ public class CompactionMonitor implements IService {
       Map<String, Pair<Integer, Integer>> mergeFileNumForEachSg,
       boolean begin) {
     try {
-      PartialPath deviceForMergeCount =
-          new PartialPath(begin ? MERGE_BEGIN_TASK_NUM_DEVICE : MERGE_FINISH_TASK_NUM_DEVICE);
-      List<String> measurementsForMergeCount = new ArrayList<>();
-      List<String> valuesForMergeCount = new ArrayList<>();
+      // save task num info
+      String[] measurementName = {"task_num"};
       for (String sgName : mergeCountForEachSg.keySet()) {
-        // remove "root." in sg name
-        measurementsForMergeCount.add(sgName.substring(5).replaceAll("\\.", "#"));
-        valuesForMergeCount.add(Integer.toString(mergeCountForEachSg.get(sgName)));
+        PartialPath device =
+            new PartialPath(
+                String.format(
+                    begin ? MERGE_BEGIN_TASK_NUM_DEVICE : MERGE_FINISH_TASK_NUM_DEVICE,
+                    sgName.replaceAll("root\\.", "")));
+        InsertRowPlan insertRowPlan =
+            new InsertRowPlan(
+                device,
+                lastUpdateTime,
+                measurementName,
+                new String[] {Integer.toString(mergeCountForEachSg.get(sgName))});
+        planExecutor.processNonQuery(insertRowPlan);
       }
-      InsertRowPlan insertRowPlanForMergeCount =
-          new InsertRowPlan(
-              deviceForMergeCount,
-              lastUpdateTime,
-              measurementsForMergeCount.toArray(new String[0]),
-              valuesForMergeCount.toArray(new String[0]));
-      planExecutor.processNonQuery(insertRowPlanForMergeCount);
       mergeCountForEachSg.clear();
 
-      PartialPath deviceForMergeFiles =
-          new PartialPath(begin ? MERGE_BEGIN_FILE_NUM_DEVICE : MERGE_FINISH_FILE_NUM_DEVICE);
-      List<String> measurementsForMergeFiles = new ArrayList<>();
-      List<String> valuesForMergeFiles = new ArrayList<>();
-      for (String sgName : mergeFileNumForEachSg.keySet()) {
-        Pair<Integer, Integer> fileNumPair = mergeFileNumForEachSg.get(sgName);
-        // remove "root." in sg name
-        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-seq");
-        valuesForMergeFiles.add(Integer.toString(fileNumPair.left));
-        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-unseq");
-        valuesForMergeFiles.add(Integer.toString(fileNumPair.right));
-      }
-
-      InsertRowPlan insertRowPlanForMergeFiles =
-          new InsertRowPlan(
-              deviceForMergeFiles,
-              lastUpdateTime,
-              measurementsForMergeFiles.toArray(new String[0]),
-              valuesForMergeFiles.toArray(new String[0]));
-
-      planExecutor.processNonQuery(insertRowPlanForMergeFiles);
+      //      PartialPath deviceForMergeFiles =
+      //          new PartialPath(begin ? MERGE_BEGIN_FILE_NUM_DEVICE :
+      // MERGE_FINISH_FILE_NUM_DEVICE);
+      //      List<String> measurementsForMergeFiles = new ArrayList<>();
+      //      List<String> valuesForMergeFiles = new ArrayList<>();
+      //      for (String sgName : mergeFileNumForEachSg.keySet()) {
+      //        Pair<Integer, Integer> fileNumPair = mergeFileNumForEachSg.get(sgName);
+      //        // remove "root." in sg name
+      //        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-seq");
+      //        valuesForMergeFiles.add(Integer.toString(fileNumPair.left));
+      //        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") +
+      // "-unseq");
+      //        valuesForMergeFiles.add(Integer.toString(fileNumPair.right));
+      //      }
+      //
+      //      InsertRowPlan insertRowPlanForMergeFiles =
+      //          new InsertRowPlan(
+      //              deviceForMergeFiles,
+      //              lastUpdateTime,
+      //              measurementsForMergeFiles.toArray(new String[0]),
+      //              valuesForMergeFiles.toArray(new String[0]));
+      //
+      //      planExecutor.processNonQuery(insertRowPlanForMergeFiles);
+      for ()
       mergeFileNumForEachSg.clear();
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving merge info", e);
