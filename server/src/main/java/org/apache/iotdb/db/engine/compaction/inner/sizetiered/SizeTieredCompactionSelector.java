@@ -127,7 +127,6 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
    * @return return whether to continue the search to higher levels
    * @throws IOException
    */
-  /** */
   private boolean selectLevelTask(
       int level, PriorityQueue<Pair<List<TsFileResource>, Long>> taskPriorityQueue)
       throws IOException {
