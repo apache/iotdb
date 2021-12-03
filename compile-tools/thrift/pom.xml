@@ -152,6 +152,7 @@
                                         <option>-DTHRIFT_COMPILER_LUA=OFF</option>
                                         <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
                                         <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
+                                        <option>-DTHRIFT_COMPILER_NODEJS=OFF</option>
                                         <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
                                         <option>-DTHRIFT_COMPILER_PERL=OFF</option>
                                         <option>-DTHRIFT_COMPILER_PHP=OFF</option>
@@ -169,6 +170,7 @@
                                         <option>-DBUILD_CSHARP=${thrift.with.csharp}</option>
                                         <!-- Don't build Java, as the libs are available via Maven -->
                                         <option>-DBUILD_JAVA=OFF</option>
+                                        <option>-DBUILD_NODEJS=OFF</option>
                                         <option>-DBUILD_PYTHON=${thrift.with.python}</option>
                                         <option>-DBUILD_JAVASCRIPT=OFF</option>
                                         <option>-DBUILD_HASKELL=OFF</option>
