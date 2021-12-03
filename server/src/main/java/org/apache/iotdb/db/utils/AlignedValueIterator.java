@@ -51,7 +51,7 @@ public class AlignedValueIterator extends ValueIterator {
 
   @Override
   public Object get(int index) {
-    if (((TsPrimitiveType[]) values[index])[subMeasurementIndex] == null) {
+    if (values[index] == null || ((TsPrimitiveType[]) values[index])[subMeasurementIndex] == null) {
       return null;
     }
     return ((TsPrimitiveType[]) values[index])[subMeasurementIndex].getValue();
