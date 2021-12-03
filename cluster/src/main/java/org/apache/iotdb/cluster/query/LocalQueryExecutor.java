@@ -797,7 +797,6 @@ public class LocalQueryExecutor {
         new LocalGroupByExecutor(
             path,
             deviceMeasurements,
-            dataType,
             context,
             timeFilter,
             new SlotTsFileFilter(nodeSlots),

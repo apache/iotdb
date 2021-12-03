@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.aggregation.impl;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
@@ -70,7 +71,7 @@ public class SumAggrResult extends AggregateResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext()) {
+    while (batchIterator.hasNext(minBound, maxBound)) {
       if (batchIterator.currentTime() >= maxBound || batchIterator.currentTime() < minBound) {
         break;
       }
@@ -91,11 +92,9 @@ public class SumAggrResult extends AggregateResult {
   }
 
   @Override
-  public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
-    for (int i = 0; i < length; i++) {
-      if (values[i] != null) {
-        updateSum(values[i]);
-      }
+  public void updateResultUsingValues(long[] timestamps, int length, ValueIterator valueIterator) {
+    while (valueIterator.hasNext()) {
+      updateSum(valueIterator.next());
     }
   }
 

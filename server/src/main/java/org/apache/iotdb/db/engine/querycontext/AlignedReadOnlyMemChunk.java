@@ -45,7 +45,7 @@ import java.util.List;
 public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
 
   // deletion list for this chunk
-  private final List<TimeRange> deletionList;
+  private final List<List<TimeRange>> deletionList;
 
   private String measurementUid;
   private TSDataType dataType;
@@ -68,7 +68,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
    * @param deletionList The timeRange of deletionList
    */
   public AlignedReadOnlyMemChunk(
-      IMeasurementSchema schema, TVList tvList, int size, List<TimeRange> deletionList)
+      IMeasurementSchema schema, TVList tvList, int size, List<List<TimeRange>> deletionList)
       throws IOException, QueryProcessException {
     super();
     this.measurementUid = schema.getMeasurementId();
@@ -109,8 +109,6 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
       if (alignedChunkData.getValues().get(column) == null) {
         valueStatistics.setEmpty(true);
         continue;
-      } else {
-        valueStatistics.setEmpty(false);
       }
       for (int row = 0; row < alignedChunkData.size(); row++) {
         long time = alignedChunkData.getTime(row);
@@ -148,6 +146,7 @@ public class AlignedReadOnlyMemChunk extends ReadOnlyMemChunk {
             throw new QueryProcessException("Unsupported data type:" + dataType);
         }
       }
+      valueStatistics.setEmpty(false);
     }
     IChunkMetadata vectorChunkMetadata =
         new AlignedChunkMetadata(timeChunkMetadata, valueChunkMetadataList);
