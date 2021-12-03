@@ -163,12 +163,23 @@ public class Example {
 
 ### User Guide
 ``` scala
-dataframe
+// import narrow table
+val df = spark.createDataFrame(List(
+      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+  .withColumnRenamed("_2", "device_name")
+  .withColumnRenamed("_3", "int")
+  .withColumnRenamed("_4", "long")
+  .withColumnRenamed("_5", "float")
+  .withColumnRenamed("_6", "double")
+  .withColumnRenamed("_7", "boolean")
+  .withColumnRenamed("_8", "text")
+dfWithColumn
     .write
     .format("org.apache.iotdb.spark.db")
     .option("url", "jdbc:iotdb://127.0.0.1:6667/")
-    .option("user", "root")
-    .option("password", "root")
     .save
 ```
 
