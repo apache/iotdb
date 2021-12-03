@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.thrift.annotation.Nullable;
 import scala.Tuple2;
 
 import java.util.ArrayList;
@@ -39,7 +40,6 @@ import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.FLOAT;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT32;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.INT64;
 import static org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.TEXT;
-
 
 public class DataFrameTools {
   /**
@@ -79,11 +79,16 @@ public class DataFrameTools {
                       ArrayList<TSDataType> types = new ArrayList<>();
                       ArrayList<Object> values = new ArrayList<>();
                       for (int i = 2; i < record.length(); i++) {
+                        Object value = record.get(i);
+                        if (value == null) {
+                          continue;
+                        }
+                        value =
+                            typeTrans(record.get(i).toString(), getType(sensorTypes.get(i - 2)._2));
+
+                        values.add(value);
                         measurements.add(sensorTypes.get(i - 2)._1);
                         types.add(getType(sensorTypes.get(i - 2)._2));
-                        values.add(
-                            typeTrans(
-                                record.get(i).toString(), getType(sensorTypes.get(i - 2)._2)));
                       }
                       try {
                         session.insertRecord(
