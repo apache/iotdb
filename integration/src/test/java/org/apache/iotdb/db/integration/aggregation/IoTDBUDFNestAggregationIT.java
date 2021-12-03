@@ -134,7 +134,9 @@ public class IoTDBUDFNestAggregationIT {
   // Test FunctionExpression, NegativeExpression and BinaryExpression with time filter
   @Test
   public void complexExpressionsWithTimeFilterTest() {
-    Object[] retResults = {0L, 2L, 6.950000047683716D, 7.0D, 0.9092974268256817D, 3.0D, -2L, 2L};
+    Object[] retResults = {
+      0L, 2L, 6.950000047683716D, 7.0D, 0.9092974268256817D, 1.9092974268256817D, -2L, 2L
+    };
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String query =
@@ -143,7 +145,7 @@ public class IoTDBUDFNestAggregationIT {
               + ", count(temperature) + avg(temperature) "
               + ", count(temperature) + max_time(hardware)"
               + ", sin(count(temperature))"
-              + ", count(temperature) + 1"
+              + ", sin(count(temperature)) + 1"
               + ", -count(temperature)"
               + ", count(temperature)"
               + " FROM root.ln.wf01.wt01 WHERE time > 3";

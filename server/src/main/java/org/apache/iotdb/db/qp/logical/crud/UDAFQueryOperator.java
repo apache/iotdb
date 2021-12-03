@@ -20,7 +20,6 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
@@ -46,10 +45,6 @@ public class UDAFQueryOperator extends QueryOperator {
 
   private ArrayList<ResultColumn> innerResultColumnsCache;
 
-  private ArrayList<PartialPath> innerPathsCache;
-
-  private ArrayList<String> innerAggregationsCache;
-
   private AggregationQueryOperator aggrOp;
 
   public UDAFQueryOperator(AggregationQueryOperator queryOperator) {
@@ -67,7 +62,11 @@ public class UDAFQueryOperator extends QueryOperator {
     checkSelectComponent(selectComponent);
     if (isGroupByLevel()) {
       throw new LogicalOperatorException(
-          "UDF nesting aggregations in GROUP BY LEVEL query does not support now.");
+          "UDF nesting aggregations in GROUP BY query does not support grouping by level now.");
+    }
+    if (aggrOp instanceof GroupByFillQueryOperator) {
+      throw new LogicalOperatorException(
+          "UDF nesting aggregations in GROUP BY query does not support FILL now.");
     }
   }
 
@@ -79,17 +78,6 @@ public class UDAFQueryOperator extends QueryOperator {
     }
   }
 
-  public ArrayList<PartialPath> getInnerPathCathe() {
-    if (innerPathsCache == null) {
-      innerPathsCache = new ArrayList<>();
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        addInnerPath(expression);
-      }
-    }
-    return innerPathsCache;
-  }
-
   public ArrayList<ResultColumn> getInnerResultColumnsCache() {
     if (innerResultColumnsCache == null) {
       innerResultColumnsCache = new ArrayList<>();
@@ -99,35 +87,6 @@ public class UDAFQueryOperator extends QueryOperator {
       }
     }
     return innerResultColumnsCache;
-  }
-
-  public ArrayList<String> getInnerAggregationsCache() {
-    if (innerAggregationsCache == null) {
-      innerAggregationsCache = new ArrayList<>();
-      for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
-        Expression expression = resultColumn.getExpression();
-        addInnerAggregations(expression);
-      }
-    }
-    return innerAggregationsCache;
-  }
-
-  private void addInnerAggregations(Expression expression) {
-    for (Iterator<Expression> it = expression.iterator(); it.hasNext(); ) {
-      Expression currentExp = it.next();
-      if (currentExp.isAggregationFunctionExpression()) {
-        innerAggregationsCache.add(((FunctionExpression) currentExp).getFunctionName());
-      }
-    }
-  }
-
-  private void addInnerPath(Expression expression) {
-    for (Iterator<Expression> it = expression.iterator(); it.hasNext(); ) {
-      Expression currentExp = it.next();
-      if (currentExp.isAggregationFunctionExpression()) {
-        innerPathsCache.add(((TimeSeriesOperand) currentExp.getExpressions().get(0)).getPath());
-      }
-    }
   }
 
   private void addInnerResultColumn(Expression expression) {
