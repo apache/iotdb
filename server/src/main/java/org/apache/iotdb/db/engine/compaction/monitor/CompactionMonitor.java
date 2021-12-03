@@ -104,13 +104,14 @@ public class CompactionMonitor implements IService {
 
   public synchronized void start() {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+      init();
       threadPool.scheduleWithFixedDelay(
           this::sealedMonitorStatusPeriodically,
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           TimeUnit.MILLISECONDS);
       LOGGER.info(
-          "[CompactionMonitor] Start to monitor compaction, period is {} ms",
+          "Start to monitor compaction, period is {} ms",
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod());
     }
   }
@@ -140,6 +141,10 @@ public class CompactionMonitor implements IService {
   @Override
   public ServiceType getID() {
     return ServiceType.COMPACTION_MONITOR_SERVICE;
+  }
+
+  private void init() {
+    calculateCpuConsumptionForCompactionAndMergeThreads();
   }
 
   /** Register compaction thread id to id set */
