@@ -136,7 +136,7 @@ IoTDB 的元数据统一由 MManger 管理，包括以下几个部分：
 
 ## 元数据树
 
-* org.apache.iotdb.db.metadata.mtree.MTree
+* org.apache.iotdb.db.metadata.mtree.service.MTreeService
 
 树中包括三种节点：StorageGroupMNode、InternalMNode（非叶子节点）、LeafMNode（叶子节点），他们都是 MNode 的子类。
 

@@ -143,7 +143,7 @@ Same as above, at the beginning of each operation, it will try to obatin the wri
 
 ## MTree
 
-* org.apache.iotdb.db.metadata.mtree.MTree
+* org.apache.iotdb.db.metadata.mtree.service.MTreeService
 
 There three types of nodes in MTree: StorageGroupMNode、InternalMNode(Non-leaf node)、LeafMNode(leaf node), they all extend to MNode.
 

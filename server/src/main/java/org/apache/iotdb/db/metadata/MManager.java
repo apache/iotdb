@@ -44,7 +44,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
-import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.mtree.service.MTreeService;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -187,7 +187,7 @@ public class MManager {
   private File logFile;
   private MLogWriter logWriter;
 
-  private MTree mtree;
+  private MTreeService mtree;
   // device -> DeviceMNode
   private RandomDeleteCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
@@ -264,7 +264,7 @@ public class MManager {
       isRecovering = true;
 
       tagManager.init();
-      mtree = new MTree();
+      mtree = new MTreeService();
       mtree.init();
 
       int lineNumber = initFromLog(logFile);
@@ -1007,7 +1007,12 @@ public class MManager {
 
   /** Get all storage group paths */
   public List<PartialPath> getAllStorageGroupPaths() {
-    return mtree.getAllStorageGroupPaths();
+    try {
+      return mtree.getAllStorageGroupPaths();
+    } catch (MetadataException e) {
+      logger.error("Something wrong when collecting storage groups");
+      return Collections.emptyList();
+    }
   }
 
   /**
@@ -1264,7 +1269,12 @@ public class MManager {
 
   /** Get all storage group MNodes */
   public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    return mtree.getAllStorageGroupNodes();
+    try {
+      return mtree.getAllStorageGroupNodes();
+    } catch (MetadataException e) {
+      logger.error("Something wrong when collecting storage groups");
+      return Collections.emptyList();
+    }
   }
 
   IMNode getDeviceNode(PartialPath path) throws MetadataException {

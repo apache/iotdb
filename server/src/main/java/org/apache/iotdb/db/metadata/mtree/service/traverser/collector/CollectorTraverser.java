@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.traverser.Traverser;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.Traverser;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class defines the generic resultSet as traversal result and add more restrictions on MTree
@@ -37,13 +38,15 @@ public abstract class CollectorTraverser<T> extends Traverser {
 
   protected T resultSet;
 
-  public CollectorTraverser(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public CollectorTraverser(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
-  public CollectorTraverser(IMNode startNode, PartialPath path, int limit, int offset)
+  public CollectorTraverser(
+      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
       throws MetadataException {
-    super(startNode, path);
+    super(startNode, path, store);
     this.limit = limit;
     this.offset = offset;
     if (limit > 0 || offset > 0) {

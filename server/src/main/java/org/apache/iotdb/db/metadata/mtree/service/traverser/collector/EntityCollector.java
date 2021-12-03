@@ -16,45 +16,50 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implements storage group path collection function.
-public abstract class StorageGroupCollector<T> extends CollectorTraverser<T> {
+// This class defines EntityMNode as target node and defines the Entity process framework.
+public abstract class EntityCollector<T> extends CollectorTraverser<T> {
 
-  protected boolean collectInternal = false;
+  public EntityCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
+  }
 
-  public StorageGroupCollector(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public EntityCollector(
+      IMNode startNode, PartialPath path, IMTreeStore store, int limit, int offset)
+      throws MetadataException {
+    super(startNode, path, store, limit, offset);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      if (collectInternal) {
-        collectStorageGroup(node.getAsStorageGroupMNode());
-      }
-      return true;
-    }
     return false;
   }
 
   @Override
-  protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isStorageGroup()) {
-      collectStorageGroup(node.getAsStorageGroupMNode());
-      return true;
+  protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+      throws MetadataException {
+    if (node.isEntity()) {
+      if (hasLimit) {
+        curOffset += 1;
+        if (curOffset < offset) {
+          return true;
+        }
+      }
+      collectEntity(node.getAsEntityMNode());
+      if (hasLimit) {
+        count += 1;
+      }
     }
     return false;
   }
 
-  protected abstract void collectStorageGroup(IStorageGroupMNode node);
-
-  public void setCollectInternal(boolean collectInternal) {
-    this.collectInternal = collectInternal;
-  }
+  protected abstract void collectEntity(IEntityMNode node) throws MetadataException;
 }

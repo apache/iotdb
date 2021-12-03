@@ -16,29 +16,33 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.counter;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.counter;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
-// This class implements the entity count function.
-public class EntityCounter extends CounterTraverser {
+// This class implements storage group count function.
+public class StorageGroupCounter extends CounterTraverser {
 
-  public EntityCounter(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public StorageGroupCounter(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override
   protected boolean processInternalMatchedMNode(IMNode node, int idx, int level) {
-    return false;
+    return node.isStorageGroup();
   }
 
   @Override
   protected boolean processFullMatchedMNode(IMNode node, int idx, int level) {
-    if (node.isEntity()) {
+    if (node.isStorageGroup()) {
       count++;
+      return true;
+    } else {
+      return false;
     }
-    return false;
   }
 }

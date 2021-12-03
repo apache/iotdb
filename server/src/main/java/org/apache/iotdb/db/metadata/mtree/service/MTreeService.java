@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree;
+package org.apache.iotdb.db.metadata.mtree.service;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -34,8 +33,6 @@ import org.apache.iotdb.db.exception.metadata.TemplateImcompatibeException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.logfile.MLogReader;
-import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
@@ -44,28 +41,25 @@ import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.EntityCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MNodeCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.MeasurementCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.collector.StorageGroupCollector;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
-import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.EntityCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MNodeCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.MeasurementCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.collector.StorageGroupCollector;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.CounterTraverser;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.EntityCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
+import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.metadata.utils.MetaFormatUtils;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -74,36 +68,29 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.metadata.MetadataConstant.ALL_MATCH_PATTERN;
 import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTimeStamp;
 
 /**
@@ -131,187 +118,37 @@ import static org.apache.iotdb.db.metadata.lastCache.LastCacheManager.getLastTim
  *       </ol>
  *   <li>Interfaces and Implementation for MNode Query
  *   <li>Interfaces and Implementation for Template check
- *   <li>TestOnly Interface
  * </ol>
  */
-public class MTree implements Serializable {
+public class MTreeService implements Serializable {
 
-  public static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-  private static final long serialVersionUID = -4200394435237291964L;
-  private static final Logger logger = LoggerFactory.getLogger(MTree.class);
+  private static final Logger logger = LoggerFactory.getLogger(MTreeService.class);
   private IMNode root;
-
-  private String mtreeSnapshotPath;
-  private String mtreeSnapshotTmpPath;
+  private IMTreeStore store;
 
   // region MTree initialization, clear and serialization
-  public MTree() {
-    this.root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
-  }
-
-  private MTree(InternalMNode root) {
-    this.root = root;
+  public MTreeService() {
+    store = new MemMTreeStore();
+    this.root = store.getRoot();
   }
 
   public void init() throws IOException {
-    mtreeSnapshotPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT;
-    mtreeSnapshotTmpPath =
-        IoTDBDescriptor.getInstance().getConfig().getSchemaDir()
-            + File.separator
-            + MetadataConstant.MTREE_SNAPSHOT_TMP;
-
-    File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-    if (tmpFile.exists()) {
-      logger.warn("Creating MTree snapshot not successful before crashing...");
-      Files.delete(tmpFile.toPath());
-    }
-
-    File mtreeSnapshot = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-    long time = System.currentTimeMillis();
-    if (mtreeSnapshot.exists()) {
-      this.root = deserializeFrom(mtreeSnapshot).root;
-      logger.debug(
-          "spend {} ms to deserialize mtree from snapshot", System.currentTimeMillis() - time);
-    }
+    store.init();
+    this.root = store.getRoot();
   }
 
   public void clear() {
-    root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    store.clear();
+    root = store.getRoot();
   }
 
   public void createSnapshot() throws IOException {
-    long time = System.currentTimeMillis();
-    logger.info("Start creating MTree snapshot to {}", mtreeSnapshotPath);
-    try {
-      serializeTo(mtreeSnapshotTmpPath);
-      File tmpFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath);
-      File snapshotFile = SystemFileFactory.INSTANCE.getFile(mtreeSnapshotPath);
-      if (snapshotFile.exists()) {
-        Files.delete(snapshotFile.toPath());
-      }
-      if (tmpFile.renameTo(snapshotFile)) {
-        logger.info(
-            "Finish creating MTree snapshot to {}, spend {} ms.",
-            mtreeSnapshotPath,
-            System.currentTimeMillis() - time);
-      }
-    } catch (IOException e) {
-      logger.warn("Failed to create MTree snapshot to {}", mtreeSnapshotPath, e);
-      if (SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).exists()) {
-        try {
-          Files.delete(SystemFileFactory.INSTANCE.getFile(mtreeSnapshotTmpPath).toPath());
-        } catch (IOException e1) {
-          logger.warn("delete file {} failed: {}", mtreeSnapshotTmpPath, e1.getMessage());
-        }
-      }
-      throw e;
-    }
-  }
-
-  private static String jsonToString(JsonObject jsonObject) {
-    return GSON.toJson(jsonObject);
-  }
-
-  public void serializeTo(String snapshotPath) throws IOException {
-    try (MLogWriter mLogWriter = new MLogWriter(snapshotPath)) {
-      root.serializeTo(mLogWriter);
-    }
-  }
-
-  public static MTree deserializeFrom(File mtreeSnapshot) {
-    try (MLogReader mLogReader = new MLogReader(mtreeSnapshot)) {
-      return new MTree(deserializeFromReader(mLogReader));
-    } catch (IOException e) {
-      logger.warn("Failed to deserialize from {}. Use a new MTree.", mtreeSnapshot.getPath());
-      return new MTree();
-    }
-  }
-
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private static InternalMNode deserializeFromReader(MLogReader mLogReader) {
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    IMNode node = null;
-    while (mLogReader.hasNext()) {
-      PhysicalPlan plan = null;
-      try {
-        plan = mLogReader.next();
-        if (plan == null) {
-          continue;
-        }
-        int childrenSize = 0;
-        if (plan instanceof StorageGroupMNodePlan) {
-          node = StorageGroupMNode.deserializeFrom((StorageGroupMNodePlan) plan);
-          childrenSize = ((StorageGroupMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MeasurementMNodePlan) {
-          node = MeasurementMNode.deserializeFrom((MeasurementMNodePlan) plan);
-          childrenSize = ((MeasurementMNodePlan) plan).getChildSize();
-        } else if (plan instanceof MNodePlan) {
-          node = InternalMNode.deserializeFrom((MNodePlan) plan);
-          childrenSize = ((MNodePlan) plan).getChildSize();
-        }
-
-        if (childrenSize != 0) {
-          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
-          for (int i = 0; i < childrenSize; i++) {
-            IMNode child = nodeStack.removeFirst();
-            childrenMap.put(child.getName(), child);
-            if (child.isMeasurement()) {
-              if (!node.isEntity()) {
-                node = MNodeUtils.setToEntity(node);
-              }
-              String alias = child.getAsMeasurementMNode().getAlias();
-              if (alias != null) {
-                node.getAsEntityMNode().addAlias(alias, child.getAsMeasurementMNode());
-              }
-            }
-            child.setParent(node);
-          }
-          node.setChildren(childrenMap);
-        }
-        nodeStack.push(node);
-      } catch (Exception e) {
-        logger.error(
-            "Can not operate cmd {} for err:", plan == null ? "" : plan.getOperatorType(), e);
-      }
-    }
-    if (!IoTDBConstant.PATH_ROOT.equals(node.getName())) {
-      logger.error("Snapshot file corrupted!");
-      //      throw new MetadataException("Snapshot file corrupted!");
-    }
-
-    return (InternalMNode) node;
+    store.createSnapshot();
   }
 
   @Override
   public String toString() {
-    JsonObject jsonObject = new JsonObject();
-    jsonObject.add(root.getName(), mNodeToJSON(root, null));
-    return jsonToString(jsonObject);
-  }
-
-  private JsonObject mNodeToJSON(IMNode node, String storageGroupName) {
-    JsonObject jsonObject = new JsonObject();
-    if (node.getChildren().size() > 0) {
-      if (node.isStorageGroup()) {
-        storageGroupName = node.getFullPath();
-      }
-      for (IMNode child : node.getChildren().values()) {
-        jsonObject.add(child.getName(), mNodeToJSON(child, storageGroupName));
-      }
-    } else if (node.isMeasurement()) {
-      IMeasurementMNode leafMNode = node.getAsMeasurementMNode();
-      jsonObject.add("DataType", GSON.toJsonTree(leafMNode.getSchema().getType()));
-      jsonObject.add("Encoding", GSON.toJsonTree(leafMNode.getSchema().getEncodingType()));
-      jsonObject.add("Compressor", GSON.toJsonTree(leafMNode.getSchema().getCompressor()));
-      if (leafMNode.getSchema().getProps() != null) {
-        jsonObject.addProperty("args", leafMNode.getSchema().getProps().toString());
-      }
-      jsonObject.addProperty("StorageGroup", storageGroupName);
-    }
-    return jsonObject;
+    return store.toString();
   }
   // endregion
 
@@ -340,42 +177,9 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     MetaFormatUtils.checkTimeseries(path);
-    IMNode cur = root;
-    boolean hasSetStorageGroup = false;
-    Template upperTemplate = cur.getSchemaTemplate();
-    // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
-    for (int i = 1; i < nodeNames.length - 1; i++) {
-      if (cur.isMeasurement()) {
-        throw new PathAlreadyExistException(cur.getFullPath());
-      }
-      if (cur.isStorageGroup()) {
-        hasSetStorageGroup = true;
-      }
-      String childName = nodeNames[i];
-
-      // even template not in use, measurement path shall not be conflict with MTree
-      if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-        throw new TemplateImcompatibeException(
-            path.getFullPath(), upperTemplate.getName(), childName);
-      }
-
-      if (!cur.hasChild(childName)) {
-        if (!hasSetStorageGroup) {
-          throw new StorageGroupNotSetException("Storage group should be created first");
-        }
-
-        cur.addChild(childName, new InternalMNode(cur, childName));
-      }
-      cur = cur.getChild(childName);
-
-      if (cur.getSchemaTemplate() != null) {
-        upperTemplate = cur.getSchemaTemplate();
-      }
-    }
-
-    if (cur.isMeasurement()) {
-      throw new PathAlreadyExistException(cur.getFullPath());
-    }
+    Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(path.getDevicePath());
+    IMNode device = pair.left;
+    Template upperTemplate = pair.right;
 
     MetaFormatUtils.checkTimeseriesProps(path.getFullPath(), props);
 
@@ -384,11 +188,11 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(leafName)) {
+      if (store.hasChild(device, leafName)) {
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
-      if (alias != null && cur.hasChild(alias)) {
+      if (alias != null && store.hasChild(device, alias)) {
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
@@ -397,7 +201,13 @@ public class MTree implements Serializable {
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
       }
 
-      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = MNodeUtils.setToEntity(device);
+        store.updateMNode(entityMNode);
+      }
 
       IMeasurementMNode measurementMNode =
           MeasurementMNode.getMeasurementMNode(
@@ -405,10 +215,10 @@ public class MTree implements Serializable {
               leafName,
               new UnaryMeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
-      entityMNode.addChild(leafName, measurementMNode);
+      store.addChild(entityMNode, leafName, measurementMNode);
       // link alias to LeafMNode
       if (alias != null) {
-        entityMNode.addAlias(alias, measurementMNode);
+        store.addAlias(entityMNode, alias, measurementMNode);
       }
       return measurementMNode;
     }
@@ -433,14 +243,14 @@ public class MTree implements Serializable {
       throws MetadataException {
     MetaFormatUtils.checkSchemaMeasurementNames(measurements);
     Pair<IMNode, Template> pair = checkAndAutoCreateInternalPath(devicePath);
-    IMNode cur = pair.left;
+    IMNode device = pair.left;
     Template upperTemplate = pair.right;
 
     // synchronize check and add, we need addChild and add Alias become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
       for (String measurement : measurements) {
-        if (cur.hasChild(measurement)) {
+        if (store.hasChild(device, measurement)) {
           throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
         }
       }
@@ -455,14 +265,18 @@ public class MTree implements Serializable {
         }
       }
 
-      if (cur.isEntity()
-          && !cur.getAsEntityMNode().isAligned()
-          && (!cur.getChildren().isEmpty() || cur.isUseTemplate())) {
+      if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
       }
 
-      IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      IEntityMNode entityMNode;
+      if (device.isEntity()) {
+        entityMNode = device.getAsEntityMNode();
+      } else {
+        entityMNode = MNodeUtils.setToEntity(device);
+        store.updateMNode(entityMNode);
+      }
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
@@ -472,7 +286,7 @@ public class MTree implements Serializable {
                 new UnaryMeasurementSchema(
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
                 null);
-        entityMNode.addChild(measurements.get(i), measurementMNode);
+        store.addChild(entityMNode, measurements.get(i), measurementMNode);
       }
       entityMNode.setAligned(true);
     }
@@ -486,23 +300,25 @@ public class MTree implements Serializable {
     }
     MetaFormatUtils.checkTimeseries(devicePath);
     IMNode cur = root;
+    IMNode child;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getSchemaTemplate();
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
-      if (!cur.hasChild(childName)) {
+      child = store.getChild(cur, childName);
+      if (child == null) {
         if (!hasSetStorageGroup) {
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
         if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
-          throw new PathAlreadyExistException(
-              cur.getPartialPath().concatNode(childName).getFullPath()
-                  + " ( which is incompatible with template )");
+          throw new TemplateImcompatibeException(
+              devicePath.getFullPath(), upperTemplate.getName(), childName);
         }
-        cur.addChild(childName, new InternalMNode(cur, childName));
+        child = new InternalMNode(cur, childName);
+        store.addChild(cur, childName, child);
       }
-      cur = cur.getChild(childName);
+      cur = child;
 
       if (cur.isMeasurement()) {
         throw new PathAlreadyExistException(cur.getFullPath());
@@ -538,14 +354,17 @@ public class MTree implements Serializable {
     IMeasurementMNode deletedNode = getMeasurementMNode(path);
     IEntityMNode parent = deletedNode.getParent();
     // delete the last node of path
-    parent.deleteChild(path.getMeasurement());
+    store.deleteChild(parent, path.getMeasurement());
     if (deletedNode.getAlias() != null) {
-      parent.deleteAliasChild((deletedNode.getAlias()));
+      store.deleteAliasChild(parent, deletedNode.getAlias());
     }
     IMNode curNode = parent;
     if (!parent.isUseTemplate()) {
       boolean hasMeasurement = false;
-      for (IMNode child : parent.getChildren().values()) {
+      IMNode child;
+      Iterator<IMNode> iterator = store.getChildrenIterator(parent);
+      while (iterator.hasNext()) {
+        child = iterator.next();
         if (child.isMeasurement()) {
           hasMeasurement = true;
           break;
@@ -554,6 +373,7 @@ public class MTree implements Serializable {
       if (!hasMeasurement) {
         synchronized (this) {
           curNode = MNodeUtils.setToInternal(parent);
+          store.updateMNode(curNode);
         }
       }
     }
@@ -564,7 +384,7 @@ public class MTree implements Serializable {
       if (curNode.isStorageGroup()) {
         return new Pair<>(curNode.getPartialPath(), deletedNode);
       }
-      curNode.getParent().deleteChild(curNode.getName());
+      store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
     return new Pair<>(null, deletedNode);
@@ -585,23 +405,25 @@ public class MTree implements Serializable {
       throw new IllegalPathException(deviceId.getFullPath());
     }
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChild(nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
         if (i == sgLevel) {
-          cur.addChild(
-              nodeNames[i],
+          child =
               new StorageGroupMNode(
-                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL()));
+                  cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         } else {
-          cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
+          child = new InternalMNode(cur, nodeNames[i]);
         }
+        store.addChild(cur, nodeNames[i], child);
       }
-      cur = cur.getChild(nodeNames[i]);
+      cur = child;
       // update upper template
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
@@ -613,7 +435,9 @@ public class MTree implements Serializable {
     // synchronize check and replace, we need replaceChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      return MNodeUtils.setToEntity(node);
+      IEntityMNode entityMNode = MNodeUtils.setToEntity(node);
+      store.updateMNode(entityMNode);
+      return entityMNode;
     }
   }
   // endregion
@@ -631,22 +455,24 @@ public class MTree implements Serializable {
       throw new IllegalPathException(path.getFullPath());
     }
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      IMNode temp = cur.getChild(nodeNames[i]);
-      if (temp == null) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
-        cur.addChild(nodeNames[i], new InternalMNode(cur, nodeNames[i]));
-      } else if (temp.isStorageGroup()) {
+        child = new InternalMNode(cur, nodeNames[i]);
+        store.addChild(cur, nodeNames[i], child);
+      } else if (child.isStorageGroup()) {
         // before set storage group, check whether the exists or not
-        throw new StorageGroupAlreadySetException(temp.getFullPath());
+        throw new StorageGroupAlreadySetException(child.getFullPath());
       }
-      cur = cur.getChild(nodeNames[i]);
+      cur = child;
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
       i++;
     }
@@ -654,9 +480,10 @@ public class MTree implements Serializable {
     // synchronize check and add, we need addChild become atomic operation
     // only write on mtree will be synchronized
     synchronized (this) {
-      if (cur.hasChild(nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child != null) {
         // node b has child sg
-        if (cur.getChild(nodeNames[i]).isStorageGroup()) {
+        if (child.isStorageGroup()) {
           throw new StorageGroupAlreadySetException(path.getFullPath());
         } else {
           throw new StorageGroupAlreadySetException(path.getFullPath(), true);
@@ -669,7 +496,7 @@ public class MTree implements Serializable {
         IStorageGroupMNode storageGroupMNode =
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
-        cur.addChild(nodeNames[i], storageGroupMNode);
+        store.addChild(cur, nodeNames[i], storageGroupMNode);
       }
     }
   }
@@ -682,7 +509,7 @@ public class MTree implements Serializable {
     }
     // Suppose current system has root.a.b.sg1, root.a.sg2, and delete root.a.b.sg1
     // delete the storage group node sg1
-    cur.getParent().deleteChild(cur.getName());
+    store.deleteChild(cur.getParent(), cur.getName());
 
     // collect all the LeafMNode in this storage group
     List<IMeasurementMNode> leafMNodes = new LinkedList<>();
@@ -690,7 +517,10 @@ public class MTree implements Serializable {
     queue.add(cur);
     while (!queue.isEmpty()) {
       IMNode node = queue.poll();
-      for (IMNode child : node.getChildren().values()) {
+      Iterator<IMNode> iterator = store.getChildrenIterator(node);
+      IMNode child;
+      while (iterator.hasNext()) {
+        child = iterator.next();
         if (child.isMeasurement()) {
           leafMNodes.add(child.getAsMeasurementMNode());
         } else {
@@ -701,8 +531,8 @@ public class MTree implements Serializable {
 
     cur = cur.getParent();
     // delete node b while retain root.a.sg2
-    while (!IoTDBConstant.PATH_ROOT.equals(cur.getName()) && cur.getChildren().size() == 0) {
-      cur.getParent().deleteChild(cur.getName());
+    while (cur.isEmptyInternal()) {
+      store.deleteChild(cur.getParent(), cur.getName());
       cur = cur.getParent();
     }
     return leafMNodes;
@@ -717,19 +547,21 @@ public class MTree implements Serializable {
    */
   public boolean isPathExist(PartialPath path) {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return false;
     }
+    IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      if (!cur.hasChild(nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         if (!cur.isUseTemplate() || upperTemplate.getDirectNode(nodeNames[i]) == null) {
           return false;
         }
-        cur = upperTemplate.getDirectNode(nodeNames[i]);
+        child = upperTemplate.getDirectNode(nodeNames[i]);
       }
-      cur = cur.getChild(nodeNames[i]);
+      cur = child;
       if (cur.isMeasurement()) {
         return i == nodeNames.length - 1;
       }
@@ -756,13 +588,13 @@ public class MTree implements Serializable {
     IMNode cur = root;
     int i = 1;
     while (i < nodeNames.length - 1) {
-      cur = cur.getChild(nodeNames[i]);
+      cur = store.getChild(cur, nodeNames[i]);
       if (cur == null || cur.isStorageGroup()) {
         return false;
       }
       i++;
     }
-    cur = cur.getChild(nodeNames[i]);
+    cur = store.getChild(cur, nodeNames[i]);
     return cur != null && cur.isStorageGroup();
   }
 
@@ -771,7 +603,7 @@ public class MTree implements Serializable {
     String[] nodes = path.getNodes();
     IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
+      cur = store.getChild(cur, nodes[i]);
       if (cur == null) {
         return false;
       } else if (cur.isStorageGroup()) {
@@ -792,7 +624,7 @@ public class MTree implements Serializable {
     String[] nodes = path.getNodes();
     IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
+      cur = store.getChild(cur, nodes[i]);
       if (cur == null) {
         throw new StorageGroupNotSetException(path.getFullPath());
       } else if (cur.isStorageGroup()) {
@@ -832,7 +664,7 @@ public class MTree implements Serializable {
       throws MetadataException {
     List<PartialPath> result = new LinkedList<>();
     StorageGroupCollector<List<PartialPath>> collector =
-        new StorageGroupCollector<List<PartialPath>>(root, pathPattern) {
+        new StorageGroupCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             result.add(node.getPartialPath());
@@ -848,19 +680,8 @@ public class MTree implements Serializable {
    *
    * @return a list contains all distinct storage groups
    */
-  public List<PartialPath> getAllStorageGroupPaths() {
-    List<PartialPath> res = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        res.add(current.getPartialPath());
-      } else {
-        nodeStack.addAll(current.getChildren().values());
-      }
-    }
-    return res;
+  public List<PartialPath> getAllStorageGroupPaths() throws MetadataException {
+    return getMatchedStorageGroups(ALL_MATCH_PATTERN);
   }
 
   /**
@@ -871,7 +692,7 @@ public class MTree implements Serializable {
   public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
     Map<String, String> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
-        new StorageGroupCollector<Map<String, String>>(root, path) {
+        new StorageGroupCollector<Map<String, String>>(root, path, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
@@ -895,7 +716,7 @@ public class MTree implements Serializable {
       throws MetadataException {
     Set<PartialPath> result = new TreeSet<>();
     EntityCollector<Set<PartialPath>> collector =
-        new EntityCollector<Set<PartialPath>>(root, pathPattern) {
+        new EntityCollector<Set<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
             result.add(getCurrentPartialPath(node));
@@ -910,7 +731,7 @@ public class MTree implements Serializable {
     List<ShowDevicesResult> res = new ArrayList<>();
     EntityCollector<List<ShowDevicesResult>> collector =
         new EntityCollector<List<ShowDevicesResult>>(
-            root, plan.getPath(), plan.getLimit(), plan.getOffset()) {
+            root, plan.getPath(), store, plan.getLimit(), plan.getOffset()) {
           @Override
           protected void collectEntity(IEntityMNode node) throws MetadataException {
             PartialPath device = getCurrentPartialPath(node);
@@ -930,7 +751,7 @@ public class MTree implements Serializable {
   public Set<PartialPath> getDevicesByTimeseries(PartialPath timeseries) throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     MeasurementCollector<Set<PartialPath>> collector =
-        new MeasurementCollector<Set<PartialPath>>(root, timeseries) {
+        new MeasurementCollector<Set<PartialPath>>(root, timeseries, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             result.add(getCurrentPartialPath(node).getDevicePath());
@@ -963,7 +784,7 @@ public class MTree implements Serializable {
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
     List<MeasurementPath> result = new LinkedList<>();
     MeasurementCollector<List<PartialPath>> collector =
-        new MeasurementCollector<List<PartialPath>>(root, pathPattern, limit, offset) {
+        new MeasurementCollector<List<PartialPath>>(root, pathPattern, store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             MeasurementPath path = getCurrentMeasurementPathInTraverse(node);
@@ -1021,7 +842,7 @@ public class MTree implements Serializable {
     List<Pair<PartialPath, String[]>> result = new LinkedList<>();
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
         new MeasurementCollector<List<Pair<PartialPath, String[]>>>(
-            root, pathPattern, limit, offset) {
+            root, pathPattern, store, limit, offset) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema measurementSchema = node.getSchema();
@@ -1063,7 +884,7 @@ public class MTree implements Serializable {
       PartialPath prefixPath) throws MetadataException {
     Map<PartialPath, IMeasurementSchema> result = new HashMap<>();
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             result.put(getCurrentPartialPath(node), node.getSchema());
@@ -1083,7 +904,7 @@ public class MTree implements Serializable {
       PartialPath prefixPath, List<IMeasurementSchema> measurementSchemas)
       throws MetadataException {
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) {
             measurementSchemas.add(node.getSchema());
@@ -1102,7 +923,7 @@ public class MTree implements Serializable {
       PartialPath prefixPath, Collection<TimeseriesSchema> timeseriesSchemas)
       throws MetadataException {
     MeasurementCollector<List<IMeasurementSchema>> collector =
-        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath) {
+        new MeasurementCollector<List<IMeasurementSchema>>(root, prefixPath, store) {
           @Override
           protected void collectMeasurement(IMeasurementMNode node) throws MetadataException {
             IMeasurementSchema nodeSchema = node.getSchema();
@@ -1135,7 +956,8 @@ public class MTree implements Serializable {
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               try {
@@ -1168,7 +990,8 @@ public class MTree implements Serializable {
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+          new MNodeCollector<Set<String>>(
+              root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD), store) {
             @Override
             protected void transferToResult(IMNode node) {
               resultSet.add(node.getName());
@@ -1186,7 +1009,7 @@ public class MTree implements Serializable {
   public List<PartialPath> getNodesListInGivenLevel(
       PartialPath pathPattern, int nodeLevel, StorageGroupFilter filter) throws MetadataException {
     MNodeCollector<List<PartialPath>> collector =
-        new MNodeCollector<List<PartialPath>>(root, pathPattern) {
+        new MNodeCollector<List<PartialPath>>(root, pathPattern, store) {
           @Override
           protected void transferToResult(IMNode node) {
             try {
@@ -1211,7 +1034,7 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    CounterTraverser counter = new MeasurementCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1222,7 +1045,7 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard
    */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new EntityCounter(root, pathPattern);
+    CounterTraverser counter = new EntityCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1233,7 +1056,7 @@ public class MTree implements Serializable {
    * @param pathPattern a path pattern or a full path, may contain wildcard.
    */
   public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    CounterTraverser counter = new StorageGroupCounter(root, pathPattern);
+    CounterTraverser counter = new StorageGroupCounter(root, pathPattern, store);
     counter.traverse();
     return counter.getCount();
   }
@@ -1241,7 +1064,7 @@ public class MTree implements Serializable {
   /** Get the count of nodes in the given level matching the given path. */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, level);
+    MNodeLevelCounter counter = new MNodeLevelCounter(root, pathPattern, store, level);
     counter.traverse();
     return counter.getCount();
   }
@@ -1274,7 +1097,7 @@ public class MTree implements Serializable {
       if (cur.getSchemaTemplate() != null) {
         upperTemplate = cur.getSchemaTemplate();
       }
-      IMNode next = cur.getChild(nodes[i]);
+      IMNode next = store.getChild(cur, nodes[i]);
       if (next == null) {
         if (upperTemplate == null
             || !cur.isUseTemplate()
@@ -1307,8 +1130,8 @@ public class MTree implements Serializable {
         upperTemplate = cur.getSchemaTemplate();
       }
 
-      if (cur.getChild(nodes[i]) != null) {
-        cur = cur.getChild(nodes[i]);
+      if (store.getChild(cur, nodes[i]) != null) {
+        cur = store.getChild(cur, nodes[i]);
       } else {
         // seek child in template
         if (!storageGroupChecked) {
@@ -1363,7 +1186,7 @@ public class MTree implements Serializable {
     }
     IMNode cur = root;
     for (int i = 1; i < nodes.length; i++) {
-      cur = cur.getChild(nodes[i]);
+      cur = store.getChild(cur, nodes[i]);
       if (cur == null) {
         break;
       }
@@ -1375,19 +1198,17 @@ public class MTree implements Serializable {
   }
 
   /** Get all storage group MNodes */
-  public List<IStorageGroupMNode> getAllStorageGroupNodes() {
-    List<IStorageGroupMNode> ret = new ArrayList<>();
-    Deque<IMNode> nodeStack = new ArrayDeque<>();
-    nodeStack.add(root);
-    while (!nodeStack.isEmpty()) {
-      IMNode current = nodeStack.pop();
-      if (current.isStorageGroup()) {
-        ret.add(current.getAsStorageGroupMNode());
-      } else {
-        nodeStack.addAll(current.getChildren().values());
-      }
-    }
-    return ret;
+  public List<IStorageGroupMNode> getAllStorageGroupNodes() throws MetadataException {
+    List<IStorageGroupMNode> result = new LinkedList<>();
+    StorageGroupCollector<List<IStorageGroupMNode>> collector =
+        new StorageGroupCollector<List<IStorageGroupMNode>>(root, ALL_MATCH_PATTERN, store) {
+          @Override
+          protected void collectStorageGroup(IStorageGroupMNode node) {
+            result.add(node);
+          }
+        };
+    collector.traverse();
+    return result;
   }
 
   public IMeasurementMNode getMeasurementMNode(PartialPath path) throws MetadataException {
@@ -1409,21 +1230,23 @@ public class MTree implements Serializable {
    */
   public void checkTemplateOnPath(PartialPath path) throws MetadataException {
     String[] nodeNames = path.getNodes();
-    IMNode cur = root;
     if (!nodeNames[0].equals(root.getName())) {
       return;
     }
+    IMNode cur = root;
     if (cur.getSchemaTemplate() != null) {
       throw new MetadataException("Template already exists on " + cur.getFullPath());
     }
+    IMNode child;
     for (int i = 1; i < nodeNames.length; i++) {
       if (cur.isMeasurement()) {
         return;
       }
-      if (!cur.hasChild(nodeNames[i])) {
+      child = store.getChild(cur, nodeNames[i]);
+      if (child == null) {
         return;
       }
-      cur = cur.getChild(nodeNames[i]);
+      cur = child;
       if (cur.getSchemaTemplate() != null) {
         throw new MetadataException("Template already exists on " + cur.getFullPath());
       }
@@ -1460,7 +1283,10 @@ public class MTree implements Serializable {
       if (!mountedNode.isEntity()) {
         return setToEntity(mountedNode);
       } else {
-        for (IMNode child : mountedNode.getChildren().values()) {
+        IMNode child;
+        Iterator<IMNode> iterator = store.getChildrenIterator(mountedNode);
+        while (iterator.hasNext()) {
+          child = iterator.next();
           if (child.isMeasurement()) {
             if (template.isDirectAligned() != mountedNode.getAsEntityMNode().isAligned()) {
               throw new MetadataException(
@@ -1483,7 +1309,10 @@ public class MTree implements Serializable {
     if (node.isMeasurement()) {
       return;
     }
-    for (IMNode child : node.getChildren().values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       if (child.isMeasurement()) {
         continue;
       }
@@ -1498,7 +1327,10 @@ public class MTree implements Serializable {
     if (node.isMeasurement()) {
       return;
     }
-    for (IMNode child : node.getChildren().values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       if (child.isMeasurement()) {
         continue;
       }
@@ -1520,10 +1352,12 @@ public class MTree implements Serializable {
     }
     String[] pathNodes = path.getNodes();
     IMNode cur = root;
+    IMNode child;
     Template upperTemplate = cur.getUpperTemplate();
     for (int i = 1; i < pathNodes.length; i++) {
-      if (cur.hasChild(pathNodes[i])) {
-        cur = cur.getChild(pathNodes[i]);
+      child = store.getChild(cur, pathNodes[i]);
+      if (child != null) {
+        cur = child;
         if (cur.isMeasurement()) {
           return false;
         }
@@ -1556,16 +1390,17 @@ public class MTree implements Serializable {
   public int getMountedNodeIndexOnMeasurementPath(PartialPath measurementPath)
       throws MetadataException {
     String[] fullPathNodes = measurementPath.getNodes();
-    IMNode cur = root;
-    Template upperTemplate = cur.getSchemaTemplate();
-
-    if (!cur.getName().equals(fullPathNodes[0])) {
+    if (!root.getName().equals(fullPathNodes[0])) {
       throw new IllegalPathException(measurementPath.toString());
     }
 
+    IMNode cur = root;
+    IMNode child;
+    Template upperTemplate = cur.getSchemaTemplate();
     for (int index = 1; index < fullPathNodes.length; index++) {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
-      if (!cur.hasChild(fullPathNodes[index])) {
+      child = store.getChild(cur, fullPathNodes[index]);
+      if (child == null) {
         if (upperTemplate != null) {
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
@@ -1588,59 +1423,12 @@ public class MTree implements Serializable {
         }
       } else {
         // has child on MTree
-        cur = cur.getChild(fullPathNodes[index]);
+        cur = child;
       }
     }
     // all nodes on path exist in MTree, device node should be the penultimate one
     return fullPathNodes.length - 1;
   }
 
-  // endregion
-
-  // region TestOnly Interface
-  /** combine multiple metadata in string format */
-  @TestOnly
-  public static JsonObject combineMetadataInStrings(String[] metadataStrs) {
-    JsonObject[] jsonObjects = new JsonObject[metadataStrs.length];
-    for (int i = 0; i < jsonObjects.length; i++) {
-      jsonObjects[i] = GSON.fromJson(metadataStrs[i], JsonObject.class);
-    }
-
-    JsonObject root = jsonObjects[0];
-    for (int i = 1; i < jsonObjects.length; i++) {
-      root = combineJsonObjects(root, jsonObjects[i]);
-    }
-
-    return root;
-  }
-
-  private static JsonObject combineJsonObjects(JsonObject a, JsonObject b) {
-    JsonObject res = new JsonObject();
-
-    Set<String> retainSet = new HashSet<>(a.keySet());
-    retainSet.retainAll(b.keySet());
-    Set<String> aCha = new HashSet<>(a.keySet());
-    Set<String> bCha = new HashSet<>(b.keySet());
-    aCha.removeAll(retainSet);
-    bCha.removeAll(retainSet);
-
-    for (String key : aCha) {
-      res.add(key, a.get(key));
-    }
-
-    for (String key : bCha) {
-      res.add(key, b.get(key));
-    }
-    for (String key : retainSet) {
-      JsonElement v1 = a.get(key);
-      JsonElement v2 = b.get(key);
-      if (v1 instanceof JsonObject && v2 instanceof JsonObject) {
-        res.add(key, combineJsonObjects((JsonObject) v1, (JsonObject) v2));
-      } else {
-        res.add(v1.getAsString(), v2);
-      }
-    }
-    return res;
-  }
   // endregion
 }

@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser;
+package org.apache.iotdb.db.metadata.mtree.service.traverser;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -41,6 +42,8 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
  */
 public abstract class Traverser {
 
+  protected IMTreeStore store;
+
   protected IMNode startNode;
   protected String[] nodes;
 
@@ -53,7 +56,7 @@ public abstract class Traverser {
   // default false means fullPath pattern match
   protected boolean isPrefixMatch = false;
 
-  public Traverser(IMNode startNode, PartialPath path) throws MetadataException {
+  public Traverser(IMNode startNode, PartialPath path, IMTreeStore store) throws MetadataException {
     String[] nodes = path.getNodes();
     if (nodes.length == 0 || !nodes[0].equals(startNode.getName())) {
       throw new IllegalPathException(
@@ -61,6 +64,7 @@ public abstract class Traverser {
     }
     this.startNode = startNode;
     this.nodes = nodes;
+    this.store = store;
     this.traverseContext = new ArrayDeque<>();
   }
 
@@ -143,7 +147,10 @@ public abstract class Traverser {
   protected void processMultiLevelWildcard(IMNode node, int idx, int level)
       throws MetadataException {
     traverseContext.push(node);
-    for (IMNode child : node.getChildren().values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       traverse(child, idx + 1, level + 1);
     }
     traverseContext.pop();
@@ -154,8 +161,8 @@ public abstract class Traverser {
 
     Template upperTemplate = node.getUpperTemplate();
     traverseContext.push(node);
-    for (IMNode child : upperTemplate.getDirectNodes()) {
-      traverse(child, idx + 1, level + 1);
+    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+      traverse(childInTemplate, idx + 1, level + 1);
     }
     traverseContext.pop();
   }
@@ -164,7 +171,10 @@ public abstract class Traverser {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetNameRegex = nodes[idx + 1].replace("*", ".*");
     traverseContext.push(node);
-    for (IMNode child : node.getChildren().values()) {
+    IMNode child;
+    Iterator<IMNode> iterator = store.getChildrenIterator(node);
+    while (iterator.hasNext()) {
+      child = iterator.next();
       if (child.isMeasurement()) {
         String alias = child.getAsMeasurementMNode().getAlias();
         if (!Pattern.matches(targetNameRegex, child.getName())
@@ -182,7 +192,9 @@ public abstract class Traverser {
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
-      for (IMNode child : node.getChildren().values()) {
+      iterator = store.getChildrenIterator(node);
+      while (iterator.hasNext()) {
+        child = iterator.next();
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();
@@ -195,18 +207,18 @@ public abstract class Traverser {
     Template upperTemplate = node.getUpperTemplate();
 
     traverseContext.push(node);
-    for (IMNode child : upperTemplate.getDirectNodes()) {
-      if (!Pattern.matches(targetNameRegex, child.getName())) {
+    for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+      if (!Pattern.matches(targetNameRegex, childInTemplate.getName())) {
         continue;
       }
-      traverse(child, idx + 1, level + 1);
+      traverse(childInTemplate, idx + 1, level + 1);
     }
     traverseContext.pop();
 
     if (multiLevelWildcard) {
       traverseContext.push(node);
-      for (IMNode child : upperTemplate.getDirectNodes()) {
-        traverse(child, idx, level + 1);
+      for (IMNode childInTemplate : upperTemplate.getDirectNodes()) {
+        traverse(childInTemplate, idx, level + 1);
       }
       traverseContext.pop();
     }
@@ -216,7 +228,7 @@ public abstract class Traverser {
   protected void processNameMatch(IMNode node, int idx, int level) throws MetadataException {
     boolean multiLevelWildcard = nodes[idx].equals(MULTI_LEVEL_PATH_WILDCARD);
     String targetName = nodes[idx + 1];
-    IMNode next = node.getChild(targetName);
+    IMNode next = store.getChild(node, targetName);
     if (next != null) {
       traverseContext.push(node);
       traverse(next, idx + 1, level + 1);
@@ -224,7 +236,10 @@ public abstract class Traverser {
     }
     if (multiLevelWildcard) {
       traverseContext.push(node);
-      for (IMNode child : node.getChildren().values()) {
+      IMNode child;
+      Iterator<IMNode> iterator = store.getChildrenIterator(node);
+      while (iterator.hasNext()) {
+        child = iterator.next();
         traverse(child, idx, level + 1);
       }
       traverseContext.pop();

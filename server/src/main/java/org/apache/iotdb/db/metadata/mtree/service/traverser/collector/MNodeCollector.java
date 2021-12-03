@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.traverser.collector;
+package org.apache.iotdb.db.metadata.mtree.service.traverser.collector;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager.StorageGroupFilter;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
 // This class defines any node in MTree as potential target node.
@@ -32,8 +33,9 @@ public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
   // level query option
   protected int targetLevel;
 
-  public MNodeCollector(IMNode startNode, PartialPath path) throws MetadataException {
-    super(startNode, path);
+  public MNodeCollector(IMNode startNode, PartialPath path, IMTreeStore store)
+      throws MetadataException {
+    super(startNode, path, store);
   }
 
   @Override
