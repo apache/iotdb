@@ -37,12 +37,11 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
-import org.apache.iotdb.db.utils.AlignedValueIterator;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -210,8 +209,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       int subSensorSize = subIndexes.size();
 
       Object[] values = reader.getValuesInTimestamps(timestampArray, timeArrayLength);
-      if (values != null && hasNotNullValue(values)) {
-        ValueIterator valueIterator = generateValueIterator(values);
+      ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
+      if (valueIterator != null) {
         for (int curIndex = 0; curIndex < subSensorSize; curIndex++) {
           valueIterator.setSubMeasurementIndex(curIndex);
           for (Integer index : subIndexes.get(curIndex)) {
@@ -272,26 +271,5 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       record.addField(aggregateResult.getResult(), aggregateResult.getResultDataType());
     }
     return record;
-  }
-
-  private ValueIterator generateValueIterator(Object[] values) {
-    int index = 0;
-    while (index < values.length && values[index] == null) {
-      index++;
-    }
-    if (values[index] instanceof TsPrimitiveType[]) {
-      return new AlignedValueIterator(values);
-    } else {
-      return new ValueIterator(values);
-    }
-  }
-
-  private boolean hasNotNullValue(Object[] values) {
-    for (Object value : values) {
-      if (value != null) {
-        return true;
-      }
-    }
-    return false;
   }
 }
