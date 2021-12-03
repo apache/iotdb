@@ -371,7 +371,7 @@ public class IoTDBConfig {
   private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
 
   /** Enable Compaction Monitor to monitor the status of the compaction thread */
-  private boolean enableCompactionMonitor = true;
+  private boolean enableCompactionMonitor = false;
 
   /** Monitoring period of Compaction Monitor */
   private long compactionMonitorPeriod = 60000L;
