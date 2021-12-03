@@ -66,9 +66,6 @@ public class IoTDB implements IoTDBMBean {
 
   public static void main(String[] args) {
     try {
-      IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
-      IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
-      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
       IoTDBConfigCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {

@@ -19,13 +19,17 @@
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
 import java.sql.*;
 import java.util.HashMap;
@@ -33,8 +37,10 @@ import java.util.Map;
 
 import static org.junit.Assert.*;
 
+@Category({LocalStandaloneTest.class})
 public class IoTDBAggregationGroupByLevelIT {
   private static final double DELTA = 1e-6;
+  private static final double NULL = Double.MIN_VALUE;
   protected static boolean enableSeqSpaceCompaction;
   protected static boolean enableUnseqSpaceCompaction;
   protected static boolean enableCrossSpaceCompaction;
@@ -66,12 +72,6 @@ public class IoTDBAggregationGroupByLevelIT {
       statement.execute("SET STORAGE GROUP TO root.sg2");
       statement.execute(
           "create aligned timeseries root.sg2.d1(s1 FLOAT encoding=RLE, s2 INT32 encoding=Gorilla compression=SNAPPY, s3 INT64)");
-      for (int i = 31; i <= 40; i++) {
-        statement.execute(
-            String.format(
-                "insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
-                i, (double) i, i, i));
-      }
       for (int i = 1; i <= 10; i++) {
         statement.execute(
             String.format(
@@ -85,10 +85,12 @@ public class IoTDBAggregationGroupByLevelIT {
         statement.execute(
             String.format("insert into root.sg2.d1(time, s3) aligned values(%d,%d)", i, i));
       }
-      //      for (int i = 31; i <=40 ; i++) {
-      //        statement.execute(String.format("insert into root.sg2.d1(time, s1, s2, s3) aligned
-      // values(%d,%f,%d,%d)",i,(double)i,i,i));
-      //      }
+      for (int i = 31; i <= 40; i++) {
+        statement.execute(
+            String.format(
+                "insert into root.sg2.d1(time, s1, s2, s3) aligned values(%d,%f,%d,%d)",
+                i, (double) i, i, i));
+      }
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -109,68 +111,107 @@ public class IoTDBAggregationGroupByLevelIT {
   @Test
   public void countFuncByLevelTest() throws ClassNotFoundException {
     // level = 1
-    double[] retArray1 = new double[] {39, 20};
+    double[][] retArray1 = new double[][] {{39, 20}};
     String[] columnNames1 = {"count(root.sg1.*.s1)", "count(root.sg2.*.s1)"};
     test("select count(s1) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
-    double[] retArray2 = new double[] {40, 19};
+    double[][] retArray2 = new double[][] {{40, 19}};
     String[] columnNames2 = {"count(root.*.d1.s1)", "count(root.*.d2.s1)"};
     // level = 3
     test("select count(s1) from root.*.* group by level=2", retArray2, columnNames2);
-    double[] retArray3 = new double[] {59};
+    double[][] retArray3 = new double[][] {{59}};
     String[] columnNames3 = {"count(root.*.*.s1)"};
     test("select count(s1) from root.*.* group by level=3", retArray3, columnNames3);
     // multi level = 1,2
-    double[] retArray4 = new double[] {20, 19, 20};
+    double[][] retArray4 = new double[][] {{20, 19, 20}};
     String[] columnNames4 = {
       "count(root.sg1.d1.s1)", "count(root.sg1.d2.s1)", "count(root.sg2.d1.s1)"
     };
     test("select count(s1) from root.*.* group by level=1,2", retArray4, columnNames4);
+    // level=2 with time filter
+    double[][] retArray5 =
+        new double[][] {
+          {17, 8},
+          {10, 10},
+          {1, 0},
+          {10, 0}
+        };
+    String[] columnNames5 = {"count(root.*.d1.s1)", "count(root.*.d2.s1)"};
+    test(
+        "select count(s1) from root.*.* where time>=2 group by ([1,41),10ms), level=2",
+        retArray5,
+        columnNames5);
   }
 
   @Test
   public void sumFuncByLevelTest() throws ClassNotFoundException {
     // level = 1
-    double[] retArray1 = new double[] {131111, 510};
+    double[][] retArray1 = new double[][] {{131111, 510}};
     String[] columnNames1 = {"sum(root.sg1.*.s2)", "sum(root.sg2.*.s2)"};
     test("select sum(s2) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
-    double[] retArray2 = new double[] {131059, 562};
+    double[][] retArray2 = new double[][] {{131059, 562}};
     String[] columnNames2 = {"sum(root.*.d1.s2)", "sum(root.*.d2.s2)"};
     // level = 3
     test("select sum(s2) from root.*.* group by level=2", retArray2, columnNames2);
-    double[] retArray3 = new double[] {131621};
+    double[][] retArray3 = new double[][] {{131621}};
     String[] columnNames3 = {"sum(root.*.*.s2)"};
     test("select sum(s2) from root.*.* group by level=3", retArray3, columnNames3);
     // multi level = 1,2
-    double[] retArray4 = new double[] {130549, 562, 510};
+    double[][] retArray4 = new double[][] {{130549, 562, 510}};
     String[] columnNames4 = {"sum(root.sg1.d1.s2)", "sum(root.sg1.d2.s2)", "sum(root.sg2.d1.s2)"};
     test("select sum(s2) from root.*.* group by level=1,2", retArray4, columnNames4);
+    // level=2 with time filter
+    double[][] retArray5 =
+        new double[][] {
+          {51, 51},
+          {130297, 155},
+          {NULL, NULL},
+          {710, 355}
+        };
+    String[] columnNames5 = {"sum(root.*.d1.s2)", "sum(root.*.d2.s2)"};
+    test(
+        "select sum(s2) from root.*.* where time>=2 group by ([1,41),10ms), level=2",
+        retArray5,
+        columnNames5);
   }
 
   @Test
   public void avgFuncByLevelTest() throws ClassNotFoundException {
     // level = 1
-    double[] retArray1 = new double[] {2260.53448275862, 25.5};
+    double[][] retArray1 = new double[][] {{2260.53448275862, 25.5}};
     String[] columnNames1 = {"avg(root.sg1.*.s2)", "avg(root.sg2.*.s2)"};
     test("select avg(s2) from root.*.* group by level=1", retArray1, columnNames1);
     // level = 2
-    double[] retArray2 = new double[] {2674.6734693877547, 19.379310344827587};
+    double[][] retArray2 = new double[][] {{2674.6734693877547, 19.379310344827587}};
     String[] columnNames2 = {"avg(root.*.d1.s2)", "avg(root.*.d2.s2)"};
     // level = 3
     test("select avg(s2) from root.*.* group by level=2", retArray2, columnNames2);
-    double[] retArray3 = new double[] {1687.4487179487176};
+    double[][] retArray3 = new double[][] {{1687.4487179487176}};
     String[] columnNames3 = {"avg(root.*.*.s2)"};
     test("select avg(s2) from root.*.* group by level=3", retArray3, columnNames3);
     // multi level = 1,2
-    double[] retArray4 = new double[] {4501.68965517241, 19.379310344827587, 25.5};
+    double[][] retArray4 = new double[][] {{4501.68965517241, 19.379310344827587, 25.5}};
     String[] columnNames4 = {"avg(root.sg1.d1.s2)", "avg(root.sg1.d2.s2)", "avg(root.sg2.d1.s2)"};
     test("select avg(s2) from root.*.* group by level=1,2", retArray4, columnNames4);
+    //     level=2 with time filter
+    double[][] retArray5 =
+        new double[][] {
+          {6.375, 6.375},
+          {6514.85, 15.5},
+          {NULL, NULL},
+          {35.5, 35.5}
+        };
+    String[] columnNames5 = {"avg(root.*.d1.s2)", "avg(root.*.d2.s2)"};
+    test(
+        "select avg(s2) from root.*.* where time>=2 group by ([1,41),10ms), level=2",
+        retArray5,
+        columnNames5);
   }
 
   @Test
   public void timeFuncGroupByLevelTest() throws ClassNotFoundException {
-    double[] retArray1 = new double[] {1, 40, 1, 30};
+    double[][] retArray1 = new double[][] {{1, 40, 1, 30}};
     String[] columnNames1 = {
       "min_time(root.*.d1.s3)",
       "max_time(root.*.d1.s3)",
@@ -183,7 +224,7 @@ public class IoTDBAggregationGroupByLevelIT {
 
   @Test
   public void valueFuncGroupByLevelTest() throws ClassNotFoundException {
-    double[] retArray1 = new double[] {40, 230000, 30, 30};
+    double[][] retArray1 = new double[][] {{40, 230000, 30, 30}};
     String[] columnNames1 = {
       "last_value(root.*.d1.s3)",
       "max_value(root.*.d1.s3)",
@@ -196,7 +237,22 @@ public class IoTDBAggregationGroupByLevelIT {
         columnNames1);
   }
 
-  public void test(String sql, double[] retArray, String[] columnNames)
+  /**
+   * Test group by without aggregation function used in select clause. The expected situation is
+   * throwing an exception.
+   */
+  @Test
+  public void groupByWithoutAggregationFuncTest() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("select s2 from root.*.* group by ([0, 40), 10ms)");
+      fail("No expected exception thrown");
+    } catch (Exception e) {
+      Assert.assertTrue(e.getMessage().contains(AggregationQueryOperator.ERROR_MESSAGE1));
+    }
+  }
+
+  public void test(String sql, double[][] retArray, String[] columnNames)
       throws ClassNotFoundException {
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -212,7 +268,10 @@ public class IoTDBAggregationGroupByLevelIT {
         for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
           map.put(resultSetMetaData.getColumnName(i), i);
         }
-        assertEquals(columnNames.length, resultSetMetaData.getColumnCount());
+        // if result has more than one rows, "Time" is included in columnNames
+        assertEquals(
+            retArray.length > 1 ? columnNames.length + 1 : columnNames.length,
+            resultSetMetaData.getColumnCount());
         int cnt = 0;
         while (resultSet.next()) {
           double[] ans = new double[columnNames.length];
@@ -220,12 +279,13 @@ public class IoTDBAggregationGroupByLevelIT {
           for (int i = 0; i < columnNames.length; i++) {
             String columnName = columnNames[i];
             int index = map.get(columnName);
-            ans[i] = Double.parseDouble(resultSet.getString(index));
+            String result = resultSet.getString(index);
+            ans[i] = result == null ? NULL : Double.parseDouble(result);
           }
-          assertArrayEquals(retArray, ans, DELTA);
+          assertArrayEquals(retArray[cnt], ans, DELTA);
           cnt++;
         }
-        assertEquals(1, cnt);
+        assertEquals(retArray.length, cnt);
       }
     } catch (SQLException e) {
       e.printStackTrace();
