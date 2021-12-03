@@ -43,7 +43,7 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-## 从IoTDB导入数据
+## 从IoTDB读取数据
 
 ### Spark-shell 用户指南
 
