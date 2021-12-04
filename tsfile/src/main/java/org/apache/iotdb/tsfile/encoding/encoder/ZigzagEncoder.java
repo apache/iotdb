@@ -75,7 +75,6 @@ public class ZigzagEncoder extends Encoder {
       }
     }
     buf[idx++] = (byte) n;
-//    System.out.println("index " + idx);
     return Arrays.copyOfRange(buf, 0, idx);
   }
 
