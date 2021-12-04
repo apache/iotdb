@@ -24,6 +24,13 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
 
+/**
+ * This class generates data for test cases in aligned time series scenarios.
+ *
+ * <p>You can comprehensively view the generated data in the following online doc:
+ *
+ * <p>https://docs.google.com/spreadsheets/d/1kfrSR1_paSd9B1Z0jnPBD3WQIMDslDuNm4R0mpWx9Ms/edit?usp=sharing
+ */
 public class AlignedWriteUtil {
 
   private static final String[] sqls =
