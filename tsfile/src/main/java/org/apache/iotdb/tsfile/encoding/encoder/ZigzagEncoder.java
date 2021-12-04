@@ -20,15 +20,15 @@
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -52,23 +52,21 @@ public class ZigzagEncoder extends Encoder {
     logger.debug("tsfile-encoding ZigzagEncoder: init zigzag encoder");
   }
 
-
-
   /** encoding */
   private byte[] encodeInt(int n) {
     n = (n << 1) ^ (n >> 31);
     int idx = 0;
     if ((n & ~0x7F) != 0) {
-      buf[idx++] = (byte)((n | 0x80) & 0xFF);
+      buf[idx++] = (byte) ((n | 0x80) & 0xFF);
       n >>>= 7;
       if (n > 0x7F) {
-        buf[idx++] = (byte)((n | 0x80) & 0xFF);
+        buf[idx++] = (byte) ((n | 0x80) & 0xFF);
         n >>>= 7;
         if (n > 0x7F) {
-          buf[idx++] = (byte)((n | 0x80) & 0xFF);
+          buf[idx++] = (byte) ((n | 0x80) & 0xFF);
           n >>>= 7;
           if (n > 0x7F) {
-            buf[idx++] = (byte)((n | 0x80) & 0xFF);
+            buf[idx++] = (byte) ((n | 0x80) & 0xFF);
             n >>>= 7;
           }
         }
@@ -89,8 +87,8 @@ public class ZigzagEncoder extends Encoder {
   }
 
   private String printBinary(byte[] buf) {
-    String s = "" ;
-    for(byte b: buf) {
+    String s = "";
+    for (byte b : buf) {
       s += String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0');
       s += ' ';
     }
@@ -108,7 +106,8 @@ public class ZigzagEncoder extends Encoder {
     for (int value : values) {
       byte[] bytes = encodeInt(value);
       byteCache.write(bytes, 0, bytes.length);
-//      System.out.println("real value: " + value + " binary encoding " + bytes.length + printBinary(bytes));
+      //      System.out.println("real value: " + value + " binary encoding " + bytes.length +
+      // printBinary(bytes));
     }
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
@@ -126,6 +125,6 @@ public class ZigzagEncoder extends Encoder {
       return 0;
     }
     // try to caculate max value
-    return (long) 8  + values.size() * 5;
+    return (long) 8 + values.size() * 5;
   }
 }

@@ -28,100 +28,95 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 
 public class ZigzagDecoder extends Decoder {
-    private static final Logger logger = LoggerFactory.getLogger(ZigzagDecoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(ZigzagDecoder.class);
 
-    /** how many bytes for all encoded data in input stream. */
-    private int length;
+  /** how many bytes for all encoded data in input stream. */
+  private int length;
 
-    /** number of encoded data. */
-    private int number;
+  /** number of encoded data. */
+  private int number;
 
-    /** number of data left for reading in current buffer. */
-    private int currentCount;
+  /** number of data left for reading in current buffer. */
+  private int currentCount;
 
-    /**
-     * each time decoder receives a inputstream, decoder creates a buffer to save all encoded data.
-     */
-    private ByteBuffer byteCache;
+  /**
+   * each time decoder receives a inputstream, decoder creates a buffer to save all encoded data.
+   */
+  private ByteBuffer byteCache;
 
+  public ZigzagDecoder() {
+    super(TSEncoding.ZIGZAG);
+    this.reset();
+    logger.debug("tsfile-encoding ZigzagDecoder: init bitmap decoder");
+  }
 
-    public ZigzagDecoder() {
-        super(TSEncoding.ZIGZAG);
-        this.reset();
-        logger.debug("tsfile-encoding ZigzagDecoder: init bitmap decoder");
+  /** decoding */
+  @Override
+  public int readInt(ByteBuffer buffer) {
+    if (currentCount == 0) {
+      reset();
+      getLengthAndNumber(buffer);
+      currentCount = number;
     }
+    //        int b = byteCache.get() & 0xff;
+    //        int n = b & 0x7f;
+    //        while (buffer.hasRemaining() && ((b = buffer.get()) & 0x80) != 0){
+    //
+    //        }
+    //        int len = 1;
+    //        int b = buf[pos] & 0xff;
+    //        int n = b & 0x7f;
 
-    /**
-     *decoding
-     */
-    @Override
-    public int readInt( ByteBuffer buffer) {
-        if (currentCount == 0) {
-            reset();
-            getLengthAndNumber(buffer);
-            currentCount = number;
-        }
-//        int b = byteCache.get() & 0xff;
-//        int n = b & 0x7f;
-//        while (buffer.hasRemaining() && ((b = buffer.get()) & 0x80) != 0){
-//
-//        }
-//        int len = 1;
-//        int b = buf[pos] & 0xff;
-//        int n = b & 0x7f;
+    //        if (b > 0x7f) {
+    //            b = byteCache.get() & 0xff;
+    //            n ^= (b & 0x7f) << 7;
+    //            if (b > 0x7f) {
+    //                b = byteCache.get() & 0xff;
+    //                n ^= (b & 0x7f) << 14;
+    //                if (b > 0x7f) {
+    //                    b = byteCache.get() & 0xff;
+    //                    n ^= (b & 0x7f) << 21;
+    //                    if (b > 0x7f) {
+    //                        b = byteCache.get() & 0xff;
+    //                        n ^= (b & 0x7f) << 28;
+    //                        if (b > 0x7f) {
+    //                            throw new IOException("Invalid int encoding");
+    //                        }
+    //                    }
+    //                }
+    //            }
+    //        }
+    int n = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
+    currentCount--;
+    return (n >>> 1) ^ -(n & 1); // back to two's-complement
+  }
 
-//        if (b > 0x7f) {
-//            b = byteCache.get() & 0xff;
-//            n ^= (b & 0x7f) << 7;
-//            if (b > 0x7f) {
-//                b = byteCache.get() & 0xff;
-//                n ^= (b & 0x7f) << 14;
-//                if (b > 0x7f) {
-//                    b = byteCache.get() & 0xff;
-//                    n ^= (b & 0x7f) << 21;
-//                    if (b > 0x7f) {
-//                        b = byteCache.get() & 0xff;
-//                        n ^= (b & 0x7f) << 28;
-//                        if (b > 0x7f) {
-//                            throw new IOException("Invalid int encoding");
-//                        }
-//                    }
-//                }
-//            }
-//        }
-        int n = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
-        currentCount--;
-        return (n >>> 1) ^ -(n & 1); // back to two's-complement
+  private void getLengthAndNumber(ByteBuffer buffer) {
+    this.length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    this.number = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    // TODO maybe this.byteCache = buffer is faster, but not safe
+    byte[] tmp = new byte[length];
+    buffer.get(tmp, 0, length);
+    this.byteCache = ByteBuffer.wrap(tmp);
+  }
+
+  @Override
+  public boolean hasNext(ByteBuffer buffer) {
+    if (currentCount > 0 || buffer.remaining() > 0) {
+      return true;
     }
+    return false;
+  }
 
-    private void getLengthAndNumber(ByteBuffer buffer) {
-        this.length = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-        this.number = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
-        // TODO maybe this.byteCache = buffer is faster, but not safe
-        byte[] tmp = new byte[length];
-        buffer.get(tmp, 0, length);
-        this.byteCache = ByteBuffer.wrap(tmp);
+  @Override
+  public void reset() {
+    this.length = 0;
+    this.number = 0;
+    this.currentCount = 0;
+    if (this.byteCache == null) {
+      this.byteCache = ByteBuffer.allocate(0);
+    } else {
+      this.byteCache.position(0);
     }
-
-    @Override
-    public boolean hasNext(ByteBuffer buffer) {
-        if (currentCount > 0 || buffer.remaining() > 0) {
-            return true;
-        }
-        return false;
-    }
-
-
-    @Override
-    public void reset() {
-        this.length = 0;
-        this.number = 0;
-        this.currentCount = 0;
-        if (this.byteCache == null) {
-            this.byteCache = ByteBuffer.allocate(0);
-        } else {
-            this.byteCache.position(0);
-        }
-    }
-
+  }
 }
