@@ -58,34 +58,6 @@ public class ZigzagDecoder extends Decoder {
       getLengthAndNumber(buffer);
       currentCount = number;
     }
-    //        int b = byteCache.get() & 0xff;
-    //        int n = b & 0x7f;
-    //        while (buffer.hasRemaining() && ((b = buffer.get()) & 0x80) != 0){
-    //
-    //        }
-    //        int len = 1;
-    //        int b = buf[pos] & 0xff;
-    //        int n = b & 0x7f;
-
-    //        if (b > 0x7f) {
-    //            b = byteCache.get() & 0xff;
-    //            n ^= (b & 0x7f) << 7;
-    //            if (b > 0x7f) {
-    //                b = byteCache.get() & 0xff;
-    //                n ^= (b & 0x7f) << 14;
-    //                if (b > 0x7f) {
-    //                    b = byteCache.get() & 0xff;
-    //                    n ^= (b & 0x7f) << 21;
-    //                    if (b > 0x7f) {
-    //                        b = byteCache.get() & 0xff;
-    //                        n ^= (b & 0x7f) << 28;
-    //                        if (b > 0x7f) {
-    //                            throw new IOException("Invalid int encoding");
-    //                        }
-    //                    }
-    //                }
-    //            }
-    //        }
     int n = ReadWriteForEncodingUtils.readUnsignedVarInt(byteCache);
     currentCount--;
     return (n >>> 1) ^ -(n & 1); // back to two's-complement

@@ -32,14 +32,8 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * An encoder implementing Zigzag encoding.
- *
- * <pre>Encoding format: {@code
- * <map> <indexes>
- * <map> := <map length> <map data>
- * <map data> := [<entry size><entry data>]...
- * <indexes> := [<index>]...
- * }</pre>
+ * Encoder for int value using Zigzag . For more information, see
+ * https://gist.github.com/mfuerstenau/ba870a29e16536fdbaba
  */
 public class ZigzagEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(DictionaryEncoder.class);
@@ -76,23 +70,8 @@ public class ZigzagEncoder extends Encoder {
     return Arrays.copyOfRange(buf, 0, idx);
   }
 
-  /**
-   * input a integer.
-   *
-   * @param value value to encode
-   * @param out the ByteArrayOutputStream which data encode into
-   */
   public void encode(int value, ByteArrayOutputStream out) {
     values.add(value);
-  }
-
-  private String printBinary(byte[] buf) {
-    String s = "";
-    for (byte b : buf) {
-      s += String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0');
-      s += ' ';
-    }
-    return s;
   }
 
   @Override
@@ -106,8 +85,6 @@ public class ZigzagEncoder extends Encoder {
     for (int value : values) {
       byte[] bytes = encodeInt(value);
       byteCache.write(bytes, 0, bytes.length);
-      //      System.out.println("real value: " + value + " binary encoding " + bytes.length +
-      // printBinary(bytes));
     }
     ReadWriteForEncodingUtils.writeUnsignedVarInt(byteCache.size(), out);
     ReadWriteForEncodingUtils.writeUnsignedVarInt(len, out);
