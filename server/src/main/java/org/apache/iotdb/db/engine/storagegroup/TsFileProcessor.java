@@ -79,6 +79,8 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
 
@@ -313,13 +315,18 @@ public class TsFileProcessor {
             ChunkMetadata.calculateRamSize(
                 insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
         memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
+        // Estimate Object[] Of IoTDBArrayList in TVList mem Increment
+        // there are 2 array lists in TVList
+        memTableIncrement += NUM_BYTES_ARRAY_HEADER * 2;
       } else {
         // here currentChunkPointNum >= 1
         int currentChunkPointNum =
             workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
+
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
+                    + NUM_BYTES_ARRAY_HEADER * 2
                 : 0;
       }
       // TEXT data mem size
@@ -373,18 +380,29 @@ public class TsFileProcessor {
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
               * TVList.tvListArrayMemSize(dataType);
+      // Estimate Object[] Of IoTDBArrayList in TVList mem Increment
+      // there are 2 array lists in TVList
+      memIncrements[0] +=
+          ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1) * NUM_BYTES_ARRAY_HEADER * 2;
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
                 * TVList.tvListArrayMemSize(dataType);
+        // Estimate Object[] Of IoTDBArrayList in TVList mem Increment
+        memIncrements[0] +=
+            ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+                * (NUM_BYTES_ARRAY_HEADER * 1.5)
+                * 2;
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
             acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemSize(dataType);
+        // Estimate Object[] Of IoTDBArrayList in TVList mem Increment
+        memIncrements[0] += acquireArray * (NUM_BYTES_ARRAY_HEADER * 1.5) * 2;
       }
     }
     // TEXT data size

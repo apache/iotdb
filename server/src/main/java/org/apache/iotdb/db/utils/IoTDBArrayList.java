@@ -76,6 +76,7 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
     return (E) this.elementData[index];
   }
 
+  @Override
   public E set(int index, E element) {
     E oldValue = this.elementData(index);
     this.elementData[index] = element;
@@ -91,12 +92,14 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
     this.size = s + 1;
   }
 
+  @Override
   public boolean add(E e) {
     ++this.modCount;
     this.add(e, this.elementData, this.size);
     return true;
   }
 
+  @Override
   public void add(int index, E element) {
     ++this.modCount;
     int s;

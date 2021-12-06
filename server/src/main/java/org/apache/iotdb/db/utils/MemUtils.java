@@ -66,14 +66,13 @@ public class MemUtils {
   }
 
   public static long getBinarySize(Binary value) {
-    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator.sizeOf(value.getValues());
+    return RamUsageEstimator.sizeOf(value);
   }
 
   public static long getBinaryColumnSize(Binary[] column, int start, int end) {
     long memSize = 0;
-    memSize += (end - start) * RamUsageEstimator.NUM_BYTES_OBJECT_HEADER;
     for (int i = start; i < end; i++) {
-      memSize += RamUsageEstimator.sizeOf(column[i].getValues());
+      memSize += RamUsageEstimator.sizeOf(column[i]);
     }
     return memSize;
   }
