@@ -43,6 +43,9 @@ import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private final BasicServiceProvider basicServiceProvider;
@@ -80,13 +83,12 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       return getNotLoggedInStatus();
     }
 
+    List<TSStatus> tsStatusList = new ArrayList<>();
     for (Point point : InfluxLineParser.parserRecordsToPoints(req.lineProtocol)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager);
       try {
         InsertRowPlan plan = iotdbPoint.convertToInsertRowPlan();
-        if (!basicServiceProvider.executeNonQuery(plan)) {
-          return RpcUtils.getInfluxDBStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
-        }
+        tsStatusList.add(executeNonQueryPlan(plan, req.sessionId));
       } catch (StorageGroupNotSetException
           | StorageEngineException
           | IllegalPathException
@@ -95,7 +97,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
         throw new InfluxDBException(e.getMessage());
       }
     }
-    return RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS);
+    return new TSStatus().setSubStatus(tsStatusList);
   }
 
   @Override
@@ -103,7 +105,6 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     if (!basicServiceProvider.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
     }
-
     try {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + req.getDatabase()));
@@ -123,8 +124,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   public void handleClientExit() {
     Long sessionId = BasicServiceProvider.sessionManager.getCurrSessionId();
     if (sessionId != null) {
-      TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
-      closeSession(req);
+      closeSession(new TSCloseSessionReq(sessionId));
     }
   }
 

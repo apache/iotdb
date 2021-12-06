@@ -60,8 +60,6 @@ public class MetaManager {
     return MetaManagerHolder.INSTANCE;
   }
 
-  private final AtomicInteger referenceCount = new AtomicInteger(0);
-
   // TODO avoid OOM
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
