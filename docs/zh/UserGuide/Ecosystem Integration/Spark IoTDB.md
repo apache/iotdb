@@ -168,3 +168,48 @@ public class Example {
   }
 }
 ```
+<<<<<<< HEAD
+=======
+
+## 写数据到IoTDB
+### 用户指南
+``` scala
+// import narrow table
+val df = spark.createDataFrame(List(
+      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "device_name")
+    .withColumnRenamed("_3", "s0")
+    .withColumnRenamed("_4", "s1")
+    .withColumnRenamed("_5", "s2")
+    .withColumnRenamed("_6", "s3")
+    .withColumnRenamed("_7", "s4")
+    .withColumnRenamed("_8", "s5")
+dfWithColumn
+    .write
+    .format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+    
+// import wide table
+val df = spark.createDataFrame(List(
+      (1L, 1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "root.test.d0.s0")
+    .withColumnRenamed("_3", "root.test.d0.s1")
+    .withColumnRenamed("_4", "root.test.d0.s2")
+    .withColumnRenamed("_5", "root.test.d0.s3")
+    .withColumnRenamed("_6", "root.test.d0.s4")
+    .withColumnRenamed("_7", "root.test.d0.s5")
+dfWithColumn.write.format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+```
+
+### 注意
+1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
+>>>>>>> e536ce142 (update user guide.)
