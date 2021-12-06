@@ -45,4 +45,9 @@ public class PlainDeviceID implements IDeviceID {
   public int hashCode() {
     return Objects.hash(deviceID);
   }
+
+  @Override
+  public String toString() {
+    return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
+  }
 }

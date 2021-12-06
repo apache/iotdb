@@ -18,12 +18,35 @@
  */
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 /** Using sha 256 hash value of device path as device ID */
 public class SHA256DeviceID implements IDeviceID {
   long l1;
   long l2;
   long l3;
   long l4;
+
+  private static MessageDigest md;
+
+  static {
+    try {
+      md = MessageDigest.getInstance("SHA-256");
+    } catch (NoSuchAlgorithmException e) {
+      e.printStackTrace();
+    }
+  }
+
+  public SHA256DeviceID(String deviceID) {
+    byte[] hashVal = md.digest(deviceID.getBytes());
+    md.reset();
+
+    l1 = toLong(hashVal, 0);
+    l2 = toLong(hashVal, 8);
+    l3 = toLong(hashVal, 16);
+    l4 = toLong(hashVal, 24);
+  }
 
   /** The probability that each bit of sha 256 is 0 or 1 is equal */
   public int hashCode() {
@@ -40,5 +63,20 @@ public class SHA256DeviceID implements IDeviceID {
     }
     SHA256DeviceID that = (SHA256DeviceID) o;
     return l1 == that.l1 && l2 == that.l2 && l3 == that.l3 && l4 == that.l4;
+  }
+
+  private long toLong(byte[] array, int start) {
+    long res = 0;
+    for (int i = 0; i < 8; i++) {
+      res <<= 8;
+      res |= array[start + i];
+    }
+
+    return res;
+  }
+
+  @Override
+  public String toString() {
+    return "SHA256DeviceID{" + "l1=" + l1 + ", l2=" + l2 + ", l3=" + l3 + ", l4=" + l4 + '}';
   }
 }

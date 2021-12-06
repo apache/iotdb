@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.metadata.id_table;
 
-import com.sun.tools.javac.util.Pair;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public interface IDManager {
 
@@ -30,7 +32,7 @@ public interface IDManager {
    * @param seriesKey full path of the time series
    * @return timeseries ID of this time series
    */
-  public TimeseriesID checkOrCreateIfNotExist(String seriesKey);
+  public TimeseriesID checkOrCreateIfNotExist(PartialPath seriesKey);
 
   /**
    * upatde latest flushed time of one timeseries
@@ -63,4 +65,9 @@ public interface IDManager {
    * @param lastTimeValue latest time value pair of one timeseries
    */
   public void updateLastTimeValuePair(TimeseriesID timeseriesID, Pair<Long, Object> lastTimeValue);
+
+  public static IDeviceID getDeviceID() {
+
+    return null;
+  }
 }

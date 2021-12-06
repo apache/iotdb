@@ -18,8 +18,33 @@
  */
 package org.apache.iotdb.db.metadata.id_table.entry;
 
-public class TimeseriesID {
-  private IDeviceID deviceID;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
+public class TimeseriesID {
+
+  private IDeviceID deviceID;
   private String measurement;
+
+  /** build timeseries id from full path */
+  public TimeseriesID(PartialPath fullPath) {
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath);
+    measurement = fullPath.getMeasurement();
+  }
+
+  public IDeviceID getDeviceID() {
+    return deviceID;
+  }
+
+  public String getMeasurement() {
+    return measurement;
+  }
+
+  public void setMeasurement(String measurement) {
+    this.measurement = measurement;
+  }
+
+  @Override
+  public String toString() {
+    return "TimeseriesID{" + "deviceID=" + deviceID + ", measurement='" + measurement + '\'' + '}';
+  }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class DeviceEntry {
@@ -28,4 +29,29 @@ public class DeviceEntry {
 
   /** measurement schema map */
   Map<String, SchemaEntry> measurementMap;
+
+  public DeviceEntry(IDeviceID deviceID) {
+    this.deviceID = deviceID;
+    measurementMap = new HashMap<>();
+  }
+
+  /**
+   * get schema entry of the measurement
+   *
+   * @param measurementName name of the measurement
+   * @return if exist, schema entry of the measurement. if not exist, null
+   */
+  public SchemaEntry getSchemaEntry(String measurementName) {
+    return measurementMap.get(measurementName);
+  }
+
+  /**
+   * put new schema entry of the measurement
+   *
+   * @param measurementName name of the measurement
+   * @param schemaEntry schema entry of the measurement
+   */
+  public void putSchemaEntry(String measurementName, SchemaEntry schemaEntry) {
+    measurementMap.put(measurementName, schemaEntry);
+  }
 }

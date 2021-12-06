@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import com.sun.tools.javac.util.Pair;
 import java.util.Map;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 public class IDManagerImpl implements IDManager {
 
@@ -36,7 +37,7 @@ public class IDManagerImpl implements IDManager {
    * @return timeseries ID of this time series
    */
   @Override
-  public TimeseriesID checkOrCreateIfNotExist(String seriesKey) {
+  public TimeseriesID checkOrCreateIfNotExist(PartialPath seriesKey) {
     return null;
   }
 
