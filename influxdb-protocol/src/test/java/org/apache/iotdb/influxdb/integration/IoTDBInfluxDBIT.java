@@ -53,7 +53,7 @@ public class IoTDBInfluxDBIT {
 
   @Rule
   public GenericContainer<?> iotdb =
-      new GenericContainer<>("apache/iotdb:latest").withExposedPorts(6667);
+      new GenericContainer<>("apache/iotdb:maven-development").withExposedPorts(6667);
 
   @Before
   public void setUp() throws IoTDBConnectionException {
