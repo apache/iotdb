@@ -21,12 +21,19 @@ package org.apache.iotdb.db.protocol.influxdb.dto;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.utils.DataTypeUtils;
+import org.apache.iotdb.db.utils.ParameterUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.influxdb.dto.Point;
+
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class IoTDBPoint {
 
@@ -43,6 +50,60 @@ public class IoTDBPoint {
       List<TSDataType> types,
       List<Object> values) {
     this.deviceId = deviceId;
+    this.time = time;
+    this.measurements = measurements;
+    this.types = types;
+    this.values = values;
+  }
+
+  public IoTDBPoint(String database, Point point, MetaManager metaManager) {
+    String measurement = null;
+    Map<String, String> tags = new HashMap<>();
+    Map<String, Object> fields = new HashMap<>();
+    Long time = null;
+
+    // Get the property of point in influxdb by reflection
+    for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
+      reflectField.setAccessible(true);
+      try {
+        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
+            && reflectField.getName().equalsIgnoreCase("fields")) {
+          fields = (Map<String, Object>) reflectField.get(point);
+        }
+        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
+            && reflectField.getName().equalsIgnoreCase("tags")) {
+          tags = (Map<String, String>) reflectField.get(point);
+        }
+        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+            && reflectField.getName().equalsIgnoreCase("measurement")) {
+          measurement = (String) reflectField.get(point);
+        }
+        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
+            && reflectField.getName().equalsIgnoreCase("time")) {
+          time = (Long) reflectField.get(point);
+        }
+        // set current time
+        if (time == null) {
+          time = System.currentTimeMillis();
+        }
+      } catch (IllegalAccessException e) {
+        throw new IllegalArgumentException(e.getMessage());
+      }
+    }
+
+    ParameterUtils.checkNonEmptyString(database, "database");
+    ParameterUtils.checkNonEmptyString(measurement, "measurement name");
+    String path = metaManager.generatePath(database, measurement, tags);
+    List<String> measurements = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    List<Object> values = new ArrayList<>();
+    for (Map.Entry<String, Object> entry : fields.entrySet()) {
+      measurements.add(entry.getKey());
+      Object value = entry.getValue();
+      types.add(DataTypeUtils.normalTypeToTSDataType(value));
+      values.add(value);
+    }
+    this.deviceId = path;
     this.time = time;
     this.measurements = measurements;
     this.types = types;
@@ -69,7 +130,7 @@ public class IoTDBPoint {
     return values;
   }
 
-  public InsertRowPlan cvtToInsertRowPlan()
+  public InsertRowPlan convertToInsertRowPlan()
       throws IllegalPathException, IoTDBConnectionException, QueryProcessException {
     return new InsertRowPlan(
         new PartialPath(getDeviceId()),

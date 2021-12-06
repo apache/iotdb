@@ -33,28 +33,21 @@ import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
-import org.apache.iotdb.db.utils.ParameterUtils;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private final BasicServiceProvider basicServiceProvider;
 
-  private MetaManager metaManager;
+  private final MetaManager metaManager;
 
   public InfluxDBServiceImpl() throws QueryProcessException {
     basicServiceProvider = new BasicServiceProvider();
@@ -66,12 +59,11 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     BasicOpenSessionResp basicOpenSessionResp =
         basicServiceProvider.openSession(
             req.username, req.password, req.zoneId, TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3);
-    TSStatus tsStatus =
-        RpcUtils.getInfluxDBStatus(
-            basicOpenSessionResp.getCode(), basicOpenSessionResp.getMessage());
-    TSOpenSessionResp resp = new TSOpenSessionResp();
-    resp.setStatus(tsStatus);
-    return resp.setSessionId(basicOpenSessionResp.getSessionId());
+    return new TSOpenSessionResp()
+        .setStatus(
+            RpcUtils.getInfluxDBStatus(
+                basicOpenSessionResp.getCode(), basicOpenSessionResp.getMessage()))
+        .setSessionId(basicOpenSessionResp.getSessionId());
   }
 
   @Override
@@ -83,18 +75,18 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   @Override
-  public TSStatus writePoints(TSWritePointsReq req) throws TException {
+  public TSStatus writePoints(TSWritePointsReq req) {
     if (!basicServiceProvider.checkLogin(req.sessionId)) {
       return getNotLoggedInStatus();
     }
 
-    ArrayList<Point> points =
-        (ArrayList<Point>) InfluxLineParser.parserRecordsToPoints(req.lineProtocol);
-    for (Point point : points) {
-      IoTDBPoint iotdbPoint = convertToIoTDBPoint(req.sessionId, req.database, point);
+    for (Point point : InfluxLineParser.parserRecordsToPoints(req.lineProtocol)) {
+      IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager);
       try {
-        InsertRowPlan plan = iotdbPoint.cvtToInsertRowPlan();
-        return executeNonQueryPlan(plan, req.sessionId);
+        InsertRowPlan plan = iotdbPoint.convertToInsertRowPlan();
+        if (!basicServiceProvider.executeNonQuery(plan)) {
+          return RpcUtils.getInfluxDBStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR);
+        }
       } catch (StorageGroupNotSetException
           | StorageEngineException
           | IllegalPathException
@@ -103,7 +95,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
         throw new InfluxDBException(e.getMessage());
       }
     }
-    return null;
+    return RpcUtils.getInfluxDBStatus(TSStatusCode.SUCCESS_STATUS);
   }
 
   @Override
@@ -126,56 +118,6 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       }
       throw new InfluxDBException(e.getMessage());
     }
-  }
-
-  private IoTDBPoint convertToIoTDBPoint(long sessionId, String database, Point point) {
-    String measurement = null;
-    Map<String, String> tags = new HashMap<>();
-    Map<String, Object> fields = new HashMap<>();
-    Long time = null;
-
-    // Get the property of point in influxdb by reflection
-    for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
-      reflectField.setAccessible(true);
-      try {
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
-            && reflectField.getName().equalsIgnoreCase("fields")) {
-          fields = (Map<String, Object>) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.util.Map")
-            && reflectField.getName().equalsIgnoreCase("tags")) {
-          tags = (Map<String, String>) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
-            && reflectField.getName().equalsIgnoreCase("measurement")) {
-          measurement = (String) reflectField.get(point);
-        }
-        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
-            && reflectField.getName().equalsIgnoreCase("time")) {
-          time = (Long) reflectField.get(point);
-        }
-        // set current time
-        if (time == null) {
-          time = System.currentTimeMillis();
-        }
-      } catch (IllegalAccessException e) {
-        throw new IllegalArgumentException(e.getMessage());
-      }
-    }
-
-    ParameterUtils.checkNonEmptyString(database, "database");
-    ParameterUtils.checkNonEmptyString(measurement, "measurement name");
-    String path = metaManager.generatePath(database, measurement, tags);
-    List<String> measurements = new ArrayList<>();
-    List<TSDataType> types = new ArrayList<>();
-    List<Object> values = new ArrayList<>();
-    for (Map.Entry<String, Object> entry : fields.entrySet()) {
-      measurements.add(entry.getKey());
-      Object value = entry.getValue();
-      types.add(DataTypeUtils.normalTypeToTSDataType(value));
-      values.add(value);
-    }
-    return new IoTDBPoint(path, time, measurements, types, values);
   }
 
   public void handleClientExit() {

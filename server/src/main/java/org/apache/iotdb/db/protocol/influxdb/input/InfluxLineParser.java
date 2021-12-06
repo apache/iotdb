@@ -34,11 +34,11 @@ public class InfluxLineParser {
   private static final Pattern BACKSLASH_PATTERN = Pattern.compile("\\\\\"");
   private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("\\\\([,= ])");
 
-  public static Collection<Point> parserRecordsToPoints(String records) {
+  public static List<Point> parserRecordsToPoints(String records) {
     return parserRecordsToPoints(records, null);
   }
 
-  public static Collection<Point> parserRecordsToPoints(String records, TimeUnit precision) {
+  public static List<Point> parserRecordsToPoints(String records, TimeUnit precision) {
     if (precision == null) {
       precision = TimeUnit.NANOSECONDS;
     }
