@@ -77,7 +77,7 @@ public class TagInfoRecords {
     valuesList.add(values);
   }
 
-  public List<InsertRowPlan> cvtToInsertRowPlans() {
+  public List<InsertRowPlan> convertToInsertRowPlans() {
     ArrayList<InsertRowPlan> insertRowPlans = new ArrayList<>();
     for (int i = 0; i < deviceIds.size(); i++) {
       try {

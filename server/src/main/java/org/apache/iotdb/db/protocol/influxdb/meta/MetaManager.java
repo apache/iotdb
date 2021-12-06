@@ -196,7 +196,7 @@ public class MetaManager {
   }
 
   private void updateTagInfoRecords(TagInfoRecords tagInfoRecords) {
-    List<InsertRowPlan> plans = tagInfoRecords.cvtToInsertRowPlans();
+    List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
     for (InsertRowPlan plan : plans) {
       try {
         basicServiceProvider.executeNonQuery(plan);

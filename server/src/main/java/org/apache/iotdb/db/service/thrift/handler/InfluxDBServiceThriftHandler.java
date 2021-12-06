@@ -36,7 +36,6 @@ public class InfluxDBServiceThriftHandler implements TServerEventHandler {
   @Override
   public void preServe() {
     // nothing
-
   }
 
   @Override
