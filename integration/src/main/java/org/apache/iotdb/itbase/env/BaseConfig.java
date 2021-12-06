@@ -85,4 +85,16 @@ public interface BaseConfig {
   default BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
     return this;
   }
+
+  default BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
+    return this;
+  }
+
+  default BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    return this;
+  }
+
+  default BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
+    return this;
+  }
 }

@@ -52,16 +52,25 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CompactionTaskManager implements IService {
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   private static final CompactionTaskManager INSTANCE = new CompactionTaskManager();
+
+  // The thread pool that executes the compaction task. The default number of threads for this pool
+  // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  // TODO: record the task in time partition
   private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
+  // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
+  // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
+
+  // The thread pool that periodically fetches and executes the compaction task from
+  // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
+  // is 1.
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
+
   private final long TASK_SUBMIT_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionInterval();
 
@@ -81,6 +90,11 @@ public class CompactionTaskManager implements IService {
       currentTaskNum = new AtomicInteger(0);
       compactionTaskSubmissionThreadPool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
+
+      // Periodically do the following: fetch the highest priority thread from the
+      // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
+      // if there is thread space available in the taskExecutionPool, put the compaction task thread
+      // into the taskExecutionPool and perform the compaction.
       compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
           this::submitTaskFromTaskQueue,
           TASK_SUBMIT_INTERVAL,

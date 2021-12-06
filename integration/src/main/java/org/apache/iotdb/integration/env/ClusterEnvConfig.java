@@ -114,4 +114,21 @@ public class ClusterEnvConfig implements BaseConfig {
         "udf_memory_budget_in_mb", String.valueOf(udfReaderMemoryBudgetInMB * 3));
     return this;
   }
+
+  public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
+    properties.setProperty("enable_seq_space_compaction", String.valueOf(enableSeqSpaceCompaction));
+    return this;
+  }
+
+  public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
+    properties.setProperty(
+        "enable_unseq_space_compaction", String.valueOf(enableUnseqSpaceCompaction));
+    return this;
+  }
+
+  public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
+    properties.setProperty(
+        "enable_cross_space_compaction", String.valueOf(enableCrossSpaceCompaction));
+    return this;
+  }
 }
