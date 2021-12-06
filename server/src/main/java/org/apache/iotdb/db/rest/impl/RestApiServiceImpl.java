@@ -111,7 +111,7 @@ public class RestApiServiceImpl extends RestApiService {
           basicServiceProvider.createQueryDataSet(
               queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       response = QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
-      BasicServiceProvider.sessionManager.releaseSessionResource(queryId);
+      BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
       return response;
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

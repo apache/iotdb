@@ -74,7 +74,7 @@ public class MetaManager {
   }
 
   private void recover() {
-    Long queryId = QueryResourceManager.getInstance().assignQueryId(true);
+    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
@@ -120,7 +120,7 @@ public class MetaManager {
         | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
     } finally {
-      BasicServiceProvider.sessionManager.releaseSessionResource(queryId);
+      BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
