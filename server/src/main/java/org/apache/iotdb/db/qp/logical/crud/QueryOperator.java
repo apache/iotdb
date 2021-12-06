@@ -290,13 +290,17 @@ public class QueryOperator extends Operator {
         }
       }
 
-      // Note that in the loop of a suffix path, set is used.
-      // And across the loops of suffix paths, list is used.
-      // e.g. select *,s1 from root.sg.d0, root.sg.d1
-      // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
-      // for suffix s1, measurementSetOfGivenSuffix = {s1}
-      // therefore the final measurements is [s1,s2,s3,s1].
-      measurements.addAll(measurementSetOfGivenSuffix);
+      if (measurementSetOfGivenSuffix.isEmpty()) {
+        measurements.add(suffixPath.toString());
+      } else {
+        // Note that in the loop of a suffix path, set is used.
+        // And across the loops of suffix paths, list is used.
+        // e.g. select *,s1 from root.sg.d0, root.sg.d1
+        // for suffix *, measurementSetOfGivenSuffix = {s1,s2,s3}
+        // for suffix s1, measurementSetOfGivenSuffix = {s1}
+        // therefore the final measurements is [s1,s2,s3,s1].
+        measurements.addAll(measurementSetOfGivenSuffix);
+      }
     }
 
     // assigns to alignByDevicePlan
