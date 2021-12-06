@@ -137,7 +137,7 @@ public class IoTDBInfluxDB implements InfluxDB {
         database,
         retentionPolicy,
         consistency.value(),
-        precision == null ? null : TimeUtil.toTimePrecision(precision),
+        precision == null ? "" : TimeUtil.toTimePrecision(precision),
         records);
   }
 
