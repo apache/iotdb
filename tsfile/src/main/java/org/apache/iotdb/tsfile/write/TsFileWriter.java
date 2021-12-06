@@ -48,7 +48,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-
 /**
  * TsFileWriter is the entrance for writing processing. It receives a record and send it to
  * responding chunk group write. It checks memory size for all writing processing along its strategy
@@ -84,7 +83,6 @@ public class TsFileWriter implements AutoCloseable {
   private boolean isUnseq = false;
 
   private Map<String, IChunkGroupWriter> groupWriters = new LinkedHashMap<>();
-
 
   /** min value of threshold of data points num check. */
   private long recordCountForNextMemCheck = 100;
