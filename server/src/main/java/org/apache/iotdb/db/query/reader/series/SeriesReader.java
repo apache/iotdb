@@ -260,8 +260,14 @@ public class SeriesReader {
       return true;
     }
 
-    // init first time series metadata whose startTime is minimum
-    tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+    while (firstTimeSeriesMetadata == null
+        && (!seqFileResource.isEmpty()
+            || !unseqFileResource.isEmpty()
+            || !seqTimeSeriesMetadata.isEmpty()
+            || !unSeqTimeSeriesMetadata.isEmpty())) {
+      // init first time series metadata whose startTime is minimum
+      tryToUnpackAllOverlappedFilesToTimeSeriesMetadata();
+    }
 
     return firstTimeSeriesMetadata != null;
   }
@@ -333,9 +339,14 @@ public class SeriesReader {
       return true;
     }
 
-    /*
-     * construct first chunk metadata
-     */
+    while (firstChunkMetadata == null && (!cachedChunkMetadata.isEmpty() || hasNextFile())) {
+      initFirstChunkMetadata();
+    }
+    return firstChunkMetadata != null;
+  }
+
+  /** construct first chunk metadata */
+  private void initFirstChunkMetadata() throws IOException {
     if (firstTimeSeriesMetadata != null) {
       /*
        * try to unpack all overlapped TimeSeriesMetadata to cachedChunkMetadata
@@ -360,8 +371,12 @@ public class SeriesReader {
         }
       }
     }
-
-    return firstChunkMetadata != null;
+    if (valueFilter != null
+        && firstChunkMetadata != null
+        && !isChunkOverlapped()
+        && !valueFilter.satisfy(firstChunkMetadata.getStatistics())) {
+      skipCurrentChunk();
+    }
   }
 
   private void unpackAllOverlappedTimeSeriesMetadataToCachedChunkMetadata(
@@ -1034,6 +1049,12 @@ public class SeriesReader {
       } else {
         firstTimeSeriesMetadata = unSeqTimeSeriesMetadata.poll();
       }
+    }
+    if (valueFilter != null
+        && firstTimeSeriesMetadata != null
+        && !isFileOverlapped()
+        && !valueFilter.satisfy(firstTimeSeriesMetadata.getStatistics())) {
+      firstTimeSeriesMetadata = null;
     }
   }
 
