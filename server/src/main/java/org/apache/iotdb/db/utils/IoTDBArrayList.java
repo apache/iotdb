@@ -21,6 +21,11 @@ package org.apache.iotdb.db.utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.function.Consumer;
 
 public class IoTDBArrayList<E> extends ArrayList<E> {
 
@@ -32,7 +37,6 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
   private static final int MAX_ARRAY_SIZE = 2147483639;
 
   public IoTDBArrayList(int initialCapacity) {
-    super();
     if (initialCapacity > 0) {
       this.elementData = new Object[initialCapacity];
     } else {
@@ -45,7 +49,6 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
   }
 
   public IoTDBArrayList() {
-    super();
     this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
   }
 
@@ -115,7 +118,7 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
 
   private int newCapacity(int minCapacity) {
     int oldCapacity = this.elementData.length;
-    int newCapacity = oldCapacity + 1;
+    int newCapacity = oldCapacity + 4;
     if (newCapacity - minCapacity <= 0) {
       if (this.elementData == DEFAULTCAPACITY_EMPTY_ELEMENTDATA) {
         return Math.max(1, minCapacity);
@@ -173,6 +176,88 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
     if (this.size < this.elementData.length) {
       this.elementData =
           this.size == 0 ? EMPTY_ELEMENTDATA : Arrays.copyOf(this.elementData, this.size);
+    }
+  }
+
+  static <E> E elementAt(Object[] es, int index) {
+    return (E) es[index];
+  }
+
+  public Iterator<E> iterator() {
+    return new IoTDBArrayList.Itr();
+  }
+
+  private class Itr implements Iterator<E> {
+    int cursor;
+    int lastRet = -1;
+    int expectedModCount;
+
+    Itr() {
+      this.expectedModCount = IoTDBArrayList.this.modCount;
+    }
+
+    public boolean hasNext() {
+      return this.cursor != IoTDBArrayList.this.size;
+    }
+
+    public E next() {
+      this.checkForComodification();
+      int i = this.cursor;
+      if (i >= IoTDBArrayList.this.size) {
+        throw new NoSuchElementException();
+      } else {
+        Object[] elementData = IoTDBArrayList.this.elementData;
+        if (i >= elementData.length) {
+          throw new ConcurrentModificationException();
+        } else {
+          this.cursor = i + 1;
+          return (E) elementData[this.lastRet = i];
+        }
+      }
+    }
+
+    public void remove() {
+      if (this.lastRet < 0) {
+        throw new IllegalStateException();
+      } else {
+        this.checkForComodification();
+
+        try {
+          IoTDBArrayList.this.remove(this.lastRet);
+          this.cursor = this.lastRet;
+          this.lastRet = -1;
+          this.expectedModCount = IoTDBArrayList.this.modCount;
+        } catch (IndexOutOfBoundsException var2) {
+          throw new ConcurrentModificationException();
+        }
+      }
+    }
+
+    public void forEachRemaining(Consumer<? super E> action) {
+      Objects.requireNonNull(action);
+      int size = IoTDBArrayList.this.size;
+      int i = this.cursor;
+      if (i < size) {
+        Object[] es = IoTDBArrayList.this.elementData;
+        if (i >= es.length) {
+          throw new ConcurrentModificationException();
+        }
+
+        while (i < size && IoTDBArrayList.this.modCount == this.expectedModCount) {
+          action.accept(IoTDBArrayList.elementAt(es, i));
+          ++i;
+        }
+
+        this.cursor = i;
+        this.lastRet = i - 1;
+        this.checkForComodification();
+      }
+    }
+
+    final void checkForComodification() {
+      if (IoTDBArrayList.this.modCount != this.expectedModCount) {
+        throw new ConcurrentModificationException();
+      }
     }
   }
 }
