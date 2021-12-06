@@ -35,7 +35,6 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompac
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,7 +140,7 @@ public abstract class TsFileManagement {
   public abstract int size(boolean sequence);
 
   /** recover TsFile list */
-  public abstract boolean recover();
+  public abstract void recover();
 
   /** fork current TsFile list (call this before merge) */
   public abstract void forkCurrentFileList(long timePartition) throws IOException;
@@ -199,16 +198,7 @@ public abstract class TsFileManagement {
 
     @Override
     public Void call() {
-      boolean recoverSuccess = recover();
-      if (recoverSuccess) {
-        // in recover logic, the param time partition is useless, we can just pass 0L
-        closeCompactionMergeCallBack.call(false, 0L);
-      } else {
-        logger.warn(
-            "{}-{} [Compaction] failed to recover compaction, this storage group will not compact periodically",
-            storageGroupName,
-            virtualStorageGroupId);
-      }
+      recover();
       return null;
     }
   }
