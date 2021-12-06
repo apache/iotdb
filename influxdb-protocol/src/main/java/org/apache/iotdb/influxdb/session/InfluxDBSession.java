@@ -144,7 +144,6 @@ public class InfluxDBSession {
       transport.close();
       throw new IoTDBConnectionException(e);
     }
-    System.out.println(sessionId);
   }
 
   public void writePoints(TSWritePointsReq request)
