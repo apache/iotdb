@@ -24,19 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
-import org.apache.iotdb.db.exception.metadata.DifferentTemplateException;
-import org.apache.iotdb.db.exception.metadata.MNodeTypeMismatchException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.NoTemplateOnMNodeException;
-import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
-import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.exception.metadata.*;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -57,25 +45,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.AutoCreateDeviceMNodePlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeAliasPlan;
-import org.apache.iotdb.db.qp.physical.sys.ChangeTagOffsetPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
@@ -93,33 +63,23 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -231,13 +191,15 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
-        CacheBuilder.newBuilder()
+        Caffeine.newBuilder()
             .maximumSize(cacheSize)
             .build(
-                new CacheLoader<PartialPath, IMNode>() {
+                new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
                   @Override
-                  public IMNode load(PartialPath key) throws Exception {
-                    return mtree.getNodeByPathWithStorageGroupCheck(key);
+                  public @Nullable IMNode load(@NonNull PartialPath partialPath)
+                      throws MetadataException {
+
+                    return mtree.getNodeByPathWithStorageGroupCheck(partialPath);
                   }
                 });
 
@@ -355,7 +317,7 @@ public class MManager {
         this.mtree.clear();
       }
       if (this.mNodeCache != null) {
-        this.mNodeCache.cleanUp();
+        this.mNodeCache.invalidateAll();
       }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -749,7 +711,7 @@ public class MManager {
           logger.info("Current series number {} come back to normal level", totalSeriesNumber);
           allowToCreateNewSeries = true;
         }
-        mNodeCache.cleanUp();
+        mNodeCache.invalidateAll();
 
         // try to delete storage group
         List<IMeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
@@ -801,11 +763,15 @@ public class MManager {
     try {
       node = mNodeCache.get(path);
       return node;
-    } catch (ExecutionException e) {
-      if (!autoCreateSchema) {
-        throw new PathNotExistException(path.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        if (!autoCreateSchema) {
+          throw new PathNotExistException(path.getFullPath());
+        }
+        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+      } else {
+        throw e;
       }
-      shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
     }
 
     try {
@@ -1232,8 +1198,11 @@ public class MManager {
           res.add(measurementPath);
         }
       }
-    } catch (ExecutionException e) {
-      throw new PathNotExistException(devicePath.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        throw new PathNotExistException(devicePath.getFullPath());
+      }
+      throw e;
     }
 
     return new ArrayList<>(res);
@@ -1272,8 +1241,11 @@ public class MManager {
     try {
       node = mNodeCache.get(path);
       return node;
-    } catch (ExecutionException e) {
-      throw new PathNotExistException(path.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+      throw e;
     }
   }
 
