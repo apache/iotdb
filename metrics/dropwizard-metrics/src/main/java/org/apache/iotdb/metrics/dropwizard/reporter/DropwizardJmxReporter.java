@@ -45,6 +45,7 @@ public class DropwizardJmxReporter implements Reporter {
           JmxReporter.forRegistry(
                   ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
               .build();
+      jmxReporter.start();
     } catch (Exception e) {
       LOGGER.error("Failed to start Dropwizard JmxReporter, because {}", e.getMessage());
       return false;
