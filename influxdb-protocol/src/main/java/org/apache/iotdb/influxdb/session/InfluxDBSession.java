@@ -137,7 +137,7 @@ public class InfluxDBSession {
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
-
+      RpcUtils.verifySuccess(openResp.getStatus());
       sessionId = openResp.getSessionId();
 
     } catch (Exception e) {

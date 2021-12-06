@@ -160,6 +160,6 @@ public class IoTDBInfluxDBIT {
 
   @Test(expected = InfluxDBException.class)
   public void testConnectAuthFailed() {
-    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "1", "1");
+    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "error", "error");
   }
 }

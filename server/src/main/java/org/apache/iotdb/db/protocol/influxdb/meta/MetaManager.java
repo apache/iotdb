@@ -135,10 +135,12 @@ public class MetaManager {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + database));
       basicServiceProvider.executeNonQuery(setStorageGroupPlan);
-    } catch (IllegalPathException
-        | QueryProcessException
-        | StorageGroupNotSetException
-        | StorageEngineException e) {
+    } catch (QueryProcessException e) {
+      // errCode = 300 means sg has already set
+      if (e.getErrorCode() != 300) {
+        throw new InfluxDBException(e.getMessage());
+      }
+    } catch (IllegalPathException | StorageGroupNotSetException | StorageEngineException e) {
       throw new InfluxDBException(e.getMessage());
     }
 

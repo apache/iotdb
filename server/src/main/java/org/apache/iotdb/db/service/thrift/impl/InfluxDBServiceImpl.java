@@ -84,11 +84,17 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
     }
 
     List<TSStatus> tsStatusList = new ArrayList<>();
+    int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
     for (Point point : InfluxLineParser.parserRecordsToPoints(req.lineProtocol)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager);
       try {
         InsertRowPlan plan = iotdbPoint.convertToInsertRowPlan();
-        tsStatusList.add(executeNonQueryPlan(plan, req.sessionId));
+        TSStatus tsStatus = executeNonQueryPlan(plan, req.sessionId);
+        if (executeCode == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+            && tsStatus.getCode() == TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode()) {
+          executeCode = tsStatus.getCode();
+        }
+        tsStatusList.add(tsStatus);
       } catch (StorageGroupNotSetException
           | StorageEngineException
           | IllegalPathException
@@ -97,7 +103,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
         throw new InfluxDBException(e.getMessage());
       }
     }
-    return new TSStatus().setSubStatus(tsStatusList);
+    return new TSStatus().setCode(executeCode).setSubStatus(tsStatusList);
   }
 
   @Override
