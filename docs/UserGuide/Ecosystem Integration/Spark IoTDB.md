@@ -164,8 +164,6 @@ public class Example {
 }
 ```
 
-<<<<<<< HEAD
-=======
 ## Write Data to IoTDB
 
 ### User Guide
@@ -208,4 +206,3 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
 
 ### Notes
 1. You can directly write data to IoTDB whatever the dataframe contains a wide table or a narrow table.
->>>>>>> e536ce142 (update user guide.)

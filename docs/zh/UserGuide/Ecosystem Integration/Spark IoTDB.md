@@ -168,8 +168,6 @@ public class Example {
   }
 }
 ```
-<<<<<<< HEAD
-=======
 
 ## 写数据到IoTDB
 ### 用户指南
@@ -212,4 +210,3 @@ dfWithColumn.write.format("org.apache.iotdb.spark.db")
 
 ### 注意
 1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
->>>>>>> e536ce142 (update user guide.)
