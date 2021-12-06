@@ -35,7 +35,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   @SuppressWarnings("squid:S3077")
   private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
 
-  private volatile boolean useTemplate = false;
+  private volatile boolean isAligned = false;
 
   private volatile Map<String, ILastCacheContainer> lastCacheMap = null;
 
@@ -106,16 +106,15 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
-  public boolean isUseTemplate() {
-    return useTemplate;
+  public boolean isAligned() {
+    return isAligned;
   }
 
   @Override
-  public void setUseTemplate(boolean useTemplate) {
-    this.useTemplate = useTemplate;
+  public void setAligned(boolean isAligned) {
+    this.isAligned = isAligned;
   }
 
-  @Override
   public ILastCacheContainer getLastCacheContainer(String measurementId) {
     checkLastCacheMap();
     return lastCacheMap.computeIfAbsent(measurementId, k -> new LastCacheContainer());

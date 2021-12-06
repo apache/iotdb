@@ -144,6 +144,8 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public void readyForNext() {
         hasCached = false;
+
+        tvList.setEvictionUpperBound(beginIndex + 1);
       }
 
       @Override
@@ -234,6 +236,8 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       public void readyForNext() {
         hasCached = false;
         nextWindowTimeBegin += slidingStep;
+
+        tvList.setEvictionUpperBound(nextIndexBegin + 1);
       }
 
       @Override

@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.encoding.encoder.PlainEncoder;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -31,11 +31,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-public class VectorMeasurementSchemaStub implements IMeasurementSchema {
+public class VectorMeasurementSchemaStub extends VectorMeasurementSchema {
 
   @Override
   public String getMeasurementId() {
-    return "vectorName";
+    return "";
   }
 
   @Override

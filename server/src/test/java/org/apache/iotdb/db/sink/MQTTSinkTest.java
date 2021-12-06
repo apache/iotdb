@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTConfiguration;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTEvent;
 import org.apache.iotdb.db.engine.trigger.sink.mqtt.MQTTHandler;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
 

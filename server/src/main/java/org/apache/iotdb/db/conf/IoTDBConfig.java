@@ -116,7 +116,7 @@ public class IoTDBConfig {
   private long allocateMemoryForSchema = Runtime.getRuntime().maxMemory() * 1 / 10;
 
   /** Memory allocated for the read process besides cache */
-  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 3 / 10;
+  private long allocateMemoryForReadWithoutCache = allocateMemoryForRead * 300 / 1001;
 
   private volatile int maxQueryDeduplicatedPathNum = 1000;
 
@@ -250,7 +250,7 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+  private int concurrentQueryThread = 8;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
@@ -405,11 +405,14 @@ public class IoTDBConfig {
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
+  /** Memory allocated for bloomFilter cache in read process */
+  private long allocateMemoryForBloomFilterCache = allocateMemoryForRead / 1001;
+
   /** Memory allocated for timeSeriesMetaData cache in read process */
-  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead / 5;
+  private long allocateMemoryForTimeSeriesMetaDataCache = allocateMemoryForRead * 200 / 1001;
 
   /** Memory allocated for chunk cache in read process */
-  private long allocateMemoryForChunkCache = allocateMemoryForRead / 10;
+  private long allocateMemoryForChunkCache = allocateMemoryForRead * 100 / 1001;
 
   /** Whether to enable Last cache */
   private boolean lastCacheEnable = true;
@@ -998,9 +1001,9 @@ public class IoTDBConfig {
   }
 
   public void setTimestampPrecision(String timestampPrecision) {
-    if (!(timestampPrecision.equals("ms")
-        || timestampPrecision.equals("us")
-        || timestampPrecision.equals("ns"))) {
+    if (!("ms".equals(timestampPrecision)
+        || "us".equals(timestampPrecision)
+        || "ns".equals(timestampPrecision))) {
       logger.error(
           "Wrong timestamp precision, please set as: ms, us or ns ! Current is: "
               + timestampPrecision);
@@ -1258,7 +1261,7 @@ public class IoTDBConfig {
   }
 
   public String getIoTDBMajorVersion(String version) {
-    return version.equals("UNKNOWN")
+    return "UNKNOWN".equals(version)
         ? "UNKNOWN"
         : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
@@ -1709,6 +1712,14 @@ public class IoTDBConfig {
 
   public void setMetaDataCacheEnable(boolean metaDataCacheEnable) {
     this.metaDataCacheEnable = metaDataCacheEnable;
+  }
+
+  public long getAllocateMemoryForBloomFilterCache() {
+    return allocateMemoryForBloomFilterCache;
+  }
+
+  public void setAllocateMemoryForBloomFilterCache(long allocateMemoryForBloomFilterCache) {
+    this.allocateMemoryForBloomFilterCache = allocateMemoryForBloomFilterCache;
   }
 
   public long getAllocateMemoryForTimeSeriesMetaDataCache() {

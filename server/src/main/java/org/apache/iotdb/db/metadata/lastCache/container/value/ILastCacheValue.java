@@ -32,16 +32,4 @@ public interface ILastCacheValue {
   void setValue(TsPrimitiveType value);
 
   TimeValuePair getTimeValuePair();
-
-  int getSize();
-
-  long getTimestamp(int index);
-
-  void setTimestamp(int index, long timestamp);
-
-  TsPrimitiveType getValue(int index);
-
-  void setValue(int index, TsPrimitiveType value);
-
-  TimeValuePair getTimeValuePair(int index);
 }

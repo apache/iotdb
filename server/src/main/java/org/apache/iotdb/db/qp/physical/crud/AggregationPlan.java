@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
@@ -89,11 +89,11 @@ public class AggregationPlan extends RawDataQueryPlan {
     if (!groupPathsResultMap.isEmpty()) {
       groupPathsResultMap.clear();
     }
-    for (int i = 0; i < paths.size(); i++) {
+    for (int i = 0; i < getDeduplicatedPaths().size(); i++) {
       String rawPath =
           String.format(
               "%s(%s)",
-              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getExactFullPath());
+              deduplicatedAggregations.get(i), getDeduplicatedPaths().get(i).getFullPath());
       String transformedPath = groupByLevelController.getGroupedPath(rawPath);
       AggregateResult result = groupPathsResultMap.get(transformedPath);
       if (result == null) {
@@ -124,7 +124,7 @@ public class AggregationPlan extends RawDataQueryPlan {
       String functionName = aggregations.get(pathIndex);
       String aggregatePath =
           groupByLevelController.getGroupedPath(
-              String.format("%s(%s)", functionName, path.getExactFullPath()));
+              String.format("%s(%s)", functionName, path.getFullPath()));
       columnForDisplay = aggregatePath;
     }
     return columnForDisplay;

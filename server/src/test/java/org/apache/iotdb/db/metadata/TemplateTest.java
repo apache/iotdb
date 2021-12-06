@@ -22,10 +22,12 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -73,10 +75,9 @@ public class TemplateTest {
     manager.createSchemaTemplate(plan);
 
     // set device template
-    SetSchemaTemplatePlan setSchemaTemplatePlan =
-        new SetSchemaTemplatePlan("template1", "root.sg1.d1");
+    SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg1.d1");
 
-    manager.setSchemaTemplate(setSchemaTemplatePlan);
+    manager.setSchemaTemplate(setTemplatePlan);
 
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
@@ -87,10 +88,9 @@ public class TemplateTest {
 
     Set<IMeasurementSchema> allSchema =
         new HashSet<>(node.getSchemaTemplate().getSchemaMap().values());
-    for (IMeasurementSchema schema :
-        manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1"))) {
-      allSchema.remove(schema);
-    }
+    manager.getAllMeasurementByDevicePath(new PartialPath("root.sg1.d1")).stream()
+        .map(MeasurementPath::getMeasurementSchema)
+        .forEach(allSchema::remove);
 
     assertTrue(allSchema.isEmpty());
 
@@ -131,7 +131,7 @@ public class TemplateTest {
       CompressionType[] compressionTypes = {CompressionType.SNAPPY, CompressionType.SNAPPY};
       template.addAlignedMeasurements(alignedMeasurements, dataTypes, encodings, compressionTypes);
 
-      assertEquals("[GPS, to.be.prefix]", template.getAllAlignedPrefix().toString());
+      assertEquals("[to.be.prefix, GPS]", template.getAllAlignedPrefix().toString());
       assertEquals("[s1, s2]", template.getAlignedMeasurements("to.be.prefix").toString());
 
       template.deleteAlignedPrefix("to.be.prefix");
@@ -184,8 +184,6 @@ public class TemplateTest {
      * Construct a template like: create schema template treeTemplate ( (d1.s1 INT32 GORILLA
      * SNAPPY), (s2 INT32 GORILLA SNAPPY), (GPS.x FLOAT RLE SNAPPY), (GPS.y FLOAT RLE SNAPPY), )with
      * aligned (GPS)
-     *
-     * <p>Check aligned path whether with same prefix? Construct tree
      */
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("d1.s1"));

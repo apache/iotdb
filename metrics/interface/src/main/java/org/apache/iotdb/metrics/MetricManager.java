@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.metrics;
 
-import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 
 public interface MetricManager {
   /**
@@ -37,16 +42,28 @@ public interface MetricManager {
   /**
    * Get Gauge If exists, then return or create one to return
    *
+   * <p>This type of gauge will keep a weak reference of the obj, so it will not prevent the obj's
+   * gc. NOTICE: When the obj has already been cleared by gc when you call the gauge's value(), then
+   * you will get 0L;
+   *
+   * @param obj which will be monitored automatically
+   * @param mapper use which to map the obj to a long value
+   */
+  <T> Gauge getOrCreateAutoGauge(String metric, T obj, ToLongFunction<T> mapper, String... tags);
+
+  /**
+   * Get Gauge If exists, then return or create one to return
+   *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Gauge getOrCreatGauge(String metric, String... tags);
+  Gauge getOrCreateGauge(String metric, String... tags);
 
   /**
    * Get Rate If exists, then return or create one to return
    *
    * @param tags string appear in pairs, like sg="ln" will be "sg", "ln"
    */
-  Rate getOrCreatRate(String metric, String... tags);
+  Rate getOrCreateRate(String metric, String... tags);
 
   /**
    * Get Histogram If exists, then return or create one to return

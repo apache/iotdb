@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.trigger.sink.local;
 
 import org.apache.iotdb.db.engine.trigger.sink.api.Configuration;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class LocalIoTDBConfiguration implements Configuration {

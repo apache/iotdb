@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.util.List;
 import java.util.NoSuchElementException;

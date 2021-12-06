@@ -316,7 +316,7 @@ public class SlotManager {
     }
   }
 
-  public int getSloNumInDataMigration() {
+  public int getSlotNumInDataMigration() {
     int res = 0;
     for (Entry<Integer, SlotDescriptor> entry : idSlotMap.entrySet()) {
       SlotDescriptor descriptor = entry.getValue();

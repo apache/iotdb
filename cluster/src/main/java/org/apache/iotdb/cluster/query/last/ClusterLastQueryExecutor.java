@@ -31,11 +31,10 @@ import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -180,7 +179,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
-        ClusterQueryUtils.checkPathExistence(seriesPaths);
         return calculateSeriesLastLocally(group, seriesPaths, context);
       } else {
         return calculateSeriesLastRemotely(group, seriesPaths, context);
@@ -191,7 +189,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember =
-          metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
