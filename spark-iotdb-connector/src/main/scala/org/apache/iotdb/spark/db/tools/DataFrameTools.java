@@ -66,12 +66,11 @@ public class DataFrameTools {
               partition -> {
                 String[] hostPort = options.url().split("//")[1].replace("/", "").split(":");
                 Session session =
-                    new Session.Builder()
-                        .host(hostPort[0])
-                        .port(Integer.valueOf(hostPort[1]))
-                        .username(String.valueOf(options.user()))
-                        .password(String.valueOf(options.password()))
-                        .build();
+                    new Session(
+                        hostPort[0],
+                        Integer.valueOf(hostPort[1]),
+                        String.valueOf(options.user()),
+                        String.valueOf(options.password()));
                 session.open();
                 partition.forEachRemaining(
                     record -> {
