@@ -45,13 +45,12 @@ import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MetaManager {
 
   protected final Planner planner = new Planner();
 
-  private BasicServiceProvider basicServiceProvider;
+  private final BasicServiceProvider basicServiceProvider;
 
   private static String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
@@ -75,8 +74,8 @@ public class MetaManager {
   }
 
   private void recover() {
+    Long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
-      final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
           basicServiceProvider.genQueryContext(
@@ -120,6 +119,8 @@ public class MetaManager {
         | QueryFilterOptimizationException
         | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
+    } finally {
+      BasicServiceProvider.sessionManager.releaseSessionResource(queryId);
     }
   }
 
