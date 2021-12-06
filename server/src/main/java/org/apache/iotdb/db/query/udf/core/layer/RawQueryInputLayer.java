@@ -45,8 +45,6 @@ public class RawQueryInputLayer {
   private ElasticSerializableRowRecordList rowRecordList;
   private SafetyLine safetyLine;
 
-  public static final Object nullObject = new Object();
-
   /** InputLayerWithoutValueFilter */
   public RawQueryInputLayer(
       long queryId,

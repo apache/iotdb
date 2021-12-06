@@ -88,9 +88,12 @@ public class UDFQueryExecutor extends RawDataQueryExecutor {
   }
 
   public final QueryDataSet executeFromAlignedDataSet(
-      QueryContext context, QueryDataSet sourceDataSet, List<TSDataType> fieldTypes)
+      QueryContext context,
+      QueryDataSet sourceDataSet,
+      List<TSDataType> fieldTypes,
+      boolean keepNull)
       throws QueryProcessException, IOException {
     return new UDTFAlignByTimeDataSet(
-        context, udtfPlan, new UDFInputDataSet(sourceDataSet, fieldTypes));
+        context, udtfPlan, new UDFInputDataSet(sourceDataSet, fieldTypes), keepNull);
   }
 }

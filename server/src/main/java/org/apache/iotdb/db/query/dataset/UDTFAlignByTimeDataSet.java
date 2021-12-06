@@ -44,6 +44,7 @@ import java.util.List;
 public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignByTimeDataSet {
 
   protected TimeSelector timeHeap;
+  private final boolean keepNull;
 
   /** execute with value filter */
   public UDTFAlignByTimeDataSet(
@@ -61,6 +62,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         timestampGenerator,
         readersOfSelectedSeries,
         cached);
+    keepNull = false;
     initTimeHeap();
   }
 
@@ -74,24 +76,22 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         udtfPlan.getDeduplicatedPaths(),
         udtfPlan.getDeduplicatedDataTypes(),
         readersOfSelectedSeries);
+    keepNull = false;
     initTimeHeap();
   }
 
   public UDTFAlignByTimeDataSet(
-      QueryContext context, UDTFPlan udtfPlan, IUDFInputDataSet inputDataSet)
+      QueryContext context, UDTFPlan udtfPlan, IUDFInputDataSet inputDataSet, boolean keepNull)
       throws QueryProcessException, IOException {
     super(context, udtfPlan, inputDataSet);
+    this.keepNull = keepNull;
     initTimeHeap();
   }
 
   protected void initTimeHeap() throws IOException, QueryProcessException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
-      // Since a constant operand is not allowed to be a result column, the reader will not be
-      // a ConstantLayerPointReader.
-      if (reader.next()) {
-        timeHeap.add(reader.currentTime());
-      }
+      iterateReaderToNextValid(reader);
     }
   }
 
@@ -185,10 +185,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         }
 
         reader.readyForNext();
-
-        if (reader.next()) {
-          timeHeap.add(reader.currentTime());
-        }
+        iterateReaderToNextValid(reader);
       }
 
       if (rowOffset == 0) {
@@ -304,9 +301,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         }
         reader.readyForNext();
 
-        if (reader.next()) {
-          timeHeap.add(reader.currentTime());
-        }
+        iterateReaderToNextValid(reader);
       }
     } catch (QueryProcessException e) {
       throw new IOException(e.getMessage());
@@ -315,5 +310,20 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     rawQueryInputLayer.updateRowRecordListEvictionUpperBound();
 
     return rowRecord;
+  }
+
+  private void iterateReaderToNextValid(LayerPointReader reader)
+      throws QueryProcessException, IOException {
+    // Since a constant operand is not allowed to be a result column, the reader will not be
+    // a ConstantLayerPointReader.
+    // If keepNull is false, we must iterate the reader until a non-null row is returned.
+    while (reader.next()) {
+      if (reader.isCurrentNull() && !keepNull) {
+        reader.readyForNext();
+        continue;
+      }
+      timeHeap.add(reader.currentTime());
+      break;
+    }
   }
 }

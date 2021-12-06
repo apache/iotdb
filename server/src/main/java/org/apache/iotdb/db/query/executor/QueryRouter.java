@@ -176,15 +176,17 @@ public class QueryRouter implements IQueryRouter {
               innerPlan.getDeduplicatedDataTypes().get(i)));
     }
     QueryDataSet innerQueryDataSet = null;
+    boolean keepNull = false;
     if (innerPlan instanceof GroupByTimePlan) {
       innerQueryDataSet = groupBy((GroupByTimePlan) innerPlan, context);
+      keepNull = true;
     } else {
       innerQueryDataSet = aggregate(innerPlan, context);
     }
 
     UDFQueryExecutor udfQueryExecutor = new UDFQueryExecutor(udafPlan);
     return udfQueryExecutor.executeFromAlignedDataSet(
-        context, innerQueryDataSet, aggregationResultTypes);
+        context, innerQueryDataSet, aggregationResultTypes, keepNull);
   }
 
   protected AggregationExecutor getAggregationExecutor(
