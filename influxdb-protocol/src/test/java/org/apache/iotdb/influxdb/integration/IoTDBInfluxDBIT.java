@@ -34,6 +34,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashMap;
 import java.util.List;
@@ -53,7 +54,7 @@ public class IoTDBInfluxDBIT {
 
   @Rule
   public GenericContainer<?> iotdb =
-      new GenericContainer<>("apache/iotdb:maven-development").withExposedPorts(6667);
+      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development")).withExposedPorts(6667);
 
   @Before
   public void setUp() throws IoTDBConnectionException {
