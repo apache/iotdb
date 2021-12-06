@@ -187,19 +187,22 @@ public class InfluxDBSession {
     }
   }
 
-  public void close() {
-    TSCloseSessionReq req = new TSCloseSessionReq(sessionId);
+  public synchronized void close() {
+    if (isClosed) {
+      return;
+    }
     try {
-      client.closeSession(req);
+      client.closeSession(new TSCloseSessionReq(sessionId));
     } catch (TException e) {
       throw new InfluxDBException(
           "Error occurs when closing session at server. Maybe server is down.", e);
     } finally {
-      if (isClosed) return;
       if (transport != null) {
         transport.close();
       }
-      isClosed = true;
+      if (!isClosed) {
+        isClosed = true;
+      }
     }
   }
 
