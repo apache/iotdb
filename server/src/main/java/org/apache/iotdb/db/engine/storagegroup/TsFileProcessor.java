@@ -384,7 +384,9 @@ public class TsFileProcessor {
       // Estimate Object[] Of IoTDBArrayList in TVList mem Increment
       // there are 2 array lists in TVList
       memIncrements[0] +=
-          ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1) * (NUM_BYTES_OBJECT_REF + NUM_BYTES_ARRAY_HEADER) * 2;
+          ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
+              * (NUM_BYTES_OBJECT_REF + NUM_BYTES_ARRAY_HEADER)
+              * 2;
     } else {
       int currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
