@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerAutoGauge;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
 import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
@@ -62,6 +63,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToLongFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -112,6 +114,22 @@ public class MicrometerMetricManager implements MetricManager {
             id, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
     if (m instanceof Counter) {
       return (Counter) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
+  }
+
+  @Override
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id, key -> new MicrometerAutoGauge<T>(meterRegistry, metric, obj, mapper, tags));
+    if (m instanceof Gauge) {
+      return (Gauge) m;
     }
     throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }

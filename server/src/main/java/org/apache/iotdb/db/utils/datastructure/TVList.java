@@ -266,7 +266,8 @@ public abstract class TVList {
     if (newSize % ARRAY_SIZE != 0) {
       newArrayNum++;
     }
-    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
       releaseLastTimeArray();
       releaseLastValueArray();
     }

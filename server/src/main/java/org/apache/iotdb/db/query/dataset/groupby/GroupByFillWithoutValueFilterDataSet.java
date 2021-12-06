@@ -93,13 +93,11 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
   protected GroupByExecutor getGroupByExecutor(
       PartialPath path,
       Set<String> allSensors,
-      TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
       boolean ascending)
       throws StorageEngineException, QueryProcessException {
-    return new LocalGroupByExecutor(
-        path, allSensors, dataType, context, timeFilter, null, ascending);
+    return new LocalGroupByExecutor(path, allSensors, context, timeFilter, null, ascending);
   }
 
   private void getGroupByExecutors(
@@ -123,7 +121,6 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
               getGroupByExecutor(
                   path,
                   groupByTimeFillPlan.getAllMeasurementsInDevice(path.getDevice()),
-                  dataTypes.get(i),
                   context,
                   timeFilter.copy(),
                   isAscending));

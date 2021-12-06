@@ -124,9 +124,6 @@ public interface IWritableMemChunk {
   /** @return how many points are deleted */
   int delete(long lowerBound, long upperBound);
 
-  // For delete one column in the vector
-  int delete(long lowerBound, long upperBound, String measurementId);
-
   IChunkWriter createIChunkWriter();
 
   void encode(IChunkWriter chunkWriter);

@@ -84,16 +84,13 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentFileModified();
   }
 
-  public boolean canUseCurrentTimeFileStatistics() throws IOException {
-    Statistics fileStatistics = seriesReader.currentFileStatistics();
-    return !seriesReader.isFileOverlapped()
-        && containedByTimeFilter(fileStatistics)
-        && !seriesReader.currentFileModified();
-  }
-
   @Override
   public Statistics currentFileStatistics() throws IOException {
     return seriesReader.currentFileStatistics(curIndex);
+  }
+
+  public Statistics currentFileTimeStatistics() throws IOException {
+    return seriesReader.currentFileTimeStatistics();
   }
 
   @Override
@@ -114,16 +111,13 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentChunkModified();
   }
 
-  public boolean canUseCurrentTimeChunkStatistics() throws IOException {
-    Statistics chunkStatistics = seriesReader.currentChunkStatistics();
-    return !seriesReader.isChunkOverlapped()
-        && containedByTimeFilter(chunkStatistics)
-        && !seriesReader.currentChunkModified();
-  }
-
   @Override
   public Statistics currentChunkStatistics() throws IOException {
     return seriesReader.currentChunkStatistics(curIndex);
+  }
+
+  public Statistics currentChunkTimeStatistics() throws IOException {
+    return seriesReader.currentChunkTimeStatistics();
   }
 
   @Override
@@ -147,19 +141,13 @@ public class AlignedSeriesAggregateReader implements IAggregateReader {
         && !seriesReader.currentPageModified();
   }
 
-  public boolean canUseCurrentTimePageStatistics() throws IOException {
-    Statistics currentPageStatistics = seriesReader.currentPageStatistics();
-    if (currentPageStatistics == null) {
-      return false;
-    }
-    return !seriesReader.isPageOverlapped()
-        && containedByTimeFilter(currentPageStatistics)
-        && !seriesReader.currentPageModified();
-  }
-
   @Override
   public Statistics currentPageStatistics() throws IOException {
     return seriesReader.currentPageStatistics(curIndex);
+  }
+
+  public Statistics currentPageTimeStatistics() throws IOException {
+    return seriesReader.currentPageTimeStatistics();
   }
 
   @Override

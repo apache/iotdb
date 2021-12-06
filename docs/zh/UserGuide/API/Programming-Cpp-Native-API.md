@@ -27,8 +27,10 @@
 - Maven 3.5+
 - Flex
 - Bison 2.7+
-- Boost
+- Boost 1.56+
 - OpenSSL 1.0+
+- GCC 5.5.0+
+
 
 ### 安装方法
 
@@ -75,19 +77,23 @@ brew link boost
 
 Linux 下需要确保 g++已被安装。
 
-一条命令安装所有依赖库：
+Ubuntu 20:
 
-Debian/Ubuntu:
-
-```shell
-sudo apt-get install gcc g++ bison flex libboost-all-dev
-```
-
-CentOS:
+一条命令安装所有依赖库：  
 
 ```shell
-yum install gcc g++ bison flex boost-devel
+sudo apt-get install gcc-9 g++-9 libstdc++-9-dev bison flex libboost-all-dev libssl-dev zlib1g-dev
 ```
+
+CentOS 7.x:
+
+在centos 7.x里，可用yum命令安装部分依赖。  
+
+```shell
+sudo yum install bison flex openssl-devel
+```
+
+使用yum安装的GCC、boost版本过低，在编译时会报错，需自行安装或升级。  
 
 #### 在 Windows 上编译 Thrift
 
