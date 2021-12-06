@@ -54,12 +54,10 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private final BasicServiceProvider basicServiceProvider;
 
-  private Map<Long, String> sessionIdToDatabase;
   private MetaManager metaManager;
 
   public InfluxDBServiceImpl() throws QueryProcessException {
     basicServiceProvider = new BasicServiceProvider();
-    sessionIdToDatabase = new HashMap<>();
     metaManager = MetaManager.getInstance();
   }
 
@@ -165,7 +163,6 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
       }
     }
 
-    database = database == null ? sessionIdToDatabase.get(sessionId) : database;
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
     String path = metaManager.generatePath(database, measurement, tags);
