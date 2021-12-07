@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -414,31 +415,27 @@ public class CompactionMonitor implements IService {
         planExecutor.processNonQuery(insertRowPlan);
       }
       mergeCountForEachSg.clear();
-
-      //      PartialPath deviceForMergeFiles =
-      //          new PartialPath(begin ? MERGE_BEGIN_FILE_NUM_DEVICE :
-      // MERGE_FINISH_FILE_NUM_DEVICE);
-      //      List<String> measurementsForMergeFiles = new ArrayList<>();
-      //      List<String> valuesForMergeFiles = new ArrayList<>();
-      //      for (String sgName : mergeFileNumForEachSg.keySet()) {
-      //        Pair<Integer, Integer> fileNumPair = mergeFileNumForEachSg.get(sgName);
-      //        // remove "root." in sg name
-      //        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") + "-seq");
-      //        valuesForMergeFiles.add(Integer.toString(fileNumPair.left));
-      //        measurementsForMergeFiles.add(sgName.substring(5).replaceAll("\\.", "#") +
-      // "-unseq");
-      //        valuesForMergeFiles.add(Integer.toString(fileNumPair.right));
-      //      }
-      //
-      //      InsertRowPlan insertRowPlanForMergeFiles =
-      //          new InsertRowPlan(
-      //              deviceForMergeFiles,
-      //              lastUpdateTime,
-      //              measurementsForMergeFiles.toArray(new String[0]),
-      //              valuesForMergeFiles.toArray(new String[0]));
-      //
-      //      planExecutor.processNonQuery(insertRowPlanForMergeFiles);
-      for ()
+      for (String sgName : mergeFileNumForEachSg.keySet()) {
+        PartialPath device =
+            new PartialPath(
+                String.format(
+                    begin ? MERGE_BEGIN_FILE_NUM_DEVICE : MERGE_FINISH_FILE_NUM_DEVICE,
+                    sgName.replaceAll("root\\.", "")));
+        List<String> measurements = new ArrayList<>();
+        List<String> values = new ArrayList<>();
+        measurements.add("seq");
+        measurements.add("unseq");
+        Pair<Integer, Integer> fileNum = mergeFileNumForEachSg.get(sgName);
+        values.add(Integer.toString(fileNum.left));
+        values.add(Integer.toString(fileNum.right));
+        InsertRowPlan plan =
+            new InsertRowPlan(
+                device,
+                lastUpdateTime,
+                measurements.toArray(new String[0]),
+                values.toArray(new String[0]));
+        planExecutor.processNonQuery(plan);
+      }
       mergeFileNumForEachSg.clear();
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving merge info", e);
