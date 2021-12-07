@@ -58,23 +58,22 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     private final ManagedSeriesReader reader;
     private final String pathName;
     private final BlockingQueue<BatchData> blockingQueue;
-    // If rowLimit/rowOffset exists, fetchLimit = rowLimit + rowOffset, Otherwise Integer.Max
-    // It is only used when the readTask is initialized first time, to avoid read too much batchData
-    // If fetchLimit is still not satisfied when blockingQueue is filled, we don't use it again when
-    // the readTask is initialized again in fillCache() because it's also controlled in queryDataSet
-    // and fetchLimit is not easy to calculated when batchData is returned but not merged among
-    // series
-    private int fetchLimit;
-    private int batchDataTotalLength = 0;
+    private List<Integer> batchDataLengthList;
+    private final int seriesIndex;
+    private final int fetchLimit;
 
     public ReadTask(
         ManagedSeriesReader reader,
         BlockingQueue<BatchData> blockingQueue,
         String pathName,
+        List<Integer> batchDataLengthList,
+        int seriesIndex,
         int fetchLimit) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
+      this.batchDataLengthList = batchDataLengthList;
+      this.seriesIndex = seriesIndex;
       this.fetchLimit = fetchLimit;
     }
 
@@ -99,10 +98,16 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
               continue;
             }
             blockingQueue.put(batchData);
-            // if the queue also has free space and the size of batchData < fetchLimit, just submit
-            // another itself
-            batchDataTotalLength += batchData.length();
-            if (batchDataTotalLength < fetchLimit && blockingQueue.remainingCapacity() > 0) {
+
+            if (batchDataLengthList != null) {
+              int lengthSoFar = batchDataLengthList.get(seriesIndex) + batchData.length();
+              if (lengthSoFar >= fetchLimit) {
+                break;
+              }
+              batchDataLengthList.set(seriesIndex, lengthSoFar);
+            }
+            // if the queue also has free space, just submit another itself
+            if (blockingQueue.remainingCapacity() > 0) {
               TASK_POOL_MANAGER.submit(this);
             }
             // the queue has no more space
@@ -164,6 +169,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
   protected BatchData[] cachedBatchDataArray;
 
+  protected List<Integer> batchDataLengthList;
+
   private int bufferNum;
 
   // capacity for blocking queue
@@ -207,6 +214,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         bufferNum += 1;
       }
     }
+    if (rowLimit != 0) {
+      batchDataLengthList = new ArrayList<>(readers.size());
+    }
     init();
   }
 
@@ -229,7 +239,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       reader.setManagedByQueryManager(true);
       TASK_POOL_MANAGER.submit(
           new ReadTask(
-              reader, blockingQueueArray[i], paths.get(i).getFullPath(), rowLimit + rowOffset));
+              reader,
+              blockingQueueArray[i],
+              paths.get(i).getFullPath(),
+              batchDataLengthList,
+              i,
+              rowLimit + rowOffset));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of query before taking next batch
@@ -545,6 +560,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       synchronized (seriesReaderList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
+          if (batchDataLengthList != null
+              && batchDataLengthList.get(seriesIndex) >= rowLimit + rowOffset) {
+            return;
+          }
           ManagedSeriesReader reader = seriesReaderList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
@@ -556,7 +575,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                     reader,
                     blockingQueueArray[seriesIndex],
                     paths.get(seriesIndex).getFullPath(),
-                    Integer.MAX_VALUE));
+                    batchDataLengthList,
+                    seriesIndex,
+                    rowLimit + rowOffset));
           }
         }
       }
@@ -610,9 +631,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
           }
         } else {
           record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
-        }
-        if (alreadyReturnedRowNum < rowOffset + rowLimit) {
-          cacheNext(seriesIndex);
         }
       }
     }
