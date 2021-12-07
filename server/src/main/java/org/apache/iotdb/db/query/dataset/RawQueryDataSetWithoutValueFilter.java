@@ -632,6 +632,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         } else {
           record.addField(cachedBatchDataArray[seriesIndex].currentValue(), dataType);
         }
+        cacheNext(seriesIndex);
       }
     }
 
