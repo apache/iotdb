@@ -23,10 +23,10 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import java.util.concurrent.BlockingQueue;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.BlockingQueue;
 
 public class UDTFFragmentDataSetTask extends WrappedRunnable {
 
