@@ -27,10 +27,16 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+/**
+ * This class is copied and modified from ArrayList JDK11 and used for TVList only. Change the size
+ * enlargement method from 'newSize = oldSize >> 1' to 'newSize = oldSize + 4'. Change the clear()
+ * method by adding automatic trimToSize(). Notice: Do not call the method that not in this class!!
+ */
+@SuppressWarnings(
+    "java:S2177") // Suppress Child class methods named for parent class methods should be overrides
 public class IoTDBArrayList<E> extends ArrayList<E> {
 
   private static final int DEFAULT_CAPACITY = 1;
-  private static final Object[] EMPTY_ELEMENTDATA = new Object[0];
   private static final Object[] DEFAULTCAPACITY_EMPTY_ELEMENTDATA = new Object[0];
   transient Object[] elementData;
   private int size;
@@ -44,7 +50,7 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
         throw new IllegalArgumentException("Illegal Capacity: " + initialCapacity);
       }
 
-      this.elementData = EMPTY_ELEMENTDATA;
+      this.elementData = DEFAULTCAPACITY_EMPTY_ELEMENTDATA;
     }
   }
 
@@ -75,7 +81,7 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
     return this.elementData(index);
   }
 
-  E elementData(int index) {
+  private E elementData(int index) {
     return (E) this.elementData[index];
   }
 
@@ -175,7 +181,9 @@ public class IoTDBArrayList<E> extends ArrayList<E> {
     ++this.modCount;
     if (this.size < this.elementData.length) {
       this.elementData =
-          this.size == 0 ? EMPTY_ELEMENTDATA : Arrays.copyOf(this.elementData, this.size);
+          this.size == 0
+              ? DEFAULTCAPACITY_EMPTY_ELEMENTDATA
+              : Arrays.copyOf(this.elementData, this.size);
     }
   }
 
