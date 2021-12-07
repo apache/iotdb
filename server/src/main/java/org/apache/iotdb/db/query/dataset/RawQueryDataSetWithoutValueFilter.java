@@ -58,7 +58,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     private final ManagedSeriesReader reader;
     private final String pathName;
     private final BlockingQueue<BatchData> blockingQueue;
-    private List<Integer> batchDataLengthList;
+    private int[] batchDataLengthList;
     private final int seriesIndex;
     private final int fetchLimit;
 
@@ -66,7 +66,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         ManagedSeriesReader reader,
         BlockingQueue<BatchData> blockingQueue,
         String pathName,
-        List<Integer> batchDataLengthList,
+        int[] batchDataLengthList,
         int seriesIndex,
         int fetchLimit) {
       this.reader = reader;
@@ -100,11 +100,10 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             blockingQueue.put(batchData);
 
             if (batchDataLengthList != null) {
-              int lengthSoFar = batchDataLengthList.get(seriesIndex) + batchData.length();
-              if (lengthSoFar >= fetchLimit) {
+              batchDataLengthList[seriesIndex] += batchData.length();
+              if (batchDataLengthList[seriesIndex] >= fetchLimit) {
                 break;
               }
-              batchDataLengthList.set(seriesIndex, lengthSoFar);
             }
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
@@ -169,7 +168,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
   protected BatchData[] cachedBatchDataArray;
 
-  protected List<Integer> batchDataLengthList;
+  protected int[] batchDataLengthList;
 
   private int bufferNum;
 
@@ -215,7 +214,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       }
     }
     if (rowLimit != 0) {
-      batchDataLengthList = new ArrayList<>(readers.size());
+      batchDataLengthList = new int[readers.size()];
     }
     init();
   }
@@ -560,10 +559,6 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       synchronized (seriesReaderList.get(seriesIndex)) {
         // we only need to judge whether to submit another task when the queue is not full
         if (blockingQueueArray[seriesIndex].remainingCapacity() > 0) {
-          if (batchDataLengthList != null
-              && batchDataLengthList.get(seriesIndex) >= rowLimit + rowOffset) {
-            return;
-          }
           ManagedSeriesReader reader = seriesReaderList.get(seriesIndex);
           // if the reader isn't being managed and still has more data,
           // that means this read task leave the pool before because the queue has no more space
