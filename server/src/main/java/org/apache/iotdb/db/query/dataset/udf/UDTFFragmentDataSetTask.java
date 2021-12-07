@@ -23,10 +23,10 @@ import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import java.util.concurrent.BlockingQueue;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.concurrent.BlockingQueue;
 
 public class UDTFFragmentDataSetTask extends WrappedRunnable {
 
@@ -37,9 +37,9 @@ public class UDTFFragmentDataSetTask extends WrappedRunnable {
 
   // there are 3 elements in Object[].
   // [0]: RowRecord[] or Throwable.
-  // [2]: Integer. actual length of produced row records in [0]. note that the element is -1 when
+  // [1]: Integer. actual length of produced row records in [0]. note that the element is -1 when
   // the [0] element is a Throwable.
-  // [1]: Boolean. true if the queryDataSet still has next RowRecord to be consumed, otherwise
+  // [2]: Boolean. true if the queryDataSet still has next RowRecord to be consumed, otherwise
   // false. note that the element is false when the [0] element is a Throwable.
   private final BlockingQueue<Object[]> productionBlockingQueue;
 

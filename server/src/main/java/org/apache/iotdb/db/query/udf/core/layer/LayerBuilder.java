@@ -43,7 +43,7 @@ public class LayerBuilder {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   private static final int MAX_PARALLEL_DATASETS_NUMBER =
-      Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+      Math.max(2, Runtime.getRuntime().availableProcessors() / 4);
 
   private final long queryId;
   private final UDTFPlan udtfPlan;
