@@ -1104,6 +1104,7 @@ public class TSServiceImpl implements TSIService.Iface {
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
+    context.setAscending(((QueryPlan) physicalPlan).isAscending());
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
     sessionManager.setDataset(queryId, queryDataSet);
