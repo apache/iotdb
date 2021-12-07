@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,22 +69,20 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    if (isUDAFExpression()) {
-      return false;
-    }
-    return true;
+    return !isUserDefinedAggregationExpression();
   }
 
   @Override
-  public boolean isUDAFExpression() {
-    if (leftExpression.isAggregationFunctionExpression()
-        || rightExpression.isAggregationFunctionExpression()) {
-      return true;
-    }
-    if (leftExpression.isUDAFExpression() || rightExpression.isUDAFExpression()) {
-      return true;
-    }
-    return false;
+  public boolean isUserDefinedAggregationExpression() {
+    return leftExpression.isPlainAggregationFunctionExpression()
+        || rightExpression.isPlainAggregationFunctionExpression()
+        || leftExpression.isUserDefinedAggregationExpression()
+        || rightExpression.isUserDefinedAggregationExpression();
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Arrays.asList(leftExpression, rightExpression);
   }
 
   @Override

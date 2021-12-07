@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -33,13 +34,18 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceI
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 
+import java.io.IOException;
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public class TimeSeriesOperand extends Expression {
+  private final String WRONG_OPERAND_MESSAGE =
+      "TimeSeries and Aggregations can not be in the same nested expression.";
 
   protected PartialPath path;
 
@@ -89,6 +95,17 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     memoryAssigner.increaseExpressionReference(this);
+  }
+
+  @Override
+  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
+      throws QueryProcessException, IOException {
+    throw new QueryProcessException(WRONG_OPERAND_MESSAGE);
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Collections.emptyList();
   }
 
   @Override

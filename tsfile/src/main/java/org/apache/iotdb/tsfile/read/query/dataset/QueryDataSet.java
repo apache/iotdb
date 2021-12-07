@@ -102,6 +102,8 @@ public abstract class QueryDataSet {
     this.columnNum = 0;
     if (paths != null) {
       for (Path p : paths) {
+        // Path could be null in certain kinds of plans such as UDAFPlan, thus `p != null` is
+        // essential.
         if (p != null) {
           columnNum += p.getColumnNum();
         }

@@ -76,7 +76,7 @@ public class GroupByLevelController {
       ResultColumn resultColumn = iterator.next();
       Expression expression = resultColumn.getExpression();
       if (expression instanceof FunctionExpression
-          && expression.isAggregationFunctionExpression()) {
+          && expression.isPlainAggregationFunctionExpression()) {
         List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
         String functionName = ((FunctionExpression) expression).getFunctionName();
         String groupedPath =

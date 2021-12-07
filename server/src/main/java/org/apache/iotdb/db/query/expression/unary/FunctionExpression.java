@@ -24,6 +24,7 @@ import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -55,11 +57,16 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
+  private final String WRONG_TYPE_MESSAGE =
+      "Boolean and Text type is not supported in nested aggregation expression.";
+
   /**
    * true: aggregation function<br>
    * false: time series generating function
    */
   private final boolean isAggregationFunctionExpression;
+
+  private boolean isUDAFExpression;
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
@@ -94,10 +101,16 @@ public class FunctionExpression extends Expression {
     isAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isUDAFExpression =
+        expressions.stream()
+            .anyMatch(
+                v ->
+                    v.isUserDefinedAggregationExpression()
+                        || v.isPlainAggregationFunctionExpression());
   }
 
   @Override
-  public boolean isAggregationFunctionExpression() {
+  public boolean isPlainAggregationFunctionExpression() {
     return isAggregationFunctionExpression;
   }
 
@@ -109,6 +122,11 @@ public class FunctionExpression extends Expression {
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
     return !isAggregationFunctionExpression;
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationExpression() {
+    return isUDAFExpression;
   }
 
   public boolean isCountStar() {
@@ -196,6 +214,27 @@ public class FunctionExpression extends Expression {
     for (Expression expression : expressions) {
       expression.updateStatisticsForMemoryAssigner(memoryAssigner);
       memoryAssigner.increaseExpressionReference(this);
+    }
+  }
+
+  @Override
+  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
+      throws QueryProcessException, IOException {
+    Field field =
+        innerAggregationResults.get(
+            udafPlan.getInnerAggregationPlan().getPathToIndex().get(this.getExpressionString()));
+    TSDataType dataType = field.getDataType();
+    switch (dataType) {
+      case INT32:
+        return field.getIntV();
+      case INT64:
+        return field.getLongV();
+      case FLOAT:
+        return field.getFloatV();
+      case DOUBLE:
+        return field.getDoubleV();
+      default:
+        throw new QueryProcessException(WRONG_TYPE_MESSAGE);
     }
   }
 

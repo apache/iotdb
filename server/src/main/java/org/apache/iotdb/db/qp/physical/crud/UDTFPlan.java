@@ -90,8 +90,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
   }
 
-  private void setDatasetOutputIndexToResultColumnIndex(
-      int datasetOutputIndex, Integer originalIndex) {
+  void setDatasetOutputIndexToResultColumnIndex(int datasetOutputIndex, Integer originalIndex) {
     datasetOutputIndexToResultColumnIndex.put(datasetOutputIndex, originalIndex);
   }
 

@@ -1014,6 +1014,62 @@ Total line number = 7
 It costs 0.004s
 ```
 
+#### Nested  expressions consisting of aggregation functions
+
+IoTDB supports the execution of arbitrary nested expressions consisting of **aggregation functions and numbers** in the `select` clause.
+
+**Noted：**
+
+- `group by` and `fill` has not been supported when using nested expressions consisting of aggregation functions currently, but will be supported in the future.
+- Aggregation functions whose `return value` is type `Boolean` or `Text` can not be part of an Arithmetic expression that contains the following operators: `+`, `-`, `*`, `/`, `%`.
+
+##### Syntax
+
+The following is the syntax definition.
+
+```sql
+selectClause
+    : SELECT resultColumn (',' resultColumn)*
+    ;
+
+resultColumn
+    : expression (AS ID)?
+    ;
+
+expression
+    : '(' expression ')'
+    | '-' expression
+    | expression ('*' | '/' | '%') expression
+    | expression ('+' | '-') expression
+    | functionName '('timeSeriesSuffixPath')'
+    | number
+    ;
+```
+
+##### Example
+
+SQL:
+
+```sql
+select count(a),
+       count(b),
+       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
+       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
+from root.sg;
+```
+
+Result:
+
+```
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+Total line number = 1
+It costs 0.013s
+```
+
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.

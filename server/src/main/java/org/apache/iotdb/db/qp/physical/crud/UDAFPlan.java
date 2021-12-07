@@ -21,31 +21,19 @@ package org.apache.iotdb.db.qp.physical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.query.expression.Expression;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 
+import java.time.ZoneId;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
-public class UDAFPlan extends RawDataQueryPlan {
+public class UDAFPlan extends UDTFPlan {
 
   // Construct an innerAggregationPlan using resultColumns of UDAFPlan
   private AggregationPlan innerAggregationPlan;
-  private Map<Expression, Integer> expressionToInnerResultIndexMap;
 
-  public UDAFPlan() {
-    super();
+  public UDAFPlan(ZoneId zoneId) {
+    super(zoneId);
     setOperatorType(OperatorType.UDAF);
-  }
-
-  public Map<Expression, Integer> getExpressionToInnerResultIndexMap() {
-    return expressionToInnerResultIndexMap;
-  }
-
-  public void setExpressionToInnerResultIndexMap(
-      Map<Expression, Integer> expressionToInnerResultIndexMap) {
-    this.expressionToInnerResultIndexMap = expressionToInnerResultIndexMap;
   }
 
   public void setInnerAggregationPlan(AggregationPlan innerAggregationPlan) {
@@ -59,11 +47,12 @@ public class UDAFPlan extends RawDataQueryPlan {
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
     Set<String> columnForDisplaySet = new HashSet<>();
-    for (ResultColumn resultColumn : resultColumns) {
-      String columnForDisplay = resultColumn.getResultColumnName();
+    for (int i = 0; i < resultColumns.size(); i++) {
+      String columnForDisplay = resultColumns.get(i).getResultColumnName();
       if (!columnForDisplaySet.contains(columnForDisplay)) {
         int datasetOutputIndex = getPathToIndex().size();
         setColumnNameToDatasetOutputIndex(columnForDisplay, datasetOutputIndex);
+        setDatasetOutputIndexToResultColumnIndex(datasetOutputIndex, i);
         columnForDisplaySet.add(columnForDisplay);
       }
     }

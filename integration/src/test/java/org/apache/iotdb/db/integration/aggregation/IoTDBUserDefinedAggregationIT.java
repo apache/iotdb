@@ -37,7 +37,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBUDTAIT {
+public class IoTDBUserDefinedAggregationIT {
 
   private static final double DETLA = 1e-6;
   private static final String TIMESTAMP_STR = "Time";
@@ -212,7 +212,7 @@ public class IoTDBUDTAIT {
   public void addtionTest2() {
     String[] retArray =
         new String[] {
-          "0,2002.0,2003.0,2004.0,2005.0", "0,15000.0,7500,7500", "0,7500,15000.0,7500"
+          "0,2002.0,2003.0,2004.0,2005.0", "0,15000.0,7500.0,7500.0", "0,7500.0,15000.0,7500.0"
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -342,7 +342,7 @@ public class IoTDBUDTAIT {
 
   @Test
   public void polyNominalWithFirstAndLastValueTest() {
-    String[] retArray = new String[] {"0,10001.0,2000"};
+    String[] retArray = new String[] {"0,10001.0,2000.0"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -395,7 +395,7 @@ public class IoTDBUDTAIT {
 
   @Test
   public void polyNominalWithMaxMinTimeTest() {
-    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499", "0,-100.0,-2499"};
+    String[] retArray = new String[] {"0,500.0,0.0", "0,100.0,2499.0", "0,-100.0,-2499.0"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

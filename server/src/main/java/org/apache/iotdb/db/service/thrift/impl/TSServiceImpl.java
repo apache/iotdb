@@ -53,7 +53,6 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -657,7 +656,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
       TSExecuteStatementResp resp = null;
       // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan) && !(plan instanceof UDAFPlan)) {
+      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
       if (plan instanceof QueryPlan) {
@@ -686,7 +685,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
         resp = getListDataSetHeaders(newDataSet);
       } else if (plan instanceof UDFPlan
-          || plan instanceof UDAFPlan
           || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
@@ -867,7 +865,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         break;
       case UDAF:
         seriesTypes = new ArrayList<>();
-        UDAFPlan udafPlan = (UDAFPlan) plan;
         for (int i = 0; i < paths.size(); i++) {
           respColumns.add(resultColumns.get(i).getResultColumnName());
           seriesTypes.add(resultColumns.get(i).getDataType());
