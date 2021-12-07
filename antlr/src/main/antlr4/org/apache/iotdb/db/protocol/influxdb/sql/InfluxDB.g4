@@ -115,8 +115,6 @@ dataType
     ;
 
 dateFormat
-//暂不支持datetime
-//    : DATETIME
     : NOW LR_BRACKET RR_BRACKET
     ;
 

@@ -33,86 +33,6 @@ public class InfluxDBSqlVisitor extends InfluxDBBaseVisitor<Operator> {
 
   private QueryOperator queryOp;
 
-  private static String removeStringQuote(String src) {
-    if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-      return src.substring(1, src.length() - 1);
-    } else if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-      return src.substring(1, src.length() - 1);
-    } else {
-      throw new IllegalArgumentException("error format for string with quote:" + src);
-    }
-  }
-
-  /**
-   * parse time expression, which is addition and subtraction expression of duration time, now() or
-   * DataTimeFormat time.
-   *
-   * <p>eg. now() + 1d - 2h
-   */
-  private static Long parseDateExpression(InfluxDBParser.DateExpressionContext ctx) {
-    long time;
-    time = parseTimeFormat(ctx.getChild(0).getText());
-    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
-      if (ctx.getChild(i).getText().equals("+")) {
-        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      } else {
-        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
-      }
-    }
-    return time;
-  }
-
-  /** function for parsing time format. */
-  public static long parseTimeFormat(String timestampStr) {
-    if (timestampStr == null || timestampStr.trim().equals("")) {
-      throw new IllegalArgumentException("input timestamp cannot be empty");
-    }
-    long startupNano = System.nanoTime();
-    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
-
-      String timePrecision = "ms";
-
-      switch (timePrecision) {
-        case "ns":
-          return System.currentTimeMillis() * 1000_000
-              + (System.nanoTime() - startupNano) % 1000_000;
-        case "us":
-          return System.currentTimeMillis() * 1000
-              + (System.nanoTime() - startupNano) / 1000 % 1000;
-        default:
-          return System.currentTimeMillis();
-      }
-    }
-    throw new IllegalArgumentException(
-        String.format(
-            "Input time format %s error. "
-                + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
-                + "refer to user document for more info.",
-            timestampStr));
-  }
-
-  private static FilterOperator parseBasicFunctionOperator(
-      InfluxDBParser.PredicateContext ctx, String keyName) {
-    BasicFunctionOperator basic;
-    if (ctx.constant().dateExpression() != null) {
-      if (!keyName.equals(SQLConstant.RESERVED_TIME)) {
-        throw new IllegalArgumentException("Date can only be used to time");
-      }
-      basic =
-          new BasicFunctionOperator(
-              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
-              keyName,
-              Long.toString(parseDateExpression(ctx.constant().dateExpression())));
-    } else {
-      basic =
-          new BasicFunctionOperator(
-              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
-              keyName,
-              ctx.constant().getText());
-    }
-    return basic;
-  }
-
   @Override
   public Operator visitSingleStatement(InfluxDBParser.SingleStatementContext ctx) {
     return visit(ctx.statement());
@@ -284,5 +204,72 @@ public class InfluxDBSqlVisitor extends InfluxDBBaseVisitor<Operator> {
     }
 
     return functionExpression;
+  }
+
+  private static String removeStringQuote(String src) {
+    if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
+      return src.substring(1, src.length() - 1);
+    } else if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
+      return src.substring(1, src.length() - 1);
+    } else {
+      throw new IllegalArgumentException("error format for string with quote:" + src);
+    }
+  }
+
+  /**
+   * parse time expression, which is addition and subtraction expression of duration time, now() or
+   * DataTimeFormat time.
+   *
+   * <p>eg. now() + 1d - 2h
+   */
+  private static Long parseDateExpression(InfluxDBParser.DateExpressionContext ctx) {
+    long time;
+    time = parseTimeFormat(ctx.getChild(0).getText());
+    for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
+      if (ctx.getChild(i).getText().equals("+")) {
+        time += DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      } else {
+        time -= DatetimeUtils.convertDurationStrToLong(time, ctx.getChild(i + 1).getText());
+      }
+    }
+    return time;
+  }
+
+  /** function for parsing time format. */
+  public static long parseTimeFormat(String timestampStr) {
+    if (timestampStr == null || timestampStr.trim().equals("")) {
+      throw new IllegalArgumentException("input timestamp cannot be empty");
+    }
+    if (timestampStr.equalsIgnoreCase(SQLConstant.NOW_FUNC)) {
+      return DatetimeUtils.currentTime();
+    }
+    throw new IllegalArgumentException(
+        String.format(
+            "Input time format %s error. "
+                + "Input like yyyy-MM-dd HH:mm:ss, yyyy-MM-ddTHH:mm:ss or "
+                + "refer to user document for more info.",
+            timestampStr));
+  }
+
+  private static FilterOperator parseBasicFunctionOperator(
+      InfluxDBParser.PredicateContext ctx, String keyName) {
+    BasicFunctionOperator basic;
+    if (ctx.constant().dateExpression() != null) {
+      if (!keyName.equals(SQLConstant.RESERVED_TIME)) {
+        throw new IllegalArgumentException("Date can only be used to time");
+      }
+      basic =
+          new BasicFunctionOperator(
+              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
+              keyName,
+              Long.toString(parseDateExpression(ctx.constant().dateExpression())));
+    } else {
+      basic =
+          new BasicFunctionOperator(
+              FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
+              keyName,
+              ctx.constant().getText());
+    }
+    return basic;
   }
 }
