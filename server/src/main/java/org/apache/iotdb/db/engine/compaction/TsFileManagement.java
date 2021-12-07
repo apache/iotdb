@@ -35,6 +35,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.CloseCompac
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -189,11 +190,8 @@ public abstract class TsFileManagement {
 
   public class CompactionRecoverTask extends StorageGroupCompactionTask {
 
-    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
-
-    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+    public CompactionRecoverTask() {
       super(storageGroupName);
-      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 
     @Override

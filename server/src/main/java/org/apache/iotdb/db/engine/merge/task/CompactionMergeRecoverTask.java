@@ -34,11 +34,10 @@ public class CompactionMergeRecoverTask implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(CompactionMergeRecoverTask.class);
 
-  private TsFileManagement.CompactionRecoverTask compactionRecoverTask;
   private RecoverMergeTask recoverMergeTask;
   private TsFileManagement tsFileManagement;
-  private String storageGroupSysDir;
   private String storageGroupName;
+  private StorageGroupProcessor.CloseCompactionMergeCallBack closeCompactionMergeCallBack;
 
   public CompactionMergeRecoverTask(
       TsFileManagement tsFileManagement,
@@ -51,10 +50,8 @@ public class CompactionMergeRecoverTask implements Runnable {
       String storageGroupName,
       StorageGroupProcessor.CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
     this.tsFileManagement = tsFileManagement;
-    this.compactionRecoverTask =
-        this.tsFileManagement.new CompactionRecoverTask(closeCompactionMergeCallBack);
-    this.storageGroupSysDir = storageGroupSysDir;
     this.storageGroupName = storageGroupName;
+    this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     this.recoverMergeTask =
         new RecoverMergeTask(
             seqFiles,
@@ -74,8 +71,8 @@ public class CompactionMergeRecoverTask implements Runnable {
     } catch (MetadataException | IOException e) {
       logger.error(e.getMessage(), e);
     }
-    compactionRecoverTask.call();
     tsFileManagement.recovered = true;
+    this.closeCompactionMergeCallBack.call(false, -1);
     logger.info("{} Compaction recover finish", storageGroupName);
   }
 }

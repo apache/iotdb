@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -80,6 +79,8 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -418,6 +419,8 @@ public class StorageGroupProcessor {
     logger.info("recover Storage Group  {}", logicalStorageGroupName + "-" + virtualStorageGroupId);
 
     try {
+      // recover inner space compaction
+      this.tsFileManagement.new CompactionRecoverTask().call();
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
           getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -2022,9 +2025,10 @@ public class StorageGroupProcessor {
   }
 
   /** close recover compaction merge callback, to start continuous compaction */
-  private void closeCompactionRecoverCallBack(boolean isMerge, long timePartitionId) {
+  private void closeCompactionRecoverCallBack(boolean isMerging, long timePartition) {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-        == CompactionStrategy.NO_COMPACTION) {
+            == CompactionStrategy.NO_COMPACTION
+        || !this.tsFileManagement.canMerge) {
       return;
     }
     CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(logicalStorageGroupName);
@@ -2140,7 +2144,7 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    if (!tsFileManagement.recovered || compacting) {
+    if (!tsFileManagement.recovered || compacting || !tsFileManagement.canMerge) {
       // recovering or doing compaction
       // stop running new compaction
       return;
