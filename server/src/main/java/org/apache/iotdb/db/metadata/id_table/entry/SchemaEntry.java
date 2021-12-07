@@ -21,26 +21,28 @@ package org.apache.iotdb.db.metadata.id_table.entry;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
-import java.io.Serializable;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
-public class SchemaEntry implements Serializable {
+public class SchemaEntry implements ILastCacheContainer {
 
-  /* 5 byte of disk pointer */
+  /* 39 bits of disk pointer */
+  /* 1 bits indicate whether there is a trigger */
   /*  1 byte of compressor  */
   /*   1 byte of encoding   */
   /*    1 byte of type      */
-  long schema;
+  private long schema;
 
-  long lastTime;
+  private long lastTime;
 
-  Object lastValue;
+  private TsPrimitiveType lastValue;
 
-  long flushTime;
+  private long flushTime;
 
   public SchemaEntry(TSDataType dataType) {
     TSEncoding encoding = getDefaultEncoding(dataType);
@@ -52,13 +54,6 @@ public class SchemaEntry implements Serializable {
 
     lastTime = Long.MIN_VALUE;
     flushTime = Long.MIN_VALUE;
-  }
-
-  public SchemaEntry(long schema, long lastTime, Object lastValue, long flushTime) {
-    this.schema = schema;
-    this.lastTime = lastTime;
-    this.lastValue = lastValue;
-    this.flushTime = flushTime;
   }
 
   /**
@@ -92,13 +87,6 @@ public class SchemaEntry implements Serializable {
     flushTime = Math.max(flushTime, lastFlushTime);
   }
 
-  public void updateLastCache(Pair<Long, Object> lastTimeValue) {
-    if (lastTimeValue.left >= lastTime) {
-      lastTime = lastTimeValue.left;
-      lastValue = lastTimeValue.right;
-    }
-  }
-
   public long getLastTime() {
     return lastTime;
   }
@@ -110,4 +98,42 @@ public class SchemaEntry implements Serializable {
   public long getFlushTime() {
     return flushTime;
   }
+
+  // region last cache
+  @Override
+  public TimeValuePair getCachedLast() {
+    return lastValue == null ? null : new TimeValuePair(lastTime, lastValue);
+  }
+
+  @Override
+  public void updateCachedLast(
+      TimeValuePair timeValuePair, boolean highPriorityUpdate, Long latestFlushedTime) {
+    if (timeValuePair == null || timeValuePair.getValue() == null) {
+      return;
+    }
+
+    if (lastValue == null) {
+      // If no cached last, (1) a last query (2) an unseq insertion or (3) a seq insertion will
+      // update cache.
+      if (!highPriorityUpdate || latestFlushedTime <= timeValuePair.getTimestamp()) {
+        lastTime = timeValuePair.getTimestamp();
+        lastValue = timeValuePair.getValue();
+      }
+    } else if (timeValuePair.getTimestamp() > lastTime
+        || (timeValuePair.getTimestamp() == lastTime && highPriorityUpdate)) {
+      lastTime = timeValuePair.getTimestamp();
+      lastValue = timeValuePair.getValue();
+    }
+  }
+
+  @Override
+  public void resetLastCache() {
+    lastValue = null;
+  }
+
+  @Override
+  public boolean isEmpty() {
+    return lastValue == null;
+  }
+  // endregion
 }

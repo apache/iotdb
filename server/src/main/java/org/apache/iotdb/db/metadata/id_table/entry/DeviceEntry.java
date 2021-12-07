@@ -23,12 +23,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DeviceEntry {
-
   /** for device ID reuse in memtable */
   IDeviceID deviceID;
 
   /** measurement schema map */
   Map<String, SchemaEntry> measurementMap;
+
+  boolean isAligned;
 
   public DeviceEntry(IDeviceID deviceID) {
     this.deviceID = deviceID;
@@ -53,5 +54,17 @@ public class DeviceEntry {
    */
   public void putSchemaEntry(String measurementName, SchemaEntry schemaEntry) {
     measurementMap.put(measurementName, schemaEntry);
+  }
+
+  public boolean isAligned() {
+    return isAligned;
+  }
+
+  public void setAligned(boolean aligned) {
+    isAligned = aligned;
+  }
+
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 }

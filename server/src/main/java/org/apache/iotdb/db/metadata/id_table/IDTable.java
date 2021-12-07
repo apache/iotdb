@@ -27,9 +27,10 @@ import org.apache.iotdb.db.metadata.id_table.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.id_table.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,14 +57,49 @@ public class IDTable {
   }
 
   /**
+   * get device id from device path and check is aligned,
+   *
+   * @param seriesKey path of the time series
+   * @param isAligned whether the insert plan is aligned
+   * @return reused device id of the timeseries
+   */
+  public synchronized IDeviceID getDeviceID(PartialPath seriesKey, boolean isAligned)
+      throws MetadataException {
+    TimeseriesID timeseriesID = new TimeseriesID(seriesKey);
+    IDeviceID deviceID = timeseriesID.getDeviceID();
+    int slot = calculateSlot(deviceID);
+
+    DeviceEntry deviceEntry = idTables[slot].get(deviceID);
+    // new device
+    if (deviceEntry == null) {
+      deviceEntry = new DeviceEntry(deviceID);
+      deviceEntry.setAligned(isAligned);
+      idTables[slot].put(deviceID, deviceEntry);
+
+      return deviceID;
+    }
+
+    // check aligned
+    if (deviceEntry.isAligned() != isAligned) {
+      throw new MetadataException(
+          String.format(
+              "Timeseries under path [%s]'s align value is [%b], which is not consistent with insert plan",
+              seriesKey.getDevice(), deviceEntry.isAligned()));
+    }
+
+    // reuse device id in map
+    return deviceEntry.getDeviceID();
+  }
+
+  /**
    * check whether a time series is exist if exist, check the type consistency if not exist, call
    * MManager to create it
    *
    * @param seriesKey path of the time series
    * @param dataType type of the time series
-   * @return time series ID of the time series or null if type is not match
+   * @return measurement MNode of the time series or null if type is not match
    */
-  public synchronized TimeseriesID checkOrCreateIfNotExist(
+  public synchronized IMeasurementMNode checkOrCreateIfNotExist(
       PartialPath seriesKey, TSDataType dataType) {
     TimeseriesID timeseriesID = new TimeseriesID(seriesKey);
     IDeviceID deviceID = timeseriesID.getDeviceID();
@@ -93,7 +129,7 @@ public class IDTable {
       // 2. insert this schema into id table
       deviceEntry.putSchemaEntry(timeseriesID.getMeasurement(), schemaEntry);
 
-      return timeseriesID;
+      return null;
     }
 
     // type mismatch, we return null and this will be handled by upper level
@@ -101,8 +137,10 @@ public class IDTable {
       return null;
     }
 
-    return timeseriesID;
+    return null;
   }
+
+  public synchronized IMeasurementMNode getSeriesSchemas(InsertPlan insertPlan) {}
 
   /**
    * update latest flushed time of one timeseries
@@ -126,32 +164,6 @@ public class IDTable {
   public synchronized long getLatestFlushedTime(TimeseriesID timeseriesID)
       throws MetadataException {
     return getSchemaEntry(timeseriesID).getFlushTime();
-  }
-
-  /**
-   * get latest time value pair of one timeseries
-   *
-   * @param timeseriesID timeseries id
-   * @return latest time value pair of one timeseries
-   * @throws MetadataException throw if this timeseries is not exist
-   */
-  public Pair<Long, Object> getLastTimeValuePair(TimeseriesID timeseriesID)
-      throws MetadataException {
-    SchemaEntry schemaEntry = getSchemaEntry(timeseriesID);
-
-    return new Pair<>(schemaEntry.getLastTime(), schemaEntry.getLastValue());
-  }
-
-  /**
-   * update latest time value pair of one timeseries
-   *
-   * @param timeseriesID timeseries id
-   * @param lastTimeValue latest time value pair of one timeseries
-   * @throws MetadataException throw if this timeseries is not exist
-   */
-  public void updateLastTimeValuePair(TimeseriesID timeseriesID, Pair<Long, Object> lastTimeValue)
-      throws MetadataException {
-    getSchemaEntry(timeseriesID).updateLastCache(lastTimeValue);
   }
 
   /**
