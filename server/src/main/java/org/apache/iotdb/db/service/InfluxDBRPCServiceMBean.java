@@ -16,10 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.service;
 
-package org.apache.iotdb.influxdb.protocol.constant;
-
-public class InfluxDBConstant {
-
-  public static final String METHOD_NOT_SUPPORTED = "Method not supported.";
-}
+public interface InfluxDBRPCServiceMBean extends RPCServiceMBean {}

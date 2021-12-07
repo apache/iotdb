@@ -17,68 +17,61 @@
  * under the License.
  */
 
-package org.apache.iotdb.cluster.server;
+package org.apache.iotdb.db.service;
 
-import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
-import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
-import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
+import org.apache.iotdb.db.service.thrift.handler.InfluxDBServiceThriftHandler;
+import org.apache.iotdb.db.service.thrift.impl.InfluxDBServiceImpl;
+import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService.Processor;
 
-public class ClusterRPCService extends ThriftService implements ClusterRPCServiceMBean {
+public class InfluxDBRPCService extends ThriftService implements InfluxDBRPCServiceMBean {
+  private InfluxDBServiceImpl impl;
 
-  private ClusterTSServiceImpl impl;
-
-  private ClusterRPCService() {}
+  public static InfluxDBRPCService getInstance() {
+    return InfluxDBServiceHolder.INSTANCE;
+  }
 
   @Override
   public ThriftService getImplementation() {
-    return ClusterRPCServiceHolder.INSTANCE;
+    return getInstance();
   }
 
   @Override
-  public ServiceType getID() {
-    return ServiceType.CLUSTER_RPC_SERVICE;
-  }
-
-  @Override
-  public void initSyncedServiceImpl(Object serviceImpl) {
-    impl = (ClusterTSServiceImpl) serviceImpl;
-    super.initSyncedServiceImpl(serviceImpl);
-  }
-
-  @Override
-  public void initTProcessor() throws InstantiationException {
-    if (impl == null) {
-      throw new InstantiationException("ClusterTSServiceImpl is null");
-    }
+  public void initTProcessor()
+      throws ClassNotFoundException, IllegalAccessException, InstantiationException {
+    impl =
+        (InfluxDBServiceImpl)
+            Class.forName(IoTDBDescriptor.getInstance().getConfig().getInfluxDBImplClassName())
+                .newInstance();
+    initSyncedServiceImpl(null);
     processor = new Processor<>(impl);
   }
 
   @Override
-  public void initThriftServiceThread() throws IllegalAccessException {
+  public void initThriftServiceThread()
+      throws IllegalAccessException, InstantiationException, ClassNotFoundException {
     IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     try {
       thriftServiceThread =
           new ThriftServiceThread(
               processor,
               getID().getName(),
-              ThreadName.CLUSTER_RPC_CLIENT.getName(),
-              getBindIP(),
-              getBindPort(),
+              ThreadName.INFLUXDB_CLIENT.getName(),
+              config.getRpcAddress(),
+              config.getInfluxDBRpcPort(),
               config.getRpcMaxConcurrentClientNum(),
               config.getThriftServerAwaitTimeForStopService(),
-              new RPCServiceThriftHandler(impl),
+              new InfluxDBServiceThriftHandler(impl),
               IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
     } catch (RPCServiceException e) {
       throw new IllegalAccessException(e.getMessage());
     }
-    thriftServiceThread.setName(ThreadName.CLUSTER_RPC_SERVICE.getName());
+    thriftServiceThread.setName(ThreadName.INFLUXDB_SERVICE.getName());
   }
 
   @Override
@@ -88,7 +81,7 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
 
   @Override
   public int getBindPort() {
-    return ClusterDescriptor.getInstance().getConfig().getClusterRpcPort();
+    return IoTDBDescriptor.getInstance().getConfig().getInfluxDBRpcPort();
   }
 
   @Override
@@ -96,14 +89,15 @@ public class ClusterRPCService extends ThriftService implements ClusterRPCServic
     return getBindPort();
   }
 
-  public static ClusterRPCService getInstance() {
-    return ClusterRPCServiceHolder.INSTANCE;
+  @Override
+  public ServiceType getID() {
+    return ServiceType.INFLUX_SERVICE;
   }
 
-  private static class ClusterRPCServiceHolder {
+  private static class InfluxDBServiceHolder {
 
-    private static final ClusterRPCService INSTANCE = new ClusterRPCService();
+    private static final InfluxDBRPCService INSTANCE = new InfluxDBRPCService();
 
-    private ClusterRPCServiceHolder() {}
+    private InfluxDBServiceHolder() {}
   }
 }

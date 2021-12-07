@@ -16,10 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.utils;
 
-package org.apache.iotdb.influxdb.protocol.constant;
+public class ParameterUtils {
 
-public class InfluxDBConstant {
-
-  public static final String METHOD_NOT_SUPPORTED = "Method not supported.";
+  /**
+   * check whether the field is empty. If it is empty, an error will be thrown
+   *
+   * @param string string to check
+   * @param name prompt information in error throwing
+   */
+  public static void checkNonEmptyString(String string, String name)
+      throws IllegalArgumentException {
+    if (string == null || string.isEmpty()) {
+      throw new IllegalArgumentException("Expecting a non-empty string for " + name);
+    }
+  }
 }

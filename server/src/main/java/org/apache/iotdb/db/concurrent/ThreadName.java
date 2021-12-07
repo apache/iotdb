@@ -22,6 +22,8 @@ public enum ThreadName {
   METRICS_SERVICE("Metrics-ServerServiceImpl"),
   RPC_SERVICE("RPC"),
   RPC_CLIENT("RPC-Client"),
+  INFLUXDB_SERVICE("Influxdb-Service"),
+  INFLUXDB_CLIENT("Influxdb-Client"),
   MERGE_SERVICE("Merge"),
   CLOSE_MERGE_SERVICE("Close-Merge"),
   CLOSE_MERGE_DAEMON("Close-Merge-Daemon"),

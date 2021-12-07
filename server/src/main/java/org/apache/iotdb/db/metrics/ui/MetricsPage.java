@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metrics.ui;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metrics.server.SqlArgument;
-import org.apache.iotdb.db.service.TSServiceImpl;
+import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 
 import com.codahale.metrics.MetricRegistry;
