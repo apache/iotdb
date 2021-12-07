@@ -63,6 +63,7 @@ By default, the ports that IoTDB uses are:
 
 * 6667: RPC port
 * 31999: JMX port
+* 8086: InfluxDB Protocol port
 * 8181: Monitor port
 * 5555: Data sync port
 * 9003: internal metadata rpc port (for cluster)

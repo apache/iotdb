@@ -17,18 +17,12 @@
  * under the License.
  */
 
-/**
- * This is an InfluxDB line protocol parser.
- *
- * @see <a
- *     href=https://docs.influxdata.com/influxdb/v1.8/write_protocols/line_protocol_reference/">Line
- *     Protocol</a> This class contains code copied from the <a
- *     href=https://github.com/apache/druid/blob/master/extensions-contrib/influx-extensions/src/main/java/org/apache/druid/data/input/influx/InfluxParser.java>
- *     Apache Druid InfluxDB Parser </a>, licensed under the Apache License, Version 2.0.
- */
-package org.apache.iotdb.influxdb.protocol.input;
+package org.apache.iotdb.db.protocol.influxdb.input;
 
-import org.antlr.v4.runtime.*;
+import org.antlr.v4.runtime.ANTLRInputStream;
+import org.antlr.v4.runtime.CharStream;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.TokenStream;
 import org.influxdb.InfluxDBException;
 import org.influxdb.dto.Point;
 
@@ -37,15 +31,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class InfluxLineParser {
-
   private static final Pattern BACKSLASH_PATTERN = Pattern.compile("\\\\\"");
   private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("\\\\([,= ])");
 
-  public static Collection<Point> parserRecordsToPoints(String records) {
+  public static List<Point> parserRecordsToPoints(String records) {
     return parserRecordsToPoints(records, null);
   }
 
-  public static Collection<Point> parserRecordsToPoints(String records, TimeUnit precision) {
+  public static List<Point> parserRecordsToPoints(String records, TimeUnit precision) {
     if (precision == null) {
       precision = TimeUnit.NANOSECONDS;
     }
