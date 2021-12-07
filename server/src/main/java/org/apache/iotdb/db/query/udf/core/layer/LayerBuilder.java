@@ -96,13 +96,20 @@ public class LayerBuilder {
   }
 
   public LayerBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
+    final int maxParallelPlansNumber = 2;
+    int indexOutOfMaxParallelPlansNumber = 0;
     for (int i = 0, n = resultColumnExpressions.length; i < n; ++i) {
       // resultColumnExpressions[i] -> the index of the fragment it belongs to
       Integer fragmentDataSetIndex =
           resultColumnExpressions[i].tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
       if (fragmentDataSetIndex == null) {
-        fragmentDataSetIndex = fragmentDataSetIndexToLayerPointReaders.size();
-        fragmentDataSetIndexToLayerPointReaders.add(new ArrayList<>());
+        if (fragmentDataSetIndexToLayerPointReaders.size() >= maxParallelPlansNumber) {
+          fragmentDataSetIndex = indexOutOfMaxParallelPlansNumber % maxParallelPlansNumber;
+          ++indexOutOfMaxParallelPlansNumber;
+        } else {
+          fragmentDataSetIndex = fragmentDataSetIndexToLayerPointReaders.size();
+          fragmentDataSetIndexToLayerPointReaders.add(new ArrayList<>());
+        }
       }
 
       // build point readers
