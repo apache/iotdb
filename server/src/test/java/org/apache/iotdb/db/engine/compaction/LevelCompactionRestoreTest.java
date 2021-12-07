@@ -183,7 +183,6 @@ public class LevelCompactionRestoreTest {
       resourceFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 
   void prepareFiles(int seqFileNum, int unseqFileNum) throws IOException, WriteProcessException {

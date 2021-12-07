@@ -470,7 +470,7 @@ public class AggregationExecutor {
     }
 
     SingleDataSet dataSet;
-    if (plan.getLevel() >= 0) {
+    if (plan.isGroupByLevel()) {
       Map<String, AggregateResult> finalPaths = plan.getAggPathByLevel();
 
       List<AggregateResult> mergedAggResults =

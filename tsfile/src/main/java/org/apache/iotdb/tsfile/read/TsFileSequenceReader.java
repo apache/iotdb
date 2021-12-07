@@ -83,6 +83,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final String METADATA_INDEX_NODE_DESERIALIZE_ERROR =
       "Something error happened while deserializing MetadataIndexNode of file {}";
+  private static final int MAX_READ_BUFFER_SIZE = 4 * 1024 * 1024;
   protected String file;
   protected TsFileInput tsFileInput;
   protected long fileMetadataPos;
@@ -900,23 +901,35 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param position the start position of data in the tsFileInput, or the current position if
    *     position = -1
-   * @param size the size of data that want to read
+   * @param totalSize the size of data that want to read
    * @return data that been read.
    */
-  protected ByteBuffer readData(long position, int size) throws IOException {
-    ByteBuffer buffer = ByteBuffer.allocate(size);
-    if (position < 0) {
-      if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != size) {
-        throw new IOException("reach the end of the data");
+  protected ByteBuffer readData(long position, int totalSize) throws IOException {
+    int allocateSize = Math.min(MAX_READ_BUFFER_SIZE, totalSize);
+    int allocateNum = (int) Math.ceil((double) totalSize / allocateSize);
+    ByteBuffer buffer = ByteBuffer.allocate(totalSize);
+    int bufferLimit = 0;
+    for (int i = 0; i < allocateNum; i++) {
+      if (i == allocateNum - 1) {
+        allocateSize = totalSize - allocateSize * (allocateNum - 1);
       }
-    } else {
-      long actualReadSize = ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, size);
-      if (actualReadSize != size) {
-        throw new IOException(
-            String.format(
-                "reach the end of the data. Size of data that want to read: %s,"
-                    + "actual read size: %s, position: %s",
-                size, actualReadSize, position));
+      bufferLimit += allocateSize;
+      buffer.limit(bufferLimit);
+      if (position < 0) {
+        if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != allocateSize) {
+          throw new IOException("reach the end of the data");
+        }
+      } else {
+        long actualReadSize =
+            ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, allocateSize);
+        if (actualReadSize != allocateSize) {
+          throw new IOException(
+              String.format(
+                  "reach the end of the data. Size of data that want to read: %s,"
+                      + "actual read size: %s, position: %s",
+                  allocateSize, actualReadSize, position));
+        }
+        position += allocateSize;
       }
     }
     buffer.flip();

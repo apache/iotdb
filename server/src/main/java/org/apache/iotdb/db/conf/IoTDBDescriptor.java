@@ -165,11 +165,6 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
-      conf.setMaxConcurrentSubQuery(
-          Integer.parseInt(
-              properties.getProperty(
-                  "max_concurrent_sub_query", Integer.toString(conf.getMaxConcurrentSubQuery()))));
-
       conf.setTimestampPrecision(
           properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
 

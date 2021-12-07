@@ -16,6 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+#ifndef __IOTDB_SESSION
+#define __IOTDB_SESSION
 
 #include <string>
 #include <vector>
@@ -737,3 +739,5 @@ public:
 
     void executeNonQueryStatement(std::string sql);
 };
+
+#endif // __IOTDB_SESSION

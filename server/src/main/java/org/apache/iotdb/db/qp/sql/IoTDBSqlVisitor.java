@@ -1377,8 +1377,17 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
     if (!queryOp.hasAggregation()) {
       throw new SQLParserException("There is no aggregation function with group by query");
     }
-    queryOp.setGroupByLevel(true);
-    queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
+    setLevels(queryOp, ctx.LEVEL(), ctx.INT());
+  }
+
+  private void setLevels(QueryOperator queryOp, TerminalNode level, List<TerminalNode> anInt) {
+    if (level != null && anInt != null) {
+      int[] levels = new int[anInt.size()];
+      for (int i = 0; i < anInt.size(); i++) {
+        levels[i] = Integer.parseInt(anInt.get(i).getText());
+      }
+      queryOp.setLevels(levels);
+    }
   }
 
   public void parseFillClause(FillClauseContext ctx, QueryOperator queryOp) {
@@ -1489,10 +1498,7 @@ public class IoTDBSqlVisitor extends SqlBaseBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), queryOp);
 
-    if (ctx.INT() != null) {
-      queryOp.setGroupByLevel(true);
-      queryOp.setLevel(Integer.parseInt(ctx.INT().getText()));
-    }
+    setLevels(queryOp, ctx.LEVEL(), ctx.INT());
   }
 
   private void parseGroupByFillClause(GroupByFillClauseContext ctx, QueryOperator queryOp) {
