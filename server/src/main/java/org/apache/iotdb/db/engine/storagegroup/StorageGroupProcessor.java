@@ -1612,6 +1612,31 @@ public class StorageGroupProcessor {
     }
   }
 
+  public QueryDataSource getAllQueryDataSource(QueryContext context, Filter timeFilter)
+      throws QueryProcessException {
+    readLock();
+    try {
+      Pair<List<TsFileResource>, TsFileResource> seqResources =
+          getFileResourceListForQuery(tsFileManagement.getTsFileList(true), timeFilter, true);
+      Pair<List<TsFileResource>, TsFileResource> unseqResources =
+          getFileResourceListForQuery(tsFileManagement.getTsFileList(false), timeFilter, false);
+      QueryDataSource dataSource = new QueryDataSource(seqResources.left, unseqResources.left);
+      dataSource.setUnclosedSeqResource(seqResources.right);
+      dataSource.setUnclosedunseqResource(unseqResources.right);
+      // used files should be added before mergeLock is unlocked, or they may be deleted by
+      // running merge
+      dataSource.setDataTTL(dataTTL);
+      long timeLowerBound =
+          dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+      context.setQueryTimeLowerBound(timeLowerBound);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   public void readLock() {
     // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
@@ -1708,6 +1733,34 @@ public class StorageGroupProcessor {
       }
     }
     return tsfileResourcesForQuery;
+  }
+
+  /**
+   * @param tsFileResources includes sealed and unsealed tsfile resources
+   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
+   */
+  private Pair<List<TsFileResource>, TsFileResource> getFileResourceListForQuery(
+      Collection<TsFileResource> tsFileResources, Filter timeFilter, boolean isSeq)
+      throws MetadataException {
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    TsFileResource unclosedTsfileResourceForQuery = null;
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL)) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          tsfileResourcesForQuery.add(tsFileResource);
+        } else {
+          // There is at most one unclosed tsFile
+          unclosedTsfileResourceForQuery = tsFileResource;
+        }
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return new Pair<>(tsfileResourcesForQuery, unclosedTsfileResourceForQuery);
   }
 
   /**

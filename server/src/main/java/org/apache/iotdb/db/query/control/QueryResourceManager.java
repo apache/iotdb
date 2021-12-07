@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -37,11 +38,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
@@ -63,9 +64,12 @@ public class QueryResourceManager {
    */
   private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
+  private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSource;
+
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
+    cachedQueryDataSource = new HashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -96,17 +100,59 @@ public class QueryResourceManager {
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {
 
-    SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(selectedPath, filter);
-    QueryDataSource queryDataSource =
-        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
-    // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
-      TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
+    long queryId = context.getQueryId();
+    String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
+    String deviceId = selectedPath.getDevice();
+
+    QueryDataSource queryDataSource;
+    if (cachedQueryDataSource.containsKey(queryId)
+        && cachedQueryDataSource.get(queryId).containsKey(storageGroupPath)) {
+      queryDataSource = cachedQueryDataSource.get(queryId).get(storageGroupPath);
+    } else {
+      SingleSeriesExpression singleSeriesExpression =
+          new SingleSeriesExpression(selectedPath, filter);
+      queryDataSource =
+          StorageEngine.getInstance().getAllQueryDataSource(singleSeriesExpression, context);
+      cachedQueryDataSource
+          .computeIfAbsent(queryId, k -> new HashMap<>())
+          .put(storageGroupPath, queryDataSource);
     }
+
+    if (queryDataSource.getUnSeqFileOrderIndexes(deviceId) == null) {
+      Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size()];
+      fillOrderIndexes(
+          deviceId, queryDataSource.getUnseqResources(), orderIndexes, context.isAscending());
+      queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
+    }
+
     return queryDataSource;
+  }
+
+  private void fillOrderIndexes(
+      String deviceId,
+      List<TsFileResource> unseqResources,
+      Integer[] orderIndexes,
+      boolean ascending) {
+    AtomicInteger index = new AtomicInteger();
+    Map<Integer, Long> intToOrderTimeMap =
+        unseqResources.stream()
+            .collect(
+                Collectors.toMap(
+                    key -> index.getAndIncrement(),
+                    resource ->
+                        ascending
+                            ? resource.getStartTime(deviceId)
+                            : resource.getEndTime(deviceId)));
+
+    index.set(0);
+    intToOrderTimeMap.entrySet().stream()
+        .sorted(
+            (t1, t2) ->
+                ascending
+                    ? Long.compare(t1.getValue(), t2.getValue())
+                    : Long.compare(t2.getValue(), t1.getValue()))
+        .collect(Collectors.toList())
+        .forEach(item -> orderIndexes[index.getAndIncrement()] = item.getKey());
   }
 
   /**
@@ -148,6 +194,9 @@ public class QueryResourceManager {
 
     // remove query info in QueryTimeManager
     QueryTimeManager.getInstance().unRegisterQuery(queryId);
+
+    // remove cached QueryDataSource
+    cachedQueryDataSource.remove(queryId);
   }
 
   private static class QueryTokenManagerHelper {

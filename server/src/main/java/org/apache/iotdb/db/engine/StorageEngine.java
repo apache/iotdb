@@ -822,6 +822,23 @@ public class StorageEngine implements IService {
         fullPath, context, filePathsManager, seriesExpression.getFilter());
   }
 
+  public QueryDataSource getAllQueryDataSource(
+      SingleSeriesExpression seriesExpression, QueryContext context)
+      throws StorageEngineException, QueryProcessException {
+    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
+    PartialPath deviceId = fullPath.getDevicePath();
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.getAllQueryDataSource(context, seriesExpression.getFilter());
+  }
+
+  public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
+    PartialPath deviceId = path.getDevicePath();
+    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
+    return storageGroupProcessor.getLogicalStorageGroupName()
+        + File.separator
+        + storageGroupProcessor.getVirtualStorageGroupId();
+  }
+
   /**
    * count all Tsfiles which need to be upgraded
    *

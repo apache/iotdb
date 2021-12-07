@@ -24,18 +24,26 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class QueryDataSource {
   private List<TsFileResource> seqResources;
   private List<TsFileResource> unseqResources;
 
+  private TsFileResource unclosedSeqResource;
+  private TsFileResource unclosedunseqResource;
+
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
+
+  private final Map<String, Integer[]> unSeqFileOrderIndexesMap;
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
+    this.unSeqFileOrderIndexesMap = new HashMap<>();
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -50,8 +58,24 @@ public class QueryDataSource {
     return dataTTL;
   }
 
+  public Integer[] getUnSeqFileOrderIndexes(String deviceId) {
+    return unSeqFileOrderIndexesMap.get(deviceId);
+  }
+
+  public void setUnclosedSeqResource(TsFileResource unclosedSeqResource) {
+    this.unclosedSeqResource = unclosedSeqResource;
+  }
+
+  public void setUnclosedunseqResource(TsFileResource unclosedunseqResource) {
+    this.unclosedunseqResource = unclosedunseqResource;
+  }
+
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  public void setUnSeqFileOrderIndexes(String deviceId, Integer[] indexes) {
+    this.unSeqFileOrderIndexesMap.put(deviceId, indexes);
   }
 
   /** @return an updated filter concerning TTL */

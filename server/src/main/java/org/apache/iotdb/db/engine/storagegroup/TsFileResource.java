@@ -376,6 +376,23 @@ public class TsFileResource {
     return timeIndex.getEndTime(deviceId);
   }
 
+  public long getFileStartTime() {
+    long res = Long.MAX_VALUE;
+    for (String deviceId : timeIndex.getDevices()) {
+      res = Math.min(res, timeIndex.getStartTime(deviceId));
+    }
+    return res;
+  }
+
+  /** open file's end time is Long.MIN_VALUE */
+  public long getFileEndTime() {
+    long res = Long.MIN_VALUE;
+    for (String deviceId : timeIndex.getDevices()) {
+      res = Math.max(res, timeIndex.getEndTime(deviceId));
+    }
+    return res;
+  }
+
   public Set<String> getDevices() {
     return timeIndex.getDevices();
   }
@@ -563,6 +580,21 @@ public class TsFileResource {
             "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
       }
       return res;
+    }
+    return true;
+  }
+
+  /** @return true if the TsFile lives beyond TTL */
+  public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl) {
+    long startTime = getFileStartTime();
+    long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+
+    if (!isAlive(endTime, ttl)) {
+      return false;
+    }
+
+    if (timeFilter != null) {
+      return timeFilter.satisfyStartEndTime(startTime, endTime);
     }
     return true;
   }
