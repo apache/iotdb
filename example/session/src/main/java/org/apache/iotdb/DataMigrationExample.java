@@ -116,15 +116,29 @@ public class DataMigrationExample {
         measurementsInCurrentDevice.add(currenttimePath.getMeasurement());
         dataTypesInCurrentDevice.add(TSDataType.valueOf(currentDivice_Iter.getString("dataType")));
         seriesNumInOneTask++;
+        if (seriesNumInOneTask > 500) {
+          seriesNumInOneTask = 0;
+          count++;
+          Future future =
+              executorService.submit(
+                  new LoadThread(
+                      count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
+          futureList.add(future);
+          measurementsInCurrentDevice = new ArrayList<>();
+          dataTypesInCurrentDevice = new ArrayList<>();
+        }
       }
-      count++;
-      Future future =
-          executorService.submit(
-              new LoadThread(
-                  count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
-      futureList.add(future);
-      measurementsInCurrentDevice = new ArrayList<>();
-      dataTypesInCurrentDevice = new ArrayList<>();
+      if (seriesNumInOneTask > 0) {
+        seriesNumInOneTask = 0;
+        count++;
+        Future future =
+            executorService.submit(
+                new LoadThread(
+                    count, currentDevice, measurementsInCurrentDevice, dataTypesInCurrentDevice));
+        futureList.add(future);
+        measurementsInCurrentDevice = new ArrayList<>();
+        dataTypesInCurrentDevice = new ArrayList<>();
+      }
       readerPool.closeResultSet(currentDivice_DataSet);
     }
     readerPool.closeResultSet(schemaDataSet);
