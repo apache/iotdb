@@ -39,6 +39,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.QuoteMode;
+import org.apache.thrift.TException;
 import org.jline.reader.LineReader;
 
 import java.io.BufferedReader;
@@ -85,6 +86,8 @@ public class ExportCsv extends AbstractCsvTool {
 
   private static String queryCommand;
 
+  private static String timestampPrecision;
+
   private static final int EXPORT_PER_LINE_COUNT = 10000;
 
   /** main function of export csv tool. */
@@ -122,6 +125,7 @@ public class ExportCsv extends AbstractCsvTool {
 
       session = new Session(host, Integer.parseInt(port), username, password);
       session.open(false);
+      timestampPrecision = session.getTimestampPrecision();
       setTimeZone();
 
       if (queryCommand == null) {
@@ -149,6 +153,8 @@ public class ExportCsv extends AbstractCsvTool {
       System.out.println("Invalid args: " + e.getMessage());
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
+    } catch (TException e) {
+      e.printStackTrace();
     } finally {
       if (session != null) {
         try {
@@ -286,7 +292,7 @@ public class ExportCsv extends AbstractCsvTool {
    * Dump files from database to CSV file.
    *
    * @param sql export the result of executing the sql
-   * @param index use to create dump file name
+   * @param index used to create dump file name
    */
   private static void dumpResult(String sql, int index) {
     final String path = targetDirectory + targetFile + index + ".csv";
@@ -301,7 +307,6 @@ public class ExportCsv extends AbstractCsvTool {
   }
 
   public static String timeTrans(Long time) {
-    String timestampPrecision = "ms";
     switch (timeFormat) {
       case "default":
         return RpcUtils.parseLongToDateWithPrecision(
