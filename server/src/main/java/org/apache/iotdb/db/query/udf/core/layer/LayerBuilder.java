@@ -42,6 +42,9 @@ public class LayerBuilder {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
+  private static final int MAX_PARALLEL_DATASETS_NUMBER =
+      Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
+
   private final long queryId;
   private final UDTFPlan udtfPlan;
   private final RawQueryInputLayer rawTimeSeriesInputLayer;
@@ -96,16 +99,15 @@ public class LayerBuilder {
   }
 
   public LayerBuilder buildResultColumnPointReaders() throws QueryProcessException, IOException {
-    final int maxParallelPlansNumber = 2;
-    int indexOutOfMaxParallelPlansNumber = 0;
+    int indexOutOfMaxParallelDataSetsNumber = 0;
     for (int i = 0, n = resultColumnExpressions.length; i < n; ++i) {
       // resultColumnExpressions[i] -> the index of the fragment it belongs to
       Integer fragmentDataSetIndex =
           resultColumnExpressions[i].tryToGetFragmentDataSetIndex(expressionIntermediateLayerMap);
       if (fragmentDataSetIndex == null) {
-        if (fragmentDataSetIndexToLayerPointReaders.size() >= maxParallelPlansNumber) {
-          fragmentDataSetIndex = indexOutOfMaxParallelPlansNumber % maxParallelPlansNumber;
-          ++indexOutOfMaxParallelPlansNumber;
+        if (fragmentDataSetIndexToLayerPointReaders.size() >= MAX_PARALLEL_DATASETS_NUMBER) {
+          fragmentDataSetIndex = indexOutOfMaxParallelDataSetsNumber % MAX_PARALLEL_DATASETS_NUMBER;
+          ++indexOutOfMaxParallelDataSetsNumber;
         } else {
           fragmentDataSetIndex = fragmentDataSetIndexToLayerPointReaders.size();
           fragmentDataSetIndexToLayerPointReaders.add(new ArrayList<>());
