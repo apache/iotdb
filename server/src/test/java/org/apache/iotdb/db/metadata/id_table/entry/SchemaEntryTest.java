@@ -25,7 +25,8 @@ import static org.junit.Assert.assertEquals;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.junit.Test;
 
 public class SchemaEntryTest {
@@ -53,19 +54,20 @@ public class SchemaEntryTest {
       assertEquals(schemaEntry.getFlushTime(), 100);
 
       // last cache
-      Object o1 = new Object();
-      Object o2 = new Object();
-      schemaEntry.updateLastCache(new Pair<>(100L, o1));
-      assertEquals(schemaEntry.getLastValue(), o1);
-      assertEquals(schemaEntry.getLastTime(), 100L);
+      schemaEntry.updateCachedLast(
+          new TimeValuePair(100L, new TsPrimitiveType.TsLong(1L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(1L), schemaEntry.getLastValue());
+      assertEquals(100L, schemaEntry.getLastTime());
 
-      schemaEntry.updateLastCache(new Pair<>(90L, o2));
-      assertEquals(schemaEntry.getLastValue(), o1);
-      assertEquals(schemaEntry.getLastTime(), 100L);
+      schemaEntry.updateCachedLast(
+          new TimeValuePair(90L, new TsPrimitiveType.TsLong(2L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(1L), schemaEntry.getLastValue());
+      assertEquals(100L, schemaEntry.getLastTime());
 
-      schemaEntry.updateLastCache(new Pair<>(110L, o2));
-      assertEquals(schemaEntry.getLastValue(), o2);
-      assertEquals(schemaEntry.getLastTime(), 110L);
+      schemaEntry.updateCachedLast(
+          new TimeValuePair(110L, new TsPrimitiveType.TsLong(2L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(2L), schemaEntry.getLastValue());
+      assertEquals(110L, schemaEntry.getLastTime());
     }
   }
 }

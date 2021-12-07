@@ -18,12 +18,33 @@
  */
 package org.apache.iotdb.db.metadata;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -37,6 +58,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.metadata.id_table.IDTable;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -94,30 +116,8 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 /**
  * This class takes the responsibility of serialization of all the metadata info and persistent it
@@ -382,12 +382,12 @@ public class MManager {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        createTimeseriesEntry(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case CREATE_ALIGNED_TIMESERIES:
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
+        createAlignedTimeSeriesEntry(createAlignedTimeSeriesPlan);
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
@@ -454,6 +454,20 @@ public class MManager {
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     createTimeseries(plan, -1);
+  }
+
+  public void createTimeseriesEntry(CreateTimeSeriesPlan plan, long offset)
+      throws MetadataException {
+    createTimeseries(plan, offset);
+
+    // update id table
+    try {
+      IDTable idTable =
+          StorageEngine.getInstance().getProcessor(plan.getPath().getDevicePath()).getIdTable();
+      idTable.createTimeseries(plan);
+    } catch (StorageEngineException e) {
+      logger.error("get id table error");
+    }
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -556,6 +570,19 @@ public class MManager {
     createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
             prefixPath, measurements, dataTypes, encodings, compressors, null));
+  }
+
+  public void createAlignedTimeSeriesEntry(CreateAlignedTimeSeriesPlan plan)
+      throws MetadataException {
+    createAlignedTimeSeries(plan);
+
+    // update id table
+    try {
+      IDTable idTable = StorageEngine.getInstance().getProcessor(plan.getPrefixPath()).getIdTable();
+      idTable.createAlignedTimeseries(plan);
+    } catch (StorageEngineException e) {
+      logger.error("get id table error");
+    }
   }
 
   /**

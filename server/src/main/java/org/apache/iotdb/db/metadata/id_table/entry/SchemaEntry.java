@@ -56,6 +56,15 @@ public class SchemaEntry implements ILastCacheContainer {
     flushTime = Long.MIN_VALUE;
   }
 
+  public SchemaEntry(TSDataType dataType, TSEncoding encoding, CompressionType compressionType) {
+    schema |= dataType.serialize();
+    schema |= (((long) encoding.serialize()) << 8);
+    schema |= (((long) compressionType.serialize()) << 16);
+
+    lastTime = Long.MIN_VALUE;
+    flushTime = Long.MIN_VALUE;
+  }
+
   /**
    * get ts data type from long value of schema
    *
