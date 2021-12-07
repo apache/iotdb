@@ -91,11 +91,18 @@ public class TsFileRecoverPerformer {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public RestorableTsFileIOWriter recover(
       boolean needRedoWal, Supplier<ByteBuffer[]> supplier, Consumer<ByteBuffer[]> consumer)
-      throws StorageGroupProcessorException {
+      throws StorageGroupProcessorException, IOException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", filePath);
+      return null;
+    }
+
+    if (tsFileResource.resourceFileExists()) {
+      // .resource file exists, deserialize it
+      recoverResourceFromFile();
+      // return null here for skipping check TsFile
       return null;
     }
 
@@ -144,18 +151,13 @@ public class TsFileRecoverPerformer {
   }
 
   private void recoverResource() throws IOException {
-    if (tsFileResource.resourceFileExists()) {
-      // .resource file exists, deserialize it
-      recoverResourceFromFile();
-    } else {
-      // .resource file does not exist, read file metadata and recover tsfile resource
-      try (TsFileSequenceReader reader =
-          new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
-        FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
-      }
-      // write .resource file
-      tsFileResource.serialize();
+    // .resource file does not exist, read file metadata and recover tsfile resource
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
+      FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
     }
+    // write .resource file
+    tsFileResource.serialize();
   }
 
   private void recoverResourceFromFile() throws IOException {
@@ -295,8 +297,8 @@ public class TsFileRecoverPerformer {
         tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());
       }
 
-      restorableTsFileIOWriter.endFile();
       tsFileResource.serialize();
+      restorableTsFileIOWriter.endFile();
 
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
