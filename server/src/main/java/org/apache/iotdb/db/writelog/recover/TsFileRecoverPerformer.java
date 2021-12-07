@@ -297,8 +297,8 @@ public class TsFileRecoverPerformer {
         tsFileResource.updatePlanIndexes(recoverMemTable.getMaxPlanIndex());
       }
 
-      tsFileResource.serialize();
       restorableTsFileIOWriter.endFile();
+      tsFileResource.serialize();
 
       // otherwise this file is not closed before crush, do nothing so we can continue writing
       // into it
