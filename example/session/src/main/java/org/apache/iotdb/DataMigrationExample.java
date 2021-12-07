@@ -116,7 +116,7 @@ public class DataMigrationExample {
         measurementsInCurrentDevice.add(currenttimePath.getMeasurement());
         dataTypesInCurrentDevice.add(TSDataType.valueOf(currentDivice_Iter.getString("dataType")));
         seriesNumInOneTask++;
-        if (seriesNumInOneTask > 500) {
+        if (seriesNumInOneTask > 300) {
           seriesNumInOneTask = 0;
           count++;
           Future future =
