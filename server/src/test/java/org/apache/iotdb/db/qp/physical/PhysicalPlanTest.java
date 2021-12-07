@@ -28,9 +28,35 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
-import org.apache.iotdb.db.qp.physical.crud.*;
-import org.apache.iotdb.db.qp.physical.sys.*;
-import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
+import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
+import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
+import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -248,12 +274,9 @@ public class PhysicalPlanTest {
     }
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
-    assertEquals(
-        300000, ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -268,14 +291,11 @@ public class PhysicalPlanTest {
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
     assertEquals(
-        defaultFillInterval,
-        ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -298,7 +318,7 @@ public class PhysicalPlanTest {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
     } catch (Exception e) {
-      assertEquals("Only \"=\" can be used in fill function", e.getMessage());
+      assertEquals("The condition of WHERE clause must be like time=constant", e.getMessage());
     }
   }
 
@@ -1051,7 +1071,7 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testLastPlanDataTypes() throws QueryProcessException, MetadataException {
+  public void testLastPlanDataTypes() throws QueryProcessException {
     String sqlStr1 = "SELECT last s1 FROM root.vehicle.d1";
     String sqlStr2 = "SELECT last s1 FROM root.vehicle.d2, root.vehicle.d3, root.vehicle.d4";
 

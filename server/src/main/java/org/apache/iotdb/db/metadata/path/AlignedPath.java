@@ -21,7 +21,9 @@ package org.apache.iotdb.db.metadata.path;
 
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.AlignedWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.AlignedReadOnlyMemChunk;
@@ -47,6 +49,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -111,6 +114,12 @@ public class AlignedPath extends PartialPath {
     measurementList.add(path.getMeasurement());
     schemaList = new ArrayList<>();
     schemaList.add(path.getMeasurementSchema());
+  }
+
+  public AlignedPath(String vectorPath) throws IllegalPathException {
+    super(vectorPath);
+    measurementList = new ArrayList<>();
+    schemaList = new ArrayList<>();
   }
 
   @Override
@@ -357,8 +366,9 @@ public class AlignedPath extends PartialPath {
 
   @Override
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
-      Map<String, IWritableMemChunkGroup> memTableMap, List<TimeRange> deletionList)
+      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
+    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
     // check If memtable contains this path
     if (!memTableMap.containsKey(getDevice())) {
       return null;
@@ -378,8 +388,34 @@ public class AlignedPath extends PartialPath {
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList alignedTvListCopy = alignedMemChunk.getSortedTvListForQuery(schemaList);
     int curSize = alignedTvListCopy.size();
+    List<List<TimeRange>> deletionList = null;
+    if (modsToMemtable != null) {
+      deletionList = constructDeletionList(memTable, modsToMemtable, timeLowerBound);
+    }
     return new AlignedReadOnlyMemChunk(
         getMeasurementSchema(), alignedTvListCopy, curSize, deletionList);
+  }
+
+  private List<List<TimeRange>> constructDeletionList(
+      IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound) {
+    List<List<TimeRange>> deletionList = new ArrayList<>();
+    for (String measurement : measurementList) {
+      List<TimeRange> columnDeletionList = new ArrayList<>();
+      columnDeletionList.add(new TimeRange(Long.MIN_VALUE, timeLowerBound));
+      for (Modification modification : getModificationsForMemtable(memTable, modsToMemtable)) {
+        if (modification instanceof Deletion) {
+          Deletion deletion = (Deletion) modification;
+          PartialPath fullPath = this.concatNode(measurement);
+          if (deletion.getPath().matchFullPath(fullPath)
+              && deletion.getEndTime() > timeLowerBound) {
+            long lowerBound = Math.max(deletion.getStartTime(), timeLowerBound);
+            columnDeletionList.add(new TimeRange(lowerBound, deletion.getEndTime()));
+          }
+        }
+      }
+      deletionList.add(TimeRange.sortAndMerge(columnDeletionList));
+    }
+    return deletionList;
   }
 
   @Override

@@ -137,6 +137,10 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(RPCService.getInstance());
     }
 
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      registerManager.register(InfluxDBRPCService.getInstance());
+    }
+
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
       registerManager.register(MetricsService.getInstance());
     }
