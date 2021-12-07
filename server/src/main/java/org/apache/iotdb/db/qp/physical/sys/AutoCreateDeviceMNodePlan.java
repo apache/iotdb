@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -61,7 +61,7 @@ public class AutoCreateDeviceMNodePlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.AUTO_CREATE_DEVICE_MNODE.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);

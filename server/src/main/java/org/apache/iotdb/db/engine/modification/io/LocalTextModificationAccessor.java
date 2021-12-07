@@ -21,16 +21,15 @@ package org.apache.iotdb.db.engine.modification.io;
 
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.utils.TracedBufferedReader;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,26 +60,42 @@ public class LocalTextModificationAccessor
 
   @Override
   public Collection<Modification> read() {
-    if (!FSFactoryProducer.getFSFactory().getFile(filePath).exists()) {
+    File file = FSFactoryProducer.getFSFactory().getFile(filePath);
+    if (!file.exists()) {
       logger.debug("No modification has been written to this file");
       return new ArrayList<>();
     }
 
     String line;
+    long truncatedSize = 0;
+    boolean crashed = false;
     List<Modification> modificationList = new ArrayList<>();
-    try (BufferedReader reader = FSFactoryProducer.getFSFactory().getBufferedReader(filePath)) {
+    try (TracedBufferedReader reader = new TracedBufferedReader(new FileReader(file))) {
       while ((line = reader.readLine()) != null) {
         if (line.equals(ABORT_MARK) && !modificationList.isEmpty()) {
           modificationList.remove(modificationList.size() - 1);
         } else {
           modificationList.add(decodeModification(line));
         }
+        truncatedSize = reader.position();
       }
     } catch (IOException e) {
+      crashed = true;
       logger.error(
-          "An error occurred when reading modifications, and the remaining modifications "
-              + "were ignored.",
+          "An error occurred when reading modifications, and the remaining modifications will be truncated to size {}.",
+          truncatedSize,
           e);
+    }
+
+    if (crashed) {
+      try (FileOutputStream outputStream = new FileOutputStream(file, true)) {
+        outputStream.getChannel().truncate(truncatedSize);
+      } catch (FileNotFoundException e) {
+        logger.debug("No modification has been written to this file");
+      } catch (IOException e) {
+        logger.error(
+            "An error occurred when truncating modifications to size {}.", truncatedSize, e);
+      }
     }
     return modificationList;
   }
@@ -114,7 +129,9 @@ public class LocalTextModificationAccessor
   }
 
   private static String encodeModification(Modification mod) {
-    if (mod instanceof Deletion) return encodeDeletion((Deletion) mod);
+    if (mod instanceof Deletion) {
+      return encodeDeletion((Deletion) mod);
+    }
     return null;
   }
 

@@ -23,7 +23,7 @@ import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -63,7 +63,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   public void testNoFilter() throws IOException, StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
-    plan.setDeduplicatedDataTypes(dataTypes);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -83,7 +82,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
@@ -100,7 +98,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
   public void testNoFilterWithRedirect() throws StorageEngineException {
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
     RemoteQueryContext context =
@@ -121,7 +118,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
             new PartialPath(TestUtils.getTestSeries(0, 0)), ValueFilter.gtEq(5.0));
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList);
-    plan.setDeduplicatedDataTypes(dataTypes);
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);
@@ -142,7 +138,6 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
         new GlobalTimeExpression(new AndFilter(TimeFilter.gtEq(5), TimeFilter.ltEq(10)));
     RawDataQueryPlan plan = new RawDataQueryPlan();
     plan.setDeduplicatedPathsAndUpdate(pathList.subList(0, 1));
-    plan.setDeduplicatedDataTypes(dataTypes.subList(0, 1));
     plan.setExpression(expression);
     plan.setEnableRedirect(true);
     queryExecutor = new ClusterDataQueryExecutor(plan, testMetaMember);

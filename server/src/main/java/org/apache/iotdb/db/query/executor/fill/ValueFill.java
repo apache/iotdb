@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,7 +62,7 @@ public class ValueFill extends IFill implements Cloneable {
       long queryTime,
       Set<String> deviceMeasurements,
       QueryContext context) {
-    this.queryTime = queryTime;
+    this.queryStartTime = queryTime;
   }
 
   @Override
@@ -74,7 +74,7 @@ public class ValueFill extends IFill implements Cloneable {
       case FLOAT:
       case DOUBLE:
       case TEXT:
-        return new TimeValuePair(queryTime, tsPrimitiveType);
+        return new TimeValuePair(queryStartTime, tsPrimitiveType);
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }

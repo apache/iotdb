@@ -24,6 +24,9 @@
 
 将指定存储组的内存缓存区 Memory Table 的数据持久化到磁盘上，并将数据文件封口。
 
+注意：此命令客户端不需要手动调用，IoTDB 有 wal 保证数据安全，IoTDB 会选择合适的时机进行 flush。
+如果频繁调用 flush 会导致数据文件很小，降低查询性能。
+
 ```sql
 IoTDB> FLUSH 
 IoTDB> FLUSH root.ln

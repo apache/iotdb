@@ -23,6 +23,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import java.io.DataOutputStream;
+import java.io.IOException;
 import java.util.LinkedList;
 
 /**
@@ -401,6 +403,93 @@ public class DescReadWriteBatchData extends DescReadBatchData {
   public boolean getBooleanByIndex(int idx) {
     return booleanRet
         .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
+  }
+
+  @Override
+  public TsPrimitiveType[] getVectorByIndex(int idx) {
+    return vectorRet
+        .get((idx + writeCurArrayIndex + 1) / capacity)[(idx + writeCurArrayIndex + 1) % capacity];
+  }
+
+  @Override
+  public void serializeData(DataOutputStream outputStream) throws IOException {
+    switch (dataType) {
+      case BOOLEAN:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeBoolean(getBooleanByIndex(i));
+        }
+        break;
+      case DOUBLE:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeDouble(getDoubleByIndex(i));
+        }
+        break;
+      case FLOAT:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeFloat(getFloatByIndex(i));
+        }
+        break;
+      case TEXT:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          Binary binary = getBinaryByIndex(i);
+          outputStream.writeInt(binary.getLength());
+          outputStream.write(binary.getValues());
+        }
+        break;
+      case INT64:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeLong(getLongByIndex(i));
+        }
+        break;
+      case INT32:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          outputStream.writeInt(getIntByIndex(i));
+        }
+        break;
+      case VECTOR:
+        for (int i = length() - 1; i >= 0; i--) {
+          outputStream.writeLong(getTimeByIndex(i));
+          TsPrimitiveType[] values = getVectorByIndex(i);
+          outputStream.writeInt(values.length);
+          for (TsPrimitiveType value : values) {
+            if (value == null) {
+              outputStream.write(0);
+            } else {
+              outputStream.write(1);
+              outputStream.write(value.getDataType().serialize());
+              switch (value.getDataType()) {
+                case BOOLEAN:
+                  outputStream.writeBoolean(value.getBoolean());
+                  break;
+                case DOUBLE:
+                  outputStream.writeDouble(value.getDouble());
+                  break;
+                case FLOAT:
+                  outputStream.writeFloat(value.getFloat());
+                  break;
+                case TEXT:
+                  Binary binary = value.getBinary();
+                  outputStream.writeInt(binary.getLength());
+                  outputStream.write(binary.getValues());
+                  break;
+                case INT64:
+                  outputStream.writeLong(value.getLong());
+                  break;
+                case INT32:
+                  outputStream.writeInt(value.getInt());
+                  break;
+              }
+            }
+          }
+        }
+        break;
+    }
   }
 
   /**

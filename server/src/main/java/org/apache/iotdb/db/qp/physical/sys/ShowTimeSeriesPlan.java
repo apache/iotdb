@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import java.io.DataOutputStream;
 import java.io.IOException;

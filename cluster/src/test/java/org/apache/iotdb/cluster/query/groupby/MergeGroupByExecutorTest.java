@@ -25,7 +25,8 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -47,7 +48,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -58,7 +59,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(
@@ -82,7 +83,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   @Test
   public void testTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
-    PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
+    PartialPath path = new MeasurementPath(TestUtils.getTestSeries(0, 0), TSDataType.DOUBLE);
     TSDataType dataType = TSDataType.DOUBLE;
     QueryContext context =
         new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
@@ -93,7 +94,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
 
       MergeGroupByExecutor groupByExecutor =
           new MergeGroupByExecutor(
-              path, deviceMeasurements, dataType, context, timeFilter, testMetaMember, true);
+              path, deviceMeasurements, context, timeFilter, testMetaMember, true);
       AggregationType[] types = AggregationType.values();
       for (AggregationType type : types) {
         groupByExecutor.addAggregateResult(

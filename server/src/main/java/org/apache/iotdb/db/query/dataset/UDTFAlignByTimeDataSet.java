@@ -80,6 +80,8 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
   protected void initTimeHeap() throws IOException, QueryProcessException {
     timeHeap = new TimeSelector(transformers.length << 1, true);
     for (LayerPointReader reader : transformers) {
+      // Since a constant operand is not allowed to be a result column, the reader will not be
+      // a ConstantLayerPointReader.
       if (reader.next()) {
         timeHeap.add(reader.currentTime());
       }

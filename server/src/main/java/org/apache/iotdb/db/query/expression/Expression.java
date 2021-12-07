@@ -21,9 +21,10 @@ package org.apache.iotdb.db.query.expression;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
+import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
@@ -36,9 +37,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+/** A skeleton class for expression */
 public abstract class Expression {
 
-  private String expressionString;
+  private String expressionStringCache;
+  protected Boolean isConstantOperandCache = null;
 
   public boolean isAggregationFunctionExpression() {
     return false;
@@ -70,20 +73,45 @@ public abstract class Expression {
       LayerMemoryAssigner memoryAssigner)
       throws QueryProcessException, IOException;
 
-  public String getExpressionString() {
-    if (expressionString == null) {
-      expressionString = toString();
+  /** Sub-classes should override this method indicating if the expression is a constant operand */
+  protected abstract boolean isConstantOperandInternal();
+
+  /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
+  public final boolean isConstantOperand() {
+    if (isConstantOperandCache == null) {
+      isConstantOperandCache = isConstantOperandInternal();
     }
-    return expressionString;
+    return isConstantOperandCache;
   }
 
+  /**
+   * Sub-classes should override this method to provide valid string representation of this object.
+   * See {@link #getExpressionString()}
+   */
+  protected abstract String getExpressionStringInternal();
+
+  /**
+   * Get the representation of the expression in string. The hash code of the returned value will be
+   * the hash code of this object. See {@link #hashCode()} and {@link #equals(Object)}. In other
+   * words, same expressions should have exactly the same string representation, and different
+   * expressions must have different string representations.
+   */
+  public final String getExpressionString() {
+    if (expressionStringCache == null) {
+      expressionStringCache = getExpressionStringInternal();
+    }
+    return expressionStringCache;
+  }
+
+  /** Sub-classes must not override this method. */
   @Override
-  public int hashCode() {
+  public final int hashCode() {
     return getExpressionString().hashCode();
   }
 
+  /** Sub-classes must not override this method. */
   @Override
-  public boolean equals(Object o) {
+  public final boolean equals(Object o) {
     if (this == o) {
       return true;
     }
@@ -93,5 +121,11 @@ public abstract class Expression {
     }
 
     return getExpressionString().equals(((Expression) o).getExpressionString());
+  }
+
+  /** Sub-classes must not override this method. */
+  @Override
+  public final String toString() {
+    return getExpressionString();
   }
 }

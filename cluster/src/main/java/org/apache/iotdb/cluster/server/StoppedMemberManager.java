@@ -58,11 +58,9 @@ public class StoppedMemberManager {
 
   private Map<RaftNode, DataGroupMember> removedMemberMap = new HashMap<>();
   private DataGroupMember.Factory memberFactory;
-  private Node thisNode;
 
-  StoppedMemberManager(Factory memberFactory, Node thisNode) {
+  public StoppedMemberManager(Factory memberFactory) {
     this.memberFactory = memberFactory;
-    this.thisNode = thisNode;
     recover();
   }
 
@@ -70,9 +68,8 @@ public class StoppedMemberManager {
    * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
    * can recover it as a data source for data transfers.
    *
-   * @param header When a DataGroupMember is removed, add it here and record this removal, so in
+   * @param raftNode When a DataGroupMember is removed, add it here and record this removal, so in
    *     next start-up we can recover it as a data source for data transfers.
-   * @param raftNode
    * @param dataGroupMember
    */
   public synchronized void put(RaftNode raftNode, DataGroupMember dataGroupMember) {
@@ -145,12 +142,12 @@ public class StoppedMemberManager {
   private void parseRemoved(String[] split) {
     PartitionGroup partitionGroup = new PartitionGroup();
     int raftId = Integer.parseInt(split[1]);
-    partitionGroup.setId(raftId);
+    partitionGroup.setRaftId(raftId);
     for (int i = 2; i < split.length; i++) {
       Node node = ClusterUtils.stringToNode(split[i]);
       partitionGroup.add(node);
     }
-    DataGroupMember member = memberFactory.create(partitionGroup, thisNode);
+    DataGroupMember member = memberFactory.create(partitionGroup);
     member.setReadOnly();
     removedMemberMap.put(partitionGroup.getHeader(), member);
   }

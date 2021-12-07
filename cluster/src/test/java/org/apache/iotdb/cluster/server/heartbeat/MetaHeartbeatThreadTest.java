@@ -91,7 +91,7 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
-        public PartitionGroup getHeaderGroup(RaftNode header) {
+        public PartitionGroup getPartitionGroup(RaftNode headerNode) {
           return null;
         }
 
@@ -140,11 +140,6 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
 
       @Override
       public AsyncClient getAsyncClient(Node node) {
-        return getClient(node);
-      }
-
-      @Override
-      public AsyncClient getAsyncClient(Node node, boolean activatedOnly) {
         return getClient(node);
       }
 

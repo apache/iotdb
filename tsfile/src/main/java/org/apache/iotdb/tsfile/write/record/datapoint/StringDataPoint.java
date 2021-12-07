@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.write.record.datapoint;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,12 +43,12 @@ public class StringDataPoint extends DataPoint {
   }
 
   @Override
-  public void writeTo(long time, IChunkWriter writer) {
+  public void writeTo(long time, ChunkWriterImpl writer) {
     if (writer == null) {
       LOG.warn("given IChunkWriter is null, do nothing and return");
       return;
     }
-    writer.write(time, value, false);
+    writer.write(time, value);
   }
 
   @Override

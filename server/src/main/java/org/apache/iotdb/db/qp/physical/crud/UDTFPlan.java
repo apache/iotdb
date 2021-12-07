@@ -20,15 +20,13 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
-import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
@@ -48,6 +46,8 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
   protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
+  private final Map<PartialPath, Integer> resultColumnNameToQueryDataSetIndex = new HashMap<>();
+
   public UDTFPlan(ZoneId zoneId) {
     super();
     this.zoneId = zoneId;
@@ -61,6 +61,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     for (int i = 0; i < resultColumns.size(); i++) {
       for (PartialPath path : resultColumns.get(i).collectPaths()) {
         indexedPaths.add(new Pair<>(path, i));
+        resultColumnNameToQueryDataSetIndex.put(path, i);
       }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
@@ -72,14 +73,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      boolean isUdf =
-          !(resultColumns.get(originalIndex).getExpression() instanceof TimeSeriesOperand);
-
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        addDeduplicatedDataTypes(
-            isUdf ? IoTDB.metaManager.getSeriesType(originalPath) : dataTypes.get(originalIndex));
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         columnForReaderSet.add(columnForReader);
       }
@@ -97,6 +93,15 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   private void setDatasetOutputIndexToResultColumnIndex(
       int datasetOutputIndex, Integer originalIndex) {
     datasetOutputIndexToResultColumnIndex.put(datasetOutputIndex, originalIndex);
+  }
+
+  @Override
+  public List<PartialPath> getAuthPaths() {
+    Set<PartialPath> authPaths = new HashSet<>();
+    for (ResultColumn resultColumn : resultColumns) {
+      authPaths.addAll(resultColumn.collectPaths());
+    }
+    return new ArrayList<>(authPaths);
   }
 
   @Override
@@ -125,11 +130,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     return expressionName2Executor.get(functionExpression.getExpressionString());
   }
 
-  public int getReaderIndex(String pathName) {
-    return pathNameToReaderIndex.get(pathName);
-  }
-
-  public void setPathNameToReaderIndex(Map<String, Integer> pathNameToReaderIndex) {
-    this.pathNameToReaderIndex = pathNameToReaderIndex;
+  public int getReaderIndex(PartialPath partialPath) {
+    return pathNameToReaderIndex.get(
+        getColumnForReaderFromPath(
+            partialPath, resultColumnNameToQueryDataSetIndex.get(partialPath)));
   }
 }

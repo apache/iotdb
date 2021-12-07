@@ -130,6 +130,17 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     return new List[] {selectedSeqFiles, selectedUnseqFiles};
   }
 
+  /**
+   * In a preset time (30 seconds), for each unseqFile, find the list of seqFiles that overlap with
+   * it and have not been selected by the file selector of this compaction task. After finding each
+   * unseqFile and its corresponding overlap seqFile list, estimate the additional memory overhead
+   * that may be added by compacting them (preferably using the loop estimate), and if it does not
+   * exceed the memory overhead preset by the system for the compaction thread, put them into the
+   * selectedSeqFiles and selectedUnseqFiles.
+   *
+   * @param useTightBound whether is tight estimate or loop estimate
+   * @throws IOException
+   */
   void select(boolean useTightBound) throws IOException {
     tmpSelectedSeqFiles = new HashSet<>();
     seqSelected = new boolean[resource.getSeqFiles().size()];
@@ -221,6 +232,15 @@ public class MaxFileMergeFileSelector implements ICrossSpaceMergeFileSelector {
     return isClosedAndNotMerging;
   }
 
+  /**
+   * Put the index of the seqFile that has an overlap with the specific unseqFile and has not been
+   * selected by the file selector of the compaction task into the tmpSelectedSeqFiles list. To
+   * determine whether overlap exists is to traverse each device ChunkGroup in unseqFiles, and
+   * determine whether it overlaps with the same device ChunkGroup of each seqFile that are not
+   * selected by the compaction task, if so, select this seqFile.
+   *
+   * @param unseqFile the tsFileResource of unseqFile to be compacted
+   */
   private void selectOverlappedSeqFiles(TsFileResource unseqFile) {
     int tmpSelectedNum = 0;
     for (String deviceId : unseqFile.getDevices()) {

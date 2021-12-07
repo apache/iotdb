@@ -23,6 +23,8 @@ public interface IBatchDataIterator {
 
   boolean hasNext();
 
+  boolean hasNext(long minBound, long maxBound);
+
   void next();
 
   long currentTime();

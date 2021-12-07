@@ -189,7 +189,8 @@ public class IoTDBInterpreterTest {
   public void testSelectColumnStatementWithTimeFilter() {
     InterpreterResult actual =
         interpreter.internalInterpret(
-            "select * from root.test.wf01.wt01 where time > 2 and time < 6", null);
+            "select temperature, status, hardware from root.test.wf01.wt01 where time > 2 and time < 6",
+            null);
     String gt =
         "Time\troot.test.wf01.wt01.temperature\troot.test.wf01.wt01.status\troot.test.wf01.wt01.hardware\n"
             + "3\t3.3\tfalse\t33.0\n"
@@ -330,7 +331,7 @@ public class IoTDBInterpreterTest {
   @Test
   public void testShowDevices() {
     InterpreterResult actual = interpreter.internalInterpret("show devices", null);
-    String gt = "devices\n" + "root.test.wf01.wt01\n" + "root.test.wf02.wt02";
+    String gt = "devices\n" + "root.test.wf02.wt02\n" + "root.test.wf01.wt01";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     Assert.assertEquals(gt, actual.message().get(0).getData());
@@ -342,8 +343,8 @@ public class IoTDBInterpreterTest {
         interpreter.internalInterpret("show devices with storage group", null);
     String gt =
         "devices\tstorage group\n"
-            + "root.test.wf01.wt01\troot.test.wf01\n"
-            + "root.test.wf02.wt02\troot.test.wf02";
+            + "root.test.wf02.wt02\troot.test.wf02\n"
+            + "root.test.wf01.wt01\troot.test.wf01";
     Assert.assertNotNull(actual);
     Assert.assertEquals(Code.SUCCESS, actual.code());
     System.out.println(actual.message().get(0).getData());

@@ -23,8 +23,6 @@ import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.dto.Point;
-import org.influxdb.dto.Query;
-import org.influxdb.dto.QueryResult;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,12 +32,12 @@ public class InfluxDBExample {
 
   private static InfluxDB influxDB;
 
-  public static void main(String[] args) throws Exception {
-    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:6667", "root", "root");
+  public static void main(String[] args) {
+    influxDB = IoTDBInfluxDBFactory.connect("http://127.0.0.1:8086", "root", "root");
     influxDB.createDatabase("database");
     influxDB.setDatabase("database");
     insertData();
-    queryData();
+    influxDB.close();
   }
 
   private static void insertData() {
@@ -70,33 +68,5 @@ public class InfluxDBExample {
     builder.time(System.currentTimeMillis(), TimeUnit.MILLISECONDS);
     point = builder.build();
     influxDB.write(point);
-  }
-
-  private static void queryData() {
-    Query query;
-    QueryResult result;
-
-    // the selector query is parallel to the field value
-    query =
-        new Query(
-            "select * from student where (name=\"xie\" and sex=\"m\")or time<now()-7d", "database");
-    result = influxDB.query(query);
-    System.out.println("query1 result:" + result.getResults().get(0).getSeries().get(0).toString());
-
-    // use iotdb built-in func
-    query =
-        new Query(
-            "select max(score),min(score),sum(score),count(score),spread(score),mean(score),first(score),last(score) from student ",
-            "database");
-    result = influxDB.query(query);
-    System.out.println("query2 result:" + result.getResults().get(0).getSeries().get(0).toString());
-
-    // aggregate query and selector query are parallel
-    query =
-        new Query(
-            "select count(score),first(score),last(country),max(score),mean(score),median(score),min(score),mode(score),spread(score),stddev(score),sum(score) from student where (name=\"xie\" and sex=\"m\")or score<99",
-            "database");
-    result = influxDB.query(query);
-    System.out.println("query3 result:" + result.getResults().get(0).getSeries().get(0).toString());
   }
 }

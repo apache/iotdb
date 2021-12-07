@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -52,6 +52,11 @@ public class NegationExpression extends Expression {
 
   public Expression getExpression() {
     return expression;
+  }
+
+  @Override
+  public boolean isConstantOperandInternal() {
+    return expression.isConstantOperand();
   }
 
   @Override
@@ -119,9 +124,12 @@ public class NegationExpression extends Expression {
           new ArithmeticNegationTransformer(parentLayerPointReader.constructPointReader());
       expressionDataTypeMap.put(this, transformer.getDataType());
 
+      // SingleInputColumnMultiReferenceIntermediateLayer doesn't support ConstantLayerPointReader
+      // yet. And since a ConstantLayerPointReader won't produce too much IO,
+      // SingleInputColumnSingleReferenceIntermediateLayer could be a better choice.
       expressionIntermediateLayerMap.put(
           this,
-          memoryAssigner.getReference(this) == 1
+          memoryAssigner.getReference(this) == 1 || isConstantOperand()
               ? new SingleInputColumnSingleReferenceIntermediateLayer(
                   this, queryId, memoryBudgetInMB, transformer)
               : new SingleInputColumnMultiReferenceIntermediateLayer(
@@ -132,7 +140,7 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public String toString() {
+  public String getExpressionStringInternal() {
     return "-" + expression.toString();
   }
 }
