@@ -63,7 +63,7 @@ public final class SelectComponent {
     this.hasPlainAggregationFunction = hasPlainAggregationFunction;
   }
 
-  public boolean hasAggregationFunction() {
+  public boolean hasPlainAggregationFunction() {
     return hasPlainAggregationFunction;
   }
 
@@ -120,7 +120,7 @@ public final class SelectComponent {
   }
 
   public List<String> getAggregationFunctions() {
-    if (!hasAggregationFunction()) {
+    if (!hasPlainAggregationFunction()) {
       return null;
     }
     if (aggregationFunctionsCache == null) {

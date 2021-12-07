@@ -2462,7 +2462,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (!hasDecidedQueryType()) {
       if (selectComponent.hasUserDefinedAggregationFunction()) {
         queryOp = new UDAFQueryOperator(new AggregationQueryOperator(queryOp));
-      } else if (selectComponent.hasAggregationFunction()) {
+      } else if (selectComponent.hasPlainAggregationFunction()) {
         queryOp = new AggregationQueryOperator(queryOp);
       } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
         queryOp = new UDFQueryOperator(queryOp);

@@ -133,7 +133,7 @@ public class QueryOperator extends Operator {
   }
 
   public boolean hasAggregationFunction() {
-    return selectComponent.hasAggregationFunction();
+    return selectComponent.hasPlainAggregationFunction();
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
