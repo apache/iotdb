@@ -47,6 +47,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
@@ -62,6 +63,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -1177,6 +1179,82 @@ public class TsFileProcessor {
             tsFileResource.getTsFile().getName());
       }
     }
+  }
+
+  public TsFileResource query(PartialPath seriesPath, QueryContext context) throws IOException {
+    String deviceId = seriesPath.getDevice();
+    String measurementId = seriesPath.getMeasurement();
+
+    flushQueryLock.readLock().lock();
+    try {
+      MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(seriesPath);
+      List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+      for (IMemTable flushingMemTable : flushingMemTables) {
+        if (flushingMemTable.isSignalMemTable()) {
+          continue;
+        }
+        List<TimeRange> deletionList =
+            constructDeletionList(
+                flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
+        ReadOnlyMemChunk memChunk =
+            flushingMemTable.query(
+                deviceId,
+                measurementId,
+                schema.getType(),
+                schema.getEncodingType(),
+                schema.getProps(),
+                context.getQueryTimeLowerBound(),
+                deletionList);
+        if (memChunk != null) {
+          readOnlyMemChunks.add(memChunk);
+        }
+      }
+      if (workMemTable != null) {
+        ReadOnlyMemChunk memChunk =
+            workMemTable.query(
+                deviceId,
+                measurementId,
+                schema.getType(),
+                schema.getEncodingType(),
+                schema.getProps(),
+                context.getQueryTimeLowerBound(),
+                null);
+        if (memChunk != null) {
+          readOnlyMemChunks.add(memChunk);
+        }
+      }
+
+      ModificationFile modificationFile = tsFileResource.getModFile();
+      List<Modification> modifications =
+          context.getPathModifications(
+              modificationFile,
+              new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
+
+      List<ChunkMetadata> chunkMetadataList =
+          writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
+      QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
+      chunkMetadataList.removeIf(context::chunkNotSatisfy);
+
+      // get in memory data
+      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+        return new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
+      }
+    } catch (QueryProcessException | MetadataException e) {
+      logger.error(
+          "{}: {} get ReadOnlyMemChunk has error",
+          storageGroupName,
+          tsFileResource.getTsFile().getName(),
+          e);
+    } finally {
+      flushQueryLock.readLock().unlock();
+      if (logger.isDebugEnabled()) {
+        logger.debug(
+            "{}: {} release flushQueryLock",
+            storageGroupName,
+            tsFileResource.getTsFile().getName());
+      }
+    }
+    return null;
   }
 
   public long getTimeRangeId() {

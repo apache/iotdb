@@ -416,7 +416,7 @@ public class TsFileResource {
     timeIndex.close();
   }
 
-  TsFileProcessor getUnsealedFileProcessor() {
+  public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
 

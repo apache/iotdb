@@ -33,7 +33,7 @@ public class QueryDataSource {
   private List<TsFileResource> unseqResources;
 
   private TsFileResource unclosedSeqResource;
-  private TsFileResource unclosedunseqResource;
+  private TsFileResource unclosedUnseqResource;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
@@ -66,8 +66,8 @@ public class QueryDataSource {
     this.unclosedSeqResource = unclosedSeqResource;
   }
 
-  public void setUnclosedunseqResource(TsFileResource unclosedunseqResource) {
-    this.unclosedunseqResource = unclosedunseqResource;
+  public void setUnclosedUnseqResource(TsFileResource unclosedUnseqResource) {
+    this.unclosedUnseqResource = unclosedUnseqResource;
   }
 
   public void setDataTTL(long dataTTL) {
@@ -88,5 +88,47 @@ public class QueryDataSource {
       }
     }
     return filter;
+  }
+
+  public TsFileResource getSeqResourceByIndex(int curIndex) {
+    if (curIndex < seqResources.size()) {
+      return seqResources.get(curIndex);
+    } else if (curIndex == seqResources.size()) {
+      return unclosedSeqResource;
+    }
+    return null;
+  }
+
+  public TsFileResource getUnseqResourceByIndex(int curIndex, String deviceId) {
+    int actualIndex = unSeqFileOrderIndexesMap.get(deviceId)[curIndex];
+    if (actualIndex < unseqResources.size()) {
+      return unseqResources.get(actualIndex);
+    } else if (actualIndex == unseqResources.size()) {
+      return unclosedUnseqResource;
+    }
+    return null;
+  }
+
+  public boolean hasNextSeqResource(int curIndex, boolean ascending) {
+    if (ascending) {
+      return unclosedSeqResource == null
+          ? curIndex < seqResources.size()
+          : curIndex <= seqResources.size();
+    }
+    return curIndex >= 0;
+  }
+
+  public boolean hasNextUnseqResource(int curIndex) {
+    return unclosedUnseqResource == null
+        ? curIndex < unseqResources.size()
+        : curIndex <= unseqResources.size();
+  }
+
+  public int getSeqResourcesSize() {
+    return seqResources.size() + (unclosedSeqResource == null ? 0 : 1);
+  }
+
+  public int getUnseqResourcesSize() {
+    return unseqResources.size() + (unclosedUnseqResource == null ? 0 : 1);
   }
 }
