@@ -30,7 +30,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -97,7 +96,6 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  @TestOnly
   public QueryDataSource getQueryDataSourceByPath(
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {
@@ -149,6 +147,15 @@ public class QueryResourceManager {
     }
 
     return queryDataSource;
+  }
+
+  public void clearCachedQueryDataSource(PartialPath path, QueryContext context)
+      throws StorageEngineException {
+    long queryId = context.getQueryId();
+    String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(path);
+    if (cachedQueryDataSource.containsKey(queryId)) {
+      cachedQueryDataSource.get(queryId).remove(storageGroupPath);
+    }
   }
 
   private void fillOrderIndexes(
