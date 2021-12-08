@@ -414,7 +414,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
         int BigPlanCountNum = 0;
         for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
           if (insertTabletPlan.getRowCount()
-              > IoTDBDescriptor.getInstance()
+              >= IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInsertMultiTabletEnableThreadPoolRowCountThreshold()) {
             BigPlanCountNum++;
