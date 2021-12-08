@@ -672,7 +672,7 @@ public class StorageGroupProcessor {
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer.hasCrashed()) {
+          if (writer != null && writer.hasCrashed()) {
             tsFileManagement.addRecover(tsFileResource, isSeq);
           } else {
             tsFileResource.setClosed(true);
@@ -693,7 +693,7 @@ public class StorageGroupProcessor {
         }
       }
 
-      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+      if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
