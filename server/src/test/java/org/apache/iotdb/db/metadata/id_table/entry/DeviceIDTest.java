@@ -19,13 +19,12 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
-
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.junit.Test;
 
 public class DeviceIDTest {
   @Test
@@ -34,9 +33,9 @@ public class DeviceIDTest {
     PartialPath partialPath2 = new PartialPath("root.sg1.d1.s2");
     PartialPath partialPath3 = new PartialPath("root.sg1.d2.s1");
 
-    IDeviceID deviceID1 = DeviceIDFactory.getInstance().getDeviceID(partialPath1);
-    IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID(partialPath2);
-    IDeviceID deviceID3 = DeviceIDFactory.getInstance().getDeviceID(partialPath3);
+    IDeviceID deviceID1 = DeviceIDFactory.getInstance().getDeviceID(partialPath1.getDevicePath());
+    IDeviceID deviceID2 = DeviceIDFactory.getInstance().getDeviceID(partialPath2.getDevicePath());
+    IDeviceID deviceID3 = DeviceIDFactory.getInstance().getDeviceID(partialPath3.getDevicePath());
 
     assertEquals(deviceID1, deviceID2);
     assertNotEquals(deviceID1, deviceID3);

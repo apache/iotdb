@@ -19,18 +19,13 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.id_table.entry.DeviceEntry;
 import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
@@ -43,10 +38,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,6 +154,9 @@ public class IDTable {
       }
     }
 
+    // set reusable device id
+    plan.setDeviceID(deviceEntry.getDeviceID());
+
     return deviceEntry.getDeviceID();
   }
 
@@ -233,49 +229,31 @@ public class IDTable {
 
     // if not exist, we create it
     if (schemaEntry == null) {
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(seriesKey.toString());
-      }
-
-      // create new timeseries in mmanager
+      // we have to copy plan's mnode for using id table's last cache
+      IMeasurementMNode[] insertPlanMNodeBackup =
+          new IMeasurementMNode[plan.getMeasurementMNodes().length];
+      System.arraycopy(
+          plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup, 0, insertPlanMNodeBackup.length);
       try {
-        if (plan.isAligned()) {
-          // create aligned timeseries
-          List<TSEncoding> encodings = new ArrayList<>();
-          List<CompressionType> compressors = new ArrayList<>();
-          for (TSDataType dataType : plan.getDataTypes()) {
-            encodings.add(getDefaultEncoding(dataType));
-            compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-          }
-
-          CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-              new CreateAlignedTimeSeriesPlan(
-                  plan.getDeviceId(),
-                  Arrays.asList(plan.getMeasurements()),
-                  Arrays.asList(plan.getDataTypes()),
-                  encodings,
-                  compressors,
-                  null);
-
-          IoTDB.metaManager.createAlignedTimeSeriesEntry(createAlignedTimeSeriesPlan);
-        } else {
-          // create normal timeseries
-          CreateTimeSeriesPlan createTimeSeriesPlan =
-              new CreateTimeSeriesPlan(
-                  seriesKey,
-                  plan.getDataTypes()[loc],
-                  getDefaultEncoding(plan.getDataTypes()[loc]),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                  null,
-                  null,
-                  null,
-                  null);
-
-          IoTDB.metaManager.createTimeseriesEntry(createTimeSeriesPlan, -1);
-        }
-      } catch (MetadataException e) {
-        logger.error("create timeseries failed, path is:" + seriesKey);
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+      } catch (IOException e) {
+        throw new MetadataException(e);
       }
+
+      // if the timeseries is in template, mmanager will not create timeseries. so we have to put it
+      // in id table here
+      for (IMeasurementMNode measurementMNode : plan.getMeasurementMNodes()) {
+        if (measurementMNode != null) {
+          IMeasurementSchema schema = measurementMNode.getSchema();
+          SchemaEntry curEntry =
+              new SchemaEntry(schema.getType(), schema.getEncodingType(), schema.getCompressor());
+          deviceEntry.putSchemaEntry(measurementMNode.getName(), curEntry);
+        }
+      }
+
+      // copy back measurement mnode list
+      System.arraycopy(
+          insertPlanMNodeBackup, 0, plan.getMeasurementMNodes(), 0, insertPlanMNodeBackup.length);
 
       schemaEntry = deviceEntry.getSchemaEntry(measurementName);
     }

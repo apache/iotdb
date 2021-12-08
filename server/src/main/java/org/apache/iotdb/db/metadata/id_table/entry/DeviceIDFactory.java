@@ -19,10 +19,9 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+import java.util.function.Function;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-
-import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
@@ -52,9 +51,9 @@ public class DeviceIDFactory {
         .getConfig()
         .getDeviceIDTransformationMethod()
         .equals("SHA256")) {
-      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.getDevice());
+      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
     } else {
-      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.getDevice());
+      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
     }
   }
   // endregion
@@ -62,10 +61,10 @@ public class DeviceIDFactory {
   /**
    * get device id by full path
    *
-   * @param fullPath full path of the timeseries
+   * @param devicePath device path of the timeseries
    * @return device id of the timeseries
    */
-  public IDeviceID getDeviceID(PartialPath fullPath) {
-    return getDeviceIDFunction.apply(fullPath);
+  public IDeviceID getDeviceID(PartialPath devicePath) {
+    return getDeviceIDFunction.apply(devicePath);
   }
 }

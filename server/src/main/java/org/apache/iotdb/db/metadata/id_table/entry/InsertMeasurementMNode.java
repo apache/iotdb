@@ -80,6 +80,17 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   public TSDataType getDataType(String measurementId) {
     return schemaEntry.getTSDataType();
   }
+
+  @Override
+  public IEntityMNode getParent() {
+    return null;
+  }
+
+  @Override
+  public String toString() {
+    return schema.getMeasurementId();
+  }
+
   // endregion
 
   // region unsupported methods
@@ -90,11 +101,6 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public void setName(String name) {
-    throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
-  }
-
-  @Override
-  public IEntityMNode getParent() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
