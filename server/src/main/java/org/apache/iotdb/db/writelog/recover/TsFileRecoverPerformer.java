@@ -64,19 +64,19 @@ public class TsFileRecoverPerformer {
   private final String logNodePrefix;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
-  private final boolean isLastFile;
+  private boolean needsCheckTsFile;
 
-  /** @param isLastFile whether this TsFile is the last file of its partition */
+  /** @param needsCheckTsFile whether this TsFile needs to open TsFileIOWriter */
   public TsFileRecoverPerformer(
       String logNodePrefix,
       TsFileResource currentTsFileResource,
       boolean sequence,
-      boolean isLastFile) {
+      boolean needsCheckTsFile) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
-    this.isLastFile = isLastFile;
+    this.needsCheckTsFile = needsCheckTsFile;
   }
 
   /**
@@ -98,8 +98,8 @@ public class TsFileRecoverPerformer {
       return null;
     }
 
-    // if a file is not the Last File and tsFileResource Exists, skip checking TsFiles
-    if (!isLastFile && tsFileResource.resourceFileExists()) {
+    // if a file doesn't need to check TsFile and tsFileResource Exists, skip checking it
+    if (!needsCheckTsFile && tsFileResource.resourceFileExists()) {
       // .resource file exists, deserialize it
       recoverResourceFromFile();
       return null;
