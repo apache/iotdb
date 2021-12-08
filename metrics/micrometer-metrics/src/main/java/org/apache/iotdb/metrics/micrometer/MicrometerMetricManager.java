@@ -23,16 +23,32 @@ import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.micrometer.type.*;
-import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerAutoGauge;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
+import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.IMetric;
+import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.binder.jvm.*;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
+import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.jmx.JmxConfig;
 import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
@@ -47,6 +63,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToLongFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -91,20 +108,44 @@ public class MicrometerMetricManager implements MetricManager {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingCounter;
     }
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    return (Counter)
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.COUNTER, tags);
+    IMetric m =
         currentMeters.computeIfAbsent(
-            innerCounter.getId(), key -> new MicrometerCounter(innerCounter));
+            id, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
+    if (m instanceof Counter) {
+      return (Counter) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
-  public Gauge getOrCreatGauge(String metric, String... tags) {
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
-    return (Gauge)
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id, key -> new MicrometerAutoGauge<T>(meterRegistry, metric, obj, mapper, tags));
+    if (m instanceof Gauge) {
+      return (Gauge) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
+  }
+
+  @Override
+  public Gauge getOrCreateGauge(String metric, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+    IMetric m =
         currentMeters.computeIfAbsent(id, key -> new MicrometerGauge(meterRegistry, metric, tags));
+    if (m instanceof Gauge) {
+      return (Gauge) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
@@ -113,7 +154,7 @@ public class MicrometerMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingHistogram;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    return (Histogram)
+    IMetric m =
         currentMeters.computeIfAbsent(
             id,
             key -> {
@@ -123,6 +164,10 @@ public class MicrometerMetricManager implements MetricManager {
                       .register(meterRegistry);
               return new MicrometerHistogram(distributionSummary);
             });
+    if (m instanceof Histogram) {
+      return (Histogram) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   /**
@@ -134,17 +179,21 @@ public class MicrometerMetricManager implements MetricManager {
    * @return Rate instance
    */
   @Override
-  public Rate getOrCreatRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
 
-    return (Rate)
+    IMetric m =
         currentMeters.computeIfAbsent(
             id,
             key ->
                 new MicrometerRate(meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0))));
+    if (m instanceof Rate) {
+      return (Rate) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
@@ -153,7 +202,7 @@ public class MicrometerMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingTimer;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
-    return (Timer)
+    IMetric m =
         currentMeters.computeIfAbsent(
             id,
             key -> {
@@ -164,23 +213,29 @@ public class MicrometerMetricManager implements MetricManager {
               logger.info("create getOrCreateTimer {}", metric);
               return new MicrometerTimer(timer);
             });
+    if (m instanceof Timer) {
+      return (Timer) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
   public void count(int delta, String metric, String... tags) {
-    io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
-    innerCounter.increment(delta);
+    this.count((long) delta, metric, tags);
   }
 
   @Override
   public void count(long delta, String metric, String... tags) {
+    if (!isEnable) {
+      return;
+    }
     io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
     innerCounter.increment(delta);
   }
 
   @Override
   public void histogram(int value, String metric, String... tags) {
-    this.histogram(Long.valueOf(value), metric, tags);
+    this.histogram((long) value, metric, tags);
   }
 
   @Override
@@ -189,31 +244,28 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.DISTRIBUTION_SUMMARY, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                id,
-                key -> {
-                  io.micrometer.core.instrument.DistributionSummary distributionSummary =
-                      io.micrometer.core.instrument.DistributionSummary.builder(metric)
-                          .tags(tags)
-                          .publishPercentileHistogram()
-                          .publishPercentiles(0)
-                          .register(meterRegistry);
-                  return new MicrometerHistogram(distributionSummary);
-                }))
-        .update(value);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id,
+            key -> {
+              io.micrometer.core.instrument.DistributionSummary distributionSummary =
+                  io.micrometer.core.instrument.DistributionSummary.builder(metric)
+                      .tags(tags)
+                      .publishPercentileHistogram()
+                      .publishPercentiles(0)
+                      .register(meterRegistry);
+              return new MicrometerHistogram(distributionSummary);
+            });
+    if (m instanceof Histogram) {
+      ((Histogram) m).update(value);
+      return;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
   public void gauge(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
-    ((Gauge)
-            (currentMeters.computeIfAbsent(
-                id, key -> new MicrometerGauge(meterRegistry, metric, tags))))
-        .set(value);
+    this.gauge((long) value, metric, tags);
   }
 
   @Override
@@ -222,15 +274,19 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
-    ((Gauge)
-            (currentMeters.computeIfAbsent(
-                id, key -> new MicrometerGauge(meterRegistry, metric, tags))))
-        .set(value);
+    IMetric m =
+        (currentMeters.computeIfAbsent(
+            id, key -> new MicrometerGauge(meterRegistry, metric, tags)));
+    if (m instanceof Gauge) {
+      ((Gauge) m).set(value);
+      return;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
   public void rate(int value, String metric, String... tags) {
-    this.rate(Long.valueOf(value), metric, tags);
+    this.rate((long) value, metric, tags);
   }
 
   @Override
@@ -239,13 +295,17 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
-    ((Rate)
-            currentMeters.computeIfAbsent(
-                id,
-                key ->
-                    new MicrometerRate(
-                        meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0)))))
-        .mark(value);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id,
+            key ->
+                new MicrometerRate(meterRegistry.gauge(metric, Tags.of(tags), new AtomicLong(0))));
+
+    if (m instanceof Rate) {
+      ((Rate) m).mark(value);
+      return;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
@@ -254,17 +314,21 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.TIMER, tags);
-    ((Timer)
-            currentMeters.computeIfAbsent(
-                id,
-                key -> {
-                  io.micrometer.core.instrument.Timer timer =
-                      io.micrometer.core.instrument.Timer.builder(metric)
-                          .tags(tags)
-                          .register(meterRegistry);
-                  return new MicrometerTimer(timer);
-                }))
-        .update(delta, timeUnit);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id,
+            key -> {
+              io.micrometer.core.instrument.Timer timer =
+                  io.micrometer.core.instrument.Timer.builder(metric)
+                      .tags(tags)
+                      .register(meterRegistry);
+              return new MicrometerTimer(timer);
+            });
+    if (m instanceof Timer) {
+      ((Timer) m).update(delta, timeUnit);
+      return;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
 
   @Override
@@ -362,11 +426,10 @@ public class MicrometerMetricManager implements MetricManager {
     classLoaderMetrics.bindTo(meterRegistry);
     JvmCompilationMetrics jvmCompilationMetrics = new JvmCompilationMetrics();
     jvmCompilationMetrics.bindTo(meterRegistry);
-    try (JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
-        JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics()) {
-      jvmGcMetrics.bindTo(meterRegistry);
-      jvmHeapPressureMetrics.bindTo(meterRegistry);
-    }
+    JvmGcMetrics jvmGcMetrics = new JvmGcMetrics();
+    JvmHeapPressureMetrics jvmHeapPressureMetrics = new JvmHeapPressureMetrics();
+    jvmGcMetrics.bindTo(meterRegistry);
+    jvmHeapPressureMetrics.bindTo(meterRegistry);
     JvmMemoryMetrics jvmMemoryMetrics = new JvmMemoryMetrics();
     jvmMemoryMetrics.bindTo(meterRegistry);
     JvmThreadMetrics jvmThreadMetrics = new JvmThreadMetrics();

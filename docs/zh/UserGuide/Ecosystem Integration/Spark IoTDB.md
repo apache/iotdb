@@ -19,9 +19,9 @@
 
 -->
 
-## Spark-IoTDB
+# Spark-IoTDB
 
-### 版本
+## 版本
 
 Spark 和 Java 所需的版本如下：
 
@@ -29,7 +29,7 @@ Spark 和 Java 所需的版本如下：
 | ------------- | ------------- | ------------ | -------- |
 | `2.4.3`       | `2.11`        | `1.8`        | `0.13.0-SNAPSHOT` |
 
-### 安装
+## 安装
 
 mvn clean scala:compile compile install
 
@@ -43,7 +43,9 @@ mvn clean scala:compile compile install
     </dependency>
 ```
 
-#### Spark-shell 用户指南
+## 从IoTDB读取数据
+
+### Spark-shell 用户指南
 
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
@@ -73,7 +75,7 @@ df.printSchema()
 df.show()
 ```
 
-#### 模式推断
+### 模式推断
 
 以下 TsFile 结构为例：TsFile 模式中有三个度量：状态，温度和硬件。 这三种测量的基本信息如下：
 
@@ -118,7 +120,7 @@ time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
 | 5    | root.ln.wf02.wt01 | false | null | null |
 | 6    | root.ln.wf02.wt02 | null  | ccc  | null |
 
-#### 获取窄表格式的数据
+### 获取窄表格式的数据
 ```
 spark-shell --jars spark-iotdb-connector-0.13.0-SNAPSHOT.jar,iotdb-jdbc-0.13.0-SNAPSHOT-jar-with-dependencies.jar
 
@@ -131,7 +133,7 @@ df.printSchema()
 df.show()
 ```
 
-#### Java 用户指南
+### Java 用户指南
 
 ```
 import org.apache.spark.sql.Dataset;
@@ -161,3 +163,45 @@ public class Example {
   }
 }
 ```
+
+## 写数据到IoTDB
+### 用户指南
+``` scala
+// import narrow table
+val df = spark.createDataFrame(List(
+      (1L, "root.test.d0",1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "device_name")
+    .withColumnRenamed("_3", "s0")
+    .withColumnRenamed("_4", "s1")
+    .withColumnRenamed("_5", "s2")
+    .withColumnRenamed("_6", "s3")
+    .withColumnRenamed("_7", "s4")
+    .withColumnRenamed("_8", "s5")
+dfWithColumn
+    .write
+    .format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+    
+// import wide table
+val df = spark.createDataFrame(List(
+      (1L, 1, 1L, 1.0F, 1.0D, true, "hello"),
+      (2L, 2, 2L, 2.0F, 2.0D, false, "world")))
+
+val dfWithColumn = df.withColumnRenamed("_1", "Time")
+    .withColumnRenamed("_2", "root.test.d0.s0")
+    .withColumnRenamed("_3", "root.test.d0.s1")
+    .withColumnRenamed("_4", "root.test.d0.s2")
+    .withColumnRenamed("_5", "root.test.d0.s3")
+    .withColumnRenamed("_6", "root.test.d0.s4")
+    .withColumnRenamed("_7", "root.test.d0.s5")
+dfWithColumn.write.format("org.apache.iotdb.spark.db")
+    .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .save
+```
+
+### 注意
+1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。

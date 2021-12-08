@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
@@ -33,6 +33,7 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -50,13 +51,12 @@ import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan.ShowContentType;
 import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
-import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -80,6 +80,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -273,12 +274,9 @@ public class PhysicalPlanTest {
     }
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
-    assertEquals(
-        300000, ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
-    assertEquals(
-        300000, ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
+    assertEquals(300000, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -293,14 +291,11 @@ public class PhysicalPlanTest {
     FillQueryPlan mergePlan = (FillQueryPlan) plan;
     assertEquals(5000, mergePlan.getQueryTime());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getBeforeRange());
     assertEquals(
-        defaultFillInterval,
-        ((LinearFill) mergePlan.getFillType().get(TSDataType.INT32)).getAfterRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.INT32).getAfterRange());
     assertEquals(
-        defaultFillInterval,
-        ((PreviousFill) mergePlan.getFillType().get(TSDataType.BOOLEAN)).getBeforeRange());
+        defaultFillInterval, mergePlan.getFillType().get(TSDataType.BOOLEAN).getBeforeRange());
   }
 
   @Test
@@ -323,7 +318,7 @@ public class PhysicalPlanTest {
       processor.parseSQLToPhysicalPlan(sqlStr);
       fail();
     } catch (Exception e) {
-      assertEquals("Only \"=\" can be used in fill function", e.getMessage());
+      assertEquals("The condition of WHERE clause must be like time=constant", e.getMessage());
     }
   }
 
@@ -1211,7 +1206,7 @@ public class PhysicalPlanTest {
 
     ShowTriggersPlan plan = (ShowTriggersPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowContentType.TRIGGERS, plan.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.TRIGGERS, plan.getShowContentType());
   }
 
   @Test
@@ -1424,7 +1419,7 @@ public class PhysicalPlanTest {
 
     ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowContentType.FUNCTIONS, plan.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.FUNCTIONS, plan.getShowContentType());
   }
 
   @Test
@@ -1449,5 +1444,31 @@ public class PhysicalPlanTest {
     IExpression expect =
         new SingleSeriesExpression(new Path("root.vehicle.d5", "s1"), ValueFilter.like("string*"));
     assertEquals(expect.toString(), queryFilter.toString());
+  }
+
+  @Test(expected = UnsupportedOperationException.class)
+  public void testSerializationError() {
+    ShowDevicesPlan plan = new ShowDevicesPlan();
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10);
+    plan.serialize(byteBuffer);
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void testSerializationRollback() {
+    InsertRowPlan plan = new InsertRowPlan();
+    // only serialize time
+    plan.setTime(0L);
+
+    ByteBuffer byteBuffer = ByteBuffer.allocate(10000);
+    byteBuffer.putInt(0);
+    long position = byteBuffer.position();
+
+    try {
+      plan.serialize(byteBuffer);
+    } catch (NullPointerException e) {
+      Assert.assertEquals(position, byteBuffer.position());
+      throw e;
+    }
   }
 }

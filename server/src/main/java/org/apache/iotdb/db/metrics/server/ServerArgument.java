@@ -264,14 +264,14 @@ public class ServerArgument {
         List<String> digitS2 = new ArrayList<>();
         digitS1.add(s1.replaceAll("\\D", ""));
         digitS2.add(s2.replaceAll("\\D", ""));
-        if (caption.equals("System Idle Process") || caption.equals("System")) {
+        if ("System Idle Process".equals(caption) || "System".equals(caption)) {
           if (s1.length() > 0) {
-            if (!digitS1.get(0).equals("") && digitS1.get(0) != null) {
+            if (!"".equals(digitS1.get(0)) && digitS1.get(0) != null) {
               idletime += Long.valueOf(digitS1.get(0)).longValue();
             }
           }
           if (s2.length() > 0) {
-            if (!digitS2.get(0).equals("") && digitS2.get(0) != null) {
+            if (!"".equals(digitS2.get(0)) && digitS2.get(0) != null) {
               idletime += Long.valueOf(digitS2.get(0)).longValue();
             }
           }

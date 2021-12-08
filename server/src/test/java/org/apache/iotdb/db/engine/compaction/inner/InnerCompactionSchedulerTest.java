@@ -82,7 +82,7 @@ public class InnerCompactionSchedulerTest {
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     try {
-      Thread.sleep(1000);
+      Thread.sleep(5000);
     } catch (Exception e) {
 
     }
@@ -113,7 +113,7 @@ public class InnerCompactionSchedulerTest {
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
 
     long waitingTime = 0;
-    while (CompactionTaskManager.getInstance().getTaskCount() != 0) {
+    while (CompactionTaskManager.getInstance().getExecutingTaskCount() != 0) {
       try {
         Thread.sleep(100);
         waitingTime += 100;

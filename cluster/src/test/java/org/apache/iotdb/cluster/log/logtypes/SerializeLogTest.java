@@ -26,8 +26,8 @@ import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -52,7 +52,7 @@ public class SerializeLogTest {
     log.setCurrLogIndex(2);
     log.setCurrLogTerm(2);
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setPrefixPath(new PartialPath("root.d1"));
+    plan.setDeviceId(new PartialPath("root.d1"));
     plan.setMeasurements(new String[] {"s1", "s2", "s3"});
     plan.setNeedInferType(true);
     plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);

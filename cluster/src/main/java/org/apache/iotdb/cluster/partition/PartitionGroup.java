@@ -32,13 +32,12 @@ import java.util.Collection;
 import java.util.Objects;
 
 /**
- * PartitionGroup contains all the nodes that will form a data group with a certain node, which are
- * the REPLICATION_NUM - 1 different physical nodes after this node. The first element of the list
- * is called header, which is also the identifier of the data group.
+ * PartitionGroup contains all the nodes of a data group. The first element of the list is called
+ * header.
  */
 public class PartitionGroup extends ArrayList<Node> {
 
-  private int id;
+  private int raftId;
 
   public PartitionGroup() {}
 
@@ -46,14 +45,14 @@ public class PartitionGroup extends ArrayList<Node> {
     this.addAll(nodes);
   }
 
-  public PartitionGroup(int id, Node... nodes) {
+  public PartitionGroup(int raftId, Node... nodes) {
     this.addAll(Arrays.asList(nodes));
-    this.id = id;
+    this.raftId = raftId;
   }
 
   public PartitionGroup(PartitionGroup other) {
     super(other);
-    this.id = other.getId();
+    this.raftId = other.getRaftId();
   }
 
   @Override
@@ -65,11 +64,11 @@ public class PartitionGroup extends ArrayList<Node> {
       return false;
     }
     PartitionGroup group = (PartitionGroup) o;
-    return Objects.equals(id, group.getId()) && super.equals(group);
+    return Objects.equals(raftId, group.getRaftId()) && super.equals(group);
   }
 
   public void serialize(DataOutputStream dataOutputStream) throws IOException {
-    dataOutputStream.writeInt(getId());
+    dataOutputStream.writeInt(getRaftId());
     dataOutputStream.writeInt(size());
     for (Node node : this) {
       NodeSerializeUtils.serialize(node, dataOutputStream);
@@ -77,7 +76,7 @@ public class PartitionGroup extends ArrayList<Node> {
   }
 
   public void deserialize(ByteBuffer buffer) {
-    id = buffer.getInt();
+    raftId = buffer.getInt();
     int nodeNum = buffer.getInt();
     for (int i2 = 0; i2 < nodeNum; i2++) {
       Node node = new Node();
@@ -88,23 +87,23 @@ public class PartitionGroup extends ArrayList<Node> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(id, super.hashCode());
+    return Objects.hash(raftId, super.hashCode());
   }
 
   public RaftNode getHeader() {
-    return new RaftNode(get(0), getId());
+    return new RaftNode(get(0), getRaftId());
   }
 
-  public int getId() {
-    return id;
+  public int getRaftId() {
+    return raftId;
   }
 
-  public void setId(int id) {
-    this.id = id;
+  public void setRaftId(int raftId) {
+    this.raftId = raftId;
   }
 
   @Override
   public String toString() {
-    return super.toString() + ", id = " + id;
+    return super.toString() + ", id = " + raftId;
   }
 }

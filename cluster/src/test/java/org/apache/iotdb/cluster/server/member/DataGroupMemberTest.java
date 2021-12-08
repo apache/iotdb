@@ -71,8 +71,8 @@ import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -183,7 +183,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   @Override
   DataGroupMember getDataGroupMember(RaftNode raftNode) {
-    PartitionGroup nodes = partitionTable.getHeaderGroup(raftNode);
+    PartitionGroup nodes = partitionTable.getPartitionGroup(raftNode);
     return dataGroupMemberMap.computeIfAbsent(
         raftNode, n -> getDataGroupMember(n.getNode(), nodes));
   }
@@ -509,7 +509,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
 
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[] {"s0"});
     insertPlan.setNeedInferType(true);
@@ -626,7 +626,8 @@ public class DataGroupMemberTest extends BaseMember {
     testMetaMember.setPartitionTable(partitionTable);
     dataGroupMember.setLogManager(
         getLogManager(
-            partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(0), 0)), dataGroupMember));
+            partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)),
+            dataGroupMember));
     assertEquals(200, dataGroupMember.executeNonQueryPlan(createTimeSeriesPlan).code);
     assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     testThreadPool.shutdownNow();
@@ -716,7 +717,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -732,10 +733,10 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
+    request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -784,7 +785,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -800,10 +801,10 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), raftId)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), raftId)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
+    request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -852,7 +853,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -868,10 +869,10 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
+    request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(1));
     request.setQueryId(0);
@@ -920,7 +921,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setPrefixPath(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -936,10 +937,10 @@ public class DataGroupMemberTest extends BaseMember {
     // node1 manages the data above
     dataGroupMember.setThisNode(TestUtils.getNode(10));
     dataGroupMember.setAllNodes(
-        partitionTable.getHeaderGroup(new RaftNode(TestUtils.getNode(10), 0)));
+        partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(10), 0)));
     dataGroupMember.setCharacter(NodeCharacter.LEADER);
     SingleSeriesQueryRequest request = new SingleSeriesQueryRequest();
-    request.setPath(Collections.singletonList(TestUtils.getTestSeries(0, 0)));
+    request.setPath(TestUtils.getTestSeries(0, 0));
     request.setDataTypeOrdinal(TSDataType.DOUBLE.ordinal());
     request.setRequester(TestUtils.getNode(10));
     request.setQueryId(0);
@@ -991,8 +992,7 @@ public class DataGroupMemberTest extends BaseMember {
     new DataAsyncService(dataGroupMember)
         .getAllPaths(
             TestUtils.getRaftNode(0, raftId), Collections.singletonList(path), false, handler);
-    List<String> result = new ArrayList<>();
-    pathResult.get().paths.forEach(p -> result.add(p.get(0)));
+    List<String> result = new ArrayList<>(pathResult.get().paths);
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {
       assertTrue(result.contains(TestUtils.getTestSeries(0, i)));

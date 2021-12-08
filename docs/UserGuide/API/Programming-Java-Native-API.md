@@ -390,31 +390,11 @@ public Session(String host, int rpcPort, String username, String password,
 
 Open a session and specifies whether the Leader cache is enabled. Note that this interface improves performance for distributed IoTDB, but adds less cost to the client for stand-alone IoTDB.
 
-```
-* name: template name
-* measurements: List of measurements, if it is a single measurement, just put it's name
-*     into a list and add to measurements if it is a vector measurement, put all measurements of
-*     the vector into a list and add to measurements
-* dataTypes: List of datatypes, if it is a single measurement, just put it's type into a
-*     list and add to dataTypes if it is a vector measurement, put all types of the vector
-*     into a list and add to dataTypes
-* encodings: List of encodings, if it is a single measurement, just put it's encoding into
-*     a list and add to encodings if it is a vector measurement, put all encodings of the
-*     vector into a list and add to encodings
-* compressors: List of compressors, if it is a single measurement, just put it's 
-*     compressor into a list and add to encodings if it is a vector measurement, put all 
-*     encodings of the vector into a list and add to encodings
-void createSchemaTemplate(
-      String templateName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
+```java
+void createSchemaTemplate(Template template)
 ```
 
-Create a measurement template, the param description as above. As measurement templates could be tree-structured, parameter 'measurement' in above method could be a path to the measurement, be like: 'vehicle.GPS.x' . 
-
-You can also create instances of Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it.
+Create a schema template for massive identical subtree will help to improve memory performance. You can use the API above to create a template at server side, and use Template, InternalNode and MeasurementNode to depict the structure of the template, and use belowed interface to create it inside session.
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -479,7 +459,13 @@ createSchemaTemplate(template);
 
 After measurement template created, you can edit the template with belowed APIs.
 
-**Attention: templates had been set could not be pruned.**
+**Attention: **
+
+**1. templates had been set could not be pruned**
+
+**2. templates will be activated until data points insert into correspoding measurements**
+
+**3. templates will not be shown by showtimeseries before activating**
 
 ```java
 // Add aligned measurements to a template
@@ -536,14 +522,14 @@ public List<String> showMeasurementsInTemplate(String templateName, String patte
 
 Set the measurement template named 'templateName' at path 'prefixPath'. 
 
-``` 
+``` java
 void setSchemaTemplate(String templateName, String prefixPath)
 ```
 
 Before setting template, you should firstly create the template using
 
 ```java
-void createSchemaTemplate
+void createSchemaTemplate(Template template)
 ```
 ```java
 void unsetSchemaTemplate(String prefixPath, String templateName)

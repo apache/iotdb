@@ -37,6 +37,7 @@ RUN dos2unix /iotdb/sbin/../conf/iotdb-env.sh
 EXPOSE 6667
 EXPOSE 31999
 EXPOSE 5555
+EXPOSE 8086
 EXPOSE 8181
 VOLUME /iotdb/data
 VOLUME /iotdb/logs

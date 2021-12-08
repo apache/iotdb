@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.logical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IUnaryExpression;
@@ -96,8 +96,7 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public LikeOperator copy() {
-    LikeOperator ret =
-        new LikeOperator(this.filterType, new PartialPath(singlePath.getNodes().clone()), value);
+    LikeOperator ret = new LikeOperator(this.filterType, singlePath.clone(), value);
     ret.isLeaf = isLeaf;
     ret.isSingle = isSingle;
     ret.pathSet = pathSet;
@@ -106,9 +105,15 @@ public class LikeOperator extends FunctionOperator {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (o == null || getClass() != o.getClass()) return false;
-    if (!super.equals(o)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    if (!super.equals(o)) {
+      return false;
+    }
     LikeOperator that = (LikeOperator) o;
     return Objects.equals(value, that.value);
   }

@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
@@ -436,22 +436,22 @@ public class TsFileRewriteTool implements AutoCloseable {
       getOrDefaultTsFileIOWriter(oldTsFile, partitionId);
       switch (schema.getType()) {
         case INT32:
-          chunkWriter.write(time, (int) value, false);
+          chunkWriter.write(time, (int) value);
           break;
         case INT64:
-          chunkWriter.write(time, (long) value, false);
+          chunkWriter.write(time, (long) value);
           break;
         case FLOAT:
-          chunkWriter.write(time, (float) value, false);
+          chunkWriter.write(time, (float) value);
           break;
         case DOUBLE:
-          chunkWriter.write(time, (double) value, false);
+          chunkWriter.write(time, (double) value);
           break;
         case BOOLEAN:
-          chunkWriter.write(time, (boolean) value, false);
+          chunkWriter.write(time, (boolean) value);
           break;
         case TEXT:
-          chunkWriter.write(time, (Binary) value, false);
+          chunkWriter.write(time, (Binary) value);
           break;
         default:
           throw new UnSupportedDataTypeException(

@@ -458,6 +458,33 @@ public class SessionPool {
   }
 
   /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   */
+  public void insertAlignedTablet(Tablet tablet)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, false);
+  }
+
+  /**
+   * insert the data of a device. For each timestamp, the number of measurements is the same.
+   *
+   * <p>Users need to control the count of Tablet and write a batch when it reaches the maxBatchSize
+   *
+   * @param tablet a tablet data of one device
+   * @param sorted whether times in Tablet are in ascending order
+   */
+  public void insertAlignedTablet(Tablet tablet, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    tablet.setAligned(true);
+    insertTablet(tablet, sorted);
+  }
+
+  /**
    * use batch interface to insert data
    *
    * @param tablets multiple batch
@@ -469,6 +496,19 @@ public class SessionPool {
 
   /**
    * use batch interface to insert data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, false);
+  }
+
+  /**
+   * use batch interface to insert aligned data
    *
    * @param tablets multiple batch
    */
@@ -489,6 +529,19 @@ public class SessionPool {
         throw e;
       }
     }
+  }
+
+  /**
+   * use batch interface to insert aligned data
+   *
+   * @param tablets multiple batch
+   */
+  public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (Tablet tablet : tablets.values()) {
+      tablet.setAligned(true);
+    }
+    insertTablets(tablets, sorted);
   }
 
   /**
@@ -1301,57 +1354,6 @@ public class SessionPool {
     }
     // never go here.
     return false;
-  }
-
-  public void createSchemaTemplate(
-      String name,
-      List<String> schemaNames,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < RETRY; i++) {
-      Session session = getSession();
-      try {
-        session.createSchemaTemplate(
-            name, schemaNames, measurements, dataTypes, encodings, compressors);
-        putBack(session);
-        return;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException | RuntimeException e) {
-        putBack(session);
-        throw e;
-      }
-    }
-  }
-
-  /** New interface for no schemaNames */
-  public void createSchemaTemplate(
-      String name,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<List<CompressionType>> compressors)
-      throws IoTDBConnectionException, StatementExecutionException {
-    for (int i = 0; i < RETRY; i++) {
-      Session session = getSession();
-      try {
-        session.createSchemaTemplate(name, measurements, dataTypes, encodings, compressors);
-        putBack(session);
-        return;
-      } catch (IoTDBConnectionException e) {
-        // TException means the connection is broken, remove it and get a new one.
-        logger.warn("createSchemaTemplate failed", e);
-        cleanSessionAndMayThrowConnectionException(session, i, e);
-      } catch (StatementExecutionException | RuntimeException e) {
-        putBack(session);
-        throw e;
-      }
-    }
   }
 
   /**
