@@ -24,10 +24,11 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMerg
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +38,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -140,11 +142,23 @@ public class CrossSpaceMergeTask implements Callable<Void> {
 
     inplaceCompactionLogger.logFiles(resource);
 
-    Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
-        IoTDB.metaManager.getAllMeasurementSchemaByPrefix(new PartialPath(storageGroupName));
-    List<PartialPath> unmergedSeries = new ArrayList<>(measurementSchemaMap.keySet());
-    resource.setMeasurementSchemaMap(measurementSchemaMap);
+    //    Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
+    //        IoTDB.metaManager.getAllMeasurementSchemaByPrefix(new PartialPath(storageGroupName));
+    List<List<IMNode>> unmergedSeries = new ArrayList<>();
 
+    Set<PartialPath> devices =
+        IoTDB.metaManager.getMatchedDevices(new PartialPath(storageGroupName));
+    for (PartialPath path : devices) {
+      IMNode deviceNode = IoTDB.metaManager.getDeviceNode(path);
+      List<IMNode> unmergedByDevice = new ArrayList<>();
+      for (Entry<String, IMNode> entry : deviceNode.getChildren().entrySet()) {
+        if (entry.getValue() instanceof MeasurementMNode) {
+          unmergedByDevice.add(entry.getValue());
+        }
+      }
+      unmergedSeries.add(unmergedByDevice);
+      IoTDB.metaManager.getMeasurementMNode(path);
+    }
     inplaceCompactionLogger.logMergeStart();
 
     chunkTask =

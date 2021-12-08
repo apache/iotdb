@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSel
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
@@ -73,7 +74,7 @@ public class MergeMultiChunkTask {
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
   private InplaceCompactionLogger inplaceCompactionLogger;
-  private List<PartialPath> unmergedSeries;
+  private List<?> unmergedSeries;
 
   private String taskName;
   private CrossSpaceMergeResource resource;
@@ -112,7 +113,7 @@ public class MergeMultiChunkTask {
       InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource mergeResource,
       boolean fullMerge,
-      List<PartialPath> unmergedSeries,
+      List<?> unmergedSeries,
       int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.mergeContext = context;
@@ -126,18 +127,22 @@ public class MergeMultiChunkTask {
   }
 
   void mergeSeries() throws IOException {
-    if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
-    }
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       // record the unmergeChunkStartTime for each sensor in each file
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    for (List<PartialPath> pathList : devicePaths) {
+    //    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
+    for (List<IMNode> nodesBydevice : (List<List<IMNode>>) unmergedSeries) {
+      if (logger.isInfoEnabled()) {
+        logger.info("{} starts to merge {} series", taskName, nodesBydevice.size());
+      }
       // TODO: use statistics of queries to better rearrange series
+      List<PartialPath> pathList = new ArrayList<>();
+      for (IMNode node : nodesBydevice) {
+        pathList.add(node.getPartialPath());
+      }
       IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();

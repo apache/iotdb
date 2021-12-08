@@ -21,8 +21,10 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,8 +66,6 @@ public class CrossSpaceMergeResource {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
       new HashMap<>(); // pair<startTime, endTime>
-  private Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
-      new HashMap<>(); // is this too waste?
   private Map<IMeasurementSchema, ChunkWriterImpl> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long ttlLowerBound = Long.MIN_VALUE;
@@ -103,12 +103,15 @@ public class CrossSpaceMergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
   public IMeasurementSchema getSchema(PartialPath path) {
-    return measurementSchemaMap.get(path);
+    try {
+      return IoTDB.metaManager.getMeasurementMNode(path).getSchema();
+    } catch (MetadataException e) {
+      return null;
+    }
   }
 
   /**
@@ -259,10 +262,6 @@ public class CrossSpaceMergeResource {
 
   public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
     this.cacheDeviceMeta = cacheDeviceMeta;
-  }
-
-  public void setMeasurementSchemaMap(Map<PartialPath, IMeasurementSchema> measurementSchemaMap) {
-    this.measurementSchemaMap = measurementSchemaMap;
   }
 
   public void clearChunkWriterCache() {
