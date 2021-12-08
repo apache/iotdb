@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.conf;
 
+import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
+
+import java.io.File;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
@@ -35,15 +40,8 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
 public class IoTDBConfig {
 
@@ -783,7 +781,11 @@ public class IoTDBConfig {
 
   private String adminPassword = "root";
 
+  /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
   private String deviceIDTransformationMethod = "Plain";
+
+  /** whether to use id table. ATTENTION: id table is not compatible with alias */
+  private boolean enableIDTable = false;
 
   public IoTDBConfig() {
     // empty constructor
@@ -2479,5 +2481,13 @@ public class IoTDBConfig {
 
   public void setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
     this.deviceIDTransformationMethod = deviceIDTransformationMethod;
+  }
+
+  public boolean isEnableIDTable() {
+    return enableIDTable;
+  }
+
+  public void setEnableIDTable(boolean enableIDTable) {
+    this.enableIDTable = enableIDTable;
   }
 }

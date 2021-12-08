@@ -728,7 +728,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| whether enable data partition. If disabled, all data belongs to partition 0|
 |Type| BOOLEAN |
 |Default|false |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * partition\_interval
 
@@ -737,7 +737,23 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| time range for partitioning data inside each storage group, the unit is second|
 |Type| LONG |
 |Default| 604800 |
+|Effective|Only allowed to be modified in first start up|
+
+* enable\_id\_table
+|Name| enable\_id\_table |
+|:---:|:---|
+|Description| whether to use id table. ATTENTION: id table is not compatible with alias |
+|Type| bool |
+|Default| false |
 |Effective|After restart system|
+
+* device\_id\_transformation\_method
+|Name| device\_id\_transformation\_method |
+|:---:|:---|
+|Description| the method to transform device path to device id, can be 'Plain' or 'SHA256' |
+|Type| string |
+|Default| Plain |
+|Effective|Only allowed to be modified in first start up|
 
 ## Enable GC log
 GC log is off by default.
