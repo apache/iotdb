@@ -40,12 +40,9 @@ import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -77,6 +74,12 @@ public class IDTable {
     }
   }
 
+  /**
+   * create aligned timeseries
+   *
+   * @param plan create aligned timeseries plan
+   * @throws MetadataException if the device is not aligned, throw it
+   */
   public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntry(plan.getPrefixPath(), true);
@@ -89,6 +92,12 @@ public class IDTable {
     }
   }
 
+  /**
+   * create timeseries
+   *
+   * @param plan create timeseries plan
+   * @throws MetadataException if the device is aligned, throw it
+   */
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntry(plan.getPath().getDevicePath(), false);
     SchemaEntry schemaEntry =
@@ -97,68 +106,12 @@ public class IDTable {
   }
 
   /**
-   * check whether a time series is exist if exist, check the type consistency if not exist, call
-   * MManager to create it
+   * check inserting timeseries existence and fill their measurement mnode
    *
-   * @return measurement MNode of the time series or null if type is not match
+   * @param plan insert plan
+   * @return reusable device id
+   * @throws MetadataException if insert plan's aligned value is inconsistent with device
    */
-  public synchronized IMeasurementMNode getOrCreateMeasurementIfNotExist(
-      DeviceEntry deviceEntry, InsertPlan plan, int loc) throws MetadataException {
-    String measurementName = plan.getMeasurements()[loc];
-    PartialPath seriesKey = new PartialPath(plan.getDeviceId().toString(), measurementName);
-
-    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
-
-    // if not exist, we create it
-    if (schemaEntry == null) {
-      if (!config.isAutoCreateSchemaEnabled()) {
-        throw new PathNotExistException(seriesKey.toString());
-      }
-
-      // create new timeseries in mmanager
-      try {
-        if (plan.isAligned()) {
-          List<TSEncoding> encodings = new ArrayList<>();
-          List<CompressionType> compressors = new ArrayList<>();
-          for (TSDataType dataType : plan.getDataTypes()) {
-            encodings.add(getDefaultEncoding(dataType));
-            compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
-          }
-
-          CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
-              new CreateAlignedTimeSeriesPlan(
-                  plan.getDeviceId(),
-                  Arrays.asList(plan.getMeasurements()),
-                  Arrays.asList(plan.getDataTypes()),
-                  encodings,
-                  compressors,
-                  null);
-
-          IoTDB.metaManager.createAlignedTimeSeriesEntry(createAlignedTimeSeriesPlan);
-        } else {
-          CreateTimeSeriesPlan createTimeSeriesPlan =
-              new CreateTimeSeriesPlan(
-                  seriesKey,
-                  plan.getDataTypes()[loc],
-                  getDefaultEncoding(plan.getDataTypes()[loc]),
-                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
-                  null,
-                  null,
-                  null,
-                  null);
-
-          IoTDB.metaManager.createTimeseriesEntry(createTimeSeriesPlan, -1);
-        }
-      } catch (MetadataException e) {
-        logger.error("create timeseries failed, path is:" + seriesKey);
-      }
-
-      schemaEntry = deviceEntry.getSchemaEntry(measurementName);
-    }
-
-    return new InsertMeasurementMNode(measurementName, schemaEntry);
-  }
-
   public synchronized IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException {
     PartialPath devicePath = plan.getDeviceId();
     String[] measurementList = plan.getMeasurements();
@@ -236,6 +189,108 @@ public class IDTable {
   }
 
   /**
+   * register trigger to the timeseries
+   *
+   * @param fullPath full path of the timeseries
+   * @param measurementMNode the timeseries measurement mnode
+   * @throws MetadataException if the timeseries is not exits
+   */
+  public synchronized void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
+      throws MetadataException {
+    boolean isAligned = measurementMNode.getParent().isAligned();
+    DeviceEntry deviceEntry = getDeviceEntry(fullPath.getDevicePath(), isAligned);
+
+    deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUsingTrigger();
+  }
+
+  /**
+   * deregister trigger to the timeseries
+   *
+   * @param fullPath full path of the timeseries
+   * @param measurementMNode the timeseries measurement mnode
+   * @throws MetadataException if the timeseries is not exits
+   */
+  public synchronized void deregisterTrigger(
+      PartialPath fullPath, IMeasurementMNode measurementMNode) throws MetadataException {
+    boolean isAligned = measurementMNode.getParent().isAligned();
+    DeviceEntry deviceEntry = getDeviceEntry(fullPath.getDevicePath(), isAligned);
+
+    deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUnUsingTrigger();
+  }
+
+  /**
+   * check whether a time series is exist if exist, check the type consistency if not exist, call
+   * MManager to create it
+   *
+   * @return measurement MNode of the time series or null if type is not match
+   */
+  private IMeasurementMNode getOrCreateMeasurementIfNotExist(
+      DeviceEntry deviceEntry, InsertPlan plan, int loc) throws MetadataException {
+    String measurementName = plan.getMeasurements()[loc];
+    PartialPath seriesKey = new PartialPath(plan.getDeviceId().toString(), measurementName);
+
+    SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
+
+    // if not exist, we create it
+    if (schemaEntry == null) {
+      if (!config.isAutoCreateSchemaEnabled()) {
+        throw new PathNotExistException(seriesKey.toString());
+      }
+
+      // create new timeseries in mmanager
+      try {
+        if (plan.isAligned()) {
+          // create aligned timeseries
+          List<TSEncoding> encodings = new ArrayList<>();
+          List<CompressionType> compressors = new ArrayList<>();
+          for (TSDataType dataType : plan.getDataTypes()) {
+            encodings.add(getDefaultEncoding(dataType));
+            compressors.add(TSFileDescriptor.getInstance().getConfig().getCompressor());
+          }
+
+          CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
+              new CreateAlignedTimeSeriesPlan(
+                  plan.getDeviceId(),
+                  Arrays.asList(plan.getMeasurements()),
+                  Arrays.asList(plan.getDataTypes()),
+                  encodings,
+                  compressors,
+                  null);
+
+          IoTDB.metaManager.createAlignedTimeSeriesEntry(createAlignedTimeSeriesPlan);
+        } else {
+          // create normal timeseries
+          CreateTimeSeriesPlan createTimeSeriesPlan =
+              new CreateTimeSeriesPlan(
+                  seriesKey,
+                  plan.getDataTypes()[loc],
+                  getDefaultEncoding(plan.getDataTypes()[loc]),
+                  TSFileDescriptor.getInstance().getConfig().getCompressor(),
+                  null,
+                  null,
+                  null,
+                  null);
+
+          IoTDB.metaManager.createTimeseriesEntry(createTimeSeriesPlan, -1);
+        }
+      } catch (MetadataException e) {
+        logger.error("create timeseries failed, path is:" + seriesKey);
+      }
+
+      schemaEntry = deviceEntry.getSchemaEntry(measurementName);
+    }
+
+    // timeseries is using trigger, we should get trigger from mmanager
+    if (schemaEntry.isUsingTrigger()) {
+      IMeasurementMNode measurementMNode = IoTDB.metaManager.getMeasurementMNode(seriesKey);
+      return new InsertMeasurementMNode(
+          measurementName, schemaEntry, measurementMNode.getTriggerExecutor());
+    }
+
+    return new InsertMeasurementMNode(measurementName, schemaEntry);
+  }
+
+  /**
    * get device id from device path and check is aligned,
    *
    * @param deviceName device name of the time series
@@ -308,17 +363,6 @@ public class IDTable {
   // from mmanger
   private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
       throws MetadataException {
-    //    TSDataType insertDataType;
-    //    if (plan instanceof InsertRowPlan) {
-    //      if (!((InsertRowPlan) plan).isNeedInferType()) {
-    //        // only when InsertRowPlan's values is object[], we should check type
-    //        insertDataType = getTypeInLoc(plan, loc);
-    //      } else {
-    //        insertDataType = dataType;
-    //      }
-    //    } else {
-    //      insertDataType = getTypeInLoc(plan, loc);
-    //    }
     TSDataType insertDataType = plan.getDataTypes()[loc];
     if (dataType != insertDataType) {
       String measurement = plan.getMeasurements()[loc];
@@ -329,22 +373,5 @@ public class IDTable {
           dataType);
       throw new DataTypeMismatchException(measurement, insertDataType, dataType);
     }
-  }
-
-  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
-  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
-    TSDataType dataType;
-    if (plan instanceof InsertRowPlan) {
-      InsertRowPlan tPlan = (InsertRowPlan) plan;
-      dataType =
-          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
-    } else if (plan instanceof InsertTabletPlan) {
-      dataType = (plan).getDataTypes()[loc];
-    } else {
-      throw new MetadataException(
-          String.format(
-              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
-    }
-    return dataType;
   }
 }

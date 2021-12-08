@@ -19,10 +19,11 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import java.util.Map;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import java.util.Map;
 
 public class IDManagerImpl implements IDManager {
 

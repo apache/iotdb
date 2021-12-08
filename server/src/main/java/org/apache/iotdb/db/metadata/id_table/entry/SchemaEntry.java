@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
-import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
-
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -28,6 +26,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
 public class SchemaEntry implements ILastCacheContainer {
 
@@ -94,6 +94,19 @@ public class SchemaEntry implements ILastCacheContainer {
 
   public void updateLastedFlushTime(long lastFlushTime) {
     flushTime = Math.max(flushTime, lastFlushTime);
+  }
+
+  public boolean isUsingTrigger() {
+    return ((schema >> 24) & 1) == 1;
+  }
+
+  public void setUsingTrigger() {
+    schema |= (1 << 24);
+  }
+
+  public void setUnUsingTrigger() {
+    int mask = ~(1 << 24);
+    schema &= mask;
   }
 
   public long getLastTime() {
