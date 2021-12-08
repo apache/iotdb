@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.rescon.TVListAllocator;
+import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.util.HashMap;
@@ -39,7 +39,7 @@ public class PrimitiveMemTable extends AbstractMemTable {
 
   @Override
   protected IWritableMemChunk genMemSeries(MeasurementSchema schema) {
-    return new WritableMemChunk(schema, TVListAllocator.getInstance().allocate(schema.getType()));
+    return new WritableMemChunk(schema, TVList.newList(schema.getType()));
   }
 
   @Override
