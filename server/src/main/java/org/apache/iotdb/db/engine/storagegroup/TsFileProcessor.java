@@ -352,14 +352,14 @@ public class TsFileProcessor {
         chunkMetadataIncrement +=
             ChunkMetadata.calculateRamSize(
                 insertRowPlan.getMeasurements()[i], insertRowPlan.getDataTypes()[i]);
-        memTableIncrement += TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i]);
+        memTableIncrement += TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i]);
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum =
             workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-                ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
+                ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
                 : 0;
       }
       // TEXT data mem size
@@ -385,14 +385,14 @@ public class TsFileProcessor {
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
               * insertRowPlan.getDataTypes().length;
-      memTableIncrement += AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes());
+      memTableIncrement += AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes());
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
           workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
-              ? AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes())
+              ? AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes())
               : 0;
       alignedMemChunk =
           ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
@@ -484,19 +484,19 @@ public class TsFileProcessor {
       memIncrements[2] += ChunkMetadata.calculateRamSize(measurement, dataType);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * TVList.tvListArrayMemSize(dataType);
+              * TVList.tvListArrayMemCost(dataType);
     } else {
       long currentChunkPointNum = workMemTable.getCurrentChunkPointNum(deviceId, measurement);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * TVList.tvListArrayMemSize(dataType);
+                * TVList.tvListArrayMemCost(dataType);
       } else {
         long acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
                 / PrimitiveArrayManager.ARRAY_SIZE;
         memIncrements[0] +=
-            acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemSize(dataType);
+            acquireArray == 0 ? 0 : acquireArray * TVList.tvListArrayMemCost(dataType);
       }
     }
     // TEXT data size
@@ -523,14 +523,14 @@ public class TsFileProcessor {
               * ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR);
       memIncrements[0] +=
           ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-              * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
+              * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
     } else {
       int currentChunkPointNum =
           (int) workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
       if (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE == 0) {
         memIncrements[0] +=
             ((end - start) / PrimitiveArrayManager.ARRAY_SIZE + 1)
-                * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
+                * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
       } else {
         int acquireArray =
             (end - start - 1 + (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE))
@@ -538,7 +538,7 @@ public class TsFileProcessor {
         memIncrements[0] +=
             acquireArray == 0
                 ? 0
-                : acquireArray * AlignedTVList.alignedTvListArrayMemSize(dataTypes);
+                : acquireArray * AlignedTVList.alignedTvListArrayMemCost(dataTypes);
       }
       vectorMemChunk =
           ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))

@@ -41,7 +41,6 @@ import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.rest.RestService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -120,7 +119,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
     registerManager.register(Measurement.INSTANCE);
-    registerManager.register(TVListAllocator.getInstance());
     registerManager.register(CacheHitRatioMonitor.getInstance());
     registerManager.register(MergeManager.getINSTANCE());
     registerManager.register(CompactionTaskManager.getInstance());

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -55,7 +54,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
       dataTypeList.add(schemaList.get(i).getType());
     }
-    this.list = TVListAllocator.getInstance().allocate(dataTypeList);
+    AlignedTVList.newAlignedList(dataTypeList);
   }
 
   public Set<String> getAllMeasurements() {
@@ -339,7 +338,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
   @Override
   public void release() {
     if (list.getReferenceCount() == 0) {
-      TVListAllocator.getInstance().release(list);
+      list.clear();
     }
   }
 
