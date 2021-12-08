@@ -133,7 +133,7 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     this.dataSource = dataSource;
-    // QueryUtils.filterQueryDataSource(dataSource, fileFilter);
+    QueryUtils.filterQueryDataSource(dataSource, fileFilter);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     if (ascending) {

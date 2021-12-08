@@ -119,9 +119,13 @@ public class QueryResourceManager {
     }
 
     if (queryDataSource.getUnSeqFileOrderIndexes(deviceId) == null) {
-      Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size()];
+      Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size() + 1];
       fillOrderIndexes(
-          deviceId, queryDataSource.getUnseqResources(), orderIndexes, context.isAscending());
+          deviceId,
+          queryDataSource.getUnseqResources(),
+          queryDataSource.getUnclosedUnseqResource(),
+          orderIndexes,
+          context.isAscending());
       queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
     }
 
@@ -131,6 +135,7 @@ public class QueryResourceManager {
   private void fillOrderIndexes(
       String deviceId,
       List<TsFileResource> unseqResources,
+      TsFileResource unclosedUnseqResource,
       Integer[] orderIndexes,
       boolean ascending) {
     AtomicInteger index = new AtomicInteger();
@@ -139,11 +144,10 @@ public class QueryResourceManager {
             .collect(
                 Collectors.toMap(
                     key -> index.getAndIncrement(),
-                    resource ->
-                        ascending
-                            ? resource.getStartTime(deviceId)
-                            : resource.getEndTime(deviceId)));
-
+                    resource -> resource.getOrderTime(deviceId, ascending)));
+    if (unclosedUnseqResource != null) {
+      intToOrderTimeMap.put(index.get(), unclosedUnseqResource.getOrderTime(deviceId, ascending));
+    }
     index.set(0);
     intToOrderTimeMap.entrySet().stream()
         .sorted(

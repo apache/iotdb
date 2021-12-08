@@ -29,8 +29,8 @@ import java.util.List;
 import java.util.Map;
 
 public class QueryDataSource {
-  private List<TsFileResource> seqResources;
-  private List<TsFileResource> unseqResources;
+  private final List<TsFileResource> seqResources;
+  private final List<TsFileResource> unseqResources;
 
   private TsFileResource unclosedSeqResource;
   private TsFileResource unclosedUnseqResource;
@@ -52,6 +52,14 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
+  }
+
+  public TsFileResource getUnclosedSeqResource() {
+    return unclosedSeqResource;
+  }
+
+  public TsFileResource getUnclosedUnseqResource() {
+    return unclosedUnseqResource;
   }
 
   public long getDataTTL() {

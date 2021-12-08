@@ -376,6 +376,10 @@ public class TsFileResource {
     return timeIndex.getEndTime(deviceId);
   }
 
+  public long getOrderTime(String deviceId, boolean ascending) {
+    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+  }
+
   public long getFileStartTime() {
     long res = Long.MAX_VALUE;
     for (String deviceId : timeIndex.getDevices()) {
