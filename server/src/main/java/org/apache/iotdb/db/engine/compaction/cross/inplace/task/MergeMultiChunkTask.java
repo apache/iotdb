@@ -133,7 +133,6 @@ public class MergeMultiChunkTask {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    //    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
     for (List<IMNode> nodesBydevice : (List<List<IMNode>>) unmergedSeries) {
       if (logger.isInfoEnabled()) {
         logger.info("{} starts to merge {} series", taskName, nodesBydevice.size());
