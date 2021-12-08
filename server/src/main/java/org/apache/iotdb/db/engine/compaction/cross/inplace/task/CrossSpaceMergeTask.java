@@ -139,13 +139,9 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     long totalFileSize =
         MergeUtils.collectFileSizes(resource.getSeqFiles(), resource.getUnseqFiles());
     inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
-
     inplaceCompactionLogger.logFiles(resource);
 
-    //    Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
-    //        IoTDB.metaManager.getAllMeasurementSchemaByPrefix(new PartialPath(storageGroupName));
     List<List<IMNode>> unmergedSeries = new ArrayList<>();
-
     Set<PartialPath> devices =
         IoTDB.metaManager.getMatchedDevices(new PartialPath(storageGroupName));
     for (PartialPath path : devices) {
@@ -157,7 +153,6 @@ public class CrossSpaceMergeTask implements Callable<Void> {
         }
       }
       unmergedSeries.add(unmergedByDevice);
-      IoTDB.metaManager.getMeasurementMNode(path);
     }
     inplaceCompactionLogger.logMergeStart();
 
