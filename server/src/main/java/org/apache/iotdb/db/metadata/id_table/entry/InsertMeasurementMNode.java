@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+import java.util.Map;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -32,8 +33,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import java.util.Map;
 
 public class InsertMeasurementMNode implements IMeasurementMNode {
   SchemaEntry schemaEntry;
@@ -66,7 +65,7 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
 
   @Override
   public ILastCacheContainer getLastCacheContainer() {
-    return null;
+    return schemaEntry;
   }
 
   @Override

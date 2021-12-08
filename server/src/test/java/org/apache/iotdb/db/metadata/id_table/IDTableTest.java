@@ -19,6 +19,14 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.Arrays;
+import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
@@ -27,31 +35,26 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Arrays;
-import java.util.Collections;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class IDTableTest {
 
@@ -555,7 +558,91 @@ public class IDTableTest {
       assertEquals(TSDataType.INT64, s2Node.getSchema().getType());
       assertNull(s2Node.getTriggerExecutor());
 
+      // drop trigger
+      String sql2 = "Drop trigger trigger1";
+
+      DropTriggerPlan plan2 = (DropTriggerPlan) processor.parseSQLToPhysicalPlan(sql2);
+      TriggerRegistrationService.getInstance().deregister(plan2);
+
+      idTable.getSeriesSchemas(insertRowPlan);
+      assertNull(s1Node.getTriggerExecutor());
     } catch (MetadataException | StorageEngineException | QueryProcessException e) {
+      e.printStackTrace();
+      fail("throw exception");
+    }
+  }
+
+  @Test
+  public void testFlushTimeAndLastCache() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      long time = 1L;
+
+      manager.setStorageGroup(new PartialPath("root.laptop"));
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.non_aligned_device.s1"),
+          TSDataType.valueOf("INT32"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+      manager.createTimeseries(
+          new PartialPath("root.laptop.d1.non_aligned_device.s2"),
+          TSDataType.valueOf("INT64"),
+          TSEncoding.valueOf("RLE"),
+          compressionType,
+          Collections.emptyMap());
+
+      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
+      String[] columns = new String[2];
+      columns[0] = "1";
+      columns[1] = "2";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1.non_aligned_device"),
+              time,
+              new String[] {"s1", "s2"},
+              dataTypes,
+              columns,
+              false);
+      insertRowPlan.setMeasurementMNodes(
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      // call getSeriesSchemasAndReadLockDevice
+      IDTable idTable =
+          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+
+      idTable.getSeriesSchemas(insertRowPlan);
+
+      IMeasurementMNode s2Node = insertRowPlan.getMeasurementMNodes()[1];
+      ILastCacheContainer cacheContainer = s2Node.getLastCacheContainer();
+      // last cache
+      cacheContainer.updateCachedLast(
+          new TimeValuePair(100L, new TsPrimitiveType.TsLong(1L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(1L), cacheContainer.getCachedLast().getValue());
+      assertEquals(100L, cacheContainer.getCachedLast().getTimestamp());
+
+      cacheContainer.updateCachedLast(
+          new TimeValuePair(90L, new TsPrimitiveType.TsLong(2L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(1L), cacheContainer.getCachedLast().getValue());
+      assertEquals(100L, cacheContainer.getCachedLast().getTimestamp());
+
+      cacheContainer.updateCachedLast(
+          new TimeValuePair(110L, new TsPrimitiveType.TsLong(2L)), false, 0L);
+      assertEquals(new TsPrimitiveType.TsLong(2L), cacheContainer.getCachedLast().getValue());
+      assertEquals(110L, cacheContainer.getCachedLast().getTimestamp());
+
+      // flush time
+      TimeseriesID timeseriesID =
+          new TimeseriesID(new PartialPath("root.laptop.d1.non_aligned_device.s1"));
+      idTable.updateLatestFlushTime(timeseriesID, 10L);
+      assertEquals(10L, idTable.getLatestFlushedTime(timeseriesID));
+      idTable.updateLatestFlushTime(timeseriesID, 8L);
+      assertEquals(10L, idTable.getLatestFlushedTime(timeseriesID));
+      idTable.updateLatestFlushTime(timeseriesID, 12L);
+      assertEquals(12L, idTable.getLatestFlushedTime(timeseriesID));
+
+    } catch (MetadataException | StorageEngineException e) {
       e.printStackTrace();
       fail("throw exception");
     }

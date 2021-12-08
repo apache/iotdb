@@ -27,7 +27,7 @@ public class TimeseriesID {
 
   /** build timeseries id from full path */
   public TimeseriesID(PartialPath fullPath) {
-    deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath);
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
     measurement = fullPath.getMeasurement();
   }
 
