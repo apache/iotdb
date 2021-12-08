@@ -74,34 +74,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     this.tsFileManager = tsFileManager;
   }
 
-  public static void combineModsInCompaction(
-      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
-    List<Modification> modifications = new ArrayList<>();
-    for (TsFileResource mergeTsFile : mergeTsFiles) {
-      try (ModificationFile sourceCompactionModificationFile =
-          ModificationFile.getCompactionMods(mergeTsFile)) {
-        modifications.addAll(sourceCompactionModificationFile.getModifications());
-        if (sourceCompactionModificationFile.exists()) {
-          sourceCompactionModificationFile.remove();
-        }
-      }
-      ModificationFile sourceModificationFile = ModificationFile.getNormalMods(mergeTsFile);
-      if (sourceModificationFile.exists()) {
-        sourceModificationFile.remove();
-      }
-    }
-    if (!modifications.isEmpty()) {
-      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
-        for (Modification modification : modifications) {
-          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
-          // change after compaction
-          modification.setFileOffset(Long.MAX_VALUE);
-          modificationFile.write(modification);
-        }
-      }
-    }
-  }
-
   @Override
   protected void doCompaction() throws Exception {
     long startTime = System.currentTimeMillis();
@@ -117,6 +89,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         fullStorageGroupName,
         selectedTsFileResourceList.size());
     File logFile = null;
+    SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
     try {
       logFile =
           new File(
@@ -124,8 +97,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   + File.separator
                   + targetFileName
                   + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-      SizeTieredCompactionLogger sizeTieredCompactionLogger =
-          new SizeTieredCompactionLogger(logFile.getPath());
+      sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
       for (TsFileResource resource : selectedTsFileResourceList) {
         sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
       }
@@ -157,9 +129,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             fullStorageGroupName,
             targetTsFileResource.getTsFile(),
             e);
-        targetTsFileResource.remove();
-        sizeTieredCompactionLogger.close();
-        FileUtils.delete(logFile);
         throw new InterruptedException(
             String.format(
                 "%s [Compaction] compaction abort because cannot acquire write lock",
@@ -201,6 +170,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName,
           throwable);
       LOGGER.info("{} [Compaction] Start to handle exception", fullStorageGroupName);
+      if (sizeTieredCompactionLogger != null) {
+        sizeTieredCompactionLogger.close();
+      }
       handleException(logFile, targetTsFileResource);
     } finally {
       for (TsFileResource resource : selectedTsFileResourceList) {
@@ -273,6 +245,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
               targetTsFile);
           tsFileManager.setAllowCompaction(false);
           handleSuccess = false;
+        } else {
+          for (TsFileResource tsFileResource : selectedTsFileResourceList) {
+            if (!tsFileResourceList.contains(tsFileResource)) {
+              tsFileResourceList.add(tsFileResource);
+            }
+          }
+          tsFileResourceList.remove(targetTsFile);
         }
       } else {
         // some source file does not exists
@@ -285,6 +264,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           try {
             RestorableTsFileIOWriter writer =
                 new RestorableTsFileIOWriter(targetTsFile.getTsFile());
+            writer.close();
             if (!writer.hasCrashed()) {
               // target file is complete, delete source files
               LOGGER.info(
@@ -300,7 +280,12 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                       sourceFile);
                   tsFileManager.setAllowCompaction(false);
                   handleSuccess = false;
+                } else {
+                  tsFileResourceList.remove(sourceFile);
                 }
+              }
+              if (!tsFileResourceList.contains(targetTsFile)) {
+                tsFileResourceList.add(targetTsFile);
               }
             } else {
               // target file is not complete, and some source file is lost, do nothing
@@ -343,6 +328,34 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
               logFile,
               e);
           tsFileManager.setAllowCompaction(false);
+        }
+      }
+    }
+  }
+
+  public static void combineModsInCompaction(
+      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+        if (sourceCompactionModificationFile.exists()) {
+          sourceCompactionModificationFile.remove();
+        }
+      }
+      ModificationFile sourceModificationFile = ModificationFile.getNormalMods(mergeTsFile);
+      if (sourceModificationFile.exists()) {
+        sourceModificationFile.remove();
+      }
+    }
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
         }
       }
     }
