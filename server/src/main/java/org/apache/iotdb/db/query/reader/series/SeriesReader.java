@@ -179,6 +179,7 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     this.dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
     if (ascending) {

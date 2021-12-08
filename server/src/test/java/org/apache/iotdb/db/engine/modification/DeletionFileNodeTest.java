@@ -130,7 +130,7 @@ public class DeletionFileNodeTest {
     try {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
-              .getQueryDataSource(
+              .getQueryDataSourceByPath(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
       List<ReadOnlyMemChunk> timeValuePairs =
           dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
@@ -255,7 +255,7 @@ public class DeletionFileNodeTest {
     try {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
-              .getQueryDataSource(
+              .getQueryDataSourceByPath(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
       List<ReadOnlyMemChunk> timeValuePairs =

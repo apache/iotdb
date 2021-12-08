@@ -1236,9 +1236,9 @@ public class TsFileProcessor {
       chunkMetadataList.removeIf(context::chunkNotSatisfy);
 
       // get in memory data
-      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-        return new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
-      }
+      //      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+      return new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
+      //      }
     } catch (QueryProcessException | MetadataException e) {
       logger.error(
           "{}: {} get ReadOnlyMemChunk has error",
