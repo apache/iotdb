@@ -154,7 +154,7 @@ public class ExportCsv extends AbstractCsvTool {
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       System.out.println("Connect failed because " + e.getMessage());
     } catch (TException e) {
-      e.printStackTrace();
+      System.out.println("Can not get the timestamp precision from server because " + e.getMessage());
     } finally {
       if (session != null) {
         try {
