@@ -54,7 +54,7 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);
       dataTypeList.add(schemaList.get(i).getType());
     }
-    AlignedTVList.newAlignedList(dataTypeList);
+    this.list = AlignedTVList.newAlignedList(dataTypeList);
   }
 
   public Set<String> getAllMeasurements() {
