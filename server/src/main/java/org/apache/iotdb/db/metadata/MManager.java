@@ -83,12 +83,10 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.RandomDeleteCache;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.exception.cache.CacheException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -97,6 +95,10 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -191,7 +193,7 @@ public class MManager {
 
   private MTree mtree;
   // device -> DeviceMNode
-  private RandomDeleteCache<PartialPath, IMNode> mNodeCache;
+  private LoadingCache<PartialPath, IMNode> mNodeCache;
   private TagManager tagManager = TagManager.getInstance();
   private TemplateManager templateManager = TemplateManager.getInstance();
 
@@ -231,17 +233,17 @@ public class MManager {
 
     int cacheSize = config.getmManagerCacheSize();
     mNodeCache =
-        new RandomDeleteCache<PartialPath, IMNode>(cacheSize) {
+        Caffeine.newBuilder()
+            .maximumSize(cacheSize)
+            .build(
+                new com.github.benmanes.caffeine.cache.CacheLoader<PartialPath, IMNode>() {
+                  @Override
+                  public @Nullable IMNode load(@NonNull PartialPath partialPath)
+                      throws MetadataException {
 
-          @Override
-          public IMNode loadObjectByKey(PartialPath key) throws CacheException {
-            try {
-              return mtree.getNodeByPathWithStorageGroupCheck(key);
-            } catch (MetadataException e) {
-              throw new CacheException(e);
-            }
-          }
-        };
+                    return mtree.getNodeByPathWithStorageGroupCheck(partialPath);
+                  }
+                });
 
     if (config.isEnableMTreeSnapshot()) {
       timedCreateMTreeSnapshotThread =
@@ -357,7 +359,7 @@ public class MManager {
         this.mtree.clear();
       }
       if (this.mNodeCache != null) {
-        this.mNodeCache.clear();
+        this.mNodeCache.invalidateAll();
       }
       this.totalSeriesNumber.set(0);
       this.templateManager.clear();
@@ -497,7 +499,7 @@ public class MManager {
               plan.getAlias());
 
       // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.removeObject(path.getDevicePath());
+      mNodeCache.invalidate(path.getDevicePath());
 
       // update tag index
       if (plan.getTags() != null) {
@@ -619,7 +621,7 @@ public class MManager {
           plan.getCompressors());
 
       // the cached mNode may be replaced by new entityMNode in mtree
-      mNodeCache.removeObject(prefixPath);
+      mNodeCache.invalidate(prefixPath);
 
       // update statistics and schemaDataTypeNumMap
       totalSeriesNumber.addAndGet(measurements.size());
@@ -727,7 +729,7 @@ public class MManager {
     }
 
     while (node.isEmptyInternal()) {
-      mNodeCache.removeObject(node.getPartialPath());
+      mNodeCache.invalidate(node.getPartialPath());
       node = node.getParent();
     }
     totalSeriesNumber.addAndGet(-1);
@@ -778,7 +780,7 @@ public class MManager {
           logger.info("Current series number {} come back to normal level", totalSeriesNumber);
           allowToCreateNewSeries = true;
         }
-        mNodeCache.clear();
+        mNodeCache.invalidateAll();
 
         // try to delete storage group
         List<IMeasurementMNode> leafMNodes = mtree.deleteStorageGroup(storageGroup);
@@ -830,11 +832,15 @@ public class MManager {
     try {
       node = mNodeCache.get(path);
       return node;
-    } catch (CacheException e) {
-      if (!autoCreateSchema) {
-        throw new PathNotExistException(path.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        if (!autoCreateSchema) {
+          throw new PathNotExistException(path.getFullPath());
+        }
+        shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
+      } else {
+        throw e;
       }
-      shouldSetStorageGroup = e.getCause() instanceof StorageGroupNotSetException;
     }
 
     try {
@@ -1261,8 +1267,11 @@ public class MManager {
           res.add(measurementPath);
         }
       }
-    } catch (CacheException e) {
-      throw new PathNotExistException(devicePath.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        throw new PathNotExistException(devicePath.getFullPath());
+      }
+      throw e;
     }
 
     return new ArrayList<>(res);
@@ -1302,8 +1311,11 @@ public class MManager {
     try {
       node = mNodeCache.get(path);
       return node;
-    } catch (CacheException e) {
-      throw new PathNotExistException(path.getFullPath());
+    } catch (Exception e) {
+      if (e.getCause() instanceof MetadataException) {
+        throw new PathNotExistException(path.getFullPath());
+      }
+      throw e;
     }
   }
 
@@ -2108,7 +2120,7 @@ public class MManager {
     mountedMNode.setUseTemplate(true);
 
     if (node != mountedMNode) {
-      mNodeCache.removeObject(mountedMNode.getPartialPath());
+      mNodeCache.invalidate(mountedMNode.getPartialPath());
     }
     if (!isRecovering) {
       try {

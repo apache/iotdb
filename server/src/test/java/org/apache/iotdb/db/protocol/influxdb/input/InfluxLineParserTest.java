@@ -16,7 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.influxdb.protocol.input;
+
+package org.apache.iotdb.db.protocol.influxdb.input;
 
 import org.influxdb.dto.Point;
 import org.junit.Assert;

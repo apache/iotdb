@@ -16,45 +16,57 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.protocol.influxdb.meta;
 
-package org.apache.iotdb.influxdb.protocol.meta;
-
-import org.apache.iotdb.influxdb.protocol.constant.InfluxDBConstant;
-import org.apache.iotdb.influxdb.protocol.dto.SessionPoint;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
+import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.protocol.influxdb.constant.InfluxDBConstant;
+import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TException;
 import org.influxdb.InfluxDBException;
 
+import java.io.IOException;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class MetaManager {
 
-  private Session session = null;
+  protected final Planner planner = new Planner();
 
-  private final AtomicInteger referenceCount = new AtomicInteger(0);
+  private final BasicServiceProvider basicServiceProvider;
+
+  private static String SELECT_TAG_INFO_SQL =
+      "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
+
+  public static MetaManager getInstance() {
+    return MetaManagerHolder.INSTANCE;
+  }
 
   // TODO avoid OOM
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  public MetaManager(SessionPoint sessionPoint) {
-    session =
-        new Session(
-            sessionPoint.getHost(),
-            sessionPoint.getRpcPort(),
-            sessionPoint.getUsername(),
-            sessionPoint.getPassword());
+  private MetaManager() {
     try {
-      session.open();
-    } catch (IoTDBConnectionException e) {
+      basicServiceProvider = new BasicServiceProvider();
+    } catch (QueryProcessException e) {
       throw new InfluxDBException(e.getMessage());
     }
     database2Measurement2TagOrders = new HashMap<>();
@@ -62,13 +74,21 @@ public class MetaManager {
   }
 
   private void recover() {
+    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
-      SessionDataSet result =
-          session.executeQueryStatement(
-              "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ");
-
-      while (result.hasNext()) {
-        List<Field> fields = result.next().getFields();
+      QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
+      QueryContext queryContext =
+          basicServiceProvider.genQueryContext(
+              queryId,
+              true,
+              System.currentTimeMillis(),
+              SELECT_TAG_INFO_SQL,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      QueryDataSet queryDataSet =
+          basicServiceProvider.createQueryDataSet(
+              queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+      while (queryDataSet.hasNext()) {
+        List<Field> fields = queryDataSet.next().getFields();
         String databaseName = fields.get(0).getStringValue();
         String measurementName = fields.get(1).getStringValue();
 
@@ -90,10 +110,17 @@ public class MetaManager {
         measurement2TagOrders.put(measurementName, tagOrders);
         database2Measurement2TagOrders.put(databaseName, measurement2TagOrders);
       }
-
-      result.closeOperationHandle();
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
+    } catch (QueryProcessException
+        | TException
+        | StorageEngineException
+        | SQLException
+        | IOException
+        | InterruptedException
+        | QueryFilterOptimizationException
+        | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
+    } finally {
+      BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
@@ -105,8 +132,15 @@ public class MetaManager {
     }
 
     try {
-      session.setStorageGroup("root." + database);
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      SetStorageGroupPlan setStorageGroupPlan =
+          new SetStorageGroupPlan(new PartialPath("root." + database));
+      basicServiceProvider.executeNonQuery(setStorageGroupPlan);
+    } catch (QueryProcessException e) {
+      // errCode = 300 means sg has already set
+      if (e.getErrorCode() != 300) {
+        throw new InfluxDBException(e.getMessage());
+      }
+    } catch (IllegalPathException | StorageGroupNotSetException | StorageEngineException e) {
       throw new InfluxDBException(e.getMessage());
     }
 
@@ -132,7 +166,7 @@ public class MetaManager {
     int tagNumber = tagKeyToLayerOrders.size();
 
     TagInfoRecords newTagInfoRecords = null;
-    for (Entry<String, String> tag : tags.entrySet()) {
+    for (Map.Entry<String, String> tag : tags.entrySet()) {
       final String tagKey = tag.getKey();
       if (!newTagKeyToLayerOrders.containsKey(tagKey)) {
         if (newTagInfoRecords == null) {
@@ -147,7 +181,7 @@ public class MetaManager {
     }
 
     if (newTagInfoRecords != null) {
-      newTagInfoRecords.persist(session);
+      updateTagInfoRecords(newTagInfoRecords);
       database2Measurement2TagOrders.get(database).put(measurement, newTagKeyToLayerOrders);
     }
 
@@ -163,19 +197,20 @@ public class MetaManager {
     return path.toString();
   }
 
-  public void close() throws IoTDBConnectionException {
-    session.close();
+  private void updateTagInfoRecords(TagInfoRecords tagInfoRecords) {
+    List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
+    for (InsertRowPlan plan : plans) {
+      try {
+        basicServiceProvider.executeNonQuery(plan);
+      } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
+        throw new InfluxDBException(e.getMessage());
+      }
+    }
   }
 
-  public void increaseReference() {
-    referenceCount.incrementAndGet();
-  }
+  private static class MetaManagerHolder {
+    private static final MetaManager INSTANCE = new MetaManager();
 
-  public void decreaseReference() {
-    referenceCount.decrementAndGet();
-  }
-
-  public boolean hasNoReference() {
-    return referenceCount.get() == 0;
+    private MetaManagerHolder() {}
   }
 }
