@@ -1237,7 +1237,7 @@ public class MManager {
     return mtree.getAllStorageGroupNodes();
   }
 
-  IMNode getDeviceNode(PartialPath path) throws MetadataException {
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
       node = mNodeCache.get(path);
