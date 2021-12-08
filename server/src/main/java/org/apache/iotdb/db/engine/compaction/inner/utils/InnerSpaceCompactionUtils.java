@@ -29,13 +29,16 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStr
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -583,5 +586,26 @@ public class InnerSpaceCompactionUtils {
     } else {
       return new File[0];
     }
+  }
+
+  public static void moveTargetFile(TsFileResource targetResource) throws IOException {
+    File oldFile = targetResource.getTsFile();
+
+    // move TsFile and delete .target file
+    String newFilePath =
+        targetResource
+            .getTsFilePath()
+            .replace(TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
+    File newFile = new File(newFilePath);
+    FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
+
+    // move .resource file
+    targetResource.setFile(newFile);
+    targetResource.setClosed(true);
+    targetResource.serialize();
+
+    // delete old tsfile and .resource file
+    File oldResourceFile = new File(oldFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+    oldResourceFile.delete();
   }
 }

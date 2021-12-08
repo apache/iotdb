@@ -38,6 +38,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 public class TsFileNameGenerator {
 
   private static FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
 
   public static String generateNewTsFilePath(
       String tsFileDir,
@@ -184,7 +185,7 @@ public class TsFileNameGenerator {
                 + (maxInnerMergeCount + 1)
                 + FILE_NAME_SEPARATOR
                 + maxCrossMergeCount
-                + TSFILE_SUFFIX)
+                + COMPACTION_TMP_FILE_SUFFIX)
         : new File(
             tsFileResources.get(0).getTsFile().getParent(),
             maxTime
@@ -194,7 +195,7 @@ public class TsFileNameGenerator {
                 + (maxInnerMergeCount + 1)
                 + FILE_NAME_SEPARATOR
                 + maxCrossMergeCount
-                + TSFILE_SUFFIX);
+                + COMPACTION_TMP_FILE_SUFFIX);
   }
 
   public static class TsFileName {

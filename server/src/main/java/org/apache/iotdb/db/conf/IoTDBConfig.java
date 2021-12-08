@@ -382,7 +382,7 @@ public class IoTDBConfig {
   private long targetCompactionFileSize = 2147483648L;
 
   /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 10;
+  private int maxCompactionCandidateFileNum = 30;
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
@@ -407,7 +407,7 @@ public class IoTDBConfig {
    * num # This parameters have to be much smaller than the permitted max open file num of each
    * process controlled by operator system(65535 in most system).
    */
-  private int maxOpenFileNumInCrossSpaceCompaction = 2000;
+  private int maxOpenFileNumInCrossSpaceCompaction = 100;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
