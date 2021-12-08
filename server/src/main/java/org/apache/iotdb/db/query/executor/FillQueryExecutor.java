@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -116,6 +117,9 @@ public class FillQueryExecutor {
                 context);
 
         TimeValuePair timeValuePair = fill.getFillResult();
+        if (timeValuePair == null && fill instanceof ValueFill) {
+          timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
+        }
         if (timeValuePair == null || timeValuePair.getValue() == null) {
           record.addField(null);
         } else {

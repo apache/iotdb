@@ -34,6 +34,12 @@ public class ValueFill extends IFill implements Cloneable {
 
   private TsPrimitiveType tsPrimitiveType;
 
+  private String singleStringValue;
+
+  public ValueFill(String singleStringValue) {
+    this.singleStringValue = singleStringValue;
+  }
+
   public ValueFill(String value, TSDataType dataType) {
     this.value = value;
     this.dataType = dataType;
@@ -67,14 +73,43 @@ public class ValueFill extends IFill implements Cloneable {
 
   @Override
   public TimeValuePair getFillResult() {
+    if (tsPrimitiveType != null) {
+      switch (dataType) {
+        case BOOLEAN:
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+        case TEXT:
+          return new TimeValuePair(queryStartTime, tsPrimitiveType);
+        default:
+          throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
+      }
+    } else {
+      return null;
+    }
+  }
+
+  public TimeValuePair getSpecifiedFillResult(TSDataType dataType) {
     switch (dataType) {
       case BOOLEAN:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsBoolean(Boolean.parseBoolean(singleStringValue)));
       case INT32:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsInt(Integer.parseInt(singleStringValue)));
       case INT64:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsLong(Long.parseLong(singleStringValue)));
       case FLOAT:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsFloat(Float.parseFloat(singleStringValue)));
       case DOUBLE:
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsDouble(Double.parseDouble(singleStringValue)));
       case TEXT:
-        return new TimeValuePair(queryStartTime, tsPrimitiveType);
+        return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsBinary(Binary.valueOf(singleStringValue)));
       default:
         throw new UnSupportedDataTypeException("Unsupported data type:" + dataType);
     }

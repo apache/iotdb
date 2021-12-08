@@ -37,10 +37,8 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -180,52 +178,6 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
       }
     }
     return constructRowRecord(curAggregateResults);
-  }
-
-  @Override
-  @SuppressWarnings("squid:S3776")
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    if ((!timestampGenerator.hasNext() && cachedTimestamps.isEmpty())
-        || allDataReaderList.get(i).readerIsEmpty()) {
-      return null;
-    }
-
-    long[] timestampArray = new long[1];
-    AggregateResult aggrResultByName =
-        AggregateResultFactory.getAggrResultByName(
-            groupByTimePlan.getDeduplicatedAggregations().get(i),
-            groupByTimePlan.getDeduplicatedDataTypes().get(i),
-            ascending);
-
-    long tmpStartTime = curStartTime - slidingStep;
-    int index = 0;
-    while (tmpStartTime >= startTime
-        && (timestampGenerator.hasNext() || !cachedTimestamps.isEmpty())) {
-      long timestamp = Long.MIN_VALUE;
-      if (timestampGenerator.hasNext()) {
-        cachedTimestamps.add(timestampGenerator.next());
-      }
-      if (!cachedTimestamps.isEmpty() && index < cachedTimestamps.size()) {
-        timestamp = cachedTimestamps.get(index++);
-      }
-      if (timestamp >= tmpStartTime) {
-        timestampArray[0] = timestamp;
-      } else {
-        do {
-          tmpStartTime -= slidingStep;
-          if (timestamp >= tmpStartTime) {
-            timestampArray[0] = timestamp;
-            break;
-          }
-        } while (tmpStartTime >= startTime);
-      }
-      aggrResultByName.updateResultUsingTimestamps(timestampArray, 1, allDataReaderList.get(i));
-
-      if (aggrResultByName.getResult() != null) {
-        return new Pair<>(tmpStartTime, aggrResultByName.getResult());
-      }
-    }
-    return null;
   }
 
   /**

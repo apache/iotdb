@@ -32,7 +32,6 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -403,10 +402,5 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
         }
       }
     }
-  }
-
-  @Override
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    throw new IOException("Group by fill doesn't support peek next");
   }
 }
