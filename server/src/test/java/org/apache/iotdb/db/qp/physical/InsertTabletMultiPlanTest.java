@@ -46,10 +46,14 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
   private final Planner processor = new Planner();
 
   @Test
-  public void testInsertMultiTabletPlanSpeed()
-          throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-    long[] times = new long[] {110L, 111L, 112L, 113L};
+  public void testInsertMultiTabletPlanSpeed() throws QueryProcessException, MetadataException {
+    long[] times =
+        new long[] {
+          110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L,
+          113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L,
+          112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L, 111L, 112L, 113L, 110L,
+          111L, 112L, 113L, 110L, 111L, 112L, 113L
+        };
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
     dataTypes.add(TSDataType.FLOAT.ordinal());
@@ -57,31 +61,69 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
     dataTypes.add(TSDataType.INT32.ordinal());
     dataTypes.add(TSDataType.BOOLEAN.ordinal());
     dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+    //    dataTypes.add(TSDataType.TEXT.ordinal());
 
-    Object[] columns = new Object[6];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
+    Object[] columns = new Object[16];
+    int size = (times).length;
+    columns[0] = new double[size];
+    columns[1] = new float[size];
+    columns[2] = new long[size];
+    columns[3] = new int[size];
+    columns[4] = new boolean[size];
+    columns[5] = new Binary[size];
+    columns[6] = new Binary[size];
+    columns[7] = new Binary[size];
+    columns[8] = new Binary[size];
+    columns[9] = new Binary[size];
+    columns[10] = new Binary[size];
+    columns[11] = new Binary[size];
+    columns[12] = new Binary[size];
+    columns[13] = new Binary[size];
+    columns[14] = new Binary[size];
+    columns[15] = new Binary[size];
+    //    columns[16] = new Binary[size];
 
-    for (int r = 0; r < 4; r++) {
+    for (int r = 0; r < size; r++) {
       ((double[]) columns[0])[r] = 1.0;
       ((float[]) columns[1])[r] = 2;
       ((long[]) columns[2])[r] = 10000;
       ((int[]) columns[3])[r] = 100;
       ((boolean[]) columns[4])[r] = false;
       ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[6])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[7])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[8])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[9])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[10])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[11])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[12])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[13])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[14])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[15])[r] = new Binary("hh" + r);
+      //      ((Binary[]) columns[16])[r] = new Binary("hh" + r);
     }
 
     List<InsertTabletPlan> insertTabletPlanList = new ArrayList<>();
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 1000; i++) {
       InsertTabletPlan tabletPlan =
-              new InsertTabletPlan(
-                      new PartialPath("root.multi"+i+".d" + i),
-                      new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-                      dataTypes);
+          new InsertTabletPlan(
+              new PartialPath("root.multi" + i / 20 + ".d" + i),
+              new String[] {
+                "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13",
+                "s14", "s15", "s16"
+              },
+              //                         "s16","s17"    },
+              dataTypes);
       tabletPlan.setTimes(times);
       tabletPlan.setColumns(columns);
       tabletPlan.setRowCount(times.length);
@@ -93,7 +135,7 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
 
     long before = System.currentTimeMillis();
     executor.insertTablet(insertMultiTabletPlan);
-    System.out.println("result"+String.valueOf( System.currentTimeMillis()-before));
+    System.out.println("result" + String.valueOf(System.currentTimeMillis() - before));
   }
 
   @Test

@@ -608,16 +608,10 @@ public class IoTDBConfig {
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
   /**
-   * When the number of different sg in the insertMultiTablet reaches this value, turn on
-   * Multithreading acceleration
-   */
-  private int insertMultiTabletEnableThreadPoolSGNum = 5;
-
-  /**
    * When the insert plan rowcount reaches a certain quantity and exceeds a certain ratio, turn on
    * Multithreading acceleration
    */
-  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 25;
+  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 15;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -1569,17 +1563,8 @@ public class IoTDBConfig {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public int getInsertMultiTabletEnableThreadPoolSGNum() {
-    return insertMultiTabletEnableThreadPoolSGNum;
-  }
-
   public int getInsertMultiTabletEnableThreadPoolRowCountThreshold() {
     return insertMultiTabletEnableThreadPoolRowCountThreshold;
-  }
-
-  public void setInsertMultiTabletEnableThreadPoolSGNum(
-      int insertMultiTabletEnableThreadPoolSGNum) {
-    this.insertMultiTabletEnableThreadPoolSGNum = insertMultiTabletEnableThreadPoolSGNum;
   }
 
   public void setInsertMultiTabletEnableThreadPoolRowCountThreshold(

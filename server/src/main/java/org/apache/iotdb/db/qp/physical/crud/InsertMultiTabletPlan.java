@@ -98,6 +98,8 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   Boolean needMulti;
 
+  Integer insertPlanSGSize;
+
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
     this.insertTabletPlanList = new ArrayList<>();
@@ -387,10 +389,9 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
   }
 
-  public boolean needMultiThread() {
-    if (needMulti == null) {
+  public int getInsertPlanSGSize() {
+    if (insertPlanSGSize == null) {
       Set<String> insertPlanSGSet = new HashSet<>();
-      int BigPlanCountNum = 0;
       for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
         IStorageGroupMNode storageGroupMNode = null;
         try {
@@ -399,19 +400,28 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
           insertPlanSGSet.add(storageGroupMNode.getFullPath());
         } catch (MetadataException ignored) {
         }
-        if (insertTabletPlan.getRowCount()
-            > IoTDBDescriptor.getInstance()
-                .getConfig()
-                .getInsertMultiTabletEnableThreadPoolRowCountThreshold()) {
-          BigPlanCountNum++;
-        }
       }
-      needMulti =
-          insertPlanSGSet.size()
-                  >= IoTDBDescriptor.getInstance()
-                      .getConfig()
-                      .getInsertMultiTabletEnableThreadPoolSGNum()
-              && BigPlanCountNum * 2 >= insertTabletPlanList.size();
+      insertPlanSGSize = insertPlanSGSet.size();
+    }
+    return insertPlanSGSize;
+  }
+
+  public boolean needMultiThread() {
+    if (needMulti == null) {
+      if (getInsertPlanSGSize() <= 1) {
+        needMulti = false;
+      } else {
+        int BigPlanCountNum = 0;
+        for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+          if (insertTabletPlan.getRowCount()
+              > IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getInsertMultiTabletEnableThreadPoolRowCountThreshold()) {
+            BigPlanCountNum++;
+          }
+        }
+        needMulti = BigPlanCountNum * 2 >= insertTabletPlanList.size();
+      }
     }
     return needMulti;
   }

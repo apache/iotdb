@@ -230,7 +230,7 @@ public class PlanExecutor implements IPlanExecutor {
   // for administration
   private IAuthorizer authorizer;
 
-  private ExecutorService insertTabletsPool;
+  private ThreadPoolExecutor insertTabletsPool;
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
@@ -241,9 +241,6 @@ public class PlanExecutor implements IPlanExecutor {
     } catch (AuthException e) {
       throw new QueryProcessException(e.getMessage());
     }
-    insertTabletsPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
   }
 
   @Override
@@ -1516,6 +1513,9 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
+    if (insertMultiTabletPlan.needMultiThread()) {
+      updateInsertTabletsPool(insertMultiTabletPlan.getInsertPlanSGSize());
+    }
 
     List<InsertTabletPlan> planList = insertMultiTabletPlan.getInsertTabletPlanList();
     List<Future<?>> futureList = new ArrayList<>();
@@ -1560,6 +1560,18 @@ public class PlanExecutor implements IPlanExecutor {
 
     if (!results.isEmpty()) {
       throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
+    }
+  }
+
+  private void updateInsertTabletsPool(int sgSize) {
+    int updateCoreSize = Math.min(sgSize, Runtime.getRuntime().availableProcessors() / 2);
+    if (insertTabletsPool == null || insertTabletsPool.isTerminated()) {
+      insertTabletsPool =
+          (ThreadPoolExecutor)
+              IoTDBThreadPoolFactory.newFixedThreadPool(
+                  Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
+    } else if (insertTabletsPool.getCorePoolSize() != updateCoreSize) {
+      insertTabletsPool.setCorePoolSize(updateCoreSize);
     }
   }
 

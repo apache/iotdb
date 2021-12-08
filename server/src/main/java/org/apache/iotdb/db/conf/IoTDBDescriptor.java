@@ -757,12 +757,6 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
-      conf.setInsertMultiTabletEnableThreadPoolSGNum(
-          Integer.parseInt(
-              properties.getProperty(
-                  "insert_multi_tablet_enable_thread_pool_sg_num",
-                  String.valueOf(conf.getInsertMultiTabletEnableThreadPoolSGNum()))));
-
       conf.setInsertMultiTabletEnableThreadPoolRowCountThreshold(
           Integer.parseInt(
               properties.getProperty(
