@@ -60,7 +60,7 @@ public class SeriesReader {
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // inner class of SeriesReader for order purpose
-  private TimeOrderUtils orderUtils;
+  private final TimeOrderUtils orderUtils;
 
   private final PartialPath seriesPath;
 
@@ -78,6 +78,8 @@ public class SeriesReader {
    */
   private final Filter timeFilter;
   private final Filter valueFilter;
+
+  private final TsFileFilter fileFilter;
 
   private final QueryDataSource dataSource;
 
@@ -133,9 +135,9 @@ public class SeriesReader {
     this.dataType = dataType;
     this.context = context;
     this.dataSource = dataSource;
-    QueryUtils.filterQueryDataSource(dataSource, fileFilter);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
+    this.fileFilter = fileFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       this.mergeReader = new PriorityMergeReader();
@@ -182,6 +184,7 @@ public class SeriesReader {
     QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
+    this.fileFilter = null;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       this.mergeReader = new PriorityMergeReader();
@@ -1153,7 +1156,12 @@ public class SeriesReader {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(), timeFilter, true, dataSource.getDataTTL(), context.isDebug())) {
+            seriesPath.getDevice(),
+            timeFilter,
+            fileFilter,
+            true,
+            dataSource.getDataTTL(),
+            context.isDebug())) {
           break;
         }
         curSeqFileIndex--;
@@ -1169,6 +1177,7 @@ public class SeriesReader {
         if (tsFileResource.isSatisfied(
             seriesPath.getDevice(),
             timeFilter,
+            fileFilter,
             false,
             dataSource.getDataTTL(),
             context.isDebug())) {
@@ -1270,7 +1279,12 @@ public class SeriesReader {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(), timeFilter, true, dataSource.getDataTTL(), context.isDebug())) {
+            seriesPath.getDevice(),
+            timeFilter,
+            fileFilter,
+            true,
+            dataSource.getDataTTL(),
+            context.isDebug())) {
           break;
         }
         curSeqFileIndex++;
@@ -1286,6 +1300,7 @@ public class SeriesReader {
         if (tsFileResource.isSatisfied(
             seriesPath.getDevice(),
             timeFilter,
+            fileFilter,
             false,
             dataSource.getDataTTL(),
             context.isDebug())) {
