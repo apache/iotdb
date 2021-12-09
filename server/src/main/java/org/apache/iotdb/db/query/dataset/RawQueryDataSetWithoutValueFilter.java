@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -58,12 +58,23 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     private final ManagedSeriesReader reader;
     private final String pathName;
     private final BlockingQueue<BatchData> blockingQueue;
+    private int[] batchDataLengthList;
+    private final int seriesIndex;
+    private final int fetchLimit;
 
     public ReadTask(
-        ManagedSeriesReader reader, BlockingQueue<BatchData> blockingQueue, String pathName) {
+        ManagedSeriesReader reader,
+        BlockingQueue<BatchData> blockingQueue,
+        String pathName,
+        int[] batchDataLengthList,
+        int seriesIndex,
+        int fetchLimit) {
       this.reader = reader;
       this.blockingQueue = blockingQueue;
       this.pathName = pathName;
+      this.batchDataLengthList = batchDataLengthList;
+      this.seriesIndex = seriesIndex;
+      this.fetchLimit = fetchLimit;
     }
 
     @Override
@@ -87,6 +98,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
               continue;
             }
             blockingQueue.put(batchData);
+
+            if (batchDataLengthList != null) {
+              batchDataLengthList[seriesIndex] += batchData.length();
+              if (batchDataLengthList[seriesIndex] >= fetchLimit) {
+                break;
+              }
+            }
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               TASK_POOL_MANAGER.submit(this);
@@ -116,12 +134,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             e,
             String.format(
                 "Something gets wrong while reading from the series reader %s: ", pathName));
-      } catch (Exception e) {
+      } catch (Throwable e) {
         putExceptionBatchData(e, "Something gets wrong: ");
       }
     }
 
-    private void putExceptionBatchData(Exception e, String logMessage) {
+    private void putExceptionBatchData(Throwable e, String logMessage) {
       try {
         LOGGER.error(logMessage, e);
         reader.setHasRemaining(false);
@@ -149,6 +167,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   protected boolean[] noMoreDataInQueueArray;
 
   protected BatchData[] cachedBatchDataArray;
+
+  protected int[] batchDataLengthList;
 
   private int bufferNum;
 
@@ -187,11 +207,14 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     noMoreDataInQueueArray = new boolean[readers.size()];
     bufferNum = 0;
     for (PartialPath path : paths) {
-      if (path instanceof VectorPartialPath) {
-        bufferNum += ((VectorPartialPath) path).getSubSensorsList().size();
+      if (path instanceof AlignedPath) {
+        bufferNum += ((AlignedPath) path).getMeasurementList().size();
       } else {
         bufferNum += 1;
       }
+    }
+    if (rowLimit != 0) {
+      batchDataLengthList = new int[readers.size()];
     }
     init();
   }
@@ -214,7 +237,13 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       reader.setHasRemaining(true);
       reader.setManagedByQueryManager(true);
       TASK_POOL_MANAGER.submit(
-          new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
+          new ReadTask(
+              reader,
+              blockingQueueArray[i],
+              paths.get(i).getFullPath(),
+              batchDataLengthList,
+              i,
+              rowLimit + rowOffset));
     }
     for (int i = 0; i < seriesReaderList.size(); i++) {
       // check the interrupted status of query before taking next batch
@@ -275,9 +304,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
           // current batch is empty or does not have value at minTime
           if (rowOffset == 0) {
-            if (paths.get(seriesIndex) instanceof VectorPartialPath) {
+            if (paths.get(seriesIndex) instanceof AlignedPath) {
               for (int i = 0;
-                  i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
+                  i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
                   i++) {
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1);
                 bufferIndex++;
@@ -298,7 +327,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 if (encoder != null && encoder.needEncode(minTime)) {
                   intValue = encoder.encodeInt(intValue, minTime);
                 }
-                ReadWriteIOUtils.write(intValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(intValue, valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case INT64:
@@ -307,7 +336,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 if (encoder != null && encoder.needEncode(minTime)) {
                   longValue = encoder.encodeLong(longValue, minTime);
                 }
-                ReadWriteIOUtils.write(longValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(longValue, valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case FLOAT:
@@ -316,7 +345,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 if (encoder != null && encoder.needEncode(minTime)) {
                   floatValue = encoder.encodeFloat(floatValue, minTime);
                 }
-                ReadWriteIOUtils.write(floatValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(floatValue, valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case DOUBLE:
@@ -325,19 +354,19 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 if (encoder != null && encoder.needEncode(minTime)) {
                   doubleValue = encoder.encodeDouble(doubleValue, minTime);
                 }
-                ReadWriteIOUtils.write(doubleValue, valueBAOSList[seriesIndex]);
+                ReadWriteIOUtils.write(doubleValue, valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case BOOLEAN:
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 ReadWriteIOUtils.write(
-                    cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[seriesIndex]);
+                    cachedBatchDataArray[seriesIndex].getBoolean(), valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case TEXT:
                 currentBitmapList[bufferIndex] = (currentBitmapList[bufferIndex] << 1) | FLAG;
                 ReadWriteIOUtils.write(
-                    cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[seriesIndex]);
+                    cachedBatchDataArray[seriesIndex].getBinary(), valueBAOSList[bufferIndex]);
                 bufferIndex++;
                 break;
               case VECTOR:
@@ -517,11 +546,11 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     } else if (batchData instanceof ExceptionBatchData) {
       // exception happened in producer thread
       ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
-      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
-      if (exceptionBatchData.getException() instanceof IOException) {
-        throw (IOException) exceptionBatchData.getException();
-      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
-        throw (RuntimeException) exceptionBatchData.getException();
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getThrowable());
+      if (exceptionBatchData.getThrowable() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getThrowable();
+      } else if (exceptionBatchData.getThrowable() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getThrowable();
       }
 
     } else { // there are more batch data in this time series queue
@@ -538,7 +567,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             reader.setManagedByQueryManager(true);
             TASK_POOL_MANAGER.submit(
                 new ReadTask(
-                    reader, blockingQueueArray[seriesIndex], paths.get(seriesIndex).getFullPath()));
+                    reader,
+                    blockingQueueArray[seriesIndex],
+                    paths.get(seriesIndex).getFullPath(),
+                    batchDataLengthList,
+                    seriesIndex,
+                    rowLimit + rowOffset));
           }
         }
       }
@@ -571,9 +605,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
       if (cachedBatchDataArray[seriesIndex] == null
           || !cachedBatchDataArray[seriesIndex].hasCurrent()
           || cachedBatchDataArray[seriesIndex].currentTime() != minTime) {
-        if (paths.get(seriesIndex) instanceof VectorPartialPath) {
+        if (paths.get(seriesIndex) instanceof AlignedPath) {
           for (int i = 0;
-              i < ((VectorPartialPath) paths.get(seriesIndex)).getSubSensorsList().size();
+              i < ((AlignedPath) paths.get(seriesIndex)).getMeasurementList().size();
               i++) {
             record.addField(null);
           }

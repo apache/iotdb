@@ -31,11 +31,10 @@ import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -45,6 +44,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -180,7 +181,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws QueryProcessException, StorageEngineException, IOException {
       if (group.contains(metaGroupMember.getThisNode())) {
-        ClusterQueryUtils.checkPathExistence(seriesPaths);
         return calculateSeriesLastLocally(group, seriesPaths, context);
       } else {
         return calculateSeriesLastRemotely(group, seriesPaths, context);
@@ -191,7 +191,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
       DataGroupMember localDataMember =
-          metaGroupMember.getLocalDataMember(group.getHeader(), group.getId());
+          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
@@ -246,12 +246,14 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       if (asyncDataClient == null) {
         return null;
       }
-
+      Filter timeFilter =
+          (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
       buffer =
           SyncClientAdaptor.last(
               asyncDataClient,
               seriesPaths,
               dataTypeOrdinals,
+              timeFilter,
               context,
               queryPlan.getDeviceToMeasurements(),
               group.getHeader());
@@ -265,15 +267,20 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        res =
-            syncDataClient.last(
-                new LastQueryRequest(
-                    PartialPath.toStringList(seriesPaths),
-                    dataTypeOrdinals,
-                    context.getQueryId(),
-                    queryPlan.getDeviceToMeasurements(),
-                    group.getHeader(),
-                    syncDataClient.getNode()));
+        LastQueryRequest lastQueryRequest =
+            new LastQueryRequest(
+                PartialPath.toStringList(seriesPaths),
+                dataTypeOrdinals,
+                context.getQueryId(),
+                queryPlan.getDeviceToMeasurements(),
+                group.getHeader(),
+                syncDataClient.getNode());
+        Filter timeFilter =
+            (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
+        if (timeFilter != null) {
+          lastQueryRequest.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+        }
+        res = syncDataClient.last(lastQueryRequest);
       } catch (IOException | TException e) {
         // the connection may be broken, close it to avoid it being reused
         if (syncDataClient != null) {

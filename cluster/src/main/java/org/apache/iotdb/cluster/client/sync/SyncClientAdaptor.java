@@ -52,7 +52,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.handlers.forwarder.ForwardPlanHandler;
 import org.apache.iotdb.cluster.utils.PlanSerializer;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
@@ -498,6 +498,7 @@ public class SyncClientAdaptor {
       AsyncDataClient client,
       List<PartialPath> seriesPaths,
       List<Integer> dataTypeOrdinals,
+      Filter timeFilter,
       QueryContext context,
       Map<String, Set<String>> deviceMeasurements,
       RaftNode header)
@@ -512,7 +513,9 @@ public class SyncClientAdaptor {
             deviceMeasurements,
             header,
             client.getNode());
-
+    if (timeFilter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
     client.last(request, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }

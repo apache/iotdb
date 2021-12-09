@@ -68,7 +68,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
   private long maxPlanIndex = Long.MIN_VALUE;
 
   /** all chunk group metadata which have been serialized on disk. */
-  private Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
+  private final Map<String, Map<String, List<ChunkMetadata>>> metadatasForQuery = new HashMap<>();
 
   /**
    * @param file a given tsfile path you want to (continue to) write
@@ -235,7 +235,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
         List<ChunkMetadata> rowMetaDataList = chunkGroupMetadata.getChunkMetadataList();
 
         String device = chunkGroupMetadata.getDevice();
-        for (IChunkMetadata chunkMetaData : rowMetaDataList) {
+        for (ChunkMetadata chunkMetaData : rowMetaDataList) {
           String measurementId = chunkMetaData.getMeasurementUid();
           if (!metadatasForQuery.containsKey(device)) {
             metadatasForQuery.put(device, new HashMap<>());
@@ -243,7 +243,7 @@ public class RestorableTsFileIOWriter extends TsFileIOWriter {
           if (!metadatasForQuery.get(device).containsKey(measurementId)) {
             metadatasForQuery.get(device).put(measurementId, new ArrayList<>());
           }
-          metadatasForQuery.get(device).get(measurementId).add((ChunkMetadata) chunkMetaData);
+          metadatasForQuery.get(device).get(measurementId).add(chunkMetaData);
         }
       }
     }

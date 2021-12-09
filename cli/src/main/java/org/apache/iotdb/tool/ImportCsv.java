@@ -319,7 +319,7 @@ public class ImportCsv extends AbstractCsvTool {
                         measurementName -> {
                           String header = deviceId + "." + measurementName;
                           String value = record.get(header);
-                          if (!value.equals("")) {
+                          if (!"".equals(value)) {
                             TSDataType type;
                             if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                               type = typeInfer(value);
@@ -436,7 +436,7 @@ public class ImportCsv extends AbstractCsvTool {
                             .forEach(
                                 measurement -> {
                                   String value = record.get(measurement);
-                                  if (!value.equals("")) {
+                                  if (!"".equals(value)) {
                                     TSDataType type;
                                     if (!headerTypeMap.containsKey(
                                         headerNameMap.get(measurement))) {
@@ -541,7 +541,7 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if (headerName.equals("Time") || headerName.equals("Device")) {
+      if ("Time".equals(headerName) || "Device".equals(headerName)) {
         continue;
       }
       Matcher matcher = pattern.matcher(headerName);
@@ -656,7 +656,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static TSDataType typeInfer(String value) {
     if (value.contains("\"")) {
       return TEXT;
-    } else if (value.equals("true") || value.equals("false")) {
+    } else if ("true".equals(value) || "false".equals(value)) {
       return BOOLEAN;
     } else if (!value.contains(".")) {
       try {
@@ -690,7 +690,7 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
-          if (!value.equals("true") && !value.equals("false")) {
+          if (!"true".equals(value) && !"false".equals(value)) {
             return null;
           }
           return Boolean.valueOf(value);

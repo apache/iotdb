@@ -45,7 +45,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TNodeStatus;
 import org.apache.iotdb.cluster.server.Response;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -245,11 +245,11 @@ public class SyncClientAdaptorTest {
               List<String> path,
               boolean withAlias,
               AsyncMethodCallback<GetAllPathsResult> resultHandler) {
-            List<List<String>> pathString = new ArrayList<>();
-            for (String s : path) {
-              pathString.add(Collections.singletonList(s));
+            List<Byte> dataTypes = new ArrayList<>();
+            for (int i = 0; i < path.size(); i++) {
+              dataTypes.add(TSDataType.DOUBLE.serialize());
             }
-            resultHandler.onComplete(new GetAllPathsResult(pathString));
+            resultHandler.onComplete(new GetAllPathsResult(path, dataTypes));
           }
 
           @Override
@@ -395,10 +395,10 @@ public class SyncClientAdaptorTest {
         paths.subList(0, paths.size() / 2),
         SyncClientAdaptor.getUnregisteredMeasurements(
             dataClient, TestUtils.getRaftNode(0, 0), paths));
-    List<String> result = new ArrayList<>();
-    SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
-        .paths
-        .forEach(p -> result.add(p.get(0)));
+    List<String> result =
+        new ArrayList<>(
+            SyncClientAdaptor.getAllPaths(dataClient, TestUtils.getRaftNode(0, 0), paths, false)
+                .paths);
     assertEquals(paths, result);
     assertEquals(
         paths.size(),
@@ -438,6 +438,7 @@ public class SyncClientAdaptorTest {
             dataClient,
             Collections.singletonList(new PartialPath("1")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
+            null,
             new QueryContext(),
             Collections.emptyMap(),
             TestUtils.getRaftNode(0, 0)));

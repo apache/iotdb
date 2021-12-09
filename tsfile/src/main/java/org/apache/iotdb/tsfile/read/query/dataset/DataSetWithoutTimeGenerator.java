@@ -27,11 +27,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.reader.series.AbstractFileSeriesReader;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Set;
+import java.util.*;
 
 /** multi-way merging data set, no need to use TimeGenerator. */
 public class DataSetWithoutTimeGenerator extends QueryDataSet {
@@ -100,9 +96,6 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     RowRecord record = new RowRecord(minTime);
 
     for (int i = 0; i < paths.size(); i++) {
-
-      Field field = new Field(dataTypes.get(i));
-
       if (!hasDataRemaining.get(i)) {
         record.addField(null);
         continue;
@@ -111,7 +104,7 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
       BatchData data = batchDataList.get(i);
 
       if (data.hasCurrent() && data.currentTime() == minTime) {
-        putValueToField(data, field);
+        Field field = putValueToField(data);
         data.next();
 
         if (!data.hasCurrent()) {
@@ -152,7 +145,14 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
     return t;
   }
 
-  private void putValueToField(BatchData col, Field field) {
+  private Field putValueToField(BatchData col) {
+    TSDataType type = col.getDataType();
+    Field field;
+    if (type == TSDataType.VECTOR) {
+      field = new Field((col.getVector())[0].getDataType());
+    } else {
+      field = new Field(col.getDataType());
+    }
     switch (col.getDataType()) {
       case BOOLEAN:
         field.setBoolV(col.getBoolean());
@@ -172,8 +172,12 @@ public class DataSetWithoutTimeGenerator extends QueryDataSet {
       case TEXT:
         field.setBinaryV(col.getBinary());
         break;
+      case VECTOR:
+        Field.setTsPrimitiveValue((col.getVector())[0], field);
+        break;
       default:
         throw new UnSupportedDataTypeException("UnSupported" + col.getDataType());
     }
+    return field;
   }
 }

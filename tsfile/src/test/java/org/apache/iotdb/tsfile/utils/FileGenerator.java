@@ -38,6 +38,8 @@ import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 public class FileGenerator {
@@ -255,41 +257,36 @@ public class FileGenerator {
 
   private static void generateTestSchema() {
     schema = new Schema();
-    schema.registerTimeseries(
-        new Path("d1", "s1"),
+    List<UnaryMeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d1", "s2"),
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d1", "s3"),
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d1", "s4"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(
-        new Path("d1", "s5"),
-        new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schema.registerTimeseries(
-        new Path("d1", "s6"), new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schema.registerTimeseries(
-        new Path("d1", "s7"), new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
-    schema.registerTimeseries(
-        new Path("d2", "s1"),
+    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schemaList.add(new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    MeasurementGroup measurementGroup = new MeasurementGroup(false, schemaList);
+    schema.registerMeasurementGroup(new Path("d1"), measurementGroup);
+
+    schemaList.clear();
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d2", "s2"),
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d2", "s3"),
+    schemaList.add(
         new UnaryMeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schema.registerTimeseries(
-        new Path("d2", "s4"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    measurementGroup = new MeasurementGroup(false, schemaList);
+    schema.registerMeasurementGroup(new Path("d2"), measurementGroup);
   }
 
   private static void generateTestSchema(int deviceNum, int measurementNum) {
@@ -297,7 +294,7 @@ public class FileGenerator {
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
         schema.registerTimeseries(
-            new Path("d" + i, "s" + j),
+            new Path("d" + i),
             new UnaryMeasurementSchema(
                 "s" + j, TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
       }

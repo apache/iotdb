@@ -37,6 +37,7 @@ import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 
 /**
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
@@ -65,18 +66,43 @@ public class DropwizardMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingCounter;
     }
     MetricName name = new MetricName(metric, tags);
-    return (Counter)
+    IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
+    if (m instanceof Counter) {
+      return (Counter) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
-  public Gauge getOrCreatGauge(String metric, String... tags) {
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingGauge;
     }
     MetricName name = new MetricName(metric, tags);
-    return (Gauge)
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name,
+            key -> {
+              DropwizardAutoGauge<T> dropwizardGauge = new DropwizardAutoGauge<>(obj, mapper);
+              metricRegistry.register(name.toFlatString(), dropwizardGauge);
+              return dropwizardGauge;
+            });
+    if (m instanceof Gauge) {
+      return (Gauge) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
+  }
+
+  @Override
+  public Gauge getOrCreateGauge(String metric, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    MetricName name = new MetricName(metric, tags);
+    IMetric m =
         currentMeters.computeIfAbsent(
             name,
             key -> {
@@ -85,17 +111,25 @@ public class DropwizardMetricManager implements MetricManager {
                   name.toFlatString(), dropwizardGauge.getDropwizardCachedGauge());
               return dropwizardGauge;
             });
+    if (m instanceof Gauge) {
+      return (Gauge) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
-  public Rate getOrCreatRate(String metric, String... tags) {
+  public Rate getOrCreateRate(String metric, String... tags) {
     if (!isEnable) {
       return DoNothingMetricManager.doNothingRate;
     }
     MetricName name = new MetricName(metric, tags);
-    return (Rate)
+    IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
+    if (m instanceof Rate) {
+      return (Rate) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
@@ -104,9 +138,13 @@ public class DropwizardMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingHistogram;
     }
     MetricName name = new MetricName(metric, tags);
-    return (Histogram)
+    IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
+    if (m instanceof Histogram) {
+      return (Histogram) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
@@ -115,21 +153,18 @@ public class DropwizardMetricManager implements MetricManager {
       return DoNothingMetricManager.doNothingTimer;
     }
     MetricName name = new MetricName(metric, tags);
-    return (Timer)
+    IMetric m =
         currentMeters.computeIfAbsent(
             name, key -> new DropwizardTimer(metricRegistry.timer(name.toFlatString())));
+    if (m instanceof Timer) {
+      return (Timer) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
   public void count(int delta, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Counter)
-            currentMeters.computeIfAbsent(
-                name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString()))))
-        .inc(delta);
+    this.count((long) delta, metric, tags);
   }
 
   @Override
@@ -138,15 +173,19 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
-    ((Counter)
-            currentMeters.computeIfAbsent(
-                name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString()))))
-        .inc(delta);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
+    if (m instanceof Counter) {
+      ((Counter) m).inc(delta);
+      return;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
   public void gauge(int value, String metric, String... tags) {
-    this.gauge(Long.valueOf(value), metric, tags);
+    this.gauge((long) value, metric, tags);
   }
 
   @Override
@@ -155,28 +194,25 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
-    ((Gauge)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> {
-                  DropwizardGauge dropwizardGauge = new DropwizardGauge();
-                  metricRegistry.register(
-                      name.toFlatString(), dropwizardGauge.getDropwizardCachedGauge());
-                  return dropwizardGauge;
-                }))
-        .set(value);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name,
+            key -> {
+              DropwizardGauge dropwizardGauge = new DropwizardGauge();
+              metricRegistry.register(
+                  name.toFlatString(), dropwizardGauge.getDropwizardCachedGauge());
+              return dropwizardGauge;
+            });
+    if (m instanceof Gauge) {
+      ((Gauge) m).set(value);
+      return;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
   public void rate(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Rate)
-            currentMeters.computeIfAbsent(
-                name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString()))))
-        .mark(value);
+    this.rate((long) value, metric, tags);
   }
 
   @Override
@@ -185,23 +221,19 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
-    ((Rate)
-            currentMeters.computeIfAbsent(
-                name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString()))))
-        .mark(value);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name, key -> new DropwizardRate(metricRegistry.meter(name.toFlatString())));
+    if (m instanceof Rate) {
+      ((Rate) m).mark(value);
+      return;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
   public void histogram(int value, String metric, String... tags) {
-    if (!isEnable) {
-      return;
-    }
-    MetricName name = new MetricName(metric, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
-        .update(value);
+    this.histogram((long) value, metric, tags);
   }
 
   @Override
@@ -210,11 +242,14 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
-    ((Histogram)
-            currentMeters.computeIfAbsent(
-                name,
-                key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString()))))
-        .update(value);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name, key -> new DropwizardHistogram(metricRegistry.histogram(name.toFlatString())));
+    if (m instanceof Histogram) {
+      ((Histogram) m).update(value);
+      return;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override
@@ -223,10 +258,15 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     MetricName name = new MetricName(metric, tags);
-    ((Timer)
-            currentMeters.computeIfAbsent(
-                name, key -> new DropwizardTimer(metricRegistry.timer(name.toFlatString()))))
-        .update(delta, timeUnit);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name, key -> new DropwizardTimer(metricRegistry.timer(name.toFlatString())));
+
+    if (m instanceof Timer) {
+      ((Timer) m).update(delta, timeUnit);
+      return;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }
 
   @Override

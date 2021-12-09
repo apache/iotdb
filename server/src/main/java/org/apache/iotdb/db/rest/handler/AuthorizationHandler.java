@@ -18,25 +18,29 @@
 package org.apache.iotdb.db.rest.handler;
 
 import org.apache.iotdb.db.auth.AuthException;
-import org.apache.iotdb.db.auth.AuthorityChecker;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.rest.model.ExecutionStatus;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 public class AuthorizationHandler {
-  private AuthorizationHandler() {}
+  private final BasicServiceProvider basicServiceProvider;
 
-  public static Response checkAuthority(
-      SecurityContext securityContext, PhysicalPlan physicalPlan) {
+  public AuthorizationHandler(BasicServiceProvider basicServiceProvider)
+      throws QueryProcessException {
+    this.basicServiceProvider = basicServiceProvider;
+  }
+
+  public Response checkAuthority(SecurityContext securityContext, PhysicalPlan physicalPlan) {
     try {
-      if (!AuthorityChecker.check(
-          securityContext.getUserPrincipal().getName(),
+      if (!this.basicServiceProvider.checkAuthorization(
           physicalPlan.getAuthPaths(),
-          physicalPlan.getOperatorType(),
-          null)) {
+          physicalPlan,
+          securityContext.getUserPrincipal().getName())) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()

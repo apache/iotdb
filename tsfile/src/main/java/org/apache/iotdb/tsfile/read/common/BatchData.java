@@ -804,6 +804,11 @@ public class BatchData {
     }
 
     @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      return hasNext();
+    }
+
+    @Override
     public void next() {
       BatchData.this.next();
     }
@@ -858,12 +863,44 @@ public class BatchData {
     }
 
     @Override
-    public Object currentValue() {
-      if (dataType == TSDataType.VECTOR) {
-        return getVector()[subIndex].getValue();
-      } else {
-        return null;
+    public boolean hasNext() {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        super.next();
       }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public boolean hasNext(long minBound, long maxBound) {
+      while (BatchData.this.hasCurrent() && currentValue() == null) {
+        if (currentTime() < minBound || currentTime() >= maxBound) {
+          break;
+        }
+        super.next();
+      }
+      return BatchData.this.hasCurrent();
+    }
+
+    @Override
+    public Object currentValue() {
+      TsPrimitiveType v = getVector()[subIndex];
+      return v == null ? null : v.getValue();
+    }
+
+    @Override
+    public int totalLength() {
+      // aligned timeseries' BatchData length() may return the length of time column
+      // we need traverse to VectorBatchDataIterator calculate the actual value column's length
+      int cnt = 0;
+      int readCurArrayIndexSave = BatchData.this.readCurArrayIndex;
+      int readCurListIndexSave = BatchData.this.readCurListIndex;
+      while (hasNext()) {
+        cnt++;
+        next();
+      }
+      BatchData.this.readCurArrayIndex = readCurArrayIndexSave;
+      BatchData.this.readCurListIndex = readCurListIndexSave;
+      return cnt;
     }
   }
 }
