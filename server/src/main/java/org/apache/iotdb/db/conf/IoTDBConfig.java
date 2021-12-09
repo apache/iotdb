@@ -72,9 +72,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Port which the metrics service listens to. */
-  private int metricsPort = 8181;
-
   private boolean enableMetricService = false;
 
   /** whether to enable the mqtt service. */
@@ -982,14 +979,6 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
-  }
-
-  public int getMetricsPort() {
-    return metricsPort;
-  }
-
-  void setMetricsPort(int metricsPort) {
-    this.metricsPort = metricsPort;
   }
 
   public boolean isEnableMetricService() {
