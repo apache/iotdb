@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
@@ -31,8 +32,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,6 +89,19 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.size());
     File logFile = null;
     SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
+    // to mark if we got the write lock or read lock of the selected tsfile
+    boolean[] isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
+    boolean[] isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      isHoldingReadLock[i] = false;
+      isHoldingWriteLock[i] = false;
+    }
+    LOGGER.info(
+        "{} [Compaction] Try to get the read lock of all selected files", fullStorageGroupName);
+    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+      selectedTsFileResourceList.get(i).readLock();
+      isHoldingReadLock[i] = true;
+    }
     try {
       logFile =
           new File(
@@ -118,6 +130,17 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }
+      LOGGER.info(
+          "{} [Compaction] Compacted target files, try to get the write lock of source files",
+          fullStorageGroupName);
+      for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
+        selectedTsFileResourceList.get(i).readUnlock();
+        selectedTsFileResourceList.get(i).writeLock();
+        isHoldingWriteLock[i] = true;
+      }
+      LOGGER.info(
+          "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
+          fullStorageGroupName);
       // get write lock for TsFileResource list with timeout
       try {
         tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
@@ -129,6 +152,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             fullStorageGroupName,
             targetTsFileResource.getTsFile(),
             e);
+        for (TsFileResource resource : selectedTsFileResourceList) {
+          resource.writeLock();
+        }
         throw new InterruptedException(
             String.format(
                 "%s [Compaction] compaction abort because cannot acquire write lock",
@@ -147,13 +173,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       } finally {
         tsFileManager.writeUnlock();
       }
+      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
       // delete the old files
       InnerSpaceCompactionUtils.deleteTsFilesInDisk(
           selectedTsFileResourceList, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
           fullStorageGroupName);
-      combineModsInCompaction(selectedTsFileResourceList, targetTsFileResource);
       long costTime = System.currentTimeMillis() - startTime;
       LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
@@ -340,13 +366,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       try (ModificationFile sourceCompactionModificationFile =
           ModificationFile.getCompactionMods(mergeTsFile)) {
         modifications.addAll(sourceCompactionModificationFile.getModifications());
-        if (sourceCompactionModificationFile.exists()) {
-          sourceCompactionModificationFile.remove();
-        }
-      }
-      ModificationFile sourceModificationFile = ModificationFile.getNormalMods(mergeTsFile);
-      if (sourceModificationFile.exists()) {
-        sourceModificationFile.remove();
       }
     }
     if (!modifications.isEmpty()) {
