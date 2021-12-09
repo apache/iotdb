@@ -29,7 +29,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -236,6 +235,10 @@ public class CompactionMonitor implements IService {
       }
     }
     long cpuTimeInThisPeriod = totalCpuTime - lastCpuTotalTime;
+    LOGGER.info(
+        "[CompactionMonitor] Total CPU time is {} ns, cpu time in last period is {} ns",
+        totalCpuTime,
+        lastCpuTotalTime);
     lastCpuTotalTime = totalCpuTime;
     double compactionThreadsTotalCpuConsumption = 0.0;
     // we use this map to store the cpu consumption percentage of each compaction or merge thread
@@ -248,12 +251,18 @@ public class CompactionMonitor implements IService {
                   (cpuTimeForCompactionThreadInThisPeriod.get(threadId)
                       - cpuTimeForCompactionThread.getOrDefault(threadId, 0L))
               / (double) (cpuTimeInThisPeriod);
+      LOGGER.info(
+          "[CompactionMonitor] Cpu consumption for thread {} is {}%",
+          threadId, cpuConsumptionForCurrentThread * 100);
       cpuConsumptionForCompactionAndMergeThread.put(threadId, cpuConsumptionForCurrentThread);
       compactionThreadsTotalCpuConsumption += cpuConsumptionForCurrentThread;
       // update the total cpu time for each compaction thread
       cpuTimeForCompactionThread.put(
           threadId, cpuTimeForCompactionThreadInThisPeriod.get(threadId));
     }
+    LOGGER.info(
+        "[CompactionMonitor] cpu for compaction threads in last period is {}%",
+        compactionThreadsTotalCpuConsumption * 100);
 
     cpuConsumptionForCompactionAndMergeThread.put(
         COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY, compactionThreadsTotalCpuConsumption);
@@ -351,7 +360,7 @@ public class CompactionMonitor implements IService {
             new PartialPath(
                 String.format(
                     begin ? COMPACTION_BEGIN_TASK_NUM_DEVICE : COMPACTION_FINISH_TASK_NUM_DEVICE,
-                    sgName.replaceAll("root\\.", "")));
+                    sgName.replaceAll("root", "")));
         InsertRowPlan insertRowPlanForCompactionCount =
             new InsertRowPlan(
                 deviceName,
@@ -369,7 +378,7 @@ public class CompactionMonitor implements IService {
             new PartialPath(
                 String.format(
                     begin ? COMPACTION_BEGIN_FILE_NUM_DEVICE : COMPACTION_FINISH_FILE_NUM_DEVICE,
-                    sgName.replaceAll("root\\.", "")));
+                    sgName.replaceAll("root", "")));
         Map<Integer, Integer> countMap = compactionFileCountMap.get(sgName);
         String measurementPattern = "level-%d";
         List<String> measurements = new ArrayList<>();
@@ -405,7 +414,7 @@ public class CompactionMonitor implements IService {
             new PartialPath(
                 String.format(
                     begin ? MERGE_BEGIN_TASK_NUM_DEVICE : MERGE_FINISH_TASK_NUM_DEVICE,
-                    sgName.replaceAll("root\\.", "")));
+                    sgName.replaceAll("root", "")));
         InsertRowPlan insertRowPlan =
             new InsertRowPlan(
                 device,
@@ -420,7 +429,7 @@ public class CompactionMonitor implements IService {
             new PartialPath(
                 String.format(
                     begin ? MERGE_BEGIN_FILE_NUM_DEVICE : MERGE_FINISH_FILE_NUM_DEVICE,
-                    sgName.replaceAll("root\\.", "")));
+                    sgName.replaceAll("root", "")));
         List<String> measurements = new ArrayList<>();
         List<String> values = new ArrayList<>();
         measurements.add("seq");
