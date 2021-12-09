@@ -22,8 +22,8 @@ package org.apache.iotdb.db.query.udf.core.input;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
+import org.apache.iotdb.db.query.dataset.UDFRawQueryInputDataSetWithoutValueFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -71,7 +71,7 @@ public class InputLayer {
     constructInputLayer(
         queryId,
         memoryBudgetInMB,
-        new RawQueryDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
+        new UDFRawQueryInputDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
   }
 
   /** InputLayerWithValueFilter */
