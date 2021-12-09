@@ -70,6 +70,10 @@ public class CompactionMergeRecoverTask implements Runnable {
       recoverMergeTask.recoverMerge(true);
     } catch (MetadataException | IOException e) {
       logger.error(e.getMessage(), e);
+      tsFileManagement.canMerge = false;
+      logger.warn(
+          "{} [Compaction] Exception occurs while recovering merge, set can merge to false",
+          storageGroupName);
     }
     tsFileManagement.recovered = true;
     this.closeCompactionMergeCallBack.call(false, -1);

@@ -35,7 +35,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
-import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -430,7 +428,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       if (logFile.exists()) {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
-        Set<String> deviceSet = logAnalyzer.getDeviceSet();
         List<CompactionFileInfo> sourceFileInfo = logAnalyzer.getSourceFileInfo();
         CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
@@ -438,19 +435,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         boolean isSeq = logAnalyzer.isSeq();
         if (targetFileInfo == null || sourceFileInfo.isEmpty()) {
           return;
-        }
-        if (deviceSet.isEmpty() && targetFileInfo != null) {
-          // if not in compaction, just delete the target file
-          for (String dataDir : dataDirs) {
-            targetFile = targetFileInfo.getFile(dataDir);
-            if (targetFile.exists()) {
-              logger.info(
-                  "[Compaction][Recover] Target file {} found, device set is null, delete it",
-                  targetFile);
-              FileUtils.delete(targetFile.getPath());
-              return;
-            }
-          }
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource = null;
@@ -465,8 +449,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             // target tsfile is not compeleted
             writer.close();
             logger.info(
-                "[Compaction][Recover] target file {} is not compeleted, remove it",
-                targetResource);
+                "[Compaction][Recover] target file {} is not complete, remove it", targetResource);
             targetResource.remove();
             if (isSeq) {
               sequenceRecoverTsFileResources.clear();
