@@ -29,7 +29,7 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSel
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
@@ -133,15 +133,13 @@ public class MergeMultiChunkTask {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    for (List<IMNode> nodesBydevice : (List<List<IMNode>>) unmergedSeries) {
+    for (List<MeasurementPath> measurementpathByDevice :
+        (List<List<MeasurementPath>>) unmergedSeries) {
       if (logger.isInfoEnabled()) {
-        logger.info("{} starts to merge {} series", taskName, nodesBydevice.size());
+        logger.info("{} starts to merge {} series", taskName, measurementpathByDevice.size());
       }
       // TODO: use statistics of queries to better rearrange series
-      List<PartialPath> pathList = new ArrayList<>();
-      for (IMNode node : nodesBydevice) {
-        pathList.add(node.getPartialPath());
-      }
+      List<PartialPath> pathList = new ArrayList<>(measurementpathByDevice);
       IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
