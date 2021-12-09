@@ -28,6 +28,7 @@ import org.apache.iotdb.tsfile.read.expression.QueryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TsFileTimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
@@ -94,6 +95,11 @@ public class ExecutorWithTimeGenerator implements QueryExecutor {
 
     return new DataSetWithTimeGenerator(
         selectedPathList, cached, dataTypes, timeGenerator, readersOfSelectedSeries);
+  }
+
+  @Override
+  public QueryDataSet execute(QueryExpression queryExpression, int treeType) throws IOException {
+    return null;
   }
 
   public static List<Boolean> markFilterdPaths(

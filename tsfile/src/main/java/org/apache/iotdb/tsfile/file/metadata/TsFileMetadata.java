@@ -38,6 +38,7 @@ public class TsFileMetadata {
 
   // List of <name, offset, childMetadataIndexType>
   private MetadataIndexNode metadataIndex;
+  private MetadataIndexNodeV2 metadataIndexV2;
 
   // offset of MetaMarker.SEPARATOR
   private long metaOffset;
@@ -53,6 +54,27 @@ public class TsFileMetadata {
 
     // metadataIndex
     fileMetaData.metadataIndex = MetadataIndexNode.deserializeFrom(buffer);
+
+    // metaOffset
+    long metaOffset = ReadWriteIOUtils.readLong(buffer);
+    fileMetaData.setMetaOffset(metaOffset);
+
+    // read bloom filter
+    if (buffer.hasRemaining()) {
+      byte[] bytes = ReadWriteIOUtils.readByteBufferWithSelfDescriptionLength(buffer);
+      int filterSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+      int hashFunctionSize = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+      fileMetaData.bloomFilter = BloomFilter.buildBloomFilter(bytes, filterSize, hashFunctionSize);
+    }
+
+    return fileMetaData;
+  }
+
+  public static TsFileMetadata deserializeFromV2(ByteBuffer buffer) {
+    TsFileMetadata fileMetaData = new TsFileMetadata();
+
+    // metadataIndex
+    fileMetaData.metadataIndexV2 = MetadataIndexNodeV2.deserializeFrom(buffer);
 
     // metaOffset
     long metaOffset = ReadWriteIOUtils.readLong(buffer);
@@ -89,6 +111,22 @@ public class TsFileMetadata {
     // metadataIndex
     if (metadataIndex != null) {
       byteLen += metadataIndex.serializeTo(outputStream);
+    } else {
+      byteLen += ReadWriteIOUtils.write(0, outputStream);
+    }
+
+    // metaOffset
+    byteLen += ReadWriteIOUtils.write(metaOffset, outputStream);
+
+    return byteLen;
+  }
+
+  public int serializeToV2(OutputStream outputStream) throws IOException {
+    int byteLen = 0;
+
+    // metadataIndex
+    if (metadataIndexV2 != null) {
+      byteLen += metadataIndexV2.serializeTo(outputStream);
     } else {
       byteLen += ReadWriteIOUtils.write(0, outputStream);
     }
@@ -146,7 +184,15 @@ public class TsFileMetadata {
     return metadataIndex;
   }
 
+  public MetadataIndexNodeV2 getMetadataIndexV2() {
+    return metadataIndexV2;
+  }
+
   public void setMetadataIndex(MetadataIndexNode metadataIndex) {
     this.metadataIndex = metadataIndex;
+  }
+
+  public void setMetadataIndex(MetadataIndexNodeV2 metadataIndex) {
+    this.metadataIndexV2 = metadataIndex;
   }
 }

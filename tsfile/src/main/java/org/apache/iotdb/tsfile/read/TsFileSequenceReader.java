@@ -20,6 +20,7 @@ package org.apache.iotdb.tsfile.read;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
@@ -32,6 +33,7 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNodeV2;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadataV2;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
@@ -133,14 +135,14 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (FSFactoryProducer.getFSFactory().getFile(file + ".index").exists()) {
       metadataIndexInput = FSFactoryProducer.getFileInputFactory().getTsFileInput(file + ".index");
     }
-    //    try {
-    //      if (loadMetadataSize) {
-    //        loadMetadataSize();
-    //      }
-    //    } catch (Throwable e) {
-    //      tsFileInput.close();
-    //      throw e;
-    //    }
+    try {
+      if (loadMetadataSize) {
+        loadMetadataSize();
+      }
+    } catch (Throwable e) {
+      tsFileInput.close();
+      throw e;
+    }
   }
 
   // used in merge resource
@@ -197,19 +199,19 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public void loadMetadataSize() throws IOException {
     ByteBuffer metadataSize = ByteBuffer.allocate(Integer.BYTES);
-    // if (readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
-    tsFileInput.read(
-        metadataSize,
-        tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
-    metadataSize.flip();
-    // read file metadata size and position
-    fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
-    fileMetadataPos =
-        tsFileInput.size()
-            - TSFileConfig.MAGIC_STRING.getBytes().length
-            - Integer.BYTES
-            - fileMetadataSize;
-    // }
+    if (readTailMagic().equals(TSFileConfig.MAGIC_STRING)) {
+      tsFileInput.read(
+          metadataSize,
+          tsFileInput.size() - TSFileConfig.MAGIC_STRING.getBytes().length - Integer.BYTES);
+      metadataSize.flip();
+      // read file metadata size and position
+      fileMetadataSize = ReadWriteIOUtils.readInt(metadataSize);
+      fileMetadataPos =
+          tsFileInput.size()
+              - TSFileConfig.MAGIC_STRING.getBytes().length
+              - Integer.BYTES
+              - fileMetadataSize;
+    }
   }
 
   public long getFileMetadataPos() {
@@ -297,23 +299,39 @@ public class TsFileSequenceReader implements AutoCloseable {
   public TsFileMetadata readFileMetadataV2() throws IOException {
     try {
       if (tsFileMetaData == null) {
-        long start = System.nanoTime();
         ByteBuffer rootNodeOffsetBuffer = ByteBuffer.allocate(Long.BYTES);
         metadataIndexInput.read(rootNodeOffsetBuffer, metadataIndexInput.size() - Long.BYTES);
         rootNodeOffsetBuffer.flip();
 
         long rootNodeOffset = ReadWriteIOUtils.readLong(rootNodeOffsetBuffer);
-        resourceLogger.debug(
-            "ReadFileMetadataV2 " + (System.nanoTime() - start) / 1000_000L + " ms");
-
         tsFileMetaData =
             TsFileMetadataV2.deserializeFrom(
                 readData(
                     rootNodeOffset,
                     FSFactoryProducer.getFSFactory().getFile(this.file + ".index").length(),
                     metadataIndexInput));
-        resourceLogger.debug(
-            "ReadFileMetadataV2 " + (System.nanoTime() - start) / 1000_000L + " ms");
+      }
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while reading file metadata of file {}", file);
+      throw e;
+    }
+    return tsFileMetaData;
+  }
+
+  public TsFileMetadata readFileMetadataV3() throws IOException {
+    try {
+      if (tsFileMetaData == null) {
+        ByteBuffer rootNodeOffsetBuffer = ByteBuffer.allocate(Long.BYTES);
+        metadataIndexInput.read(rootNodeOffsetBuffer, metadataIndexInput.size() - Long.BYTES);
+        rootNodeOffsetBuffer.flip();
+
+        long rootNodeOffset = ReadWriteIOUtils.readLong(rootNodeOffsetBuffer);
+        tsFileMetaData =
+            TsFileMetadata.deserializeFromV2(
+                readData(
+                    rootNodeOffset,
+                    FSFactoryProducer.getFSFactory().getFile(this.file + ".index").length(),
+                    metadataIndexInput));
       }
     } catch (BufferOverflowException e) {
       logger.error("Something error happened while reading file metadata of file {}", file);
@@ -497,6 +515,33 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
     buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    while (buffer.hasRemaining()) {
+      try {
+        timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+      } catch (BufferOverflowException e) {
+        logger.error(
+            "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+        throw e;
+      }
+    }
+    // return null if path does not exist in the TsFile
+    int searchResult =
+        binarySearchInTimeseriesMetadataList(timeseriesMetadataList, path.getMeasurement());
+    return searchResult >= 0 ? timeseriesMetadataList.get(searchResult) : null;
+  }
+
+  public TimeseriesMetadata readTimeseriesMetadataV5(Path path, boolean ignoreNotExists)
+      throws IOException {
+    readFileMetadataV3();
+    MetadataIndexNodeV2 deviceMetadataIndexNode = tsFileMetaData.getMetadataIndexV2();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffsetV3(deviceMetadataIndexNode, path.getFullPath(), true);
+    if (metadataIndexPair == null) {
+      return null;
+    }
+
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     while (buffer.hasRemaining()) {
       try {
         timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
@@ -792,6 +837,31 @@ public class TsFileSequenceReader implements AutoCloseable {
     return resultTimeseriesMetadataList;
   }
 
+  public List<TimeseriesMetadata> readTimeseriesMetadataV4(Set<String> paths) throws IOException {
+    readFileMetadataV3();
+    MetadataIndexNodeV2 deviceMetadataIndexNode = tsFileMetaData.getMetadataIndexV2();
+    List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+
+    for (String path : paths) {
+      Pair<MetadataIndexEntry, Long> metadataIndexPair =
+          getMetadataAndEndOffsetV3(deviceMetadataIndexNode, path, false);
+      if (metadataIndexPair == null) {
+        continue;
+      }
+      ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+      while (buffer.hasRemaining()) {
+        try {
+          timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+        } catch (BufferOverflowException e) {
+          logger.error(
+              "Something error happened while deserializing TimeseriesMetadata of file {}", file);
+          throw e;
+        }
+      }
+    }
+    return timeseriesMetadataList;
+  }
+
   protected int binarySearchInTimeseriesMetadataList(
       List<TimeseriesMetadata> timeseriesMetadataList, String key) {
     int low = 0;
@@ -1015,6 +1085,48 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
   }
 
+  private void generateMetadataIndexV2(
+      MetadataIndexEntry metadataIndex,
+      ByteBuffer buffer,
+      boolean isLeaf,
+      Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap,
+      boolean needChunkMetadata)
+      throws IOException {
+    try {
+      if (isLeaf) {
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        while (buffer.hasRemaining()) {
+          timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, needChunkMetadata));
+        }
+        timeseriesMetadataMap
+            .computeIfAbsent(
+                metadataIndex.getName().split(TsFileConstant.PATH_SEPARATER_NO_REGEX)[0],
+                k -> new ArrayList<>())
+            .addAll(timeseriesMetadataList);
+      } else {
+        MetadataIndexNodeV2 metadataIndexNode = MetadataIndexNodeV2.deserializeFrom(buffer);
+        int metadataIndexListSize = metadataIndexNode.getChildren().size();
+        for (int i = 0; i < metadataIndexListSize; i++) {
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexListSize - 1) {
+            endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          }
+          ByteBuffer nextBuffer =
+              readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+          generateMetadataIndexV2(
+              metadataIndexNode.getChildren().get(i),
+              nextBuffer,
+              metadataIndexNode.isLeaf(),
+              timeseriesMetadataMap,
+              needChunkMetadata);
+        }
+      }
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while generating MetadataIndex of file {}", file);
+      throw e;
+    }
+  }
+
   /* TimeseriesMetadata don't need deserialize chunk metadata list */
   public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadata() throws IOException {
     if (tsFileMetaData == null) {
@@ -1037,6 +1149,26 @@ public class TsFileSequenceReader implements AutoCloseable {
           metadataIndexNode.getNodeType(),
           timeseriesMetadataMap,
           false);
+    }
+    return timeseriesMetadataMap;
+  }
+
+  public Map<String, List<TimeseriesMetadata>> getAllTimeseriesMetadataV2() throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadataV3();
+    }
+    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new HashMap<>();
+    MetadataIndexNodeV2 metadataIndexNode = tsFileMetaData.getMetadataIndexV2();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      long endOffset = metadataIndexNode.getEndOffset();
+      if (i != metadataIndexEntryList.size() - 1) {
+        endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      }
+      ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+      generateMetadataIndexV2(
+          metadataIndexEntry, buffer, metadataIndexNode.isLeaf(), timeseriesMetadataMap, false);
     }
     return timeseriesMetadataMap;
   }
@@ -1142,6 +1274,25 @@ public class TsFileSequenceReader implements AutoCloseable {
             readData(childIndexEntry.left.getOffset(), childIndexEntry.right, metadataIndexInput);
         return getMetadataAndEndOffsetV2(
             MetadataIndexNode.deserializeFrom(buffer), name, isDeviceLevel, exactSearch);
+      }
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
+      throw e;
+    }
+  }
+
+  protected Pair<MetadataIndexEntry, Long> getMetadataAndEndOffsetV3(
+      MetadataIndexNodeV2 metadataIndex, String path, boolean exactSearch) throws IOException {
+    try {
+      if (metadataIndex.isLeaf()) {
+        return metadataIndex.getChildIndexEntry(path, exactSearch);
+      } else {
+        Pair<MetadataIndexEntry, Long> childIndexEntry =
+            metadataIndex.getChildIndexEntry(path, false);
+        ByteBuffer buffer =
+            readData(childIndexEntry.left.getOffset(), childIndexEntry.right, metadataIndexInput);
+        return getMetadataAndEndOffsetV3(
+            MetadataIndexNodeV2.deserializeFrom(buffer), path, exactSearch);
       }
     } catch (BufferOverflowException e) {
       logger.error("Something error happened while deserializing MetadataIndex of file {}", file);
@@ -1692,6 +1843,11 @@ public class TsFileSequenceReader implements AutoCloseable {
   public MetadataIndexNode getMetadataIndexNode(long startOffset, long endOffset)
       throws IOException {
     return MetadataIndexNode.deserializeFrom(readData(startOffset, endOffset));
+  }
+
+  public MetadataIndexNodeV2 getMetadataIndexNodeV2(long startOffset, long endOffset)
+      throws IOException {
+    return MetadataIndexNodeV2.deserializeFrom(readData(startOffset, endOffset));
   }
 
   /**

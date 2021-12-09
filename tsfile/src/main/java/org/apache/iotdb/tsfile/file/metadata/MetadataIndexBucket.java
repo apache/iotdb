@@ -35,7 +35,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MetadataIndexNode {
+public class MetadataIndexBucket {
 
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private final List<MetadataIndexEntry> children;
@@ -45,13 +45,13 @@ public class MetadataIndexNode {
   /** type of the child node at offset */
   private final MetadataIndexNodeType nodeType;
 
-  public MetadataIndexNode(MetadataIndexNodeType nodeType) {
+  public MetadataIndexBucket(MetadataIndexNodeType nodeType) {
     children = new ArrayList<>();
     endOffset = -1L;
     this.nodeType = nodeType;
   }
 
-  public MetadataIndexNode(
+  public MetadataIndexBucket(
       List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
     this.children = children;
     this.endOffset = endOffset;
@@ -100,7 +100,7 @@ public class MetadataIndexNode {
     return byteLen;
   }
 
-  public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
+  public static MetadataIndexBucket deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
@@ -109,7 +109,7 @@ public class MetadataIndexNode {
     long offset = ReadWriteIOUtils.readLong(buffer);
     MetadataIndexNodeType nodeType =
         MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
-    return new MetadataIndexNode(children, offset, nodeType);
+    return new MetadataIndexBucket(children, offset, nodeType);
   }
 
   public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {

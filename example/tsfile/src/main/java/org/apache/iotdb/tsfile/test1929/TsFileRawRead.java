@@ -16,8 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.test1835;
+package org.apache.iotdb.tsfile.test1929;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -33,12 +35,15 @@ import org.apache.commons.cli.Options;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class TsFileRawReadV2 {
+public class TsFileRawRead {
 
   private static final String DEVICE1 = "device_1";
   public static int deviceNum;
   public static int sensorNum;
+  public static int treeType; // 0=Zesong Tree, 1=B+ Tree
   public static int fileNum;
+
+  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   public static void main(String[] args) throws IOException {
     Options opts = new Options();
@@ -51,6 +56,12 @@ public class TsFileRawReadV2 {
     Option fileNumOption =
         OptionBuilder.withArgName("args").withLongOpt("fileNum").hasArg().create("f");
     opts.addOption(fileNumOption);
+    Option treeTypeOption =
+        OptionBuilder.withArgName("args").withLongOpt("treeType").hasArg().create("t");
+    opts.addOption(treeTypeOption);
+    Option degreeOption =
+        OptionBuilder.withArgName("args").withLongOpt("degree").hasArg().create("c");
+    opts.addOption(degreeOption);
 
     BasicParser parser = new BasicParser();
     CommandLine cl;
@@ -58,7 +69,9 @@ public class TsFileRawReadV2 {
       cl = parser.parse(opts, args);
       deviceNum = Integer.parseInt(cl.getOptionValue("d"));
       sensorNum = Integer.parseInt(cl.getOptionValue("m"));
-      fileNum = 1; // Integer.parseInt(cl.getOptionValue("f"));
+      fileNum = Integer.parseInt(cl.getOptionValue("f"));
+      treeType = 1; // Integer.parseInt(cl.getOptionValue("t"));
+      config.setMaxDegreeOfIndexNode(Integer.parseInt(cl.getOptionValue("c")));
     } catch (Exception e) {
       e.printStackTrace();
     }
@@ -67,7 +80,9 @@ public class TsFileRawReadV2 {
     for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
       // file path
       String path =
-          "/data/szs/data/data/sequence/root.sg/0/"
+          "/data/szs/data/data/sequence/root.b/"
+              + config.getMaxDegreeOfIndexNode()
+              + "/"
               + deviceNum
               + "."
               + sensorNum
@@ -77,21 +92,20 @@ public class TsFileRawReadV2 {
 
       // raw data query
       try (TsFileSequenceReader reader = new TsFileSequenceReader(path, false);
-          ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader, 0)) {
+          ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader, treeType)) {
 
         ArrayList<Path> paths = new ArrayList<>();
         paths.add(new Path(DEVICE1, "sensor_1"));
 
         QueryExpression queryExpression = QueryExpression.create(paths, null);
 
-        QueryDataSet queryDataSet = readTsFile.query(queryExpression, 0);
+        QueryDataSet queryDataSet = readTsFile.query(queryExpression, treeType);
         while (queryDataSet.hasNext()) {
-          System.out.println(queryDataSet.next());
+          queryDataSet.next();
         }
       }
     }
     long totalTime = (System.nanoTime() - totalStartTime) / 1000_000;
-    System.out.println("Total raw read cost time: " + totalTime + "ms");
     System.out.println("Average cost time: " + (double) totalTime / (double) fileNum + "ms");
   }
 }

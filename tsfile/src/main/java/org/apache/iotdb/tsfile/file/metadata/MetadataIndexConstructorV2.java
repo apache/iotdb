@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import java.io.IOException;
@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
-import java.util.TreeMap;
 
 public class MetadataIndexConstructorV2 {
 
@@ -44,78 +43,53 @@ public class MetadataIndexConstructorV2 {
    * Construct metadata index tree
    *
    * @param deviceTimeseriesMetadataMap device => TimeseriesMetadata list
-   * @param out tsfile output
+   * @param tsFileOutput tsfile output
+   * @param metadataIndexOutput metadataIndex output
    */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public static MetadataIndexNode constructMetadataIndex(
-      Map<String, List<TimeseriesMetadataV2>> deviceTimeseriesMetadataMap, TsFileOutput out)
+  public static MetadataIndexNodeV2 constructMetadataIndex(
+      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap,
+      TsFileOutput tsFileOutput,
+      TsFileOutput metadataIndexOutput)
       throws IOException {
 
-    Map<String, MetadataIndexNode> deviceMetadataIndexMap = new TreeMap<>();
-
+    Queue<MetadataIndexNodeV2> metadataIndexQueue = new ArrayDeque<>();
+    MetadataIndexNodeV2 currentIndexNode = new MetadataIndexNodeV2();
+    currentIndexNode.setLeaf(true);
+    int serializedTimeseriesMetadataNum = 0;
+    boolean isNewDevice;
     // for timeseriesMetadata of each device
-    for (Entry<String, List<TimeseriesMetadataV2>> entry : deviceTimeseriesMetadataMap.entrySet()) {
+    for (Entry<String, List<TimeseriesMetadata>> entry : deviceTimeseriesMetadataMap.entrySet()) {
       if (entry.getValue().isEmpty()) {
         continue;
       }
-      Queue<MetadataIndexNode> measurementMetadataIndexQueue = new ArrayDeque<>();
-      TimeseriesMetadataV2 timeseriesMetadata;
-      MetadataIndexNode currentIndexNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-      int serializedTimeseriesMetadataNum = 0;
+      isNewDevice = true;
+      TimeseriesMetadata timeseriesMetadata;
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
         if (serializedTimeseriesMetadataNum == 0
-            || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
+            || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()
+            || isNewDevice) {
           if (currentIndexNode.isFull()) {
-            addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-            currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
+            addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexQueue, tsFileOutput);
+            currentIndexNode = new MetadataIndexNodeV2();
+            currentIndexNode.setLeaf(true);
           }
           currentIndexNode.addEntry(
-              new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
+              new MetadataIndexEntry(
+                  entry.getKey()
+                      + TsFileConstant.PATH_SEPARATOR
+                      + timeseriesMetadata.getMeasurementId(),
+                  tsFileOutput.getPosition()));
           serializedTimeseriesMetadataNum = 0;
+          isNewDevice = false;
         }
-        timeseriesMetadata.serializeTo(out.wrapAsStream());
+        timeseriesMetadata.serializeTo(tsFileOutput.wrapAsStream());
         serializedTimeseriesMetadataNum++;
       }
-      addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
-      deviceMetadataIndexMap.put(
-          entry.getKey(),
-          generateRootNode(
-              measurementMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_MEASUREMENT));
     }
-
-    // if not exceed the max child nodes num, ignore the device index and directly point to the
-    // measurement
-    if (deviceMetadataIndexMap.size() <= config.getMaxDegreeOfIndexNode()) {
-      MetadataIndexNode metadataIndexNode =
-          new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      for (Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-        metadataIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-        entry.getValue().serializeTo(out.wrapAsStream());
-      }
-      metadataIndexNode.setEndOffset(out.getPosition());
-      return metadataIndexNode;
-    }
-
-    // else, build level index for devices
-    Queue<MetadataIndexNode> deviceMetadataIndexQueue = new ArrayDeque<>();
-    MetadataIndexNode currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-
-    for (Entry<String, MetadataIndexNode> entry : deviceMetadataIndexMap.entrySet()) {
-      // when constructing from internal node, each node is related to an entry
-      if (currentIndexNode.isFull()) {
-        addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
-        currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_DEVICE);
-      }
-      currentIndexNode.addEntry(new MetadataIndexEntry(entry.getKey(), out.getPosition()));
-      entry.getValue().serializeTo(out.wrapAsStream());
-    }
-    addCurrentIndexNodeToQueue(currentIndexNode, deviceMetadataIndexQueue, out);
-    MetadataIndexNode deviceMetadataIndexNode =
-        generateRootNode(deviceMetadataIndexQueue, out, MetadataIndexNodeType.INTERNAL_DEVICE);
-    deviceMetadataIndexNode.setEndOffset(out.getPosition());
-    return deviceMetadataIndexNode;
+    addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexQueue, tsFileOutput); // ?
+    return generateRootNode(metadataIndexQueue, metadataIndexOutput);
   }
 
   /**
@@ -125,36 +99,34 @@ public class MetadataIndexConstructorV2 {
    *
    * @param metadataIndexNodeQueue queue of metadataIndexNode
    * @param out tsfile output
-   * @param type MetadataIndexNode type
    */
-  private static MetadataIndexNode generateRootNode(
-      Queue<MetadataIndexNode> metadataIndexNodeQueue, TsFileOutput out, MetadataIndexNodeType type)
-      throws IOException {
+  private static MetadataIndexNodeV2 generateRootNode(
+      Queue<MetadataIndexNodeV2> metadataIndexNodeQueue, TsFileOutput out) throws IOException {
     int queueSize = metadataIndexNodeQueue.size();
-    MetadataIndexNode metadataIndexNode;
-    MetadataIndexNode currentIndexNode = new MetadataIndexNode(type);
+    MetadataIndexNodeV2 metadataIndexNode;
+    MetadataIndexNodeV2 currentIndexNode = new MetadataIndexNodeV2();
     while (queueSize != 1) {
       for (int i = 0; i < queueSize; i++) {
         metadataIndexNode = metadataIndexNodeQueue.poll();
         // when constructing from internal node, each node is related to an entry
         if (currentIndexNode.isFull()) {
           addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-          currentIndexNode = new MetadataIndexNode(type);
+          currentIndexNode = new MetadataIndexNodeV2();
         }
         currentIndexNode.addEntry(
             new MetadataIndexEntry(metadataIndexNode.peek().getName(), out.getPosition()));
         metadataIndexNode.serializeTo(out.wrapAsStream());
       }
       addCurrentIndexNodeToQueue(currentIndexNode, metadataIndexNodeQueue, out);
-      currentIndexNode = new MetadataIndexNode(type);
+      currentIndexNode = new MetadataIndexNodeV2();
       queueSize = metadataIndexNodeQueue.size();
     }
     return metadataIndexNodeQueue.poll();
   }
 
   private static void addCurrentIndexNodeToQueue(
-      MetadataIndexNode currentIndexNode,
-      Queue<MetadataIndexNode> metadataIndexNodeQueue,
+      MetadataIndexNodeV2 currentIndexNode,
+      Queue<MetadataIndexNodeV2> metadataIndexNodeQueue,
       TsFileOutput out)
       throws IOException {
     currentIndexNode.setEndOffset(out.getPosition());

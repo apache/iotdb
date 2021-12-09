@@ -51,7 +51,7 @@
                         <configuration>
                             <archive>
                                 <manifest>
-                                    <mainClass>org.apache.iotdb.tsfile.test1835.TsFileAggregationV2</mainClass>
+                                    <mainClass>org.apache.iotdb.tsfile.test1929.TsFileAggregation</mainClass>
                                 </manifest>
                             </archive>
                             <descriptorRefs>

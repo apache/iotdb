@@ -67,6 +67,23 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
         };
   }
 
+  public MetadataQuerierByFileImpl(TsFileSequenceReader tsFileReader, int treeType)
+      throws IOException {
+    this.tsFileReader = tsFileReader;
+    if (treeType == 0) { // Zesong Tree
+      this.fileMetaData = tsFileReader.readFileMetadataV2();
+    } else if (treeType == 1) { // B+ Tree
+      this.fileMetaData = tsFileReader.readFileMetadataV3();
+    }
+    chunkMetaDataCache =
+        new LRUCache<Path, List<ChunkMetadata>>(CACHED_ENTRY_NUMBER) {
+          @Override
+          public List<ChunkMetadata> loadObjectByKey(Path key) throws IOException {
+            return loadChunkMetadata(key);
+          }
+        };
+  }
+
   @Override
   public List<IChunkMetadata> getChunkMetaDataList(Path path) throws IOException {
     return new ArrayList<>(chunkMetaDataCache.get(path));
@@ -277,6 +294,61 @@ public class MetadataQuerierByFileImpl implements IMetadataQuerier {
             enough = true;
             break;
           }
+        }
+      }
+    }
+
+    for (Map.Entry<Path, List<ChunkMetadata>> entry : tempChunkMetaDatas.entrySet()) {
+      chunkMetaDataCache.put(entry.getKey(), entry.getValue());
+    }
+  }
+
+  public void loadChunkMetaDatasV4(List<Path> paths) throws IOException {
+    Set<String> pathSet = new HashSet<>();
+    TreeMap<String, Set<String>> deviceMeasurementsMap = new TreeMap<>();
+
+    for (Path path : paths) {
+      if (!deviceMeasurementsMap.containsKey(path.getDevice())) {
+        deviceMeasurementsMap.put(path.getDevice(), new HashSet<>());
+      }
+      deviceMeasurementsMap.get(path.getDevice()).add(path.getMeasurement());
+      pathSet.add(path.getFullPath());
+    }
+
+    Map<Path, List<ChunkMetadata>> tempChunkMetaDatas = new HashMap<>();
+
+    int count = 0;
+    boolean enough = false;
+
+    List<TimeseriesMetadata> timeseriesMetaDataList =
+        tsFileReader.readTimeseriesMetadataV4(pathSet);
+    List<ChunkMetadata> chunkMetadataList = new ArrayList<>();
+    for (TimeseriesMetadata timeseriesMetadata : timeseriesMetaDataList) {
+      chunkMetadataList.addAll(tsFileReader.readChunkMetaDataList(timeseriesMetadata));
+    }
+
+    // for cache
+    for (Map.Entry<String, Set<String>> deviceMeasurements : deviceMeasurementsMap.entrySet()) {
+      if (enough) {
+        break;
+      }
+      for (ChunkMetadata chunkMetaData : chunkMetadataList) {
+        String currentMeasurement = chunkMetaData.getMeasurementUid();
+        Path path = new Path(deviceMeasurements.getKey(), currentMeasurement);
+        if (!pathSet.contains(path.getFullPath())) {
+          continue;
+        }
+        // add into tempChunkMetaDatas
+        if (!tempChunkMetaDatas.containsKey(path)) {
+          tempChunkMetaDatas.put(path, new ArrayList<>());
+        }
+        tempChunkMetaDatas.get(path).add(chunkMetaData);
+
+        // check cache size, stop when reading enough
+        count++;
+        if (count == CACHED_ENTRY_NUMBER) {
+          enough = true;
+          break;
         }
       }
     }

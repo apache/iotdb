@@ -21,13 +21,9 @@ package org.apache.iotdb.tsfile.file.metadata;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,27 +31,23 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MetadataIndexNode {
+public class MetadataIndexNodeV2 {
 
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private final List<MetadataIndexEntry> children;
   private long endOffset;
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private boolean isLeaf;
 
-  /** type of the child node at offset */
-  private final MetadataIndexNodeType nodeType;
-
-  public MetadataIndexNode(MetadataIndexNodeType nodeType) {
+  public MetadataIndexNodeV2() {
     children = new ArrayList<>();
     endOffset = -1L;
-    this.nodeType = nodeType;
+    isLeaf = false;
   }
 
-  public MetadataIndexNode(
-      List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
+  public MetadataIndexNodeV2(List<MetadataIndexEntry> children, long endOffset, boolean isLeaf) {
     this.children = children;
     this.endOffset = endOffset;
-    this.nodeType = nodeType;
+    this.isLeaf = isLeaf;
   }
 
   public List<MetadataIndexEntry> getChildren() {
@@ -70,16 +62,20 @@ public class MetadataIndexNode {
     this.endOffset = endOffset;
   }
 
-  public MetadataIndexNodeType getNodeType() {
-    return nodeType;
-  }
-
   public void addEntry(MetadataIndexEntry metadataIndexEntry) {
     this.children.add(metadataIndexEntry);
   }
 
   boolean isFull() {
     return children.size() >= config.getMaxDegreeOfIndexNode();
+  }
+
+  public boolean isLeaf() {
+    return isLeaf;
+  }
+
+  public void setLeaf(boolean leaf) {
+    isLeaf = leaf;
   }
 
   MetadataIndexEntry peek() {
@@ -96,20 +92,20 @@ public class MetadataIndexNode {
       byteLen += metadataIndexEntry.serializeTo(outputStream);
     }
     byteLen += ReadWriteIOUtils.write(endOffset, outputStream);
-    byteLen += ReadWriteIOUtils.write(nodeType.serialize(), outputStream);
+    byteLen += ReadWriteIOUtils.write(isLeaf, outputStream);
     return byteLen;
   }
 
-  public static MetadataIndexNode deserializeFrom(ByteBuffer buffer) {
+  public static MetadataIndexNodeV2 deserializeFrom(ByteBuffer buffer) {
     List<MetadataIndexEntry> children = new ArrayList<>();
     int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
       children.add(MetadataIndexEntry.deserializeFrom(buffer));
     }
     long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType =
-        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
-    return new MetadataIndexNode(children, offset, nodeType);
+    boolean isLeaf = ReadWriteIOUtils.readBool(buffer);
+
+    return new MetadataIndexNodeV2(children, offset, isLeaf);
   }
 
   public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {
