@@ -45,6 +45,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -256,7 +257,7 @@ public class EnvironmentUtils {
     logger.debug("EnvironmentUtil setup...");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
     // we do not start 9091 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
+    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();

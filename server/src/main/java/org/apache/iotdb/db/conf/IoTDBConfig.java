@@ -72,8 +72,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  private boolean enableMetricService = false;
-
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
@@ -704,8 +702,6 @@ public class IoTDBConfig {
   // wait for 60 second by default.
   private int thriftServerAwaitTimeForStopService = 60;
 
-  private int queryCacheSizeInMetric = 50;
-
   // max size for tag and attribute of one time series
   private int tagAttributeTotalSize = 700;
 
@@ -979,14 +975,6 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
-  }
-
-  public boolean isEnableMetricService() {
-    return enableMetricService;
-  }
-
-  public void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
   }
 
   void setDataDirs(String[] dataDirs) {
@@ -2107,14 +2095,6 @@ public class IoTDBConfig {
 
   public void setThriftServerAwaitTimeForStopService(int thriftServerAwaitTimeForStopService) {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
-  }
-
-  public int getQueryCacheSizeInMetric() {
-    return queryCacheSizeInMetric;
-  }
-
-  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
-    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
   }
 
   public boolean isEnableMQTTService() {

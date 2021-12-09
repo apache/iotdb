@@ -132,6 +132,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UDFRegistrationService.getInstance());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
+    registerManager.register(MetricsService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {
@@ -142,9 +143,6 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(InfluxDBRPCService.getInstance());
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMetricService()) {
-      registerManager.register(MetricsService.getInstance());
-    }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }

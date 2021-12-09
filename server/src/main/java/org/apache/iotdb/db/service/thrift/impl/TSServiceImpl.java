@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.service.thrift.impl;
 
-import com.google.common.primitives.Bytes;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.authorizer.IAuthorizer;
@@ -69,6 +68,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+
+import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,9 +92,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
-
-  private static final int MAX_SIZE = CONFIG.getQueryCacheSizeInMetric();
-  private static final int DELETE_SIZE = 20;
 
   private long startTime = -1L;
 

@@ -135,17 +135,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
-      conf.setEnableMetricService(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
-
-      conf.setQueryCacheSizeInMetric(
-          Integer.parseInt(
-              properties.getProperty(
-                  "query_cache_size_in_metric",
-                  Integer.toString(conf.getQueryCacheSizeInMetric()))));
-
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
 
