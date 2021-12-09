@@ -247,12 +247,12 @@ public class TSServiceImpl implements TSIService.Iface {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
 
       sessionId = sessionManager.requestSessionId(req.getUsername(), req.getZoneId());
-      AUDIT_LOGGER.info("User {} opens Session-{}", req.getUsername(), sessionId);
       LOGGER.info(
-          "{}: Login status: {}. User : {}",
+          "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
           tsStatus.message,
-          req.getUsername());
+          req.getUsername(),
+          sessionId);
     } else {
       tsStatus =
           RpcUtils.getStatus(
