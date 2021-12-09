@@ -737,7 +737,6 @@ var config = {
 							['System-Tools/JMX-Tool','JMX Tool'],
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
-							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
 							['System-Tools/Watermark-Tool','Watermark Tool'],
 							['System-Tools/Metric-Tool','Metric Tool']
 						]
@@ -1539,7 +1538,6 @@ var config = {
 							['System-Tools/JMX-Tool','JMX 工具'],
 							['System-Tools/MLogParser-Tool','Mlog解析工具'],
 							['System-Tools/NodeTool','节点工具'],
-							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
 							['System-Tools/Metric-Tool','监控工具']
 						]
