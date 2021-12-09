@@ -44,7 +44,9 @@ public class MicrometerJmxReporter implements Reporter {
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
       for (MeterRegistry meterRegistry : meterRegistrySet) {
-        ((JmxMeterRegistry) meterRegistry).start();
+        if (meterRegistry.isClosed()) {
+          ((JmxMeterRegistry) meterRegistry).start();
+        }
       }
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
@@ -61,7 +63,9 @@ public class MicrometerJmxReporter implements Reporter {
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
       for (MeterRegistry meterRegistry : meterRegistrySet) {
-        ((JmxMeterRegistry) meterRegistry).stop();
+        if (!meterRegistry.isClosed()) {
+          ((JmxMeterRegistry) meterRegistry).stop();
+        }
       }
     } catch (Exception e) {
       LOGGER.error("Failed to stop Micrometer JmxReporter, because {}", e.getMessage());

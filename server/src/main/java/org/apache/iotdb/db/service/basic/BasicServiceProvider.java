@@ -92,7 +92,7 @@ public class BasicServiceProvider {
    *
    * @return true: If logged in; false: If not logged in
    */
-  protected boolean checkLogin(long sessionId) {
+  public boolean checkLogin(long sessionId) {
     boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
@@ -165,12 +165,12 @@ public class BasicServiceProvider {
       openSessionResp.setMessage("Login successfully");
 
       sessionId = sessionManager.requestSessionId(username, zoneId);
-      AUDIT_LOGGER.info("User {} opens Session-{}", username, sessionId);
       LOGGER.info(
-          "{}: Login status: {}. User : {}",
+          "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
           openSessionResp.getMessage(),
-          username);
+          username,
+          sessionId);
     } else {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());

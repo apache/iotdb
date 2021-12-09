@@ -50,7 +50,7 @@ public class DropwizardPrometheusReporter implements Reporter {
     }
     String url = metricConfig.getPrometheusReporterConfig().getPrometheusExporterUrl();
     String port = metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort();
-    PushGateway pushgateway = new PushGateway(url + ":" + port, "Dropwizard");
+    PushGateway pushgateway = new PushGateway(url + ":" + port, "IoTDB-Metric{Dropwizard}");
     try {
       prometheusReporter =
           PrometheusReporter.forRegistry(

@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.influxdb.protocol.dto;
 
+import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.session.Session;
+
+import org.influxdb.InfluxDBException;
+
 public class SessionPoint {
   private final String host;
   private final int rpcPort;
@@ -27,6 +32,45 @@ public class SessionPoint {
   public SessionPoint(String host, int rpcPort, String username, String password) {
     this.host = host;
     this.rpcPort = rpcPort;
+    this.username = username;
+    this.password = password;
+  }
+
+  public SessionPoint(Session session) {
+
+    EndPoint endPoint = null;
+    String username = null;
+    String password = null;
+
+    // Get the property of session by reflection
+    for (java.lang.reflect.Field reflectField : session.getClass().getDeclaredFields()) {
+      reflectField.setAccessible(true);
+      try {
+        if (reflectField
+                .getType()
+                .getName()
+                .equalsIgnoreCase("org.apache.iotdb.service.rpc.thrift.EndPoint")
+            && reflectField.getName().equalsIgnoreCase("defaultEndPoint")) {
+          endPoint = (EndPoint) reflectField.get(session);
+        }
+        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+            && reflectField.getName().equalsIgnoreCase("username")) {
+          username = (String) reflectField.get(session);
+        }
+        if (reflectField.getType().getName().equalsIgnoreCase("java.lang.String")
+            && reflectField.getName().equalsIgnoreCase("password")) {
+          password = (String) reflectField.get(session);
+        }
+      } catch (IllegalAccessException e) {
+        throw new IllegalArgumentException(e.getMessage());
+      }
+    }
+    if (endPoint == null) {
+      throw new InfluxDBException("session's ip and port is null");
+    }
+
+    this.host = endPoint.ip;
+    this.rpcPort = endPoint.port;
     this.username = username;
     this.password = password;
   }
@@ -45,13 +89,5 @@ public class SessionPoint {
 
   public String getPassword() {
     return password;
-  }
-
-  public String ipAndPortToString() {
-    return host + '-' + rpcPort;
-  }
-
-  public static String generateIpAndPortString(String host, int rpcPort) {
-    return host + '-' + rpcPort;
   }
 }
