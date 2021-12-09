@@ -34,10 +34,10 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVList extends TVList {
 
@@ -850,26 +850,29 @@ public class AlignedTVList extends TVList {
   }
 
   /**
-   * Get the single alignedTVList array size by give types.
+   * Get the single alignedTVList array mem cost by give types.
    *
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemSize(TSDataType[] types) {
+  public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
-    // time size
+    // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // index size
+    // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value size
+    // value array mem size
     for (TSDataType type : types) {
       size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
     }
+    // array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF * (2 + types.length);
     return size;
   }
 
-  @Override
-  public void clear(Map<TSDataType, Queue<TVList>> tvListCache) {
+  public void clear() {
     size = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
