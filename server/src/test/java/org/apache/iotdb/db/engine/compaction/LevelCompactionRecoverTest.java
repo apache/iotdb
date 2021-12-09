@@ -51,7 +51,6 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -59,11 +58,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -246,146 +241,6 @@ public class LevelCompactionRecoverTest {
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     FileUtils.deleteDirectory(tempSGDir);
-  }
-
-  // uncompeleted target file and log
-  /** compaction recover merge finished, delete one device - offset */
-  @Test
-  public void testCompactionRecoverWithUncompletedTargetFileAndLog()
-      throws IOException, IllegalPathException {
-    LevelCompactionTsFileManagement levelCompactionTsFileManagement =
-        new LevelCompactionTsFileManagement(COMPACTION_TEST_SG, "0", tempSGDir.getPath());
-    levelCompactionTsFileManagement.addAll(seqResources, true);
-    levelCompactionTsFileManagement.addAll(unseqResources, false);
-    QueryContext context = new QueryContext();
-    PartialPath path =
-        new PartialPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
-            path,
-            measurementSchemas[0].getType(),
-            context,
-            levelCompactionTsFileManagement.getTsFileList(true),
-            new ArrayList<>(),
-            null,
-            null,
-            true);
-    int count = 0;
-    while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
-        count++;
-      }
-    }
-    tsFilesReader.close();
-    assertEquals(600, count);
-
-    CompactionLogger compactionLogger =
-        new CompactionLogger(tempSGDir.getPath(), COMPACTION_TEST_SG);
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(0).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(1).getTsFile());
-    compactionLogger.logFile(SOURCE_NAME, seqResources.get(2).getTsFile());
-    compactionLogger.logSequence(true);
-    deleteFileIfExists(
-        new File(
-            TestConstant.SEQUENCE_DATA_DIR.concat(
-                0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 1
-                    + IoTDBConstant.FILE_NAME_SEPARATOR
-                    + 0
-                    + ".tsfile")));
-    TsFileResource targetTsFileResource =
-        new TsFileResource(
-            new File(
-                TestConstant.SEQUENCE_DATA_DIR.concat(
-                    0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 1
-                        + IoTDBConstant.FILE_NAME_SEPARATOR
-                        + 0
-                        + ".tsfile")));
-    compactionLogger.logFile(TARGET_NAME, targetTsFileResource.getTsFile());
-    CompactionUtils.merge(
-        targetTsFileResource,
-        new ArrayList<>(seqResources.subList(0, 3)),
-        COMPACTION_TEST_SG,
-        compactionLogger,
-        new HashSet<>(),
-        true,
-        new ArrayList<>(),
-        null);
-    compactionLogger.close();
-
-    BufferedReader logReader =
-        new BufferedReader(
-            new FileReader(
-                SystemFileFactory.INSTANCE.getFile(
-                    tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME)));
-    List<String> logs = new ArrayList<>();
-    String line;
-    while ((line = logReader.readLine()) != null) {
-      logs.add(line);
-    }
-    logReader.close();
-    BufferedWriter logStream =
-        new BufferedWriter(
-            new FileWriter(
-                SystemFileFactory.INSTANCE.getFile(
-                    tempSGDir.getPath(), COMPACTION_TEST_SG + COMPACTION_LOG_NAME),
-                false));
-    for (int i = 0; i < logs.size() - 1; i++) {
-      logStream.write(logs.get(i));
-      logStream.newLine();
-    }
-    logStream.close();
-
-    TsFileOutput out =
-        FSFactoryProducer.getFileOutputFactory()
-            .getTsFileOutput(targetTsFileResource.getTsFile().getPath(), true);
-    out.truncate(Long.parseLong(logs.get(logs.size() - 1).split(" ")[1]) - 1);
-    out.close();
-
-    levelCompactionTsFileManagement.addRecover(targetTsFileResource, true);
-    levelCompactionTsFileManagement.recover();
-    context = new QueryContext();
-    path =
-        new PartialPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
-    ChunkCache.getInstance().clear();
-    TimeSeriesMetadataCache.getInstance().clear();
-    tsFilesReader =
-        new SeriesRawDataBatchReader(
-            path,
-            measurementSchemas[0].getType(),
-            context,
-            levelCompactionTsFileManagement.getTsFileList(true),
-            new ArrayList<>(),
-            null,
-            null,
-            true);
-    count = 0;
-    while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
-        count++;
-      }
-    }
-    tsFilesReader.close();
-    assertEquals(600, count);
   }
 
   /** compaction recover merge finished */

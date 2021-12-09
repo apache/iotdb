@@ -27,7 +27,6 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -341,7 +340,7 @@ public abstract class AbstractMemTable implements IMemTable {
       for (Entry<String, IWritableMemChunk> subEntry : entry.getValue().entrySet()) {
         TVList list = subEntry.getValue().getTVList();
         if (list.getReferenceCount() == 0) {
-          TVListAllocator.getInstance().release(list);
+          list.clear();
         }
       }
     }

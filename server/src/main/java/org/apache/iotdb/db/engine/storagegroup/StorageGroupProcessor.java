@@ -419,6 +419,8 @@ public class StorageGroupProcessor {
     logger.info("recover Storage Group  {}", logicalStorageGroupName + "-" + virtualStorageGroupId);
 
     try {
+      // recover inner space compaction
+      this.tsFileManagement.new CompactionRecoverTask().call();
       // collect candidate TsFiles from sequential and unsequential data directory
       Pair<List<TsFileResource>, List<TsFileResource>> seqTsFilesPair =
           getAllFiles(DirectoryManager.getInstance().getAllSequenceFileFolders());
@@ -671,14 +673,8 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
-          writer =
-              recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer != null && writer.hasCrashed()) {
-            tsFileManagement.addRecover(tsFileResource, isSeq);
-          } else {
-            tsFileResource.setClosed(true);
-            tsFileManagement.add(tsFileResource, isSeq);
-          }
+          tsFileResource.setClosed(true);
+          tsFileManagement.add(tsFileResource, isSeq);
           continue;
         } else {
           writer =
@@ -2027,9 +2023,10 @@ public class StorageGroupProcessor {
   }
 
   /** close recover compaction merge callback, to start continuous compaction */
-  private void closeCompactionRecoverCallBack(boolean isMerge, long timePartitionId) {
+  private void closeCompactionRecoverCallBack(boolean isMerging, long timePartition) {
     if (IoTDBDescriptor.getInstance().getConfig().getCompactionStrategy()
-        == CompactionStrategy.NO_COMPACTION) {
+            == CompactionStrategy.NO_COMPACTION
+        || !this.tsFileManagement.canMerge) {
       return;
     }
     CompactionMergeTaskPoolManager.getInstance().clearCompactionStatus(logicalStorageGroupName);
@@ -2145,7 +2142,7 @@ public class StorageGroupProcessor {
   }
 
   public void merge() {
-    if (!tsFileManagement.recovered || compacting) {
+    if (!tsFileManagement.recovered || compacting || !tsFileManagement.canMerge) {
       // recovering or doing compaction
       // stop running new compaction
       return;

@@ -35,7 +35,6 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
-import org.h2.store.fs.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,7 +47,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -85,8 +83,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new TreeMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
   public LevelCompactionTsFileManagement(
       String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
@@ -305,15 +301,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      sequenceRecoverTsFileResources.add(tsFileResource);
-    } else {
-      unSequenceRecoverTsFileResources.add(tsFileResource);
-    }
-  }
-
-  @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) throws IOException {
     writeLock();
     try {
@@ -422,7 +409,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   /** recover files */
   @Override
   @SuppressWarnings("squid:S3776")
-  public boolean recover() {
+  public void recover() {
     File logFile =
         FSFactoryProducer.getFSFactory()
             .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
@@ -430,115 +417,74 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       if (logFile.exists()) {
         CompactionLogAnalyzer logAnalyzer = new CompactionLogAnalyzer(logFile);
         logAnalyzer.analyze();
-        Set<String> deviceSet = logAnalyzer.getDeviceSet();
         List<CompactionFileInfo> sourceFileInfo = logAnalyzer.getSourceFileInfo();
         CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         File targetFile = null;
         boolean isSeq = logAnalyzer.isSeq();
         if (targetFileInfo == null || sourceFileInfo.isEmpty()) {
-          return true;
-        }
-        if (deviceSet.isEmpty() && targetFileInfo != null) {
-          // if not in compaction, just delete the target file
-          for (String dataDir : dataDirs) {
-            targetFile = targetFileInfo.getFile(dataDir);
-            if (targetFile.exists()) {
-              logger.info(
-                  "[Compaction][Recover] Target file {} found, device set is null, delete it",
-                  targetFile);
-              FileUtils.delete(targetFile.getPath());
-              return true;
-            }
-          }
+          return;
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-        TsFileResource targetResource =
-            getResourceFromDataDirs(true, dataDirs, isSeq, targetFileInfo);
+        TsFileResource targetResource = null;
+        for (String dataDir : dataDirs) {
+          if ((targetFile = targetFileInfo.getFile(dataDir)).exists()) {
+            targetResource = new TsFileResource(targetFile);
+          }
+        }
         if (targetResource != null) {
-          // target tsfile is not compeleted
-          logger.info(
-              "[Compaction][Recover] target file {} is not compeleted, remove it", targetResource);
-          targetResource.remove();
-          if (isSeq) {
-            sequenceRecoverTsFileResources.clear();
+          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
+          if (writer.hasCrashed()) {
+            // target tsfile is not compeleted
+            writer.close();
+            logger.info(
+                "[Compaction][Recover] target file {} is not complete, remove it", targetResource);
+            targetResource.remove();
           } else {
-            unSequenceRecoverTsFileResources.clear();
-          }
-        } else if ((targetResource =
-                getResourceFromDataDirs(false, dataDirs, isSeq, targetFileInfo))
-            != null) {
-          // complete compaction, delete source files
-          logger.info(
-              "[Compaction][Recover] target file {} is compeleted, remove resource file",
-              targetResource);
-          long timePartition = targetResource.getTimePartition();
-          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (CompactionFileInfo sourceInfo : sourceFileInfo) {
-            // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
-            TsFileResource sourceTsFileResource =
-                getResourceFromDataDirs(false, dataDirs, isSeq, sourceInfo);
-            if (sourceTsFileResource == null) {
-              // if sourceTsFileResource is null, it has been deleted
-              continue;
-            }
-            sourceTsFileResources.add(sourceTsFileResource);
-          }
-          if (sourceFileInfo.size() != 0) {
-            List<Modification> modifications = new ArrayList<>();
-            // if not complete compaction, remove target file
-            writeLock();
-            try {
-              if (Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException(
-                    String.format("%s [Compaction] abort", storageGroupName));
+            writer.close();
+            // complete compaction, delete source files
+            logger.info(
+                "[Compaction][Recover] target file {} is compeleted, remove resource file",
+                targetResource);
+            List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+            for (CompactionFileInfo sourceInfo : sourceFileInfo) {
+              // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
+              File sourceFile = null;
+              TsFileResource sourceTsFileResource = null;
+              for (String dataDir : dataDirs) {
+                if ((sourceFile = sourceInfo.getFile(dataDir)).exists()) {
+                  sourceTsFileResource = new TsFileResource(sourceFile);
+                  break;
+                }
               }
-              int level = TsFileResource.getMergeLevel(sourceFileInfo.get(0).getFilename());
-              deleteLevelFilesInList(timePartition, sourceTsFileResources, level, isSeq);
-            } finally {
-              writeUnlock();
+              if (sourceTsFileResource == null) {
+                // if sourceTsFileResource is null, it has been deleted
+                continue;
+              }
+              sourceTsFileResources.add(sourceTsFileResource);
             }
-            for (TsFileResource tsFileResource : sourceTsFileResources) {
-              logger.info(
-                  "{} recover storage group delete source file {}",
-                  storageGroupName,
-                  tsFileResource.getTsFile().getName());
+            if (sourceFileInfo.size() != 0) {
+              List<Modification> modifications = new ArrayList<>();
+              // if not complete compaction, remove target file
+              for (TsFileResource tsFileResource : sourceTsFileResources) {
+                logger.info(
+                    "{} recover storage group delete source file {}",
+                    storageGroupName,
+                    tsFileResource.getTsFile().getName());
+              }
+              deleteLevelFilesInDisk(sourceTsFileResources);
+              renameLevelFilesMods(modifications, sourceTsFileResources, targetResource);
             }
-            deleteLevelFilesInDisk(sourceTsFileResources);
-            renameLevelFilesMods(modifications, sourceTsFileResources, targetResource);
           }
         }
       }
       if (logFile.exists()) {
         Files.delete(logFile.toPath());
       }
-      return true;
     } catch (Throwable e) {
       logger.error("exception occurs during recovering compaction", e);
       canMerge = false;
-      return false;
     }
-  }
-
-  private TsFileResource getResourceFromDataDirs(
-      boolean recover, String[] dataDirs, boolean isSeq, CompactionFileInfo info)
-      throws IOException {
-    TsFileResource foundResource = null;
-    if (recover) {
-      for (String dataDir : dataDirs) {
-        if ((foundResource = getRecoverTsFileResource(info.getFile(dataDir).getPath(), isSeq))
-            != null) {
-          return foundResource;
-        }
-      }
-    } else {
-      for (String dataDir : dataDirs) {
-        if ((foundResource = getTsFileResource(info.getFile(dataDir).getPath(), isSeq)) != null) {
-          return foundResource;
-        }
-      }
-    }
-    return null;
   }
 
   @Override
@@ -793,28 +739,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       newUnSequenceTsFileResources.add(new ArrayList<>());
     }
     return newUnSequenceTsFileResources;
-  }
-
-  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
-      throws IOException {
-    try {
-      if (isSeq) {
-        for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
-          if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-            return tsFileResource;
-          }
-        }
-      } else {
-        for (TsFileResource tsFileResource : unSequenceRecoverTsFileResources) {
-          if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-            return tsFileResource;
-          }
-        }
-      }
-    } catch (IOException e) {
-      logger.error("cannot get tsfile resource path: {}", filePath);
-    }
-    return null;
   }
 
   private TsFileResource getTsFileResource(String filePath, boolean isSeq) {

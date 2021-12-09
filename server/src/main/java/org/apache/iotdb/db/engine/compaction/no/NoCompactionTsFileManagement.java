@@ -174,9 +174,6 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void addRecover(TsFileResource tsFileResource, boolean sequence) {}
-
-  @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) {
     writeLock();
     try {
@@ -261,9 +258,7 @@ public class NoCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public boolean recover() {
-    return true;
-  }
+  public void recover() {}
 
   @Override
   public void forkCurrentFileList(long timePartition) {}
