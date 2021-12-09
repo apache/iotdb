@@ -92,7 +92,7 @@ public class BasicServiceProvider {
    *
    * @return true: If logged in; false: If not logged in
    */
-  protected boolean checkLogin(long sessionId) {
+  public boolean checkLogin(long sessionId) {
     boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);

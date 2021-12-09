@@ -84,6 +84,7 @@
         <module>thrift</module>
         <module>thrift-cluster</module>
         <module>thrift-sync</module>
+        <module>thrift-influxdb</module>
         <module>service-rpc</module>
         <module>jdbc</module>
         <module>session</module>
@@ -1349,6 +1350,7 @@
                                 <exclude>org/apache/iotdb/service/sync/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/service/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/cluster/rpc/thrift/*</exclude>
+                                <exclude>org/apache/iotdb/protocol/influxdb/rpc/thrift/*</exclude>
                                 <exclude>org/apache/iotdb/db/qp/sql/*</exclude>
                             </excludes>
                             <rules>
