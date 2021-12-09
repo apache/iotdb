@@ -64,12 +64,12 @@ public class QueryResourceManager {
    */
   private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
-  private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSource;
+  private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
-    cachedQueryDataSource = new HashMap<>();
+    cachedQueryDataSourcesMap = new HashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -121,33 +121,68 @@ public class QueryResourceManager {
     String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(selectedPath);
     String deviceId = selectedPath.getDevice();
 
-    QueryDataSource queryDataSource;
-    if (cachedQueryDataSource.containsKey(queryId)
-        && cachedQueryDataSource.get(queryId).containsKey(storageGroupPath)) {
-      queryDataSource = cachedQueryDataSource.get(queryId).get(storageGroupPath);
+    // get cached QueryDataSource
+    QueryDataSource cachedQueryDataSource;
+    if (cachedQueryDataSourcesMap.containsKey(queryId)
+        && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
+      cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(selectedPath, filter);
-      queryDataSource =
-          StorageEngine.getInstance().getAllQueryDataSource(singleSeriesExpression, context);
-      cachedQueryDataSource
+      cachedQueryDataSource =
+          StorageEngine.getInstance().getAllQueryDataSource(singleSeriesExpression);
+      cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
-          .put(storageGroupPath, queryDataSource);
+          .put(storageGroupPath, cachedQueryDataSource);
     }
 
-    if (queryDataSource.getUnSeqFileOrderIndexes(deviceId) == null) {
-      Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size() + 1];
+    if (cachedQueryDataSource.getUnSeqFileOrderIndexes(deviceId) == null) {
+      Integer[] orderIndexes = new Integer[cachedQueryDataSource.getUnseqResources().size() + 1];
       fillOrderIndexes(
           deviceId,
-          queryDataSource.getUnseqResources(),
-          queryDataSource.getUnclosedUnseqResource(),
+          cachedQueryDataSource.getUnseqResources(),
+          cachedQueryDataSource.getUnclosedUnseqResource(),
           orderIndexes,
           context.isAscending());
-      queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
+      cachedQueryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
     }
 
-    // used files should be added before mergeLock is unlocked, or they may be deleted by
-    // running merge
+    // construct QueryDataSource for selectedPath
+    QueryDataSource queryDataSource =
+        new QueryDataSource(
+            cachedQueryDataSource.getSeqResources(), cachedQueryDataSource.getUnseqResources());
+
+    TsFileResource unclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
+    try {
+      if (unclosedSeqResource != null) {
+        queryDataSource.setUnclosedSeqResource(
+            unclosedSeqResource.getUnsealedFileProcessor().query(selectedPath, context));
+      }
+    } catch (IOException e) {
+      throw new QueryProcessException(
+          String.format(
+              "%s: %s get ReadOnlyMemChunk has error",
+              storageGroupPath, unclosedSeqResource.getTsFile().getName()));
+    }
+
+    TsFileResource unclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
+    try {
+      if (unclosedUnseqResource != null) {
+        queryDataSource.setUnclosedUnseqResource(
+            unclosedUnseqResource.getUnsealedFileProcessor().query(selectedPath, context));
+      }
+    } catch (IOException e) {
+      throw new QueryProcessException(
+          String.format(
+              "%s: %s get ReadOnlyMemChunk has error",
+              storageGroupPath, unclosedUnseqResource.getTsFile().getName()));
+    }
+
+    queryDataSource.setUnSeqFileOrderIndexes(
+        deviceId, cachedQueryDataSource.getUnSeqFileOrderIndexes(deviceId));
+
+    // used files should be added before mergeLock is unlocked, or they may be deleted by running
+    // merge
     filePathsManager.addUsedFilesForQuery(context.getQueryId(), queryDataSource);
 
     long dataTTL = queryDataSource.getDataTTL();
@@ -162,8 +197,8 @@ public class QueryResourceManager {
       throws StorageEngineException {
     long queryId = context.getQueryId();
     String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(path);
-    if (cachedQueryDataSource.containsKey(queryId)) {
-      cachedQueryDataSource.get(queryId).remove(storageGroupPath);
+    if (cachedQueryDataSourcesMap.containsKey(queryId)) {
+      cachedQueryDataSourcesMap.get(queryId).remove(storageGroupPath);
     }
   }
 
@@ -235,7 +270,7 @@ public class QueryResourceManager {
     QueryTimeManager.getInstance().unRegisterQuery(queryId);
 
     // remove cached QueryDataSource
-    cachedQueryDataSource.remove(queryId);
+    cachedQueryDataSourcesMap.remove(queryId);
   }
 
   private static class QueryTokenManagerHelper {

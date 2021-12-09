@@ -1058,10 +1058,6 @@ public class SeriesReader {
 
     boolean isOverlapped(long time, TsFileResource right);
 
-    TsFileResource getNextSeqFileResource(boolean isDelete) throws IOException;
-
-    TsFileResource getNextUnseqFileResource(boolean isDelete) throws IOException;
-
     <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
 
     long getCurrentEndPoint(long time, Statistics<? extends Object> statistics);
@@ -1080,6 +1076,10 @@ public class SeriesReader {
     boolean hasNextSeqResource();
 
     boolean hasNextUnseqResource();
+
+    TsFileResource getNextSeqFileResource(boolean isDelete);
+
+    TsFileResource getNextUnseqFileResource(boolean isDelete);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1180,36 +1180,22 @@ public class SeriesReader {
     }
 
     @Override
-    public TsFileResource getNextSeqFileResource(boolean isDelete) throws IOException {
-      try {
-        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (isDelete) {
-          curSeqFileIndex--;
-        }
-        if (!tsFileResource.isClosed()) {
-          return tsFileResource.getUnsealedFileProcessor().query(seriesPath, context);
-        }
-        return tsFileResource;
-      } catch (IOException e) {
-        throw new IOException(e);
+    public TsFileResource getNextSeqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+      if (isDelete) {
+        curSeqFileIndex--;
       }
+      return tsFileResource;
     }
 
     @Override
-    public TsFileResource getNextUnseqFileResource(boolean isDelete) throws IOException {
-      try {
-        TsFileResource tsFileResource =
-            dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
-        if (isDelete) {
-          curUnseqFileIndex++;
-        }
-        if (!tsFileResource.isClosed()) {
-          return tsFileResource.getUnsealedFileProcessor().query(seriesPath, context);
-        }
-        return tsFileResource;
-      } catch (IOException e) {
-        throw new IOException(e);
+    public TsFileResource getNextUnseqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource =
+          dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+      if (isDelete) {
+        curUnseqFileIndex++;
       }
+      return tsFileResource;
     }
   }
 
@@ -1311,36 +1297,22 @@ public class SeriesReader {
     }
 
     @Override
-    public TsFileResource getNextSeqFileResource(boolean isDelete) throws IOException {
-      try {
-        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (isDelete) {
-          curSeqFileIndex++;
-        }
-        if (!tsFileResource.isClosed()) {
-          return tsFileResource.getUnsealedFileProcessor().query(seriesPath, context);
-        }
-        return tsFileResource;
-      } catch (IOException e) {
-        throw new IOException(e);
+    public TsFileResource getNextSeqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+      if (isDelete) {
+        curSeqFileIndex++;
       }
+      return tsFileResource;
     }
 
     @Override
-    public TsFileResource getNextUnseqFileResource(boolean isDelete) throws IOException {
-      try {
-        TsFileResource tsFileResource =
-            dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
-        if (isDelete) {
-          curUnseqFileIndex++;
-        }
-        if (!tsFileResource.isClosed()) {
-          return tsFileResource.getUnsealedFileProcessor().query(seriesPath, context);
-        }
-        return tsFileResource;
-      } catch (IOException e) {
-        throw new IOException(e);
+    public TsFileResource getNextUnseqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource =
+          dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+      if (isDelete) {
+        curUnseqFileIndex++;
       }
+      return tsFileResource;
     }
   }
 

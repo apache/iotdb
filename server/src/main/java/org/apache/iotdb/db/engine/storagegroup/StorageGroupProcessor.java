@@ -1612,8 +1612,7 @@ public class StorageGroupProcessor {
     }
   }
 
-  public QueryDataSource getAllQueryDataSource(QueryContext context, Filter timeFilter)
-      throws QueryProcessException {
+  public QueryDataSource getAllQueryDataSource(Filter timeFilter) throws QueryProcessException {
     readLock();
     try {
       Pair<List<TsFileResource>, TsFileResource> seqResources =

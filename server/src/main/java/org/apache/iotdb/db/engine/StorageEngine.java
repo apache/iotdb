@@ -822,13 +822,12 @@ public class StorageEngine implements IService {
         fullPath, context, filePathsManager, seriesExpression.getFilter());
   }
 
-  public QueryDataSource getAllQueryDataSource(
-      SingleSeriesExpression seriesExpression, QueryContext context)
+  public QueryDataSource getAllQueryDataSource(SingleSeriesExpression seriesExpression)
       throws StorageEngineException, QueryProcessException {
     PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
     PartialPath deviceId = fullPath.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getAllQueryDataSource(context, seriesExpression.getFilter());
+    return storageGroupProcessor.getAllQueryDataSource(seriesExpression.getFilter());
   }
 
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
