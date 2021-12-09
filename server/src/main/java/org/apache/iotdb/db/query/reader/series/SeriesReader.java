@@ -1155,13 +1155,14 @@ public class SeriesReader {
     public boolean hasNextSeqResource() {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(),
-            timeFilter,
-            fileFilter,
-            true,
-            dataSource.getDataTTL(),
-            context.isDebug())) {
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(),
+                timeFilter,
+                fileFilter,
+                true,
+                dataSource.getDataTTL(),
+                context.isDebug())) {
           break;
         }
         curSeqFileIndex--;
@@ -1174,13 +1175,14 @@ public class SeriesReader {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource =
             dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
-        if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(),
-            timeFilter,
-            fileFilter,
-            false,
-            dataSource.getDataTTL(),
-            context.isDebug())) {
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(),
+                timeFilter,
+                fileFilter,
+                false,
+                dataSource.getDataTTL(),
+                context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;
@@ -1278,13 +1280,14 @@ public class SeriesReader {
     public boolean hasNextSeqResource() {
       while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
-        if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(),
-            timeFilter,
-            fileFilter,
-            true,
-            dataSource.getDataTTL(),
-            context.isDebug())) {
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(),
+                timeFilter,
+                fileFilter,
+                true,
+                dataSource.getDataTTL(),
+                context.isDebug())) {
           break;
         }
         curSeqFileIndex++;
@@ -1297,13 +1300,14 @@ public class SeriesReader {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
         TsFileResource tsFileResource =
             dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
-        if (tsFileResource.isSatisfied(
-            seriesPath.getDevice(),
-            timeFilter,
-            fileFilter,
-            false,
-            dataSource.getDataTTL(),
-            context.isDebug())) {
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(),
+                timeFilter,
+                fileFilter,
+                false,
+                dataSource.getDataTTL(),
+                context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;

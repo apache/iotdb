@@ -136,50 +136,52 @@ public class QueryResourceManager {
           .put(storageGroupPath, cachedQueryDataSource);
     }
 
-    if (cachedQueryDataSource.getUnSeqFileOrderIndexes(deviceId) == null) {
-      Integer[] orderIndexes = new Integer[cachedQueryDataSource.getUnseqResources().size() + 1];
-      fillOrderIndexes(
-          deviceId,
-          cachedQueryDataSource.getUnseqResources(),
-          cachedQueryDataSource.getUnclosedUnseqResource(),
-          orderIndexes,
-          context.isAscending());
-      cachedQueryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
-    }
-
     // construct QueryDataSource for selectedPath
     QueryDataSource queryDataSource =
         new QueryDataSource(
             cachedQueryDataSource.getSeqResources(), cachedQueryDataSource.getUnseqResources());
 
-    TsFileResource unclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
+    TsFileResource cachedUnclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
     try {
-      if (unclosedSeqResource != null) {
-        queryDataSource.setUnclosedSeqResource(
-            unclosedSeqResource.getUnsealedFileProcessor().query(selectedPath, context));
+      if (cachedUnclosedSeqResource != null) {
+        TsFileResource unclosedSeqResource =
+            cachedUnclosedSeqResource.getUnsealedFileProcessor().query(selectedPath, context);
+        if (unclosedSeqResource != null) {
+          queryDataSource.setUnclosedSeqResource(unclosedSeqResource);
+        }
       }
     } catch (IOException e) {
       throw new QueryProcessException(
           String.format(
               "%s: %s get ReadOnlyMemChunk has error",
-              storageGroupPath, unclosedSeqResource.getTsFile().getName()));
+              storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
     }
 
-    TsFileResource unclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
+    TsFileResource cachedUnclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
     try {
-      if (unclosedUnseqResource != null) {
-        queryDataSource.setUnclosedUnseqResource(
-            unclosedUnseqResource.getUnsealedFileProcessor().query(selectedPath, context));
+      if (cachedUnclosedUnseqResource != null) {
+        TsFileResource unclosedUnseqResource =
+            cachedUnclosedUnseqResource.getUnsealedFileProcessor().query(selectedPath, context);
+        if (unclosedUnseqResource != null) {
+          queryDataSource.setUnclosedUnseqResource(unclosedUnseqResource);
+        }
       }
     } catch (IOException e) {
       throw new QueryProcessException(
           String.format(
               "%s: %s get ReadOnlyMemChunk has error",
-              storageGroupPath, unclosedUnseqResource.getTsFile().getName()));
+              storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
     }
 
-    queryDataSource.setUnSeqFileOrderIndexes(
-        deviceId, cachedQueryDataSource.getUnSeqFileOrderIndexes(deviceId));
+    Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size() + 1];
+    fillOrderIndexes(
+        deviceId,
+        queryDataSource.getUnseqResources(),
+        queryDataSource.getUnclosedUnseqResource(),
+        orderIndexes,
+        context.isAscending());
+    queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
+    queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
 
     // used files should be added before mergeLock is unlocked, or they may be deleted by running
     // merge
