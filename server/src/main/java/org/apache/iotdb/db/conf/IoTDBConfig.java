@@ -72,8 +72,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  private boolean enableMetricService = false;
-
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
@@ -979,14 +977,6 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
-  }
-
-  public boolean isEnableMetricService() {
-    return enableMetricService;
-  }
-
-  public void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
   }
 
   void setDataDirs(String[] dataDirs) {

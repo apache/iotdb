@@ -113,8 +113,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   public void start() throws StartupException {
     try {
-      JMXService.registerMBean(getInstance(), mbeanName);
-      startService();
+      if (metricConfig.getEnableMetric()) {
+        JMXService.registerMBean(getInstance(), mbeanName);
+        startService();
+      }
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
       throw new StartupException(this.getID().getName(), e.getMessage());
@@ -123,8 +125,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public void stop() {
-    stopService();
-    JMXService.deregisterMBean(mbeanName);
+    if (metricConfig.getEnableMetric()) {
+      stopService();
+      JMXService.deregisterMBean(mbeanName);
+    }
   }
 
   @Override
