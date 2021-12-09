@@ -96,11 +96,9 @@ public class ValueFill extends IFill implements Cloneable {
       case BOOLEAN:
         // Fill only if the fill value is true or false
         if (singleStringValue.equals("true")) {
-          return new TimeValuePair(
-            queryStartTime, new TsPrimitiveType.TsBoolean(true));
+          return new TimeValuePair(queryStartTime, new TsPrimitiveType.TsBoolean(true));
         } else if (singleStringValue.equals("false")) {
-          return new TimeValuePair(
-            queryStartTime, new TsPrimitiveType.TsBoolean(false));
+          return new TimeValuePair(queryStartTime, new TsPrimitiveType.TsBoolean(false));
         } else {
           return null;
         }

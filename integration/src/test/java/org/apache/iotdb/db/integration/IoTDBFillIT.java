@@ -272,16 +272,15 @@ public class IoTDBFillIT {
 
   @Test
   public void LinearFillCommonTest() {
-    String[] retArray1 =
-      new String[] {"3,3.3,false,33", "70,70.34,null,374", "70,70.34,null,374"};
+    String[] retArray1 = new String[] {"3,3.3,false,33", "70,70.34,null,374", "70,70.34,null,374"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-        statement.execute(
-          "select temperature, status, hardware from "
-            + "root.ln.wf01.wt01 where time = 3 "
-            + "Fill(linear, 5ms, 5ms)");
+          statement.execute(
+              "select temperature, status, hardware from "
+                  + "root.ln.wf01.wt01 where time = 3 "
+                  + "Fill(linear, 5ms, 5ms)");
 
       Assert.assertTrue(hasResultSet);
 
@@ -290,55 +289,55 @@ public class IoTDBFillIT {
       try {
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
 
         hasResultSet =
-          statement.execute(
-            "select temperature, status, hardware "
-              + "from root.ln.wf01.wt01 where time = 70 "
-              + "Fill(linear, 500ms, 500ms)");
+            statement.execute(
+                "select temperature, status, hardware "
+                    + "from root.ln.wf01.wt01 where time = 70 "
+                    + "Fill(linear, 500ms, 500ms)");
 
         Assert.assertTrue(hasResultSet);
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
 
         hasResultSet =
-          statement.execute(
-            "select temperature, status, hardware "
-              + "from root.ln.wf01.wt01 where time = 70 "
-              + "Fill(linear)");
+            statement.execute(
+                "select temperature, status, hardware "
+                    + "from root.ln.wf01.wt01 where time = 70 "
+                    + "Fill(linear)");
 
         Assert.assertTrue(hasResultSet);
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
@@ -467,25 +466,25 @@ public class IoTDBFillIT {
   public void valueFillTest() {
     String res = "7,7.0,null,7";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-        statement.execute(
-          "select temperature, status, hardware "
-            + "from root.ln.wf01.wt01 where time = 7 "
-            + "Fill(7)");
+          statement.execute(
+              "select temperature, status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 7 "
+                  + "Fill(7)");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
         String ans =
-          resultSet.getString(TIMESTAMP_STR)
-            + ","
-            + resultSet.getString(TEMPERATURE_STR_1)
-            + ","
-            + resultSet.getString(STATUS_STR_1)
-            + ","
-            + resultSet.getString(HARDWARE_STR);
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(res, ans);
       }
     } catch (Exception e) {
@@ -498,25 +497,25 @@ public class IoTDBFillIT {
   public void stringValueFillTest() {
     String res = "7,null,null,null";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-        statement.execute(
-          "select temperature, status, hardware "
-            + "from root.ln.wf01.wt01 where time = 7 "
-            + "Fill('test string')");
+          statement.execute(
+              "select temperature, status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 7 "
+                  + "Fill('test string')");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
         String ans =
-          resultSet.getString(TIMESTAMP_STR)
-            + ","
-            + resultSet.getString(TEMPERATURE_STR_1)
-            + ","
-            + resultSet.getString(STATUS_STR_1)
-            + ","
-            + resultSet.getString(HARDWARE_STR);
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(res, ans);
       }
     } catch (Exception e) {
@@ -529,25 +528,25 @@ public class IoTDBFillIT {
   public void boolValueFillTest() {
     String res = "7,null,true,null";
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-        statement.execute(
-          "select temperature, status, hardware "
-            + "from root.ln.wf01.wt01 where time = 7 "
-            + "Fill(true)");
+          statement.execute(
+              "select temperature, status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 7 "
+                  + "Fill(true)");
 
       Assert.assertTrue(hasResultSet);
       ResultSet resultSet = statement.getResultSet();
       while (resultSet.next()) {
         String ans =
-          resultSet.getString(TIMESTAMP_STR)
-            + ","
-            + resultSet.getString(TEMPERATURE_STR_1)
-            + ","
-            + resultSet.getString(STATUS_STR_1)
-            + ","
-            + resultSet.getString(HARDWARE_STR);
+            resultSet.getString(TIMESTAMP_STR)
+                + ","
+                + resultSet.getString(TEMPERATURE_STR_1)
+                + ","
+                + resultSet.getString(STATUS_STR_1)
+                + ","
+                + resultSet.getString(HARDWARE_STR);
         Assert.assertEquals(res, ans);
       }
     } catch (Exception e) {
@@ -672,13 +671,13 @@ public class IoTDBFillIT {
   public void PreviousFillTest() {
     String[] retArray1 = new String[] {"3,3.3,false,33", "70,50.5,false,550", "70,null,null,null"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
-         Statement statement = connection.createStatement()) {
+        Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
-        statement.execute(
-          "select temperature,status, hardware "
-            + "from root.ln.wf01.wt01 where time = 3 "
-            + "Fill(previous, 5ms)");
+          statement.execute(
+              "select temperature,status, hardware "
+                  + "from root.ln.wf01.wt01 where time = 3 "
+                  + "Fill(previous, 5ms)");
 
       Assert.assertTrue(hasResultSet);
       int cnt;
@@ -687,55 +686,55 @@ public class IoTDBFillIT {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
 
         hasResultSet =
-          statement.execute(
-            "select temperature,status, hardware "
-              + "from root.ln.wf01.wt01 where time = 70 "
-              + "Fill(previous, 500ms)");
+            statement.execute(
+                "select temperature,status, hardware "
+                    + "from root.ln.wf01.wt01 where time = 70 "
+                    + "Fill(previous, 500ms)");
 
         Assert.assertTrue(hasResultSet);
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
 
         hasResultSet =
-          statement.execute(
-            "select temperature,status, hardware "
-              + "from root.ln.wf01.wt01 where time = 70 "
-              + "Fill(previous, 5ms)");
+            statement.execute(
+                "select temperature,status, hardware "
+                    + "from root.ln.wf01.wt01 where time = 70 "
+                    + "Fill(previous, 5ms)");
 
         Assert.assertTrue(hasResultSet);
         resultSet = statement.getResultSet();
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(TEMPERATURE_STR_1)
-              + ","
-              + resultSet.getString(STATUS_STR_1)
-              + ","
-              + resultSet.getString(HARDWARE_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(TEMPERATURE_STR_1)
+                  + ","
+                  + resultSet.getString(STATUS_STR_1)
+                  + ","
+                  + resultSet.getString(HARDWARE_STR);
           Assert.assertEquals(retArray1[cnt], ans);
           cnt++;
         }
