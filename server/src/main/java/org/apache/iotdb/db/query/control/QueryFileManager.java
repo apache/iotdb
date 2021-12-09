@@ -77,7 +77,6 @@ public class QueryFileManager {
         if (pathMap.get(queryId).remove(tsFileResource) != null) {
           FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
         }
-        iterator.remove();
       }
     }
   }

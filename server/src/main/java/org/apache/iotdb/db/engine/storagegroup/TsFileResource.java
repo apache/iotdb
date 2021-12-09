@@ -559,6 +559,10 @@ public class TsFileResource {
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+    if (isDeleted()) {
+      return false;
+    }
+
     if (!getDevices().contains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
@@ -590,6 +594,10 @@ public class TsFileResource {
 
   /** @return true if the TsFile lives beyond TTL */
   public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl) {
+    if (isDeleted()) {
+      return false;
+    }
+
     long startTime = getFileStartTime();
     long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
