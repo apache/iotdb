@@ -1297,7 +1297,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
 
-    if (ctx.fillClause().oldTypeClause() != null) {
+    if (ctx.fillClause().oldTypeClause().size() > 0) {
       // old type fill logic
       List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.fillClause().oldTypeClause();
       Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
@@ -1329,7 +1329,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillClauseComponent fillClauseComponent = new FillClauseComponent();
 
-    if (ctx.oldTypeClause() != null) {
+    if (ctx.oldTypeClause().size() > 0) {
       // old type fill logic
       List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.oldTypeClause();
       Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);

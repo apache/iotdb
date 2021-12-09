@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.executor.fill;
 
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -90,11 +91,19 @@ public class ValueFill extends IFill implements Cloneable {
     }
   }
 
-  public TimeValuePair getSpecifiedFillResult(TSDataType dataType) {
+  public TimeValuePair getSpecifiedFillResult(TSDataType dataType) throws QueryProcessException {
     switch (dataType) {
       case BOOLEAN:
-        return new TimeValuePair(
-            queryStartTime, new TsPrimitiveType.TsBoolean(Boolean.parseBoolean(singleStringValue)));
+        // Fill only if the fill value is true or false
+        if (singleStringValue.equals("true")) {
+          return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsBoolean(true));
+        } else if (singleStringValue.equals("false")) {
+          return new TimeValuePair(
+            queryStartTime, new TsPrimitiveType.TsBoolean(false));
+        } else {
+          return null;
+        }
       case INT32:
         return new TimeValuePair(
             queryStartTime, new TsPrimitiveType.TsInt(Integer.parseInt(singleStringValue)));
