@@ -738,7 +738,8 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/Metric-Tool','Metric-Tool']
 						]
 					},
 					{

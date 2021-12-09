@@ -43,7 +43,7 @@ IoTDB Server 提供了监控模块，可以在需要地方的引入变量监控�
 第四步：查看具体的指标参数，根据选择的获取的指标的方式分别查看即可，即`jmx`或`prometheus`
 
 - 对于jmx，请连接后查看`org.apache.iotdb.metrics`
-- 对于prometheus进行如下的配置（部分参数可以自行调整，从而获取监控数据）
+- 对于prometheus进行如下的配置（部分参数可以自行调整，从而获取监控数据），需要注意的是，如果使用docker方式运行iotdb-server，则需要在使用`docker run`的时候使用`-p 9091:9091`参数来暴露对应端口。
 
 ```
 job_name: push-metrics
