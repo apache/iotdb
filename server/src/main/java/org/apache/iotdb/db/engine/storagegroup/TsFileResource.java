@@ -257,7 +257,7 @@ public class TsFileResource {
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
       readVersionNumber(inputStream);
-      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
+      timeIndexType = ReadWriteIOUtils.readByte(inputStream);
       timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
@@ -311,7 +311,7 @@ public class TsFileResource {
 
   /** read version number, used for checking compatibility of TsFileResource in the future */
   private byte readVersionNumber(InputStream inputStream) throws IOException {
-    return ReadWriteIOUtils.readBytes(inputStream, 1)[0];
+    return ReadWriteIOUtils.readByte(inputStream);
   }
 
   public void updateStartTime(String device, long time) {

@@ -654,7 +654,8 @@ public class StorageGroupProcessor {
   }
 
   private void recoverTsFiles(List<TsFileResource> tsFiles, boolean isSeq) throws IOException {
-    for (int i = 0; i < tsFiles.size(); i++) {
+    boolean needsCheckTsFile = true;
+    for (int i = tsFiles.size() - 1; i >= 0; i--) {
       TsFileResource tsFileResource = tsFiles.get(i);
       long timePartitionId = tsFileResource.getTimePartition();
 
@@ -666,7 +667,7 @@ public class StorageGroupProcessor {
                   + FILE_NAME_SEPARATOR,
               tsFileResource,
               isSeq,
-              i == tsFiles.size() - 1);
+              needsCheckTsFile);
 
       RestorableTsFileIOWriter writer = null;
       try {
@@ -678,6 +679,9 @@ public class StorageGroupProcessor {
         } else {
           writer =
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
+          if (writer == null || !writer.hasCrashed()) {
+            needsCheckTsFile = false;
+          }
         }
       } catch (StorageGroupProcessorException | IOException e) {
         logger.warn(
@@ -689,7 +693,7 @@ public class StorageGroupProcessor {
         }
       }
 
-      if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+      if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
         // not the last file or cannot write, just close it
         tsFileResource.setClosed(true);
       } else if (writer.canWrite()) {
