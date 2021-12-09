@@ -18,17 +18,10 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
@@ -39,8 +32,16 @@ import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public abstract class AbstractMemTable implements IMemTable {
 
@@ -300,8 +301,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public boolean checkIfChunkDoesNotExist(String deviceId, String measurement) {
-    IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(deviceId));
+  public boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
     if (null == memChunkGroup) {
       return true;
     }
@@ -309,8 +310,8 @@ public abstract class AbstractMemTable implements IMemTable {
   }
 
   @Override
-  public long getCurrentChunkPointNum(String deviceId, String measurement) {
-    IWritableMemChunkGroup memChunkGroup = memTableMap.get(getDeviceID(deviceId));
+  public long getCurrentChunkPointNum(IDeviceID deviceId, String measurement) {
+    IWritableMemChunkGroup memChunkGroup = memTableMap.get(deviceId);
     return memChunkGroup.getCurrentChunkPointNum(measurement);
   }
 
@@ -440,16 +441,6 @@ public abstract class AbstractMemTable implements IMemTable {
   @Override
   public long getCreatedTime() {
     return createdTime;
-  }
-
-  private IDeviceID getDeviceID(String deviceId) {
-    try {
-      return DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId));
-    } catch (IllegalPathException e) {
-      logger.error("device id is illegal");
-    }
-
-    return null;
   }
 
   private IDeviceID getDeviceID(PartialPath deviceId) {

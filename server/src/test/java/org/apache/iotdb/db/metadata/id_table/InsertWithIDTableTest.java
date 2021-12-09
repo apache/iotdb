@@ -1,4 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.metadata.id_table;
+
+import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -42,17 +63,26 @@ public class InsertWithIDTableTest {
 
   private boolean isEnableIDTable = false;
 
+  private String originalDeviceIDTransformationMethod = null;
+
   @Before
   public void before() {
     IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+    originalDeviceIDTransformationMethod =
+        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     EnvironmentUtils.envSetUp();
   }
 
   @After
   public void clean() throws IOException, StorageEngineException {
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -67,10 +97,10 @@ public class InsertWithIDTableTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
   }
 
@@ -83,15 +113,15 @@ public class InsertWithIDTableTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insert(vectorRowPlan);
 
-    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
+    assertEquals("[s1, s2, s3]", Arrays.toString(vectorRowPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(1, dataSet.getPaths().size());
+    assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
+      assertEquals(3, record.getFields().size());
     }
   }
 
@@ -148,10 +178,10 @@ public class InsertWithIDTableTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
   }
 
@@ -166,13 +196,13 @@ public class InsertWithIDTableTest {
     plan1.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PhysicalPlanType.INSERT.ordinal(), byteBuffer.get());
+    assertEquals(PhysicalPlanType.INSERT.ordinal(), byteBuffer.get());
 
     InsertRowPlan plan2 = new InsertRowPlan();
     plan2.deserialize(byteBuffer);
 
     executor.insert(plan2);
-    Assert.assertEquals(plan1, plan2);
+    assertEquals(plan1, plan2);
   }
 
   @Test
@@ -241,14 +271,14 @@ public class InsertWithIDTableTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select s1 from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(1, dataSet.getPaths().size());
+    assertEquals(1, dataSet.getPaths().size());
     int count = 0;
     while (dataSet.hasNext()) {
       count++;
       RowRecord record = dataSet.next();
-      Assert.assertEquals(1, record.getFields().size());
+      assertEquals(1, record.getFields().size());
     }
-    Assert.assertEquals(1, count);
+    assertEquals(1, count);
   }
 
   @Test
@@ -295,10 +325,10 @@ public class InsertWithIDTableTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
   }
 
@@ -355,11 +385,11 @@ public class InsertWithIDTableTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+    assertEquals(6, dataSet.getPaths().size());
     int rowNum = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
       List<Field> fields = record.getFields();
       for (int i = 0; i < 6; ++i) {
         if (i % times.length == rowNum) {
@@ -388,15 +418,15 @@ public class InsertWithIDTableTest {
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
 
-    Assert.assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
+    assertEquals("[s1, s2, s3]", Arrays.toString(tabletPlan.getMeasurementMNodes()));
 
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(1, dataSet.getPaths().size());
+    assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(3, record.getFields().size());
+      assertEquals(3, record.getFields().size());
     }
   }
 
@@ -411,13 +441,13 @@ public class InsertWithIDTableTest {
     plan1.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+    assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
     executor.insertTablet(plan2);
 
-    Assert.assertEquals(plan1, plan2);
+    assertEquals(plan1, plan2);
   }
 
   @Test
@@ -439,13 +469,13 @@ public class InsertWithIDTableTest {
     plan1.serialize(byteBuffer);
     byteBuffer.flip();
 
-    Assert.assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
+    assertEquals(PhysicalPlanType.BATCHINSERT.ordinal(), byteBuffer.get());
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
     executor.insertTablet(plan2);
 
-    Assert.assertEquals(plan1, plan2);
+    assertEquals(plan1, plan2);
   }
 
   @Test
@@ -464,10 +494,10 @@ public class InsertWithIDTableTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
 
     // test recover
@@ -484,10 +514,10 @@ public class InsertWithIDTableTest {
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp.d1");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
   }
 
@@ -507,16 +537,16 @@ public class InsertWithIDTableTest {
     // nothing can be found when we not insert data
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(0, dataSet.getPaths().size());
+    assertEquals(0, dataSet.getPaths().size());
 
     executor.insertTablet(tabletPlan);
 
     queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select ** from root.isp");
     dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    assertEquals(3, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(6, record.getFields().size());
+      assertEquals(6, record.getFields().size());
     }
   }
 
@@ -704,10 +734,10 @@ public class InsertWithIDTableTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.multi.**");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(60, dataSet.getPaths().size());
+    assertEquals(60, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      Assert.assertEquals(60, record.getFields().size());
+      assertEquals(60, record.getFields().size());
     }
   }
 }

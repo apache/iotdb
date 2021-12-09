@@ -18,13 +18,14 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.util.Collections;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+
+import java.util.Collections;
 
 /** Memtable insert benchmark. Bench the Memtable and get its performance. */
 public class MemtableBenchmark {

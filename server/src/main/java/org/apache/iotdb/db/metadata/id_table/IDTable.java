@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -40,9 +37,15 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 /** id table belongs to a storage group and mapping timeseries path to it's schema */
 public class IDTable {
@@ -217,6 +220,35 @@ public class IDTable {
   }
 
   /**
+   * get last cache of the timeseies
+   *
+   * @param timeseriesID timeseries ID of the timeseries
+   * @throws MetadataException if the timeseries is not exits
+   */
+  public synchronized TimeValuePair getLastCache(TimeseriesID timeseriesID)
+      throws MetadataException {
+    return getSchemaEntry(timeseriesID).getCachedLast();
+  }
+
+  /**
+   * update last cache of the timeseies
+   *
+   * @param timeseriesID timeseries ID of the timeseries
+   * @param pair last time value pair
+   * @param highPriorityUpdate is high priority update
+   * @param latestFlushedTime last flushed time
+   * @throws MetadataException if the timeseries is not exits
+   */
+  public synchronized void updateLastCache(
+      TimeseriesID timeseriesID,
+      TimeValuePair pair,
+      boolean highPriorityUpdate,
+      Long latestFlushedTime)
+      throws MetadataException {
+    getSchemaEntry(timeseriesID).updateCachedLast(pair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  /**
    * check whether a time series is exist if exist, check the type consistency if not exist, call
    * MManager to create it
    *
@@ -328,13 +360,13 @@ public class IDTable {
     DeviceEntry deviceEntry = idTables[slot].get(deviceID);
     if (deviceEntry == null) {
       throw new MetadataException(
-          "update non exist timeseries's latest flushed time, timeseries id is: " + timeseriesID);
+          "get non exist timeseries's schema entry, timeseries id is: " + timeseriesID);
     }
 
     SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(timeseriesID.getMeasurement());
     if (schemaEntry == null) {
       throw new MetadataException(
-          "update non exist timeseries's latest flushed time, timeseries id is: " + timeseriesID);
+          "get non exist timeseries's schema entry, timeseries id is: " + timeseriesID);
     }
 
     return schemaEntry;

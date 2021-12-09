@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
+
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 

@@ -18,9 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -32,6 +29,10 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -151,10 +152,10 @@ public interface IMemTable {
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
-  boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
+  boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getCurrentChunkPointNum(String deviceId, String measurement);
+  long getCurrentChunkPointNum(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

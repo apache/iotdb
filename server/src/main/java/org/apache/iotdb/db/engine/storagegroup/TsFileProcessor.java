@@ -18,16 +18,6 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.adapter.CompressionRatio;
@@ -48,8 +38,11 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTi
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -74,8 +67,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileProcessor {
@@ -340,13 +345,14 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getDeviceId().getFullPath();
+    IDeviceID deviceID = getDeviceID(insertRowPlan.getDeviceId().getFullPath());
+
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
         continue;
       }
-      if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
+      if (workMemTable.checkIfChunkDoesNotExist(deviceID, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
         chunkMetadataIncrement +=
             ChunkMetadata.calculateRamSize(
@@ -355,7 +361,7 @@ public class TsFileProcessor {
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum =
-            workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
+            workMemTable.getCurrentChunkPointNum(deviceID, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemSize(insertRowPlan.getDataTypes()[i])
@@ -378,8 +384,9 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk alignedMemChunk = null;
-    String deviceId = insertRowPlan.getDeviceId().getFullPath();
-    if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
+    IDeviceID deviceID = getDeviceID(insertRowPlan.getDeviceId().getFullPath());
+
+    if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
@@ -388,13 +395,13 @@ public class TsFileProcessor {
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          workMemTable.getCurrentChunkPointNum(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
               ? AlignedTVList.alignedTvListArrayMemSize(insertRowPlan.getDataTypes())
               : 0;
       alignedMemChunk =
-          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
+          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceID))
               .getAlignedMemChunk();
     }
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
@@ -425,7 +432,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+    IDeviceID deviceID = getDeviceID(insertTabletPlan.getDeviceId().getFullPath());
 
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -435,7 +442,7 @@ public class TsFileProcessor {
       if (dataType == null || column == null || measurement == null) {
         continue;
       }
-      updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
+      updateMemCost(dataType, measurement, deviceID, start, end, memIncrements, column);
     }
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -451,7 +458,7 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+    IDeviceID deviceId = getDeviceID(insertTabletPlan.getDeviceId().getFullPath());
 
     updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
@@ -471,7 +478,7 @@ public class TsFileProcessor {
   private void updateMemCost(
       TSDataType dataType,
       String measurement,
-      String deviceId,
+      IDeviceID deviceId,
       int start,
       int end,
       long[] memIncrements,
@@ -507,7 +514,7 @@ public class TsFileProcessor {
 
   private void updateAlignedMemCost(
       TSDataType[] dataTypes,
-      String deviceId,
+      IDeviceID deviceId,
       String[] measurementIds,
       int start,
       int end,
@@ -1358,6 +1365,16 @@ public class TsFileProcessor {
 
   public boolean alreadyMarkedClosing() {
     return shouldClose;
+  }
+
+  private IDeviceID getDeviceID(String deviceId) {
+    try {
+      return DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId));
+    } catch (IllegalPathException e) {
+      logger.error("device id is illegal");
+    }
+
+    return null;
   }
 
   @TestOnly

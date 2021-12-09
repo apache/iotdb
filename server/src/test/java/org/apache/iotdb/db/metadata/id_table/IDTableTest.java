@@ -25,6 +25,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -60,14 +61,29 @@ public class IDTableTest {
 
   private CompressionType compressionType;
 
+  private boolean isEnableIDTable = false;
+
+  private String originalDeviceIDTransformationMethod = null;
+
   @Before
-  public void setUp() {
+  public void before() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
+    isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+    originalDeviceIDTransformationMethod =
+        IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
+    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
     EnvironmentUtils.envSetUp();
   }
 
   @After
-  public void tearDown() throws Exception {
+  public void clean() throws IOException, StorageEngineException {
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
     EnvironmentUtils.cleanEnv();
   }
 

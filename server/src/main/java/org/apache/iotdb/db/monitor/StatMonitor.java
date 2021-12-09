@@ -181,7 +181,8 @@ public class StatMonitor implements StatMonitorMBean, IService {
                     Collections.singletonList(TSDataType.INT64),
                     new QueryContext(queryId),
                     null,
-                    Collections.singletonMap(monitorSeries.getDevice(), measurementSet))
+                    Collections.singletonMap(monitorSeries.getDevice(), measurementSet),
+                    config.isEnableIDTable())
                 .get(0)
                 .right;
         if (timeValuePair.getValue() != null) {

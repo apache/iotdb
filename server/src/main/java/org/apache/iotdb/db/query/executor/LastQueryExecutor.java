@@ -26,6 +26,8 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.id_table.IDTable;
+import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -70,6 +72,11 @@ public class LastQueryExecutor {
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  // for test to reload this parameter after restart, it can't be static
+  private final boolean isIdTableEnabled =
+      IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+
+  private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -138,7 +145,12 @@ public class LastQueryExecutor {
       RawDataQueryPlan lastQueryPlan)
       throws QueryProcessException, StorageEngineException, IOException {
     return calculateLastPairForSeriesLocally(
-        seriesPaths, dataTypes, context, expression, lastQueryPlan.getDeviceToMeasurements());
+        seriesPaths,
+        dataTypes,
+        context,
+        expression,
+        lastQueryPlan.getDeviceToMeasurements(),
+        isIdTableEnabled);
   }
 
   public static List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeriesLocally(
@@ -146,7 +158,8 @@ public class LastQueryExecutor {
       List<TSDataType> dataTypes,
       QueryContext context,
       IExpression expression,
-      Map<String, Set<String>> deviceMeasurementsMap)
+      Map<String, Set<String>> deviceMeasurementsMap,
+      boolean isIdTableEnabled)
       throws QueryProcessException, StorageEngineException, IOException {
     List<LastCacheAccessor> cacheAccessors = new ArrayList<>();
     Filter filter = (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
@@ -161,7 +174,8 @@ public class LastQueryExecutor {
             cacheAccessors,
             nonCachedPaths,
             nonCachedDataTypes,
-            context.isDebug());
+            context.isDebug(),
+            isIdTableEnabled);
     if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
@@ -220,11 +234,16 @@ public class LastQueryExecutor {
       List<LastCacheAccessor> cacheAccessors,
       List<PartialPath> restPaths,
       List<TSDataType> restDataType,
-      boolean debugOn) {
+      boolean debugOn,
+      boolean isIdTableEnabled) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
-        cacheAccessors.add(new LastCacheAccessor(path));
+        if (isIdTableEnabled) {
+          cacheAccessors.add(new IDTableLastCacheAccessor(path));
+        } else {
+          cacheAccessors.add(new MManagerLastCacheAccessor(path));
+        }
       }
     } else {
       for (int i = 0; i < seriesPaths.size(); i++) {
@@ -262,12 +281,18 @@ public class LastQueryExecutor {
     return resultContainer;
   }
 
-  private static class LastCacheAccessor {
+  private interface LastCacheAccessor {
+    public TimeValuePair read();
+
+    public void write(TimeValuePair pair);
+  }
+
+  private static class MManagerLastCacheAccessor implements LastCacheAccessor {
 
     private final MeasurementPath path;
     private IMeasurementMNode node;
 
-    LastCacheAccessor(PartialPath seriesPath) {
+    MManagerLastCacheAccessor(PartialPath seriesPath) {
       this.path = (MeasurementPath) seriesPath;
     }
 
@@ -295,6 +320,39 @@ public class LastQueryExecutor {
         IoTDB.metaManager.updateLastCache(path, pair, false, Long.MIN_VALUE);
       } else {
         IoTDB.metaManager.updateLastCache(node, pair, false, Long.MIN_VALUE);
+      }
+    }
+  }
+
+  private static class IDTableLastCacheAccessor implements LastCacheAccessor {
+
+    private PartialPath fullPath;
+
+    IDTableLastCacheAccessor(PartialPath seriesPath) {
+      fullPath = seriesPath;
+    }
+
+    @Override
+    public TimeValuePair read() {
+      try {
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
+        return table.getLastCache(new TimeseriesID(fullPath));
+      } catch (StorageEngineException | MetadataException e) {
+        logger.error("last query can't find storage group: path is: " + fullPath);
+      }
+
+      return null;
+    }
+
+    @Override
+    public void write(TimeValuePair pair) {
+      try {
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
+        table.updateLastCache(new TimeseriesID(fullPath), pair, false, Long.MIN_VALUE);
+      } catch (StorageEngineException | MetadataException e) {
+        logger.error("last query can't find storage group: path is: " + fullPath);
       }
     }
   }

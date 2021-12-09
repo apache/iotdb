@@ -19,9 +19,10 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
-import java.util.function.Function;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+
+import java.util.function.Function;
 
 /** factory to build device id according to configured algorithm */
 public class DeviceIDFactory {
