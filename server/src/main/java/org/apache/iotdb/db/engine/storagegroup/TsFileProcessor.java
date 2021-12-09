@@ -1148,8 +1148,8 @@ public class TsFileProcessor {
   private void endFile() throws IOException, TsFileProcessorException {
     logger.info("Start to end file {}", tsFileResource);
     long closeStartTime = System.currentTimeMillis();
-    tsFileResource.serialize();
     writer.endFile();
+    tsFileResource.serialize();
     logger.info("Ended file {}", tsFileResource);
 
     // remove this processor from Closing list in StorageGroupProcessor,
