@@ -64,17 +64,19 @@ public class TsFileRecoverPerformer {
   private final String logNodePrefix;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
+  private boolean needsCheckTsFile;
 
-  /** @param isLastFile whether this TsFile is the last file of its partition */
+  /** @param needsCheckTsFile whether this TsFile needs to open TsFileIOWriter */
   public TsFileRecoverPerformer(
       String logNodePrefix,
       TsFileResource currentTsFileResource,
       boolean sequence,
-      boolean isLastFile) {
+      boolean needsCheckTsFile) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
+    this.needsCheckTsFile = needsCheckTsFile;
   }
 
   /**
@@ -88,7 +90,7 @@ public class TsFileRecoverPerformer {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public RestorableTsFileIOWriter recover(
       boolean needRedoWal, Supplier<ByteBuffer[]> supplier, Consumer<ByteBuffer[]> consumer)
-      throws StorageGroupProcessorException {
+      throws StorageGroupProcessorException, IOException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
@@ -96,6 +98,12 @@ public class TsFileRecoverPerformer {
       return null;
     }
 
+    // if a file doesn't need to check TsFile and tsFileResource Exists, skip checking it
+    if (!needsCheckTsFile && tsFileResource.resourceFileExists()) {
+      // .resource file exists, deserialize it
+      recoverResourceFromFile();
+      return null;
+    }
     // remove corrupted part of the TsFile
     RestorableTsFileIOWriter restorableTsFileIOWriter;
     try {
