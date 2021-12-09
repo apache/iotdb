@@ -979,22 +979,6 @@ public class IoTDBConfig {
     return dataDirs;
   }
 
-  public int getMetricsPort() {
-    return metricsPort;
-  }
-
-  void setMetricsPort(int metricsPort) {
-    this.metricsPort = metricsPort;
-  }
-
-  public boolean isEnableMetricService() {
-    return enableMetricService;
-  }
-
-  public void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
-  }
-
   void setDataDirs(String[] dataDirs) {
     this.dataDirs = dataDirs;
   }
