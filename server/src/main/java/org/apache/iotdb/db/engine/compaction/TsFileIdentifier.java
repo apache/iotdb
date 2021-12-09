@@ -166,6 +166,24 @@ public class TsFileIdentifier {
     return filename;
   }
 
+  public String getFilePath() {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      return dataDir
+          + File.separator
+          + (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+          + File.separator
+          + logicalStorageGroupName
+          + File.separator
+          + virtualStorageGroupId
+          + File.separator
+          + timePartitionId
+          + File.separator
+          + filename;
+    }
+    return "";
+  }
+
   public String getLogicalStorageGroupName() {
     return logicalStorageGroupName;
   }

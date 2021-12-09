@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -357,7 +358,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + ".tsfile")));
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -378,7 +379,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
     BufferedReader logReader = new BufferedReader(new FileReader(compactionLogFile));
     List<String> logs = new ArrayList<>();
     String line;
@@ -419,6 +420,351 @@ public class SizeTieredCompactionRecoverTest {
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
+    tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+  }
+
+  /**
+   * compaction recover, the tmpTargetFile xxx.target still exists. Source files and compaction log
+   * have not been deleted.
+   */
+  @Test
+  public void testRecoverCompleteTmpTargetFileWithoutMoved() throws Exception {
+    TsFileManager tsFileManager =
+        new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+
+    TsFileResource targetTsFileResource =
+        new TsFileResource(
+            new File(
+                SEQ_DIRS
+                    + File.separator.concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+    File compactionLogFile =
+        new File(
+            seqResources.get(0).getTsFile().getParent()
+                + File.separator
+                + targetTsFileResource.getTsFile().getName()
+                + COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger =
+        new SizeTieredCompactionLogger(compactionLogFile.getPath());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(0).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(1).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(2).getTsFile());
+    compactionLogger.logSequence(true);
+    deleteFileIfExists(targetTsFileResource.getTsFile());
+    compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(
+        targetTsFileResource,
+        new ArrayList<>(seqResources.subList(0, 3)),
+        COMPACTION_TEST_SG,
+        true);
+    compactionLogger.close();
+    new SizeTieredCompactionRecoverTask(
+            COMPACTION_LOG_NAME,
+            "0",
+            0,
+            compactionLogFile,
+            tempSGDir.getAbsolutePath(),
+            true,
+            CompactionTaskManager.currentTaskNum)
+        .call();
+    targetTsFileResource.setFile(
+        new File(
+            targetTsFileResource
+                .getTsFilePath()
+                .replace(
+                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    tsFileManager.add(targetTsFileResource, true);
+    path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    System.out.println(tsFileManager.getTsFileList(true));
+    tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+  }
+
+  /** Both tmpTargetFile and TargetFile do not exist */
+  @Test
+  public void testRecoverWithoutTmpTargetFileAndTargetFile() throws Exception {
+    TsFileManager tsFileManager =
+        new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+
+    TsFileResource targetTsFileResource =
+        new TsFileResource(
+            new File(
+                SEQ_DIRS
+                    + File.separator.concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+    File compactionLogFile =
+        new File(
+            seqResources.get(0).getTsFile().getParent()
+                + File.separator
+                + targetTsFileResource.getTsFile().getName()
+                + COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger =
+        new SizeTieredCompactionLogger(compactionLogFile.getPath());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(0).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(1).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(2).getTsFile());
+    compactionLogger.logSequence(true);
+    deleteFileIfExists(targetTsFileResource.getTsFile());
+    compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(
+        targetTsFileResource,
+        new ArrayList<>(seqResources.subList(0, 3)),
+        COMPACTION_TEST_SG,
+        true);
+    // delete tmpTargetFile
+    targetTsFileResource.getTsFile().delete();
+    compactionLogger.close();
+    new SizeTieredCompactionRecoverTask(
+            COMPACTION_LOG_NAME,
+            "0",
+            0,
+            compactionLogFile,
+            tempSGDir.getAbsolutePath(),
+            true,
+            CompactionTaskManager.currentTaskNum)
+        .call();
+    targetTsFileResource.setFile(
+        new File(
+            targetTsFileResource
+                .getTsFilePath()
+                .replace(
+                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    tsFileManager.add(targetTsFileResource, true);
+    path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    System.out.println(tsFileManager.getTsFileList(true));
+    tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+  }
+
+  /** TargetResourceFile do not exist */
+  @Test
+  public void testRecoverWithoutTargetResourceFile() throws Exception {
+    TsFileManager tsFileManager =
+        new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
+    tsFileManager.addAll(seqResources, true);
+    tsFileManager.addAll(unseqResources, false);
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            tsFileManager.getTsFileList(true),
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
+
+    TsFileResource targetTsFileResource =
+        new TsFileResource(
+            new File(
+                SEQ_DIRS
+                    + File.separator.concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+    File compactionLogFile =
+        new File(
+            seqResources.get(0).getTsFile().getParent()
+                + File.separator
+                + targetTsFileResource.getTsFile().getName()
+                + COMPACTION_LOG_NAME);
+    SizeTieredCompactionLogger compactionLogger =
+        new SizeTieredCompactionLogger(compactionLogFile.getPath());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(0).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(1).getTsFile());
+    compactionLogger.logFileInfo(SOURCE_INFO, seqResources.get(2).getTsFile());
+    compactionLogger.logSequence(true);
+    deleteFileIfExists(targetTsFileResource.getTsFile());
+    compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
+    InnerSpaceCompactionUtils.compact(
+        targetTsFileResource,
+        new ArrayList<>(seqResources.subList(0, 3)),
+        COMPACTION_TEST_SG,
+        true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    // delete TargetResourceFile
+    new File(
+            targetTsFileResource
+                    .getTsFilePath()
+                    .replace(
+                        TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
+                        TsFileConstant.TSFILE_SUFFIX)
+                + TsFileResource.RESOURCE_SUFFIX)
+        .delete();
+    compactionLogger.close();
+    new SizeTieredCompactionRecoverTask(
+            COMPACTION_LOG_NAME,
+            "0",
+            0,
+            compactionLogFile,
+            tempSGDir.getAbsolutePath(),
+            true,
+            CompactionTaskManager.currentTaskNum)
+        .call();
+    targetTsFileResource.setFile(
+        new File(
+            targetTsFileResource
+                .getTsFilePath()
+                .replace(
+                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    tsFileManager.add(targetTsFileResource, true);
+    path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    System.out.println(tsFileManager.getTsFileList(true));
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -486,7 +832,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + ".tsfile")));
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -507,6 +853,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
     tsFileManager.add(targetTsFileResource, true);
     new SizeTieredCompactionRecoverTask(
             COMPACTION_LOG_NAME,
@@ -589,7 +936,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + ".tsfile")));
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -610,6 +957,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       tsFileManager.remove(resource, true);
       deleteFileIfExists(resource.getTsFile());
@@ -696,7 +1044,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + ".tsfile")));
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -717,7 +1065,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-    long totalWaitingTime = 0;
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
     deleteFileIfExists(compactionLogFile);
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       tsFileManager.remove(resource, true);
@@ -863,7 +1211,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + ".tsfile")));
+                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
     sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();

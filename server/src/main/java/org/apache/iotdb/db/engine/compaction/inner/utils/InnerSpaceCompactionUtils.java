@@ -588,7 +588,22 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
+  /**
+   * Update the targetResource. Move xxx.target to xxx.tsfile and xxx.target.resource to
+   * xxx.tsfile.resource.
+   *
+   * @param targetResource the old tsfile to be moved, which is xxx.target
+   * @throws IOException
+   */
   public static void moveTargetFile(TsFileResource targetResource) throws IOException {
+    if (!targetResource.getTsFilePath().endsWith(TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)) {
+      logger.warn(
+          "TmpTargetFileReource "
+              + targetResource.getTsFilePath()
+              + " should be end with "
+              + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX);
+      return;
+    }
     File oldFile = targetResource.getTsFile();
 
     // move TsFile and delete .target file

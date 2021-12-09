@@ -105,6 +105,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     long startTime = System.currentTimeMillis();
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
+    // Here is tmpTargetFile, which is xxx.target
     String targetFileName =
         TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList, sequence)
             .getName();

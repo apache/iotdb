@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,19 +67,21 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   }
 
   /**
-   * We support tmpTargetFile is xxx.target, tmpResourceFile is xxx.target.resource, targetFile is
-   * xxx.tsfile, resourceFile is xxx.tsfile.resource. To clear unfinished compaction task, there are
-   * several situations:
+   * We support tmpTargetFile is xxx.target, tmpTargetResourceFile is xxx.target.resource,
+   * targetFile is xxx.tsfile, targetResourceFile is xxx.tsfile.resource. To clear unfinished
+   * compaction task, there are several situations:
    *
    * <ol>
-   *   <li>TmpTargetFile exists, then delete targetFile if existed and remove tmpTargetFile to
+   *   <li>Compaction log is incomplete, then delete it and return.
+   *   <li>TmpTargetFile exists, then delete targetFile if exists and remove tmpTargetFile to
    *       targetFile.
-   *   <li>Both tmpTargetFile and targetFile do not existed, do nothing.
-   *   <li><b>TargetResource file does not existed or target file is uncompleted</b>: delete the
-   *       target file and compaction log.
-   *   <li><b>Target file is completed, not all source files have been deleted</b>: delete the
-   *       source files and compaction logs
-   *   <li><b>Target file is completed, all source files have been deleted, compaction log file
+   *   <li>Both tmpTargetFile and targetFile do not exist, then delete tmpTargetResourceFile and
+   *       targetResourceFile if exist, also delete the compaction log, return.
+   *   <li><b>TargetResourceFile does not exist or targetFile is incomplete</b>: delete the
+   *       targetFile, tmpTargetResourceFile and compaction log.
+   *   <li><b>TargetFile is completed, not all source files have been deleted</b>: delete the source
+   *       files and compaction logs
+   *   <li><b>TargetFile is completed, all source files have been deleted, compaction log file
    *       exists</b>: delete the compaction log
    *   <li><b>No compaction log file exists</b>: do nothing
    * </ol>
@@ -101,24 +104,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         List<TsFileIdentifier> sourceFileIdentifiers = logAnalyzer.getSourceFileInfos();
         TsFileIdentifier targetFileIdentifier = logAnalyzer.getTargetFileInfo();
 
-        if (sourceFileIdentifiers.isEmpty()) {
-          LOGGER.info(
-              "{}-{} [Compaction][Recover] incomplete log file, abort recover",
-              logicalStorageGroupName,
-              virtualStorageGroup);
-          return;
-        }
-        if (targetFileIdentifier == null) {
-          File f =
-              new File(
-                  targetFileIdentifier
-                      .getFileFromDataDirs()
-                      .getPath()
-                      .replace(
-                          TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
-                          TsFileConstant.TSFILE_SUFFIX));
-        }
-
+        // compaction log file is incomplete
         if (targetFileIdentifier == null || sourceFileIdentifiers.isEmpty()) {
           LOGGER.info(
               "{}-{} [Compaction][Recover] incomplete log file, abort recover",
@@ -131,11 +117,17 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         // xxx.tsfile
         File targetFile =
             new File(
-                tmpTargetFile
-                    .getPath()
+                targetFileIdentifier
+                    .getFilePath()
                     .replace(
                         TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
                         TsFileConstant.TSFILE_SUFFIX));
+        // xxx.target.resource
+        File tmpTargetResourceFile =
+            new File(targetFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+        // xxx.tsfile.resource
+        File targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+
         if (tmpTargetFile != null) {
           // xxx.target exists, then remove it to xxx.tsfile
           if (targetFile.exists()) {
@@ -146,27 +138,36 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           targetFile = targetResource.getTsFile();
         } else {
           if (!targetFile.exists()) {
-            // both xxx.target and xxx.tsfile do not exist
-            // cannot find target file from data dirs
+            // both xxx.target and xxx.tsfile do not exist, then delete tmpTargetResourceFile and
+            // targetResourceFile if exist.
             LOGGER.info(
                 "{}-{} [Compaction][Recover] cannot find target file {} from data dirs, abort recover",
                 logicalStorageGroupName,
                 virtualStorageGroup,
                 targetFileIdentifier);
+            if (tmpTargetResourceFile.exists() && !tmpTargetResourceFile.delete()) {
+              LOGGER.error(
+                  "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+                  logicalStorageGroupName,
+                  virtualStorageGroup,
+                  tmpTargetResourceFile);
+            }
+            if (targetResourceFile.exists() && !targetResourceFile.delete()) {
+              LOGGER.error(
+                  "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+                  logicalStorageGroupName,
+                  virtualStorageGroup,
+                  targetResourceFile);
+            }
             return;
           }
         }
 
         // xxx.target does not exist and xxx.tsfile exists
-        // xxx.target.resource
-        File tmpResourceFile = new File(tmpTargetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-        // xxx.tsfile.resource
-        File resourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
-        if (!resourceFile.exists() || writer.hasCrashed()) {
-          // xxx.tsfile.resource does not exists or target xxx.tsfile is not complete, then delete
-          // target xxx.tsfile
+        if (!targetResourceFile.exists() || writer.hasCrashed()) {
+          // xxx.tsfile.resource does not exists or xxx.tsfile is incomplete, then delete xxx.tsfile
+          // and xxx.target.resource.
           LOGGER.info(
               "{}-{} [Compaction][Recover] target file {} crash, start to delete it",
               logicalStorageGroupName,
@@ -180,15 +181,15 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                 virtualStorageGroup,
                 targetFile);
           }
-          if (tmpResourceFile.exists() && !tmpResourceFile.delete()) {
+          if (tmpTargetResourceFile.exists() && !tmpTargetResourceFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                 logicalStorageGroupName,
                 virtualStorageGroup,
-                tmpResourceFile);
+                tmpTargetResourceFile);
           }
         } else {
-          // the target xxx.tsfile is completed, then delete source TsFiles.
+          // xxx.tsfile is completed, then delete source TsFiles.
           LOGGER.info(
               "{}-{} [Compaction][Recover] target file {} is completed, delete source files {}",
               logicalStorageGroupName,
@@ -212,7 +213,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
     } catch (IOException e) {
       LOGGER.error("recover inner space compaction error", e);
     } finally {
-      // delete compaction log if existed
+      // delete compaction log if exists
       if (compactionLogFile.exists()) {
         if (!compactionLogFile.delete()) {
           LOGGER.warn(
