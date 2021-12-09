@@ -498,6 +498,7 @@ public class SyncClientAdaptor {
       AsyncDataClient client,
       List<PartialPath> seriesPaths,
       List<Integer> dataTypeOrdinals,
+      Filter timeFilter,
       QueryContext context,
       Map<String, Set<String>> deviceMeasurements,
       RaftNode header)
@@ -512,7 +513,9 @@ public class SyncClientAdaptor {
             deviceMeasurements,
             header,
             client.getNode());
-
+    if (timeFilter != null) {
+      request.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+    }
     client.last(request, handler);
     return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
   }
