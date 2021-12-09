@@ -44,7 +44,7 @@ public class DropwizardJmxReporter implements Reporter {
       jmxReporter =
           JmxReporter.forRegistry(
                   ((DropwizardMetricManager) dropwizardMetricManager).getMetricRegistry())
-              .inDomain(this.getClass().getName())
+              .inDomain("org.apache.iotdb.metrics")
               .build();
       jmxReporter.start();
     } catch (Exception e) {

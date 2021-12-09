@@ -25,7 +25,7 @@ metricReporterList:
   - jmx
 
 # you can check choose one type of monitor frame, such as dropwizard, micrometer
-monitorType: dropwizard
+monitorType: micrometer
 
 # you can set the period time of push
 pushPeriodInSecond: 5
