@@ -38,6 +38,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
@@ -50,6 +51,7 @@ public class IDTable {
   private static final int NUM_OF_SLOTS = 256;
   /** logger */
   private static final Logger logger = LoggerFactory.getLogger(IDTable.class);
+
   /**
    * 256 hashmap for avoiding rehash performance issue and lock competition device ID ->
    * (measurement name -> schema entry)
@@ -351,5 +353,10 @@ public class IDTable {
           dataType);
       throw new DataTypeMismatchException(measurement, insertDataType, dataType);
     }
+  }
+
+  @TestOnly
+  public Map<IDeviceID, DeviceEntry>[] getIdTables() {
+    return idTables;
   }
 }

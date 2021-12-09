@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.memtable;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 
 public class PrimitiveMemTable extends AbstractMemTable {
 
@@ -30,13 +31,13 @@ public class PrimitiveMemTable extends AbstractMemTable {
     this.disableMemControl = !enableMemControl;
   }
 
-  public PrimitiveMemTable(Map<String, IWritableMemChunkGroup> memTableMap) {
+  public PrimitiveMemTable(Map<IDeviceID, IWritableMemChunkGroup> memTableMap) {
     super(memTableMap);
   }
 
   @Override
   public IMemTable copy() {
-    Map<String, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
+    Map<IDeviceID, IWritableMemChunkGroup> newMap = new HashMap<>(getMemTableMap());
 
     return new PrimitiveMemTable(newMap);
   }

@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.MetadataManagerHelper;
 import org.apache.iotdb.db.engine.flush.MemTableFlushTask;
@@ -27,16 +32,9 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class MemTableFlushTaskTest {
 
@@ -64,7 +62,8 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException {
+  public void testFlushMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException {
     MemTableTestUtils.produceData(
         memTable,
         startTime,

@@ -19,4 +19,6 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
-public interface IDeviceID {}
+public interface IDeviceID {
+  public String toStringID();
+}

@@ -18,20 +18,20 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 
 /**
  * IMemTable is designed to store data points which are not flushed into TsFile yet. An instance of
@@ -43,13 +43,19 @@ import java.util.Map;
  */
 public interface IMemTable {
 
-  Map<String, IWritableMemChunkGroup> getMemTableMap();
+  Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
   void write(
-      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
 
   void writeAlignedRow(
-      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
   /**
    * write data in the range [start, end). Null value in each column values will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}

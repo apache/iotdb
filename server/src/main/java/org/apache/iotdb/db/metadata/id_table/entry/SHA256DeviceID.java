@@ -79,4 +79,9 @@ public class SHA256DeviceID implements IDeviceID {
   public String toString() {
     return "SHA256DeviceID{" + "l1=" + l1 + ", l2=" + l2 + ", l3=" + l3 + ", l4=" + l4 + '}';
   }
+
+  @Override
+  public String toStringID() {
+    return l1 + "#" + l2 + "#" + l3 + "#" + l4;
+  }
 }

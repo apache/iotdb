@@ -463,12 +463,14 @@ public class MManager {
     createTimeseries(plan, offset);
 
     // update id table
-    try {
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(plan.getPath().getDevicePath()).getIdTable();
-      idTable.createTimeseries(plan);
-    } catch (StorageEngineException e) {
-      logger.error("get id table error");
+    if (config.isEnableIDTable()) {
+      try {
+        IDTable idTable =
+            StorageEngine.getInstance().getProcessor(plan.getPath().getDevicePath()).getIdTable();
+        idTable.createTimeseries(plan);
+      } catch (StorageEngineException e) {
+        logger.error("get id table error");
+      }
     }
   }
 
@@ -579,11 +581,14 @@ public class MManager {
     createAlignedTimeSeries(plan);
 
     // update id table
-    try {
-      IDTable idTable = StorageEngine.getInstance().getProcessor(plan.getPrefixPath()).getIdTable();
-      idTable.createAlignedTimeseries(plan);
-    } catch (StorageEngineException e) {
-      logger.error("get id table error");
+    if (config.isEnableIDTable()) {
+      try {
+        IDTable idTable =
+            StorageEngine.getInstance().getProcessor(plan.getPrefixPath()).getIdTable();
+        idTable.createAlignedTimeseries(plan);
+      } catch (StorageEngineException e) {
+        logger.error("get id table error");
+      }
     }
   }
 

@@ -19,6 +19,12 @@
 
 package org.apache.iotdb.db.writelog.recover;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
@@ -31,6 +37,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -43,16 +50,8 @@ import org.apache.iotdb.db.writelog.io.ILogReader;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.db.writelog.node.WriteLogNode;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Supplier;
 
 /**
  * LogReplayer finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the
@@ -126,9 +125,9 @@ public class LogReplayer {
       }
     }
 
-    Map<String, IWritableMemChunkGroup> memTableMap = recoverMemTable.getMemTableMap();
-    for (Map.Entry<String, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
-      String deviceId = deviceEntry.getKey();
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = recoverMemTable.getMemTableMap();
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> deviceEntry : memTableMap.entrySet()) {
+      String deviceId = deviceEntry.getKey().toStringID();
       for (Map.Entry<String, IWritableMemChunk> measurementEntry :
           deviceEntry.getValue().getMemChunkMap().entrySet()) {
         IWritableMemChunk memChunk = measurementEntry.getValue();

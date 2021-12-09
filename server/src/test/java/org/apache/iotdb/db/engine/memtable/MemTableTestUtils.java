@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -30,10 +34,6 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 public class MemTableTestUtils {
 
@@ -56,13 +56,14 @@ public class MemTableTestUtils {
       long endTime,
       String deviceId,
       String measurementId,
-      TSDataType dataType) {
+      TSDataType dataType)
+      throws IllegalPathException {
     if (startTime > endTime) {
       throw new RuntimeException(String.format("start time %d > end time %d", startTime, endTime));
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
           l,

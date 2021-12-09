@@ -50,4 +50,9 @@ public class PlainDeviceID implements IDeviceID {
   public String toString() {
     return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
   }
+
+  @Override
+  public String toStringID() {
+    return deviceID;
+  }
 }

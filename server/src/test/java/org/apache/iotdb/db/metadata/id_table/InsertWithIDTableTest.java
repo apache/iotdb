@@ -37,7 +37,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class InsertWithIDTable {
+public class InsertWithIDTableTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
