@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.spark.db
 
-
-import org.apache.iotdb.spark.db.tools.DataFrameTools
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 import org.slf4j.LoggerFactory
