@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -140,6 +141,7 @@ public class MergeMultiChunkTask {
       }
       // TODO: use statistics of queries to better rearrange series
       List<PartialPath> pathList = new ArrayList<>(measurementpathByDevice);
+      Collections.sort(pathList);
       IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
