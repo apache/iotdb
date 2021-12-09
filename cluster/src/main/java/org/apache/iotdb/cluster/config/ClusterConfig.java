@@ -188,6 +188,8 @@ public class ClusterConfig {
 
   private boolean enableWeakAcceptance = true;
 
+  private int dispatcherBindingThreadNum = 16;
+
   /**
    * create a clusterConfig class. The internalIP will be set according to the server's hostname. If
    * there is something error for getting the ip of the hostname, then set the internalIp as
@@ -569,5 +571,13 @@ public class ClusterConfig {
 
   public void setEnableWeakAcceptance(boolean enableWeakAcceptance) {
     this.enableWeakAcceptance = enableWeakAcceptance;
+  }
+
+  public int getDispatcherBindingThreadNum() {
+    return dispatcherBindingThreadNum;
+  }
+
+  public void setDispatcherBindingThreadNum(int dispatcherBindingThreadNum) {
+    this.dispatcherBindingThreadNum = dispatcherBindingThreadNum;
   }
 }

@@ -46,8 +46,7 @@ public class SlidingWindowLogAppender implements LogAppender {
   public SlidingWindowLogAppender(RaftMember member) {
     this.member = member;
     this.logManager = member.getLogManager();
-    this.firstPosPrevIndex = logManager.getLastLogIndex();
-    this.prevTerms[0] = logManager.getLastLogTerm();
+    reset();
   }
 
   /**
@@ -200,6 +199,15 @@ public class SlidingWindowLogAppender implements LogAppender {
       result.status = Response.RESPONSE_LOG_MISMATCH;
     }
     return result;
+  }
+
+  @Override
+  public void reset() {
+    this.firstPosPrevIndex = logManager.getLastLogIndex();
+    this.prevTerms[0] = logManager.getLastLogTerm();
+    logWindow = new Log[windowCapacity];
+    prevTerms = new long[windowCapacity];
+    windowLength = 0;
   }
 
   public static class Factory implements LogAppenderFactory {

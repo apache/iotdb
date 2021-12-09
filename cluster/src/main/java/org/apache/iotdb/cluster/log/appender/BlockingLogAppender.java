@@ -172,6 +172,11 @@ public class BlockingLogAppender implements LogAppender {
     return result;
   }
 
+  @Override
+  public void reset() {
+    // no states maintained by this implementation
+  }
+
   public static class Factory implements LogAppenderFactory {
 
     @Override

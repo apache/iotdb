@@ -318,6 +318,23 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "wait_client_timeout_ms", String.valueOf(config.getWaitClientTimeoutMS()))));
 
+    config.setUseFollowerSlidingWindow(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_follower_sliding_window",
+                String.valueOf(config.isUseFollowerSlidingWindow()))));
+
+    config.setEnableWeakAcceptance(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "enable_weak_acceptance", String.valueOf(config.isEnableWeakAcceptance()))));
+
+    config.setDispatcherBindingThreadNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "dispatcher_binding_thread_num",
+                String.valueOf(config.getDispatcherBindingThreadNum()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

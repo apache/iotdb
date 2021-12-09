@@ -136,7 +136,7 @@ import static org.apache.iotdb.cluster.config.ClusterConstant.THREAD_POLL_WAIT_T
 public abstract class RaftMember implements RaftMemberMBean {
 
   private static final Logger logger = LoggerFactory.getLogger(RaftMember.class);
-  public static boolean USE_LOG_DISPATCHER = false;
+  public static boolean USE_LOG_DISPATCHER = true;
   private static final boolean USE_INDIRECT_LOG_DISPATCHER =
       ClusterDescriptor.getInstance().getConfig().isUseIndirectBroadcasting();
   private static final boolean ENABLE_WEAK_ACCEPTANCE =
@@ -1666,7 +1666,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       long alreadyWait = 0;
       while (stronglyAcceptedNodeNum < quorumSize
           && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
-              || (totalAccepted < allNodes.size() - 1)
+              || (totalAccepted < quorumSize)
               || votingLogList.size() > config.getMaxNumOfLogsInMem())
           && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
           && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {

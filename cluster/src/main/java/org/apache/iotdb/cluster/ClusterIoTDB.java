@@ -206,12 +206,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
    * node. This will help to see if the node is in a consistent and right state during debugging.
    */
   private void generateNodeReport() {
-    if (logger.isDebugEnabled() && allowReport) {
+    if (logger.isInfoEnabled() && allowReport) {
       try {
         NodeReport report = new NodeReport(thisNode);
         report.setMetaMemberReport(metaGroupMember.genMemberReport());
         report.setDataMemberReportList(dataGroupEngine.genMemberReports());
-        logger.debug(report.toString());
+        logger.info(report.toString());
       } catch (Exception e) {
         logger.error("exception occurred when generating node report", e);
       }
@@ -336,7 +336,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   }
 
   private void preInitCluster() throws StartupException {
-    stopRaftInfoReport();
+    // stopRaftInfoReport();
     JMXService.registerMBean(this, mbeanName);
     // register MetaGroupMember. MetaGroupMember has the same position with "StorageEngine" in the
     // cluster module.

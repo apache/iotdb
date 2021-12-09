@@ -67,7 +67,7 @@ public class LogDispatcher {
 
   private static final Logger logger = LoggerFactory.getLogger(LogDispatcher.class);
   RaftMember member;
-  private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
+  private static final ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
   private boolean useBatchInLogCatchUp = clusterConfig.isUseBatchInLogCatchUp();
   List<BlockingQueue<SendLogRequest>> nodesLogQueues = new ArrayList<>();
   ExecutorService executorService;
@@ -75,8 +75,8 @@ public class LogDispatcher {
       IoTDBThreadPoolFactory.newFixedThreadPoolWithDaemonThread(
           Runtime.getRuntime().availableProcessors(), "DispatcherEncoder");
 
-  public static int bindingThreadNum = 1;
-  public static int maxBatchSize = 1;
+  public static int bindingThreadNum = clusterConfig.getDispatcherBindingThreadNum();
+  public static int maxBatchSize = 10;
 
   public LogDispatcher(RaftMember member) {
     this.member = member;

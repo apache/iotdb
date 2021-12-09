@@ -34,4 +34,6 @@ public interface LogAppender {
       long prevLogIndex, long prevLogTerm, long leaderCommit, List<Log> logs);
 
   AppendEntryResult appendEntry(long prevLogIndex, long prevLogTerm, long leaderCommit, Log log);
+
+  void reset();
 }
