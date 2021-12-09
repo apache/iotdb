@@ -738,7 +738,8 @@ var config = {
 							['System-Tools/MLogParser-Tool','MLogParser Tool'],
 							['System-Tools/NodeTool','Node Tool'],
 							['System-Tools/Query-History-Visualization-Tool','Query History Visualization Tool'],
-							['System-Tools/Watermark-Tool','Watermark Tool']
+							['System-Tools/Watermark-Tool','Watermark Tool'],
+							['System-Tools/Metric-Tool','Metric Tool']
 						]
 					},
 					{
@@ -1540,6 +1541,7 @@ var config = {
 							['System-Tools/NodeTool','节点工具'],
 							['System-Tools/Query-History-Visualization-Tool','查询历史可视化工具'],
 							['System-Tools/Watermark-Tool','水印工具'],
+							['System-Tools/Metric-Tool','监控工具']
 						]
 					},
 					{
