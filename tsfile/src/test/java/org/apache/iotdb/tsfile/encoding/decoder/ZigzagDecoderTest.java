@@ -32,6 +32,7 @@ import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
 
@@ -42,6 +43,9 @@ public class ZigzagDecoderTest {
 
   private List<Integer> intList;
   private List<Boolean> booleanList;
+  private Random rand = new Random();
+
+  private List<Integer> intList2;
 
   @Before
   public void setUp() {
@@ -50,7 +54,14 @@ public class ZigzagDecoderTest {
     int int_len = int_array.length;
     int int_num = 100000;
     for (int i = 0; i < int_num; i++) {
-      intList.add(int_array[i % int_len]);
+      intList.add(i);
+    }
+
+
+    intList2 = new ArrayList<Integer>();
+
+    for (int i = 0; i < int_num; i++) {
+      intList2.add(rand.nextInt(int_num));
     }
 
     booleanList = new ArrayList<Boolean>();
