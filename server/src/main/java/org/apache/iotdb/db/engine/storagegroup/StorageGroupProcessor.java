@@ -672,14 +672,8 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
-          writer =
-              recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer.hasCrashed()) {
-            tsFileManagement.addRecover(tsFileResource, isSeq);
-          } else {
-            tsFileResource.setClosed(true);
-            tsFileManagement.add(tsFileResource, isSeq);
-          }
+          tsFileResource.setClosed(true);
+          tsFileManagement.add(tsFileResource, isSeq);
           continue;
         } else {
           writer =

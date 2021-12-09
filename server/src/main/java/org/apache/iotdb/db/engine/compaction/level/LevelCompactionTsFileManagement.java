@@ -83,8 +83,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   private final Map<Long, List<List<TsFileResource>>> unSequenceTsFileResources = new TreeMap<>();
   private final List<List<TsFileResource>> forkedSequenceTsFileResources = new ArrayList<>();
   private final List<List<TsFileResource>> forkedUnSequenceTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
-  private final List<TsFileResource> unSequenceRecoverTsFileResources = new ArrayList<>();
 
   public LevelCompactionTsFileManagement(
       String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
@@ -303,15 +301,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
   }
 
   @Override
-  public void addRecover(TsFileResource tsFileResource, boolean sequence) {
-    if (sequence) {
-      sequenceRecoverTsFileResources.add(tsFileResource);
-    } else {
-      unSequenceRecoverTsFileResources.add(tsFileResource);
-    }
-  }
-
-  @Override
   public void addAll(List<TsFileResource> tsFileResourceList, boolean sequence) throws IOException {
     writeLock();
     try {
@@ -451,11 +440,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             logger.info(
                 "[Compaction][Recover] target file {} is not complete, remove it", targetResource);
             targetResource.remove();
-            if (isSeq) {
-              sequenceRecoverTsFileResources.clear();
-            } else {
-              unSequenceRecoverTsFileResources.clear();
-            }
           } else {
             writer.close();
             // complete compaction, delete source files
@@ -501,27 +485,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       logger.error("exception occurs during recovering compaction", e);
       canMerge = false;
     }
-  }
-
-  private TsFileResource getResourceFromDataDirs(
-      boolean recover, String[] dataDirs, boolean isSeq, CompactionFileInfo info)
-      throws IOException {
-    TsFileResource foundResource = null;
-    if (recover) {
-      for (String dataDir : dataDirs) {
-        if ((foundResource = getRecoverTsFileResource(info.getFile(dataDir).getPath(), isSeq))
-            != null) {
-          return foundResource;
-        }
-      }
-    } else {
-      for (String dataDir : dataDirs) {
-        if ((foundResource = getTsFileResource(info.getFile(dataDir).getPath(), isSeq)) != null) {
-          return foundResource;
-        }
-      }
-    }
-    return null;
   }
 
   @Override
@@ -776,28 +739,6 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       newUnSequenceTsFileResources.add(new ArrayList<>());
     }
     return newUnSequenceTsFileResources;
-  }
-
-  private TsFileResource getRecoverTsFileResource(String filePath, boolean isSeq)
-      throws IOException {
-    try {
-      if (isSeq) {
-        for (TsFileResource tsFileResource : sequenceRecoverTsFileResources) {
-          if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-            return tsFileResource;
-          }
-        }
-      } else {
-        for (TsFileResource tsFileResource : unSequenceRecoverTsFileResources) {
-          if (Files.isSameFile(tsFileResource.getTsFile().toPath(), new File(filePath).toPath())) {
-            return tsFileResource;
-          }
-        }
-      }
-    } catch (IOException e) {
-      logger.error("cannot get tsfile resource path: {}", filePath);
-    }
-    return null;
   }
 
   private TsFileResource getTsFileResource(String filePath, boolean isSeq) {

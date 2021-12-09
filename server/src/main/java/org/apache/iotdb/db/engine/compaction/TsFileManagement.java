@@ -121,9 +121,6 @@ public abstract class TsFileManagement {
   /** add one TsFile to list */
   public abstract void add(TsFileResource tsFileResource, boolean sequence) throws IOException;
 
-  /** add one TsFile to list for recover */
-  public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
-
   /** add some TsFiles to list */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence)
       throws IOException;
