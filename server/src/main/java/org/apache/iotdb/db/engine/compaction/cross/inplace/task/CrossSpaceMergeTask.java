@@ -142,9 +142,11 @@ public class CrossSpaceMergeTask implements Callable<Void> {
 
     List<List<MeasurementPath>> unmergedSeries = new ArrayList<>();
     Set<PartialPath> devices =
-        IoTDB.metaManager.getMatchedDevices(new PartialPath(
-            storageGroupName + IoTDBConstant.PATH_SEPARATOR
-                + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+        IoTDB.metaManager.getMatchedDevices(
+            new PartialPath(
+                storageGroupName
+                    + IoTDBConstant.PATH_SEPARATOR
+                    + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
     for (PartialPath path : devices) {
       unmergedSeries.add(IoTDB.metaManager.getAllMeasurementByDevicePath(path));
     }
