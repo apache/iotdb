@@ -146,6 +146,15 @@ public class QueryResourceManager {
       queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
     }
 
+    // used files should be added before mergeLock is unlocked, or they may be deleted by
+    // running merge
+    filePathsManager.addUsedFilesForQuery(context.getQueryId(), queryDataSource);
+
+    long dataTTL = queryDataSource.getDataTTL();
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
     return queryDataSource;
   }
 

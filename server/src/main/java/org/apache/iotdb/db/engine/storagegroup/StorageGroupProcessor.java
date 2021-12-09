@@ -1623,12 +1623,7 @@ public class StorageGroupProcessor {
       QueryDataSource dataSource = new QueryDataSource(seqResources.left, unseqResources.left);
       dataSource.setUnclosedSeqResource(seqResources.right);
       dataSource.setUnclosedUnseqResource(unseqResources.right);
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
       dataSource.setDataTTL(dataTTL);
-      long timeLowerBound =
-          dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-      context.setQueryTimeLowerBound(timeLowerBound);
       return dataSource;
     } catch (MetadataException e) {
       throw new QueryProcessException(e);
