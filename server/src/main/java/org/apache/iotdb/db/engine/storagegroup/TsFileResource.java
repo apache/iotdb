@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -376,6 +377,27 @@ public class TsFileResource {
     return timeIndex.getEndTime(deviceId);
   }
 
+  public long getOrderTime(String deviceId, boolean ascending) {
+    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+  }
+
+  public long getFileStartTime() {
+    long res = Long.MAX_VALUE;
+    for (String deviceId : timeIndex.getDevices()) {
+      res = Math.min(res, timeIndex.getStartTime(deviceId));
+    }
+    return res;
+  }
+
+  /** open file's end time is Long.MIN_VALUE */
+  public long getFileEndTime() {
+    long res = Long.MIN_VALUE;
+    for (String deviceId : timeIndex.getDevices()) {
+      res = Math.max(res, timeIndex.getEndTime(deviceId));
+    }
+    return res;
+  }
+
   public Set<String> getDevices() {
     return timeIndex.getDevices();
   }
@@ -399,7 +421,7 @@ public class TsFileResource {
     timeIndex.close();
   }
 
-  TsFileProcessor getUnsealedFileProcessor() {
+  public TsFileProcessor getUnsealedFileProcessor() {
     return processor;
   }
 
@@ -538,6 +560,62 @@ public class TsFileResource {
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+    if (!getDevices().contains(deviceId)) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+      }
+      return false;
+    }
+
+    long startTime = getStartTime(deviceId);
+    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
+
+    if (!isAlive(endTime, ttl)) {
+      if (debug) {
+        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
+      }
+      return false;
+    }
+
+    if (timeFilter != null) {
+      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
+      if (debug && !res) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
+      }
+      return res;
+    }
+    return true;
+  }
+
+  /** @return true if the TsFile lives beyond TTL */
+  public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl) {
+    long startTime = getFileStartTime();
+    long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+
+    if (!isAlive(endTime, ttl)) {
+      return false;
+    }
+
+    if (timeFilter != null) {
+      return timeFilter.satisfyStartEndTime(startTime, endTime);
+    }
+    return true;
+  }
+
+  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
+  public boolean isSatisfied(
+      String deviceId,
+      Filter timeFilter,
+      TsFileFilter fileFilter,
+      boolean isSeq,
+      long ttl,
+      boolean debug) {
+    if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
+      return false;
+    }
+
     if (!getDevices().contains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(

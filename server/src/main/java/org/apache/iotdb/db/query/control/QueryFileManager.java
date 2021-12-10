@@ -55,11 +55,21 @@ public class QueryFileManager {
   /** Add the unique file paths to sealedFilePathsMap and unsealedFilePathsMap. */
   public void addUsedFilesForQuery(long queryId, QueryDataSource dataSource) {
 
-    // sequence data
+    // closed sequence TsFileResource
     addUsedFilesForQuery(queryId, dataSource.getSeqResources());
 
-    // unsequence data
+    // closed unsequence TsFileResource
     addUsedFilesForQuery(queryId, dataSource.getUnseqResources());
+
+    // unclosed sequence TsFileResource
+    if (addUsedFileForQuery(queryId, dataSource.getUnclosedSeqResource())) {
+      dataSource.setUnclosedSeqResource(null);
+    }
+
+    // unclosed unsequence TsFileResource
+    if (addUsedFileForQuery(queryId, dataSource.getUnclosedUnseqResource())) {
+      dataSource.setUnclosedUnseqResource(null);
+    }
   }
 
   private void addUsedFilesForQuery(long queryId, List<TsFileResource> resources) {
@@ -71,15 +81,32 @@ public class QueryFileManager {
 
       // this file may be deleted just before we lock it
       if (tsFileResource.isDeleted()) {
-        Map<Long, Map<TsFileResource, TsFileResource>> pathMap =
-            !isClosed ? unsealedFilePathsMap : sealedFilePathsMap;
         // This resource may be removed by other threads of this query.
-        if (pathMap.get(queryId).remove(tsFileResource) != null) {
+        if (sealedFilePathsMap.get(queryId).remove(tsFileResource) != null) {
           FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
         }
         iterator.remove();
       }
     }
+  }
+
+  private boolean addUsedFileForQuery(long queryId, TsFileResource tsFileResource) {
+    if (tsFileResource == null) {
+      return false;
+    }
+
+    boolean isClosed = tsFileResource.isClosed();
+    addFilePathToMap(queryId, tsFileResource, isClosed);
+
+    // this file may be deleted just before we lock it
+    if (tsFileResource.isDeleted()) {
+      // This resource may be removed by other threads of this query.
+      if (unsealedFilePathsMap.get(queryId).remove(tsFileResource) != null) {
+        FileReaderManager.getInstance().decreaseFileReaderReference(tsFileResource, isClosed);
+      }
+      return true;
+    }
+    return false;
   }
 
   /**
