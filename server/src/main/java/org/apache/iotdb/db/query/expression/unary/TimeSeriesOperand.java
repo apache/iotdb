@@ -104,7 +104,7 @@ public class TimeSeriesOperand extends Expression {
       float memoryBudgetInMB = memoryAssigner.assign();
 
       LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path));
+          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(
