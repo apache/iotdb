@@ -53,8 +53,12 @@ object DataFrameTools {
           )
           session.open()
 
+          val times = new util.ArrayList[lang.Long]()
+          val measurementsList = new util.ArrayList[util.List[lang.String]]()
+          val typesList = new util.ArrayList[util.List[TSDataType]]()
+          val valuesList = new util.ArrayList[util.List[Object]]()
           partition.foreach { record =>
-            val measurements = new util.ArrayList[java.lang.String]()
+            val measurements = new util.ArrayList[lang.String]()
             val types = new util.ArrayList[TSDataType]()
             val values = new util.ArrayList[Object]()
             for (i <- 2 until record.length if !(record.get(i) == null)) {
@@ -64,8 +68,12 @@ object DataFrameTools {
               measurements.add(sensorTypes(i - 2)._1)
               types.add(getType(sensorTypes(i - 2)._2))
             }
-            session.insertRecord(record.get(1).toString, record.get(0).asInstanceOf[Long], measurements, types, values)
+            times.add(record.get(0).asInstanceOf[Long])
+            measurementsList.add(measurements)
+            typesList.add(types)
+            valuesList.add(values)
           }
+          session.insertRecordsOfOneDevice(device.toString, times, measurementsList, typesList, valuesList)
           session.close()
         }
     }
