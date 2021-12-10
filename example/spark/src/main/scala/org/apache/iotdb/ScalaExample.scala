@@ -17,27 +17,35 @@
  * under the License.
  */
 
-package org.apache.iotdb.spark.db
+package org.apache.iotdb
 
-class IoTDBOptions(
-                    @transient private val parameters: Map[String, String])
-  extends Serializable {
+import org.apache.spark.sql.{Dataset, Row, SparkSession}
 
-  val url = parameters.getOrElse("url", sys.error("Option 'url' not specified"))
+object ScalaExample {
+  def main(args: Array[String]): Unit = {
+    // create the spark session
+    val spark: SparkSession = SparkSession
+      .builder
+      .appName("IoTDB Read And Write Example")
+      .master("local[*]")
+      .getOrCreate
 
-  val user = parameters.getOrElse("user", "root")
+    // read data from IoTDB
+    val dataset: Dataset[Row] = spark
+      .read
+      .format("org.apache.iotdb.spark.db")
+      .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+      .option("sql", "select * from root")
+      .load
 
-  val password = parameters.getOrElse("password", "root")
+    // display the data
+    dataset.show()
 
-  val sql = parameters.getOrElse("sql", "")
-
-  val numPartition = parameters.getOrElse("numPartition", "1")
-
-  val lowerBound = parameters.getOrElse("lowerBound", "0")
-
-  val upperBound = parameters.getOrElse("upperBound", "0")
-
-  def get(name: String): Unit = {
-
+    // save to IoTDB
+    dataset
+      .write
+      .format("org.apache.iotdb.spark.db")
+      .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+      .save()
   }
 }
