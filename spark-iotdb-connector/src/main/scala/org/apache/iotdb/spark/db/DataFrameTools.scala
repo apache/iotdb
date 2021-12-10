@@ -38,9 +38,8 @@ object DataFrameTools {
       .collect()
       .map(x => x.get(0))
 
-    val repartition = dataframe.repartition(devices.length, dataframe.col("device_name"))
-
-    repartition
+    dataframe
+      .repartition(devices.length, dataframe.col("device_name"))
       .foreachPartition { partition =>
         val hostPort = options.url.split("//")(1).replace("/", "").split(":")
         val session = new Session(
