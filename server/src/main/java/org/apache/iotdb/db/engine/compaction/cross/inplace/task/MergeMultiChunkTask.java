@@ -29,8 +29,9 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSel
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -75,7 +76,7 @@ public class MergeMultiChunkTask {
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
   private InplaceCompactionLogger inplaceCompactionLogger;
-  private List<?> unmergedSeries;
+  private List<PartialPath> unmergedDevice;
 
   private String taskName;
   private CrossSpaceMergeResource resource;
@@ -114,7 +115,7 @@ public class MergeMultiChunkTask {
       InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource mergeResource,
       boolean fullMerge,
-      List<?> unmergedSeries,
+      List<PartialPath> unmergedDevice,
       int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.mergeContext = context;
@@ -122,7 +123,7 @@ public class MergeMultiChunkTask {
     this.inplaceCompactionLogger = inplaceCompactionLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
-    this.unmergedSeries = unmergedSeries;
+    this.unmergedDevice = unmergedDevice;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
@@ -134,15 +135,28 @@ public class MergeMultiChunkTask {
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
     // merge each series and write data into each seqFile's corresponding temp merge file
-    for (List<MeasurementPath> measurementpathByDevice :
-        (List<List<MeasurementPath>>) unmergedSeries) {
-      if (logger.isInfoEnabled()) {
-        logger.info("{} starts to merge {} series", taskName, measurementpathByDevice.size());
-      }
+    for (PartialPath device : unmergedDevice) {
       // TODO: use statistics of queries to better rearrange series
-      List<PartialPath> pathList = new ArrayList<>(measurementpathByDevice);
-      Collections.sort(pathList);
-      IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
+      List<PartialPath> measurementPathListByDevice;
+      try {
+        measurementPathListByDevice =
+            new ArrayList<>(IoTDB.metaManager.getAllMeasurementByDevicePath(device));
+      } catch (PathNotExistException e) {
+        logger.error("Can not get all measurements of {}.", device.getDevice());
+        continue;
+      }
+      // just for unit tests, we need to consider whether there is a need to exist
+      Collections.sort(measurementPathListByDevice);
+
+      if (logger.isInfoEnabled()) {
+        logger.info(
+            "{}-{} starts to merge {} series",
+            taskName,
+            device.getDevice(),
+            measurementPathListByDevice.size());
+      }
+      IMergePathSelector pathSelector =
+          new NaivePathSelector(measurementPathListByDevice, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
         mergePaths();
@@ -167,7 +181,7 @@ public class MergeMultiChunkTask {
 
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
-      double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
+      double newProgress = 100 * mergedSeriesCnt / (double) (unmergedDevice.size());
       if (newProgress - progress >= 10.0) {
         progress = newProgress;
         logger.info("{} has merged {}% series", taskName, progress);
@@ -176,7 +190,7 @@ public class MergeMultiChunkTask {
   }
 
   public String getProgress() {
-    return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedSeries.size());
+    return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedDevice.size());
   }
 
   private void mergePaths() throws IOException {

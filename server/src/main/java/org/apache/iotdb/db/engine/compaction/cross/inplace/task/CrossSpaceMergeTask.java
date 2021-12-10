@@ -25,7 +25,6 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMerg
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -140,16 +139,12 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
     inplaceCompactionLogger.logFiles(resource);
 
-    List<List<MeasurementPath>> unmergedSeries = new ArrayList<>();
-    Set<PartialPath> devices =
+    Set<PartialPath> unmergedDevice =
         IoTDB.metaManager.getMatchedDevices(
             new PartialPath(
                 storageGroupName
                     + IoTDBConstant.PATH_SEPARATOR
                     + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
-    for (PartialPath path : devices) {
-      unmergedSeries.add(IoTDB.metaManager.getAllMeasurementByDevicePath(path));
-    }
     inplaceCompactionLogger.logMergeStart();
 
     chunkTask =
@@ -159,7 +154,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
             inplaceCompactionLogger,
             resource,
             fullMerge,
-            unmergedSeries,
+            new ArrayList<>(unmergedDevice),
             concurrentMergeSeriesNum,
             storageGroupName);
     states = States.MERGE_CHUNKS;
@@ -188,18 +183,18 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
       double byteRate = totalFileSize / elapsedTime / 1024 / 1024;
-      double seriesRate = unmergedSeries.size() / elapsedTime;
+      double deviceRate = unmergedDevice.size() / elapsedTime;
       double chunkRate = mergeContext.getTotalChunkWritten() / elapsedTime;
       double fileRate =
           (resource.getSeqFiles().size() + resource.getUnseqFiles().size()) / elapsedTime;
       double ptRate = mergeContext.getTotalPointWritten() / elapsedTime;
       logger.info(
-          "{} ends after {}s, byteRate: {}MB/s, seriesRate {}/s, chunkRate: {}/s, "
+          "{} ends after {}s, byteRate: {}MB/s, deviceRate {}/s, chunkRate: {}/s, "
               + "fileRate: {}/s, ptRate: {}/s",
           taskName,
           elapsedTime,
           byteRate,
-          seriesRate,
+          deviceRate,
           chunkRate,
           fileRate,
           ptRate);
