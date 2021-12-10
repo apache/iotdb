@@ -40,43 +40,44 @@ object DataFrameTools {
 
     val repartition = dataframe.repartition(devices.length, dataframe.col("device_name"))
 
-    devices.foreach { device =>
-      repartition
-        .where(s"device_name == '$device'")
-        .foreachPartition { partition =>
-          val hostPort = options.url.split("//")(1).replace("/", "").split(":")
-          val session = new Session(
-            hostPort(0),
-            hostPort(1).toInt,
-            options.user,
-            options.password
-          )
-          session.open()
+    repartition
+      .foreachPartition { partition =>
+        val hostPort = options.url.split("//")(1).replace("/", "").split(":")
+        val session = new Session(
+          hostPort(0),
+          hostPort(1).toInt,
+          options.user,
+          options.password
+        )
+        session.open()
 
-          val times = new util.ArrayList[lang.Long]()
-          val measurementsList = new util.ArrayList[util.List[lang.String]]()
-          val typesList = new util.ArrayList[util.List[TSDataType]]()
-          val valuesList = new util.ArrayList[util.List[Object]]()
-          partition.foreach { record =>
-            val measurements = new util.ArrayList[lang.String]()
-            val types = new util.ArrayList[TSDataType]()
-            val values = new util.ArrayList[Object]()
-            for (i <- 2 until record.length if !(record.get(i) == null)) {
-              val value = typeTrans(record.get(i).toString, getType(sensorTypes(i - 2)._2))
+        val times = new util.ArrayList[lang.Long]()
+        val measurementsList = new util.ArrayList[util.List[lang.String]]()
+        val typesList = new util.ArrayList[util.List[TSDataType]]()
+        val valuesList = new util.ArrayList[util.List[Object]]()
+        var device: lang.String = ""
+        partition.foreach { record =>
+          if ("".equals(device)) device = record.get(1).toString
+          val measurements = new util.ArrayList[lang.String]()
+          val types = new util.ArrayList[TSDataType]()
+          val values = new util.ArrayList[Object]()
+          for (i <- 2 until record.length if !(record.get(i) == null)) {
+            val value = typeTrans(record.get(i).toString, getType(sensorTypes(i - 2)._2))
 
-              values.add(value)
-              measurements.add(sensorTypes(i - 2)._1)
-              types.add(getType(sensorTypes(i - 2)._2))
-            }
-            times.add(record.get(0).asInstanceOf[Long])
-            measurementsList.add(measurements)
-            typesList.add(types)
-            valuesList.add(values)
+            values.add(value)
+            measurements.add(sensorTypes(i - 2)._1)
+            types.add(getType(sensorTypes(i - 2)._2))
           }
-          session.insertRecordsOfOneDevice(device.toString, times, measurementsList, typesList, valuesList)
-          session.close()
+          times.add(record.get(0).asInstanceOf[Long])
+          measurementsList.add(measurements)
+          typesList.add(types)
+          valuesList.add(values)
         }
-    }
+
+        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList)
+        session.close()
+      }
+
   }
 
   def typeTrans(value: lang.String, dataType: TSDataType): Object = {
