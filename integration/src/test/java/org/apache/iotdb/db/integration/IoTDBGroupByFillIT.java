@@ -1833,26 +1833,26 @@ public class IoTDBGroupByFillIT {
   @Test
   public void oldTypeValueMinValueWithValueFilterTest() {
     String[] retArray =
-      new String[] {"17,10", "22,28", "27,10", "32,29", "37,10", "42,10", "47,28", "52,10"};
+        new String[] {"17,10", "22,28", "27,10", "32,29", "37,10", "42,10", "47,28", "52,10"};
 
     try (Connection connection =
-           DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       boolean hasResultSet =
-        statement.execute(
-          "select min_value(temperature) from "
-            + "root.ln.wf01.wt01 "
-            + "WHERE temperature > 25 "
-            + "GROUP BY ([17, 55), 5ms) FILL(int32[10])");
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "WHERE temperature > 25 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[10])");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray[cnt], ans);
           cnt++;
         }
@@ -1860,19 +1860,19 @@ public class IoTDBGroupByFillIT {
       }
 
       hasResultSet =
-        statement.execute(
-          "select min_value(temperature) from "
-            + "root.ln.wf01.wt01 "
-            + "WHERE temperature > 25 "
-            + "GROUP BY ([17, 55), 5ms) FILL(int32[10]) order by time desc");
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "WHERE temperature > 25 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(int32[10]) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
         while (resultSet.next()) {
           String ans =
-            resultSet.getString(TIMESTAMP_STR)
-              + ","
-              + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
           assertEquals(retArray[retArray.length - cnt - 1], ans);
           cnt++;
         }
