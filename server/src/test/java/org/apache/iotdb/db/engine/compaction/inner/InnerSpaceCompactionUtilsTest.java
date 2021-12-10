@@ -106,7 +106,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
     }
     sizeTieredCompactionLogger.logSequence(true);
     InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());
     try (TsFileSequenceReader reader =

@@ -167,9 +167,7 @@ public class TsFileIdentifier {
   }
 
   public String getFilePath() {
-    return IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
-        + File.separator
-        + (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+    return (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
         + File.separator
         + logicalStorageGroupName
         + File.separator

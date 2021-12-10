@@ -226,7 +226,7 @@ public class InnerSeqCompactionTest {
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
-            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             SizeTieredCompactionTask.combineModsInCompaction(sourceResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
@@ -453,7 +453,7 @@ public class InnerSeqCompactionTest {
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
-            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             SizeTieredCompactionTask.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
@@ -731,7 +731,7 @@ public class InnerSeqCompactionTest {
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
-            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+            InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             SizeTieredCompactionTask.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();

@@ -595,7 +595,8 @@ public class InnerSpaceCompactionUtils {
    * @param targetResource the old tsfile to be moved, which is xxx.target
    * @throws IOException
    */
-  public static void moveTargetFile(TsFileResource targetResource) throws IOException {
+  public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
+      throws IOException {
     if (!targetResource.getTsFilePath().endsWith(TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
           "TmpTargetFileReource "
@@ -622,9 +623,10 @@ public class InnerSpaceCompactionUtils {
     // delete old resource file
     File oldResourceFile = new File(oldFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
     if (!oldResourceFile.delete()) {
-      logger.error("Fail to delete old resource file " + oldResourceFile.getAbsolutePath());
+      logger.error(
+          "{} [Compaction] Fail to delete old resource file {}",
+          fullStorageGroupName,
+          oldResourceFile.getAbsolutePath());
     }
-
-    oldResourceFile.delete();
   }
 }

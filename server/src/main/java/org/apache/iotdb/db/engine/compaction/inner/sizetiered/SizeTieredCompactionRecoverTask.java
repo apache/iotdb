@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
@@ -116,7 +117,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
         // xxx.tsfile
         File targetFile =
-            new File(
+            getFileFromDataDirs(
                 targetFileIdentifier
                     .getFilePath()
                     .replace(
@@ -124,20 +125,32 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                         TsFileConstant.TSFILE_SUFFIX));
         // xxx.target.resource
         File tmpTargetResourceFile =
-            new File(targetFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+            getFileFromDataDirs(
+                targetFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
+
         // xxx.tsfile.resource
-        File targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+        File targetResourceFile =
+            getFileFromDataDirs(
+                targetFileIdentifier
+                        .getFilePath()
+                        .replace(
+                            TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
+                            TsFileConstant.TSFILE_SUFFIX)
+                    + TsFileResource.RESOURCE_SUFFIX);
 
         if (tmpTargetFile != null) {
           // xxx.target exists, then move it to xxx.tsfile
-          if (targetFile.exists()) {
+          if (targetFile != null) {
             targetFile.delete();
           }
           TsFileResource targetResource = new TsFileResource(tmpTargetFile);
-          InnerSpaceCompactionUtils.moveTargetFile(targetResource);
+          InnerSpaceCompactionUtils.moveTargetFile(targetResource, fullStorageGroupName);
           targetFile = targetResource.getTsFile();
+          targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+          tmpTargetFile = null;
+          tmpTargetResourceFile = null;
         } else {
-          if (!targetFile.exists()) {
+          if (targetFile == null) {
             // both xxx.target and xxx.tsfile do not exist, then delete tmpTargetResourceFile and
             // targetResourceFile if exist.
             LOGGER.info(
@@ -145,14 +158,14 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                 logicalStorageGroupName,
                 virtualStorageGroup,
                 targetFileIdentifier);
-            if (tmpTargetResourceFile.exists() && !tmpTargetResourceFile.delete()) {
+            if (tmpTargetResourceFile != null && !tmpTargetResourceFile.delete()) {
               LOGGER.error(
                   "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                   logicalStorageGroupName,
                   virtualStorageGroup,
                   tmpTargetResourceFile);
             }
-            if (targetResourceFile.exists() && !targetResourceFile.delete()) {
+            if (targetResourceFile != null && !targetResourceFile.delete()) {
               LOGGER.error(
                   "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                   logicalStorageGroupName,
@@ -165,7 +178,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
 
         // xxx.target does not exist and xxx.tsfile exists
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
-        if (!targetResourceFile.exists() || writer.hasCrashed()) {
+        if (targetResourceFile == null || writer.hasCrashed()) {
           // xxx.tsfile.resource does not exists or xxx.tsfile is incomplete, then delete xxx.tsfile
           // and xxx.target.resource.
           LOGGER.info(
@@ -181,7 +194,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                 virtualStorageGroup,
                 targetFile);
           }
-          if (tmpTargetResourceFile.exists() && !tmpTargetResourceFile.delete()) {
+          if (tmpTargetResourceFile != null && !tmpTargetResourceFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                 logicalStorageGroupName,
@@ -248,5 +261,20 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     return compactionLogFile.exists();
+  }
+
+  /**
+   * This method find the File object of given filePath by searching it in every data directory. If
+   * the file is not found, it will return null.
+   */
+  private File getFileFromDataDirs(String filePath) {
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    for (String dataDir : dataDirs) {
+      File f = new File(dataDir, filePath);
+      if (f.exists()) {
+        return f;
+      }
+    }
+    return null;
   }
 }

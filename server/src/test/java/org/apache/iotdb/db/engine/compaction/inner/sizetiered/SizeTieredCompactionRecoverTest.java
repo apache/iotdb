@@ -379,7 +379,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     BufferedReader logReader = new BufferedReader(new FileReader(compactionLogFile));
     List<String> logs = new ArrayList<>();
     String line;
@@ -732,7 +732,7 @@ public class SizeTieredCompactionRecoverTest {
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
         true);
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     // delete TargetResourceFile
     new File(
             targetTsFileResource
@@ -853,7 +853,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     tsFileManager.add(targetTsFileResource, true);
     new SizeTieredCompactionRecoverTask(
             COMPACTION_LOG_NAME,
@@ -957,7 +957,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       tsFileManager.remove(resource, true);
       deleteFileIfExists(resource.getTsFile());
@@ -1065,7 +1065,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG,
         true);
     compactionLogger.close();
-    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource);
+    InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     deleteFileIfExists(compactionLogFile);
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
       tsFileManager.remove(resource, true);
