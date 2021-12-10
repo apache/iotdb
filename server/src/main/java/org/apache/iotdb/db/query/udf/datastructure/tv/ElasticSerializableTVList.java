@@ -31,8 +31,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 public class ElasticSerializableTVList implements PointCollector {
 
@@ -53,14 +51,26 @@ public class ElasticSerializableTVList implements PointCollector {
 
   protected LRUCache cache;
   protected List<SerializableTVList> tvLists;
+  /**
+   * the bitmap used to indicate whether one value is null in the tvLists. The size of bitMap is the
+   * same as tvLists and the length of whole bits is the same as tvLists' length. The bit
+   * corresponding in each byte is from lower to higher. i.e. there are 5 points which have the null
+   * value with the boolean list [1,null,null,1,1], then the byte is 00000110.
+   *
+   * <p>Here we must use byte instead of int/long because when calculating capacity, we use
+   * ARRAY_CAPACITY_THRESHOLD to estimate the size of each array in tvLists.
+   * ARRAY_CAPACITY_THRESHOLD == 1000 by default, which can be divisible by 8 and can't be divisible
+   * by 16 or 32. So it will be more precise to estimate the bitmap size in memory as there's no bit
+   * wasted.
+   *
+   * <p>For example, 1000 elements will use 1000/8=125 bytes exactly, the cost of one element in the
+   * bitmap is 125*8/1000=1b. But if we use integer, we need 1000/32 + 1 = 32 integers, the cost of
+   * one element is 32*16/1000=1.024b, which is more complicated in memory control.
+   */
+  protected List<byte[]> bitMap;
+
   protected int size;
   protected int evictionUpperBound;
-
-  /**
-   * the element in this set means that the corresponding index data is null. TODO: the memory cost
-   * of this field is not calculated in memoryLimitInMB, maybe we need more optimization later
-   */
-  protected SortedSet<Integer> nullIndices;
 
   protected ElasticSerializableTVList(
       TSDataType dataType, long queryId, float memoryLimitInMB, int cacheSize)
@@ -77,7 +87,7 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    nullIndices = new TreeSet<>();
+    bitMap = new ArrayList<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -96,7 +106,7 @@ public class ElasticSerializableTVList implements PointCollector {
     this.cacheSize = cacheSize;
 
     cache = new LRUCache(cacheSize);
-    nullIndices = new TreeSet<>();
+    bitMap = new ArrayList<>();
     tvLists = new ArrayList<>();
     size = 0;
     evictionUpperBound = 0;
@@ -111,7 +121,10 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   public boolean isNull(int index) throws IOException {
-    return nullIndices.contains(index);
+    // use bit manipulation instead of modulation to speed up
+    int innerIndex = index % internalTVListCapacity;
+    int mask = 1 << (innerIndex & 7);
+    return (bitMap.get(index / internalTVListCapacity)[innerIndex >> 3] & mask) != 0;
   }
 
   public long getTime(int index) throws IOException {
@@ -233,7 +246,6 @@ public class ElasticSerializableTVList implements PointCollector {
   }
 
   public void putNull(long timestamp) throws IOException, QueryProcessException {
-    nullIndices.add(size);
     switch (dataType) {
       case INT32:
         putInt(timestamp, 0);
@@ -257,11 +269,16 @@ public class ElasticSerializableTVList implements PointCollector {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
+    // use bit manipulation instead of modulation to speed up
+    int innerIndex = (size - 1) % internalTVListCapacity;
+    int mask = 1 << (innerIndex & 7);
+    bitMap.get((size - 1) / internalTVListCapacity)[innerIndex >> 3] |= mask;
   }
 
   private void checkExpansion() {
     if (size % internalTVListCapacity == 0) {
       tvLists.add(SerializableTVList.newSerializableTVList(dataType, queryId));
+      bitMap.add(new byte[((internalTVListCapacity - 1) >> 3) + 1]);
     }
   }
 
@@ -357,19 +374,10 @@ public class ElasticSerializableTVList implements PointCollector {
           int lastIndex = removeLast();
           if (lastIndex < evictionUpperBound / internalTVListCapacity) {
             tvLists.set(lastIndex, null);
+            bitMap.set(lastIndex, null);
           } else {
             tvLists.get(lastIndex).serialize();
           }
-          // here we trigger the clear of nullIndices
-          List<Integer> removedIndices = new ArrayList<>();
-          for (Integer index : nullIndices) {
-            if (index < evictionUpperBound) {
-              removedIndices.add(index);
-            } else {
-              break;
-            }
-          }
-          removedIndices.forEach(nullIndices::remove);
         }
         tvLists.get(targetIndex).deserialize();
       }
