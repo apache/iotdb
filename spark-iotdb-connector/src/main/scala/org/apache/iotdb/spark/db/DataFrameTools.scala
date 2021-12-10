@@ -38,7 +38,7 @@ object DataFrameTools {
       .collect()
       .map(x => x.get(0))
 
-    val repartition = dataframe.repartition(1, dataframe.col("device_name"))
+    val repartition = dataframe.repartition(devices.length, dataframe.col("device_name"))
 
     devices.foreach { device =>
       repartition
