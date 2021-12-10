@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metrics.sink;
+package org.apache.iotdb.db.service.metrics;
 
-public interface Sink {
+import org.apache.iotdb.db.exception.StartupException;
 
-  void start();
+public interface MetricsServiceMBean {
 
-  void stop();
+  void startService() throws StartupException;
 
-  void report();
+  void restartService() throws StartupException;
+
+  void stopService();
 }
