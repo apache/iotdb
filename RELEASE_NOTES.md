@@ -30,10 +30,10 @@
 
 * [IOTDB-2027] Ignore too many WAL BufferOverflow log
 * [IOTDB-2061] Add max concurrent sub query parameter, read data in batches to limit max IO and add max cached buffer size configuration
-* [ISSUE-2102] Reduce the memory footprint of QueryDataSource
-* [ISSUE-2102] Push limit operator down to each reader
 * [IOTDB-2065] release TsFileSequenceReader soon when it is no longer used
 * [IOTDB-2072] Remove TVListAllocator to reduce the TVList mem cost
+* [ISSUE-2101] Reduce the memory footprint of QueryDataSource
+* [ISSUE-2102] Push limit operator down to each reader
 * [IOTDB-2123] Accelerate recovery process
 * update user guide for cpp-cpi and disable compiling nodejs in cpp-cli
 
