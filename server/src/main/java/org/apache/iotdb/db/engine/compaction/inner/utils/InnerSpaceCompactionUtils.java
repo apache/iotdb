@@ -54,6 +54,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -541,11 +542,54 @@ public class InnerSpaceCompactionUtils {
 
   public static void deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [compaction] merge starts to delete real file ", storageGroupName);
+    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
     for (TsFileResource mergeTsFile : mergeTsFiles) {
       deleteTsFile(mergeTsFile);
       logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
+    }
+  }
+
+  /** Delete all modification files for source files */
+  public static void deleteModificationForSourceFile(
+      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
+    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    for (TsFileResource tsFileResource : sourceFiles) {
+      ModificationFile compactionModificationFile =
+          ModificationFile.getCompactionMods(tsFileResource);
+      if (compactionModificationFile.exists()) {
+        compactionModificationFile.remove();
+      }
+
+      ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
+      if (normalModification.exists()) {
+        normalModification.remove();
+      }
+    }
+  }
+
+  /**
+   * Collect all the compaction modification files of source files, and combines them as the
+   * modification file of target file.
+   */
+  public static void combineModsInCompaction(
+      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+      }
+    }
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
+        }
+      }
     }
   }
 
