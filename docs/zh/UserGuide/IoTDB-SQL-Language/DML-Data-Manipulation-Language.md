@@ -23,8 +23,7 @@
 
 ## 数据写入
 
-IoTDB 为用户提供多种插入实时数据的方式，例如在 [Cli/Shell 工具](../CLI/Command-Line-Interface.md) 中直接输入插入数据的 INSERT 语句，或使用 Java
-API（标准 [Java JDBC](../API/Programming-JDBC.md) 接口）单条或批量执行插入数据的 INSERT 语句。
+IoTDB 为用户提供多种插入实时数据的方式，例如在 [Cli/Shell 工具](../CLI/Command-Line-Interface.md) 中直接输入插入数据的 INSERT 语句，或使用 Java API（标准 [Java JDBC](../API/Programming-JDBC.md) 接口）单条或批量执行插入数据的 INSERT 语句。
 
 本节主要为您介绍实时数据接入的 INSERT 语句在场景中的实际使用示例，有关 INSERT SQL 语句的详细语法请参见本文 [INSERT 语句](../Appendix/SQL-Reference.md) 节。
 
@@ -37,38 +36,30 @@ API（标准 [Java JDBC](../API/Programming-JDBC.md) 接口）单条或批量执
 单列数据插入示例代码如下：
 
 ```sql
-IoTDB
-> insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
+IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
 IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
 ```
 
-以上示例代码将长整型的 timestamp 以及值为 true 的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的 timestamp
-以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。
+以上示例代码将长整型的 timestamp 以及值为 true 的数据插入到时间序列`root.ln.wf02.wt02.status`中和将长整型的 timestamp 以及值为”v1”的数据插入到时间序列`root.ln.wf02.wt02.hardware`中。执行成功后会返回执行时间，代表数据插入已完成。 
 
 > 注意：在 IoTDB 中，TEXT 类型的数据单双引号都可以来表示，上面的插入语句是用的是双引号表示 TEXT 类型数据，下面的示例将使用单引号表示 TEXT 类型数据。
 
 INSERT 语句还可以支持在同一个时间点下多列数据的插入，同时向 2 时间点插入上述两个时间序列的值，多列数据插入示例代码如下：
 
 ```sql
-IoTDB
-> insert into root.ln.wf02.wt02(timestamp, status, hardware) values (2, false, 'v2')
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) values (2, false, 'v2')
 ```
 
 此外，INSERT 语句支持一次性插入多行数据，同时向 2 个不同时间点插入上述时间序列的值，示例代码如下：
 
 ```sql
-IoTDB
-> insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
+IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
 ```
 
 插入数据后我们可以使用 SELECT 语句简单查询已插入的数据。
 
 ```sql
-IoTDB
->
-select *
-from root.ln.wf02
-where time < 5
+IoTDB > select * from root.ln.wf02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
@@ -90,23 +81,19 @@ It costs 0.170s
 
 ### 时间条件过滤查询
 
-本节主要介绍时间切片查询的相关示例，主要使用的是 [IoTDB SELECT 语句](../Appendix/SQL-Reference.md)
-。同时，您也可以使用 [Java JDBC](../API/Programming-JDBC.md) 标准接口来执行相关的查询语句。
+本节主要介绍时间切片查询的相关示例，主要使用的是 [IoTDB SELECT 语句](../Appendix/SQL-Reference.md)。同时，您也可以使用 [Java JDBC](../API/Programming-JDBC.md) 标准接口来执行相关的查询语句。
 
 #### 根据一个时间区间选择一列数据
 
 SQL 语句为：
 
 ```sql
-select temperature
-from root.ln.wf01.wt01
-where time < 2017-11-01T00:08:00.000
+select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 
 其含义为：
 
-被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:
-00.000”（此处可以使用多种时间格式，详情可参看 [2.1 节](../Data-Concept/Data-Model-and-Terminology.md)）时间点以前的所有温度传感器的值。
+被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为温度传感器（temperature）；该语句要求选择出该设备在“2017-11-01T00:08:00.000”（此处可以使用多种时间格式，详情可参看 [2.1 节](../Data-Concept/Data-Model-and-Terminology.md)）时间点以前的所有温度传感器的值。
 
 该 SQL 语句的执行结果如下：
 
@@ -132,15 +119,12 @@ It costs 0.026s
 SQL 语句为：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
+select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
 ```
 
 其含义为：
 
-被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为供电状态（status）和温度传感器（temperature）；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:
-12:00.000”之间的所选时间序列的值。
+被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为供电状态（status）和温度传感器（temperature）；该语句要求选择出“2017-11-01T00:05:00.000”至“2017-11-01T00:12:00.000”之间的所选时间序列的值。
 
 该 SQL 语句的执行结果如下：
 
@@ -166,16 +150,12 @@ IoTDB 支持在一次查询中指定多个时间区间条件，用户可以根�
 SQL 语句为：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000)
-   or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
+select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 
 其含义为：
 
-被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000 至
-2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000 至 2017-11-01T16:37:00.000”；该语句要求选择出满足任一时间区间的被选时间序列的值。
+被选择的设备为 ln 集团 wf01 子站 wt01 设备；被选择的时间序列为“供电状态（status）”和“温度传感器（temperature）”；该语句指定了两个不同的时间区间，分别为“2017-11-01T00:05:00.000 至 2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000 至 2017-11-01T16:37:00.000”；该语句要求选择出满足任一时间区间的被选时间序列的值。
 
 该 SQL 语句的执行结果如下：
 
@@ -202,16 +182,12 @@ It costs 0.018s
 该系统支持在一次查询中选择任意列的数据，也就是说，被选择的列可以来源于不同的设备。例如，SQL 语句为：
 
 ```sql
-select wf01.wt01.status, wf02.wt02.hardware
-from root.ln
-where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000)
-   or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
+select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 
 其含义为：
 
-被选择的时间序列为“ln 集团 wf01 子站 wt01 设备的供电状态”以及“ln 集团 wf02 子站 wt02 设备的硬件版本”；该语句指定了两个时间区间，分别为“2017-11-01T00:05:00.000 至
-2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000 至 2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
+被选择的时间序列为“ln 集团 wf01 子站 wt01 设备的供电状态”以及“ln 集团 wf02 子站 wt02 设备的硬件版本”；该语句指定了两个时间区间，分别为“2017-11-01T00:05:00.000 至 2017-11-01T00:12:00.000”和“2017-11-01T16:35:00.000 至 2017-11-01T16:37:00.000”；该语句要求选择出满足任意时间区间的被选时间序列的值。
 
 该 SQL 语句的执行结果如下：
 
@@ -234,14 +210,10 @@ It costs 0.014s
 ```
 
 #### 根据时间降序返回结果集
-
 IoTDB 在 0.11 版本开始支持 'order by time' 语句，用于对结果按照时间进行降序展示。例如，SQL 语句为：
 
 ```sql
-select *
-from root.ln.**
-where time > 1
-order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 
 语句执行的结果为：
@@ -292,16 +264,7 @@ It costs 0.016s
 例如：
 
 ```sql
-select s1,
-       - s1,
-       s2,
-       + s2,
-       s1 + s2,
-       s1 - s2,
-       s1 * s2,
-       s1 / s2,
-       s1 % s2
-from root.sg.d1
+select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
 ```
 
 结果：
@@ -444,8 +407,8 @@ It costs 0.006s
 | TIME_DIFFERENCE         | INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | INT64                    | 统计序列中某数据点的时间戳与前一数据点时间戳的差。范围内第一个数据点没有对应的结果输出。 |
 | DIFFERENCE              | INT32 / INT64 / FLOAT / DOUBLE                  | 与输入序列的实际类型一致 | 统计序列中某数据点的值与前一数据点的值的差。范围内第一个数据点没有对应的结果输出。 |
 | NON_NEGATIVE_DIFFERENCE | INT32 / INT64 / FLOAT / DOUBLE                  | 与输入序列的实际类型一致 | 统计序列中某数据点的值与前一数据点的值的差的绝对值。范围内第一个数据点没有对应的结果输出。 |
-| DERIVATIVE              | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率，数量上等同于 DIFFERENCE / TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
-| NON_NEGATIVE_DERIVATIVE | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率的绝对值，数量上等同于 NON_NEGATIVE_DIFFERENCE / TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
+| DERIVATIVE              | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率，数量上等同于 DIFFERENCE /  TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
+| NON_NEGATIVE_DERIVATIVE | INT32 / INT64 / FLOAT / DOUBLE                  | DOUBLE                   | 统计序列中某数据点相对于前一数据点的变化率的绝对值，数量上等同于 NON_NEGATIVE_DIFFERENCE /  TIME_DIFFERENCE。范围内第一个数据点没有对应的结果输出。 |
 
 例如：
 
@@ -477,11 +440,11 @@ It costs 0.014s
 
 目前 IoTDB 支持如下常序列生成函数：
 
-| 函数名   | 必要的属性参数                                                                                       | 输出序列类型            | 功能描述                                                       |
-|-------|-----------------------------------------------------------------------------------------------|-------------------|------------------------------------------------------------|
-| CONST | `value`: 输出的数据点的值 <br />`type`: 输出的数据点的类型，只能是 INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | 由输入属性参数 `type` 决定 | 根据输入属性 `value` 和 `type` 输出用户指定的常序列。                        || PI     | 无                                                           | DOUBLE                     | 常序列的值：`π` 的 `double` 值，圆的周长与其直径的比值，即圆周率，等于 *Java标准库* 中的`Math.PI`。 |
-| E     | 无                                                                                             | DOUBLE            | 常序列的值：`e` 的 `double` 值，自然对数的底，它等于 *
-Java 标准库*  中的 `Math.E`。 |
+| 函数名 | 必要的属性参数                                               | 输出序列类型               | 功能描述                                                     |
+| ------ | ------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------ |
+| CONST  | `value`: 输出的数据点的值 <br />`type`: 输出的数据点的类型，只能是 INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | 由输入属性参数 `type` 决定 | 根据输入属性 `value` 和 `type` 输出用户指定的常序列。        |
+| PI     | 无                                                           | DOUBLE                     | 常序列的值：`π` 的 `double` 值，圆的周长与其直径的比值，即圆周率，等于 *Java标准库* 中的`Math.PI`。 |
+| E      | 无                                                           | DOUBLE                     | 常序列的值：`e` 的 `double` 值，自然对数的底，它等于 *Java 标准库*  中的 `Math.E`。 |
 
 例如：
 
@@ -508,8 +471,7 @@ It costs 0.005s
 
 #### 数据类型转换函数
 
-当前IoTDB支持6种数据类型，其中包括INT32、INT64、FLOAT、DOUBLE、BOOLEAN以及TEXT。当我们对数据进行查询或者计算时可能需要进行数据类型的转换，
-比如说将TEXT转换为INT32，或者提高数据精度，比如说将FLOAT转换为DOUBLE。所以，IoTDB支持使用cast函数对数据类型进行转换。
+当前IoTDB支持6种数据类型，其中包括INT32、INT64、FLOAT、DOUBLE、BOOLEAN以及TEXT。当我们对数据进行查询或者计算时可能需要进行数据类型的转换， 比如说将TEXT转换为INT32，或者提高数据精度，比如说将FLOAT转换为DOUBLE。所以，IoTDB支持使用cast函数对数据类型进行转换。  
 
 | 函数名 | 必要的属性参数                                               | 输出序列类型             | 功能类型                           |
 | ------ | ------------------------------------------------------------ | ------------------------ | ---------------------------------- |
@@ -519,15 +481,12 @@ It costs 0.005s
 
 1.当INT32、INT64类型的值不为0时，FLOAT与DOUBLE类型的值不为0.0时，TEXT类型不为空字符串或者"false"时，转换为BOOLEAN类型时值为true，否则为false。
 
-2.当BOOLEAN类型的值为true时，转换为INT32与INT64类型的值为1，转换为FLOAT或者DOUBLE类型时值为1.0，转换为TEXT类型时值为"true"
-。当BOOLEAN类型的值为false时，转换为INT32与INT64类型的值为0，转换为FLOAT或者DOUBLE类型时值为0.0，转换为TEXT类型时值为"false"。
+2.当BOOLEAN类型的值为true时，转换为INT32与INT64类型的值为1，转换为FLOAT或者DOUBLE类型时值为1.0，转换为TEXT类型时值为"true"。当BOOLEAN类型的值为false时，转换为INT32与INT64类型的值为0，转换为FLOAT或者DOUBLE类型时值为0.0，转换为TEXT类型时值为"false"。  
 
 3.当TEXT类型转换为INT32、INT64、FLOAT类型时，会先将TEXT类型的数据转换为DOUBLE类型，然后再转换为对应的类型，此时可能会存在损失精度的问题。如果无法转换的话则直接跳过。
 
 ##### 演示
-
 测试数据：
-
 ```
 IoTDB> select text from root.test;
 +-----------------------------+--------------+
@@ -539,20 +498,11 @@ IoTDB> select text from root.test;
 |1970-01-01T08:00:00.004+08:00|         false|
 +-----------------------------+--------------+
 ```
-
 SQL语句：
-
 ```sql
-select cast(text, 'type' = 'BOOLEAN'),
-       cast(text, 'type' = 'INT32'),
-       cast(text, 'type' = 'INT64'),
-       cast(text, 'type' = 'FLOAT'),
-       cast(text, 'type' = 'DOUBLE')
-from root.test;
+select cast(text, 'type'='BOOLEAN'), cast(text, 'type'='INT32'), cast(text, 'type'='INT64'), cast(text, 'type'='FLOAT'), cast(text, 'type'='DOUBLE') from root.test;
 ```
-
 结果：
-
 ```
 +-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
 |                         Time|cast(root.test.text, "type"="BOOLEAN")|cast(root.test.text, "type"="INT32")|cast(root.test.text, "type"="INT64")|cast(root.test.text, "type"="FLOAT")|cast(root.test.text, "type"="DOUBLE")|
@@ -565,7 +515,6 @@ from root.test;
 Total line number = 4
 It costs 0.078s
 ```
-
 #### 自定义时间序列生成函数
 
 请参考 [UDF （用户定义函数）](../Advanced-Features/UDF-User-Defined-Function.md)。
@@ -584,16 +533,15 @@ IoTDB 支持在 `select` 字句中执行由**数字常量，时间序列、算�
 
 ```sql
 selectClause
-:
-SELECT resultColumn(',' resultColumn) *
-;
+    : SELECT resultColumn (',' resultColumn)*
+    ;
 
 resultColumn
-: expression (AS ID)?
+    : expression (AS ID)?
     ;
 
 expression
-: '(' expression ')'
+    : '(' expression ')'
     | '-' expression
     | expression ('*' | '/' | '%') expression
     | expression ('+' | '-') expression
@@ -632,15 +580,14 @@ It costs 0.170s
 
 ### 聚合查询
 
-本章节主要介绍聚合查询的相关示例， 主要使用的是 IoTDB SELECT 语句的聚合查询函数。
+本章节主要介绍聚合查询的相关示例，
+主要使用的是 IoTDB SELECT 语句的聚合查询函数。
 
 #### 统计总点数
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01;
+select count(status) from root.ln.wf01.wt01;
 ```
-
 结果：
 
 ```
@@ -655,14 +602,14 @@ It costs 0.016s
 
 #### 路径层级分组聚合
 
-在时间序列层级结构中，分层聚合查询用于对某一层级进行聚合查询。 这里使用 LEVEL 来统计指定层级下的聚合范围，该语句约定 root 为第 0 层序列，若统计"root.ln"下所有序列则需指定 level 为 1。
+在时间序列层级结构中，分层聚合查询用于对某一层级进行聚合查询。
+这里使用 LEVEL 来统计指定层级下的聚合范围，该语句约定 root 为第 0 层序列，若统计"root.ln"下所有序列则需指定 level 为 1。
 
-例如：在"root.ln.wf01"下存在多个子序列：wt01，wt02，wt03 等均有名为 status 的序列， 如果需要统计这些子序列的 status 包含的点个数，使用以下查询：
+例如：在"root.ln.wf01"下存在多个子序列：wt01，wt02，wt03 等均有名为 status 的序列，
+如果需要统计这些子序列的 status 包含的点个数，使用以下查询：
 
 ```sql
-select count(status)
-from root.ln.wf01.*
-group by level = 2
+select count(status) from root.ln.wf01.* group by level=2
 ```
 
 运行结果为：
@@ -677,13 +624,11 @@ Total line number = 1
 It costs 0.003s
 ```
 
-假设此时添加两条序列，"root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature"。 需要同时查询"root.ln.\*.\*.temperature"在第二层级的
-count 聚合结果和 sum 聚合结果，可以使用下列查询语句：
+假设此时添加两条序列，"root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature"。
+需要同时查询"root.ln.\*.\*.temperature"在第二层级的 count 聚合结果和 sum 聚合结果，可以使用下列查询语句：
 
 ```sql
-select count(temperature), sum(temperature)
-from root.ln.*.*
-group by level = 2
+select count(temperature), sum(temperature) from root.ln.*.* group by level=2
 ```
 
 运行结果：
@@ -701,9 +646,7 @@ It costs 0.013s
 若统计"root.ln.\*.\*"下第一层级的 count 聚合结果和 sum 聚合结果，则设置 level=1 即可：
 
 ```sql
-select count(temperature), sum(temperature)
-from root.ln.*.*
-group by level = 1
+select count(temperature), sum(temperature) from root.ln.*.* group by level=1
 ```
 
 运行结果：
@@ -718,15 +661,16 @@ Total line number = 1
 It costs 0.013s
 ```
 
-分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value,
-extreme
+分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme
 
 对于 sum, avg, min_value, max_value, extreme 五种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
 #### 时间区间分组聚合
 
-本章节主要介绍时间区间分组聚合查询的相关示例， 主要使用的是 IoTDB SELECT 语句的 [GROUP BY 子句](../Appendix/SQL-Reference.md)， 该子句是 IoTDB
-中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。 IoTDB 支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
+本章节主要介绍时间区间分组聚合查询的相关示例，
+主要使用的是 IoTDB SELECT 语句的 [GROUP BY 子句](../Appendix/SQL-Reference.md)，
+该子句是 IoTDB 中用于根据用户给定划分条件对结果集进行划分，并对已划分的结果集进行聚合计算的语句。
+IoTDB 支持根据时间间隔和自定义的滑动步长（默认值与时间间隔相同，自定义的值必须大于等于时间间隔）对结果集进行划分，默认结果按照时间升序排列。
 同时，您也可以使用 Java JDBC 标准接口来执行相关的查询语句。
 
 GROUP BY 语句为用户提供三类指定参数：
@@ -735,7 +679,11 @@ GROUP BY 语句为用户提供三类指定参数：
 * 参数 2：划分时间轴的时间间隔参数（必须为正数）
 * 参数 3：滑动步长（可选参数，默认值与时间间隔相同，自定义的值必须大于等于时间间隔）
 
-三类参数的实际含义已经在下图中指出，这三类参数里，第三个参数是可选的。 接下来，我们将给出三种典型的降频聚合查询的例子： 滑动步长未指定， 指定滑动步长， 带值过滤条件。
+三类参数的实际含义已经在下图中指出，这三类参数里，第三个参数是可选的。
+接下来，我们将给出三种典型的降频聚合查询的例子：
+滑动步长未指定，
+指定滑动步长，
+带值过滤条件。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/16079446/69109512-f808bc80-0ab2-11ea-9e4d-b2b2f58fb474.png">
 
@@ -744,11 +692,8 @@ GROUP BY 语句为用户提供三类指定参数：
 对应的 SQL 语句是：
 
 ```sql
-select count(status), max_value(temperature)
-from root.ln.wf01.wt01
-group by ([2017-11-01T00:00:00, 2017 - 11 - 07T23:00:00), 1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d);
 ```
-
 这条查询的含义是：
 
 由于用户没有指定滑动步长，滑动步长将会被默认设置为跟时间间隔参数相同，也就是`1d`。
@@ -757,8 +702,7 @@ group by ([2017-11-01T00:00:00, 2017 - 11 - 07T23:00:00), 1d);
 
 上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`1d`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[0,1d), [1d, 2d), [2d, 3d) 等等。
 
-然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2017-11-07 T23:
-00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2017-11-07T23:00:00:00 的每一天）
+然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2017-11-07 T23:00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2017-11-07T23:00:00:00 的每一天）
 
 每个时间间隔窗口内都有数据，SQL 执行后的结果集如下所示：
 
@@ -783,9 +727,7 @@ It costs 0.024s
 对应的 SQL 语句是：
 
 ```sql
-select count(status), max_value(temperature)
-from root.ln.wf01.wt01
-group by ([2017-11-01 00:00:00, 2017 - 11 - 07 23:00:00), 3h, 1d);
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d);
 ```
 
 这条查询的含义是：
@@ -796,13 +738,11 @@ group by ([2017-11-01 00:00:00, 2017 - 11 - 07 23:00:00), 3h, 1d);
 
 上面这个例子的第一个参数是显示窗口参数，决定了最终的显示范围是 [2017-11-01T00:00:00, 2017-11-07T23:00:00)。
 
-上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`3h`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-11-01T00:00:00, 2017-11-01T03:00:00), [
-2017-11-02T00:00:00, 2017-11-02T03:00:00), [2017-11-03T00:00:00, 2017-11-03T03:00:00) 等等。
+上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`3h`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-11-01T00:00:00, 2017-11-01T03:00:00), [2017-11-02T00:00:00, 2017-11-02T03:00:00), [2017-11-03T00:00:00, 2017-11-03T03:00:00) 等等。
 
 上面这个例子的第三个参数是每次时间间隔的滑动步长。
 
-然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2017-11-07 T23:
-00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2017-11-07T23:00:00:00 的每一天的凌晨 0 点到凌晨 3 点）
+然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2017-11-07 T23:00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2017-11-07T23:00:00:00 的每一天的凌晨 0 点到凌晨 3 点）
 
 每个时间间隔窗口内都有数据，SQL 执行后的结果集如下所示：
 
@@ -827,10 +767,7 @@ It costs 0.006s
 对应的 SQL 语句是：
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01
-where time > 2017-11-01T01:00:00
-group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
+select count(status) from root.ln.wf01.wt01 where time > 2017-11-01T01:00:00 group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
 这条查询的含义是：
@@ -843,13 +780,11 @@ group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 
 起始时间为 2017-11-01T00:00:00，滑动步长将会以起始时间作为标准按月递增，取当月的 1 号作为时间间隔的起始时间。
 
-上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`1mo`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-11-01T00:00:00, 2017-12-01T00:00:00), [
-2018-02-01T00:00:00, 2018-03-01T00:00:00), [2018-05-03T00:00:00, 2018-06-01T00:00:00) 等等。
+上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`1mo`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-11-01T00:00:00, 2017-12-01T00:00:00), [2018-02-01T00:00:00, 2018-03-01T00:00:00), [2018-05-03T00:00:00, 2018-06-01T00:00:00) 等等。
 
 上面这个例子的第三个参数是每次时间间隔的滑动步长。
 
-然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2019-11-07T23:
-00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2019-11-07T23:00:00:00 的每两个自然月的第一个月）
+然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-11-01T00:00:00, 2019-11-07T23:00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-11-01T00:00:00 到 2019-11-07T23:00:00:00 的每两个自然月的第一个月）
 
 每个时间间隔窗口内都有数据，SQL 执行后的结果集如下所示：
 
@@ -876,9 +811,7 @@ group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 对应的 SQL 语句是：
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01
-group by([2017-10-31T00:00:00, 2019 - 11 - 07T23:00:00), 1mo, 2mo);
+select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
 这条查询的含义是：
@@ -887,18 +820,15 @@ group by([2017-10-31T00:00:00, 2019 - 11 - 07T23:00:00), 1mo, 2mo);
 
 也就意味着，我们想要取从 2017-10-31 到 2019-11-07 每 2 个自然月的第一个月的数据。
 
-与上述示例不同的是起始时间为 2017-10-31T00:00:00，滑动步长将会以起始时间作为标准按月递增，取当月的 31 号（即最后一天）作为时间间隔的起始时间。若起始时间设置为 30 号，滑动步长会将时间间隔的起始时间设置为当月 30
-号，若不存在则为最后一天。
+与上述示例不同的是起始时间为 2017-10-31T00:00:00，滑动步长将会以起始时间作为标准按月递增，取当月的 31 号（即最后一天）作为时间间隔的起始时间。若起始时间设置为 30 号，滑动步长会将时间间隔的起始时间设置为当月 30 号，若不存在则为最后一天。
 
 上面这个例子的第一个参数是显示窗口参数，决定了最终的显示范围是 [2017-10-31T00:00:00, 2019-11-07T23:00:00)。
 
-上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`1mo`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-10-31T00:00:00, 2017-11-31T00:00:00), [
-2018-02-31T00:00:00, 2018-03-31T00:00:00), [2018-05-31T00:00:00, 2018-06-31T00:00:00) 等等。
+上面这个例子的第二个参数是划分时间轴的时间间隔参数，将`1mo`当作划分间隔，显示窗口参数的起始时间当作分割原点，时间轴即被划分为连续的时间间隔：[2017-10-31T00:00:00, 2017-11-31T00:00:00), [2018-02-31T00:00:00, 2018-03-31T00:00:00), [2018-05-31T00:00:00, 2018-06-31T00:00:00) 等等。
 
 上面这个例子的第三个参数是每次时间间隔的滑动步长。
 
-然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-10-31T00:00:00, 2019-11-07T23:
-00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-10-31T00:00:00 到 2019-11-07T23:00:00:00 的每两个自然月的第一个月）
+然后系统将会用 WHERE 子句中的时间和值过滤条件以及 GROUP BY 语句中的第一个参数作为数据的联合过滤条件，获得满足所有过滤条件的数据（在这个例子里是在 [2017-10-31T00:00:00, 2019-11-07T23:00:00) 这个时间范围的数据），并把这些数据映射到之前分割好的时间轴中（这个例子里是从 2017-10-31T00:00:00 到 2019-11-07T23:00:00:00 的每两个自然月的第一个月）
 
 每个时间间隔窗口内都有数据，SQL 执行后的结果集如下所示：
 
@@ -927,9 +857,7 @@ group by([2017-10-31T00:00:00, 2019 - 11 - 07T23:00:00), 1mo, 2mo);
 每个区间的结果时间戳为区间右端点，对应的 SQL 语句是：
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01
-group by ((2017 - 11 - 01T00:00:00, 2017 - 11 - 07T23:00:00], 1d);
+select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d);
 ```
 
 这条查询语句的时间区间是左开右闭的，结果中不会包含时间点 2017-11-01 的数据，但是会包含时间点 2017-11-07 的数据。
@@ -992,12 +920,8 @@ It costs 0.002s
 SQL 示例：
 
 ```sql
-SELECT last_value(temperature)
-FROM root.ln.wf01.wt01
-GROUP BY([2017-11-07T23:50:00, 2017 - 11 - 08T00:01:00), 1m) FILL (float[PREVIOUSUNTILLAST]);
-SELECT last_value(temperature)
-FROM root.ln.wf01.wt01
-GROUP BY([2017-11-07T23:50:00, 2017 - 11 - 08T00:01:00), 1m) FILL (float[PREVIOUS]);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
 ```
 
 结果：
@@ -1053,9 +977,7 @@ It costs 0.006s
 统计降采样后的数据点个数
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01
-group by ((2017 - 11 - 01T00:00:00, 2017 - 11 - 07T23:00:00], 1d), level = 1;
+select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d), level=1;
 ```
 
 结果：
@@ -1079,9 +1001,7 @@ It costs 0.006s
 加上滑动 Step 的降采样后的结果也可以汇总
 
 ```sql
-select count(status)
-from root.ln.wf01.wt01
-group by ([0,20), 2ms, 3ms), level=1;
+select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
 ```
 
 ```
@@ -1099,83 +1019,6 @@ group by ([0,20), 2ms, 3ms), level=1;
 Total line number = 7
 It costs 0.004s
 ```
-
-#### 聚合查询嵌套表达式
-
-IoTDB 支持在 `SELECT` 字句中执行由聚合查询和其他运算组成的任意嵌套表达式。
-
-##### 示例
-
-不指定 `GROUP BY` 的聚合查询。
-
-输入：
-
-```sql
-select avg(temperature),
-       sin(avg(temperature)),
-       avg(temperature) + 1,
-       -sum(hardware),
-       avg(temperature) + sum(hardware)
-from root.ln.wf01.wt01;
-```
-
-结果：
-
-```
-+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
-|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|avg(root.ln.wf01.wt01.temperature) + sum(root.ln.wf01.wt01.hardware)|
-+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
-|                15.927999999999999|                   -0.21826546964855045|                    16.927999999999997|                         -7426.0|                                                            7441.928|
-+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
-Total line number = 1
-It costs 0.009s
-```
-
-指定 `GROUP BY` 的聚合查询。
-
-输入：
-
-```sql
-select avg(temperature),
-       sin(avg(temperature)),
-       avg(temperature) + 1,
-       -sum(hardware),
-       avg(temperature) + sum(hardware) as custom_sum
-from root.ln.wf01.wt01
-GROUP BY([10, 90), 10ms);
-```
-
-结果：
-
-```
-+-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
-|                         Time|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|custom_sum|
-+-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
-|1970-01-01T08:00:00.010+08:00|                13.987499999999999|                     0.9888207947857667|                    14.987499999999999|                         -3211.0| 3224.9875|
-|1970-01-01T08:00:00.020+08:00|                              29.6|                    -0.9701057337071853|                                  30.6|                         -3720.0|    3749.6|
-|1970-01-01T08:00:00.030+08:00|                              null|                                   null|                                  null|                            null|      null|
-|1970-01-01T08:00:00.040+08:00|                              null|                                   null|                                  null|                            null|      null|
-|1970-01-01T08:00:00.050+08:00|                              null|                                   null|                                  null|                            null|      null|
-|1970-01-01T08:00:00.060+08:00|                              null|                                   null|                                  null|                            null|      null|
-|1970-01-01T08:00:00.070+08:00|                              null|                                   null|                                  null|                            null|      null|
-|1970-01-01T08:00:00.080+08:00|                              null|                                   null|                                  null|                            null|      null|
-+-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
-Total line number = 8
-It costs 0.012s
-```
-
-##### 注意
-
-> 目前此功能尚不支持填充算子（`FILL`）和按层级聚合（`GROUP BY LEVEL`）查询, 在后续版本会支持。
->
-> 聚合计算目前只能当做最底层表达式输入，暂不支持聚合函数内部出现表达式。
->
-> 即不支持以下查询
->  ``` SQL
-> SELECT avg(s1+1) FROM root.sg.d1; -- 聚合函数内部有表达式
-> SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- 按层级聚合
-> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- 空值填充 
-> ```
 
 #### 聚合查询嵌套表达式
 
@@ -1267,9 +1110,7 @@ It costs 0.012s
 当查询的时间戳值为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下（有关详细语法，请参见第 7.1.3.6 节）：
 
 ```sql
-select < path >
-from <prefixPath>
-where time = <T> fill(<data_type>[previous, <before_range>], …)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <before_range>], …)
 ```
 
 表 3-4 给出了所有参数的详细说明。
@@ -1290,15 +1131,12 @@ where time = <T> fill(<data_type>[previous, <before_range>], …)
 在这里，我们举一个使用先前方法填充空值的示例。 SQL 语句如下：
 
 ```sql
-select temperature
-from root.sgcc.wf03.wt01
-where time = 2017-11-01T16:37:50.000 fill(float [previous, 1m]) 
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) 
 ```
 
 意思是：
 
-由于时间根目录 root.sgcc.wf03.wt01.temperature 在 2017-11-01T16：37：50.000 为空，因此系统使用以前的时间戳
-2017-11-01T16：37：00.000（且时间戳位于 [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] 范围）进行填充和显示。
+由于时间根目录 root.sgcc.wf03.wt01.temperature 在 2017-11-01T16：37：50.000 为空，因此系统使用以前的时间戳 2017-11-01T16：37：00.000（且时间戳位于 [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] 范围）进行填充和显示。
 
 在 [样例数据中](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), 该语句的执行结果如下所示：
 
@@ -1330,9 +1168,7 @@ It costs 0.004s
 当查询的时间戳值为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
 
 ```sql
-select < path >
-from <prefixPath>
-where time = <T > fill( <data_type >[linear, <before_range >, <after_range >]…)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <before_range>, <after_range>]…)
 ```
 
 表 3-5 中给出了所有参数的详细说明。
@@ -1350,22 +1186,18 @@ where time = <T > fill( <data_type >[linear, <before_range >, <after_range >]…
 
 </center>
 
-需要注意的是一旦时间序列在查询时间戳 T 时刻存在有效值，线性填充就会使用这个值作为结果返回。 除此之外，如果在 [T-before_range，T] 或 [T, T + after_range]
-两个范围中任意一个范围内不存在有效填充值，则线性填充返回 null 值。
+需要注意的是一旦时间序列在查询时间戳 T 时刻存在有效值，线性填充就会使用这个值作为结果返回。
+除此之外，如果在 [T-before_range，T] 或 [T, T + after_range] 两个范围中任意一个范围内不存在有效填充值，则线性填充返回 null 值。
 
 在这里，我们举一个使用线性方法填充空值的示例。 SQL 语句如下：
 
 ```sql
-select temperature
-from root.sgcc.wf03.wt01
-where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
 ```
 
 意思是：
 
-由于时间根目录 root.sgcc.wf03.wt01.temperature 在 2017-11-01T16：37：50.000 为空，因此系统使用以前的时间戳
-2017-11-01T16：37：00.000（且时间戳位于 [2017- 11-01T16：36：50.000，2017-11-01T16：37：50.000] 时间范围）及其值 21.927326，下一个时间戳记
-2017-11-01T16：38：00.000（且时间戳记位于 [2017-11-11] 01T16：37：50.000、2017-11-01T16：38：50.000] 时间范围）及其值 25.311783 以执行线性拟合计算：
+由于时间根目录 root.sgcc.wf03.wt01.temperature 在 2017-11-01T16：37：50.000 为空，因此系统使用以前的时间戳 2017-11-01T16：37：00.000（且时间戳位于 [2017- 11-01T16：36：50.000，2017-11-01T16：37：50.000] 时间范围）及其值 21.927326，下一个时间戳记 2017-11-01T16：38：00.000（且时间戳记位于 [2017-11-11] 01T16：37：50.000、2017-11-01T16：38：50.000] 时间范围）及其值 25.311783 以执行线性拟合计算：
 
 21.927326 +（25.311783-21.927326）/ 60s * 50s = 24.747707
 
@@ -1386,9 +1218,7 @@ It costs 0.017s
 当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```sql
-select < path >
-from <prefixPath>
-where time = <T> fill(<data_type>[constant]…)
+select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
 ```
 
 表3-6中给出了所有参数的详细说明。
@@ -1408,12 +1238,11 @@ where time = <T> fill(<data_type>[constant]…)
 
 需要注意的是一旦时间序列在查询时间戳T时刻存在有效值，特定值填充就会使用这个值作为结果返回。
 
+
 在这里，我们举一个使用特定值方法填充空值的示例。 SQL语句如下：
 
 ```sql
-select temperature
-from root.sgcc.wf03.wt01
-where time = 2017-11-01T16:37:50.000 fill(float [2.0])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
 ```
 
 意思是：
@@ -1458,8 +1287,7 @@ It costs 0.007s
 SQL 语法：
 
 ```sql
-select last < Path > [COMMA < Path >]*
-from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
+select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
 其含义是：查询时间序列 prefixPath.path 中最近时间戳的数据
@@ -1581,14 +1409,12 @@ It costs 0.002s
 
 ### 别名
 
-由于 IoTDB 独特的数据模型，在每个传感器前都附带有设备等诸多额外信息。有时，我们只针对某个具体设备查询，而这些前缀信息频繁显示造成了冗余，影响了结果集的显示与分析。这时我们可以使用 IoTDB 提供的 AS
-函数，将查询中出现的时间序列给定一个别名。
+由于 IoTDB 独特的数据模型，在每个传感器前都附带有设备等诸多额外信息。有时，我们只针对某个具体设备查询，而这些前缀信息频繁显示造成了冗余，影响了结果集的显示与分析。这时我们可以使用 IoTDB 提供的 AS 函数，将查询中出现的时间序列给定一个别名。
 
 例如：
 
 ```sql
-select s1 as temperature, s2 as speed
-from root.ln.wf01.wt01;
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ```
 
 则结果集将显示为：
@@ -1599,8 +1425,8 @@ from root.ln.wf01.wt01;
 
 ### 结果集行列输出控制 (LIMIT & OFFSET)
 
-IoTDB 提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md)
-子句，以使用户可以更好地控制查询结果。使用 LIMIT 和 SLIMIT 子句可让用户控制查询结果的行数和列数， 并且使用 OFFSET 和 SOFSET 子句允许用户设置结果显示的起始位置。
+IoTDB 提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 子句，以使用户可以更好地控制查询结果。使用 LIMIT 和 SLIMIT 子句可让用户控制查询结果的行数和列数，
+并且使用 OFFSET 和 SOFSET 子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持 LIMIT 和 OFFSET。
 
@@ -1615,8 +1441,7 @@ IoTDB 提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFF
 SQL 语句是：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01 limit 10
+select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 
 意思是：
@@ -1649,9 +1474,7 @@ It costs 0.000s
 SQL 语句是：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01 limit 5
-offset 3
+select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
 ```
 
 意思是：
@@ -1679,16 +1502,12 @@ It costs 0.342s
 SQL 语句是：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 5
-offset 3
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 5 offset 3
 ```
 
 意思是：
 
-所选设备为 ln 组 wf01 工厂 wt01 设备； 选择的时间序列是“状态”和“温度”。 SQL 语句要求返回时间“ 2017-11-01T00：05：00.000”和“
-2017-11-01T00：12：00.000”之间的状态和温度传感器值的第 3 至 4 行（第一行） 编号为第 0 行）。
+所选设备为 ln 组 wf01 工厂 wt01 设备； 选择的时间序列是“状态”和“温度”。 SQL 语句要求返回时间“ 2017-11-01T00：05：00.000”和“ 2017-11-01T00：12：00.000”之间的状态和温度传感器值的第 3 至 4 行（第一行） 编号为第 0 行）。
 
 结果如下所示：
 
@@ -1711,10 +1530,7 @@ It costs 0.000s
 SQL 语句是：
 
 ```sql
-select count(status), max_value(temperature)
-from root.ln.wf01.wt01
-group by ([2017-11-01T00:00:00, 2017 - 11 - 07T23:00:00), 1d) limit 4
-offset 3
+select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 4 offset 3
 ```
 
 意思是：
@@ -1736,13 +1552,10 @@ Total line number = 4
 It costs 0.016s
 ```
 
-值得注意的是，由于当前的 FILL 子句只能在某个时间点填充时间序列的缺失值，也就是说，FILL 子句的执行结果恰好是一行，因此 LIMIT 和 OFFSET 不会是 与 FILL 子句结合使用，否则将提示错误。 例如，执行以下 SQL
-语句：
+值得注意的是，由于当前的 FILL 子句只能在某个时间点填充时间序列的缺失值，也就是说，FILL 子句的执行结果恰好是一行，因此 LIMIT 和 OFFSET 不会是 与 FILL 子句结合使用，否则将提示错误。 例如，执行以下 SQL 语句：
 
 ```sql
-select temperature
-from root.sgcc.wf03.wt01
-where time = 2017-11-01T16:37:50.000 fill(float [previous, 1m]) limit 10
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) limit 10
 ```
 
 SQL 语句将不会执行，并且相应的错误提示如下：
@@ -1760,15 +1573,12 @@ Msg: 401: Error occured while parsing SQL to physical plan: line 1:101 mismatche
 SQL 语句是：
 
 ```sql
-select *
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
 ```
 
 意思是：
 
-所选设备为 ln 组 wf01 工厂 wt01 设备； 所选时间序列是该设备下的第二列，即温度。 SQL 语句要求在"2017-11-01T00:05:00.000"和"2017-11-01T00:12:00.000"
-的时间点之间选择温度传感器值。
+所选设备为 ln 组 wf01 工厂 wt01 设备； 所选时间序列是该设备下的第二列，即温度。 SQL 语句要求在"2017-11-01T00:05:00.000"和"2017-11-01T00:12:00.000"的时间点之间选择温度传感器值。
 
 结果如下所示：
 
@@ -1792,15 +1602,12 @@ It costs 0.000s
 SQL 语句是：
 
 ```sql
-select *
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 
 意思是：
 
-所选设备为 ln 组 wf01 工厂 wt01 设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL 语句要求在" 2017-11-01T00:05:00.000"和"2017-11-01T00:12:00.000"
-的时间点之间选择状态传感器值。
+所选设备为 ln 组 wf01 工厂 wt01 设备； 所选时间序列是该设备下的第一列，即电源状态。 SQL 语句要求在" 2017-11-01T00:05:00.000"和"2017-11-01T00:12:00.000"的时间点之间选择状态传感器值。
 
 结果如下所示：
 
@@ -1824,9 +1631,7 @@ It costs 0.003s
 SQL 语句是：
 
 ```sql
-select max_value(*)
-from root.ln.wf01.wt01
-group by ([2017-11-01T00:00:00, 2017 - 11 - 07T23:00:00), 1d) slimit 1 soffset 1
+select max_value(*) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) slimit 1 soffset 1
 ```
 
 结果如下所示：
@@ -1852,9 +1657,7 @@ It costs 0.000s
 SQL 语句是：
 
 ```sql
-select *
-from root.sgcc.wf03.wt01
-where time = 2017-11-01T16:37:50.000 fill(float [previous, 1m]) slimit 1 soffset 1
+select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) slimit 1 soffset 1
 ```
 
 结果如下所示：
@@ -1876,9 +1679,7 @@ It costs 0.007s
 SQL 语句是：
 
 ```sql
-select *
-from root.ln.wf01.wt01 limit 10
-offset 100 slimit 2 soffset 0
+select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 ```
 
 意思是：
@@ -1911,9 +1712,7 @@ It costs 0.009s
 当 LIMIT / SLIMIT 的参数 N / SN 超过结果集的大小时，IoTDB 将按预期返回所有结果。 例如，原始 SQL 语句的查询结果由六行组成，我们通过 LIMIT 子句选择前 100 行：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
 ```
 
 结果如下所示：
@@ -1936,9 +1735,7 @@ It costs 0.005s
 当 LIMIT / SLIMIT 子句的参数 N / SN 超过允许的最大值（N / SN 的类型为 int32）时，系统将提示错误。 例如，执行以下 SQL 语句：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
 ```
 
 SQL 语句将不会执行，并且相应的错误提示如下：
@@ -1950,9 +1747,7 @@ Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
 当 LIMIT / LIMIT 子句的参数 N / SN 不是正整数时，系统将提示错误。 例如，执行以下 SQL 语句：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
 ```
 
 SQL 语句将不会执行，并且相应的错误提示如下：
@@ -1964,10 +1759,7 @@ Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
 当 LIMIT 子句的参数 OFFSET 超过结果集的大小时，IoTDB 将返回空结果集。 例如，执行以下 SQL 语句：
 
 ```sql
-select status, temperature
-from root.ln.wf01.wt01
-where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2
-offset 6
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
 ```
 
 结果如下所示：
@@ -1985,17 +1777,13 @@ It costs 0.005s
 * 如果结果集中，任意一列为 null，则过滤掉该行；即获得的结果集不包含任何空值
 
 ```sql
-select *
-from root.ln.**
-where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * 在降采样查询中，如果结果集的某一行所有列都为 null，则过滤掉该行；即获得的结果集不包含所有值都为 null 的行
 
 ```sql
-select *
-from root.ln.**
-where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### 其他对齐方式的结果集
@@ -2007,9 +1795,7 @@ IoTDB 支持另外两种结果返回形式：按设备时间对齐 'align by dev
 'align by device' 对齐方式下，设备 ID 会单独作为一列出现。在 select 子句中写了多少列，最终结果就会有该列数+2 （时间列和设备名字列）。SQL 形如：
 
 ```sql
-select *
-from root.ln.**
-where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 结果如下：
@@ -2031,15 +1817,12 @@ It costs 0.012s
 
 #### disable align
 
-'disable align' 意味着每条时序就有 2 列存在。Disable Align 只能用于查询语句句尾，不能用于聚合查询、Fill 语句、Group by 或 Group by device 语句，但可用于 Limit
-语句。结果显示若无数据显示为空白。
+'disable align' 意味着每条时序就有 2 列存在。Disable Align 只能用于查询语句句尾，不能用于聚合查询、Fill 语句、Group by 或 Group by device 语句，但可用于 Limit 语句。结果显示若无数据显示为空白。
 
 SQL 形如：
 
 ```sql
-select *
-from root.ln.**
-where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 结果如下：
@@ -2061,8 +1844,7 @@ It costs 0.018s
 
 ## 数据删除
 
-用户使用 [DELETE 语句](../Appendix/SQL-Reference.md) 可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带、*
-路径对某一个时间区间内的数据进行删除。
+用户使用 [DELETE 语句](../Appendix/SQL-Reference.md) 可以删除指定的时间序列中符合时间删除条件的数据。在删除数据时，用户可以选择需要删除的一个或多个时间序列、时间序列的前缀、时间序列带、*路径对某一个时间区间内的数据进行删除。
 
 在 JAVA 编程环境中，您可以使用 JDBC API 单条或批量执行 DELETE 语句。
 
@@ -2073,47 +1855,26 @@ It costs 0.018s
 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态出现多段错误，且无法分析其正确数据，错误数据影响了与其他设备的关联分析。此时，需要将此时间段前的数据删除。进行此操作的 SQL 语句为：
 
 ```sql
-delete
-from root.ln.wf02.wt02.status
-where time<=2017-11-01T16:26:00;
+delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 如果我们仅仅想要删除 2017 年内的在 2017-11-01 16:26:00 之前的数据，可以使用以下 SQL:
-
 ```sql
-delete
-from root.ln.wf02.wt02.status
-where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
+delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
 ```
 
 IoTDB 支持删除一个时间序列任何一个时间范围内的所有时序点，用户可以使用以下 SQL 语句指定需要删除的时间范围：
-
 ```sql
-delete
-from root.ln.wf02.wt02.status
-where time < 10
-delete
-from root.ln.wf02.wt02.status
-where time <= 10
-delete
-from root.ln.wf02.wt02.status
-where time < 20 and time > 10
-delete
-from root.ln.wf02.wt02.status
-where time <= 20 and time >= 10
-delete
-from root.ln.wf02.wt02.status
-where time > 20
-delete
-from root.ln.wf02.wt02.status
-where time >= 20
-delete
-from root.ln.wf02.wt02.status
-where time = 20
+delete from root.ln.wf02.wt02.status where time < 10
+delete from root.ln.wf02.wt02.status where time <= 10
+delete from root.ln.wf02.wt02.status where time < 20 and time > 10
+delete from root.ln.wf02.wt02.status where time <= 20 and time >= 10
+delete from root.ln.wf02.wt02.status where time > 20
+delete from root.ln.wf02.wt02.status where time >= 20
+delete from root.ln.wf02.wt02.status where time = 20
 ```
 
 需要注意，当前的删除语句不支持 where 子句后的时间范围为多个由 OR 连接成的时间区间。如下删除语句将会解析出错：
-
 ```
 delete from root.ln.wf02.wt02.status where time > 4 or time < 0
 Msg: 303: Check metadata error: For delete statement, where clause can only contain atomic
@@ -2121,46 +1882,35 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 ```
 
 如果 delete 语句中未指定 where 子句，则会删除时间序列中的所有数据。
-
 ```sql
-delete
-from root.ln.wf02.status
+delete from root.ln.wf02.status
 ```
 
-### 多传感器时间序列值删除
+### 多传感器时间序列值删除    
 
-当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00
-之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL
-语句为：
+当 ln 集团 wf02 子站的 wt02 设备在 2017-11-01 16:26:00 之前的供电状态和设备硬件版本都需要删除，此时可以使用含义更广的 [路径模式（Path Pattern）](../Data-Concept/Data-Model-and-Terminology.md) 进行删除操作，进行此操作的 SQL 语句为：
+
 
 ```sql
-delete
-from root.ln.wf02.wt02.*
-where time <= 2017-11-01T16:26:00;
+delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
 
 需要注意的是，当删除的路径不存在时，IoTDB 不会提示路径不存在，而是显示执行成功，因为 SQL 是一种声明式的编程方式，除非是语法错误、权限不足等，否则都不认为是错误，如下所示。
 
 ```sql
-IoTDB
->
-delete
-from root.ln.wf03.wt02.status
-where time < now()
+IoTDB> delete from root.ln.wf03.wt02.status where time < now()
 Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### 删除时间分区 （实验性功能）
-
 您可以通过如下语句来删除某一个存储组下的指定时间分区：
 
 ```sql
-DELETE
-PARTITION root.ln 0,1,2
+DELETE PARTITION root.ln 0,1,2
 ```
 
-上例中的 0,1,2 为待删除时间分区的 id，您可以通过查看 IoTDB 的数据文件夹找到它，或者可以通过计算`timestamp / partitionInterval`（向下取整）, 手动地将一个时间戳转换为对应的
-id，其中的`partitionInterval`可以在 IoTDB 的配置文件中找到（如果您使用的版本支持时间分区）。
+上例中的 0,1,2 为待删除时间分区的 id，您可以通过查看 IoTDB 的数据文件夹找到它，或者可以通过计算`timestamp / partitionInterval`（向下取整）,
+手动地将一个时间戳转换为对应的 id，其中的`partitionInterval`可以在 IoTDB 的配置文件中找到（如果您使用的版本支持时间分区）。
 
 请注意该功能目前只是实验性的，如果您不是开发者，使用时请务必谨慎。
 
