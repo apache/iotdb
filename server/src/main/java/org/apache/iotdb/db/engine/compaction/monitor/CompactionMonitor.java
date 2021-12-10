@@ -29,7 +29,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +81,7 @@ public class CompactionMonitor implements IService {
   private Map<String, Map<Integer, Integer>> compactionFinishFileCountMap = new HashMap<>();
   private Map<String, Integer> compactionFinishCountForEachSg = new HashMap<>();
   // it records the total cpu time for all threads
-  private long lastCpuTotalTime = 0L;
+  private long lastTotalCpuTime = 0L;
   // threadId -> cpu time
   private Map<Long, Long> cpuTimeForCompactionThread = new HashMap<>();
   private Set<Long> compactionThreadIdSet = new HashSet<>();
@@ -111,7 +110,7 @@ public class CompactionMonitor implements IService {
       init();
       threadPool.scheduleWithFixedDelay(
           this::sealedMonitorStatusPeriodically,
-          IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
+          10_000L,
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           TimeUnit.MILLISECONDS);
       LOGGER.info(
@@ -223,11 +222,16 @@ public class CompactionMonitor implements IService {
     Map<Long, Long> cpuTimeForMergeThreadInThisPeriod = new HashMap<>();
     long[] allThreadIds = threadMXBean.getAllThreadIds();
     long totalCpuTime = 0L;
+
     // calculate the cpu time for all threads
     // and store the total cpu time for each thread
     for (long threadId : allThreadIds) {
       long cpuTimeForCurrThread = threadMXBean.getThreadCpuTime(threadId);
-      totalCpuTime += cpuTimeForCurrThread;
+      if (cpuTimeForCurrThread > 0) {
+        totalCpuTime += cpuTimeForCurrThread;
+      } else {
+        cpuTimeForCurrThread = 0;
+      }
       if (compactionThreadIdSet.contains(threadId)) {
         cpuTimeForCompactionThreadInThisPeriod.put(threadId, cpuTimeForCurrThread);
       }
@@ -235,12 +239,22 @@ public class CompactionMonitor implements IService {
         cpuTimeForMergeThreadInThisPeriod.put(threadId, cpuTimeForCurrThread);
       }
     }
-    long cpuTimeInThisPeriod = totalCpuTime - lastCpuTotalTime;
+
+    long cpuTimeInThisPeriod = totalCpuTime - lastTotalCpuTime;
+
+    if (cpuTimeInThisPeriod < 0) {
+      LOGGER.error(
+          "[CompactionMonitor] cpuTimeInThisPeriod is less than 0, total cpu time is {}, prev total cpu time is {}",
+          totalCpuTime,
+          lastTotalCpuTime);
+      return new HashMap<>();
+    }
+
     LOGGER.info(
         "[CompactionMonitor] Total CPU time is {} ns, cpu time in last period is {} ns",
         totalCpuTime,
-        lastCpuTotalTime);
-    lastCpuTotalTime = totalCpuTime;
+        lastTotalCpuTime);
+    lastTotalCpuTime = totalCpuTime;
     double compactionThreadsTotalCpuConsumption = 0.0;
     // we use this map to store the cpu consumption percentage of each compaction or merge thread
     Map<Long, Double> cpuConsumptionForCompactionAndMergeThread = new HashMap<>();
@@ -268,6 +282,11 @@ public class CompactionMonitor implements IService {
     cpuConsumptionForCompactionAndMergeThread.put(
         COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY, compactionThreadsTotalCpuConsumption);
 
+    if (compactionThreadsTotalCpuConsumption > 1.0) {
+      // abnormal data, abort it
+      cpuConsumptionForCompactionAndMergeThread.clear();
+    }
+
     double mergeThreadsTotalCpuConsumption = 0.0;
 
     for (long threadId : mergeThreadIdSet) {
@@ -284,6 +303,15 @@ public class CompactionMonitor implements IService {
 
     cpuConsumptionForCompactionAndMergeThread.put(
         MERGE_CPU_CONSUMPTION_TOTAL_MAP_KEY, mergeThreadsTotalCpuConsumption);
+
+    if (mergeThreadsTotalCpuConsumption > 1.0) {
+      // abnormal data, abort it
+      for (long threadId : mergeThreadIdSet) {
+        cpuConsumptionForCompactionAndMergeThread.remove(threadId);
+      }
+      cpuConsumptionForCompactionAndMergeThread.remove(MERGE_CPU_CONSUMPTION_TOTAL_MAP_KEY);
+    }
+
     return cpuConsumptionForCompactionAndMergeThread;
   }
 
@@ -369,8 +397,8 @@ public class CompactionMonitor implements IService {
                 measurementName,
                 new String[] {Integer.toString(compactionCountForSg.get(sgName))});
         planExecutor.processNonQuery(insertRowPlanForCompactionCount);
+        compactionCountForSg.put(sgName, 0);
       }
-      compactionCountForSg.clear();
 
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       int maxCompactionCount = Math.max(config.getSeqLevelNum(), config.getUnseqLevelNum());
@@ -387,6 +415,7 @@ public class CompactionMonitor implements IService {
         for (int i = 0; i < maxCompactionCount; ++i) {
           measurements.add(String.format(measurementPattern, i));
           values.add(Integer.toString(countMap.getOrDefault(i, 0)));
+          countMap.put(i, 0);
         }
         InsertRowPlan plan =
             new InsertRowPlan(
@@ -396,7 +425,6 @@ public class CompactionMonitor implements IService {
                 values.toArray(new String[0]));
         planExecutor.processNonQuery(plan);
       }
-      compactionFileCountMap.clear();
 
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving compaction info", e);
@@ -423,8 +451,9 @@ public class CompactionMonitor implements IService {
                 measurementName,
                 new String[] {Integer.toString(mergeCountForEachSg.get(sgName))});
         planExecutor.processNonQuery(insertRowPlan);
+        mergeCountForEachSg.put(sgName, 0);
       }
-      mergeCountForEachSg.clear();
+
       for (String sgName : mergeFileNumForEachSg.keySet()) {
         PartialPath device =
             new PartialPath(
@@ -445,8 +474,8 @@ public class CompactionMonitor implements IService {
                 measurements.toArray(new String[0]),
                 values.toArray(new String[0]));
         planExecutor.processNonQuery(plan);
+        mergeFileNumForEachSg.put(sgName, new Pair<>(0, 0));
       }
-      mergeFileNumForEachSg.clear();
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving merge info", e);
     }
