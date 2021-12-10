@@ -87,7 +87,7 @@ public class MergeMultiChunkTask {
 
   private AtomicInteger mergedChunkNum = new AtomicInteger();
   private AtomicInteger unmergedChunkNum = new AtomicInteger();
-  private int mergedSeriesCnt;
+  private int mergedDeviceCnt;
   private double progress;
 
   private int concurrentMergeSeriesNum;
@@ -134,6 +134,7 @@ public class MergeMultiChunkTask {
       // record the unmergeChunkStartTime for each sensor in each file
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
+    mergedDeviceCnt = 0;
     // merge each series and write data into each seqFile's corresponding temp merge file
     for (PartialPath device : unmergedDevice) {
       // TODO: use statistics of queries to better rearrange series
@@ -166,9 +167,9 @@ public class MergeMultiChunkTask {
           Thread.currentThread().interrupt();
           return;
         }
-        mergedSeriesCnt += currMergingPaths.size();
-        logMergeProgress();
       }
+      mergedDeviceCnt++;
+      logMergeProgress();
       measurementChunkMetadataListMapIteratorCache.clear();
       chunkMetadataListCacheForMerge.clear();
     }
@@ -181,16 +182,16 @@ public class MergeMultiChunkTask {
 
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
-      double newProgress = 100 * mergedSeriesCnt / (double) (unmergedDevice.size());
+      double newProgress = 100 * mergedDeviceCnt / (double) (unmergedDevice.size());
       if (newProgress - progress >= 10.0) {
         progress = newProgress;
-        logger.info("{} has merged {}% series", taskName, progress);
+        logger.info("{} has merged {}% devices", taskName, progress);
       }
     }
   }
 
   public String getProgress() {
-    return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedDevice.size());
+    return String.format("Processed %d/%d devices", mergedDeviceCnt, unmergedDevice.size());
   }
 
   private void mergePaths() throws IOException {
