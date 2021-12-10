@@ -42,7 +42,6 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.AggregateUtils;
-import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -189,9 +188,7 @@ public class AggregationExecutor {
     // construct series reader without value filter
     QueryDataSource queryDataSource =
         QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
-    if (fileFilter != null) {
-      QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
-    }
+
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 

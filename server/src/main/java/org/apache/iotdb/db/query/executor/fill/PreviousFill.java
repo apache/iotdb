@@ -101,7 +101,8 @@ public class PreviousFill extends IFill {
   public TimeValuePair getFillResult()
       throws IOException, QueryProcessException, StorageEngineException {
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+        QueryResourceManager.getInstance()
+            .getQueryDataSourceByPath(seriesPath, context, timeFilter);
     // update filter by TTL
     timeFilter = dataSource.updateFilterUsingTTL(timeFilter);
     LastPointReader lastReader =

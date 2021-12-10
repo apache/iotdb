@@ -142,7 +142,8 @@ public class LinearFill extends IFill {
   protected TimeValuePair calculatePrecedingPoint()
       throws QueryProcessException, StorageEngineException, IOException {
     QueryDataSource dataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, beforeFilter);
+        QueryResourceManager.getInstance()
+            .getQueryDataSourceByPath(seriesPath, context, beforeFilter);
     LastPointReader lastReader =
         new LastPointReader(
             seriesPath, dataType, deviceMeasurements, context, dataSource, queryTime, beforeFilter);
@@ -152,6 +153,8 @@ public class LinearFill extends IFill {
 
   protected TimeValuePair calculateSucceedingPoint()
       throws IOException, StorageEngineException, QueryProcessException {
+
+    QueryResourceManager.getInstance().clearCachedQueryDataSource(seriesPath, context);
 
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     AggregateResult minTimeResult = new MinTimeAggrResult();

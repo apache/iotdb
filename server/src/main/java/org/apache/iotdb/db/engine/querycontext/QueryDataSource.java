@@ -27,11 +27,16 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import java.util.List;
 
 public class QueryDataSource {
-  private List<TsFileResource> seqResources;
-  private List<TsFileResource> unseqResources;
+  private final List<TsFileResource> seqResources;
+  private final List<TsFileResource> unseqResources;
+
+  private TsFileResource unclosedSeqResource;
+  private TsFileResource unclosedUnseqResource;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
+
+  private int[] unSeqFileOrderIndex;
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
@@ -46,12 +51,36 @@ public class QueryDataSource {
     return unseqResources;
   }
 
+  public TsFileResource getUnclosedSeqResource() {
+    return unclosedSeqResource;
+  }
+
+  public TsFileResource getUnclosedUnseqResource() {
+    return unclosedUnseqResource;
+  }
+
   public long getDataTTL() {
     return dataTTL;
   }
 
+  public int[] getUnSeqFileOrderIndex() {
+    return unSeqFileOrderIndex;
+  }
+
+  public void setUnclosedSeqResource(TsFileResource unclosedSeqResource) {
+    this.unclosedSeqResource = unclosedSeqResource;
+  }
+
+  public void setUnclosedUnseqResource(TsFileResource unclosedUnseqResource) {
+    this.unclosedUnseqResource = unclosedUnseqResource;
+  }
+
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
+  }
+
+  public void setUnSeqFileOrderIndex(int[] index) {
+    this.unSeqFileOrderIndex = index;
   }
 
   /** @return an updated filter concerning TTL */
@@ -64,5 +93,47 @@ public class QueryDataSource {
       }
     }
     return filter;
+  }
+
+  public TsFileResource getSeqResourceByIndex(int curIndex) {
+    if (curIndex < seqResources.size()) {
+      return seqResources.get(curIndex);
+    } else if (curIndex == seqResources.size()) {
+      return unclosedSeqResource;
+    }
+    return null;
+  }
+
+  public TsFileResource getUnseqResourceByIndex(int curIndex) {
+    int actualIndex = unSeqFileOrderIndex[curIndex];
+    if (actualIndex < unseqResources.size()) {
+      return unseqResources.get(actualIndex);
+    } else if (actualIndex == unseqResources.size()) {
+      return unclosedUnseqResource;
+    }
+    return null;
+  }
+
+  public boolean hasNextSeqResource(int curIndex, boolean ascending) {
+    if (ascending) {
+      return unclosedSeqResource == null
+          ? curIndex < seqResources.size()
+          : curIndex <= seqResources.size();
+    }
+    return curIndex >= 0;
+  }
+
+  public boolean hasNextUnseqResource(int curIndex) {
+    return unclosedUnseqResource == null
+        ? curIndex < unseqResources.size()
+        : curIndex <= unseqResources.size();
+  }
+
+  public int getSeqResourcesSize() {
+    return seqResources.size() + (unclosedSeqResource == null ? 0 : 1);
+  }
+
+  public int getUnseqResourcesSize() {
+    return unseqResources.size() + (unclosedUnseqResource == null ? 0 : 1);
   }
 }

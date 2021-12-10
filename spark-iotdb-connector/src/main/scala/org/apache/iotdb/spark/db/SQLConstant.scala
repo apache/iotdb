@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.spark.db;
 
-/** this class contains several constants used in SQL. */
-public class SQLConstant {
+package org.apache.iotdb.spark.db
 
-  public static final String RESERVED_TIME = "time";
-  public static final String TIMESTAMP_STR = "Time";
-  public static final String NULL_STR = "null";
-  public static final String WHERE = "where";
+object SQLConstant {
+  val RESERVED_TIME = "time"
+  val TIMESTAMP_STR = "Time"
+  val NULL_STR = "null"
+  val WHERE = "where"
 }

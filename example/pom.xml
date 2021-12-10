@@ -44,6 +44,7 @@
         <module>mqtt</module>
         <module>pulsar</module>
         <module>udf</module>
+        <module>spark</module>
     </modules>
     <build>
         <pluginManagement>
