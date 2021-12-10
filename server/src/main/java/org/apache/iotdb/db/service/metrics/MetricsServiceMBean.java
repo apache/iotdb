@@ -16,9 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.rescon;
+package org.apache.iotdb.db.service.metrics;
 
-public interface TVListAllocatorMBean {
+import org.apache.iotdb.db.exception.StartupException;
 
-  int getNumberOfTVLists();
+public interface MetricsServiceMBean {
+
+  void startService() throws StartupException;
+
+  void restartService() throws StartupException;
+
+  void stopService();
 }

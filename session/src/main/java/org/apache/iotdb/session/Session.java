@@ -56,6 +56,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -765,6 +766,10 @@ public class Session {
     } else {
       return defaultSessionConnection;
     }
+  }
+
+  public String getTimestampPrecision() throws TException {
+    return defaultSessionConnection.getClient().getProperties().getTimestampPrecision();
   }
 
   // TODO https://issues.apache.org/jira/browse/IOTDB-1399
