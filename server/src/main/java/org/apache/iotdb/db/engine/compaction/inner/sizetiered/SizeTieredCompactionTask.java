@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -29,15 +29,12 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -207,7 +204,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (sizeTieredCompactionLogger != null) {
         sizeTieredCompactionLogger.close();
       }
-      handleException(logFile, targetTsFileResource);
+      InnerSpaceCompactionExceptionHandler.handleException(
+          fullStorageGroupName,
+          logFile,
+          targetTsFileResource,
+          selectedTsFileResourceList,
+          tsFileManager,
+          tsFileResourceList);
     } finally {
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         if (isHoldingReadLock[i]) {
@@ -254,128 +257,5 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       resource.setMerging(true);
     }
     return true;
-  }
-
-  public void handleException(File logFile, TsFileResource targetTsFile) {
-    boolean handleSuccess = true;
-    if (logFile.exists()) {
-      // if the compaction log file does not exist
-      // it means the compaction process didn't start yet
-      // we need not to handle it
-      boolean allSourceFileExist = true;
-      List<TsFileResource> lostSourceFiles = new ArrayList<>();
-      for (TsFileResource sourceTsFile : selectedTsFileResourceList) {
-        if (!sourceTsFile.getTsFile().exists()) {
-          allSourceFileExist = false;
-          lostSourceFiles.add(sourceTsFile);
-        }
-      }
-
-      if (allSourceFileExist) {
-        // all source file exists, delete the target file
-        LOGGER.info(
-            "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
-            fullStorageGroupName,
-            selectedTsFileResourceList,
-            targetTsFile);
-        if (targetTsFile.remove()) {
-          for (TsFileResource tsFileResource : selectedTsFileResourceList) {
-            if (!tsFileResourceList.contains(tsFileResource)) {
-              tsFileResourceList.add(tsFileResource);
-            }
-          }
-          tsFileResourceList.remove(targetTsFile);
-        } else {
-          // failed to remove target tsfile
-          LOGGER.warn(
-              "{} [Compaction][ExceptionHandler] failed to remove target file {}, set allowCompaction to false",
-              fullStorageGroupName,
-              targetTsFile);
-          tsFileManager.setAllowCompaction(false);
-          handleSuccess = false;
-        }
-      } else {
-        // some source file does not exists
-        // it means we start to delete source file
-        LOGGER.info(
-            "{} [Compaction][ExceptionHandler] some source files {} is lost",
-            fullStorageGroupName,
-            lostSourceFiles);
-        if (!targetTsFile.getTsFile().exists()) {
-          // some source files are missed, and target file not exists
-          // some data is lost, set the system to read-only
-          LOGGER.warn(
-              "{} [Compaction][ExceptionHandler] target file {} does not exist either, do nothing. Set system to read-only",
-              fullStorageGroupName,
-              targetTsFile);
-          IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-          tsFileManager.setAllowCompaction(false);
-          handleSuccess = false;
-        } else {
-          try {
-            RestorableTsFileIOWriter writer =
-                new RestorableTsFileIOWriter(targetTsFile.getTsFile());
-            writer.close();
-            if (!writer.hasCrashed()) {
-              // target file is complete, delete source files
-              LOGGER.info(
-                  "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
-                  fullStorageGroupName,
-                  targetTsFile);
-              for (TsFileResource sourceFile : selectedTsFileResourceList) {
-                if (!sourceFile.remove()) {
-                  LOGGER.warn(
-                      "{} [Compaction][ExceptionHandler] failed to remove source file {}, set allowCompaction to false",
-                      fullStorageGroupName,
-                      sourceFile);
-                  tsFileManager.setAllowCompaction(false);
-                  handleSuccess = false;
-                } else {
-                  tsFileResourceList.remove(sourceFile);
-                }
-              }
-              if (!tsFileResourceList.contains(targetTsFile)) {
-                tsFileResourceList.add(targetTsFile);
-              }
-            } else {
-              // target file is not complete, and some source file is lost
-              // some data is lost
-              LOGGER.warn(
-                  "{} [Compaction][ExceptionHandler] target file {} is not complete, and some source files {} is lost, do nothing. Set allowCompaction to false",
-                  fullStorageGroupName,
-                  targetTsFile,
-                  lostSourceFiles);
-              IoTDBDescriptor.getInstance().getConfig().setReadOnly(true);
-              tsFileManager.setAllowCompaction(false);
-              handleSuccess = false;
-            }
-          } catch (Throwable e) {
-            LOGGER.error(
-                "{} [Compaction][ExceptionHandler] Another exception occurs during handling exception, set allowCompaction to false",
-                fullStorageGroupName,
-                e);
-            tsFileManager.setAllowCompaction(false);
-            handleSuccess = false;
-          }
-        }
-      }
-
-      if (handleSuccess) {
-        LOGGER.info(
-            "{} [Compaction][ExceptionHandler] Handle exception successfully, delete log file {}",
-            fullStorageGroupName,
-            logFile);
-        try {
-          FileUtils.delete(logFile);
-        } catch (IOException e) {
-          LOGGER.error(
-              "{} [Compaction][ExceptionHandler] Exception occurs while deleting log file {}, set allowCompaction to false",
-              fullStorageGroupName,
-              logFile,
-              e);
-          tsFileManager.setAllowCompaction(false);
-        }
-      }
-    }
   }
 }
