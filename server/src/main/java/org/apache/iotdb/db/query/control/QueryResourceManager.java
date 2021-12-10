@@ -150,37 +150,45 @@ public class QueryResourceManager {
     queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
 
     TsFileResource cachedUnclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
-    try {
-      if (cachedUnclosedSeqResource != null) {
+    if (cachedUnclosedSeqResource != null) {
+      try {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
         TsFileProcessor processor = cachedUnclosedSeqResource.getUnsealedFileProcessor();
         if (processor != null) {
           queryDataSource.setUnclosedSeqResource(processor.query(selectedPath, context));
+        } else {
+          // tsFileResource is closed
+          queryDataSource.setUnclosedSeqResource(cachedUnclosedSeqResource);
         }
+      } catch (IOException e) {
+        throw new QueryProcessException(
+            String.format(
+                "%s: %s get ReadOnlyMemChunk has error",
+                storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
+      } finally {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
-    } catch (IOException e) {
-      throw new QueryProcessException(
-          String.format(
-              "%s: %s get ReadOnlyMemChunk has error",
-              storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
     }
 
     TsFileResource cachedUnclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
-    try {
-      if (cachedUnclosedUnseqResource != null) {
+    if (cachedUnclosedUnseqResource != null) {
+      try {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
         TsFileProcessor processor = cachedUnclosedUnseqResource.getUnsealedFileProcessor();
         if (processor != null) {
           queryDataSource.setUnclosedUnseqResource(processor.query(selectedPath, context));
+        } else {
+          // tsFileResource is closed
+          queryDataSource.setUnclosedSeqResource(cachedUnclosedUnseqResource);
         }
+      } catch (IOException e) {
+        throw new QueryProcessException(
+            String.format(
+                "%s: %s get ReadOnlyMemChunk has error",
+                storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
+      } finally {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
-    } catch (IOException e) {
-      throw new QueryProcessException(
-          String.format(
-              "%s: %s get ReadOnlyMemChunk has error",
-              storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
     }
 
     // used files should be added before mergeLock is unlocked, or they may be deleted by running
