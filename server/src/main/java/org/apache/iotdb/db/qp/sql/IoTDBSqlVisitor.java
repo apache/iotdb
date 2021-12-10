@@ -1308,6 +1308,25 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           parsePrimitiveTypeClause(typeClause, fillTypes);
         }
       }
+
+      int usePrevious = 0;
+      int useLinear = 0;
+      int useValue = 0;
+      for (IFill iFill : fillTypes.values()) {
+        if (iFill instanceof PreviousFill) {
+          usePrevious = 1;
+        }
+        if (iFill instanceof LinearFill) {
+          useLinear = 1;
+        }
+        if (iFill instanceof ValueFill) {
+          useValue = 1;
+        }
+      }
+      if (usePrevious + useLinear + useValue > 1) {
+        throw new SQLParserException("The old type logic could only use one type of fill");
+      }
+
       groupByFillClauseComponent.setFillTypes(fillTypes);
     } else {
       groupByFillClauseComponent.setSingleFill(getSingleIFill(ctx.fillClause()));
