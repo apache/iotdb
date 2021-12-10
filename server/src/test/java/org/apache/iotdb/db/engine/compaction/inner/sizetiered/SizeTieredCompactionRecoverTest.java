@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -358,7 +357,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -490,7 +489,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -524,8 +523,7 @@ public class SizeTieredCompactionRecoverTest {
         new File(
             targetTsFileResource
                 .getTsFilePath()
-                .replace(
-                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
     tsFileManager.add(targetTsFileResource, true);
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -600,7 +598,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -636,8 +634,7 @@ public class SizeTieredCompactionRecoverTest {
         new File(
             targetTsFileResource
                 .getTsFilePath()
-                .replace(
-                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
     tsFileManager.add(targetTsFileResource, true);
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -712,7 +709,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -737,9 +734,7 @@ public class SizeTieredCompactionRecoverTest {
     new File(
             targetTsFileResource
                     .getTsFilePath()
-                    .replace(
-                        TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
-                        TsFileConstant.TSFILE_SUFFIX)
+                    .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)
                 + TsFileResource.RESOURCE_SUFFIX)
         .delete();
     compactionLogger.close();
@@ -756,8 +751,7 @@ public class SizeTieredCompactionRecoverTest {
         new File(
             targetTsFileResource
                 .getTsFilePath()
-                .replace(
-                    TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
     tsFileManager.add(targetTsFileResource, true);
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -832,7 +826,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -936,7 +930,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -1044,7 +1038,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -1211,7 +1205,7 @@ public class SizeTieredCompactionRecoverTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();

@@ -18,15 +18,14 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +112,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
               virtualStorageGroup);
           return;
         }
+
         // xxx.target
         File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
         // xxx.tsfile
@@ -121,103 +121,60 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
                 targetFileIdentifier
                     .getFilePath()
                     .replace(
-                        TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
-                        TsFileConstant.TSFILE_SUFFIX));
-        // xxx.target.resource
-        File tmpTargetResourceFile =
-            getFileFromDataDirs(
-                targetFileIdentifier.getFilePath() + TsFileResource.RESOURCE_SUFFIX);
-
+                        IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
         // xxx.tsfile.resource
         File targetResourceFile =
             getFileFromDataDirs(
                 targetFileIdentifier
                         .getFilePath()
                         .replace(
-                            TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX,
-                            TsFileConstant.TSFILE_SUFFIX)
+                            IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)
                     + TsFileResource.RESOURCE_SUFFIX);
 
-        if (tmpTargetFile != null) {
-          // xxx.target exists, then move it to xxx.tsfile
-          if (targetFile != null) {
-            targetFile.delete();
-          }
-          TsFileResource targetResource = new TsFileResource(tmpTargetFile);
-          InnerSpaceCompactionUtils.moveTargetFile(targetResource, fullStorageGroupName);
-          targetFile = targetResource.getTsFile();
-          targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-          tmpTargetFile = null;
-          tmpTargetResourceFile = null;
-        } else {
-          if (targetFile == null) {
-            // both xxx.target and xxx.tsfile do not exist, then delete tmpTargetResourceFile and
-            // targetResourceFile if exist.
-            LOGGER.info(
-                "{}-{} [Compaction][Recover] cannot find target file {} from data dirs, abort recover",
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                targetFileIdentifier);
-            if (tmpTargetResourceFile != null && !tmpTargetResourceFile.delete()) {
-              LOGGER.error(
-                  "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                  logicalStorageGroupName,
-                  virtualStorageGroup,
-                  tmpTargetResourceFile);
-            }
-            if (targetResourceFile != null && !targetResourceFile.delete()) {
-              LOGGER.error(
-                  "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                  logicalStorageGroupName,
-                  virtualStorageGroup,
-                  targetResourceFile);
-            }
-            return;
+        // check is all source files existed
+        boolean isAllSourcesFileExisted = true;
+        List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+        for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+          File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
+          if (sourceFile == null) {
+            isAllSourcesFileExisted = false;
+            break;
           }
         }
 
-        // xxx.target does not exist and xxx.tsfile exists
-        RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
-        if (targetResourceFile == null || writer.hasCrashed()) {
-          // xxx.tsfile.resource does not exists or xxx.tsfile is incomplete, then delete xxx.tsfile
-          // and xxx.target.resource.
-          LOGGER.info(
-              "{}-{} [Compaction][Recover] target file {} crash, start to delete it",
-              logicalStorageGroupName,
-              virtualStorageGroup,
-              targetFile);
-          writer.close();
-          if (!targetFile.delete()) {
+        if (isAllSourcesFileExisted) {
+          // all source files existed
+          if (tmpTargetFile != null && !tmpTargetFile.delete()) {
+            LOGGER.error(
+                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+                logicalStorageGroupName,
+                virtualStorageGroup,
+                tmpTargetFile);
+          }
+          if (targetFile != null && !targetFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                 logicalStorageGroupName,
                 virtualStorageGroup,
                 targetFile);
           }
-          if (tmpTargetResourceFile != null && !tmpTargetResourceFile.delete()) {
+          if (targetResourceFile != null && !targetResourceFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
                 logicalStorageGroupName,
                 virtualStorageGroup,
-                tmpTargetResourceFile);
+                targetResourceFile);
           }
         } else {
-          // xxx.tsfile is completed, then delete source TsFiles.
-          LOGGER.info(
-              "{}-{} [Compaction][Recover] target file {} is completed, delete source files {}",
-              logicalStorageGroupName,
-              virtualStorageGroup,
-              targetFile,
-              sourceFileIdentifiers);
-          TsFileResource targetResource = new TsFileResource(targetFile);
-          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
+          // some source files have been deleted, which means .tsfile and .tsfile.resource exist.
+          sourceTsFileResources.clear();
           for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
             File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
             if (sourceFile != null) {
               sourceTsFileResources.add(new TsFileResource(sourceFile));
             }
           }
-
+          TsFileResource targetResource = new TsFileResource(targetFile);
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
               sourceTsFileResources, fullStorageGroupName);
           combineModsInCompaction(sourceTsFileResources, targetResource);

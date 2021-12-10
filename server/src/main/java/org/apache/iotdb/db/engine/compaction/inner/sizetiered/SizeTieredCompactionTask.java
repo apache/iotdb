@@ -135,6 +135,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
           targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, true);
+      InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       sizeTieredCompactionLogger.close();
@@ -163,7 +164,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                 "%s [Compaction] compaction abort because cannot acquire write lock",
                 fullStorageGroupName));
       }
-      InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
       try {
         // replace the old files with new file, the new is in same position as the old
         for (TsFileResource resource : selectedTsFileResourceList) {

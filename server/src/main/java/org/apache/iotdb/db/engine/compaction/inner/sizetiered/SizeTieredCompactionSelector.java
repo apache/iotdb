@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionSelector;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -141,6 +141,10 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
       if (currentName.getInnerCompactionCnt() != level) {
         selectedFileList.clear();
         selectedFileSize = 0L;
+        continue;
+      }
+      // this is the tmp target file of one compaction task, we need to ignore it.
+      if (currentFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
         continue;
       }
       LOGGER.debug("Current File is {}, size is {}", currentFile, currentFile.getTsFileSize());

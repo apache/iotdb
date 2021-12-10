@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.recover;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -32,8 +33,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -151,7 +150,8 @@ public class SizeTieredCompactionRecoverTest {
   }
 
   /**
-   * Test a compaction task in finished. The compaction log use file info to record files.
+   * Test a compaction task in finished. The compaction log use file info to record files. The
+   * sources file are all existed.
    *
    * @throws Exception
    */
@@ -263,7 +263,8 @@ public class SizeTieredCompactionRecoverTest {
   }
 
   /**
-   * Test a compaction task in finished. The compaction log use file path to record files.
+   * Test a compaction task in finished. The compaction log use file path to record files. All the
+   * sources file is still existed.
    *
    * @throws Exception
    */
@@ -309,11 +310,11 @@ public class SizeTieredCompactionRecoverTest {
         new SizeTieredCompactionRecoverTask(
             COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
     recoverTask.doCompaction();
-    // all the source file should be deleted
+    // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
-      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertTrue(resource.getTsFile().exists());
     }
-    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
   /**
@@ -462,7 +463,7 @@ public class SizeTieredCompactionRecoverTest {
                   + File.separator
                   + "0",
               targetFileName.replace(
-                  TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
       Assert.assertTrue(targetFileAfterMoved.exists());
       Assert.assertEquals(targetFileAfterMoved.length(), sizeOfTargetFile);
     } finally {
@@ -624,9 +625,9 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should be deleted
+      // all the source file should still exist
       for (String sourceFileName : sourceFileNames) {
-        Assert.assertFalse(
+        Assert.assertTrue(
             new File(
                     TestConstant.BASE_OUTPUT_PATH
                         + File.separator
@@ -656,9 +657,8 @@ public class SizeTieredCompactionRecoverTest {
                   + File.separator
                   + "0",
               targetFileName.replace(
-                  TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-      Assert.assertTrue(targetFileAfterMoved.exists());
-      Assert.assertEquals(targetFileAfterMoved.length(), sizeOfTargetFile);
+                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+      Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
     }

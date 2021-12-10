@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -82,7 +81,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
     File targetFile =
         new File(
             TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)

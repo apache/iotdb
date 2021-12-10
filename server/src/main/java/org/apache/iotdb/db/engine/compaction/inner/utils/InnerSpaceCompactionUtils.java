@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
@@ -29,7 +30,6 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStr
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -456,10 +456,7 @@ public class InnerSpaceCompactionUtils {
       for (TsFileResource tsFileResource : tsFileResources) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
-      targetResource.serialize();
       writer.endFile();
-      targetResource.close();
-
     } finally {
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
@@ -589,20 +586,18 @@ public class InnerSpaceCompactionUtils {
   }
 
   /**
-   * Update the targetResource. Move xxx.target to xxx.tsfile and xxx.target.resource to
-   * xxx.tsfile.resource.
+   * Update the targetResource. Move xxx.target to xxx.tsfile and serialize xxx.tsfile.resource .
    *
    * @param targetResource the old tsfile to be moved, which is xxx.target
-   * @throws IOException
    */
   public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
       throws IOException {
-    if (!targetResource.getTsFilePath().endsWith(TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX)) {
+    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
-          "TmpTargetFileReource "
-              + targetResource.getTsFilePath()
-              + " should be end with "
-              + TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX);
+          "{} [Compaction] Tmp target tsfile {} should be end with {}",
+          fullStorageGroupName,
+          targetResource.getTsFilePath(),
+          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
       return;
     }
     File oldFile = targetResource.getTsFile();
@@ -611,22 +606,17 @@ public class InnerSpaceCompactionUtils {
     String newFilePath =
         targetResource
             .getTsFilePath()
-            .replace(TsFileNameGenerator.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
+            .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
     File newFile = new File(newFilePath);
     FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
 
-    // move resource file
-    targetResource.setFile(newFile);
-    targetResource.setClosed(true);
+    // serialize xxx.tsfile.resource
+    targetResource.setFile(
+        new File(
+            targetResource
+                .getTsFilePath()
+                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
     targetResource.serialize();
-
-    // delete old resource file
-    File oldResourceFile = new File(oldFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
-    if (!oldResourceFile.delete()) {
-      logger.error(
-          "{} [Compaction] Fail to delete old resource file {}",
-          fullStorageGroupName,
-          oldResourceFile.getAbsolutePath());
-    }
+    targetResource.close();
   }
 }
