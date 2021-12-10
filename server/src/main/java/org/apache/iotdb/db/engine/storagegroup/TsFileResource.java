@@ -612,10 +612,6 @@ public class TsFileResource {
       boolean isSeq,
       long ttl,
       boolean debug) {
-    if (isDeleted()) {
-      return false;
-    }
-
     if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
       return false;
     }
