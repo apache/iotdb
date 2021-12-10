@@ -90,7 +90,6 @@ public class InnerSpaceCompactionExceptionHandler {
                 fullStorageGroupName,
                 targetTsFile,
                 selectedTsFileResourceList,
-                tsFileManager,
                 tsFileResourceList,
                 lostSourceFiles);
       }
@@ -149,10 +148,16 @@ public class InnerSpaceCompactionExceptionHandler {
         // in case of we have removed them from list before
         for (TsFileResource tsFileResource : selectedTsFileResourceList) {
           if (!tsFileResourceList.contains(tsFileResource)) {
-            tsFileResourceList.add(tsFileResource);
+            tsFileResourceList.keepOrderInsert(tsFileResource);
           }
         }
         tsFileResourceList.remove(targetTsFile);
+      } catch (IOException e) {
+        LOGGER.error(
+            "{} [Compaction][ExceptionHandler] Exception occurs while handing exception",
+            fullStorageGroupName,
+            e);
+        return false;
       } finally {
         tsFileResourceList.writeUnlock();
       }
@@ -172,7 +177,6 @@ public class InnerSpaceCompactionExceptionHandler {
       String fullStorageGroupName,
       TsFileResource targetTsFile,
       List<TsFileResource> selectedTsFileResourceList,
-      TsFileManager tsFileManager,
       TsFileResourceList tsFileResourceList,
       List<TsFileResource> lostSourceFiles) {
     boolean handleSuccess = true;
@@ -197,7 +201,7 @@ public class InnerSpaceCompactionExceptionHandler {
           }
         }
         if (!tsFileResourceList.contains(targetTsFile)) {
-          tsFileResourceList.add(targetTsFile);
+          tsFileResourceList.keepOrderInsert(targetTsFile);
         }
       } else {
         // target file is not complete, and some source file is lost
