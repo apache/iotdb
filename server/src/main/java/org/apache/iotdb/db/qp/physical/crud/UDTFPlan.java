@@ -46,8 +46,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   protected Map<Integer, Integer> datasetOutputIndexToResultColumnIndex = new HashMap<>();
   protected Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
 
-  private final Map<PartialPath, Integer> resultColumnNameToQueryDataSetIndex = new HashMap<>();
-
   public UDTFPlan(ZoneId zoneId) {
     super();
     this.zoneId = zoneId;
@@ -61,7 +59,6 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     for (int i = 0; i < resultColumns.size(); i++) {
       for (PartialPath path : resultColumns.get(i).collectPaths()) {
         indexedPaths.add(new Pair<>(path, i));
-        resultColumnNameToQueryDataSetIndex.put(path, i);
       }
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
@@ -73,7 +70,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
-      String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
+      String columnForReader = originalPath.getFullPath();
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
         pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
@@ -130,9 +127,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     return expressionName2Executor.get(functionExpression.getExpressionString());
   }
 
-  public int getReaderIndex(PartialPath partialPath) {
-    return pathNameToReaderIndex.get(
-        getColumnForReaderFromPath(
-            partialPath, resultColumnNameToQueryDataSetIndex.get(partialPath)));
+  public int getReaderIndex(String pathName) {
+    return pathNameToReaderIndex.get(pathName);
   }
 }
