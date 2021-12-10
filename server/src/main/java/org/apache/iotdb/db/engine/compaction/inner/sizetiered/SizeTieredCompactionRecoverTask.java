@@ -73,7 +73,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
    *
    * <ol>
    *   <li>Compaction log is incomplete, then delete it and return.
-   *   <li>TmpTargetFile exists, then delete targetFile if exists and remove tmpTargetFile to
+   *   <li>TmpTargetFile exists, then delete targetFile if exists and move tmpTargetFile to
    *       targetFile.
    *   <li>Both tmpTargetFile and targetFile do not exist, then delete tmpTargetResourceFile and
    *       targetResourceFile if exist, also delete the compaction log, return.
@@ -129,7 +129,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         File targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
 
         if (tmpTargetFile != null) {
-          // xxx.target exists, then remove it to xxx.tsfile
+          // xxx.target exists, then move it to xxx.tsfile
           if (targetFile.exists()) {
             targetFile.delete();
           }

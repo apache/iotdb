@@ -167,21 +167,17 @@ public class TsFileIdentifier {
   }
 
   public String getFilePath() {
-    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-    for (String dataDir : dataDirs) {
-      return dataDir
-          + File.separator
-          + (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
-          + File.separator
-          + logicalStorageGroupName
-          + File.separator
-          + virtualStorageGroupId
-          + File.separator
-          + timePartitionId
-          + File.separator
-          + filename;
-    }
-    return "";
+    return IoTDBDescriptor.getInstance().getConfig().getDataDirs()[0]
+        + File.separator
+        + (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        + File.separator
+        + logicalStorageGroupName
+        + File.separator
+        + virtualStorageGroupId
+        + File.separator
+        + timePartitionId
+        + File.separator
+        + filename;
   }
 
   public String getLogicalStorageGroupName() {

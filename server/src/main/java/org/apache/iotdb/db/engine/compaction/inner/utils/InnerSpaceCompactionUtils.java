@@ -606,7 +606,7 @@ public class InnerSpaceCompactionUtils {
     }
     File oldFile = targetResource.getTsFile();
 
-    // move TsFile and delete .target file
+    // move TsFile and delete old tsfile
     String newFilePath =
         targetResource
             .getTsFilePath()
@@ -614,13 +614,17 @@ public class InnerSpaceCompactionUtils {
     File newFile = new File(newFilePath);
     FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
 
-    // move .resource file
+    // move resource file
     targetResource.setFile(newFile);
     targetResource.setClosed(true);
     targetResource.serialize();
 
-    // delete old tsfile and .resource file
+    // delete old resource file
     File oldResourceFile = new File(oldFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
+    if (!oldResourceFile.delete()) {
+      logger.error("Fail to delete old resource file " + oldResourceFile.getAbsolutePath());
+    }
+
     oldResourceFile.delete();
   }
 }
