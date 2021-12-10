@@ -19,7 +19,12 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.metadata.id_table.DiskSchemaManager;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,6 +49,10 @@ public class SchemaEntry implements ILastCacheContainer {
 
   private long flushTime;
 
+  /** This static field will not occupy memory */
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  @TestOnly
   public SchemaEntry(TSDataType dataType) {
     TSEncoding encoding = getDefaultEncoding(dataType);
     CompressionType compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -56,13 +65,32 @@ public class SchemaEntry implements ILastCacheContainer {
     flushTime = Long.MIN_VALUE;
   }
 
-  public SchemaEntry(TSDataType dataType, TSEncoding encoding, CompressionType compressionType) {
+  public SchemaEntry(
+      TSDataType dataType,
+      TSEncoding encoding,
+      CompressionType compressionType,
+      IDeviceID deviceID,
+      PartialPath fullPath,
+      DiskSchemaManager diskSchemaManager) {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
 
     lastTime = Long.MIN_VALUE;
     flushTime = Long.MIN_VALUE;
+
+    // write log file
+    if (config.isEnableIDTableLogFile()) {
+      DiskSchemaEntry diskSchemaEntry =
+          new DiskSchemaEntry(
+              deviceID.toStringID(),
+              fullPath.getFullPath(),
+              flushTime,
+              dataType.serialize(),
+              encoding.serialize(),
+              compressionType.serialize());
+      schema |= (diskSchemaManager.serialize(diskSchemaEntry) << 25);
+    }
   }
 
   /**

@@ -56,6 +56,16 @@ public class DeviceEntry {
     measurementMap.put(measurementName, schemaEntry);
   }
 
+  /**
+   * whether the device entry contains the measurement
+   *
+   * @param measurementName name of the measurement
+   * @return whether the device entry contains the measurement
+   */
+  public boolean contains(String measurementName) {
+    return measurementMap.containsKey(measurementName);
+  }
+
   public boolean isAligned() {
     return isAligned;
   }

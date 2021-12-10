@@ -411,7 +411,7 @@ public class StorageGroupProcessor {
         TimeUnit.MILLISECONDS);
     // use id table
     if (config.isEnableIDTable()) {
-      idTable = new IDTable();
+      idTable = new IDTable(storageGroupSysDir);
     }
     recover();
   }

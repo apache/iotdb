@@ -19,15 +19,6 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
@@ -53,9 +44,20 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class IDTableTest {
 
@@ -65,6 +67,8 @@ public class IDTableTest {
 
   private String originalDeviceIDTransformationMethod = null;
 
+  private boolean isEnableIDTableLogFile = false;
+
   @Before
   public void before() {
     compressionType = TSFileDescriptor.getInstance().getConfig().getCompressor();
@@ -72,9 +76,11 @@ public class IDTableTest {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
 
@@ -84,6 +90,7 @@ public class IDTableTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
     EnvironmentUtils.cleanEnv();
   }
 

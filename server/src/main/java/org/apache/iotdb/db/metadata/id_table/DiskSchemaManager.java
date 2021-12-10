@@ -19,22 +19,26 @@
 package org.apache.iotdb.db.metadata.id_table;
 
 import org.apache.iotdb.db.metadata.id_table.entry.DiskSchemaEntry;
+import org.apache.iotdb.db.utils.TestOnly;
+
+import java.io.IOException;
+import java.util.Collection;
 
 public interface DiskSchemaManager {
 
   /**
    * serialize a disk schema entry
    *
-   * @param diskSchemaEntry disk schema entry
+   * @param schemaEntry disk schema entry
    * @return disk position of that entry
    */
-  public long serialize(DiskSchemaEntry diskSchemaEntry);
+  public long serialize(DiskSchemaEntry schemaEntry);
 
   /**
-   * deserialize a disk schema entry
+   * get all disk schema entries from file
    *
-   * @param pos disk position
-   * @return disk schema entry
+   * @return collection of all disk schema entires
    */
-  public DiskSchemaEntry deserialize(long pos);
+  @TestOnly
+  public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
 }

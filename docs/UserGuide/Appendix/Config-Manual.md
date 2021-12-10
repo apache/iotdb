@@ -740,6 +740,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Effective|Only allowed to be modified in first start up|
 
 * enable\_id\_table
+
 |Name| enable\_id\_table |
 |:---:|:---|
 |Description| whether to use id table. ATTENTION: id table is not compatible with alias |
@@ -748,12 +749,22 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Effective|After restart system|
 
 * device\_id\_transformation\_method
+
 |Name| device\_id\_transformation\_method |
 |:---:|:---|
 |Description| the method to transform device path to device id, can be 'Plain' or 'SHA256' |
 |Type| string |
 |Default| Plain |
 |Effective|Only allowed to be modified in first start up|
+
+* enable\_id\_table\_log\_file
+
+|Name| enable\_id\_table\_log\_file |
+|:---:|:---|
+|Description| whether create mapping file of id table. This file can map device id in tsfile to device path |
+|Type| bool |
+|Default| false |
+|Effective|After restart system|
 
 ## Enable GC log
 GC log is off by default.

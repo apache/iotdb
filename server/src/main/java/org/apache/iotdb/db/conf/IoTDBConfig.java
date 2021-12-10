@@ -789,6 +789,11 @@ public class IoTDBConfig {
   /** whether to use id table. ATTENTION: id table is not compatible with alias */
   private boolean enableIDTable = false;
 
+  /**
+   * whether create mapping file of id table. This file can map device id in tsfile to device path
+   */
+  private boolean enableIDTableLogFile = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -2491,5 +2496,13 @@ public class IoTDBConfig {
 
   public void setEnableIDTable(boolean enableIDTable) {
     this.enableIDTable = enableIDTable;
+  }
+
+  public boolean isEnableIDTableLogFile() {
+    return enableIDTableLogFile;
+  }
+
+  public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
+    this.enableIDTableLogFile = enableIDTableLogFile;
   }
 }

@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,16 +61,18 @@ public class IDTable {
    * (measurement name -> schema entry)
    */
   private Map<IDeviceID, DeviceEntry>[] idTables;
+
   /** disk schema manager to manage disk schema entry */
   private DiskSchemaManager diskSchemaManager;
   /** iotdb config */
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public IDTable() {
+  public IDTable(File storageGroupDir) {
     idTables = new Map[NUM_OF_SLOTS];
     for (int i = 0; i < NUM_OF_SLOTS; i++) {
       idTables[i] = new HashMap<>();
     }
+    diskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
   }
 
   /**
@@ -83,9 +86,16 @@ public class IDTable {
     DeviceEntry deviceEntry = getDeviceEntry(plan.getPrefixPath(), true);
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
+      PartialPath fullPath =
+          new PartialPath(plan.getPrefixPath().toString(), plan.getMeasurements().get(i));
       SchemaEntry schemaEntry =
           new SchemaEntry(
-              plan.getDataTypes().get(i), plan.getEncodings().get(i), plan.getCompressors().get(i));
+              plan.getDataTypes().get(i),
+              plan.getEncodings().get(i),
+              plan.getCompressors().get(i),
+              deviceEntry.getDeviceID(),
+              fullPath,
+              diskSchemaManager);
       deviceEntry.putSchemaEntry(plan.getMeasurements().get(i), schemaEntry);
     }
   }
@@ -99,7 +109,13 @@ public class IDTable {
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
     DeviceEntry deviceEntry = getDeviceEntry(plan.getPath().getDevicePath(), false);
     SchemaEntry schemaEntry =
-        new SchemaEntry(plan.getDataType(), plan.getEncoding(), plan.getCompressor());
+        new SchemaEntry(
+            plan.getDataType(),
+            plan.getEncoding(),
+            plan.getCompressor(),
+            deviceEntry.getDeviceID(),
+            plan.getPath(),
+            diskSchemaManager);
     deviceEntry.putSchemaEntry(plan.getPath().getMeasurement(), schemaEntry);
   }
 
@@ -277,10 +293,16 @@ public class IDTable {
       // if the timeseries is in template, mmanager will not create timeseries. so we have to put it
       // in id table here
       for (IMeasurementMNode measurementMNode : plan.getMeasurementMNodes()) {
-        if (measurementMNode != null) {
+        if (measurementMNode != null && !deviceEntry.contains(measurementMNode.getName())) {
           IMeasurementSchema schema = measurementMNode.getSchema();
           SchemaEntry curEntry =
-              new SchemaEntry(schema.getType(), schema.getEncodingType(), schema.getCompressor());
+              new SchemaEntry(
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getCompressor(),
+                  deviceEntry.getDeviceID(),
+                  seriesKey,
+                  diskSchemaManager);
           deviceEntry.putSchemaEntry(measurementMNode.getName(), curEntry);
         }
       }
@@ -390,5 +412,10 @@ public class IDTable {
   @TestOnly
   public Map<IDeviceID, DeviceEntry>[] getIdTables() {
     return idTables;
+  }
+
+  @TestOnly
+  public DiskSchemaManager getDiskSchemaManager() {
+    return diskSchemaManager;
   }
 }

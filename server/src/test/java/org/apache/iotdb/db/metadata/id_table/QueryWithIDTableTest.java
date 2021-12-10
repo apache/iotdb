@@ -19,25 +19,18 @@
 
 package org.apache.iotdb.db.metadata.id_table;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -53,10 +46,21 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsDouble;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsFloat;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsInt;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType.TsLong;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class QueryWithIDTableTest {
   private final Planner processor = new Planner();
@@ -97,10 +101,30 @@ public class QueryWithIDTableTest {
   }
 
   @Test
+  public void testRawDataQueryAfterFlush()
+      throws MetadataException, QueryProcessException, StorageEngineException, InterruptedException,
+          QueryFilterOptimizationException, IOException {
+    insertDataInDisk();
+    insertDataInMemory();
+
+    PlanExecutor executor = new PlanExecutor();
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    int count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      count++;
+    }
+
+    assertEquals(8, count);
+  }
+
+  @Test
   public void testLastCacheQuery()
       throws QueryProcessException, MetadataException, InterruptedException,
           QueryFilterOptimizationException, StorageEngineException, IOException {
-    insertData();
+    insertDataInMemory();
 
     PlanExecutor executor = new PlanExecutor();
     QueryPlan queryPlan =
@@ -155,7 +179,7 @@ public class QueryWithIDTableTest {
             .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s6"))));
   }
 
-  private void insertData() throws IllegalPathException, QueryProcessException {
+  private void insertDataInMemory() throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());
@@ -193,5 +217,50 @@ public class QueryWithIDTableTest {
 
     PlanExecutor executor = new PlanExecutor();
     executor.insertTablet(tabletPlan);
+  }
+
+  private void insertDataInDisk()
+      throws IllegalPathException, QueryProcessException, StorageGroupNotSetException,
+          StorageEngineException {
+    long[] times = new long[] {10L, 11L, 12L, 13L};
+    List<Integer> dataTypes = new ArrayList<>();
+    dataTypes.add(TSDataType.DOUBLE.ordinal());
+    dataTypes.add(TSDataType.FLOAT.ordinal());
+    dataTypes.add(TSDataType.INT64.ordinal());
+    dataTypes.add(TSDataType.INT32.ordinal());
+    dataTypes.add(TSDataType.BOOLEAN.ordinal());
+    dataTypes.add(TSDataType.TEXT.ordinal());
+
+    Object[] columns = new Object[6];
+    columns[0] = new double[4];
+    columns[1] = new float[4];
+    columns[2] = new long[4];
+    columns[3] = new int[4];
+    columns[4] = new boolean[4];
+    columns[5] = new Binary[4];
+
+    for (int r = 0; r < 4; r++) {
+      ((double[]) columns[0])[r] = 1.0 + r;
+      ((float[]) columns[1])[r] = 2 + r;
+      ((long[]) columns[2])[r] = 10000 + r;
+      ((int[]) columns[3])[r] = 100 + r;
+      ((boolean[]) columns[4])[r] = false;
+      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+    }
+
+    InsertTabletPlan tabletPlan =
+        new InsertTabletPlan(
+            new PartialPath("root.isp.d1"),
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes);
+    tabletPlan.setTimes(times);
+    tabletPlan.setColumns(columns);
+    tabletPlan.setRowCount(times.length);
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insertTablet(tabletPlan);
+
+    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
+    executor.processNonQuery(flushPlan);
   }
 }
