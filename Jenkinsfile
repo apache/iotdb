@@ -58,6 +58,27 @@ pipeline {
             }
         }
 
+        stage('Deploy site') {
+            when {
+                branch 'master'
+            }
+            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
+            agent {
+                node {
+                    label 'git-websites'
+                }
+            }
+            steps {
+                // Publish the site with the scm-publish plugin.
+                sh 'mvn -P site -P compile-site -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
+
+                // Clean up the snapshots directory (freeing up more space after deploying).
+                dir("target") {
+                    deleteDir()
+                }
+            }
+        }
+
         stage('Build (not master)') {
             when {
                 expression {
@@ -121,27 +142,6 @@ pipeline {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
                 sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload -P get-jar-with-dependencies'
-            }
-        }
-
-        stage('Deploy site') {
-            when {
-                branch 'master'
-            }
-            // Only the nodes labeled 'git-websites' have the credentials to commit to the.
-            agent {
-                node {
-                    label 'git-websites'
-                }
-            }
-            steps {
-                // Publish the site with the scm-publish plugin.
-                sh 'mvn -P site -P compile-site -P compile-site-0.12 -P compile-site-0.11 -P compile-site-0.10 -P compile-site-0.9 -P compile-site-0.8 compile scm-publish:publish-scm -pl site'
-
-                // Clean up the snapshots directory (freeing up more space after deploying).
-                dir("target") {
-                    deleteDir()
-                }
             }
         }
 
