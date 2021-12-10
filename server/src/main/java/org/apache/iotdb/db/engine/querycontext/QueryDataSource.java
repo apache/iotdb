@@ -24,9 +24,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class QueryDataSource {
   private final List<TsFileResource> seqResources;
@@ -38,12 +36,11 @@ public class QueryDataSource {
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
 
-  private final Map<String, Integer[]> unSeqFileOrderIndexesMap;
+  private int[] unSeqFileOrderIndex;
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
     this.unseqResources = unseqResources;
-    this.unSeqFileOrderIndexesMap = new HashMap<>();
   }
 
   public List<TsFileResource> getSeqResources() {
@@ -66,8 +63,8 @@ public class QueryDataSource {
     return dataTTL;
   }
 
-  public Integer[] getUnSeqFileOrderIndexes(String deviceId) {
-    return unSeqFileOrderIndexesMap.get(deviceId);
+  public int[] getUnSeqFileOrderIndex() {
+    return unSeqFileOrderIndex;
   }
 
   public void setUnclosedSeqResource(TsFileResource unclosedSeqResource) {
@@ -82,8 +79,8 @@ public class QueryDataSource {
     this.dataTTL = dataTTL;
   }
 
-  public void setUnSeqFileOrderIndexes(String deviceId, Integer[] indexes) {
-    this.unSeqFileOrderIndexesMap.put(deviceId, indexes);
+  public void setUnSeqFileOrderIndex(int[] index) {
+    this.unSeqFileOrderIndex = index;
   }
 
   /** @return an updated filter concerning TTL */
@@ -107,8 +104,8 @@ public class QueryDataSource {
     return null;
   }
 
-  public TsFileResource getUnseqResourceByIndex(int curIndex, String deviceId) {
-    int actualIndex = unSeqFileOrderIndexesMap.get(deviceId)[curIndex];
+  public TsFileResource getUnseqResourceByIndex(int curIndex) {
+    int actualIndex = unSeqFileOrderIndex[curIndex];
     if (actualIndex < unseqResources.size()) {
       return unseqResources.get(actualIndex);
     } else if (actualIndex == unseqResources.size()) {

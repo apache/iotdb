@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -30,6 +31,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
@@ -40,9 +42,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
@@ -136,19 +136,28 @@ public class QueryResourceManager {
           .put(storageGroupPath, cachedQueryDataSource);
     }
 
+    // set query time lower bound according TTL
+    long dataTTL = cachedQueryDataSource.getDataTTL();
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
     // construct QueryDataSource for selectedPath
     QueryDataSource queryDataSource =
         new QueryDataSource(
             cachedQueryDataSource.getSeqResources(), cachedQueryDataSource.getUnseqResources());
 
+    queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
+
     TsFileResource cachedUnclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
     try {
       if (cachedUnclosedSeqResource != null) {
-        TsFileResource unclosedSeqResource =
-            cachedUnclosedSeqResource.getUnsealedFileProcessor().query(selectedPath, context);
-        if (unclosedSeqResource != null) {
-          queryDataSource.setUnclosedSeqResource(unclosedSeqResource);
+        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
+        TsFileProcessor processor = cachedUnclosedSeqResource.getUnsealedFileProcessor();
+        if (processor != null) {
+          queryDataSource.setUnclosedSeqResource(processor.query(selectedPath, context));
         }
+        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
     } catch (IOException e) {
       throw new QueryProcessException(
@@ -160,11 +169,12 @@ public class QueryResourceManager {
     TsFileResource cachedUnclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
     try {
       if (cachedUnclosedUnseqResource != null) {
-        TsFileResource unclosedUnseqResource =
-            cachedUnclosedUnseqResource.getUnsealedFileProcessor().query(selectedPath, context);
-        if (unclosedUnseqResource != null) {
-          queryDataSource.setUnclosedUnseqResource(unclosedUnseqResource);
+        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
+        TsFileProcessor processor = cachedUnclosedUnseqResource.getUnsealedFileProcessor();
+        if (processor != null) {
+          queryDataSource.setUnclosedUnseqResource(processor.query(selectedPath, context));
         }
+        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
     } catch (IOException e) {
       throw new QueryProcessException(
@@ -173,24 +183,12 @@ public class QueryResourceManager {
               storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
     }
 
-    Integer[] orderIndexes = new Integer[queryDataSource.getUnseqResources().size() + 1];
-    fillOrderIndexes(
-        deviceId,
-        queryDataSource.getUnseqResources(),
-        queryDataSource.getUnclosedUnseqResource(),
-        orderIndexes,
-        context.isAscending());
-    queryDataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
-    queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
-
     // used files should be added before mergeLock is unlocked, or they may be deleted by running
     // merge
     filePathsManager.addUsedFilesForQuery(context.getQueryId(), queryDataSource);
 
-    long dataTTL = queryDataSource.getDataTTL();
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
+    // calculate the read order of unseqResources
+    QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());
 
     return queryDataSource;
   }
@@ -202,33 +200,6 @@ public class QueryResourceManager {
     if (cachedQueryDataSourcesMap.containsKey(queryId)) {
       cachedQueryDataSourcesMap.get(queryId).remove(storageGroupPath);
     }
-  }
-
-  private void fillOrderIndexes(
-      String deviceId,
-      List<TsFileResource> unseqResources,
-      TsFileResource unclosedUnseqResource,
-      Integer[] orderIndexes,
-      boolean ascending) {
-    AtomicInteger index = new AtomicInteger();
-    Map<Integer, Long> intToOrderTimeMap =
-        unseqResources.stream()
-            .collect(
-                Collectors.toMap(
-                    key -> index.getAndIncrement(),
-                    resource -> resource.getOrderTime(deviceId, ascending)));
-    if (unclosedUnseqResource != null) {
-      intToOrderTimeMap.put(index.get(), unclosedUnseqResource.getOrderTime(deviceId, ascending));
-    }
-    index.set(0);
-    intToOrderTimeMap.entrySet().stream()
-        .sorted(
-            (t1, t2) ->
-                ascending
-                    ? Long.compare(t1.getValue(), t2.getValue())
-                    : Long.compare(t2.getValue(), t1.getValue()))
-        .collect(Collectors.toList())
-        .forEach(item -> orderIndexes[index.getAndIncrement()] = item.getKey());
   }
 
   /**

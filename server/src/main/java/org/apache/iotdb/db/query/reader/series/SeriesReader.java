@@ -1173,8 +1173,7 @@ public class SeriesReader {
     @Override
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
-        TsFileResource tsFileResource =
-            dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
                 seriesPath.getDevice(),
@@ -1195,16 +1194,25 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
         curSeqFileIndex--;
+        if (CONFIG.isEnablePerformanceTracing()) {
+          TracingManager.getInstance()
+              .getTracingInfo(context.getQueryId())
+              .addTsFile(tsFileResource, true);
+        }
       }
       return tsFileResource;
     }
 
     @Override
     public TsFileResource getNextUnseqFileResource(boolean isDelete) {
-      TsFileResource tsFileResource =
-          dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+      TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
       if (isDelete) {
         curUnseqFileIndex++;
+        if (CONFIG.isEnablePerformanceTracing()) {
+          TracingManager.getInstance()
+              .getTracingInfo(context.getQueryId())
+              .addTsFile(tsFileResource, false);
+        }
       }
       return tsFileResource;
     }
@@ -1298,8 +1306,7 @@ public class SeriesReader {
     @Override
     public boolean hasNextUnseqResource() {
       while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
-        TsFileResource tsFileResource =
-            dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
                 seriesPath.getDevice(),
@@ -1320,16 +1327,25 @@ public class SeriesReader {
       TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
       if (isDelete) {
         curSeqFileIndex++;
+        if (CONFIG.isEnablePerformanceTracing()) {
+          TracingManager.getInstance()
+              .getTracingInfo(context.getQueryId())
+              .addTsFile(tsFileResource, true);
+        }
       }
       return tsFileResource;
     }
 
     @Override
     public TsFileResource getNextUnseqFileResource(boolean isDelete) {
-      TsFileResource tsFileResource =
-          dataSource.getUnseqResourceByIndex(curUnseqFileIndex, seriesPath.getDevice());
+      TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
       if (isDelete) {
         curUnseqFileIndex++;
+        if (CONFIG.isEnablePerformanceTracing()) {
+          TracingManager.getInstance()
+              .getTracingInfo(context.getQueryId())
+              .addTsFile(tsFileResource, false);
+        }
       }
       return tsFileResource;
     }

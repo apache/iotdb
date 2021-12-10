@@ -113,7 +113,7 @@ public class QueryUtils {
       QueryDataSource dataSource, String deviceId, boolean ascending) {
     List<TsFileResource> unseqResources = dataSource.getUnseqResources();
     TsFileResource unclosedUnseqResource = dataSource.getUnclosedUnseqResource();
-    Integer[] orderIndexes = new Integer[unseqResources.size() + 1];
+    int[] orderIndex = new int[unseqResources.size() + 1];
     AtomicInteger index = new AtomicInteger();
     Map<Integer, Long> intToOrderTimeMap =
         unseqResources.stream()
@@ -132,7 +132,7 @@ public class QueryUtils {
                     ? Long.compare(t1.getValue(), t2.getValue())
                     : Long.compare(t2.getValue(), t1.getValue()))
         .collect(Collectors.toList())
-        .forEach(item -> orderIndexes[index.getAndIncrement()] = item.getKey());
-    dataSource.setUnSeqFileOrderIndexes(deviceId, orderIndexes);
+        .forEach(item -> orderIndex[index.getAndIncrement()] = item.getKey());
+    dataSource.setUnSeqFileOrderIndex(orderIndex);
   }
 }

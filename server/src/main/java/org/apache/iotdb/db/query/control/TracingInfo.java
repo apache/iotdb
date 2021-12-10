@@ -81,4 +81,12 @@ public class TracingInfo {
     this.seqFileSet.addAll(seqResources);
     this.unSeqFileSet.addAll(unSeqResources);
   }
+
+  public void addTsFile(TsFileResource seqResource, boolean isSeq) {
+    if (isSeq) {
+      this.seqFileSet.add(seqResource);
+    } else {
+      this.unSeqFileSet.add(seqResource);
+    }
+  }
 }

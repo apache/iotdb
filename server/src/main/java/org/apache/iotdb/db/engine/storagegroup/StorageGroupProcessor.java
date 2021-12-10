@@ -1653,6 +1653,14 @@ public class StorageGroupProcessor {
     insertLock.writeLock().unlock();
   }
 
+  public void closeQueryLock() {
+    closeQueryLock.readLock().lock();
+  }
+
+  public void closeQueryUnLock() {
+    closeQueryLock.readLock().unlock();
+  }
+
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
