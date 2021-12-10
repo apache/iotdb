@@ -179,7 +179,7 @@ public class QueryResourceManager {
           queryDataSource.setUnclosedUnseqResource(processor.query(selectedPath, context));
         } else {
           // tsFileResource is closed
-          queryDataSource.setUnclosedSeqResource(cachedUnclosedUnseqResource);
+          queryDataSource.setUnclosedUnseqResource(cachedUnclosedUnseqResource);
         }
       } catch (IOException e) {
         throw new QueryProcessException(
