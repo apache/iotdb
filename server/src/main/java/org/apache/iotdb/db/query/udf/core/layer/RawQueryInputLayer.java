@@ -107,9 +107,6 @@ public class RawQueryInputLayer {
     private int currentRowIndex;
 
     private boolean hasCachedRowRecord;
-    // This field must be true by default, as it may use cached data in rowRecordList to check
-    // whether this reader has next row
-    boolean isCurRowAllNull = true;
     private Object[] cachedRowRecord;
 
     InputLayerPointReader(int columnIndex) {
@@ -135,7 +132,12 @@ public class RawQueryInputLayer {
 
       for (int i = currentRowIndex + 1; i < rowRecordList.size(); ++i) {
         Object[] rowRecordCandidate = rowRecordList.getRowRecord(i);
-        if (isCurRowAllNull || rowRecordCandidate[columnIndex] != null) {
+        // It all fields except the timestamp in the current row are null, we should treat this row
+        // be valid. Because in a GROUP BY time query, we must return every time window record even
+        // if there's no data. Under the situation, if hasCachedRowRecord is false, this row will be
+        // skipped and the result is not as our expected.
+        if (rowRecordCandidate[columnIndex] != null
+            || InputRowUtils.isAllNull(rowRecordCandidate)) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -147,8 +149,8 @@ public class RawQueryInputLayer {
         while (queryDataSet.hasNextRowInObjects()) {
           Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
-          isCurRowAllNull = InputRowUtils.isAllNull(rowRecordCandidate);
-          if (isCurRowAllNull || rowRecordCandidate[columnIndex] != null) {
+          if (rowRecordCandidate[columnIndex] != null
+              || InputRowUtils.isAllNull(rowRecordCandidate)) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;
@@ -164,7 +166,6 @@ public class RawQueryInputLayer {
     public void readyForNext() {
       hasCachedRowRecord = false;
       cachedRowRecord = null;
-      isCurRowAllNull = true;
 
       safetyPile.moveForwardTo(currentRowIndex + 1);
     }

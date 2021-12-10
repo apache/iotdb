@@ -186,6 +186,40 @@ public class IoTDBUDFNestAggregationIT {
     }
   }
 
+  @Test
+  public void complexExpressionsWithTimeFilterTest2() {
+    Object[] retResults = {0L, 1.14112000806D, 0.28224001612D};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT sin(count(temperature) + 1) + 1,sin(count(temperature) + 1) * 2 FROM root.ln.wf01.wt01 WHERE time > 3";
+      boolean hasResultSet = statement.execute(query);
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals((long) retResults[0], resultSet.getLong(TIMESTAMP_STR));
+        Assert.assertEquals((double) retResults[1], resultSet.getDouble(1), E);
+        Assert.assertEquals((double) retResults[2], resultSet.getDouble(2), E);
+        Assert.assertFalse(resultSet.next());
+      }
+
+      hasResultSet = statement.execute(query + " ORDER BY TIME DESC");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals((long) retResults[0], resultSet.getLong(TIMESTAMP_STR));
+        Assert.assertEquals((double) retResults[1], resultSet.getDouble(1), E);
+        Assert.assertEquals((double) retResults[2], resultSet.getDouble(2), E);
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   // Test FunctionExpression, NegativeExpression and BinaryExpression with value filter
   @Test
   public void complexExpressionsWithValueFilterTest() {

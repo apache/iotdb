@@ -37,9 +37,8 @@ import java.util.Map;
 /**
  * For a UDAFPlan, we construct an inner AggregationPlan for it. Example: select
  * count(a)/count(b),count(a)+sum(b) from root.sg To init inner AggregationPlan, we will convert it
- * to statement: select count(a),count(b),count(a),sum(b) from root.sg innerResultColumnsCache will
- * be [count(a),count(b),sum(b)] innerPathCathe will be [root.sg.a,root.sg.b,root.sg.b]
- * innerAggregationsCache will be [count,count,sum]
+ * to statement: select count(a),count(b),count(a),sum(b) from root.sg. innerResultColumnsCache will
+ * be [count(a),count(b),sum(b)].
  */
 public class UDAFQueryOperator extends QueryOperator {
 

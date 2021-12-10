@@ -53,7 +53,7 @@ public class UDFInputDataSet implements IUDFInputDataSet {
   @Override
   public Object[] nextRowInObjects() throws IOException {
     Object[] nextRow = new Object[dataSet.getColumnNum() + 1];
-    RowRecord r = dataSet.next();
+    RowRecord r = dataSet.nextWithoutConstraint();
     for (int i = 0; i < dataSet.getColumnNum(); i++) {
       Field f = r.getFields().get(i);
       if (f != null) {
