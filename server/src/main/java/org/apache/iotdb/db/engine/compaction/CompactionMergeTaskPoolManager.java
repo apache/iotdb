@@ -70,8 +70,11 @@ public class CompactionMergeTaskPoolManager implements IService {
       pool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
               threadNum, ThreadName.COMPACTION_SERVICE.getName());
-      for (int i = 0; i < threadNum; ++i) {
-        pool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(true));
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+        // execute register task to register each compaction thread to CompactionMonitor
+        for (int i = 0; i < threadNum; ++i) {
+          pool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(true));
+        }
       }
     }
     logger.info("Compaction task manager started.");

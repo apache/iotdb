@@ -139,15 +139,18 @@ public class MergeManager implements IService, MergeManagerMBean {
       mergeTaskPool =
           new MergeThreadPool(
               threadNum, r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
-      for (int i = 0; i < threadNum; ++i) {
-        mergeTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
-      }
       mergeChunkSubTaskPool =
           new MergeThreadPool(
               threadNum * chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      for (int i = 0; i < threadNum * chunkSubThreadNum; ++i) {
-        mergeChunkSubTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+        // execute register task to register each merge thread to CompactionMonitor
+        for (int i = 0; i < threadNum; ++i) {
+          mergeTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
+        }
+        for (int i = 0; i < threadNum * chunkSubThreadNum; ++i) {
+          mergeChunkSubTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
+        }
       }
 
       taskCleanerThreadPool =

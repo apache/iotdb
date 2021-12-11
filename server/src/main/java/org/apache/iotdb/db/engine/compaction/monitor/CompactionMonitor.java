@@ -83,10 +83,11 @@ public class CompactionMonitor implements IService {
   private Map<String, Integer> compactionFinishCountForEachSg = new HashMap<>();
   // it records the total cpu time for all threads
   private long lastTotalCpuTime = 0L;
-  // threadId -> cpu time
   private Map<Long, Long> cpuTimeForCompactionThread = new HashMap<>();
+  // threadId -> total cpu time
   private Set<Long> compactionThreadIdSet = new HashSet<>();
   private Set<Long> mergeThreadIdSet = new HashSet<>();
+  // threadId -> total cpu time
   private Map<Long, Long> cpuTimeForMergeThread = new HashMap<>();
   private Map<String, Pair<Integer, Integer>> mergeStartFileNumForEachSg = new HashMap<>();
   private Map<String, Integer> mergeStartCountForEachSg = new HashMap<>();
@@ -110,7 +111,7 @@ public class CompactionMonitor implements IService {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
       init();
       threadPool.scheduleWithFixedDelay(
-          this::sealedMonitorStatusPeriodically,
+          this::saveMonitorStatusPeriodically,
           10_000L,
           IoTDBDescriptor.getInstance().getConfig().getCompactionMonitorPeriod(),
           TimeUnit.MILLISECONDS);
@@ -147,6 +148,8 @@ public class CompactionMonitor implements IService {
   }
 
   private void init() {
+    // calculate the cpu consumption when initializing, but do not record them
+    // it is for ensuring the correctness of the first record point collected
     calculateCpuConsumptionForCompactionAndMergeThreads();
   }
 
@@ -155,6 +158,7 @@ public class CompactionMonitor implements IService {
     compactionThreadIdSet.add(threadId);
   }
 
+  /** Register merge thread id to id set */
   public synchronized void registerMergeThread(long threadId) {
     mergeThreadIdSet.add(threadId);
   }
@@ -163,7 +167,7 @@ public class CompactionMonitor implements IService {
    * This function should be executed periodically. The interval of calling it is the monitor
    * period. This function will save the monitor data to IoTDB.
    */
-  public synchronized void sealedMonitorStatusPeriodically() {
+  public synchronized void saveMonitorStatusPeriodically() {
     lastUpdateTime = System.currentTimeMillis();
     Map<Long, Double> cpuConsumptionForCompactionThread =
         calculateCpuConsumptionForCompactionAndMergeThreads();
@@ -172,8 +176,14 @@ public class CompactionMonitor implements IService {
     saveCompactionInfo(compactionFinishCountForEachSg, compactionFinishFileCountMap, false);
     saveMergeInfo(mergeStartCountForEachSg, mergeStartFileNumForEachSg, true);
     saveMergeInfo(mergeFinishCountForEachSg, mergeFinishFileNumForEachSg, false);
+    long costTime = System.currentTimeMillis() - lastUpdateTime;
+    LOGGER.info("The CompactionMonitor took {} ms to record the data", costTime);
   }
 
+  /**
+   * Report the beginning or ending of a compaction task. The CompactionMonitor records the
+   * beginning and ending of task separately, and records task in different level separately.
+   */
   public synchronized void reportCompactionStatus(
       String storageGroupName, int compactionLevel, int fileNum, boolean begin) {
     if (!compactionThreadIdSet.contains(Thread.currentThread().getId())) {
@@ -191,11 +201,16 @@ public class CompactionMonitor implements IService {
     compactionCountMap.put(storageGroupName, newCompactionCount);
   }
 
+  /**
+   * Report the beginning or ending of a merge task. The CompactionMonitor records the beginning and
+   * ending of task separately.
+   */
   public synchronized void reportMergeStatus(
       String storageGroupName, int seqFileNum, int unseqFileNum, boolean start) {
     if (!mergeThreadIdSet.contains(Thread.currentThread().getId())) {
       registerMergeThread(Thread.currentThread().getId());
     }
+    // records the beginning and ending of task separately.
     Map<String, Integer> mergeCountForSg =
         start ? mergeStartCountForEachSg : mergeFinishCountForEachSg;
     Map<String, Pair<Integer, Integer>> mergeFileNumForSg =
@@ -233,6 +248,7 @@ public class CompactionMonitor implements IService {
       } else {
         cpuTimeForCurrThread = 0;
       }
+      // if the thread is a compaction or merge thread, updates its total cpu time
       if (compactionThreadIdSet.contains(threadId)) {
         cpuTimeForCompactionThreadInThisPeriod.put(threadId, cpuTimeForCurrThread);
       }
@@ -241,6 +257,7 @@ public class CompactionMonitor implements IService {
       }
     }
 
+    // the total cpu time in this monitor period
     long cpuTimeInThisPeriod = totalCpuTime - lastTotalCpuTime;
 
     if (cpuTimeInThisPeriod < 0) {
@@ -256,12 +273,16 @@ public class CompactionMonitor implements IService {
         totalCpuTime,
         lastTotalCpuTime);
     lastTotalCpuTime = totalCpuTime;
+
     double compactionThreadsTotalCpuConsumption = 0.0;
     // we use this map to store the cpu consumption percentage of each compaction or merge thread
+    // thread id -> percentage of cpu consumption in this period
     Map<Long, Double> cpuConsumptionForCompactionAndMergeThread = new HashMap<>();
     // calculate the cpu consumption of each compaction thread in this period
     // and update the total cpu time for each compaction thread
     for (long threadId : compactionThreadIdSet) {
+      // percentage of cpu consumption =
+      // cpu time in this period of curr thread / cpu time in this period of all threads
       double cpuConsumptionForCurrentThread =
           (double)
                   (cpuTimeForCompactionThreadInThisPeriod.get(threadId)
@@ -280,6 +301,7 @@ public class CompactionMonitor implements IService {
         "[CompactionMonitor] cpu for compaction threads in last period is {}%",
         compactionThreadsTotalCpuConsumption * 100);
 
+    // record the cpu consumption percentage for all compaction threads
     cpuConsumptionForCompactionAndMergeThread.put(
         COMPACTION_CPU_CONSUMPTION_TOTAL_MAP_KEY, compactionThreadsTotalCpuConsumption);
 
@@ -288,6 +310,7 @@ public class CompactionMonitor implements IService {
       cpuConsumptionForCompactionAndMergeThread.clear();
     }
 
+    // calculate the cpu consumption for merge threads as above
     double mergeThreadsTotalCpuConsumption = 0.0;
 
     for (long threadId : mergeThreadIdSet) {
@@ -316,6 +339,7 @@ public class CompactionMonitor implements IService {
     return cpuConsumptionForCompactionAndMergeThread;
   }
 
+  /** save the cpu consumption info to local storage group `root.compaction_monitor` */
   private void saveCpuConsumption(Map<Long, Double> consumptionMap) {
     ThreadMXBean mxBean = ManagementFactory.getThreadMXBean();
     try {
@@ -324,16 +348,20 @@ public class CompactionMonitor implements IService {
         PartialPath compactionPath = new PartialPath(COMPACTION_CPU_CONSUMPTION_DEVICE);
         List<String> compactionCpuConsumptionMeasurements = new ArrayList<>();
         List<String> compactionCpuConsumptionValues = new ArrayList<>();
+
         for (long threadId : compactionThreadIdSet) {
           String threadName = mxBean.getThreadInfo(threadId).getThreadName();
           String[] splittedThreadName = threadName.split("-");
           int length = splittedThreadName.length;
+          // measurement name is like Compaction-1, Compaction-2, etc.
           String measurementName =
               splittedThreadName[length - 2] + "-" + splittedThreadName[length - 1];
           compactionCpuConsumptionMeasurements.add(measurementName);
           compactionCpuConsumptionValues.add(
               Double.toString(consumptionMap.getOrDefault(threadId, 0.0)));
         }
+
+        // write the total cpu consumption for all compaction thread
         compactionCpuConsumptionMeasurements.add(COMPACTION_CPU_CONSUMPTION_SUM_MEASUREMENT);
         compactionCpuConsumptionValues.add(
             Double.toString(
@@ -347,7 +375,7 @@ public class CompactionMonitor implements IService {
         planExecutor.processNonQuery(insertPlanForCompaction);
       }
 
-      // save the cpu consumption of merge threads
+      // save the cpu consumption of merge threads as above
       if (mergeThreadIdSet.size() > 0) {
         PartialPath mergePath = new PartialPath(MERGE_CPU_CONSUMPTION_DEVICE);
         List<String> mergeCpuConsumptionMeasurements = new ArrayList<>();
@@ -379,11 +407,13 @@ public class CompactionMonitor implements IService {
     }
   }
 
+  /** Save the compaction task num info and num of files participated in compaction */
   private void saveCompactionInfo(
       Map<String, Integer> compactionCountForSg,
       Map<String, Map<Integer, Integer>> compactionFileCountMap,
       boolean begin) {
     try {
+      // save the task num info
       String[] measurementName = {"task_num"};
       for (String sgName : compactionCountForSg.keySet()) {
         PartialPath deviceName =
@@ -401,6 +431,7 @@ public class CompactionMonitor implements IService {
         compactionCountForSg.put(sgName, 0);
       }
 
+      // save the information of number of files participated in compaction
       IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
       int maxCompactionCount = Math.max(config.getSeqLevelNum(), config.getUnseqLevelNum());
       for (String sgName : compactionFileCountMap.keySet()) {
@@ -410,6 +441,7 @@ public class CompactionMonitor implements IService {
                     begin ? COMPACTION_BEGIN_FILE_NUM_DEVICE : COMPACTION_FINISH_FILE_NUM_DEVICE,
                     sgName.replaceAll("root", "")));
         Map<Integer, Integer> countMap = compactionFileCountMap.get(sgName);
+        // the measurement is like sg_name.compaction.files.level-x
         String measurementPattern = "level-%d";
         List<String> measurements = new ArrayList<>();
         List<String> values = new ArrayList<>();
@@ -432,6 +464,7 @@ public class CompactionMonitor implements IService {
     }
   }
 
+  /** save merge task num info and info of number of files participated in merge */
   private void saveMergeInfo(
       Map<String, Integer> mergeCountForEachSg,
       Map<String, Pair<Integer, Integer>> mergeFileNumForEachSg,
@@ -455,6 +488,7 @@ public class CompactionMonitor implements IService {
         mergeCountForEachSg.put(sgName, 0);
       }
 
+      // save info of files participated in merge
       for (String sgName : mergeFileNumForEachSg.keySet()) {
         PartialPath device =
             new PartialPath(
@@ -463,6 +497,7 @@ public class CompactionMonitor implements IService {
                     sgName.replaceAll("root", "")));
         List<String> measurements = new ArrayList<>();
         List<String> values = new ArrayList<>();
+        // the measurement is like root.compaction_monitor.sg_name.merge.files.(un)seq
         measurements.add("seq");
         measurements.add("unseq");
         Pair<Integer, Integer> fileNum = mergeFileNumForEachSg.get(sgName);
@@ -482,6 +517,10 @@ public class CompactionMonitor implements IService {
     }
   }
 
+  /**
+   * This class is used to register the compaction or merge thread in the thread pools to
+   * CompactionMonitor
+   */
   public static class CompactionMonitorRegisterTask implements Runnable {
     public boolean isCompactionThread;
 
@@ -493,8 +532,8 @@ public class CompactionMonitor implements IService {
     public void run() {
       CompactionMonitor monitor = CompactionMonitor.getInstance();
       try {
-        // Sleep for 10 seconds to avoid registering twice in the same thread
-        Thread.sleep(10_000);
+        // Sleep for 5 seconds to avoid registering twice in the same thread
+        Thread.sleep(5_000);
       } catch (Exception e) {
       }
       if (isCompactionThread) {
