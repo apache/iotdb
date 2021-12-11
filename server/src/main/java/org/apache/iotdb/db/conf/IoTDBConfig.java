@@ -471,12 +471,6 @@ public class IoTDBConfig {
   /** Is stat performance of sub-module enable. */
   private boolean enablePerformanceStat = false;
 
-  /** The display of stat performance interval in ms. Unit: millisecond */
-  private long performanceStatDisplayInterval = 60000;
-
-  /** The memory used for stat performance. Unit: kilobyte */
-  private int performanceStatMemoryInKB = 20;
-
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
 
@@ -1487,22 +1481,6 @@ public class IoTDBConfig {
 
   public void setEnablePerformanceStat(boolean enablePerformanceStat) {
     this.enablePerformanceStat = enablePerformanceStat;
-  }
-
-  public long getPerformanceStatDisplayInterval() {
-    return performanceStatDisplayInterval;
-  }
-
-  void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
-    this.performanceStatDisplayInterval = performanceStatDisplayInterval;
-  }
-
-  public int getPerformanceStatMemoryInKB() {
-    return performanceStatMemoryInKB;
-  }
-
-  void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
-    this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
   public boolean isEnablePartialInsert() {
