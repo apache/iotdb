@@ -25,8 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.cost.statistic.Measurement;
-import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -53,10 +51,12 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -185,7 +185,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
     long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
     int startIndex = result.size();
     if (startIndex > 0) {
       startIndex = startIndex - 1;
@@ -205,7 +205,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
     long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(multiPlan);
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
 
     int startIndex = result.size();
     if (startIndex > 0) {
@@ -357,7 +357,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeNonQueryStatement(physicalPlan, req.getSessionId());
-          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+          addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
           result.add(resp.status);
           if (resp.getStatus().code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             isAllSuccessful = false;
@@ -378,7 +378,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         }
       }
     }
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(result);
@@ -657,7 +657,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       sessionManager.releaseQueryResourceNoExceptions(queryId);
       throw e;
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
+      addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
       long costTime = System.currentTimeMillis() - queryStartTime;
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
@@ -875,7 +875,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } finally {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
+      addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
@@ -1470,7 +1470,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 
@@ -1492,7 +1492,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 
@@ -1923,5 +1923,17 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     return RpcUtils.getStatus(
         TSStatusCode.NOT_LOGIN_ERROR,
         "Log in failed. Either you are not authorized or the session has timed out.");
+  }
+
+  /** Add stat of operation into metrics */
+  private void addOperationLatency(Operation operation, long startTime) {
+    if (CONFIG.isEnablePerformanceStat()) {
+      MetricService.getMetricManager()
+          .getOrCreateHistogram("operation_histogram", "name", operation.getName())
+          .update(System.currentTimeMillis() - startTime);
+      MetricService.getMetricManager()
+          .getOrCreateCounter("operation_count", "name", operation.getName())
+          .inc();
+    }
   }
 }

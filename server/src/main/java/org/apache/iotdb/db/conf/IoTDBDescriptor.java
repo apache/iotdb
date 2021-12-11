@@ -549,21 +549,6 @@ public class IoTDBDescriptor {
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
                   .trim()));
 
-      conf.setPerformanceStatDisplayInterval(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "performance_stat_display_interval",
-                      Long.toString(conf.getPerformanceStatDisplayInterval()))
-                  .trim()));
-      conf.setPerformanceStatMemoryInKB(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "performance_stat_memory_in_kb",
-                      Integer.toString(conf.getPerformanceStatMemoryInKB()))
-                  .trim()));
-
       int maxConcurrentClientNum =
           Integer.parseInt(
               properties.getProperty(
