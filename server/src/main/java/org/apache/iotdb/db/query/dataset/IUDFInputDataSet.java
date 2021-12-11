@@ -17,37 +17,26 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.query.udf.core.reader;
+package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import java.io.IOException;
+import java.util.List;
 
-public interface LayerPointReader {
+/** The input data set interface for a UDFPlan */
+public interface IUDFInputDataSet {
 
-  boolean isConstantPointReader();
+  /** returns the input data types, except the timestamp column(the last column). */
+  List<TSDataType> getDataTypes();
 
-  boolean next() throws QueryProcessException, IOException;
+  /** Whether the data set has next row. */
+  boolean hasNextRowInObjects() throws IOException;
 
-  void readyForNext();
-
-  TSDataType getDataType();
-
-  long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  boolean isCurrentNull() throws IOException;
-
-  Binary currentBinary() throws IOException;
+  /**
+   * Get the next row for UDFPlan input.
+   *
+   * <p>The last element in the row is the timestamp.
+   */
+  Object[] nextRowInObjects() throws IOException;
 }

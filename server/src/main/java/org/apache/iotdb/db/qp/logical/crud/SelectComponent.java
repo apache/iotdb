@@ -36,6 +36,7 @@ public final class SelectComponent {
 
   private boolean hasAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
+  private boolean hasUserDefinedAggregationFunction = false;
 
   private List<ResultColumn> resultColumns = new ArrayList<>();
 
@@ -66,8 +67,16 @@ public final class SelectComponent {
     return hasTimeSeriesGeneratingFunction;
   }
 
+  public boolean hasUserDefinedAggregationFunction() {
+    return hasUserDefinedAggregationFunction;
+  }
+
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
+    if (resultColumn.getExpression().isUDAFExpression()) {
+      hasUserDefinedAggregationFunction = true;
+    }
+
     if (resultColumn.getExpression().isAggregationFunctionExpression()) {
       hasAggregationFunction = true;
     }
@@ -108,9 +117,6 @@ public final class SelectComponent {
   }
 
   public List<String> getAggregationFunctions() {
-    if (!hasAggregationFunction()) {
-      return null;
-    }
     if (aggregationFunctionsCache == null) {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {

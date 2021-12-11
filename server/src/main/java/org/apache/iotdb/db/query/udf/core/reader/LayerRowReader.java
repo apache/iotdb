@@ -36,4 +36,7 @@ public interface LayerRowReader {
   long currentTime() throws IOException;
 
   Row currentRow();
+
+  /** whether current row fields are all null */
+  boolean isCurrentNull() throws IOException;
 }
