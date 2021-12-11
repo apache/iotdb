@@ -30,6 +30,9 @@ public class InputRowUtils {
    * @return true if all row fields are null.
    */
   public static boolean isAllNull(Object[] row) {
+    if (row == null) {
+      return true;
+    }
     for (int i = 0; i < row.length - 1; i++) {
       if (row[i] != null) {
         return false;

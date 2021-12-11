@@ -136,8 +136,7 @@ public class RawQueryInputLayer {
         // be valid. Because in a GROUP BY time query, we must return every time window record even
         // if there's no data. Under the situation, if hasCachedRowRecord is false, this row will be
         // skipped and the result is not as our expected.
-        if (rowRecordCandidate[columnIndex] != null
-            || InputRowUtils.isAllNull(rowRecordCandidate)) {
+        if (rowRecordCandidate[columnIndex] != null || rowRecordList.fieldsAllNull(i)) {
           hasCachedRowRecord = true;
           cachedRowRecord = rowRecordCandidate;
           currentRowIndex = i;
@@ -150,7 +149,7 @@ public class RawQueryInputLayer {
           Object[] rowRecordCandidate = queryDataSet.nextRowInObjects();
           rowRecordList.put(rowRecordCandidate);
           if (rowRecordCandidate[columnIndex] != null
-              || InputRowUtils.isAllNull(rowRecordCandidate)) {
+              || rowRecordList.fieldsAllNull(rowRecordList.size() - 1)) {
             hasCachedRowRecord = true;
             cachedRowRecord = rowRecordCandidate;
             currentRowIndex = rowRecordList.size() - 1;

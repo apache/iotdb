@@ -112,7 +112,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     int internalListEvictionUpperBound = evictionUpperBound / newInternalTVListCapacity;
     for (int i = 0; i < internalListEvictionUpperBound; ++i) {
       newElasticSerializableTVList.tvLists.add(null);
-      newElasticSerializableTVList.bitMap.add(null);
+      newElasticSerializableTVList.bitMaps.add(null);
     }
     newElasticSerializableTVList.size = internalListEvictionUpperBound * newInternalTVListCapacity;
     Binary empty = Binary.valueOf("");
@@ -130,7 +130,7 @@ public class ElasticSerializableBinaryTVList extends ElasticSerializableTVList {
     internalTVListCapacity = newInternalTVListCapacity;
     cache = newElasticSerializableTVList.cache;
     tvLists = newElasticSerializableTVList.tvLists;
-    bitMap = newElasticSerializableTVList.bitMap;
+    bitMaps = newElasticSerializableTVList.bitMaps;
 
     byteArrayLengthForMemoryControl = newByteArrayLengthForMemoryControl;
     totalByteArrayLengthLimit = (long) size * byteArrayLengthForMemoryControl;

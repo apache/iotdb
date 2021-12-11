@@ -37,7 +37,9 @@ public class SerializableDoubleTVList extends SerializableTVList {
     return TSFileConfig.ARRAY_CAPACITY_THRESHOLD
         * (int)
             (memoryLimitInB
-                / ((ReadWriteIOUtils.LONG_LEN + ReadWriteIOUtils.DOUBLE_LEN + 0.125)
+                / ((ReadWriteIOUtils.LONG_LEN
+                        + ReadWriteIOUtils.DOUBLE_LEN
+                        + ReadWriteIOUtils.BIT_LEN)
                     * TSFileConfig.ARRAY_CAPACITY_THRESHOLD));
   }
 
