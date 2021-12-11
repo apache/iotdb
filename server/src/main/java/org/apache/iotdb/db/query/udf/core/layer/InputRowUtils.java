@@ -16,38 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.query.udf.core.layer;
 
-package org.apache.iotdb.db.query.udf.core.reader;
+import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
+public class InputRowUtils {
 
-import java.io.IOException;
-
-public interface LayerPointReader {
-
-  boolean isConstantPointReader();
-
-  boolean next() throws QueryProcessException, IOException;
-
-  void readyForNext();
-
-  TSDataType getDataType();
-
-  long currentTime() throws IOException;
-
-  int currentInt() throws IOException;
-
-  long currentLong() throws IOException;
-
-  float currentFloat() throws IOException;
-
-  double currentDouble() throws IOException;
-
-  boolean currentBoolean() throws IOException;
-
-  boolean isCurrentNull() throws IOException;
-
-  Binary currentBinary() throws IOException;
+  /**
+   * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has all null
+   * fields except the timestamp
+   *
+   * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
+   * @return true if all row fields are null.
+   */
+  public static boolean isAllNull(Object[] row) {
+    if (row == null) {
+      return true;
+    }
+    for (int i = 0; i < row.length - 1; i++) {
+      if (row[i] != null) {
+        return false;
+      }
+    }
+    return true;
+  }
 }

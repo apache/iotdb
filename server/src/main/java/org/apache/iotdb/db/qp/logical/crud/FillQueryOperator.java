@@ -41,7 +41,7 @@ public class FillQueryOperator extends QueryOperator {
       throw new LogicalOperatorException("FILL doesn't support disable align clause.");
     }
 
-    if (hasTimeSeriesGeneratingFunction()) {
+    if (hasTimeSeriesGeneratingFunction() || selectComponent.hasUserDefinedAggregationFunction()) {
       throw new LogicalOperatorException("Fill functions are not supported in UDF queries.");
     }
 

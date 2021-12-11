@@ -34,6 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.commons.lang3.Validate;
 
 import java.time.ZoneId;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -72,6 +73,11 @@ public class ConstantOperand extends Expression {
   @Override
   public void collectPaths(Set<PartialPath> pathSet) {
     // Do nothing
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Collections.emptyList();
   }
 
   @Override

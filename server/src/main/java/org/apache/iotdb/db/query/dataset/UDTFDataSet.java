@@ -102,6 +102,14 @@ public abstract class UDTFDataSet extends QueryDataSet {
     initTransformers();
   }
 
+  protected UDTFDataSet(QueryContext queryContext, UDTFPlan udtfPlan, IUDFInputDataSet dataSet)
+      throws QueryProcessException, IOException {
+    queryId = queryContext.getQueryId();
+    this.udtfPlan = udtfPlan;
+    rawQueryInputLayer = new RawQueryInputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, dataSet);
+    initTransformers();
+  }
+
   protected void initTransformers() throws QueryProcessException, IOException {
     UDFRegistrationService.getInstance().acquireRegistrationLock();
     // This statement must be surrounded by the registration lock.

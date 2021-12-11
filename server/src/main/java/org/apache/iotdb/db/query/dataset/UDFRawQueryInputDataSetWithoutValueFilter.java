@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class UDFRawQueryInputDataSetWithoutValueFilter extends RawQueryDataSetWithoutValueFilter
-    implements UDFInputDataSet {
+    implements IUDFInputDataSet {
 
   public UDFRawQueryInputDataSetWithoutValueFilter(
       long queryId,
