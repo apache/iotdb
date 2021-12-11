@@ -79,7 +79,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
@@ -92,7 +92,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       isHoldingReadLock[i] = false;
       isHoldingWriteLock[i] = false;
     }
-    LOGGER.info(
+    LOGGER.warn(
         "{} [Compaction] Try to get the read lock of all selected files", fullStorageGroupName);
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       selectedTsFileResourceList.get(i).readLock();
@@ -113,23 +113,23 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       sizeTieredCompactionLogger.logSequence(sequence);
       sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
           targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, true);
-      LOGGER.info(
+      LOGGER.warn(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       sizeTieredCompactionLogger.close();
 
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",
           fullStorageGroupName);
 
@@ -140,13 +140,15 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
       }
-      LOGGER.info(
+      LOGGER.warn(
           "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
           fullStorageGroupName);
 
       // get write lock for TsFileResource list with timeout
       try {
         tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
+        LOGGER.warn(
+            "{} [Compactoin] Get the write lock of TsFileResourceList", fullStorageGroupName);
       } catch (WriteLockFailedException e) {
         // if current compaction thread couldn't get write lock
         // a WriteLockFailException will be thrown, then terminate the thread itself
@@ -162,6 +164,15 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       try {
+        LOGGER.warn(
+            "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
+            fullStorageGroupName);
+        InnerSpaceCompactionUtils.combineModsInCompaction(
+            selectedTsFileResourceList, targetTsFileResource);
+
+        // delete the old files
+        InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+            selectedTsFileResourceList, fullStorageGroupName);
         // replace the old files with new file, the new is in same position as the old
         for (TsFileResource resource : selectedTsFileResourceList) {
           TsFileResourceManager.getInstance().removeTsFileResource(resource);
@@ -175,18 +186,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         tsFileManager.writeUnlock();
       }
 
-      InnerSpaceCompactionUtils.combineModsInCompaction(
-          selectedTsFileResourceList, targetTsFileResource);
-
-      // delete the old files
-      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-          selectedTsFileResourceList, fullStorageGroupName);
-      LOGGER.info(
-          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-          fullStorageGroupName);
-
       long costTime = System.currentTimeMillis() - startTime;
-      LOGGER.info(
+      LOGGER.warn(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s",
           fullStorageGroupName,
@@ -200,7 +201,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           "{} [Compaction] Throwable is caught during execution of SizeTieredCompaction, {}",
           fullStorageGroupName,
           throwable);
-      LOGGER.info("{} [Compaction] Start to handle exception", fullStorageGroupName);
+      LOGGER.warn("{} [Compaction] Start to handle exception", fullStorageGroupName);
       if (sizeTieredCompactionLogger != null) {
         sizeTieredCompactionLogger.close();
       }

@@ -95,7 +95,7 @@ public class InnerSpaceCompactionExceptionHandler {
       }
     }
 
-    if (handleSuccess) {
+    if (!handleSuccess) {
       LOGGER.error(
           "{} [Compaction][ExceptionHandler] Failed to handle exception, set allowCompaction to false",
           fullStorageGroupName);
@@ -141,28 +141,7 @@ public class InnerSpaceCompactionExceptionHandler {
         fullStorageGroupName,
         selectedTsFileResourceList,
         targetTsFile);
-    if (targetTsFile.remove()) {
-      tsFileResourceList.writeLock();
-      try {
-        // add the source tsfile to TsFileResourceList
-        // in case of we have removed them from list before
-        for (TsFileResource tsFileResource : selectedTsFileResourceList) {
-          if (!tsFileResourceList.contains(tsFileResource)) {
-            tsFileResourceList.keepOrderInsert(tsFileResource);
-          }
-        }
-        tsFileResourceList.remove(targetTsFile);
-      } catch (IOException e) {
-        LOGGER.error(
-            "{} [Compaction][ExceptionHandler] Exception occurs while handing exception",
-            fullStorageGroupName,
-            e);
-        return false;
-      } finally {
-        tsFileResourceList.writeUnlock();
-      }
-      return true;
-    } else {
+    if (!targetTsFile.remove()) {
       // failed to remove target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
       LOGGER.warn(
@@ -171,6 +150,7 @@ public class InnerSpaceCompactionExceptionHandler {
           targetTsFile);
       return false;
     }
+    return true;
   }
 
   private static boolean handleWhenSomeSourceFilesLost(

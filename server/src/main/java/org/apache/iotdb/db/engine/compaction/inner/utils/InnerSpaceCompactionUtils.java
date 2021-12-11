@@ -594,15 +594,12 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void deleteTsFile(TsFileResource seqFile) {
-    seqFile.writeLock();
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
-    } finally {
-      seqFile.writeUnlock();
     }
   }
 
