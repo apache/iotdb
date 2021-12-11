@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.cost.statistic;
+package org.apache.iotdb.db.service.metrics;
 
 public enum Operation {
   EXECUTE_JDBC_BATCH("EXECUTE_JDBC_BATCH"),
