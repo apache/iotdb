@@ -26,13 +26,14 @@ import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.db.query.expression.binary.BinaryExpression;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * For a UDAFPlan, we construct an inner AggregationPlan for it. Example: select
@@ -40,7 +41,7 @@ import java.util.List;
  * to statement: select count(a),count(b),count(a),sum(b) from root.sg innerResultColumnsCache will
  * be [count(a),count(b),sum(b)]
  */
-public class UDAFQueryOperator extends AggregationQueryOperator {
+public class UDAFQueryOperator extends QueryOperator {
 
   private List<ResultColumn> innerResultColumnsCache;
 
@@ -107,8 +108,34 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
           super.generateRawDataQueryPlan(generator, new UDAFPlan(selectComponent.getZoneId()));
       UDAFPlan udafPlan = (UDAFPlan) physicalPlan;
       udafPlan.setInnerAggregationPlan(innerAggregationPlan);
+      Map<Expression, Integer> expressionToInnerResultIndexMap = new HashMap<>();
+      // The following codes are used to establish a link from AggregationResult to expression tree
+      // input.
+      // For example:
+      // Expressions           [   avg(s1) + 1, avg(s1) + avg(s2), sin(avg(s2)) ]
+      //                                  |       |          |           |
+      // Inner result columns  [      avg(s1) , avg(s1)  , avg(s2)     avg(s2)  ]
+      //                                   \      /            \         /
+      // deduplicated          [            avg(s1),             avg(s2)        ]
+      //                                         \                /
+      // expressionToInnerResultIndexMap        {avg(s1): 0, avg(s2): 1}
+      Map<String, Integer> aggrIndexMap = new HashMap<>();
+      for (int i = 0; i < innerAggregationPlan.getDeduplicatedPaths().size(); i++) {
+        aggrIndexMap.put(
+            innerAggregationPlan.getDeduplicatedAggregations().get(i)
+                + "("
+                + innerAggregationPlan.getDeduplicatedPaths().get(i)
+                + ")",
+            i);
+      }
+      for (ResultColumn rc : getInnerResultColumnsCache()) {
+        expressionToInnerResultIndexMap.put(
+            rc.getExpression(),
+            aggrIndexMap.get(
+                ((FunctionExpression) rc.getExpression()).getExpressionStringInternal()));
+      }
+      udafPlan.setExpressionToInnerResultIndexMap(expressionToInnerResultIndexMap);
       udafPlan.constructUdfExecutors(selectComponent.getResultColumns());
-      return udafPlan;
     } else {
       // todo: align by device
       physicalPlan = new AggregationPlan();
@@ -132,21 +159,21 @@ public class UDAFQueryOperator extends AggregationQueryOperator {
   }
 
   private void checkEachExpression(Expression expression) throws LogicalOperatorException {
-    if (expression instanceof BinaryExpression) {
-      checkEachExpression(((BinaryExpression) expression).getLeftExpression());
-      checkEachExpression(((BinaryExpression) expression).getRightExpression());
-      return;
-    }
     if (expression instanceof TimeSeriesOperand) {
-      throw new LogicalOperatorException(
-          "Common queries and aggregated queries are not allowed to appear at the same time");
+      throw new LogicalOperatorException(AggregationQueryOperator.ERROR_MESSAGE1);
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
-    if (expression instanceof FunctionExpression
-        && (((FunctionExpression) expression).getExpressions().size() != 1
-            || !(((FunctionExpression) expression).getExpressions().get(0)
-                instanceof TimeSeriesOperand))) {
-      throw new LogicalOperatorException(ERROR_MESSAGE1);
+    if (expression.isPlainAggregationFunctionExpression()) {
+      if (expression.getExpressions().size() == 1
+          && expression.getExpressions().get(0) instanceof TimeSeriesOperand) {
+        return;
+      }
+      throw new LogicalOperatorException(
+          "The argument of the aggregation function must be a time series.");
+    }
+
+    for (Expression childExp : expression.getExpressions()) {
+      checkEachExpression(childExp);
     }
   }
 }

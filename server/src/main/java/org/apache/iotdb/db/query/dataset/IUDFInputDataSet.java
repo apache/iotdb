@@ -16,39 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metrics.sink;
 
-import com.codahale.metrics.ConsoleReporter;
-import com.codahale.metrics.MetricRegistry;
+package org.apache.iotdb.db.query.dataset;
 
-import java.util.concurrent.TimeUnit;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-public class ConsoleSink implements Sink {
+import java.io.IOException;
+import java.util.List;
 
-  public MetricRegistry registry;
-  public ConsoleReporter reporter;
+/** The input data set interface for a UDFPlan */
+public interface IUDFInputDataSet {
 
-  public ConsoleSink(MetricRegistry registry) {
-    this.registry = registry;
-    this.reporter =
-        ConsoleReporter.forRegistry(registry)
-            .convertDurationsTo(TimeUnit.MILLISECONDS)
-            .convertRatesTo(TimeUnit.SECONDS)
-            .build();
-  }
+  /** returns the input data types, except the timestamp column(the last column). */
+  List<TSDataType> getDataTypes();
 
-  @Override
-  public void start() {
-    reporter.start(10, TimeUnit.SECONDS);
-  }
+  /** Whether the data set has next row. */
+  boolean hasNextRowInObjects() throws IOException;
 
-  @Override
-  public void stop() {
-    reporter.stop();
-  }
-
-  @Override
-  public void report() {
-    reporter.report();
-  }
+  /**
+   * Get the next row for UDFPlan input.
+   *
+   * <p>The last element in the row is the timestamp.
+   */
+  Object[] nextRowInObjects() throws IOException;
 }

@@ -120,9 +120,6 @@ public final class SelectComponent {
   }
 
   public List<String> getAggregationFunctions() {
-    if (!hasPlainAggregationFunction()) {
-      return null;
-    }
     if (aggregationFunctionsCache == null) {
       aggregationFunctionsCache = new ArrayList<>();
       for (ResultColumn resultColumn : resultColumns) {

@@ -16,17 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.service;
+package org.apache.iotdb.db.query.udf.core.layer;
 
-import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 
-public interface MetricsServiceMBean {
+public class InputRowUtils {
 
-  int getMetricsPort();
-
-  void startService() throws StartupException;
-
-  void restartService() throws StartupException;
-
-  void stopService();
+  /**
+   * this method checks whether the row returned by IUDFInputDataSet.nextRowInObjects() has all null
+   * fields except the timestamp
+   *
+   * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
+   * @return true if all row fields are null.
+   */
+  public static boolean isAllNull(Object[] row) {
+    if (row == null) {
+      return true;
+    }
+    for (int i = 0; i < row.length - 1; i++) {
+      if (row[i] != null) {
+        return false;
+      }
+    }
+    return true;
+  }
 }

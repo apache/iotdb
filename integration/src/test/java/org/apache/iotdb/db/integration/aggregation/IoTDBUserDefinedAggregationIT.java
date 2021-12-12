@@ -212,7 +212,7 @@ public class IoTDBUserDefinedAggregationIT {
   public void addtionTest2() {
     String[] retArray =
         new String[] {
-          "0,2002.0,2003.0,2004.0,2005.0", "0,15000.0,7500.0,7500.0", "0,7500.0,15000.0,7500.0"
+          "0,2002.0,2003.0,2004.0,2005.0", "0,15000.0,7500,7500", "0,7500,15000.0,7500"
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -342,7 +342,7 @@ public class IoTDBUserDefinedAggregationIT {
 
   @Test
   public void polyNominalWithFirstAndLastValueTest() {
-    String[] retArray = new String[] {"0,10001.0,2000.0"};
+    String[] retArray = new String[] {"0,10001.0,2000"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
@@ -395,7 +395,7 @@ public class IoTDBUserDefinedAggregationIT {
 
   @Test
   public void polyNominalWithMaxMinTimeTest() {
-    String[] retArray = new String[] {"0,500.0,0.0", "0,100.0,2499.0", "0,-100.0,-2499.0"};
+    String[] retArray = new String[] {"0,500,0.0", "0,100.0,2499", "0,-100.0,-2499"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

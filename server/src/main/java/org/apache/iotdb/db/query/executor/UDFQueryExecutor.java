@@ -23,10 +23,12 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.dataset.UDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.UDTFNonAlignDataSet;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
@@ -36,11 +38,11 @@ import java.util.List;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
-public class UDTFQueryExecutor extends RawDataQueryExecutor {
+public class UDFQueryExecutor extends RawDataQueryExecutor {
 
   protected final UDTFPlan udtfPlan;
 
-  public UDTFQueryExecutor(UDTFPlan udtfPlan) {
+  public UDFQueryExecutor(UDTFPlan udtfPlan) {
     super(udtfPlan);
     this.udtfPlan = udtfPlan;
   }
@@ -83,5 +85,15 @@ public class UDTFQueryExecutor extends RawDataQueryExecutor {
         initSeriesReaderByTimestamp(context, udtfPlan, cached);
     return new UDTFNonAlignDataSet(
         context, udtfPlan, timestampGenerator, readersOfSelectedSeries, cached);
+  }
+
+  public final QueryDataSet executeFromAlignedDataSet(
+      QueryContext context,
+      QueryDataSet sourceDataSet,
+      List<TSDataType> fieldTypes,
+      boolean keepNull)
+      throws QueryProcessException, IOException {
+    return new UDTFAlignByTimeDataSet(
+        context, udtfPlan, new UDFInputDataSet(sourceDataSet, fieldTypes), keepNull);
   }
 }

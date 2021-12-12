@@ -21,11 +21,14 @@ package org.apache.iotdb.db.qp.physical.crud;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.query.expression.Expression;
 
 import java.time.ZoneId;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
+/** The physical plan of aggregation query with UDF nested */
 public class UDAFPlan extends UDTFPlan {
 
   // Construct an innerAggregationPlan using resultColumns of UDAFPlan
@@ -34,6 +37,11 @@ public class UDAFPlan extends UDTFPlan {
   public UDAFPlan(ZoneId zoneId) {
     super(zoneId);
     setOperatorType(OperatorType.UDAF);
+  }
+
+  public void setExpressionToInnerResultIndexMap(
+      Map<Expression, Integer> expressionToInnerResultIndexMap) {
+    expressionToInnerResultIndexMap.forEach((k, v) -> pathNameToReaderIndex.put(k.toString(), v));
   }
 
   public void setInnerAggregationPlan(AggregationPlan innerAggregationPlan) {

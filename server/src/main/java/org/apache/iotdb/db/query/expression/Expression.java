@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.expression;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.unary.ConstantOperand;
@@ -31,7 +30,6 @@ import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -73,25 +71,6 @@ public abstract class Expression {
 
   public abstract void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner);
 
-  /**
-   * NestedExpressions consisting of aggregation functions will be evaluated using a tree structure.
-   * Each expression will be a node of the tree. Sub-classes should override this method according
-   * to how the result returned to parent node is produced. int32, int64 and float will be casted to
-   * double during the evaluation process.
-   *
-   * @param innerAggregationResults
-   * @return
-   * @throws QueryProcessException
-   */
-  public abstract double evaluateNestedExpressions(
-      List<Field> innerAggregationResults, UDAFPlan udafPlan)
-      throws QueryProcessException, IOException;
-
-  /**
-   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
-   */
-  public abstract List<Expression> getExpressions();
-
   public abstract IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFPlan udtfPlan,
@@ -103,6 +82,11 @@ public abstract class Expression {
 
   /** Sub-classes should override this method indicating if the expression is a constant operand */
   protected abstract boolean isConstantOperandInternal();
+
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
 
   /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
   public final boolean isConstantOperand() {

@@ -32,7 +32,6 @@ import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.SessionManager;
-import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillEngineDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByFillWithValueFilterDataSet;
@@ -41,7 +40,9 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByLevelDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithoutValueFilterDataSet;
 import org.apache.iotdb.db.utils.TimeValuePairUtils;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -165,12 +166,27 @@ public class QueryRouter implements IQueryRouter {
     if (logger.isDebugEnabled()) {
       logger.debug("paths:" + udafPlan.getPaths());
     }
-    UDAFQueryExecutor udafQueryExecutor = new UDAFQueryExecutor(udafPlan);
-    AggregationPlan innerAggregationPlan = udafPlan.getInnerAggregationPlan();
-    QueryDataSet innerQueryDataSet = aggregate(innerAggregationPlan, context);
-    QueryDataSet dataSet =
-        udafQueryExecutor.convertInnerAggregationDataset((SingleDataSet) innerQueryDataSet);
-    return dataSet;
+    AggregationPlan innerPlan = udafPlan.getInnerAggregationPlan();
+    // Infer aggregation data types for UDF input
+    List<TSDataType> aggregationResultTypes = new ArrayList<>();
+    for (int i = 0; i < innerPlan.getDeduplicatedPaths().size(); i++) {
+      aggregationResultTypes.add(
+          TypeInferenceUtils.getAggrDataType(
+              innerPlan.getDeduplicatedAggregations().get(i),
+              innerPlan.getDeduplicatedDataTypes().get(i)));
+    }
+    QueryDataSet innerQueryDataSet = null;
+    boolean keepNull = false;
+    if (innerPlan instanceof GroupByTimePlan) {
+      innerQueryDataSet = groupBy((GroupByTimePlan) innerPlan, context);
+      keepNull = true;
+    } else {
+      innerQueryDataSet = aggregate(innerPlan, context);
+    }
+
+    UDFQueryExecutor udfQueryExecutor = new UDFQueryExecutor(udafPlan);
+    return udfQueryExecutor.executeFromAlignedDataSet(
+        context, innerQueryDataSet, aggregationResultTypes, keepNull);
   }
 
   protected AggregationExecutor getAggregationExecutor(
@@ -333,7 +349,7 @@ public class QueryRouter implements IQueryRouter {
 
     boolean withValueFilter =
         optimizedExpression != null && optimizedExpression.getType() != ExpressionType.GLOBAL_TIME;
-    UDTFQueryExecutor udtfQueryExecutor = new UDTFQueryExecutor(udtfPlan);
+    UDFQueryExecutor udtfQueryExecutor = new UDFQueryExecutor(udtfPlan);
 
     if (udtfPlan.isAlignByTime()) {
       return withValueFilter

@@ -58,7 +58,14 @@ public class AggregationQueryOperator extends QueryOperator {
     if (!isAlignByTime()) {
       throw new LogicalOperatorException("AGGREGATION doesn't support disable align clause.");
     }
+    checkSelectComponent(selectComponent);
+    if (isGroupByLevel() && isAlignByDevice()) {
+      throw new LogicalOperatorException("group by level does not support align by device now.");
+    }
+  }
 
+  protected void checkSelectComponent(SelectComponent selectComponent)
+      throws LogicalOperatorException {
     if (hasTimeSeriesGeneratingFunction()) {
       throw new LogicalOperatorException(
           "User-defined and built-in hybrid aggregation is not supported together.");
@@ -71,16 +78,11 @@ public class AggregationQueryOperator extends QueryOperator {
       }
       // Currently, the aggregation function expression can only contain a timeseries operand.
       if (expression instanceof FunctionExpression
-          && (((FunctionExpression) expression).getExpressions().size() != 1
-              || !(((FunctionExpression) expression).getExpressions().get(0)
-                  instanceof TimeSeriesOperand))) {
+          && (expression.getExpressions().size() != 1
+              || !(expression.getExpressions().get(0) instanceof TimeSeriesOperand))) {
         throw new LogicalOperatorException(
             "The argument of the aggregation function must be a time series.");
       }
-    }
-
-    if (isGroupByLevel() && isAlignByDevice()) {
-      throw new LogicalOperatorException("group by level does not support align by device now.");
     }
   }
 

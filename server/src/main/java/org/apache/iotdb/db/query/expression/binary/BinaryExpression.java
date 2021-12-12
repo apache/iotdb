@@ -49,17 +49,17 @@ public abstract class BinaryExpression extends Expression {
   protected final Expression leftExpression;
   protected final Expression rightExpression;
 
+  protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
+    this.leftExpression = leftExpression;
+    this.rightExpression = rightExpression;
+  }
+
   public Expression getLeftExpression() {
     return leftExpression;
   }
 
   public Expression getRightExpression() {
     return rightExpression;
-  }
-
-  protected BinaryExpression(Expression leftExpression, Expression rightExpression) {
-    this.leftExpression = leftExpression;
-    this.rightExpression = rightExpression;
   }
 
   @Override

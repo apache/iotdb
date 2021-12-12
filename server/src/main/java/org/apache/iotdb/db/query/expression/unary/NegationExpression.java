@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -35,7 +34,6 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReference
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticNegationTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 
 import java.io.IOException;
 import java.time.ZoneId;
@@ -63,13 +61,13 @@ public class NegationExpression extends Expression {
   }
 
   @Override
-  public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationExpression();
+  public List<Expression> getExpressions() {
+    return Collections.singletonList(expression);
   }
 
   @Override
-  public List<Expression> getExpressions() {
-    return Collections.singletonList(expression);
+  public boolean isTimeSeriesGeneratingFunctionExpression() {
+    return !isUserDefinedAggregationExpression();
   }
 
   @Override
@@ -112,12 +110,6 @@ public class NegationExpression extends Expression {
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     expression.updateStatisticsForMemoryAssigner(memoryAssigner);
     memoryAssigner.increaseExpressionReference(this);
-  }
-
-  @Override
-  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
-      throws QueryProcessException, IOException {
-    return -expression.evaluateNestedExpressions(innerAggregationResults, udafPlan);
   }
 
   @Override

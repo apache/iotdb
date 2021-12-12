@@ -72,11 +72,6 @@ public class IoTDBConfig {
 
   public static final Pattern NODE_PATTERN = Pattern.compile(NODE_MATCHER);
 
-  /** Port which the metrics service listens to. */
-  private int metricsPort = 8181;
-
-  private boolean enableMetricService = false;
-
   /** whether to enable the mqtt service. */
   private boolean enableMQTTService = false;
 
@@ -475,12 +470,6 @@ public class IoTDBConfig {
 
   /** Is stat performance of sub-module enable. */
   private boolean enablePerformanceStat = false;
-
-  /** The display of stat performance interval in ms. Unit: millisecond */
-  private long performanceStatDisplayInterval = 60000;
-
-  /** The memory used for stat performance. Unit: kilobyte */
-  private int performanceStatMemoryInKB = 20;
 
   /** whether use chunkBufferPool. */
   private boolean chunkBufferPoolEnable = false;
@@ -982,22 +971,6 @@ public class IoTDBConfig {
 
   public String[] getDataDirs() {
     return dataDirs;
-  }
-
-  public int getMetricsPort() {
-    return metricsPort;
-  }
-
-  void setMetricsPort(int metricsPort) {
-    this.metricsPort = metricsPort;
-  }
-
-  public boolean isEnableMetricService() {
-    return enableMetricService;
-  }
-
-  public void setEnableMetricService(boolean enableMetricService) {
-    this.enableMetricService = enableMetricService;
   }
 
   void setDataDirs(String[] dataDirs) {
@@ -1508,22 +1481,6 @@ public class IoTDBConfig {
 
   public void setEnablePerformanceStat(boolean enablePerformanceStat) {
     this.enablePerformanceStat = enablePerformanceStat;
-  }
-
-  public long getPerformanceStatDisplayInterval() {
-    return performanceStatDisplayInterval;
-  }
-
-  void setPerformanceStatDisplayInterval(long performanceStatDisplayInterval) {
-    this.performanceStatDisplayInterval = performanceStatDisplayInterval;
-  }
-
-  public int getPerformanceStatMemoryInKB() {
-    return performanceStatMemoryInKB;
-  }
-
-  void setPerformanceStatMemoryInKB(int performanceStatMemoryInKB) {
-    this.performanceStatMemoryInKB = performanceStatMemoryInKB;
   }
 
   public boolean isEnablePartialInsert() {

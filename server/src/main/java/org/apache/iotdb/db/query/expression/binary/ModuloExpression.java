@@ -19,16 +19,10 @@
 
 package org.apache.iotdb.db.query.expression.binary;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.query.expression.Expression;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticBinaryTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.ArithmeticModuloTransformer;
-import org.apache.iotdb.tsfile.read.common.Field;
-
-import java.io.IOException;
-import java.util.List;
 
 public class ModuloExpression extends BinaryExpression {
 
@@ -45,12 +39,5 @@ public class ModuloExpression extends BinaryExpression {
   @Override
   protected String operator() {
     return "%";
-  }
-
-  @Override
-  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
-      throws QueryProcessException, IOException {
-    return leftExpression.evaluateNestedExpressions(innerAggregationResults, udafPlan)
-        % rightExpression.evaluateNestedExpressions(innerAggregationResults, udafPlan);
   }
 }

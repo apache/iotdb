@@ -22,7 +22,6 @@ package org.apache.iotdb.db.query.expression.unary;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -34,9 +33,7 @@ import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceI
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.reader.LayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -64,6 +61,11 @@ public class TimeSeriesOperand extends Expression {
   @Override
   public boolean isConstantOperandInternal() {
     return false;
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Collections.emptyList();
   }
 
   @Override
@@ -98,17 +100,6 @@ public class TimeSeriesOperand extends Expression {
   }
 
   @Override
-  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
-      throws QueryProcessException, IOException {
-    throw new QueryProcessException(WRONG_OPERAND_MESSAGE);
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.emptyList();
-  }
-
-  @Override
   public IntermediateLayer constructIntermediateLayer(
       long queryId,
       UDTFPlan udtfPlan,
@@ -121,7 +112,7 @@ public class TimeSeriesOperand extends Expression {
       float memoryBudgetInMB = memoryAssigner.assign();
 
       LayerPointReader parentLayerPointReader =
-          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path));
+          rawTimeSeriesInputLayer.constructPointReader(udtfPlan.getReaderIndex(path.getFullPath()));
       expressionDataTypeMap.put(this, parentLayerPointReader.getDataType());
 
       expressionIntermediateLayerMap.put(

@@ -135,21 +135,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
-      conf.setEnableMetricService(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
-
-      conf.setMetricsPort(
-          Integer.parseInt(
-              properties.getProperty("metrics_port", Integer.toString(conf.getMetricsPort()))));
-
-      conf.setQueryCacheSizeInMetric(
-          Integer.parseInt(
-              properties.getProperty(
-                  "query_cache_size_in_metric",
-                  Integer.toString(conf.getQueryCacheSizeInMetric()))));
-
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
 
@@ -562,21 +547,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setPerformanceStatDisplayInterval(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "performance_stat_display_interval",
-                      Long.toString(conf.getPerformanceStatDisplayInterval()))
-                  .trim()));
-      conf.setPerformanceStatMemoryInKB(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "performance_stat_memory_in_kb",
-                      Integer.toString(conf.getPerformanceStatMemoryInKB()))
                   .trim()));
 
       int maxConcurrentClientNum =

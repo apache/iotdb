@@ -21,7 +21,6 @@ package org.apache.iotdb.db.query.expression.unary;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.Expression;
@@ -30,13 +29,10 @@ import org.apache.iotdb.db.query.udf.core.layer.ConstantIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.IntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.LayerMemoryAssigner;
 import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
-import org.apache.iotdb.db.query.udf.core.reader.ConstantLayerPointReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.read.common.Field;
 
 import org.apache.commons.lang3.Validate;
 
-import java.io.IOException;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.List;
@@ -82,6 +78,11 @@ public class ConstantOperand extends Expression {
   }
 
   @Override
+  public List<Expression> getExpressions() {
+    return Collections.emptyList();
+  }
+
+  @Override
   public void constructUdfExecutors(
       Map<String, UDTFExecutor> expressionName2Executor, ZoneId zoneId) {
     // Do nothing
@@ -90,24 +91,6 @@ public class ConstantOperand extends Expression {
   @Override
   public void updateStatisticsForMemoryAssigner(LayerMemoryAssigner memoryAssigner) {
     // Do nothing
-  }
-
-  @Override
-  public double evaluateNestedExpressions(List<Field> innerAggregationResults, UDAFPlan udafPlan)
-      throws QueryProcessException, IOException {
-    ConstantLayerPointReader constantLayerPointReader = new ConstantLayerPointReader(this);
-    switch (dataType) {
-      case INT32:
-        return constantLayerPointReader.currentInt();
-      case INT64:
-        return constantLayerPointReader.currentLong();
-      case FLOAT:
-        return constantLayerPointReader.currentFloat();
-      case DOUBLE:
-        return constantLayerPointReader.currentDouble();
-      default:
-        throw new QueryProcessException(WRONG_TYPE_MESSAGE);
-    }
   }
 
   @Override
@@ -132,10 +115,5 @@ public class ConstantOperand extends Expression {
   @Override
   public String getExpressionStringInternal() {
     return valueString;
-  }
-
-  @Override
-  public List<Expression> getExpressions() {
-    return Collections.emptyList();
   }
 }

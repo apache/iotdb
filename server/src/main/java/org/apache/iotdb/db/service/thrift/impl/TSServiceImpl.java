@@ -25,8 +25,6 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
-import org.apache.iotdb.db.cost.statistic.Measurement;
-import org.apache.iotdb.db.cost.statistic.Operation;
 import org.apache.iotdb.db.engine.selectinto.InsertTabletPlansIterator;
 import org.apache.iotdb.db.exception.IoTDBException;
 import org.apache.iotdb.db.exception.QueryInBatchStatementException;
@@ -37,7 +35,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
-import org.apache.iotdb.db.metrics.server.SqlArgument;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -53,6 +50,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -79,10 +77,12 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -170,19 +170,10 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
 
-  private static final int MAX_SIZE = CONFIG.getQueryCacheSizeInMetric();
-  private static final int DELETE_SIZE = 20;
-
-  private static final List<SqlArgument> sqlArgumentList = new ArrayList<>(MAX_SIZE);
-
   private long startTime = -1L;
 
   public TSServiceImpl() throws QueryProcessException {
     super();
-  }
-
-  public static List<SqlArgument> getSqlArgumentList() {
-    return sqlArgumentList;
   }
 
   @Override
@@ -271,7 +262,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private boolean executeInsertRowsPlan(InsertRowsPlan insertRowsPlan, List<TSStatus> result) {
     long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_ROWS_PLAN_IN_BATCH, t1);
     int startIndex = result.size();
     if (startIndex > 0) {
       startIndex = startIndex - 1;
@@ -291,7 +282,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       CreateMultiTimeSeriesPlan multiPlan, List<TSStatus> result) {
     long t1 = System.currentTimeMillis();
     TSStatus tsStatus = executeNonQueryPlan(multiPlan);
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_MULTI_TIMESERIES_PLAN_IN_BATCH, t1);
 
     int startIndex = result.size();
     if (startIndex > 0) {
@@ -443,7 +434,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           }
           long t2 = System.currentTimeMillis();
           TSExecuteStatementResp resp = executeNonQueryStatement(physicalPlan, req.getSessionId());
-          Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
+          addOperationLatency(Operation.EXECUTE_ONE_SQL_IN_BATCH, t2);
           result.add(resp.status);
           if (resp.getStatus().code != TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
             isAllSuccessful = false;
@@ -464,7 +455,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         }
       }
     }
-    Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
+    addOperationLatency(Operation.EXECUTE_JDBC_BATCH, t1);
     return isAllSuccessful
         ? RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute batch statements successfully")
         : RpcUtils.getStatus(result);
@@ -691,7 +682,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
       resp.setOperationType(plan.getOperatorType().toString());
       if (plan.getOperatorType() == OperatorType.AGGREGATION
-          || plan.getOperatorType() == OperatorType.UDAF) {
+          || (plan instanceof UDAFPlan
+              && ((UDAFPlan) plan).getInnerAggregationPlan().getOperatorType()
+                  == OperatorType.AGGREGATION)) {
         resp.setIgnoreTimeStamp(true);
       } else if (plan instanceof ShowQueryProcesslistPlan) {
         resp.setIgnoreTimeStamp(false);
@@ -729,16 +722,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         tracingManager.setSeriesPathNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
       }
 
-      if (CONFIG.isEnableMetricService()) {
-        long endTime = System.currentTimeMillis();
-        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, queryStartTime, endTime);
-        synchronized (sqlArgumentList) {
-          sqlArgumentList.add(sqlArgument);
-          if (sqlArgumentList.size() >= MAX_SIZE) {
-            sqlArgumentList.subList(0, DELETE_SIZE).clear();
-          }
-        }
-      }
       queryTimeManager.unRegisterQuery(queryId, false);
 
       if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
@@ -754,7 +737,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       sessionManager.releaseQueryResourceNoExceptions(queryId);
       throw e;
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
+      addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
       long costTime = System.currentTimeMillis() - queryStartTime;
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
@@ -864,12 +847,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
         break;
       case UDAF:
-        seriesTypes = new ArrayList<>();
-        for (int i = 0; i < paths.size(); i++) {
-          respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(resultColumns.get(i).getDataType());
-        }
-        break;
       case UDTF:
         seriesTypes = new ArrayList<>();
         for (int i = 0; i < paths.size(); i++) {
@@ -979,7 +956,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS).setQueryId(queryId);
     } finally {
       sessionManager.releaseQueryResourceNoExceptions(queryId);
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
+      addOperationLatency(Operation.EXECUTE_SELECT_INTO, startTime);
       long costTime = System.currentTimeMillis() - startTime;
       if (costTime >= CONFIG.getSlowQueryThreshold()) {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
@@ -1574,7 +1551,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLET, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 
@@ -1596,7 +1573,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       return onNPEOrUnexpectedException(
           e, OperationType.INSERT_TABLETS, TSStatusCode.EXECUTE_STATEMENT_ERROR);
     } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
+      addOperationLatency(Operation.EXECUTE_RPC_BATCH_INSERT, t1);
     }
   }
 
@@ -2027,5 +2004,17 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     return RpcUtils.getStatus(
         TSStatusCode.NOT_LOGIN_ERROR,
         "Log in failed. Either you are not authorized or the session has timed out.");
+  }
+
+  /** Add stat of operation into metrics */
+  private void addOperationLatency(Operation operation, long startTime) {
+    if (CONFIG.isEnablePerformanceStat()) {
+      MetricService.getMetricManager()
+          .getOrCreateHistogram("operation_histogram", "name", operation.getName())
+          .update(System.currentTimeMillis() - startTime);
+      MetricService.getMetricManager()
+          .getOrCreateCounter("operation_count", "name", operation.getName())
+          .inc();
+    }
   }
 }

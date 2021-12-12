@@ -1014,61 +1014,82 @@ Total line number = 7
 It costs 0.004s
 ```
 
-#### Nested  expressions consisting of aggregation functions
+#### Nested Expressions query with aggregations
 
-IoTDB supports the execution of arbitrary nested expressions consisting of **aggregation functions and numbers** in the `select` clause.
-
-**Noted：**
-
-- `group by` and `fill` has not been supported when using nested expressions consisting of aggregation functions currently, but will be supported in the future.
-- Aggregation functions whose `return value` is type `Boolean` or `Text` can not be part of an Arithmetic expression that contains the following operators: `+`, `-`, `*`, `/`, `%`.
-
-##### Syntax
-
-The following is the syntax definition.
-
-```sql
-selectClause
-    : SELECT resultColumn (',' resultColumn)*
-    ;
-
-resultColumn
-    : expression (AS ID)?
-    ;
-
-expression
-    : '(' expression ')'
-    | '-' expression
-    | expression ('*' | '/' | '%') expression
-    | expression ('+' | '-') expression
-    | functionName '('timeSeriesSuffixPath')'
-    | number
-    ;
-```
+IoTDB supports aggregation query nested by any other expressions.
 
 ##### Example
 
-SQL:
+1. Aggregation query without `GROUP BY`.
+
+Input:
 
 ```sql
-select count(a),
-       count(b),
-       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
-       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
-from root.sg;
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware)
+from root.ln.wf01.wt01;
 ```
 
 Result:
 
 ```
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
-|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
-+----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|avg(root.ln.wf01.wt01.temperature) + sum(root.ln.wf01.wt01.hardware)|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|                15.927999999999999|                   -0.21826546964855045|                    16.927999999999997|                         -7426.0|                                                            7441.928|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
 Total line number = 1
-It costs 0.013s
+It costs 0.009s
 ```
+
+2. Aggregation with `GROUP BY`.
+
+Input:
+
+```sql
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware) as custom_sum
+from root.ln.wf01.wt01
+GROUP BY([10, 90), 10ms);
+```
+
+Result:
+
+```
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|                         Time|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|custom_sum|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|1970-01-01T08:00:00.010+08:00|                13.987499999999999|                     0.9888207947857667|                    14.987499999999999|                         -3211.0| 3224.9875|
+|1970-01-01T08:00:00.020+08:00|                              29.6|                    -0.9701057337071853|                                  30.6|                         -3720.0|    3749.6|
+|1970-01-01T08:00:00.030+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.040+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.050+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.060+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.070+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.080+08:00|                              null|                                   null|                                  null|                            null|      null|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+Total line number = 8
+It costs 0.012s
+```
+
+##### Note
+
+> Automated fill (`FILL`) and grouped by level (`GROUP BY LEVEL`) are not supported in an aggregation query with expression nested. They may be supported in future versions.
+>
+> The aggregation expression must be the lowest level input of one expression tree. Any kind expressions except timeseries are not valid as aggregation function parameters。
+>
+> In a word, the following queries are not valid.
+> ```sql
+> SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
+> SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill 
+> ```
 
 ### Automated Fill
 
@@ -1089,7 +1110,6 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 Detailed descriptions of all parameters are given in Table 3-4.
 
 <center>
-
 **Table 3-4 Previous fill paramter list**
 
 |Parameter name (case insensitive)|Interpretation|
