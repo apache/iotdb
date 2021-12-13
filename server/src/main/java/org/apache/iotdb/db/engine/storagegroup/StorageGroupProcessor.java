@@ -673,6 +673,8 @@ public class StorageGroupProcessor {
       try {
         // this tsfile is not zero level, no need to perform redo wal
         if (TsFileResource.getMergeLevel(tsFileResource.getTsFile().getName()) > 0) {
+          writer =
+              recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
           tsFileResource.setClosed(true);
           tsFileManagement.add(tsFileResource, isSeq);
           continue;
