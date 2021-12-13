@@ -37,7 +37,7 @@ import java.util.Locale;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.fail;
 
-public class IoTDBUserDefinedAggregationIT {
+public class IoTDBUserDefinedAggregationFunctionIT {
 
   private static final double DETLA = 1e-6;
   private static final String TIMESTAMP_STR = "Time";

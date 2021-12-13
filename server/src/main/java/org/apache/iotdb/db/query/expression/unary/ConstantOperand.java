@@ -41,8 +41,6 @@ import java.util.Set;
 
 /** Constant operand */
 public class ConstantOperand extends Expression {
-  private final String WRONG_TYPE_MESSAGE =
-      "Boolean and Text type is not supported in nested aggregation expression.";
 
   private final String valueString;
   private final TSDataType dataType;

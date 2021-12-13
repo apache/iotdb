@@ -50,7 +50,7 @@ public abstract class Expression {
     return false;
   }
 
-  public boolean isUserDefinedAggregationExpression() {
+  public boolean isUserDefinedAggregationFunctionExpression() {
     return false;
   }
 

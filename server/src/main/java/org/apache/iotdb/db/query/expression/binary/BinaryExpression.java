@@ -69,15 +69,15 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isUserDefinedAggregationExpression();
+    return !isUserDefinedAggregationFunctionExpression();
   }
 
   @Override
-  public boolean isUserDefinedAggregationExpression() {
+  public boolean isUserDefinedAggregationFunctionExpression() {
     return leftExpression.isPlainAggregationFunctionExpression()
         || rightExpression.isPlainAggregationFunctionExpression()
-        || leftExpression.isUserDefinedAggregationExpression()
-        || rightExpression.isUserDefinedAggregationExpression();
+        || leftExpression.isUserDefinedAggregationFunctionExpression()
+        || rightExpression.isUserDefinedAggregationFunctionExpression();
   }
 
   @Override

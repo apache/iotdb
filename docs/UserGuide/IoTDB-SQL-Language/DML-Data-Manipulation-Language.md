@@ -1047,7 +1047,7 @@ It costs 0.009s
 
 Input:
 
-```
+```sql
 select count(a),
        count(b),
        ((count(a) + 1) * 2 - 1) % 2 + 1.5,

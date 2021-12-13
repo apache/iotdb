@@ -1052,7 +1052,7 @@ It costs 0.009s
 
 输入：
 
-```
+```sql
 select count(a),
        count(b),
        ((count(a) + 1) * 2 - 1) % 2 + 1.5,

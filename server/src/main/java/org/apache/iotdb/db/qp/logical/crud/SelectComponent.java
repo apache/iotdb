@@ -77,7 +77,7 @@ public final class SelectComponent {
 
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
-    if (resultColumn.getExpression().isUserDefinedAggregationExpression()) {
+    if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
     if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {

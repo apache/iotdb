@@ -41,8 +41,6 @@ import java.util.Map;
 import java.util.Set;
 
 public class TimeSeriesOperand extends Expression {
-  private final String WRONG_OPERAND_MESSAGE =
-      "TimeSeries and Aggregations can not be in the same nested expression.";
 
   protected PartialPath path;
 

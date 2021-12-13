@@ -56,16 +56,13 @@ import java.util.stream.Collectors;
 
 public class FunctionExpression extends Expression {
 
-  private final String WRONG_TYPE_MESSAGE =
-      "Boolean and Text type is not supported in nested aggregation expression.";
-
   /**
    * true: aggregation function<br>
    * false: time series generating function
    */
-  private final boolean isAggregationFunctionExpression;
+  private final boolean isPlainAggregationFunctionExpression;
 
-  private boolean isUDAFExpression;
+  private boolean isUserDefinedAggregationFunctionExpression;
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
@@ -85,7 +82,7 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
-    isAggregationFunctionExpression =
+    isPlainAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = true;
   }
@@ -95,20 +92,20 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
-    isAggregationFunctionExpression =
+    isPlainAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
-    isUDAFExpression =
+    isUserDefinedAggregationFunctionExpression =
         expressions.stream()
             .anyMatch(
                 v ->
-                    v.isUserDefinedAggregationExpression()
+                    v.isUserDefinedAggregationFunctionExpression()
                         || v.isPlainAggregationFunctionExpression());
   }
 
   @Override
   public boolean isPlainAggregationFunctionExpression() {
-    return isAggregationFunctionExpression;
+    return isPlainAggregationFunctionExpression;
   }
 
   @Override
@@ -118,12 +115,12 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isAggregationFunctionExpression;
+    return !isPlainAggregationFunctionExpression() && !isUserDefinedAggregationFunctionExpression();
   }
 
   @Override
-  public boolean isUserDefinedAggregationExpression() {
-    return isUDAFExpression;
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return isUserDefinedAggregationFunctionExpression;
   }
 
   public boolean isCountStar() {
@@ -138,9 +135,9 @@ public class FunctionExpression extends Expression {
 
   public void addExpression(Expression expression) {
     isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
-    isUDAFExpression =
-        isUDAFExpression
-            || expression.isUserDefinedAggregationExpression()
+    isUserDefinedAggregationFunctionExpression =
+        isUserDefinedAggregationFunctionExpression
+            || expression.isUserDefinedAggregationFunctionExpression()
             || expression.isPlainAggregationFunctionExpression();
     expressions.add(expression);
   }
@@ -231,7 +228,7 @@ public class FunctionExpression extends Expression {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       float memoryBudgetInMB = memoryAssigner.assign();
       Transformer transformer;
-      if (isAggregationFunctionExpression) {
+      if (isPlainAggregationFunctionExpression) {
         transformer =
             new TransparentTransformer(
                 rawTimeSeriesInputLayer.constructPointReader(
