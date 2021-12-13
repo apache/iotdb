@@ -52,6 +52,8 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
         (GroupByTimeFillPlan) super.initGroupByTimePlan(queryPlan);
     GroupByFillClauseComponent groupByFillClauseComponent =
         (GroupByFillClauseComponent) specialClauseComponent;
+    groupByTimeFillPlan.setSingleFill(groupByFillClauseComponent.getSingleFill());
+    // old type fill logic
     groupByTimeFillPlan.setFillType(groupByFillClauseComponent.getFillTypes());
 
     return groupByTimeFillPlan;

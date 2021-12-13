@@ -84,6 +84,8 @@ public class FillQueryOperator extends QueryOperator {
     FilterOperator timeFilter = whereComponent.getFilterOperator();
     long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
     fillQueryPlan.setQueryTime(time);
+    fillQueryPlan.setSingleFill(((FillClauseComponent) specialClauseComponent).getSingleFill());
+    // old type fill logic
     fillQueryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
     return fillQueryPlan;
   }
