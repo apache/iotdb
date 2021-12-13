@@ -19,8 +19,8 @@ package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 
