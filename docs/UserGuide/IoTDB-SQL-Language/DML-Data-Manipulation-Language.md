@@ -1067,8 +1067,6 @@ Total line number = 1
 It costs 0.013s
 ```
 
-指定 `GROUP BY` 的聚合查询。
-
 2. Aggregation with `GROUP BY`.
 
 Input:
