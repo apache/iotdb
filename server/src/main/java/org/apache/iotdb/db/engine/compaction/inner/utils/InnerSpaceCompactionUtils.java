@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
@@ -48,9 +50,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -298,7 +297,7 @@ public class InnerSpaceCompactionUtils {
         }
         while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
           String lastSensor = null;
-          Set<String> allSensors = new HashSet<>();
+          Set<String> candidateSensors = new HashSet<>();
           for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
               chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
             TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
@@ -322,15 +321,15 @@ public class InnerSpaceCompactionUtils {
               }
             }
             // get all sensor used later
-            allSensors.addAll(sensorChunkMetadataListMap.keySet());
+            candidateSensors.addAll(sensorChunkMetadataListMap.keySet());
           }
 
           // if there is no more chunkMetaData, merge all the sensors
           if (!hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
-            lastSensor = Collections.max(allSensors);
+            lastSensor = Collections.max(candidateSensors);
           }
 
-          for (String sensor : allSensors) {
+          for (String sensor : candidateSensors) {
             if (sensor.compareTo(lastSensor) <= 0) {
               Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataListMap =
                   new TreeMap<>(
