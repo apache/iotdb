@@ -24,13 +24,13 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class UDFQueryOperator extends QueryOperator {
+public class UDTFQueryOperator extends QueryOperator {
 
-  public UDFQueryOperator() {
+  public UDTFQueryOperator() {
     super();
   }
 
-  public UDFQueryOperator(QueryOperator queryOperator) {
+  public UDTFQueryOperator(QueryOperator queryOperator) {
     super(queryOperator);
   }
 

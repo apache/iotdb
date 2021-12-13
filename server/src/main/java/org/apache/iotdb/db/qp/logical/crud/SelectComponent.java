@@ -34,7 +34,7 @@ public final class SelectComponent {
 
   private final ZoneId zoneId;
 
-  private boolean hasAggregationFunction = false;
+  private boolean hasPlainAggregationFunction = false;
   private boolean hasTimeSeriesGeneratingFunction = false;
   private boolean hasUserDefinedAggregationFunction = false;
 
@@ -50,7 +50,7 @@ public final class SelectComponent {
 
   public SelectComponent(SelectComponent selectComponent) {
     zoneId = selectComponent.zoneId;
-    hasAggregationFunction = selectComponent.hasAggregationFunction;
+    hasPlainAggregationFunction = selectComponent.hasPlainAggregationFunction;
     hasTimeSeriesGeneratingFunction = selectComponent.hasTimeSeriesGeneratingFunction;
     resultColumns.addAll(selectComponent.resultColumns);
   }
@@ -59,8 +59,12 @@ public final class SelectComponent {
     return zoneId;
   }
 
-  public boolean hasAggregationFunction() {
-    return hasAggregationFunction;
+  public void setHasPlainAggregationFunction(boolean hasPlainAggregationFunction) {
+    this.hasPlainAggregationFunction = hasPlainAggregationFunction;
+  }
+
+  public boolean hasPlainAggregationFunction() {
+    return hasPlainAggregationFunction;
   }
 
   public boolean hasTimeSeriesGeneratingFunction() {
@@ -73,12 +77,11 @@ public final class SelectComponent {
 
   public void addResultColumn(ResultColumn resultColumn) {
     resultColumns.add(resultColumn);
-    if (resultColumn.getExpression().isUDAFExpression()) {
+    if (resultColumn.getExpression().isUserDefinedAggregationFunctionExpression()) {
       hasUserDefinedAggregationFunction = true;
     }
-
-    if (resultColumn.getExpression().isAggregationFunctionExpression()) {
-      hasAggregationFunction = true;
+    if (resultColumn.getExpression().isPlainAggregationFunctionExpression()) {
+      hasPlainAggregationFunction = true;
     }
     if (resultColumn.getExpression().isTimeSeriesGeneratingFunctionExpression()) {
       hasTimeSeriesGeneratingFunction = true;
@@ -104,7 +107,7 @@ public final class SelectComponent {
         if (expression instanceof TimeSeriesOperand) {
           pathsCache.add(((TimeSeriesOperand) expression).getPath());
         } else if (expression instanceof FunctionExpression
-            && expression.isAggregationFunctionExpression()) {
+            && expression.isPlainAggregationFunctionExpression()) {
           pathsCache.add(
               ((TimeSeriesOperand) ((FunctionExpression) expression).getExpressions().get(0))
                   .getPath());

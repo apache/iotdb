@@ -76,7 +76,7 @@ public class GroupByLevelController {
     for (Iterator<Expression> it = rawColumn.getExpression().iterator(); it.hasNext(); ) {
       Expression expression = it.next();
       if (expression instanceof FunctionExpression
-          && expression.isAggregationFunctionExpression()
+          && expression.isPlainAggregationFunctionExpression()
           && ((FunctionExpression) expression).isCountStar()) {
         countWildcardIterIndices.add(idx);
       }
@@ -93,7 +93,7 @@ public class GroupByLevelController {
       for (Iterator<Expression> it = rootExpression.iterator(); it.hasNext(); ) {
         Expression expression = it.next();
         if (expression instanceof FunctionExpression
-            && expression.isAggregationFunctionExpression()) {
+            && expression.isPlainAggregationFunctionExpression()) {
           hasAggregation = true;
           List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
           String functionName = ((FunctionExpression) expression).getFunctionName();
