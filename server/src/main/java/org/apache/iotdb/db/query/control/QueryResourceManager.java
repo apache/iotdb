@@ -134,6 +134,10 @@ public class QueryResourceManager {
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
+
+      // used files should be added before mergeLock is unlocked, or they may be deleted by running
+      // merge
+      filePathsManager.addUsedFilesForQuery(context.getQueryId(), cachedQueryDataSource);
     }
 
     // set query time lower bound according TTL
@@ -190,10 +194,6 @@ public class QueryResourceManager {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
     }
-
-    // used files should be added before mergeLock is unlocked, or they may be deleted by running
-    // merge
-    filePathsManager.addUsedFilesForQuery(context.getQueryId(), queryDataSource);
 
     // calculate the read order of unseqResources
     QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());
