@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.id_table.IDTable;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
@@ -149,7 +150,7 @@ public class SeriesReader {
       Filter valueFilter,
       TsFileFilter fileFilter,
       boolean ascending) {
-    this.seriesPath = seriesPath;
+    this.seriesPath = IDTable.translateQueryPath(seriesPath);
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
@@ -192,7 +193,7 @@ public class SeriesReader {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
-    this.seriesPath = seriesPath;
+    this.seriesPath = IDTable.translateQueryPath(seriesPath);
     this.allSensors = allSensors;
     this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;

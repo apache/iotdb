@@ -1742,6 +1742,7 @@ public class StorageGroupProcessor {
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
+    fullPath = IDTable.translateQueryPath(fullPath);
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(

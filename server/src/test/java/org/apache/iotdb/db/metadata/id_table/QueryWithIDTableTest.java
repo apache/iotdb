@@ -72,12 +72,12 @@ public class QueryWithIDTableTest {
   Set<String> retSet =
       new HashSet<>(
           Arrays.asList(
-              "113\troot.isp.d1.s3\t10003\tINT64",
-              "113\troot.isp.d1.s4\t103\tINT32",
+              "113\troot.isp.d1.s3\t100003\tINT64",
+              "113\troot.isp.d1.s4\t1003\tINT32",
               "113\troot.isp.d1.s5\tfalse\tBOOLEAN",
-              "113\troot.isp.d1.s6\thh3\tTEXT",
-              "113\troot.isp.d1.s1\t4.0\tDOUBLE",
-              "113\troot.isp.d1.s2\t5.0\tFLOAT"));
+              "113\troot.isp.d1.s6\tmm3\tTEXT",
+              "113\troot.isp.d1.s1\t13.0\tDOUBLE",
+              "113\troot.isp.d1.s2\t23.0\tFLOAT"));
 
   @Before
   public void before() {
@@ -142,25 +142,25 @@ public class QueryWithIDTableTest {
 
     // test it from id table
     assertEquals(
-        new TimeValuePair(113L, new TsDouble(4.0d)),
+        new TimeValuePair(113L, new TsDouble(13.0d)),
         StorageEngine.getInstance()
             .getProcessor(new PartialPath("root.isp.d1"))
             .getIdTable()
             .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s1"))));
     assertEquals(
-        new TimeValuePair(113L, new TsFloat(5.0f)),
+        new TimeValuePair(113L, new TsFloat(23.0f)),
         StorageEngine.getInstance()
             .getProcessor(new PartialPath("root.isp.d1"))
             .getIdTable()
             .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s2"))));
     assertEquals(
-        new TimeValuePair(113L, new TsLong(10003L)),
+        new TimeValuePair(113L, new TsLong(100003L)),
         StorageEngine.getInstance()
             .getProcessor(new PartialPath("root.isp.d1"))
             .getIdTable()
             .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s3"))));
     assertEquals(
-        new TimeValuePair(113L, new TsInt(103)),
+        new TimeValuePair(113L, new TsInt(1003)),
         StorageEngine.getInstance()
             .getProcessor(new PartialPath("root.isp.d1"))
             .getIdTable()
@@ -172,7 +172,7 @@ public class QueryWithIDTableTest {
             .getIdTable()
             .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s5"))));
     assertEquals(
-        new TimeValuePair(113L, new TsBinary(new Binary("hh3"))),
+        new TimeValuePair(113L, new TsBinary(new Binary("mm3"))),
         StorageEngine.getInstance()
             .getProcessor(new PartialPath("root.isp.d1"))
             .getIdTable()
@@ -198,12 +198,12 @@ public class QueryWithIDTableTest {
     columns[5] = new Binary[4];
 
     for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 1.0 + r;
-      ((float[]) columns[1])[r] = 2 + r;
-      ((long[]) columns[2])[r] = 10000 + r;
-      ((int[]) columns[3])[r] = 100 + r;
+      ((double[]) columns[0])[r] = 10.0 + r;
+      ((float[]) columns[1])[r] = 20 + r;
+      ((long[]) columns[2])[r] = 100000 + r;
+      ((int[]) columns[3])[r] = 1000 + r;
       ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("hh" + r);
+      ((Binary[]) columns[5])[r] = new Binary("mm" + r);
     }
 
     InsertTabletPlan tabletPlan =

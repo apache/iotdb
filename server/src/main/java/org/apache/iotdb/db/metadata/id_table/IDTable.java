@@ -30,6 +30,7 @@ import org.apache.iotdb.db.metadata.id_table.entry.InsertMeasurementMNode;
 import org.apache.iotdb.db.metadata.id_table.entry.SchemaEntry;
 import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
@@ -177,6 +178,8 @@ public class IDTable {
 
     // set reusable device id
     plan.setDeviceID(deviceEntry.getDeviceID());
+    // for last flushed time map
+    plan.setDeviceId(new PartialPath(deviceEntry.getDeviceID().toStringID()));
 
     return deviceEntry.getDeviceID();
   }
@@ -407,6 +410,31 @@ public class IDTable {
           dataType);
       throw new DataTypeMismatchException(measurement, insertDataType, dataType);
     }
+  }
+
+  /**
+   * translate query path's device path to device id
+   *
+   * @param fullPath full query path
+   * @return translated query path
+   */
+  public static PartialPath translateQueryPath(PartialPath fullPath) {
+    // if not enable id table, just return original path
+    if (!config.isEnableIDTable()) {
+      return fullPath;
+    }
+
+    TimeseriesID timeseriesID = new TimeseriesID(fullPath);
+    try {
+      return new MeasurementPath(
+          timeseriesID.getDeviceID().toStringID(),
+          timeseriesID.getMeasurement(),
+          fullPath.getMeasurementSchema());
+    } catch (MetadataException e) {
+      logger.error("Error when translate query path: " + fullPath);
+    }
+
+    return null;
   }
 
   @TestOnly

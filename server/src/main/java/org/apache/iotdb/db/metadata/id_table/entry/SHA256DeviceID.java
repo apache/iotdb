@@ -28,6 +28,8 @@ public class SHA256DeviceID implements IDeviceID {
   long l3;
   long l4;
 
+  private static final String SEPERATOR = "#";
+
   private static MessageDigest md;
 
   static {
@@ -39,6 +41,32 @@ public class SHA256DeviceID implements IDeviceID {
   }
 
   public SHA256DeviceID(String deviceID) {
+    if (deviceID.indexOf('.') == -1) {
+      fromSHA256String(deviceID);
+    } else {
+      buildSHA256(deviceID);
+    }
+  }
+
+  /**
+   * build device id from a sha 256 string, like "1#1#1#1"
+   *
+   * @param deviceID a sha 256 string
+   */
+  private void fromSHA256String(String deviceID) {
+    String[] part = deviceID.split(SEPERATOR);
+    l1 = Long.parseLong(part[0]);
+    l2 = Long.parseLong(part[1]);
+    l3 = Long.parseLong(part[2]);
+    l4 = Long.parseLong(part[3]);
+  }
+
+  /**
+   * build device id from a device path
+   *
+   * @param deviceID device path
+   */
+  private void buildSHA256(String deviceID) {
     byte[] hashVal = md.digest(deviceID.getBytes());
     md.reset();
 
@@ -82,6 +110,6 @@ public class SHA256DeviceID implements IDeviceID {
 
   @Override
   public String toStringID() {
-    return l1 + "#" + l2 + "#" + l3 + "#" + l4;
+    return l1 + SEPERATOR + l2 + SEPERATOR + l3 + SEPERATOR + l4;
   }
 }

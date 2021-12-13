@@ -32,6 +32,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -198,7 +199,12 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         throw new QueryProcessException(e.getMessage());
       }
       return calculateLastPairForSeriesLocally(
-          seriesPaths, dataTypes, context, expression, queryPlan.getDeviceToMeasurements());
+          seriesPaths,
+          dataTypes,
+          context,
+          expression,
+          queryPlan.getDeviceToMeasurements(),
+          IoTDBDescriptor.getInstance().getConfig().isEnableIDTable());
     }
 
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastRemotely(
