@@ -1131,7 +1131,7 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center
+<center>
 
 **Table 3-4 Previous fill paramter list**
 
