@@ -24,7 +24,6 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.engine.merge.task.MergeMultiChunkTask.MergeChunkHeapTask;
 import org.apache.iotdb.db.engine.merge.task.MergeTask;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -139,16 +138,10 @@ public class MergeManager implements IService, MergeManagerMBean {
       mergeTaskPool =
           new MergeThreadPool(
               threadNum, r -> new Thread(r, "MergeThread-" + threadCnt.getAndIncrement()));
-      for (int i = 0; i < threadNum; ++i) {
-        mergeTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
-      }
       mergeChunkSubTaskPool =
           new MergeThreadPool(
               threadNum * chunkSubThreadNum,
               r -> new Thread(r, "MergeChunkSubThread-" + threadCnt.getAndIncrement()));
-      for (int i = 0; i < threadNum * chunkSubThreadNum; ++i) {
-        mergeChunkSubTaskPool.submit(new CompactionMonitor.CompactionMonitorRegisterTask(false));
-      }
 
       taskCleanerThreadPool =
           IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("MergeTaskCleaner");

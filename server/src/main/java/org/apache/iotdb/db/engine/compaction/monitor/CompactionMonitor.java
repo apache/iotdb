@@ -29,6 +29,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -478,29 +479,6 @@ public class CompactionMonitor implements IService {
       }
     } catch (Throwable e) {
       LOGGER.error("[CompactionMonitor] Exception occurs while saving merge info", e);
-    }
-  }
-
-  public static class CompactionMonitorRegisterTask implements Runnable {
-    public boolean isCompactionThread;
-
-    public CompactionMonitorRegisterTask(boolean isCompactionThread) {
-      this.isCompactionThread = isCompactionThread;
-    }
-
-    @Override
-    public void run() {
-      CompactionMonitor monitor = CompactionMonitor.getInstance();
-      try {
-        // Sleep for 10 seconds to avoid registering twice in the same thread
-        Thread.sleep(10_000);
-      } catch (Exception e) {
-      }
-      if (isCompactionThread) {
-        monitor.registerCompactionThread(Thread.currentThread().getId());
-      } else {
-        monitor.registerMergeThread(Thread.currentThread().getId());
-      }
     }
   }
 }
