@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeContext;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
@@ -140,11 +139,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     inplaceCompactionLogger.logFiles(resource);
 
     Set<PartialPath> unmergedDevice =
-        IoTDB.metaManager.getMatchedDevices(
-            new PartialPath(
-                storageGroupName
-                    + IoTDBConstant.PATH_SEPARATOR
-                    + IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+        IoTDB.metaManager.getMatchedDevicesByPrex(new PartialPath(storageGroupName), true);
     inplaceCompactionLogger.logMergeStart();
 
     chunkTask =
