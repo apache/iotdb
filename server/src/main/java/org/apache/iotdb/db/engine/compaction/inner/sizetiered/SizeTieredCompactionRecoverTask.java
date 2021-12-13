@@ -67,23 +67,14 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   }
 
   /**
-   * We support tmpTargetFile is xxx.target, tmpTargetResourceFile is xxx.target.resource,
-   * targetFile is xxx.tsfile, targetResourceFile is xxx.tsfile.resource. To clear unfinished
-   * compaction task, there are several situations:
+   * We support tmp target file is xxx.target, target file is xxx.tsfile, resource file is
+   * xxx.tsfile.resource. To clear unfinished compaction task, there are several situations:
    *
    * <ol>
-   *   <li>Compaction log is incomplete, then delete it and return.
-   *   <li>TmpTargetFile exists, then delete targetFile if exists and move tmpTargetFile to
-   *       targetFile.
-   *   <li>Both tmpTargetFile and targetFile do not exist, then delete tmpTargetResourceFile and
-   *       targetResourceFile if exist, also delete the compaction log, return.
-   *   <li><b>TargetResourceFile does not exist or targetFile is incomplete</b>: delete the
-   *       targetFile, tmpTargetResourceFile and compaction log.
-   *   <li><b>TargetFile is completed, not all source files have been deleted</b>: delete the source
-   *       files and compaction logs
-   *   <li><b>TargetFile is completed, all source files have been deleted, compaction log file
-   *       exists</b>: delete the compaction log
-   *   <li><b>No compaction log file exists</b>: do nothing
+   *   <li>Compaction log is incomplete, then delete it.
+   *   <li>All source files exist, then delete tmp target file, target file, resource file and
+   *       compaction log if exist.
+   *   <li>Not all source files exist, then delete the remaining source files and compaction log.
    * </ol>
    */
   @Override
@@ -133,7 +124,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
 
         // check is all source files existed
         boolean isAllSourcesFileExisted = true;
-        List<TsFileResource> sourceTsFileResources = new ArrayList<>();
         for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
           File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
           if (sourceFile == null) {
@@ -143,7 +133,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         }
 
         if (isAllSourcesFileExisted) {
-          // all source files existed
+          // all source files exist
           if (tmpTargetFile != null && !tmpTargetFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
@@ -167,7 +157,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           }
         } else {
           // some source files have been deleted, which means .tsfile and .tsfile.resource exist.
-          sourceTsFileResources.clear();
+          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
           for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
             File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
             if (sourceFile != null) {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.recover;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -33,6 +32,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -197,11 +198,11 @@ public class SizeTieredCompactionRecoverTest {
         new SizeTieredCompactionRecoverTask(
             COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
     recoverTask.doCompaction();
-    // all the source file should be deleted
+    // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
-      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertTrue(resource.getTsFile().exists());
     }
-    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
   /**
@@ -431,9 +432,9 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should be deleted
+      // all the source file should still exist
       for (String sourceFileName : sourceFileNames) {
-        Assert.assertFalse(
+        Assert.assertTrue(
             new File(
                     TestConstant.BASE_OUTPUT_PATH
                         + File.separator
@@ -464,8 +465,7 @@ public class SizeTieredCompactionRecoverTest {
                   + "0",
               targetFileName.replace(
                   IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-      Assert.assertTrue(targetFileAfterMoved.exists());
-      Assert.assertEquals(targetFileAfterMoved.length(), sizeOfTargetFile);
+      Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
     }
