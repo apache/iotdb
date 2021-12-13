@@ -149,13 +149,6 @@ public class MergeMultiChunkTask {
       // just for unit tests, we need to consider whether there is a need to exist
       Collections.sort(measurementPathListByDevice);
 
-      if (logger.isInfoEnabled()) {
-        logger.info(
-            "{}-{} starts to merge {} series",
-            taskName,
-            device.getDevice(),
-            measurementPathListByDevice.size());
-      }
       IMergePathSelector pathSelector =
           new NaivePathSelector(measurementPathListByDevice, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
