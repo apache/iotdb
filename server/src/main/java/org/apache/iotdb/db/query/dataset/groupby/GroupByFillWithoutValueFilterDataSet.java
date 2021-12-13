@@ -142,16 +142,28 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
       throws StorageEngineException, QueryProcessException {
     long minQueryStartTime = Long.MAX_VALUE;
     long maxQueryEndTime = Long.MIN_VALUE;
-    this.fillTypes = groupByTimeFillPlan.getFillType();
-    for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
-      IFill fill = IFillEntry.getValue();
+    if (fillTypes != null) {
+      // old type fill logic
+      for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
+        IFill fill = IFillEntry.getValue();
+        if (fill instanceof PreviousFill) {
+          fill.convertRange(startTime, endTime);
+          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        } else if (fill instanceof LinearFill) {
+          fill.convertRange(startTime, endTime);
+          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+          maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
+        }
+      }
+    } else {
+      IFill fill = singleFill;
       if (fill instanceof PreviousFill) {
         fill.convertRange(startTime, endTime);
-        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        minQueryStartTime = fill.getQueryStartTime();
       } else if (fill instanceof LinearFill) {
         fill.convertRange(startTime, endTime);
-        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
-        maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
+        minQueryStartTime = fill.getQueryStartTime();
+        maxQueryEndTime = fill.getQueryEndTime();
       }
     }
 

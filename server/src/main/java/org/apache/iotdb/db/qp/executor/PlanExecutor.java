@@ -79,6 +79,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryIndexPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AlterTimeSeriesPlan;
@@ -587,6 +588,9 @@ public class PlanExecutor implements IPlanExecutor {
       if (queryPlan.getPaths() == null || queryPlan.getPaths().isEmpty()) {
         // no time series are selected, return EmptyDataSet
         return new EmptyDataSet();
+      } else if (queryPlan instanceof UDAFPlan) {
+        UDAFPlan udafPlan = (UDAFPlan) queryPlan;
+        queryDataSet = queryRouter.udafQuery(udafPlan, context);
       } else if (queryPlan instanceof UDTFPlan) {
         UDTFPlan udtfPlan = (UDTFPlan) queryPlan;
         queryDataSet = queryRouter.udtfQuery(udtfPlan, context);
