@@ -1110,7 +1110,7 @@ It costs 0.012s
 > ```sql
 > SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
 > SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
-> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill 
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill
 > ```
 
 ### Automated Fill
@@ -1131,8 +1131,10 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 
 Detailed descriptions of all parameters are given in Table 3-4.
 
-<center>
+<center
+
 **Table 3-4 Previous fill paramter list**
+
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|

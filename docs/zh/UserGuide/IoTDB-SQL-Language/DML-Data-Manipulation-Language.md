@@ -1137,7 +1137,6 @@ select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <bef
 表 3-4 给出了所有参数的详细说明。
 
 <center>
-
 **表 3-4previous 填充参数列表**
 
 | 参数名称（不区分大小写） | 解释                                                         |
