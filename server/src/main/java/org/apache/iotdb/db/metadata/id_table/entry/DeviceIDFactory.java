@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.id_table.entry;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import java.util.function.Function;
 
@@ -68,5 +69,19 @@ public class DeviceIDFactory {
    */
   public IDeviceID getDeviceID(PartialPath devicePath) {
     return getDeviceIDFunction.apply(devicePath);
+  }
+
+  /** reset id method */
+  @TestOnly
+  public void reset() {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
+        && IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getDeviceIDTransformationMethod()
+            .equals("SHA256")) {
+      getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
+    } else {
+      getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());
+    }
   }
 }

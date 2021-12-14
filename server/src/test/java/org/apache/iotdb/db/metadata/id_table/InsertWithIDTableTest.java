@@ -60,7 +60,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class InsertWithIDTableHashmapImplTest {
+public class InsertWithIDTableTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;

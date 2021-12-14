@@ -1,19 +1,34 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.db.metadata.id_table;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -32,15 +47,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
 
-public class LastQueryWithIDTableHashmapImpl {
+public class IDTableRestartTest {
+
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
-
-  private boolean originalEnableCache = false;
 
   private String originalDeviceIDTransformationMethod = null;
 
@@ -60,8 +72,6 @@ public class LastQueryWithIDTableHashmapImpl {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
-    originalEnableCache = IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
-    IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(false);
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
@@ -74,50 +84,34 @@ public class LastQueryWithIDTableHashmapImpl {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
-    IoTDBDescriptor.getInstance().getConfig().setEnableLastCache(originalEnableCache);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void testLastCacheQueryWithoutCache()
-      throws QueryProcessException, MetadataException, InterruptedException,
-          QueryFilterOptimizationException, StorageEngineException, IOException {
-
+  public void testRawDataQueryAfterRestart() throws Exception {
     insertDataInMemory();
 
+    // restart
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
     PlanExecutor executor = new PlanExecutor();
-    QueryPlan queryPlan =
-        (QueryPlan) processor.parseSQLToPhysicalPlan("select last * from root.isp.d1");
+    QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
+    Assert.assertEquals(6, dataSet.getPaths().size());
     int count = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      assertTrue(retSet.contains(record.toString()));
+      System.out.println(record);
       count++;
     }
 
-    assertEquals(retSet.size(), count);
+    assertEquals(4, count);
 
-    // flush and test again
-    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
-    executor.processNonQuery(flushPlan);
-
-    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(3, dataSet.getPaths().size());
-    count = 0;
-    while (dataSet.hasNext()) {
-      RowRecord record = dataSet.next();
-      assertTrue(retSet.contains(record.toString()));
-      count++;
-    }
-    assertEquals(retSet.size(), count);
-
-    // assert id table is not refresh
-    assertNull(
-        IDTableManager.getInstance()
-            .getIDTable(new PartialPath("root.isp.d1"))
-            .getLastCache(new TimeseriesID(new PartialPath("root.isp.d1.s1"))));
+    assertEquals(4, count);
   }
 
   private void insertDataInMemory() throws IllegalPathException, QueryProcessException {

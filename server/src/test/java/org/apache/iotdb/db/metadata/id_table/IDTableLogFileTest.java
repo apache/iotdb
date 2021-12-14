@@ -40,7 +40,7 @@ import java.util.HashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IDTableHashmapImplLogFileTest {
+public class IDTableLogFileTest {
 
   private boolean isEnableIDTable = false;
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
 import org.apache.iotdb.db.metadata.id_table.IDTableManager;
+import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -273,6 +274,9 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
+    // reset id method
+    DeviceIDFactory.getInstance().reset();
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -61,7 +62,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class QueryWithIDTableHashmapImplTest {
+public class QueryAlignedTimeseriesWithIDTableTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
@@ -77,6 +78,61 @@ public class QueryWithIDTableHashmapImplTest {
               "113\troot.isp.d1.s6\tmm3\tTEXT",
               "113\troot.isp.d1.s1\t13.0\tDOUBLE",
               "113\troot.isp.d1.s2\t23.0\tFLOAT"));
+
+  private static String[] sqls =
+      new String[] {
+        "SET STORAGE GROUP TO root.vehicle",
+        "SET STORAGE GROUP TO root.other",
+        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
+        "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
+        "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
+        "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
+        "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
+        "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
+        "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+        "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
+        "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
+        "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
+        "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
+        "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
+        "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+        "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
+        "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
+        "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
+        "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
+        "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
+        "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
+        "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
+        "insert into root.vehicle.d0(timestamp,s3) values(60,'aaaaa')",
+        "insert into root.vehicle.d0(timestamp,s3) values(70,'bbbbb')",
+        "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
+        "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
+        "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
+        "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
+        "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+        "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+        "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
+        "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
+        "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
+      };
 
   @Before
   public void before() {
@@ -109,14 +165,70 @@ public class QueryWithIDTableHashmapImplTest {
     PlanExecutor executor = new PlanExecutor();
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-    Assert.assertEquals(6, dataSet.getPaths().size());
+
     int count = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
+      System.out.println(record);
       count++;
     }
 
     assertEquals(8, count);
+  }
+
+  @Test
+  public void testAggregateQueryAfterFlush()
+      throws MetadataException, QueryProcessException, StorageEngineException, InterruptedException,
+          QueryFilterOptimizationException, IOException {
+    insertDataInDisk();
+    insertDataInMemory();
+
+    PlanExecutor executor = new PlanExecutor();
+    QueryPlan queryPlan =
+        (QueryPlan) processor.parseSQLToPhysicalPlan("select count(*) from root.isp.d1");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    int count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      for (Field f : record.getFields()) {
+        assertEquals(8L, f.getLongV());
+      }
+      count++;
+    }
+
+    assertEquals(1, count);
+  }
+
+  @Test
+  public void testGroupByQueryAfterFlush()
+      throws MetadataException, QueryProcessException, StorageEngineException, InterruptedException,
+          QueryFilterOptimizationException, IOException {
+    insertDataInDisk();
+    insertDataInMemory();
+
+    PlanExecutor executor = new PlanExecutor();
+    QueryPlan queryPlan =
+        (QueryPlan)
+            processor.parseSQLToPhysicalPlan(
+                "select count(*) from root.isp.d1 group by ([10, 114), 10ms)");
+    QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    System.out.println(dataSet.getPaths());
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    int count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      for (Field f : record.getFields()) {
+        if (count == 0 || count == 10) {
+          assertEquals(4L, f.getLongV());
+        } else {
+          assertEquals(0L, f.getLongV());
+        }
+      }
+      count++;
+    }
+
+    assertEquals(11, count);
   }
 
   @Test
@@ -203,7 +315,8 @@ public class QueryWithIDTableHashmapImplTest {
         new InsertTabletPlan(
             new PartialPath("root.isp.d1"),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
+            dataTypes,
+            true);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
@@ -245,7 +358,8 @@ public class QueryWithIDTableHashmapImplTest {
         new InsertTabletPlan(
             new PartialPath("root.isp.d1"),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
+            dataTypes,
+            true);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);

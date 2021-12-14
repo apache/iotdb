@@ -32,10 +32,13 @@ import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -400,7 +403,17 @@ public class IDTableHashmapImpl implements IDTable {
   // from mmanger
   private void checkDataTypeMatch(InsertPlan plan, int loc, TSDataType dataType)
       throws MetadataException {
-    TSDataType insertDataType = plan.getDataTypes()[loc];
+    TSDataType insertDataType;
+    if (plan instanceof InsertRowPlan) {
+      if (!((InsertRowPlan) plan).isNeedInferType()) {
+        // only when InsertRowPlan's values is object[], we should check type
+        insertDataType = getTypeInLoc(plan, loc);
+      } else {
+        insertDataType = dataType;
+      }
+    } else {
+      insertDataType = getTypeInLoc(plan, loc);
+    }
     if (dataType != insertDataType) {
       String measurement = plan.getMeasurements()[loc];
       logger.warn(
@@ -410,6 +423,23 @@ public class IDTableHashmapImpl implements IDTable {
           dataType);
       throw new DataTypeMismatchException(measurement, insertDataType, dataType);
     }
+  }
+
+  /** get dataType of plan, in loc measurements only support InsertRowPlan and InsertTabletPlan */
+  private TSDataType getTypeInLoc(InsertPlan plan, int loc) throws MetadataException {
+    TSDataType dataType;
+    if (plan instanceof InsertRowPlan) {
+      InsertRowPlan tPlan = (InsertRowPlan) plan;
+      dataType =
+          TypeInferenceUtils.getPredictedDataType(tPlan.getValues()[loc], tPlan.isNeedInferType());
+    } else if (plan instanceof InsertTabletPlan) {
+      dataType = (plan).getDataTypes()[loc];
+    } else {
+      throw new MetadataException(
+          String.format(
+              "Only support insert and insertTablet, plan is [%s]", plan.getOperatorType()));
+    }
+    return dataType;
   }
 
   @TestOnly

@@ -103,12 +103,12 @@ public class RestService implements IService {
   }
 
   private void serverStart() {
-    //    try {
-    //      server.start();
-    //    } catch (Exception e) {
-    //      LOGGER.warn("RestService failed to start: {}", e.getMessage());
-    //      server.destroy();
-    //    }
+    try {
+      server.start();
+    } catch (Exception e) {
+      LOGGER.warn("RestService failed to start: {}", e.getMessage());
+      server.destroy();
+    }
   }
 
   @Override
@@ -129,13 +129,13 @@ public class RestService implements IService {
 
   @Override
   public void stop() {
-    //    try {
-    //      server.stop();
-    //    } catch (Exception e) {
-    //      LOGGER.warn("RestService failed to stop: {}", e.getMessage());
-    //    } finally {
-    //      server.destroy();
-    //    }
+    try {
+      server.stop();
+    } catch (Exception e) {
+      LOGGER.warn("RestService failed to stop: {}", e.getMessage());
+    } finally {
+      server.destroy();
+    }
   }
 
   @Override

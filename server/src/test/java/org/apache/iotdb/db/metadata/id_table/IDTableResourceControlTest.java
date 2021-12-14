@@ -16,23 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.metadata.id_table;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.id_table.entry.DeviceEntry;
+import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.utils.Binary;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -40,35 +45,21 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
-public class IDTableHashmapImplRestartTest {
-
+public class IDTableResourceControlTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
 
   private String originalDeviceIDTransformationMethod = null;
 
-  Set<String> retSet =
-      new HashSet<>(
-          Arrays.asList(
-              "113\troot.isp.d1.s3\t100003\tINT64",
-              "113\troot.isp.d1.s4\t1003\tINT32",
-              "113\troot.isp.d1.s5\tfalse\tBOOLEAN",
-              "113\troot.isp.d1.s6\tmm3\tTEXT",
-              "113\troot.isp.d1.s1\t13.0\tDOUBLE",
-              "113\troot.isp.d1.s2\t23.0\tFLOAT"));
-
   @Before
   public void before() {
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(true);
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
@@ -88,69 +79,89 @@ public class IDTableHashmapImplRestartTest {
   }
 
   @Test
-  public void testRawDataQueryAfterRestart() throws Exception {
-    insertDataInMemory();
-
-    // restart
-    try {
-      EnvironmentUtils.restartDaemon();
-    } catch (Exception e) {
-      Assert.fail();
-    }
+  public void testDeviceIDReusing()
+      throws QueryProcessException, MetadataException, InterruptedException,
+          QueryFilterOptimizationException, StorageEngineException, IOException {
+    InsertRowPlan rowPlan = getInsertRowPlan();
 
     PlanExecutor executor = new PlanExecutor();
+    executor.insert(rowPlan);
+
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     Assert.assertEquals(6, dataSet.getPaths().size());
-    int count = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      System.out.println(record);
-      count++;
+      Assert.assertEquals(6, record.getFields().size());
     }
 
-    assertEquals(4, count);
+    IDeviceID idTableDeviceID = null;
+    for (Map<IDeviceID, DeviceEntry> map :
+        IDTableManager.getInstance().getIDTable(new PartialPath("root.isp.d1")).getIdTables()) {
+      if (map == null) {
+        continue;
+      }
 
-    assertEquals(4, count);
+      for (IDeviceID deviceID : map.keySet()) {
+        if (idTableDeviceID == null) {
+          idTableDeviceID = deviceID;
+        } else {
+          fail("there should only be one device in id table");
+        }
+      }
+    }
+
+    assertNotNull(idTableDeviceID);
+
+    int deviceCount = 0;
+    for (TsFileProcessor processor :
+        StorageEngine.getInstance()
+            .getProcessor(new PartialPath("root.isp.d1"))
+            .getWorkSequenceTsFileProcessors()) {
+      for (Map.Entry<IDeviceID, IWritableMemChunkGroup> entry :
+          processor.getWorkMemTable().getMemTableMap().entrySet()) {
+        // using '!=' to check is same device id
+        if (entry.getKey() != rowPlan.getDeviceID()) {
+          fail("memtable's device id is not same as insert plan's device id");
+        }
+
+        // using '!=' to check is same device id
+        if (entry.getKey() != idTableDeviceID) {
+          fail("memtable's device id is not same as insert plan's device id");
+        }
+
+        deviceCount++;
+      }
+    }
+
+    assertEquals(1, deviceCount);
   }
 
-  private void insertDataInMemory() throws IllegalPathException, QueryProcessException {
-    long[] times = new long[] {110L, 111L, 112L, 113L};
-    List<Integer> dataTypes = new ArrayList<>();
-    dataTypes.add(TSDataType.DOUBLE.ordinal());
-    dataTypes.add(TSDataType.FLOAT.ordinal());
-    dataTypes.add(TSDataType.INT64.ordinal());
-    dataTypes.add(TSDataType.INT32.ordinal());
-    dataTypes.add(TSDataType.BOOLEAN.ordinal());
-    dataTypes.add(TSDataType.TEXT.ordinal());
+  private InsertRowPlan getInsertRowPlan() throws IllegalPathException {
+    long time = 110L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
 
-    Object[] columns = new Object[6];
-    columns[0] = new double[4];
-    columns[1] = new float[4];
-    columns[2] = new long[4];
-    columns[3] = new int[4];
-    columns[4] = new boolean[4];
-    columns[5] = new Binary[4];
+    String[] columns = new String[6];
+    columns[0] = 1.0 + "";
+    columns[1] = 2 + "";
+    columns[2] = 10000 + "";
+    columns[3] = 100 + "";
+    columns[4] = false + "";
+    columns[5] = "hh" + 0;
 
-    for (int r = 0; r < 4; r++) {
-      ((double[]) columns[0])[r] = 10.0 + r;
-      ((float[]) columns[1])[r] = 20 + r;
-      ((long[]) columns[2])[r] = 100000 + r;
-      ((int[]) columns[3])[r] = 1000 + r;
-      ((boolean[]) columns[4])[r] = false;
-      ((Binary[]) columns[5])[r] = new Binary("mm" + r);
-    }
-
-    InsertTabletPlan tabletPlan =
-        new InsertTabletPlan(
-            new PartialPath("root.isp.d1"),
-            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes);
-    tabletPlan.setTimes(times);
-    tabletPlan.setColumns(columns);
-    tabletPlan.setRowCount(times.length);
-
-    PlanExecutor executor = new PlanExecutor();
-    executor.insertTablet(tabletPlan);
+    return new InsertRowPlan(
+        new PartialPath("root.isp.d1"),
+        time,
+        new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+        dataTypes,
+        columns);
   }
 }
