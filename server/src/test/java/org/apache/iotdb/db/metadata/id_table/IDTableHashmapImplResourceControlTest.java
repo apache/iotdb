@@ -51,7 +51,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
-public class IDTableResourceControlTest {
+public class IDTableHashmapImplResourceControlTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
@@ -97,10 +97,7 @@ public class IDTableResourceControlTest {
 
     IDeviceID idTableDeviceID = null;
     for (Map<IDeviceID, DeviceEntry> map :
-        StorageEngine.getInstance()
-            .getProcessor(new PartialPath("root.isp.d1"))
-            .getIdTable()
-            .getIdTables()) {
+        IDTableManager.getInstance().getIDTable(new PartialPath("root.isp.d1")).getIdTables()) {
       if (map == null) {
         continue;
       }

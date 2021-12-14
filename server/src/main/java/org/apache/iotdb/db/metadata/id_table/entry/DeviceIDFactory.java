@@ -44,14 +44,15 @@ public class DeviceIDFactory {
    * @return instance of the factory
    */
   public static DeviceIDFactory getInstance() {
-    return DeviceIDFactory.DeviceIDFactoryHolder.INSTANCE;
+    return DeviceIDFactoryHolder.INSTANCE;
   }
 
   private DeviceIDFactory() {
-    if (IoTDBDescriptor.getInstance()
-        .getConfig()
-        .getDeviceIDTransformationMethod()
-        .equals("SHA256")) {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()
+        && IoTDBDescriptor.getInstance()
+            .getConfig()
+            .getDeviceIDTransformationMethod()
+            .equals("SHA256")) {
       getDeviceIDFunction = partialPath -> new SHA256DeviceID(partialPath.toString());
     } else {
       getDeviceIDFunction = partialPath -> new PlainDeviceID(partialPath.toString());

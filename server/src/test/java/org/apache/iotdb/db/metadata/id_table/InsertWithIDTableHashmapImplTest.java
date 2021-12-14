@@ -60,7 +60,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 
-public class InsertWithIDTableTest {
+public class InsertWithIDTableHashmapImplTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
@@ -99,11 +99,15 @@ public class InsertWithIDTableTest {
 
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    int count = 0;
     assertEquals(6, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       assertEquals(6, record.getFields().size());
+      count++;
     }
+
+    assertEquals(1, count);
   }
 
   @Test
@@ -120,11 +124,15 @@ public class InsertWithIDTableTest {
     QueryPlan queryPlan =
         (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1.GPS");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    int count = 0;
     assertEquals(1, dataSet.getPaths().size());
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
       assertEquals(3, record.getFields().size());
+      count++;
     }
+
+    assertEquals(1, count);
   }
 
   @Test
@@ -402,6 +410,8 @@ public class InsertWithIDTableTest {
       }
       rowNum++;
     }
+
+    assertEquals(4, rowNum);
   }
 
   @Test

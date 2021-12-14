@@ -335,7 +335,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(DataOutputStream stream) throws IOException {
     stream.writeLong(time);
-    putString(stream, deviceId.getFullPath());
+    putString(stream, devicePath.getFullPath());
     serializeMeasurementsAndValues(stream);
   }
 
@@ -486,7 +486,7 @@ public class InsertRowPlan extends InsertPlan {
 
   public void subSerialize(ByteBuffer buffer) {
     buffer.putLong(time);
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, devicePath.getFullPath());
     serializeMeasurementsAndValues(buffer);
   }
 

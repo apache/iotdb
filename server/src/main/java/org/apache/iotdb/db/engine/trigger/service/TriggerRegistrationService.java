@@ -20,16 +20,15 @@
 package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerExecutor;
 import org.apache.iotdb.db.exception.StartupException;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.id_table.IDTable;
+import org.apache.iotdb.db.metadata.id_table.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -159,10 +158,9 @@ public class TriggerRegistrationService implements IService {
 
     // update id table
     try {
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(plan.getFullPath().getDevicePath()).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
       idTable.registerTrigger(plan.getFullPath(), measurementMNode);
-    } catch (StorageEngineException | MetadataException e) {
+    } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
   }
@@ -212,10 +210,9 @@ public class TriggerRegistrationService implements IService {
     // update id table
     try {
       PartialPath fullPath = executor.getMeasurementMNode().getPartialPath();
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
       idTable.deregisterTrigger(fullPath, executor.getMeasurementMNode());
-    } catch (StorageEngineException | MetadataException e) {
+    } catch (MetadataException e) {
       throw new TriggerManagementException(e.getMessage(), e);
     }
   }

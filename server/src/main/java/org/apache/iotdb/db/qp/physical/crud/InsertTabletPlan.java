@@ -160,7 +160,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(DataOutputStream stream) throws IOException {
-    putString(stream, deviceId.getFullPath());
+    putString(stream, devicePath.getFullPath());
     writeMeasurements(stream);
     writeDataTypes(stream);
     writeTimes(stream);
@@ -254,7 +254,7 @@ public class InsertTabletPlan extends InsertPlan {
   }
 
   public void subSerialize(ByteBuffer buffer) {
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, devicePath.getFullPath());
     writeMeasurements(buffer);
     writeDataTypes(buffer);
     writeTimes(buffer);

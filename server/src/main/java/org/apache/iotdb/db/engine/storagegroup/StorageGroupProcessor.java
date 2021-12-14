@@ -57,6 +57,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.id_table.IDTable;
+import org.apache.iotdb.db.metadata.id_table.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -411,7 +412,11 @@ public class StorageGroupProcessor {
         TimeUnit.MILLISECONDS);
     // use id table
     if (config.isEnableIDTable()) {
-      idTable = new IDTable(storageGroupSysDir);
+      try {
+        idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
+      } catch (IllegalPathException e) {
+        logger.error("failed to create id table");
+      }
     }
     recover();
   }

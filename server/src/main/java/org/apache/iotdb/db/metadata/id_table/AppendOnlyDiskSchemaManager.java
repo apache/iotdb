@@ -48,6 +48,7 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
   private static final Logger logger = LoggerFactory.getLogger(AppendOnlyDiskSchemaManager.class);
 
   public AppendOnlyDiskSchemaManager(File dir) {
+
     try {
       initFile(dir);
       outputStream = new FileOutputStream(dataFile);
@@ -57,6 +58,13 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
   }
 
   private void initFile(File dir) throws IOException {
+    // create dirs
+    if (dir.mkdirs()) {
+      logger.info(
+          "ID table create storage group system dir {} doesn't exist, create it",
+          dir.getParentFile());
+    }
+
     dataFile = new File(dir, FILE_NAME);
     if (dataFile.exists()) {
       loc = dataFile.length();

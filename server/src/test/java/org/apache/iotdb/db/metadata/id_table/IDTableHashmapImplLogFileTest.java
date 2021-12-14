@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.id_table;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.id_table.entry.DiskSchemaEntry;
@@ -41,7 +40,7 @@ import java.util.HashSet;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-public class IDTableLogFileTest {
+public class IDTableHashmapImplLogFileTest {
 
   private boolean isEnableIDTable = false;
 
@@ -96,8 +95,7 @@ public class IDTableLogFileTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
 

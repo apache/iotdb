@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
-import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -39,6 +38,7 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
 import org.apache.iotdb.db.metadata.id_table.IDTable;
+import org.apache.iotdb.db.metadata.id_table.IDTableManager;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -297,6 +297,7 @@ public class MManager {
             "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
         return idx;
       } catch (Exception e) {
+        e.printStackTrace();
         throw new IOException("Failed to parser mlog.bin for err:" + e);
       }
     } else {
@@ -466,13 +467,8 @@ public class MManager {
 
     // update id table
     if (config.isEnableIDTable()) {
-      try {
-        IDTable idTable =
-            StorageEngine.getInstance().getProcessor(plan.getPath().getDevicePath()).getIdTable();
-        idTable.createTimeseries(plan);
-      } catch (StorageEngineException e) {
-        logger.error("get id table error");
-      }
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
+      idTable.createTimeseries(plan);
     }
   }
 
@@ -584,13 +580,8 @@ public class MManager {
 
     // update id table
     if (config.isEnableIDTable()) {
-      try {
-        IDTable idTable =
-            StorageEngine.getInstance().getProcessor(plan.getPrefixPath()).getIdTable();
-        idTable.createAlignedTimeseries(plan);
-      } catch (StorageEngineException e) {
-        logger.error("get id table error");
-      }
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      idTable.createAlignedTimeseries(plan);
     }
   }
 

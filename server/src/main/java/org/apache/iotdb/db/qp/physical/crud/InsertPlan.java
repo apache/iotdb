@@ -33,7 +33,11 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
+  // id form of device path
   protected PartialPath deviceId;
+  // device path
+  protected PartialPath devicePath;
+
   protected boolean isAligned;
   protected String[] measurements;
   // get from client
@@ -197,5 +201,13 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
+  }
+
+  public PartialPath getDevicePath() {
+    return devicePath;
+  }
+
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 }

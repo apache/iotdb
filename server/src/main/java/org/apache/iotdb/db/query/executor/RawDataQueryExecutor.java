@@ -41,6 +41,9 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,6 +59,8 @@ public class RawDataQueryExecutor {
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.queryPlan = queryPlan;
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(RawDataQueryExecutor.class);
 
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
@@ -127,6 +132,8 @@ public class RawDataQueryExecutor {
                 queryPlan.isAscending());
         readersOfSelectedSeries.add(reader);
       }
+    } catch (Exception e) {
+      logger.error("Meet error when init series reader " + e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }

@@ -146,7 +146,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public void serialize(DataOutputStream stream) throws IOException {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     stream.writeByte((byte) type);
-    putString(stream, deviceId.getFullPath());
+    putString(stream, devicePath.getFullPath());
 
     stream.writeInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
@@ -163,7 +163,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
     int type = PhysicalPlanType.BATCH_INSERT_ONE_DEVICE.ordinal();
     buffer.put((byte) type);
 
-    putString(buffer, deviceId.getFullPath());
+    putString(buffer, devicePath.getFullPath());
     buffer.putInt(rowPlans.length);
     for (InsertRowPlan plan : rowPlans) {
       buffer.putLong(plan.getTime());

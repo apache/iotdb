@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.metadata.id_table;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
@@ -59,7 +58,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-public class IDTableTest {
+public class IDTableHashmapImplTest {
 
   private CompressionType compressionType;
 
@@ -115,8 +114,7 @@ public class IDTableTest {
 
       manager.createAlignedTimeSeriesEntry(plan);
 
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -195,8 +193,7 @@ public class IDTableTest {
 
       manager.createAlignedTimeSeriesEntry(plan);
 
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
@@ -250,8 +247,7 @@ public class IDTableTest {
           compressionType,
           Collections.emptyMap());
 
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       long time = 1L;
       String[] columns = new String[1];
@@ -332,8 +328,7 @@ public class IDTableTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
       fail("should throw exception");
@@ -370,8 +365,7 @@ public class IDTableTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
 
@@ -425,7 +419,7 @@ public class IDTableTest {
       } catch (Exception e) {
         fail("throw wrong exception");
       }
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail("throw exception");
     }
@@ -455,8 +449,7 @@ public class IDTableTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
 
@@ -511,7 +504,7 @@ public class IDTableTest {
       } catch (Exception e) {
         fail("throw wrong exception");
       }
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail("throw exception");
     }
@@ -563,8 +556,7 @@ public class IDTableTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
 
@@ -632,8 +624,7 @@ public class IDTableTest {
           new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
 
       // call getSeriesSchemasAndReadLockDevice
-      IDTable idTable =
-          StorageEngine.getInstance().getProcessor(new PartialPath("root.laptop")).getIdTable();
+      IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
       idTable.getSeriesSchemas(insertRowPlan);
 
@@ -665,7 +656,7 @@ public class IDTableTest {
       idTable.updateLatestFlushTime(timeseriesID, 12L);
       assertEquals(12L, idTable.getLatestFlushedTime(timeseriesID));
 
-    } catch (MetadataException | StorageEngineException e) {
+    } catch (MetadataException e) {
       e.printStackTrace();
       fail("throw exception");
     }
