@@ -93,7 +93,7 @@ public class RestService implements IService {
     holder.setInitOrder(1);
     holder.setInitParameter(
         "jersey.config.server.provider.packages",
-        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.rest");
+        "io.swagger.jaxrs.listing, io.swagger.sample.resource, org.apache.iotdb.db.protocol.rest");
     holder.setInitParameter(
         "jersey.config.server.provider.classnames",
         "org.glassfish.jersey.media.multipart.MultiPartFeature");
