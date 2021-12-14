@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.query.reader.chunk.metadata;
 
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -31,13 +31,16 @@ import java.util.List;
 
 public class MemChunkMetadataLoader implements IChunkMetadataLoader {
 
-  private TsFileResource resource;
+  private UnclosedTsFileResource resource;
   private PartialPath seriesPath;
   private QueryContext context;
   private Filter timeFilter;
 
   public MemChunkMetadataLoader(
-      TsFileResource resource, PartialPath seriesPath, QueryContext context, Filter timeFilter) {
+      UnclosedTsFileResource resource,
+      PartialPath seriesPath,
+      QueryContext context,
+      Filter timeFilter) {
     this.resource = resource;
     this.seriesPath = seriesPath;
     this.context = context;

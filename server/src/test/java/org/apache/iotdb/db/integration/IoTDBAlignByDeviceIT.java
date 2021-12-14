@@ -154,7 +154,7 @@ public class IoTDBAlignByDeviceIT {
           "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
           "946684800000,root.vehicle.d0,null,100,null,good,null,",
           "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
+          "1000,root.vehicle.d1,888,null,null,null,null,"
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);

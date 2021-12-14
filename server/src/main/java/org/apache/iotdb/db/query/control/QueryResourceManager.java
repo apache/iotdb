@@ -24,7 +24,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -153,7 +153,8 @@ public class QueryResourceManager {
 
     queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
 
-    TsFileResource cachedUnclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
+    UnclosedTsFileResource cachedUnclosedSeqResource =
+        cachedQueryDataSource.getUnclosedSeqResource();
     if (cachedUnclosedSeqResource != null) {
       try {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
@@ -174,7 +175,8 @@ public class QueryResourceManager {
       }
     }
 
-    TsFileResource cachedUnclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
+    UnclosedTsFileResource cachedUnclosedUnseqResource =
+        cachedQueryDataSource.getUnclosedUnseqResource();
     if (cachedUnclosedUnseqResource != null) {
       try {
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();

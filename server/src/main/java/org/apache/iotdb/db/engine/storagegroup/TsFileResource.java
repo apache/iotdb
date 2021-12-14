@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
@@ -33,8 +32,6 @@ import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.*;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -56,17 +53,16 @@ import java.util.*;
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
-@SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
-  private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  protected static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   // tsfile
-  private File file;
+  protected File file;
 
   public static final String RESOURCE_SUFFIX = ".resource";
   static final String TEMP_SUFFIX = ".temp";
@@ -74,40 +70,22 @@ public class TsFileResource {
   /** version number */
   public static final byte VERSION_NUMBER = 1;
 
-  public TsFileProcessor getProcessor() {
-    return processor;
-  }
-
-  private TsFileProcessor processor;
+  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
+  protected byte timeIndexType;
 
   protected ITimeIndex timeIndex;
 
-  /** time index type, fileTimeIndex = 0, deviceTimeIndex = 1 */
-  private byte timeIndexType;
+  protected ModificationFile modFile;
 
-  private ModificationFile modFile;
+  protected volatile boolean closed = false;
+  protected volatile boolean deleted = false;
+  protected volatile boolean isMerging = false;
 
-  private volatile boolean closed = false;
-  private volatile boolean deleted = false;
-  private volatile boolean isMerging = false;
+  protected TsFileLock tsFileLock = new TsFileLock();
 
-  private TsFileLock tsFileLock = new TsFileLock();
+  private final Random random = new Random();
 
-  private Random random = new Random();
-
-  /**
-   * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
-   * process.
-   */
-  private List<ChunkMetadata> chunkMetadataList;
-
-  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
-  private List<ReadOnlyMemChunk> readOnlyMemChunk;
-
-  /** used for unsealed file to get TimeseriesMetadata */
-  private TimeseriesMetadata timeSeriesMetadata;
-
-  private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
+  protected FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
   private List<TsFileResource> upgradedResources;
@@ -124,35 +102,24 @@ public class TsFileResource {
    */
   private boolean isSeq;
 
-  /**
-   * If it is not null, it indicates that the current tsfile resource is a snapshot of the
-   * originTsFileResource, and if so, when we want to used the lock, we should try to acquire the
-   * lock of originTsFileResource
-   */
-  private TsFileResource originTsFileResource;
-
   /** Maximum index of plans executed within this TsFile. */
   protected long maxPlanIndex = Long.MIN_VALUE;
 
   /** Minimum index of plans executed within this TsFile. */
   protected long minPlanIndex = Long.MAX_VALUE;
 
-  private long version = 0;
+  protected long version = 0;
 
   public TsFileResource() {}
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
-    this.processor = other.processor;
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
-    this.chunkMetadataList = other.chunkMetadataList;
-    this.readOnlyMemChunk = other.readOnlyMemChunk;
-    generateTimeSeriesMetadata();
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
@@ -164,33 +131,8 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
-  }
-
-  /** unsealed TsFile */
-  public TsFileResource(File file, TsFileProcessor processor, int deviceNumInLastClosedTsFile) {
-    this.file = file;
-    this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
-    this.processor = processor;
-  }
-
-  /** unsealed TsFile */
-  public TsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    this.file = originTsFileResource.file;
-    this.timeIndex = originTsFileResource.timeIndex;
-    this.timeIndexType = originTsFileResource.timeIndexType;
-    this.chunkMetadataList = chunkMetadataList;
-    this.readOnlyMemChunk = readOnlyMemChunk;
-    this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
-    generateTimeSeriesMetadata();
+    this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
   @TestOnly
@@ -199,39 +141,6 @@ public class TsFileResource {
     this.file = file;
     this.timeIndex = new DeviceTimeIndex(deviceToIndex, startTimes, endTimes);
     this.timeIndexType = 1;
-  }
-
-  private void generateTimeSeriesMetadata() throws IOException {
-    timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
-    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
-
-    if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
-      TSDataType dataType = chunkMetadataList.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
-    } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
-      TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
-    }
-    if (timeSeriesMetadata.getTSDataType() != null) {
-      Statistics<?> seriesStatistics =
-          Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
-      // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-      }
-
-      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-        if (!memChunk.isEmpty()) {
-          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
-        }
-      }
-      timeSeriesMetadata.setStatistics(seriesStatistics);
-    } else {
-      timeSeriesMetadata = null;
-    }
   }
 
   public synchronized void serialize() throws IOException {
@@ -337,14 +246,6 @@ public class TsFileResource {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
-    return new ArrayList<>(chunkMetadataList);
-  }
-
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
-    return readOnlyMemChunk;
-  }
-
   public synchronized ModificationFile getModFile() {
     if (modFile == null) {
       modFile = new ModificationFile(file.getPath() + ModificationFile.FILE_SUFFIX);
@@ -416,49 +317,23 @@ public class TsFileResource {
       modFile.close();
       modFile = null;
     }
-    processor = null;
-    chunkMetadataList = null;
     timeIndex.close();
   }
 
-  public TsFileProcessor getUnsealedFileProcessor() {
-    return processor;
-  }
-
   public void writeLock() {
-    if (originTsFileResource == null) {
-      tsFileLock.writeLock();
-    } else {
-      originTsFileResource.writeLock();
-    }
+    tsFileLock.writeLock();
   }
 
   public void writeUnlock() {
-    if (originTsFileResource == null) {
-      tsFileLock.writeUnlock();
-    } else {
-      originTsFileResource.writeUnlock();
-    }
+    tsFileLock.writeUnlock();
   }
 
-  /**
-   * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
-   * before construct the current TsFileResource
-   */
   public void readLock() {
-    if (originTsFileResource == null) {
-      tsFileLock.readLock();
-    } else {
-      originTsFileResource.readLock();
-    }
+    tsFileLock.readLock();
   }
 
   public void readUnlock() {
-    if (originTsFileResource == null) {
-      tsFileLock.readUnlock();
-    } else {
-      originTsFileResource.readUnlock();
-    }
+    tsFileLock.readUnlock();
   }
 
   public boolean tryWriteLock() {
@@ -479,13 +354,13 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
-      logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
     }
     removeResourceFile();
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
-      logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
     }
   }
 
@@ -493,7 +368,7 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
     } catch (IOException e) {
-      logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
     }
   }
 
@@ -650,14 +525,6 @@ public class TsFileResource {
     return dataTTL == Long.MAX_VALUE || (System.currentTimeMillis() - time) <= dataTTL;
   }
 
-  public void setProcessor(TsFileProcessor processor) {
-    this.processor = processor;
-  }
-
-  public TimeseriesMetadata getTimeSeriesMetadata() {
-    return timeSeriesMetadata;
-  }
-
   public void setUpgradedResources(List<TsFileResource> upgradedResources) {
     this.upgradedResources = upgradedResources;
   }
@@ -718,7 +585,7 @@ public class TsFileResource {
     try {
       newResource = new TsFileResource(this);
     } catch (IOException e) {
-      logger.error("Cannot create hardlink for {}", file, e);
+      LOGGER.error("Cannot create hardlink for {}", file, e);
       return null;
     }
 
@@ -737,7 +604,7 @@ public class TsFileResource {
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
       } catch (IOException e) {
-        logger.error("Cannot create hardlink for {}", file, e);
+        LOGGER.error("Cannot create hardlink for {}", file, e);
         return null;
       }
     }
@@ -781,7 +648,7 @@ public class TsFileResource {
       try {
         serialize();
       } catch (IOException e) {
-        logger.error(
+        LOGGER.error(
             "Cannot serialize TsFileResource {} when updating plan index {}-{}",
             this,
             maxPlanIndex,

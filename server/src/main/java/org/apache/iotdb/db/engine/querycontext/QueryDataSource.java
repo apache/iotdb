@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.querycontext;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
@@ -30,8 +31,8 @@ public class QueryDataSource {
   private final List<TsFileResource> seqResources;
   private final List<TsFileResource> unseqResources;
 
-  private TsFileResource unclosedSeqResource;
-  private TsFileResource unclosedUnseqResource;
+  private UnclosedTsFileResource unclosedSeqResource;
+  private UnclosedTsFileResource unclosedUnseqResource;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
@@ -51,11 +52,11 @@ public class QueryDataSource {
     return unseqResources;
   }
 
-  public TsFileResource getUnclosedSeqResource() {
+  public UnclosedTsFileResource getUnclosedSeqResource() {
     return unclosedSeqResource;
   }
 
-  public TsFileResource getUnclosedUnseqResource() {
+  public UnclosedTsFileResource getUnclosedUnseqResource() {
     return unclosedUnseqResource;
   }
 
@@ -67,11 +68,11 @@ public class QueryDataSource {
     return unSeqFileOrderIndex;
   }
 
-  public void setUnclosedSeqResource(TsFileResource unclosedSeqResource) {
+  public void setUnclosedSeqResource(UnclosedTsFileResource unclosedSeqResource) {
     this.unclosedSeqResource = unclosedSeqResource;
   }
 
-  public void setUnclosedUnseqResource(TsFileResource unclosedUnseqResource) {
+  public void setUnclosedUnseqResource(UnclosedTsFileResource unclosedUnseqResource) {
     this.unclosedUnseqResource = unclosedUnseqResource;
   }
 

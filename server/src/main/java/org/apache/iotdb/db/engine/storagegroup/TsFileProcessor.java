@@ -143,7 +143,7 @@ public class TsFileProcessor {
       int deviceNumInLastClosedTsFile)
       throws IOException {
     this.storageGroupName = storageGroupName;
-    this.tsFileResource = new TsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
+    this.tsFileResource = new UnclosedTsFileResource(tsfile, this, deviceNumInLastClosedTsFile);
     this.storageGroupInfo = storageGroupInfo;
     this.writer = new RestorableTsFileIOWriter(tsfile);
     this.updateLatestFlushTimeCallback = updateLatestFlushTimeCallback;
@@ -1162,7 +1162,7 @@ public class TsFileProcessor {
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            new UnclosedTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(
@@ -1181,7 +1181,8 @@ public class TsFileProcessor {
     }
   }
 
-  public TsFileResource query(PartialPath seriesPath, QueryContext context) throws IOException {
+  public UnclosedTsFileResource query(PartialPath seriesPath, QueryContext context)
+      throws IOException {
     String deviceId = seriesPath.getDevice();
     String measurementId = seriesPath.getMeasurement();
 
@@ -1237,7 +1238,7 @@ public class TsFileProcessor {
 
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-        return new TsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
+        return new UnclosedTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
       }
     } catch (QueryProcessException | MetadataException e) {
       logger.error(

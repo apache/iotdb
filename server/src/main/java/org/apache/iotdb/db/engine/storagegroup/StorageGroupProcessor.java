@@ -732,7 +732,7 @@ public class StorageGroupProcessor {
           }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         }
-        tsFileResource.setProcessor(tsFileProcessor);
+        ((UnclosedTsFileResource) tsFileResource).setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
@@ -1615,9 +1615,9 @@ public class StorageGroupProcessor {
   public QueryDataSource getAllQueryDataSource(Filter timeFilter) throws QueryProcessException {
     readLock();
     try {
-      Pair<List<TsFileResource>, TsFileResource> seqResources =
+      Pair<List<TsFileResource>, UnclosedTsFileResource> seqResources =
           getFileResourceListForQuery(tsFileManagement.getTsFileList(true), timeFilter, true);
-      Pair<List<TsFileResource>, TsFileResource> unseqResources =
+      Pair<List<TsFileResource>, UnclosedTsFileResource> unseqResources =
           getFileResourceListForQuery(tsFileManagement.getTsFileList(false), timeFilter, false);
       QueryDataSource dataSource = new QueryDataSource(seqResources.left, unseqResources.left);
       dataSource.setUnclosedSeqResource(seqResources.right);
@@ -1717,7 +1717,7 @@ public class StorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource
+          ((UnclosedTsFileResource) tsFileResource)
               .getUnsealedFileProcessor()
               .query(
                   deviceId,
@@ -1741,11 +1741,11 @@ public class StorageGroupProcessor {
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
-  private Pair<List<TsFileResource>, TsFileResource> getFileResourceListForQuery(
+  private Pair<List<TsFileResource>, UnclosedTsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources, Filter timeFilter, boolean isSeq)
       throws MetadataException {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    TsFileResource unclosedTsfileResourceForQuery = null;
+    UnclosedTsFileResource unclosedTsfileResourceForQuery = null;
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL)) {
         continue;
@@ -1756,7 +1756,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           // There is at most one unclosed tsFile
-          unclosedTsfileResourceForQuery = tsFileResource;
+          unclosedTsfileResourceForQuery = (UnclosedTsFileResource) tsFileResource;
         }
       } finally {
         closeQueryLock.readLock().unlock();
@@ -1890,7 +1890,8 @@ public class StorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        TsFileProcessor tsfileProcessor =
+            ((UnclosedTsFileResource) tsFileResource).getUnsealedFileProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
@@ -2398,9 +2399,9 @@ public class StorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
 
-      if (!localFile.isClosed() && localFile.getProcessor() != null) {
+      if (!localFile.isClosed() && ((UnclosedTsFileResource) localFile).getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
-        syncCloseOneTsFileProcessor(true, localFile.getProcessor());
+        syncCloseOneTsFileProcessor(true, ((UnclosedTsFileResource) localFile).getProcessor());
       }
       int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
       switch (fileComparison) {
