@@ -34,8 +34,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
-
 public class SlidingTimeWindowConstructionTester implements UDTF {
 
   private static final Logger logger =
@@ -49,7 +47,7 @@ public class SlidingTimeWindowConstructionTester implements UDTF {
   @Override
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     logger.debug("SlidingTimeWindowConstructionTester#beforeStart");
-    long timeInterval = parameters.getLong(TIME_INTERVAL_KEY);
+    long timeInterval = parameters.getLong(ExampleUDFConstant.TIME_INTERVAL_KEY);
     configurations
         .setOutputDataType(TSDataType.INT32)
         .setAccessStrategy(new SlidingTimeWindowAccessStrategy(timeInterval));

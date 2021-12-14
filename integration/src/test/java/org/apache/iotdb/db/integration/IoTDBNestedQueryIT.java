@@ -22,6 +22,7 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.udf.example.ExampleUDFConstant;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -42,11 +43,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_SIZE;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_TIME;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -289,21 +285,21 @@ public class IoTDBNestedQueryIT {
       String sqlStr =
           String.format(
               "select time_window_counter(sin(d1.s1), '%s'='%s', '%s'='%s'), time_window_counter(sin(d1.s1), cos(d2.s2) / sin(d1.s1), d1.s2, '%s'='%s', '%s'='%s'), size_window_counter(cos(d2.s2), '%s'='%s', '%s'='%s'), size_window_counter(cos(d2.s2), cos(d2.s2), '%s'='%s', '%s'='%s') from root.vehicle",
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_TIME,
-              TIME_INTERVAL_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
+              ExampleUDFConstant.TIME_INTERVAL_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_TIME,
-              TIME_INTERVAL_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
+              ExampleUDFConstant.TIME_INTERVAL_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_SIZE,
-              WINDOW_SIZE_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
+              ExampleUDFConstant.WINDOW_SIZE_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_SIZE,
-              WINDOW_SIZE_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
+              ExampleUDFConstant.WINDOW_SIZE_KEY,
               window);
 
       try (Connection connection =
@@ -359,21 +355,21 @@ public class IoTDBNestedQueryIT {
                   + "size_window_counter(cos(empty), cos(empty), '%s'='%s', '%s'='%s'), "
                   + "empty, sin(empty) - bottom_k(top_k(empty, 'k'='111'), 'k'='111'), "
                   + "empty * empty / empty + empty %% empty - empty from root.vehicle",
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_TIME,
-              TIME_INTERVAL_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
+              ExampleUDFConstant.TIME_INTERVAL_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_TIME,
-              TIME_INTERVAL_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
+              ExampleUDFConstant.TIME_INTERVAL_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_SIZE,
-              WINDOW_SIZE_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
+              ExampleUDFConstant.WINDOW_SIZE_KEY,
               window,
-              ACCESS_STRATEGY_KEY,
-              ACCESS_STRATEGY_SLIDING_SIZE,
-              WINDOW_SIZE_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+              ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
+              ExampleUDFConstant.WINDOW_SIZE_KEY,
               window);
 
       try (Connection connection =
