@@ -51,7 +51,7 @@
 * [IOTDB-2064] Fix the NPE caused by map serde
 * [IOTDB-2068] Fix GZIP compressor meets ArrayIndexOutOfBoundsException
 * [IOTDB-2124] the filtering condition does not take efffect for last query in cluster
-* [IOTDB-3335] Fix the bug of start-cli.sh -e mode can't work with wild card \*
+* [ISSUE-3335] Fix the bug of start-cli.sh -e mode can't work with wild card \*
 * fix memory leak: replace RandomDeleteCache with Caffine CacheLoader
 
 
