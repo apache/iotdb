@@ -407,6 +407,13 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public boolean needMultiThread() {
+    // After testing, we can find that when there are 10 columns , the thread pool speed will exceed
+    // the serial speed, so we set the threshold to 10.
+    // Therefore, we set the number of core threads in the thread pool to min(the number of
+    // different sg, availableProcessors()/2), and need columns >= 10
+    // It should be noted that in the latest test, we found that if the number of sg is large and
+    // exceeds twice the recommended number of CPU threads, it may lead to failure to allocate out
+    // of heap memory and NPE. Therefore, we will also turn off multithreading in this case.
     if (needMulti == null) {
       int sgSize = getInsertPlanSGSize();
       // SG should be >= 1 so that it will not be locked and degenerate into serial.
