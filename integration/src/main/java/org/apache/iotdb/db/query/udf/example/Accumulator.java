@@ -37,16 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_ROW_BY_ROW;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_SIZE;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.ACCESS_STRATEGY_SLIDING_TIME;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_BEGIN_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.DISPLAY_WINDOW_END_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.SLIDING_STEP_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.TIME_INTERVAL_KEY;
-import static org.apache.iotdb.db.integration.IoTDBUDFWindowQueryIT.WINDOW_SIZE_KEY;
-
 public class Accumulator implements UDTF {
 
   private static final Logger logger = LoggerFactory.getLogger(Accumulator.class);
@@ -60,20 +50,22 @@ public class Accumulator implements UDTF {
   public void beforeStart(UDFParameters parameters, UDTFConfigurations configurations) {
     logger.debug("Accumulator#beforeStart");
     configurations.setOutputDataType(TSDataType.INT32);
-    switch (parameters.getStringOrDefault(ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW)) {
-      case ACCESS_STRATEGY_SLIDING_SIZE:
+    switch (parameters.getStringOrDefault(
+        ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW)) {
+      case ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE:
         configurations.setAccessStrategy(
-            new SlidingSizeWindowAccessStrategy(parameters.getInt(WINDOW_SIZE_KEY)));
+            new SlidingSizeWindowAccessStrategy(
+                parameters.getInt(ExampleUDFConstant.WINDOW_SIZE_KEY)));
         break;
-      case ACCESS_STRATEGY_SLIDING_TIME:
+      case ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME:
         configurations.setAccessStrategy(
             new SlidingTimeWindowAccessStrategy(
-                parameters.getLong(TIME_INTERVAL_KEY),
-                parameters.getLong(SLIDING_STEP_KEY),
-                parameters.getLong(DISPLAY_WINDOW_BEGIN_KEY),
-                parameters.getLong(DISPLAY_WINDOW_END_KEY)));
+                parameters.getLong(ExampleUDFConstant.TIME_INTERVAL_KEY),
+                parameters.getLong(ExampleUDFConstant.SLIDING_STEP_KEY),
+                parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY),
+                parameters.getLong(ExampleUDFConstant.DISPLAY_WINDOW_END_KEY)));
         break;
-      case ACCESS_STRATEGY_ROW_BY_ROW:
+      case ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW:
       default:
         configurations.setAccessStrategy(new RowByRowAccessStrategy());
     }
