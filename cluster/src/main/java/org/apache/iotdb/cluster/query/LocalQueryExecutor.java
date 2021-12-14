@@ -209,7 +209,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long querySingleSeries(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -220,6 +221,7 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -288,7 +290,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long queryMultSeries(MultSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -300,9 +303,11 @@ public class LocalQueryExecutor {
     List<MeasurementPath> paths = Lists.newArrayList();
     List<TSDataType> dataTypes = Lists.newArrayList();
     for (int i = 0; i < request.getPath().size(); i++) {
-      paths.add(
+      MeasurementPath path =
           getAssembledPathFromRequest(
-              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue()));
+              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue());
+      path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
+      paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
     Filter timeFilter = null;
@@ -532,7 +537,8 @@ public class LocalQueryExecutor {
    * be returned.
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {} by timestamp, queryId: {}",
         name,
@@ -543,6 +549,7 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
