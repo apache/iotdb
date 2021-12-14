@@ -215,12 +215,12 @@ public class TsFileResourceList implements List<TsFileResource> {
             > timeOfNewNode) {
           // the timestamp of head node is greater than the new node
           // insert it before the head
-          insertBefore(newNode, header);
+          insertBefore(header, newNode);
         } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
             < timeOfNewNode) {
           // the timestamp of new node is greater than the tail node
           // insert it after the tail
-          insertAfter(newNode, tail);
+          insertAfter(tail, newNode);
         } else {
           // the timestamp of new node is between the timestamp of head and tail node
           // find the first node whose timestamp is greater than new node
