@@ -204,7 +204,7 @@ internal\_ip = *A\_private\_Ip* (or *B\_private\_Ip*, *C\_private\_Ip*)
 
 ***iotdb-engine.properties***
 
-rpc\_address = *A\_public\_Ip* (or *B\_private\_Ip*, *C\_public\_Ip*)
+rpc\_address = *A\_public\_Ip* (or *B\_public\_Ip*, *C\_public\_Ip*)
 
 ### 启动IoTDB集群
 
