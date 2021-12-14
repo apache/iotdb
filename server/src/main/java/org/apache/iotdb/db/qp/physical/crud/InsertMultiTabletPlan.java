@@ -408,7 +408,11 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   public boolean needMultiThread() {
     if (needMulti == null) {
-      if (getInsertPlanSGSize() <= 1) {
+      int sgSize = getInsertPlanSGSize();
+      // SG should be >= 1 so that it will not be locked and degenerate into serial.
+      // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
+      // allocate out of heap memory and NPE
+      if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
         needMulti = false;
       } else {
         int BigPlanCountNum = 0;

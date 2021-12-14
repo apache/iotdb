@@ -1572,6 +1572,7 @@ public class PlanExecutor implements IPlanExecutor {
                   Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
     } else if (insertTabletsPool.getCorePoolSize() != updateCoreSize) {
       insertTabletsPool.setCorePoolSize(updateCoreSize);
+      insertTabletsPool.setMaximumPoolSize(updateCoreSize);
     }
   }
 

@@ -611,7 +611,7 @@ public class IoTDBConfig {
    * When the insert plan rowcount reaches a certain quantity and exceeds a certain ratio, turn on
    * Multithreading acceleration
    */
-  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 15;
+  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 10;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
