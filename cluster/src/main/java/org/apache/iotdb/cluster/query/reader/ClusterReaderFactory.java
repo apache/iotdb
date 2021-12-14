@@ -897,11 +897,14 @@ public class ClusterReaderFactory {
           logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
           return new EmptyReader();
         }
-      } catch (TException | IOException e) {
-        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
+      } catch (TException e) {
+        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
+        throw new StorageEngineException(e.getMessage());
+      } catch (IOException e) {
+        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
+        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
       }
     }
     throw new StorageEngineException(

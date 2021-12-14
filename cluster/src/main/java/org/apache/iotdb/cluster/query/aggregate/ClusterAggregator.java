@@ -244,12 +244,16 @@ public class ClusterAggregator {
               results);
           return results;
         }
-      } catch (TException | IOException e) {
+      } catch (TException e) {
         logger.error(
-            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
+            metaGroupMember.getName() + " query aggregation error " + path + " from " + node, e);
+        throw new StorageEngineException(e.getMessage());
+      } catch (IOException e) {
+        logger.error(
+            metaGroupMember.getName() + " cannot query aggregation " + path + " from " + node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);
+        logger.error(metaGroupMember.getName() + " query interrupted " + path + " from " + node, e);
       }
     }
     throw new StorageEngineException(

@@ -307,7 +307,12 @@ public class ClusterPlanExecutor extends PlanExecutor {
     // if path doesn't end with **.
     // e.g. we have SG root.sg.a and root.sg.b, the query path is root.sg, we should return the map
     // with key root.sg.a and root.sg.b instead of an empty one.
-    PartialPath wildcardPath = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    PartialPath wildcardPath;
+    if (!path.getMeasurement().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
+      wildcardPath = path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
+    } else {
+      wildcardPath = path;
+    }
     Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
       throw new PathNotExistException(path.getFullPath());
