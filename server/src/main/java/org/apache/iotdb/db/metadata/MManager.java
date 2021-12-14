@@ -638,10 +638,10 @@ public class MManager {
     try {
       List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
       if (allTimeseries.isEmpty()) {
-        throw new PathNotExistException(
-            String.format(
-                "No matched timeseries or aligned timeseries for Path [%s]",
-                pathPattern.getFullPath()));
+        // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
+        // nodes that do not have the metadata of the timeseries, the coordinator expects a
+        // PathNotExistException.
+        throw new PathNotExistException(pathPattern.getFullPath());
       }
 
       // Monitor storage group seriesPath is not allowed to be deleted
