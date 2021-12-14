@@ -317,6 +317,14 @@ public class TsFileResource {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
+  public boolean tempResourceExists() {
+    return fsFactory.getFile(file + RESOURCE_SUFFIX + TEMP_SUFFIX).exists();
+  }
+
+  public void removeTempResource() throws IOException {
+    fsFactory.deleteIfExists(new File(file + RESOURCE_SUFFIX + TEMP_SUFFIX));
+  }
+
   public List<IChunkMetadata> getChunkMetadataList() {
     return new ArrayList<>(chunkMetadataList);
   }
@@ -345,6 +353,14 @@ public class TsFileResource {
       }
     }
     return modFile;
+  }
+
+  public void resetModFile() {
+    if (modFile != null) {
+      synchronized (this) {
+        modFile = null;
+      }
+    }
   }
 
   public void setFile(File file) {

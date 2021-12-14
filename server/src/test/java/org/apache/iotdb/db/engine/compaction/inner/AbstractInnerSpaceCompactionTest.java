@@ -17,13 +17,14 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
+package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTest;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -58,7 +59,7 @@ import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 
-public abstract class AbstractSizeTieredCompactionTest {
+public abstract class AbstractInnerSpaceCompactionTest {
   protected static final Logger logger =
       LoggerFactory.getLogger(SizeTieredCompactionRecoverTest.class);
 

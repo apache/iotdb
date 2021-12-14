@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -35,7 +36,7 @@ import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class SizeTieredCompactionHandleExceptionTest extends AbstractSizeTieredCompactionTest {
+public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceCompactionTest {
   @Before
   public void setUp() throws IOException, MetadataException, WriteProcessException {
     this.seqFileNum = 10;

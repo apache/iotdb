@@ -79,7 +79,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
         selectedTsFileResourceList.size());
@@ -92,7 +92,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       isHoldingReadLock[i] = false;
       isHoldingWriteLock[i] = false;
     }
-    LOGGER.warn(
+    LOGGER.info(
         "{} [Compaction] Try to get the read lock of all selected files", fullStorageGroupName);
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       selectedTsFileResourceList.get(i).readLock();
@@ -113,23 +113,23 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
       sizeTieredCompactionLogger.logSequence(sequence);
       sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
       InnerSpaceCompactionUtils.compact(
           targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, true);
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
       sizeTieredCompactionLogger.close();
 
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] compaction finish, start to delete old files", fullStorageGroupName);
       if (Thread.currentThread().isInterrupted()) {
         throw new InterruptedException(
             String.format("%s [Compaction] abort", fullStorageGroupName));
       }
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] Compacted target files, try to get the write lock of source files",
           fullStorageGroupName);
 
@@ -140,15 +140,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
       }
-      LOGGER.warn(
+      LOGGER.info(
           "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
           fullStorageGroupName);
 
       // get write lock for TsFileResource list with timeout
       try {
         tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
-        LOGGER.warn(
-            "{} [Compactoin] Get the write lock of TsFileResourceList", fullStorageGroupName);
       } catch (WriteLockFailedException e) {
         // if current compaction thread couldn't get write lock
         // a WriteLockFailException will be thrown, then terminate the thread itself
@@ -164,7 +162,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       try {
-        LOGGER.warn(
+        LOGGER.info(
             "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
             fullStorageGroupName);
         InnerSpaceCompactionUtils.combineModsInCompaction(
@@ -172,6 +170,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
 
         // delete the old files
         InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+            selectedTsFileResourceList, fullStorageGroupName);
+        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, fullStorageGroupName);
         // replace the old files with new file, the new is in same position as the old
         for (TsFileResource resource : selectedTsFileResourceList) {
@@ -187,7 +187,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       }
 
       long costTime = System.currentTimeMillis() - startTime;
-      LOGGER.warn(
+      LOGGER.info(
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s",
           fullStorageGroupName,

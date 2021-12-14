@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -57,7 +58,7 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.TARGET_INFO;
 import static org.junit.Assert.assertEquals;
 
-public class SizeTieredCompactionRecoverTest extends AbstractSizeTieredCompactionTest {
+public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactionTest {
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {

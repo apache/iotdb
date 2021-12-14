@@ -19,6 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -31,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -150,6 +154,43 @@ public class InnerSpaceCompactionExceptionHandler {
           targetTsFile);
       return false;
     }
+    // deal with compaction modification
+    try {
+      for (TsFileResource sourceFile : selectedTsFileResourceList) {
+        if (sourceFile.getCompactionModFile().exists()) {
+          ModificationFile compactionModificationFile = sourceFile.getCompactionModFile();
+          Collection<Modification> newModification = new ArrayList<>();
+          if (sourceFile.getModFile().exists()) {
+            // origin mods file exists, combine compaction mods and normal mods
+            Collection<Modification> compactionModifications =
+                compactionModificationFile.getModifications();
+            Collection<Modification> normalModification =
+                sourceFile.getModFile().getModifications();
+            newModification.addAll(normalModification);
+            newModification.addAll(compactionModifications);
+            sourceFile.getModFile().close();
+            FileUtils.delete(new File(ModificationFile.getNormalMods(sourceFile).getFilePath()));
+          } else {
+            newModification = compactionModificationFile.getModifications();
+          }
+          compactionModificationFile.close();
+          FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+          // write the modifications to a new modification file
+          sourceFile.resetModFile();
+          try (ModificationFile newModificationFile = sourceFile.getModFile()) {
+            for (Modification modification : newModification) {
+              newModificationFile.write(modification);
+            }
+          }
+        }
+      }
+    } catch (Throwable e) {
+      LOGGER.error(
+          "{} Exception occurs while handling exception, set allowCompaction to false",
+          fullStorageGroupName,
+          e);
+      return false;
+    }
     return true;
   }
 
@@ -180,6 +221,24 @@ public class InnerSpaceCompactionExceptionHandler {
             tsFileResourceList.remove(sourceFile);
           }
         }
+
+        if (targetTsFile.getModFile().exists()) {
+          // if origin mods file exists, remove it, and generate a new mods file
+          FileUtils.delete(new File(targetTsFile.getModFile().getFilePath()));
+        }
+
+        InnerSpaceCompactionUtils.combineModsInCompaction(selectedTsFileResourceList, targetTsFile);
+        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+            selectedTsFileResourceList, fullStorageGroupName);
+        if (targetTsFile.tempResourceExists()) {
+          targetTsFile.removeTempResource();
+        }
+
+        if (!targetTsFile.resourceFileExists()) {
+          targetTsFile.serialize();
+          targetTsFile.setClosed(true);
+        }
+
         if (!tsFileResourceList.contains(targetTsFile)) {
           tsFileResourceList.keepOrderInsert(targetTsFile);
         }
