@@ -22,11 +22,11 @@ import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.runtime.RPCServiceException;
+import org.apache.iotdb.db.service.thrift.ProcessorWithMetrics;
 import org.apache.iotdb.db.service.thrift.ThriftService;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.service.thrift.handler.RPCServiceThriftHandler;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.service.rpc.thrift.TSIService.Processor;
 
 /** A service to handle jdbc request from client. */
 public class RPCService extends ThriftService implements RPCServiceMBean {
@@ -50,7 +50,7 @@ public class RPCService extends ThriftService implements RPCServiceMBean {
             Class.forName(IoTDBDescriptor.getInstance().getConfig().getRpcImplClassName())
                 .newInstance();
     initSyncedServiceImpl(null);
-    processor = new Processor<>(impl);
+    processor = new ProcessorWithMetrics(impl);
   }
 
   @Override

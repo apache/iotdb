@@ -21,6 +21,9 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.RaftMember;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -73,6 +76,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long resp) {
     long voterResp = resp;
+    boolean isWin = false;
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -98,6 +102,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           terminated.set(true);
           raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
+          isWin = true;
           logger.info("{}: Election {} is won", memberName, currTerm);
         }
         // still need more votes
@@ -124,6 +129,9 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         }
       }
     }
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(1, Metric.CLUSTER_ELECT.toString(), Tag.STATUS.toString(), String.valueOf(isWin));
   }
 
   @Override

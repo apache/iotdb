@@ -23,6 +23,9 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
@@ -66,6 +69,9 @@ public class TimeSeriesMetadataCache {
 
   private final AtomicLong entryAverageSize = new AtomicLong(0);
 
+  private final AtomicLong bloomFilterRequestCount = new AtomicLong(0L);
+  private final AtomicLong bloomFilterPreventCount = new AtomicLong(0L);
+
   private final Map<String, WeakReference<String>> devices =
       Collections.synchronizedMap(new WeakHashMap<>());
   private static final String SEPARATOR = "$";
@@ -97,6 +103,31 @@ public class TimeSeriesMetadataCache {
                                 + RamUsageEstimator.shallowSizeOf(value.getChunkMetadataList())))
             .recordStats()
             .build();
+
+    // add metrics
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            lruCache,
+            l -> (long) (l.stats().hitRate() * 100),
+            Tag.NAME.toString(),
+            "timeSeriesMeta");
+    // add metrics
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.CACHE_HIT.toString(),
+            bloomFilterPreventCount,
+            prevent -> {
+              if (bloomFilterRequestCount.get() != 0L) {
+                return 1L;
+              }
+              return (long)
+                  ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
+            },
+            Tag.NAME.toString(),
+            "timeSeriesMeta");
   }
 
   public static TimeSeriesMetadataCache getInstance() {
@@ -141,11 +172,15 @@ public class TimeSeriesMetadataCache {
           BloomFilter bloomFilter =
               BloomFilterCache.getInstance()
                   .get(new BloomFilterCache.BloomFilterCacheKey(key.filePath), debug);
-          if (bloomFilter != null && !bloomFilter.contains(path.getFullPath())) {
-            if (debug) {
-              DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
+          if (bloomFilter != null) {
+            bloomFilterRequestCount.incrementAndGet();
+            if (!bloomFilter.contains(path.getFullPath())) {
+              bloomFilterPreventCount.incrementAndGet();
+              if (debug) {
+                DEBUG_LOGGER.info("TimeSeries meta data {} is filter by bloomFilter!", key);
+              }
+              return null;
             }
-            return null;
           }
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           List<TimeseriesMetadata> timeSeriesMetadataList =

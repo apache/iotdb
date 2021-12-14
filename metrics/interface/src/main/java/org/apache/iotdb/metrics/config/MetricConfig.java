@@ -27,7 +27,7 @@ import java.util.List;
 
 public class MetricConfig {
   /** enable publishing data. */
-  private Boolean enableMetric = false;
+  private Boolean enableMetric = true;
 
   /** The period of data pushed by the reporter to the remote monitoring system. */
   private Integer pushPeriodInSecond = 5;
@@ -36,7 +36,8 @@ public class MetricConfig {
   private MonitorType monitorType = MonitorType.micrometer;
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
-  private List<ReporterType> metricReporterList = Arrays.asList(ReporterType.jmx);
+  private List<ReporterType> metricReporterList =
+      Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
 
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();

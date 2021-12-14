@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.type.Gauge;
+
 /** The TsFileProcessorInfo records the memory cost of this TsFileProcessor. */
 public class TsFileProcessorInfo {
 
@@ -27,26 +32,36 @@ public class TsFileProcessorInfo {
   /** memory occupation of unsealed TsFileResource, ChunkMetadata, WAL */
   private long memCost;
 
+  /** record memCost metrics */
+  private Gauge gauge;
+
   public TsFileProcessorInfo(StorageGroupInfo storageGroupInfo) {
     this.storageGroupInfo = storageGroupInfo;
     this.memCost = 0L;
+    this.gauge =
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(Metric.MEM.toString(), Tag.NAME.toString(), "chunkMetaData");
   }
 
   /** called in each insert */
   public void addTSPMemCost(long cost) {
     memCost += cost;
     storageGroupInfo.addStorageGroupMemCost(cost);
+    gauge.incr(cost);
   }
 
   /** called when meet exception */
   public void releaseTSPMemCost(long cost) {
     storageGroupInfo.releaseStorageGroupMemCost(cost);
     memCost -= cost;
+    gauge.decr(cost);
   }
 
   /** called when closing TSP */
   public void clear() {
     storageGroupInfo.releaseStorageGroupMemCost(memCost);
     memCost = 0L;
+    gauge.decr(memCost);
   }
 }

@@ -26,6 +26,9 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.MemUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -68,6 +71,8 @@ public abstract class AbstractMemTable implements IMemTable {
   private long minPlanIndex = Long.MAX_VALUE;
 
   private long createdTime = System.currentTimeMillis();
+
+  private static final String METRIC_POINT_IN = "pointsIn";
 
   public AbstractMemTable() {
     this.memTableMap = new HashMap<>();
@@ -139,8 +144,13 @@ public abstract class AbstractMemTable implements IMemTable {
     }
     memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
     write(insertRowPlan.getDeviceId().getFullPath(), schemaList, insertRowPlan.getTime(), values);
-    totalPointsNum +=
+    long pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+    totalPointsNum += pointsInserted;
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(pointsInserted, Metric.QUANTITY.toString(), Tag.NAME.toString(), METRIC_POINT_IN);
   }
 
   @Override
@@ -167,8 +177,12 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList,
         insertRowPlan.getTime(),
         insertRowPlan.getValues());
-    totalPointsNum +=
+    long pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
+    totalPointsNum += pointsInserted;
+    MetricsService.getInstance()
+        .getMetricManager()
+        .count(pointsInserted, Metric.QUANTITY.toString(), Tag.NAME.toString(), METRIC_POINT_IN);
   }
 
   @Override
@@ -178,9 +192,13 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
-      totalPointsNum +=
+      long pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
+      totalPointsNum += pointsInserted;
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(pointsInserted, Metric.QUANTITY.toString(), Tag.NAME.toString(), METRIC_POINT_IN);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
@@ -193,9 +211,13 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
       memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
-      totalPointsNum +=
+      long pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
+      totalPointsNum += pointsInserted;
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(pointsInserted, Metric.QUANTITY.toString(), Tag.NAME.toString(), METRIC_POINT_IN);
     } catch (RuntimeException e) {
       throw new WriteProcessException(e);
     }
