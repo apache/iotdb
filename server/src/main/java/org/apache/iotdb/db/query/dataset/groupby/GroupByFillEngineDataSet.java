@@ -32,7 +32,6 @@ import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
-import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -48,6 +47,7 @@ import java.util.Objects;
 public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
 
   protected Map<TSDataType, IFill> fillTypes;
+  protected IFill singleFill;
   protected final List<PartialPath> deduplicatedPaths;
   protected final List<String> aggregations;
   protected final Map<PartialPath, List<Integer>> resultIndexes = new HashMap<>();
@@ -86,6 +86,7 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
     super(context, groupByTimeFillPlan);
     this.aggregations = groupByTimeFillPlan.getDeduplicatedAggregations();
     this.fillTypes = groupByTimeFillPlan.getFillType();
+    this.singleFill = groupByTimeFillPlan.getSingleFill();
 
     this.deduplicatedPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
@@ -171,10 +172,17 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
         continue;
       }
 
-      IFill fill = fillTypes.get(resultDataType[resultIndex]);
+      IFill fill;
+      if (fillTypes != null) {
+        // old type fill logic
+        fill = fillTypes.get(resultDataType[resultIndex]);
+      } else {
+        fill = singleFill;
+      }
       if (fill == null) {
         continue;
       }
+
       if (fill instanceof PreviousFill && isExtraPrevious) {
         if (fill.getQueryStartTime() <= extraStartTime) {
           return true;
@@ -253,7 +261,13 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
       return;
     }
 
-    IFill fill = fillTypes.get(resultDataType[resultId]);
+    IFill fill;
+    if (fillTypes != null) {
+      // old type fill logic
+      fill = fillTypes.get(resultDataType[resultId]);
+    } else {
+      fill = singleFill;
+    }
     if (fill == null) {
       record.addField(null);
       return;
@@ -299,6 +313,9 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
     } else if (fill instanceof ValueFill) {
       try {
         TimeValuePair filledPair = fill.getFillResult();
+        if (filledPair == null) {
+          filledPair = ((ValueFill) fill).getSpecifiedFillResult(resultDataType[resultId]);
+        }
         record.addField(filledPair.getValue().getValue(), resultDataType[resultId]);
       } catch (QueryProcessException | StorageEngineException e) {
         throw new IOException(e);
@@ -403,10 +420,5 @@ public abstract class GroupByFillEngineDataSet extends GroupByEngineDataSet {
         }
       }
     }
-  }
-
-  @Override
-  public Pair<Long, Object> peekNextNotNullValue(Path path, int i) throws IOException {
-    throw new IOException("Group by fill doesn't support peek next");
   }
 }

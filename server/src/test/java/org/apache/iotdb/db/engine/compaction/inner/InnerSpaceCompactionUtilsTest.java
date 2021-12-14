@@ -26,8 +26,6 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLog
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -54,7 +52,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
 
   @Override
   @Before
-  public void setUp() throws IOException, WriteProcessException, MetadataException {
+  public void setUp() throws Exception {
     tempSGDir = new File(TestConstant.getTestTsFileDir("root.compactionTest", 0, 0));
     if (!tempSGDir.exists()) {
       assertTrue(tempSGDir.mkdirs());

@@ -33,6 +33,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.time.ZoneId;
+import java.util.Deque;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +46,11 @@ public abstract class Expression {
   private String expressionStringCache;
   protected Boolean isConstantOperandCache = null;
 
-  public boolean isAggregationFunctionExpression() {
+  public boolean isPlainAggregationFunctionExpression() {
+    return false;
+  }
+
+  public boolean isUserDefinedAggregationFunctionExpression() {
     return false;
   }
 
@@ -75,6 +82,11 @@ public abstract class Expression {
 
   /** Sub-classes should override this method indicating if the expression is a constant operand */
   protected abstract boolean isConstantOperandInternal();
+
+  /**
+   * returns the DIRECT children expressions if it has any, otherwise an EMPTY list will be returned
+   */
+  public abstract List<Expression> getExpressions();
 
   /** If this expression and all of its sub-expressions are {@link ConstantOperand}. */
   public final boolean isConstantOperand() {
@@ -127,5 +139,39 @@ public abstract class Expression {
   @Override
   public final String toString() {
     return getExpressionString();
+  }
+
+  /** returns an iterator to traverse all the successor expressions in a level-order */
+  public final Iterator<Expression> iterator() {
+    return new ExpressionIterator(this);
+  }
+
+  /** the iterator of an Expression tree with level-order traversal */
+  private static class ExpressionIterator implements Iterator<Expression> {
+
+    private final Deque<Expression> queue = new LinkedList<>();
+
+    public ExpressionIterator(Expression expression) {
+      queue.add(expression);
+    }
+
+    @Override
+    public boolean hasNext() {
+      return !queue.isEmpty();
+    }
+
+    @Override
+    public Expression next() {
+      if (!hasNext()) {
+        return null;
+      }
+      Expression current = queue.pop();
+      if (current != null) {
+        for (Expression subExp : current.getExpressions()) {
+          queue.push(subExp);
+        }
+      }
+      return current;
+    }
   }
 }

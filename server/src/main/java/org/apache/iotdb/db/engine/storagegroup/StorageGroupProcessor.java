@@ -113,6 +113,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
@@ -555,6 +556,10 @@ public class StorageGroupProcessor {
         return;
       }
       for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()
+            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+          continue;
+        }
         File[] compactionLogs =
             InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
@@ -785,7 +790,7 @@ public class StorageGroupProcessor {
         if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer.hasCrashed()) {
+          if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
             tsFileResource.setClosed(true);
@@ -798,7 +803,7 @@ public class StorageGroupProcessor {
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
 
-        if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);

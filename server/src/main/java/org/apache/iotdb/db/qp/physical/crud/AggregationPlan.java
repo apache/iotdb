@@ -89,7 +89,7 @@ public class AggregationPlan extends RawDataQueryPlan {
     if (!groupPathsResultMap.isEmpty()) {
       groupPathsResultMap.clear();
     }
-    for (int i = 0; i < paths.size(); i++) {
+    for (int i = 0; i < getDeduplicatedPaths().size(); i++) {
       String rawPath =
           String.format(
               "%s(%s)",

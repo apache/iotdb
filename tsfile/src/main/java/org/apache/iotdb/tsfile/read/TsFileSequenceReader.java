@@ -27,7 +27,15 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
-import org.apache.iotdb.tsfile.file.metadata.*;
+import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,7 +62,20 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.BufferOverflowException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Queue;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -67,6 +88,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   protected static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
   private static final String METADATA_INDEX_NODE_DESERIALIZE_ERROR =
       "Something error happened while deserializing MetadataIndexNode of file {}";
+  private static final int MAX_READ_BUFFER_SIZE = 4 * 1024 * 1024;
   protected String file;
   protected TsFileInput tsFileInput;
   protected long fileMetadataPos;
@@ -1000,23 +1022,35 @@ public class TsFileSequenceReader implements AutoCloseable {
    *
    * @param position the start position of data in the tsFileInput, or the current position if
    *     position = -1
-   * @param size the size of data that want to read
+   * @param totalSize the size of data that want to read
    * @return data that been read.
    */
-  protected ByteBuffer readData(long position, int size) throws IOException {
-    ByteBuffer buffer = ByteBuffer.allocate(size);
-    if (position < 0) {
-      if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != size) {
-        throw new IOException("reach the end of the data");
+  protected ByteBuffer readData(long position, int totalSize) throws IOException {
+    int allocateSize = Math.min(MAX_READ_BUFFER_SIZE, totalSize);
+    int allocateNum = (int) Math.ceil((double) totalSize / allocateSize);
+    ByteBuffer buffer = ByteBuffer.allocate(totalSize);
+    int bufferLimit = 0;
+    for (int i = 0; i < allocateNum; i++) {
+      if (i == allocateNum - 1) {
+        allocateSize = totalSize - allocateSize * (allocateNum - 1);
       }
-    } else {
-      long actualReadSize = ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, size);
-      if (actualReadSize != size) {
-        throw new IOException(
-            String.format(
-                "reach the end of the data. Size of data that want to read: %s,"
-                    + "actual read size: %s, position: %s",
-                size, actualReadSize, position));
+      bufferLimit += allocateSize;
+      buffer.limit(bufferLimit);
+      if (position < 0) {
+        if (ReadWriteIOUtils.readAsPossible(tsFileInput, buffer) != allocateSize) {
+          throw new IOException("reach the end of the data");
+        }
+      } else {
+        long actualReadSize =
+            ReadWriteIOUtils.readAsPossible(tsFileInput, buffer, position, allocateSize);
+        if (actualReadSize != allocateSize) {
+          throw new IOException(
+              String.format(
+                  "reach the end of the data. Size of data that want to read: %s,"
+                      + "actual read size: %s, position: %s",
+                  allocateSize, actualReadSize, position));
+        }
+        position += allocateSize;
       }
     }
     buffer.flip();

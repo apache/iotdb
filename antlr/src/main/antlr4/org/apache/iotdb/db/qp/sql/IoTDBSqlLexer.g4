@@ -23,9 +23,11 @@ lexer grammar IoTDBSqlLexer;
  * 1. Whitespace
  */
 
+// Instead of discarding whitespace completely, send them to a channel invisable to the parser, so
+// that the lexer could still produce WS tokens for the CLI's highlighter.
 WS
     :
-    [ \u000B\t\r\n]+ -> skip
+    [ \u000B\t\r\n]+ -> channel(HIDDEN)
     ;
 
 

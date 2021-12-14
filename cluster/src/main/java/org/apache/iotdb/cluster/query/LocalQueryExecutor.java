@@ -797,7 +797,6 @@ public class LocalQueryExecutor {
         new LocalGroupByExecutor(
             path,
             deviceMeasurements,
-            dataType,
             context,
             timeFilter,
             new SlotTsFileFilter(nodeSlots),
@@ -1013,7 +1012,7 @@ public class LocalQueryExecutor {
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
     List<PartialPath> partialPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
-      partialPaths.add(new PartialPath(path));
+      partialPaths.add(new MeasurementPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {

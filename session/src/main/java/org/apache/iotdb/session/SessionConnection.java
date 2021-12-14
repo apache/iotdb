@@ -185,6 +185,10 @@ public class SessionConnection {
     }
   }
 
+  protected TSIService.Iface getClient() {
+    return client;
+  }
+
   protected void setTimeZone(String zoneId)
       throws StatementExecutionException, IoTDBConnectionException {
     TSSetTimeZoneReq req = new TSSetTimeZoneReq(sessionId, zoneId);

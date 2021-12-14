@@ -84,7 +84,7 @@ createTimeseries
 
 alignedMeasurements
     : LR_BRACKET nodeNameWithoutWildcard attributeClauses
-    (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET
+    (COMMA nodeNameWithoutWildcard attributeClauses)* RR_BRACKET
     ;
 
 // Create Schema Template
@@ -361,7 +361,7 @@ groupByTimeClause
 
 groupByFillClause
     : GROUP BY LR_BRACKET timeInterval COMMA DURATION_LITERAL (COMMA DURATION_LITERAL)? RR_BRACKET
-     FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+    fillClause
     ;
 
 groupByLevelClause
@@ -369,14 +369,14 @@ groupByLevelClause
     ;
 
 fillClause
-    : FILL LR_BRACKET typeClause (COMMA typeClause)* RR_BRACKET
+    : FILL LR_BRACKET (linearClause | previousClause | specificValueClause | previousUntilLastClause | oldTypeClause (COMMA oldTypeClause)*) RR_BRACKET
     ;
 
 withoutNullClause
     : WITHOUT NULL_LITERAL (ALL | ANY)
     ;
 
-typeClause
+oldTypeClause
     : (dataType=DATATYPE_VALUE | ALL) LS_BRACKET linearClause RS_BRACKET
     | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET previousClause RS_BRACKET
     | (dataType=DATATYPE_VALUE | ALL) LS_BRACKET specificValueClause RS_BRACKET

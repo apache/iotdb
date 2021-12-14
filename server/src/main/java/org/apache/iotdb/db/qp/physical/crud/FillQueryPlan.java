@@ -28,6 +28,7 @@ public class FillQueryPlan extends RawDataQueryPlan {
 
   private long queryTime;
   private Map<TSDataType, IFill> fillType;
+  private IFill singleFill;
 
   public FillQueryPlan() {
     super();
@@ -42,8 +43,16 @@ public class FillQueryPlan extends RawDataQueryPlan {
     this.queryTime = queryTime;
   }
 
+  public IFill getSingleFill() {
+    return singleFill;
+  }
+
   public Map<TSDataType, IFill> getFillType() {
     return fillType;
+  }
+
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 
   public void setFillType(Map<TSDataType, IFill> fillType) {
