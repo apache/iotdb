@@ -251,6 +251,24 @@ public class MManagerBasicTest {
     assertFalse(manager.isPathExist(new PartialPath("root.1")));
   }
 
+  /**
+   * Test if the PathNotExistException can be correctly thrown when the path to be deleted does not
+   * exist. See {@link MManager#deleteTimeseries(PartialPath)}.
+   */
+  @Test
+  public void testDeleteNonExistentTimeseries() {
+    MManager manager = IoTDB.metaManager;
+    try {
+      manager.deleteTimeseries(new PartialPath("root.non.existent"));
+      fail();
+    } catch (PathNotExistException e) {
+      assertEquals("Path [root.non.existent] does not exist", e.getMessage());
+    } catch (MetadataException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   @Test
   public void testCreateAlignedTimeseries() throws MetadataException {
