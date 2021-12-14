@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
+import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileInfo;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionLogger;
@@ -601,6 +602,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
             } finally {
               compactionSelectionLock.unlock();
             }
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+              CompactionMonitor.getInstance()
+                  .reportCompactionStatus(storageGroupName, i, toMergeTsFiles.size(), true);
+            }
             compactionLogger = new CompactionLogger(storageGroupDir, storageGroupName);
             // log source file list and target file for recover
             for (TsFileResource mergeResource : toMergeTsFiles) {
@@ -676,6 +681,10 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     .getFile(storageGroupDir, storageGroupName + COMPACTION_LOG_NAME);
             if (logFile.exists()) {
               Files.delete(logFile.toPath());
+            }
+            if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+              CompactionMonitor.getInstance()
+                  .reportCompactionStatus(storageGroupName, i, toMergeTsFiles.size(), false);
             }
           }
         }

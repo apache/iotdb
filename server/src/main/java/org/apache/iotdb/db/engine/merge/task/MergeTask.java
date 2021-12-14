@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.merge.task;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.monitor.CompactionMonitor;
 import org.apache.iotdb.db.engine.merge.manage.MergeContext;
 import org.apache.iotdb.db.engine.merge.manage.MergeResource;
 import org.apache.iotdb.db.engine.merge.recover.MergeLogger;
@@ -141,6 +143,14 @@ public class MergeTask implements Callable<Void> {
           resource.getSeqFiles(),
           resource.getUnseqFiles());
     }
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+      CompactionMonitor.getInstance()
+          .reportMergeStatus(
+              storageGroupName,
+              resource.getSeqFiles().size(),
+              resource.getUnseqFiles().size(),
+              true);
+    }
     long startTime = System.currentTimeMillis();
     long totalFileSize =
         MergeUtils.collectFileSizes(resource.getSeqFiles(), resource.getUnseqFiles());
@@ -194,6 +204,14 @@ public class MergeTask implements Callable<Void> {
 
     states = States.CLEAN_UP;
     fileTask = null;
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableCompactionMonitor()) {
+      CompactionMonitor.getInstance()
+          .reportMergeStatus(
+              storageGroupName,
+              resource.getSeqFiles().size(),
+              resource.getUnseqFiles().size(),
+              false);
+    }
     cleanUp(true);
     if (logger.isInfoEnabled()) {
       double elapsedTime = (double) (System.currentTimeMillis() - startTime) / 1000.0;
