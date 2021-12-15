@@ -19,12 +19,9 @@
 
 package org.apache.iotdb.cluster.server;
 
-import org.apache.iotdb.cluster.coordinator.Coordinator;
-import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
-import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -38,12 +35,8 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
 
   private final ClusterServiceProvider clusterServiceProvider;
 
-  public ClusterTSServiceImpl(Coordinator coordinator) throws QueryProcessException {
-    clusterServiceProvider = new ClusterServiceProvider(coordinator);
-  }
-
-  public void setExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
-    clusterServiceProvider.executor = new ClusterPlanExecutor(metaGroupMember);
+  public ClusterTSServiceImpl() {
+    clusterServiceProvider = (ClusterServiceProvider) IoTDB.serviceProvider;
   }
 
   /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */

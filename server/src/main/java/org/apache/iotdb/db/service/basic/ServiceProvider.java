@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -83,7 +82,6 @@ public abstract class ServiceProvider {
   public ServiceProvider() throws QueryProcessException {
     queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
     processor = new Planner();
-    executor = new PlanExecutor();
   }
 
   public abstract QueryContext genQueryContext(

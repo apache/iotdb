@@ -20,8 +20,10 @@
 package org.apache.iotdb.cluster.server.basic;
 
 import org.apache.iotdb.cluster.coordinator.Coordinator;
+import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
+import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -45,9 +47,11 @@ public class ClusterServiceProvider extends ServiceProvider {
    */
   private final Coordinator coordinator;
 
-  public ClusterServiceProvider(Coordinator coordinator) throws QueryProcessException {
+  public ClusterServiceProvider(Coordinator coordinator, MetaGroupMember metaGroupMember)
+      throws QueryProcessException {
     super();
     this.coordinator = coordinator;
+    this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 
   /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */

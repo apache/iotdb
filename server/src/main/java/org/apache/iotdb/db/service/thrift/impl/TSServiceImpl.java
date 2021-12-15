@@ -173,7 +173,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private long startTime = -1L;
 
-  private final ServiceProvider serviceProvider;
+  protected final ServiceProvider serviceProvider;
 
   public TSServiceImpl() {
     super();

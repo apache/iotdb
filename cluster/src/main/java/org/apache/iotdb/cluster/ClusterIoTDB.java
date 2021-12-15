@@ -176,7 +176,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     initTasks();
     try {
       // set coordinator for serviceProvider construction
-      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator));
+      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator, metaGroupMember));
 
       // we need to check config after initLocalEngines.
       startServerCheck();
@@ -393,8 +393,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   private void startClientRPC() throws QueryProcessException, StartupException {
     // we must wait until the metaGroup established.
     // So that the ClusterRPCService can work.
-    ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl(coordinator);
-    clusterServiceImpl.setExecutor(metaGroupMember);
+    ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
     ServiceProvider.sessionManager = ClusterSessionManager.getInstance();
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
