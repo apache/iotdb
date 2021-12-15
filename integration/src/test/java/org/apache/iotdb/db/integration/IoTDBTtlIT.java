@@ -39,7 +39,7 @@ import java.sql.Statement;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({LocalStandaloneTest.class})
 public class IoTDBTtlIT {
 
   @Before
