@@ -83,6 +83,7 @@ public class InsertTabletPlan extends InsertPlan {
   public InsertTabletPlan(PartialPath prefixPath, List<String> measurements) {
     super(OperatorType.BATCH_INSERT);
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
@@ -90,6 +91,7 @@ public class InsertTabletPlan extends InsertPlan {
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements) {
     super(OperatorType.BATCH_INSERT);
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
@@ -97,6 +99,7 @@ public class InsertTabletPlan extends InsertPlan {
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements, List<Integer> dataTypes) {
     super(OperatorType.BATCH_INSERT);
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;
@@ -106,6 +109,7 @@ public class InsertTabletPlan extends InsertPlan {
       PartialPath prefixPath, String[] measurements, List<Integer> dataTypes, boolean isAligned) {
     super(OperatorType.BATCH_INSERT);
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;

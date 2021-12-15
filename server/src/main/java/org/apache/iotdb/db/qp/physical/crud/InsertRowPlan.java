@@ -73,6 +73,7 @@ public class InsertRowPlan extends InsertPlan {
   public InsertRowPlan(InsertRowPlan another) {
     super(OperatorType.INSERT);
     this.deviceId = another.deviceId;
+    this.devicePath = another.deviceId;
     this.time = another.time;
     this.measurements = new String[another.measurements.length];
     System.arraycopy(another.measurements, 0, this.measurements, 0, another.measurements.length);
@@ -87,6 +88,7 @@ public class InsertRowPlan extends InsertPlan {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[insertValues.length];
     // We need to create an Object[] for the data type casting, because we can not set Float, Long
@@ -106,6 +108,7 @@ public class InsertRowPlan extends InsertPlan {
     super(Operator.OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurementList;
     this.dataTypes = new TSDataType[measurementList.length];
     this.values = new Object[measurementList.length];
@@ -124,6 +127,7 @@ public class InsertRowPlan extends InsertPlan {
     super(OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.values = new Object[dataTypes.length];
@@ -147,6 +151,7 @@ public class InsertRowPlan extends InsertPlan {
     super(OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = measurements;
     this.dataTypes = dataTypes;
     this.values = new Object[dataTypes.length];
@@ -170,6 +175,7 @@ public class InsertRowPlan extends InsertPlan {
     super(OperatorType.INSERT);
     this.time = insertTime;
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.measurements = new String[] {measurement};
     this.dataTypes = new TSDataType[] {type};
     this.values = new Object[1];
@@ -184,6 +190,7 @@ public class InsertRowPlan extends InsertPlan {
   public InsertRowPlan(TSRecord tsRecord) throws IllegalPathException {
     super(OperatorType.INSERT);
     this.deviceId = new PartialPath(tsRecord.deviceId);
+    this.devicePath = deviceId;
     this.time = tsRecord.time;
     this.measurements = new String[tsRecord.dataPointList.size()];
     this.measurementMNodes = new IMeasurementMNode[tsRecord.dataPointList.size()];

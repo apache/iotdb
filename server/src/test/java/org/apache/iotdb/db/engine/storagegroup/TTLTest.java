@@ -147,6 +147,7 @@ public class TTLTest {
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
+    plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
@@ -183,6 +184,7 @@ public class TTLTest {
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setDeviceId(new PartialPath(sg1));
+    plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});

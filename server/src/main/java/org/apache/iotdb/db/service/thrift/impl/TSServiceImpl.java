@@ -1343,6 +1343,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       InsertRowPlan plan = new InsertRowPlan();
       try {
         plan.setDeviceId(new PartialPath(req.getPrefixPaths().get(i)));
+        plan.setDevicePath(plan.getDeviceId());
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1481,6 +1482,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
       InsertRowPlan plan = new InsertRowPlan();
       plan.setDeviceId(new PartialPath(req.getPrefixPath()));
+      plan.setDevicePath(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.trigger.service;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
@@ -83,6 +84,8 @@ public class TriggerRegistrationService implements IService {
   private static final String LIB_ROOT = IoTDBDescriptor.getInstance().getConfig().getTriggerDir();
 
   private final ConcurrentHashMap<String, TriggerExecutor> executors;
+
+  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   private TriggerLogWriter logWriter;
 
@@ -157,11 +160,14 @@ public class TriggerRegistrationService implements IService {
     measurementMNode.setTriggerExecutor(executor);
 
     // update id table
-    try {
-      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
-      idTable.registerTrigger(plan.getFullPath(), measurementMNode);
-    } catch (MetadataException e) {
-      throw new TriggerManagementException(e.getMessage(), e);
+    if (config.isEnableIDTable()) {
+      try {
+        IDTable idTable =
+            IDTableManager.getInstance().getIDTable(plan.getFullPath().getDevicePath());
+        idTable.registerTrigger(plan.getFullPath(), measurementMNode);
+      } catch (MetadataException e) {
+        throw new TriggerManagementException(e.getMessage(), e);
+      }
     }
   }
 
@@ -208,12 +214,14 @@ public class TriggerRegistrationService implements IService {
         .deregister(executor.getRegistrationInformation().getClassName());
 
     // update id table
-    try {
-      PartialPath fullPath = executor.getMeasurementMNode().getPartialPath();
-      IDTable idTable = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
-      idTable.deregisterTrigger(fullPath, executor.getMeasurementMNode());
-    } catch (MetadataException e) {
-      throw new TriggerManagementException(e.getMessage(), e);
+    if (config.isEnableIDTable()) {
+      try {
+        PartialPath fullPath = executor.getMeasurementMNode().getPartialPath();
+        IDTable idTable = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
+        idTable.deregisterTrigger(fullPath, executor.getMeasurementMNode());
+      } catch (MetadataException e) {
+        throw new TriggerManagementException(e.getMessage(), e);
+      }
     }
   }
 

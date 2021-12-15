@@ -579,7 +579,7 @@ public class StorageEngine implements IService {
    *
    * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
+  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -613,7 +613,7 @@ public class StorageEngine implements IService {
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
-      throws StorageEngineException {
+      throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -640,7 +640,7 @@ public class StorageEngine implements IService {
 
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchProcessException {
+      throws StorageEngineException, BatchProcessException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -1057,16 +1057,15 @@ public class StorageEngine implements IService {
   }
 
   protected void getSeriesSchemas(InsertPlan insertPlan, StorageGroupProcessor processor)
-      throws StorageEngineException {
+      throws StorageEngineException, MetadataException {
     try {
       if (config.isEnableIDTable()) {
         processor.getIdTable().getSeriesSchemas(insertPlan);
       } else {
         IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
         insertPlan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDeviceId()));
-        insertPlan.setDevicePath(insertPlan.getDeviceId());
       }
-    } catch (MetadataException | IOException e) {
+    } catch (IOException e) {
       throw new StorageEngineException(e);
     }
   }

@@ -76,6 +76,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       throws QueryProcessException {
     this();
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     rowPlans = new InsertRowPlan[insertTimes.length];
     rowPlanIndexList = new int[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
@@ -109,6 +110,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
     this.deviceId = prefixPath;
+    this.devicePath = deviceId;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }
