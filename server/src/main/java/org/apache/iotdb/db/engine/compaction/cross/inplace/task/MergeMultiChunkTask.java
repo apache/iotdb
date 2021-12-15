@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSel
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -151,18 +152,25 @@ public class MergeMultiChunkTask {
 
       IMergePathSelector pathSelector =
           new NaivePathSelector(measurementPathListByDevice, concurrentMergeSeriesNum);
-      while (pathSelector.hasNext()) {
-        currMergingPaths = pathSelector.next();
-        mergePaths();
-        resource.clearChunkWriterCache();
-        if (Thread.interrupted()) {
-          logger.info("MergeMultiChunkTask {} aborted", taskName);
-          Thread.currentThread().interrupt();
-          return;
+      try {
+        while (pathSelector.hasNext()) {
+          currMergingPaths = pathSelector.next();
+          mergePaths();
+          resource.clearChunkWriterCache();
+          if (Thread.interrupted()) {
+            logger.info("MergeMultiChunkTask {} aborted", taskName);
+            Thread.currentThread().interrupt();
+            return;
+          }
         }
+        mergedDeviceCnt++;
+        logMergeProgress();
+      } catch (MetadataException e) {
+        logger.warn(
+            "Failed to get data type by {} in merge process,{}",
+            device.getDevice(),
+            e.getMessage());
       }
-      mergedDeviceCnt++;
-      logMergeProgress();
       measurementChunkMetadataListMapIteratorCache.clear();
       chunkMetadataListCacheForMerge.clear();
     }
@@ -187,7 +195,7 @@ public class MergeMultiChunkTask {
     return String.format("Processed %d/%d devices", mergedDeviceCnt, unmergedDevice.size());
   }
 
-  private void mergePaths() throws IOException {
+  private void mergePaths() throws IOException, MetadataException {
     inplaceCompactionLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
