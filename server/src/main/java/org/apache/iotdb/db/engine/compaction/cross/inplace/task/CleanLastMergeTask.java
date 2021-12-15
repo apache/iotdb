@@ -50,14 +50,14 @@ public class CleanLastMergeTask extends CrossSpaceMergeTask {
 
   public void cleanLastMergeInfo(boolean continueMerge, File logFile) throws IOException {
     if (!logFile.exists()) {
-      logger.info("{} no merge.log, merge clean ends.", taskName);
+      logger.info("{} no merge.log, merge clean ends", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
     cleanUp(continueMerge);
     if (logger.isInfoEnabled()) {
       logger.info(
-          "{} merge clean ends after {}ms.", taskName, (System.currentTimeMillis() - startTime));
+          "{} merge clean ends after {}ms", taskName, (System.currentTimeMillis() - startTime));
     }
   }
 }
