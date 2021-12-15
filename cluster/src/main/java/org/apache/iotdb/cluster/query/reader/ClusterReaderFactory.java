@@ -79,6 +79,7 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -897,10 +898,10 @@ public class ClusterReaderFactory {
           logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
           return new EmptyReader();
         }
-      } catch (TException e) {
+      } catch (TApplicationException e) {
         logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
         throw new StorageEngineException(e.getMessage());
-      } catch (IOException e) {
+      } catch (TException | IOException e) {
         logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
