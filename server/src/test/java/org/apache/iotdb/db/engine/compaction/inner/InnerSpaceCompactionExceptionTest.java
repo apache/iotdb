@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.utils.Pair;
 
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -166,57 +165,6 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         tsFileManager.getSequenceListByTimePartition(0));
     Assert.assertTrue(targetResource.getTsFile().exists());
     Assert.assertTrue(targetResource.resourceFileExists());
-
-    seqResources.remove(0);
-    for (TsFileResource resource : seqResources) {
-      Assert.assertFalse(resource.resourceFileExists());
-      Assert.assertFalse(resource.getTsFile().exists());
-    }
-
-    Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(1, tsFileManager.getSequenceListByTimePartition(0).size());
-    Assert.assertEquals(targetResource, tsFileManager.getSequenceListByTimePartition(0).get(0));
-  }
-
-  /**
-   * Test when some source files lost and resource file of target file is not generated yet. System
-   * should delete temp source file, and generate a new tsfile resource file for target file.
-   *
-   * @throws Exception
-   */
-  @Test
-  public void testWhenSomeSourceLostAndTargetResourceLost() throws Exception {
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
-    TsFileResource targetResource =
-        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
-    File logFile =
-        new File(
-            targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
-    SizeTieredCompactionLogger compactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
-    for (TsFileResource source : seqResources) {
-      compactionLogger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, source.getTsFile());
-    }
-    compactionLogger.logSequence(true);
-    compactionLogger.logFileInfo(
-        SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
-    seqResources.get(0).remove();
-    FileUtils.delete(new File(targetResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX));
-    File tempResourceFile =
-        new File(targetResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX + ".temp");
-    InnerSpaceCompactionExceptionHandler.handleException(
-        COMPACTION_TEST_SG,
-        logFile,
-        targetResource,
-        seqResources,
-        tsFileManager,
-        tsFileManager.getSequenceListByTimePartition(0));
-    Assert.assertTrue(targetResource.getTsFile().exists());
-    Assert.assertTrue(targetResource.resourceFileExists());
-    Assert.assertFalse(tempResourceFile.exists());
 
     seqResources.remove(0);
     for (TsFileResource resource : seqResources) {
