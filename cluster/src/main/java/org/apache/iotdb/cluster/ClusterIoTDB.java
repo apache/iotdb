@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.server.ClusterRPCService;
 import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport;
@@ -65,7 +66,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -174,10 +175,13 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             ClientManager.Type.RequestForwardClient);
     initTasks();
     try {
+      // set coordinator for serviceProvider construction
+      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator));
+
       // we need to check config after initLocalEngines.
       startServerCheck();
       JMXService.registerMBean(metaGroupMember, metaGroupMember.getMBeanName());
-    } catch (StartupException e) {
+    } catch (StartupException | QueryProcessException e) {
       logger.error("Failed to check cluster config.", e);
       stop();
       return false;
@@ -389,10 +393,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
   private void startClientRPC() throws QueryProcessException, StartupException {
     // we must wait until the metaGroup established.
     // So that the ClusterRPCService can work.
-    ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
-    clusterServiceImpl.setCoordinator(coordinator);
+    ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl(coordinator);
     clusterServiceImpl.setExecutor(metaGroupMember);
-    BasicServiceProvider.sessionManager = ClusterSessionManager.getInstance();
+    ServiceProvider.sessionManager = ClusterSessionManager.getInstance();
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());

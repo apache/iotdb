@@ -32,7 +32,8 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -50,7 +51,7 @@ public class MetaManager {
 
   protected final Planner planner = new Planner();
 
-  private final BasicServiceProvider basicServiceProvider;
+  private final ServiceProvider serviceProvider;
 
   private static String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
@@ -64,11 +65,7 @@ public class MetaManager {
       new HashMap<>();
 
   private MetaManager() {
-    try {
-      basicServiceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+    serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
     recover();
   }
@@ -78,14 +75,14 @@ public class MetaManager {
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
-          basicServiceProvider.genQueryContext(
+          serviceProvider.genQueryContext(
               queryId,
               true,
               System.currentTimeMillis(),
               SELECT_TAG_INFO_SQL,
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
-          basicServiceProvider.createQueryDataSet(
+          serviceProvider.createQueryDataSet(
               queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
@@ -120,7 +117,7 @@ public class MetaManager {
         | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
     } finally {
-      BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+      ServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
@@ -134,7 +131,7 @@ public class MetaManager {
     try {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + database));
-      basicServiceProvider.executeNonQuery(setStorageGroupPlan);
+      serviceProvider.executeNonQuery(setStorageGroupPlan);
     } catch (QueryProcessException e) {
       // errCode = 300 means sg has already set
       if (e.getErrorCode() != 300) {
@@ -201,7 +198,7 @@ public class MetaManager {
     List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
     for (InsertRowPlan plan : plans) {
       try {
-        basicServiceProvider.executeNonQuery(plan);
+        serviceProvider.executeNonQuery(plan);
       } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
         throw new InfluxDBException(e.getMessage());
       }

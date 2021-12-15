@@ -40,9 +40,9 @@ import java.util.List;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
-public abstract class BasicServiceBaseProvider {
+public abstract class ServiceProvider {
 
-  public static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
+  public static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
   public static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   public static final Logger SLOW_SQL_LOGGER =
@@ -61,7 +61,7 @@ public abstract class BasicServiceBaseProvider {
   public Planner processor;
   public IPlanExecutor executor;
 
-  public BasicServiceBaseProvider() throws QueryProcessException {
+  public ServiceProvider() throws QueryProcessException {
     queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
     processor = new Planner();
     executor = new PlanExecutor();

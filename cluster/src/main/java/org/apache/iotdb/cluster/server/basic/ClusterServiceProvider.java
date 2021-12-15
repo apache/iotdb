@@ -1,3 +1,22 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 package org.apache.iotdb.cluster.server.basic;
 
 import org.apache.iotdb.cluster.coordinator.Coordinator;
@@ -9,7 +28,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.service.basic.BasicServiceBaseProvider;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -17,18 +36,17 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ClusterBasicServiceProvider extends BasicServiceBaseProvider {
-  private static final Logger logger = LoggerFactory.getLogger(ClusterBasicServiceProvider.class);
+public class ClusterServiceProvider extends ServiceProvider {
+  private static final Logger logger = LoggerFactory.getLogger(ClusterServiceProvider.class);
 
   /**
    * The Coordinator of the local node. Through this node queries data and meta from the cluster and
    * performs data manipulations to the cluster.
    */
-  private Coordinator coordinator;
+  private final Coordinator coordinator;
 
-  public ClusterBasicServiceProvider() throws QueryProcessException {}
-
-  public void setCoordinator(Coordinator coordinator) {
+  public ClusterServiceProvider(Coordinator coordinator) throws QueryProcessException {
+    super();
     this.coordinator = coordinator;
   }
 

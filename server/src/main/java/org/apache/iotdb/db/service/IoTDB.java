@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.flush.FlushManager;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.protocol.rest.RestService;
@@ -41,6 +42,8 @@ import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
+import org.apache.iotdb.db.service.basic.LocalServiceProvider;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -57,6 +60,7 @@ public class IoTDB implements IoTDBMBean {
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
   private final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
+  public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
 
   public static IoTDB getInstance() {
@@ -79,6 +83,10 @@ public class IoTDB implements IoTDBMBean {
     IoTDB.metaManager = metaManager;
   }
 
+  public static void setServiceProvider(ServiceProvider serviceProvider) {
+    IoTDB.serviceProvider = serviceProvider;
+  }
+
   public static void setClusterMode() {
     IoTDB.clusterMode = true;
   }
@@ -99,7 +107,7 @@ public class IoTDB implements IoTDBMBean {
     }
     try {
       setUp();
-    } catch (StartupException e) {
+    } catch (StartupException | QueryProcessException e) {
       logger.error("meet error while starting up.", e);
       deactivate();
       logger.error("{} exit", IoTDBConstant.GLOBAL_DB_NAME);
@@ -108,13 +116,14 @@ public class IoTDB implements IoTDBMBean {
     logger.info("{} has started.", IoTDBConstant.GLOBAL_DB_NAME);
   }
 
-  private void setUp() throws StartupException {
+  private void setUp() throws StartupException, QueryProcessException {
     logger.info("Setting up IoTDB...");
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
     logger.info("recover the schema...");
     initMManager();
+    initServiceProvider();
     registerManager.register(JMXService.getInstance());
     registerManager.register(FlushManager.getInstance());
     registerManager.register(MultiFileLogNodeManager.getInstance());
@@ -135,16 +144,8 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(RPCService.getInstance());
     }
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
-      registerManager.register(InfluxDBRPCService.getInstance());
-    }
+    initProtocols();
 
-    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
-      registerManager.register(MQTTService.getInstance());
-    }
-    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
-      registerManager.register(RestService.getInstance());
-    }
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
     while (!StorageEngine.getInstance().isAllSgReady()) {
@@ -164,6 +165,25 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
+  }
+
+  private void initServiceProvider() throws QueryProcessException {
+    if (!clusterMode) {
+      serviceProvider = new LocalServiceProvider();
+    }
+  }
+
+  private void initProtocols() throws StartupException {
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      registerManager.register(InfluxDBRPCService.getInstance());
+    }
+
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
+      registerManager.register(MQTTService.getInstance());
+    }
+    if (IoTDBRestServiceDescriptor.getInstance().getConfig().isEnableRestService()) {
+      registerManager.register(RestService.getInstance());
+    }
   }
 
   private void deactivate() {

@@ -21,7 +21,7 @@ package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
-import org.apache.iotdb.cluster.server.basic.ClusterBasicServiceProvider;
+import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -37,24 +37,20 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
  */
 public class ClusterTSServiceImpl extends TSServiceImpl {
 
-  private final ClusterBasicServiceProvider clusterBasicServiceProvider;
+  private final ClusterServiceProvider clusterServiceProvider;
 
-  public ClusterTSServiceImpl() throws QueryProcessException {
-    clusterBasicServiceProvider = new ClusterBasicServiceProvider();
+  public ClusterTSServiceImpl(Coordinator coordinator) throws QueryProcessException {
+    clusterServiceProvider = new ClusterServiceProvider(coordinator);
   }
 
   public void setExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
-    clusterBasicServiceProvider.executor = new ClusterPlanExecutor(metaGroupMember);
-  }
-
-  public void setCoordinator(Coordinator coordinator) {
-    clusterBasicServiceProvider.setCoordinator(coordinator);
+    clusterServiceProvider.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 
   /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    return clusterBasicServiceProvider.executeNonQueryPlan(plan);
+    return clusterServiceProvider.executeNonQueryPlan(plan);
   }
 
   /**
@@ -65,7 +61,6 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    */
   public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
-    return clusterBasicServiceProvider.genQueryContext(
-        queryId, debug, startTime, statement, timeout);
+    return clusterServiceProvider.genQueryContext(queryId, debug, startTime, statement, timeout);
   }
 }

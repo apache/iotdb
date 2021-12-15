@@ -22,16 +22,15 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 
-public class BasicServiceProvider extends BasicServiceBaseProvider {
+public class LocalServiceProvider extends ServiceProvider {
 
-  public BasicServiceProvider() throws QueryProcessException {
-    executor = new PlanExecutor();
+  public LocalServiceProvider() throws QueryProcessException {
+    super();
   }
 
   @Override
