@@ -65,6 +65,36 @@ public class TsFileResourceListTest {
   }
 
   @Test
+  public void testKeepOrderInsert() throws Exception {
+    TsFileResourceList tsFileResourceList = new TsFileResourceList();
+    TsFileResource resource1 = generateTsFileResource(10);
+    // 10
+    tsFileResourceList.keepOrderInsert(resource1);
+    Assert.assertEquals(resource1, tsFileResourceList.get(0));
+    Assert.assertEquals(1, tsFileResourceList.size());
+    TsFileResource resource2 = generateTsFileResource(100);
+    // 10 100
+    tsFileResourceList.keepOrderInsert(resource2);
+    Assert.assertEquals(resource2, tsFileResourceList.get(1));
+    Assert.assertEquals(2, tsFileResourceList.size());
+    TsFileResource resource3 = generateTsFileResource(50);
+    // 10 50 100
+    tsFileResourceList.keepOrderInsert(resource3);
+    Assert.assertEquals(resource3, tsFileResourceList.get(1));
+    Assert.assertEquals(3, tsFileResourceList.size());
+    TsFileResource resource4 = generateTsFileResource(75);
+    // 10 50 75 100
+    tsFileResourceList.keepOrderInsert(resource4);
+    Assert.assertEquals(resource4, tsFileResourceList.get(2));
+    Assert.assertEquals(4, tsFileResourceList.size());
+    TsFileResource resource5 = generateTsFileResource(5);
+    // 5 10 50 75 100
+    tsFileResourceList.keepOrderInsert(resource5);
+    Assert.assertEquals(resource5, tsFileResourceList.get(0));
+    Assert.assertEquals(5, tsFileResourceList.size());
+  }
+
+  @Test
   public void testRemove() {
     TsFileResourceList tsFileResourceList = new TsFileResourceList();
     List<TsFileResource> tsFileResources = new ArrayList<>();

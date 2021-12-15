@@ -65,11 +65,10 @@ public class MicrometerPrometheusReporter implements Reporter {
             .route(
                 routes ->
                     routes.get(
-                        "/prometheus",
+                        "/metrics",
                         (request, response) ->
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
-
     runThread = new Thread(server::onDispose);
     runThread.start();
     return true;

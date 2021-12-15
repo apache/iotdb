@@ -43,11 +43,12 @@ public class SerializableBinaryTVList extends SerializableTVList {
                     * calculateSingleBinaryTVPairMemory(byteArrayLength)));
   }
 
-  protected static int calculateSingleBinaryTVPairMemory(int byteArrayLength) {
+  protected static float calculateSingleBinaryTVPairMemory(int byteArrayLength) {
     return ReadWriteIOUtils.LONG_LEN // time
         + MIN_OBJECT_HEADER_SIZE // value: header length of Binary
         + MIN_ARRAY_HEADER_SIZE // value: header length of values in Binary
-        + byteArrayLength; // value: length of values array in Binary
+        + byteArrayLength // value: length of values array in Binary
+        + ReadWriteIOUtils.BIT_LEN; // extra bit(1/8 Byte): whether the Binary is null
   }
 
   protected SerializableBinaryTVList(SerializationRecorder serializationRecorder) {

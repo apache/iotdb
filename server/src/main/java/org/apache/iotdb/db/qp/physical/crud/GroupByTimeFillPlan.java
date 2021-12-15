@@ -27,14 +27,23 @@ import java.util.Map;
 public class GroupByTimeFillPlan extends GroupByTimePlan {
 
   private Map<TSDataType, IFill> fillTypes;
+  private IFill singleFill;
 
   public GroupByTimeFillPlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUP_BY_FILL);
   }
 
+  public IFill getSingleFill() {
+    return singleFill;
+  }
+
   public Map<TSDataType, IFill> getFillType() {
     return fillTypes;
+  }
+
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 
   public void setFillType(Map<TSDataType, IFill> fillTypes) {

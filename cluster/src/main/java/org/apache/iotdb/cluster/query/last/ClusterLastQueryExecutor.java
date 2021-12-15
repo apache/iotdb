@@ -44,6 +44,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -244,12 +246,14 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       if (asyncDataClient == null) {
         return null;
       }
-
+      Filter timeFilter =
+          (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
       buffer =
           SyncClientAdaptor.last(
               asyncDataClient,
               seriesPaths,
               dataTypeOrdinals,
+              timeFilter,
               context,
               queryPlan.getDeviceToMeasurements(),
               group.getHeader());
@@ -263,15 +267,20 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        res =
-            syncDataClient.last(
-                new LastQueryRequest(
-                    PartialPath.toStringList(seriesPaths),
-                    dataTypeOrdinals,
-                    context.getQueryId(),
-                    queryPlan.getDeviceToMeasurements(),
-                    group.getHeader(),
-                    syncDataClient.getNode()));
+        LastQueryRequest lastQueryRequest =
+            new LastQueryRequest(
+                PartialPath.toStringList(seriesPaths),
+                dataTypeOrdinals,
+                context.getQueryId(),
+                queryPlan.getDeviceToMeasurements(),
+                group.getHeader(),
+                syncDataClient.getNode());
+        Filter timeFilter =
+            (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
+        if (timeFilter != null) {
+          lastQueryRequest.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+        }
+        res = syncDataClient.last(lastQueryRequest);
       } catch (IOException | TException e) {
         // the connection may be broken, close it to avoid it being reused
         if (syncDataClient != null) {
