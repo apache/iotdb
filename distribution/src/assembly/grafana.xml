@@ -38,7 +38,7 @@
     </dependencySets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
+            <source>${maven.multiModuleProjectDirectory}/grafana-connector/src/main/resources/application.properties</source>
             <destName>application.properties</destName>
         </file>
     </files>

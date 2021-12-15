@@ -23,6 +23,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.expression.ResultColumn;
@@ -91,5 +93,26 @@ public class QueryDataSetHandler {
     long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     QueryContext context = new QueryContext(queryId);
     return executor.processQuery(physicalPlan, context);
+  }
+
+  public static Response constructVariablesResult(QueryDataSet dataSet, PhysicalPlan physicalPlan)
+      throws IOException {
+    List<String> results = new ArrayList<String>();
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      List<org.apache.iotdb.tsfile.read.common.Field> fields = rowRecord.getFields();
+      String nodePaths = fields.get(0).getObjectValue(fields.get(0).getDataType()).toString();
+      if (physicalPlan instanceof ShowChildPathsPlan) {
+        String[] nodeSubPath = nodePaths.split("\\.");
+        results.add(nodeSubPath[nodeSubPath.length - 1]);
+      } else if (physicalPlan instanceof QueryPlan) {
+        results.add(nodePaths);
+      } else if (physicalPlan instanceof ShowTimeSeriesPlan) {
+        results.add(nodePaths);
+      } else {
+        results.add(nodePaths);
+      }
+    }
+    return Response.ok().entity(results).build();
   }
 }
