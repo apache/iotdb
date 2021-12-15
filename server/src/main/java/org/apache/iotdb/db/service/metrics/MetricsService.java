@@ -53,7 +53,11 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   private CompositeReporter compositeReporter;
 
-  private MetricsService() {}
+  private MetricsService() {
+    logger.info("Init metric service");
+    // load manager
+    loadManager();
+  }
 
   private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
@@ -138,9 +142,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   /** Start all reporter. if is disabled, do nothing */
   public void startService() {
-    logger.info("Init metric service");
-    // load manager
-    loadManager();
     // load reporter
     loadReporter();
     // do some init work
