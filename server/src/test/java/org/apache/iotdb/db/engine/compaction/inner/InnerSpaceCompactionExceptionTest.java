@@ -69,6 +69,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         FileChannel channel = os.getChannel()) {
       channel.truncate(targetResource.getTsFileSize() - 10);
     }
+    compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -112,6 +113,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
+    compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -156,6 +158,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     seqResources.get(0).remove();
+    compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -207,6 +210,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
         FileChannel channel = os.getChannel()) {
       channel.truncate(targetResource.getTsFileSize() - 10);
     }
+    compactionLogger.close();
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
         logFile,
@@ -262,6 +266,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     }
 
     seqResources.get(0).remove();
+    compactionLogger.close();
 
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
@@ -326,6 +331,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
 
     seqResources.get(0).remove();
+    compactionLogger.close();
 
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,
@@ -388,6 +394,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
           new Pair<>(i * ptNum + 10, i * ptNum + 15));
       CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), true);
     }
+    compactionLogger.close();
 
     InnerSpaceCompactionExceptionHandler.handleException(
         COMPACTION_TEST_SG,

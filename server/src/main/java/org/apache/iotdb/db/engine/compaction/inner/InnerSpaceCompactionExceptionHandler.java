@@ -158,23 +158,10 @@ public class InnerSpaceCompactionExceptionHandler {
     try {
       for (TsFileResource sourceFile : selectedTsFileResourceList) {
         if (sourceFile.getCompactionModFile().exists()) {
-          ModificationFile compactionModificationFile = sourceFile.getCompactionModFile();
-          Collection<Modification> newModification = new ArrayList<>();
-          if (sourceFile.getModFile().exists()) {
-            // origin mods file exists, combine compaction mods and normal mods
-            Collection<Modification> compactionModifications =
-                compactionModificationFile.getModifications();
-            Collection<Modification> normalModification =
-                sourceFile.getModFile().getModifications();
-            newModification.addAll(normalModification);
-            newModification.addAll(compactionModifications);
-            sourceFile.getModFile().close();
-            FileUtils.delete(new File(ModificationFile.getNormalMods(sourceFile).getFilePath()));
-          } else {
-            newModification = compactionModificationFile.getModifications();
-          }
+          ModificationFile compactionModificationFile =
+              ModificationFile.getCompactionMods(sourceFile);
+          Collection<Modification> newModification = compactionModificationFile.getModifications();
           compactionModificationFile.close();
-          FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
           // write the modifications to a new modification file
           sourceFile.resetModFile();
           try (ModificationFile newModificationFile = sourceFile.getModFile()) {
@@ -182,6 +169,7 @@ public class InnerSpaceCompactionExceptionHandler {
               newModificationFile.write(modification);
             }
           }
+          FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
         }
       }
     } catch (Throwable e) {
@@ -230,14 +218,6 @@ public class InnerSpaceCompactionExceptionHandler {
         InnerSpaceCompactionUtils.combineModsInCompaction(selectedTsFileResourceList, targetTsFile);
         InnerSpaceCompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, fullStorageGroupName);
-        if (targetTsFile.tempResourceExists()) {
-          targetTsFile.removeTempResource();
-        }
-
-        if (!targetTsFile.resourceFileExists()) {
-          targetTsFile.serialize();
-          targetTsFile.setClosed(true);
-        }
 
         if (!tsFileResourceList.contains(targetTsFile)) {
           tsFileResourceList.keepOrderInsert(targetTsFile);
