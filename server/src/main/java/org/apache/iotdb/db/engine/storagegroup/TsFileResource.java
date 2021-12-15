@@ -347,6 +347,14 @@ public class TsFileResource {
     return modFile;
   }
 
+  public void resetModFile() {
+    if (modFile != null) {
+      synchronized (this) {
+        modFile = null;
+      }
+    }
+  }
+
   public void setFile(File file) {
     this.file = file;
   }
@@ -449,26 +457,33 @@ public class TsFileResource {
   }
 
   /** Remove the data file, its resource file, and its modification file physically. */
-  public void remove() {
+  public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
-    removeResourceFile();
+    if (!removeResourceFile()) {
+      return false;
+    }
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
       logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
+    return true;
   }
 
-  public void removeResourceFile() {
+  public boolean removeResourceFile() {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
     } catch (IOException e) {
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
+    return true;
   }
 
   void moveTo(File targetDir) {
