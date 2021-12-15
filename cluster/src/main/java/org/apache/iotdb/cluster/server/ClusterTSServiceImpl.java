@@ -25,7 +25,6 @@ import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -51,16 +50,5 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
     return clusterServiceProvider.executeNonQueryPlan(plan);
-  }
-
-  /**
-   * Generate and cache a QueryContext using "queryId". In the distributed version, the QueryContext
-   * is a RemoteQueryContext.
-   *
-   * @return a RemoteQueryContext using queryId
-   */
-  public QueryContext genQueryContext(
-      long queryId, boolean debug, long startTime, String statement, long timeout) {
-    return clusterServiceProvider.genQueryContext(queryId, debug, startTime, statement, timeout);
   }
 }

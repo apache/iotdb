@@ -175,7 +175,7 @@ public class TSServiceImpl implements TSIService.Iface {
 
   private final ServiceProvider serviceProvider;
 
-  public TSServiceImpl() throws QueryProcessException {
+  public TSServiceImpl() {
     super();
     serviceProvider = IoTDB.serviceProvider;
   }
