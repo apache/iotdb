@@ -139,7 +139,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     inplaceCompactionLogger.logFiles(resource);
 
     Set<PartialPath> unmergedDevice =
-        IoTDB.metaManager.getMatchedDevicesByPrex(new PartialPath(storageGroupName), true);
+        IoTDB.metaManager.getMatchedDeviceByPrex(new PartialPath(storageGroupName), true);
     inplaceCompactionLogger.logMergeStart();
 
     chunkTask =
