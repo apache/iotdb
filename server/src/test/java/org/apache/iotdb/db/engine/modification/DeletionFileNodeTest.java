@@ -135,7 +135,8 @@ public class DeletionFileNodeTest {
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
       UnclosedTsFileResource tsFileResource =
           (UnclosedTsFileResource) dataSource.getSeqResources().get(0);
-      List<ReadOnlyMemChunk> timeValuePairs = tsFileResource.getReadOnlyMemChunk();
+      List<ReadOnlyMemChunk> timeValuePairs =
+          tsFileResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
       for (ReadOnlyMemChunk chunk : timeValuePairs) {
         IPointReader iterator = chunk.getPointReader();
@@ -261,7 +262,8 @@ public class DeletionFileNodeTest {
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
       UnclosedTsFileResource tsFileResource =
           (UnclosedTsFileResource) dataSource.getUnseqResources().get(0);
-      List<ReadOnlyMemChunk> timeValuePairs = tsFileResource.getReadOnlyMemChunk();
+      List<ReadOnlyMemChunk> timeValuePairs =
+          tsFileResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
       for (ReadOnlyMemChunk chunk : timeValuePairs) {
         IPointReader iterator = chunk.getPointReader();

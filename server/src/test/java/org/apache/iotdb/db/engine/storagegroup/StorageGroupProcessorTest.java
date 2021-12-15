@@ -139,8 +139,10 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(1, tsfileResourcesForQuery.size());
 
     UnclosedTsFileResource tsfileResource = (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
-    Assert.assertEquals(0, tsfileResource.getChunkMetadataList().size());
-    List<ReadOnlyMemChunk> memChunks = tsfileResource.getReadOnlyMemChunk();
+    Assert.assertEquals(
+        0, tsfileResource.getChunkMetadataList(new PartialPath(deviceId, measurementId)).size());
+    List<ReadOnlyMemChunk> memChunks =
+        tsfileResource.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId));
     long time = 16;
     for (ReadOnlyMemChunk memChunk : memChunks) {
       IPointReader iterator = memChunk.getPointReader();

@@ -332,4 +332,8 @@ public class EnvironmentUtils {
       Assert.assertTrue(file.mkdirs());
     }
   }
+
+  public static QueryContext getTestQueryContext(long queryId) {
+    return new QueryContext(queryId);
+  }
 }
