@@ -458,6 +458,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         throw (IOException) exceptionBatchData.getThrowable();
       } else if (exceptionBatchData.getThrowable() instanceof RuntimeException) {
         throw (RuntimeException) exceptionBatchData.getThrowable();
+      } else {
+        throw new RuntimeException("some other unknown errors!");
       }
 
     } else { // there are more batch data in this time series queue

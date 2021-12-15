@@ -65,10 +65,10 @@ public class CompactionMergeTaskPoolManager implements IService {
   @Override
   public void start() {
     if (pool == null) {
+      int threadNum = IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum();
       pool =
           IoTDBThreadPoolFactory.newScheduledThreadPool(
-              IoTDBDescriptor.getInstance().getConfig().getCompactionThreadNum(),
-              ThreadName.COMPACTION_SERVICE.getName());
+              threadNum, ThreadName.COMPACTION_SERVICE.getName());
     }
     logger.info("Compaction task manager started.");
   }
