@@ -1115,6 +1115,28 @@ Total line number = 1
 It costs 0.009s
 ```
 
+Input:
+
+```sql
+select count(a),
+       count(b),
+       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
+       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
+from root.sg;
+```
+
+Result:
+
+```
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+Total line number = 1
+It costs 0.013s
+```
+
 2. Aggregation with `GROUP BY`.
 
 Input:
@@ -1158,8 +1180,8 @@ It costs 0.012s
 > ```sql
 > SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
 > SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
-> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill 
-> ``` 
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill
+> ```
 
 ### Automated Fill
 
@@ -1182,6 +1204,7 @@ Detailed descriptions of all parameters are given in Table 3-4.
 <center>
 
 **Table 3-4 Previous fill paramter list**
+
 
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|

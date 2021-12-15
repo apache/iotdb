@@ -46,11 +46,11 @@ public abstract class Expression {
   private String expressionStringCache;
   protected Boolean isConstantOperandCache = null;
 
-  public boolean isAggregationFunctionExpression() {
+  public boolean isPlainAggregationFunctionExpression() {
     return false;
   }
 
-  public boolean isUDAFExpression() {
+  public boolean isUserDefinedAggregationFunctionExpression() {
     return false;
   }
 

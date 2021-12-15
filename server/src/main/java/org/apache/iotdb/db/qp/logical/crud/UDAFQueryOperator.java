@@ -32,23 +32,24 @@ import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
  * For a UDAFPlan, we construct an inner AggregationPlan for it. Example: select
  * count(a)/count(b),count(a)+sum(b) from root.sg To init inner AggregationPlan, we will convert it
- * to statement: select count(a),count(b),count(a),sum(b) from root.sg. innerResultColumnsCache will
- * be [count(a),count(b),sum(b)].
+ * to statement: select count(a),count(b),count(a),sum(b) from root.sg innerResultColumnsCache will
+ * be [count(a),count(b),sum(b)]
  */
 public class UDAFQueryOperator extends QueryOperator {
 
-  private ArrayList<ResultColumn> innerResultColumnsCache;
+  private List<ResultColumn> innerResultColumnsCache;
 
-  private AggregationQueryOperator aggrOp;
+  private AggregationQueryOperator innerAggregationQueryOperator;
 
   public UDAFQueryOperator(AggregationQueryOperator queryOperator) {
     super(queryOperator);
-    this.aggrOp = queryOperator;
+    this.innerAggregationQueryOperator = queryOperator;
   }
 
   @Override
@@ -63,7 +64,7 @@ public class UDAFQueryOperator extends QueryOperator {
       throw new LogicalOperatorException(
           "UDF nesting aggregations in GROUP BY query does not support grouping by level now.");
     }
-    if (aggrOp instanceof GroupByFillQueryOperator) {
+    if (innerAggregationQueryOperator instanceof GroupByFillQueryOperator) {
       throw new LogicalOperatorException(
           "UDF nesting aggregations in GROUP BY query does not support FILL now.");
     }
@@ -77,7 +78,7 @@ public class UDAFQueryOperator extends QueryOperator {
     }
   }
 
-  public ArrayList<ResultColumn> getInnerResultColumnsCache() {
+  public List<ResultColumn> getInnerResultColumnsCache() {
     if (innerResultColumnsCache == null) {
       innerResultColumnsCache = new ArrayList<>();
       for (ResultColumn resultColumn : selectComponent.getResultColumns()) {
@@ -91,7 +92,7 @@ public class UDAFQueryOperator extends QueryOperator {
   private void addInnerResultColumn(Expression expression) {
     for (Iterator<Expression> it = expression.iterator(); it.hasNext(); ) {
       Expression currentExp = it.next();
-      if (currentExp.isAggregationFunctionExpression()) {
+      if (currentExp.isPlainAggregationFunctionExpression()) {
         innerResultColumnsCache.add(new ResultColumn(currentExp));
       }
     }
@@ -100,16 +101,7 @@ public class UDAFQueryOperator extends QueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    SelectComponent copiedSelectComponent = new SelectComponent(getSelectComponent());
-    copiedSelectComponent.setResultColumns(getInnerResultColumnsCache());
-    aggrOp.setSelectComponent(copiedSelectComponent);
-    aggrOp.setFromComponent(getFromComponent());
-    aggrOp.setWhereComponent(getWhereComponent());
-    aggrOp.setSpecialClauseComponent(getSpecialClauseComponent());
-    aggrOp.setProps(getProps());
-    aggrOp.setIndexType(getIndexType());
-    aggrOp.setEnableTracing(isEnableTracing());
-    AggregationPlan innerAggregationPlan = (AggregationPlan) aggrOp.generatePhysicalPlan(generator);
+    AggregationPlan innerAggregationPlan = initInnerAggregationPlan(generator);
     PhysicalPlan physicalPlan;
     if (!isAlignByDevice()) {
       physicalPlan =
@@ -151,12 +143,27 @@ public class UDAFQueryOperator extends QueryOperator {
     return physicalPlan;
   }
 
+  private AggregationPlan initInnerAggregationPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    SelectComponent copiedSelectComponent = new SelectComponent(getSelectComponent());
+    copiedSelectComponent.setHasPlainAggregationFunction(true);
+    copiedSelectComponent.setResultColumns(getInnerResultColumnsCache());
+    innerAggregationQueryOperator.setSelectComponent(copiedSelectComponent);
+    innerAggregationQueryOperator.setFromComponent(getFromComponent());
+    innerAggregationQueryOperator.setWhereComponent(getWhereComponent());
+    innerAggregationQueryOperator.setSpecialClauseComponent(getSpecialClauseComponent());
+    innerAggregationQueryOperator.setProps(getProps());
+    innerAggregationQueryOperator.setIndexType(getIndexType());
+    innerAggregationQueryOperator.setEnableTracing(isEnableTracing());
+    return (AggregationPlan) innerAggregationQueryOperator.generatePhysicalPlan(generator);
+  }
+
   private void checkEachExpression(Expression expression) throws LogicalOperatorException {
     if (expression instanceof TimeSeriesOperand) {
       throw new LogicalOperatorException(AggregationQueryOperator.ERROR_MESSAGE1);
     }
     // Currently, the aggregation function expression can only contain a timeseries operand.
-    if (expression.isAggregationFunctionExpression()) {
+    if (expression.isPlainAggregationFunctionExpression()) {
       if (expression.getExpressions().size() == 1
           && expression.getExpressions().get(0) instanceof TimeSeriesOperand) {
         return;

@@ -50,7 +50,7 @@ import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
 import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -2531,14 +2531,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
     }
-
+    // judge query type
     if (!hasDecidedQueryType()) {
       if (selectComponent.hasUserDefinedAggregationFunction()) {
         queryOp = new UDAFQueryOperator(new AggregationQueryOperator(queryOp));
-      } else if (selectComponent.hasAggregationFunction()) {
+      } else if (selectComponent.hasPlainAggregationFunction()) {
         queryOp = new AggregationQueryOperator(queryOp);
       } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-        queryOp = new UDFQueryOperator(queryOp);
+        queryOp = new UDTFQueryOperator(queryOp);
       }
     } else if (selectComponent.hasUserDefinedAggregationFunction()) {
       queryOp = new UDAFQueryOperator((AggregationQueryOperator) (queryOp));
@@ -2717,7 +2717,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         || queryOp instanceof FillQueryOperator
         || queryOp instanceof LastQueryOperator
         || queryOp instanceof AggregationQueryOperator
-        || queryOp instanceof UDFQueryOperator;
+        || queryOp instanceof UDTFQueryOperator
+        || queryOp instanceof UDAFQueryOperator;
   }
 
   private String parseStringWithQuotes(String src) {
