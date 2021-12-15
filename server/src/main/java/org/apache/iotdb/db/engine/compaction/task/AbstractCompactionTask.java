@@ -71,6 +71,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       }
       this.currentTaskNum.decrementAndGet();
     }
+
     MetricsService.getInstance()
         .getMetricManager()
         .timer(

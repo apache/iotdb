@@ -57,12 +57,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
     logger.info("Init metric service");
     // load manager
     loadManager();
-    // load reporter
-    loadReporter();
-    // do some init work
-    metricManager.init();
-    // start reporter
-    compositeReporter.startAll();
   }
 
   private void loadManager() {
@@ -148,6 +142,13 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   /** Start all reporter. if is disabled, do nothing */
   public void startService() {
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+    // start reporter
+    compositeReporter.startAll();
+
     enablePredefinedMetric(PredefinedMetric.JVM);
     enablePredefinedMetric(PredefinedMetric.LOGBACK);
 
