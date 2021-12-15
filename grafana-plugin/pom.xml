@@ -61,6 +61,24 @@
                         </configuration>
                     </execution>
                     <execution>
+                        <id>yarn add grafana runtime</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>add @grafana/runtime</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>yarn add base64</id>
+                        <goals>
+                            <goal>yarn</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>add  @types/base-64 --dev</arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>yarn build</id>
                         <goals>
                             <goal>yarn</goal>
