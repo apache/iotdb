@@ -220,6 +220,41 @@ public class IoTDBUDFNestAggregationIT {
     }
   }
 
+  @Test
+  public void expressionNestExtremeTest() {
+    // Issue: https://issues.apache.org/jira/browse/IOTDB-2151
+    Object[] retResults = {0L, 5.5F, 0.21511998808D};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      String query =
+          "SELECT extreme(temperature), sin(extreme(temperature) + 1) FROM root.ln.wf01.wt01";
+      boolean hasResultSet = statement.execute(query);
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals((long) retResults[0], resultSet.getLong(TIMESTAMP_STR));
+        Assert.assertEquals((float) retResults[1], resultSet.getFloat(1), E);
+        Assert.assertEquals((double) retResults[2], resultSet.getDouble(2), E);
+        Assert.assertFalse(resultSet.next());
+      }
+
+      hasResultSet = statement.execute(query + " ORDER BY TIME DESC");
+
+      Assert.assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals((long) retResults[0], resultSet.getLong(TIMESTAMP_STR));
+        Assert.assertEquals((float) retResults[1], resultSet.getFloat(1), E);
+        Assert.assertEquals((double) retResults[2], resultSet.getDouble(2), E);
+        Assert.assertFalse(resultSet.next());
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   // Test FunctionExpression, NegativeExpression and BinaryExpression with value filter
   @Test
   public void complexExpressionsWithValueFilterTest() {
