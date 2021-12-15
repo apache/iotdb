@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -244,12 +245,16 @@ public class ClusterAggregator {
               results);
           return results;
         }
+      } catch (TApplicationException e) {
+        logger.error(
+            metaGroupMember.getName() + " query aggregation error " + path + " from " + node, e);
+        throw new StorageEngineException(e.getMessage());
       } catch (TException | IOException e) {
         logger.error(
-            "{}: Cannot query aggregation {} from {}", metaGroupMember.getName(), path, node, e);
+            metaGroupMember.getName() + " cannot query aggregation " + path + " from " + node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error("{}: query {} interrupted from {}", metaGroupMember.getName(), path, node, e);
+        logger.error(metaGroupMember.getName() + " query interrupted " + path + " from " + node, e);
       }
     }
     throw new StorageEngineException(
