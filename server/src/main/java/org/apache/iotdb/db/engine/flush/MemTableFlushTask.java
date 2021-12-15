@@ -29,6 +29,7 @@ import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -153,14 +154,16 @@ public class MemTableFlushTask {
       SystemInfo.getInstance().setEncodingFasterThanIo(ioTime >= memSerializeTime);
     }
 
-    MetricsService.getInstance()
-        .getMetricManager()
-        .timer(
-            System.currentTimeMillis() - start,
-            TimeUnit.MILLISECONDS,
-            Metric.COST_TASK.toString(),
-            Tag.NAME.toString(),
-            "flush");
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .timer(
+              System.currentTimeMillis() - start,
+              TimeUnit.MILLISECONDS,
+              Metric.COST_TASK.toString(),
+              Tag.NAME.toString(),
+              "flush");
+    }
 
     LOGGER.info(
         "Storage group {} memtable {} flushing a memtable has finished! Time consumption: {}ms",

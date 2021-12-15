@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompacti
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,14 +73,17 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       this.currentTaskNum.decrementAndGet();
     }
 
-    MetricsService.getInstance()
-        .getMetricManager()
-        .timer(
-            System.currentTimeMillis() - startTime,
-            TimeUnit.MILLISECONDS,
-            Metric.COST_TASK.toString(),
-            Tag.NAME.toString(),
-            "compaction");
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .timer(
+              System.currentTimeMillis() - startTime,
+              TimeUnit.MILLISECONDS,
+              Metric.COST_TASK.toString(),
+              Tag.NAME.toString(),
+              "compaction");
+    }
+
     return null;
   }
 

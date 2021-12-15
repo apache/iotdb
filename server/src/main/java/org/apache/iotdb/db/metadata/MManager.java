@@ -87,6 +87,7 @@ import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -284,11 +285,17 @@ public class MManager {
     }
     initialized = true;
 
-    startStatisticCounts();
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.MEM.toString(), mtree, RamUsageEstimator::sizeOf, Tag.NAME.toString(), "mtree");
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      startStatisticCounts();
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              mtree,
+              RamUsageEstimator::sizeOf,
+              Tag.NAME.toString(),
+              "mtree");
+    }
   }
 
   private void startStatisticCounts() {

@@ -35,6 +35,7 @@ import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,14 +60,17 @@ public class FlushManager implements FlushManagerMBean, IService {
     flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
-      MetricsService.getInstance()
-          .getMetricManager()
-          .getOrCreateAutoGauge(
-              Metric.QUEUE.toString(),
-              flushPool,
-              AbstractPoolManager::getTotalTasks,
-              Tag.NAME.toString(),
-              "flush");
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                flushPool,
+                AbstractPoolManager::getTotalTasks,
+                Tag.NAME.toString(),
+                "flush");
+      }
+
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

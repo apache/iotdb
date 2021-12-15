@@ -32,6 +32,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 
 import com.google.common.collect.MinMaxPriorityQueue;
@@ -217,7 +218,9 @@ public class CompactionTaskManager implements IService {
         runningCompactionTaskList.add(task);
 
         // add metrics
-        addMetrics(task, true);
+        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+          addMetrics(task, true);
+        }
       }
     }
   }
@@ -247,7 +250,10 @@ public class CompactionTaskManager implements IService {
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
     runningCompactionTaskList.remove(task);
-    addMetrics(task, false);
+    // add metrics
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      addMetrics(task, false);
+    }
   }
 
   /**

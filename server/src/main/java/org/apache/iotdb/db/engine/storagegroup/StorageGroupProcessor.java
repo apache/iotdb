@@ -77,6 +77,7 @@ import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -410,14 +411,16 @@ public class StorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
     recover();
-    MetricsService.getInstance()
-        .getMetricManager()
-        .getOrCreateAutoGauge(
-            Metric.MEM.toString(),
-            storageGroupInfo.getMemCost(),
-            Long::longValue,
-            Tag.NAME.toString(),
-            "storageGroup");
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              storageGroupInfo.getMemCost(),
+              Long::longValue,
+              Tag.NAME.toString(),
+              "storageGroup");
+    }
   }
 
   public String getLogicalStorageGroupName() {

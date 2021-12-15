@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.server.member.RaftMember;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -129,9 +130,11 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
         }
       }
     }
-    MetricsService.getInstance()
-        .getMetricManager()
-        .count(1, Metric.CLUSTER_ELECT.toString(), Tag.STATUS.toString(), String.valueOf(isWin));
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .count(1, Metric.CLUSTER_ELECT.toString(), Tag.STATUS.toString(), String.valueOf(isWin));
+    }
   }
 
   @Override
