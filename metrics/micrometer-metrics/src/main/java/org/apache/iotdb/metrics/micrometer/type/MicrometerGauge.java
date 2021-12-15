@@ -41,6 +41,16 @@ public class MicrometerGauge implements Gauge {
   }
 
   @Override
+  public void incr(long value) {
+    atomicLong.addAndGet(value);
+  }
+
+  @Override
+  public void decr(long value) {
+    atomicLong.addAndGet(-value);
+  }
+
+  @Override
   public void set(long value) {
     atomicLong.set(value);
   }

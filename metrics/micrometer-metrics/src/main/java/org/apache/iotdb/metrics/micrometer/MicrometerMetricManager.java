@@ -23,32 +23,17 @@ import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerCounter;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerGauge;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerHistogram;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerRate;
-import org.apache.iotdb.metrics.micrometer.type.MicrometerTimer;
+import org.apache.iotdb.metrics.micrometer.reporter.IoTDBJmxConfig;
+import org.apache.iotdb.metrics.micrometer.type.*;
+import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Counter;
 import org.apache.iotdb.metrics.type.Gauge;
-import org.apache.iotdb.metrics.type.Histogram;
-import org.apache.iotdb.metrics.type.IMetric;
-import org.apache.iotdb.metrics.type.Rate;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
-import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Metrics;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmCompilationMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmHeapPressureMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
-import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
-import io.micrometer.jmx.JmxConfig;
+import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.binder.jvm.*;
 import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
@@ -62,6 +47,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.ToLongFunction;
 
 /** Metric manager based on micrometer. More details in https://micrometer.io/. */
 @SuppressWarnings("common-java:DuplicatedBlocks")
@@ -112,6 +98,22 @@ public class MicrometerMetricManager implements MetricManager {
             id, key -> new MicrometerCounter(meterRegistry.counter(metric, tags)));
     if (m instanceof Counter) {
       return (Counter) m;
+    }
+    throw new IllegalArgumentException(id + " is already used for a different type of metric");
+  }
+
+  @Override
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    Meter.Id id = MeterIdUtils.fromMetricName(metric, Meter.Type.GAUGE, tags);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            id, key -> new MicrometerAutoGauge<T>(meterRegistry, metric, obj, mapper, tags));
+    if (m instanceof Gauge) {
+      return (Gauge) m;
     }
     throw new IllegalArgumentException(id + " is already used for a different type of metric");
   }
@@ -473,7 +475,7 @@ public class MicrometerMetricManager implements MetricManager {
   private boolean addMeterRegistry(ReporterType reporter) {
     switch (reporter) {
       case jmx:
-        Metrics.addRegistry(new JmxMeterRegistry(JmxConfig.DEFAULT, Clock.SYSTEM));
+        Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
         break;
       case prometheus:
         Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));

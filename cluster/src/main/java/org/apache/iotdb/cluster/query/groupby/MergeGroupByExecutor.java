@@ -58,14 +58,13 @@ public class MergeGroupByExecutor implements GroupByExecutor {
   MergeGroupByExecutor(
       PartialPath path,
       Set<String> deviceMeasurements,
-      TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
       MetaGroupMember metaGroupMember,
       boolean ascending) {
     this.path = path;
     this.deviceMeasurements = deviceMeasurements;
-    this.dataType = dataType;
+    this.dataType = path.getSeriesType();
     this.context = context;
     this.timeFilter = timeFilter;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);

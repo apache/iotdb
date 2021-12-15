@@ -25,4 +25,8 @@ public interface Gauge extends IMetric {
 
   /** Get value stored in gauge */
   long value();
+
+  void incr(long value);
+
+  void decr(long value);
 }

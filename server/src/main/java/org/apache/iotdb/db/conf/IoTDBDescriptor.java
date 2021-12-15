@@ -135,21 +135,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
-      conf.setEnableMetricService(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "enable_metric_service", Boolean.toString(conf.isEnableMetricService()))));
-
-      conf.setMetricsPort(
-          Integer.parseInt(
-              properties.getProperty("metrics_port", Integer.toString(conf.getMetricsPort()))));
-
-      conf.setQueryCacheSizeInMetric(
-          Integer.parseInt(
-              properties.getProperty(
-                  "query_cache_size_in_metric",
-                  Integer.toString(conf.getQueryCacheSizeInMetric()))));
-
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
       replaceHostnameWithIP();
 
@@ -168,6 +153,17 @@ public class IoTDBDescriptor {
       conf.setRpcPort(
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
+
+      conf.setEnableInfluxDBRpcService(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_influxdb_rpc_service",
+                  Boolean.toString(conf.isEnableInfluxDBRpcService()))));
+
+      conf.setInfluxDBRpcPort(
+          Integer.parseInt(
+              properties.getProperty(
+                  "influxdb_rpc_port", Integer.toString(conf.getInfluxDBRpcPort()))));
 
       conf.setTimestampPrecision(
           properties.getProperty("timestamp_precision", conf.getTimestampPrecision()));
@@ -440,11 +436,14 @@ public class IoTDBDescriptor {
                   "index_buffer_size", Long.toString(conf.getIndexBufferSize()))));
       // end: index parameter setting
 
-      conf.setMaxConcurrentSubQueryThread(
+      conf.setConcurrentQueryThread(
           Integer.parseInt(
               properties.getProperty(
-                  "max_concurrent_sub_query_thread",
-                  Integer.toString(conf.getMaxConcurrentSubQueryThread()))));
+                  "concurrent_query_thread", Integer.toString(conf.getConcurrentQueryThread()))));
+
+      if (conf.getConcurrentQueryThread() <= 0) {
+        conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
+      }
 
       conf.setmManagerCacheSize(
           Integer.parseInt(
@@ -554,21 +553,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setPerformanceStatDisplayInterval(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "performance_stat_display_interval",
-                      Long.toString(conf.getPerformanceStatDisplayInterval()))
-                  .trim()));
-      conf.setPerformanceStatMemoryInKB(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "performance_stat_memory_in_kb",
-                      Integer.toString(conf.getPerformanceStatMemoryInKB()))
                   .trim()));
 
       int maxConcurrentClientNum =

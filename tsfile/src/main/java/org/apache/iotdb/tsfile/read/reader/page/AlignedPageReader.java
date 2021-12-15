@@ -65,7 +65,7 @@ public class AlignedPageReader implements IPageReader, IAlignedPageReader {
                 valueDataTypeList.get(i),
                 valueDecoderList.get(i));
         valuePageReaderList.add(valuePageReader);
-        isModified = isModified && valuePageReader.isModified();
+        isModified = isModified || valuePageReader.isModified();
       } else {
         valuePageReaderList.add(null);
       }

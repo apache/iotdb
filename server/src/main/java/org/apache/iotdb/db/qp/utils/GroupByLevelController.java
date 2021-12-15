@@ -67,49 +67,70 @@ public class GroupByLevelController {
 
   public void control(ResultColumn rawColumn, List<ResultColumn> resultColumns)
       throws LogicalOptimizeException {
-    boolean isCountStar = ((FunctionExpression) rawColumn.getExpression()).isCountStar();
     Iterator<ResultColumn> iterator = resultColumns.iterator();
+
+    // As one expression may have many aggregation results in the tree leaf, here we should traverse
+    // all the successor expressions and record the count(*) indices
+    Set<Integer> countWildcardIterIndices = new HashSet<>();
+    int idx = 0;
+    for (Iterator<Expression> it = rawColumn.getExpression().iterator(); it.hasNext(); ) {
+      Expression expression = it.next();
+      if (expression instanceof FunctionExpression
+          && expression.isPlainAggregationFunctionExpression()
+          && ((FunctionExpression) expression).isCountStar()) {
+        countWildcardIterIndices.add(idx);
+      }
+      idx++;
+    }
     for (int i = 0; i < prevSize; i++) {
       iterator.next();
     }
     while (iterator.hasNext()) {
       ResultColumn resultColumn = iterator.next();
-      Expression expression = resultColumn.getExpression();
-      if (expression instanceof FunctionExpression
-          && expression.isAggregationFunctionExpression()) {
-        List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
-        String functionName = ((FunctionExpression) expression).getFunctionName();
-        String groupedPath =
-            generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
-        String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
-        String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
+      Expression rootExpression = resultColumn.getExpression();
+      boolean hasAggregation = false;
+      idx = 0;
+      for (Iterator<Expression> it = rootExpression.iterator(); it.hasNext(); ) {
+        Expression expression = it.next();
+        if (expression instanceof FunctionExpression
+            && expression.isPlainAggregationFunctionExpression()) {
+          hasAggregation = true;
+          List<PartialPath> paths = ((FunctionExpression) expression).getPaths();
+          String functionName = ((FunctionExpression) expression).getFunctionName();
+          boolean isCountStar = countWildcardIterIndices.contains(idx);
+          String groupedPath =
+              generatePartialPathByLevel(isCountStar, paths.get(0).getNodes(), levels);
+          String rawPath = String.format("%s(%s)", functionName, paths.get(0).getFullPath());
+          String pathWithFunction = String.format("%s(%s)", functionName, groupedPath);
 
-        if (seriesLimit == 0 && seriesOffset == 0) {
-          groupedPathMap.put(rawPath, pathWithFunction);
-        } else {
-          if (seriesOffset > 0 && offsetPaths != null) {
-            offsetPaths.add(pathWithFunction);
-            if (offsetPaths.size() <= seriesOffset) {
-              iterator.remove();
-              if (offsetPaths.size() == seriesOffset) {
-                seriesOffset = 0;
-              }
-            }
-          } else if (offsetPaths == null || !offsetPaths.contains(pathWithFunction)) {
-            limitPaths.add(pathWithFunction);
-            if (seriesLimit > 0 && limitPaths.size() > seriesLimit) {
-              iterator.remove();
-              limitPaths.remove(pathWithFunction);
-            } else {
-              groupedPathMap.put(rawPath, pathWithFunction);
-            }
+          if (seriesLimit == 0 && seriesOffset == 0) {
+            groupedPathMap.put(rawPath, pathWithFunction);
           } else {
-            iterator.remove();
+            if (seriesOffset > 0 && offsetPaths != null) {
+              offsetPaths.add(pathWithFunction);
+              if (offsetPaths.size() <= seriesOffset) {
+                iterator.remove();
+                if (offsetPaths.size() == seriesOffset) {
+                  seriesOffset = 0;
+                }
+              }
+            } else if (offsetPaths == null || !offsetPaths.contains(pathWithFunction)) {
+              limitPaths.add(pathWithFunction);
+              if (seriesLimit > 0 && limitPaths.size() > seriesLimit) {
+                iterator.remove();
+                limitPaths.remove(pathWithFunction);
+              } else {
+                groupedPathMap.put(rawPath, pathWithFunction);
+              }
+            } else {
+              iterator.remove();
+            }
           }
         }
-      } else {
-        throw new LogicalOptimizeException(
-            expression.toString() + "can't be used in group by level.");
+        idx++;
+      }
+      if (!hasAggregation) {
+        throw new LogicalOptimizeException(rootExpression + " can't be used in group by level.");
       }
     }
     prevSize = resultColumns.size();

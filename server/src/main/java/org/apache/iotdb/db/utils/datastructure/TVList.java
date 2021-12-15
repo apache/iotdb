@@ -32,11 +32,11 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public abstract class TVList {
 
@@ -84,12 +84,16 @@ public abstract class TVList {
     return null;
   }
 
-  public static long tvListArrayMemSize(TSDataType type) {
+  public static long tvListArrayMemCost(TSDataType type) {
     long size = 0;
-    // time size
+    // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // value size
+    // value array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+    // two array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER * 2;
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF * 2;
     return size;
   }
 
@@ -266,7 +270,8 @@ public abstract class TVList {
     if (newSize % ARRAY_SIZE != 0) {
       newArrayNum++;
     }
-    for (int releaseIdx = newArrayNum; releaseIdx < timestamps.size(); releaseIdx++) {
+    int oldArrayNum = timestamps.size();
+    for (int releaseIdx = newArrayNum; releaseIdx < oldArrayNum; releaseIdx++) {
       releaseLastTimeArray();
       releaseLastValueArray();
     }
@@ -282,7 +287,7 @@ public abstract class TVList {
     cloneList.minTime = minTime;
   }
 
-  public void clear(Map<TSDataType, Queue<TVList>> tvListCache) {
+  public void clear() {
     size = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;
@@ -291,7 +296,6 @@ public abstract class TVList {
 
     clearValue();
     clearSortedValue();
-    tvListCache.get(getDataType()).add(this);
   }
 
   protected void clearTime() {

@@ -97,9 +97,9 @@
                                 <configuration>
                                     <inputSpec>${project.basedir}/src/main/openapi3/iotdb-rest.yaml</inputSpec>
                                     <output>${project.build.directory}/generated-sources/java</output>
-                                    <apiPackage>org.apache.iotdb.db.rest</apiPackage>
-                                    <modelPackage>org.apache.iotdb.db.rest.model</modelPackage>
-                                    <invokerPackage>org.apache.iotdb.db.rest.invoker</invokerPackage>
+                                    <apiPackage>org.apache.iotdb.db.protocol.rest</apiPackage>
+                                    <modelPackage>org.apache.iotdb.db.protocol.rest.model</modelPackage>
+                                    <invokerPackage>org.apache.iotdb.db.protocol.rest.invoker</invokerPackage>
                                     <generatorName>jaxrs-jersey</generatorName>
                                     <groupId>org.apache.iotdb</groupId>
                                     <artifactId>iotdb-rest-service</artifactId>

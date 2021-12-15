@@ -26,9 +26,11 @@ import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.tsfile.read.common.Path;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -145,5 +147,73 @@ public class MetaUtils {
         collectLastNode(childNode, lastNodeList);
       }
     }
+  }
+
+  /**
+   * Merge same series and convert to series map. For example: Given: paths: s1, s2, s3, s1 and
+   * aggregations: count, sum, count, sum. Then: pathToAggrIndexesMap: s1 -> 0, 3; s2 -> 1; s3 -> 2
+   *
+   * @param selectedPaths selected series
+   * @return path to aggregation indexes map
+   */
+  public static Map<PartialPath, List<Integer>> groupAggregationsBySeries(
+      List<? extends Path> selectedPaths) {
+    Map<PartialPath, List<Integer>> pathToAggrIndexesMap = new HashMap<>();
+    for (int i = 0; i < selectedPaths.size(); i++) {
+      PartialPath series = (PartialPath) selectedPaths.get(i);
+      pathToAggrIndexesMap.computeIfAbsent(series, key -> new ArrayList<>()).add(i);
+    }
+    return pathToAggrIndexesMap;
+  }
+
+  /**
+   * Group all the series under an aligned entity into one AlignedPath and remove these series from
+   * pathToAggrIndexesMap. For example, input map: d1[s1] -> [1, 3], d1[s2] -> [2,4], will return
+   * d1[s1,s2], [[1,3], [2,4]]
+   */
+  public static Map<AlignedPath, List<List<Integer>>> groupAlignedSeriesWithAggregations(
+      Map<PartialPath, List<Integer>> pathToAggrIndexesMap) {
+    Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap = new HashMap<>();
+    Map<String, AlignedPath> temp = new HashMap<>();
+    List<PartialPath> seriesPaths = new ArrayList<>(pathToAggrIndexesMap.keySet());
+    for (PartialPath seriesPath : seriesPaths) {
+      // for with value filter
+      if (seriesPath instanceof AlignedPath) {
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getFullPath());
+        if (groupPath == null) {
+          groupPath = (AlignedPath) seriesPath;
+          temp.put(groupPath.getFullPath(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurements(((AlignedPath) seriesPath).getMeasurementList());
+          groupPath.addSchemas(((AlignedPath) seriesPath).getSchemaList());
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
+      } else if (((MeasurementPath) seriesPath).isUnderAlignedEntity()) {
+        // for without value filter
+        List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
+        AlignedPath groupPath = temp.get(seriesPath.getDevice());
+        if (groupPath == null) {
+          groupPath = new AlignedPath((MeasurementPath) seriesPath);
+          temp.put(seriesPath.getDevice(), groupPath);
+          alignedPathToAggrIndexesMap
+              .computeIfAbsent(groupPath, key -> new ArrayList<>())
+              .add(indexes);
+        } else {
+          // groupPath is changed here so we update it
+          List<List<Integer>> subIndexes = alignedPathToAggrIndexesMap.remove(groupPath);
+          subIndexes.add(indexes);
+          groupPath.addMeasurement((MeasurementPath) seriesPath);
+          alignedPathToAggrIndexesMap.put(groupPath, subIndexes);
+        }
+      }
+    }
+    return alignedPathToAggrIndexesMap;
   }
 }
