@@ -21,22 +21,13 @@ package org.apache.iotdb.cluster.server;
 
 import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.query.ClusterPlanExecutor;
-import org.apache.iotdb.cluster.query.RemoteQueryContext;
-import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
+import org.apache.iotdb.cluster.server.basic.ClusterBasicServiceProvider;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.service.thrift.impl.TSServiceImpl;
-import org.apache.iotdb.rpc.RpcUtils;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * ClusterTSServiceImpl is the cluster version of TSServiceImpl, which is responsible for the
@@ -46,40 +37,24 @@ import org.slf4j.LoggerFactory;
  */
 public class ClusterTSServiceImpl extends TSServiceImpl {
 
-  private static final Logger logger = LoggerFactory.getLogger(ClusterTSServiceImpl.class);
-  /**
-   * The Coordinator of the local node. Through this node queries data and meta from the cluster and
-   * performs data manipulations to the cluster.
-   */
-  private Coordinator coordinator;
+  private final ClusterBasicServiceProvider clusterBasicServiceProvider;
 
-  public ClusterTSServiceImpl() throws QueryProcessException {}
+  public ClusterTSServiceImpl() throws QueryProcessException {
+    clusterBasicServiceProvider = new ClusterBasicServiceProvider();
+  }
 
   public void setExecutor(MetaGroupMember metaGroupMember) throws QueryProcessException {
-    executor = new ClusterPlanExecutor(metaGroupMember);
+    clusterBasicServiceProvider.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 
   public void setCoordinator(Coordinator coordinator) {
-    this.coordinator = coordinator;
+    clusterBasicServiceProvider.setCoordinator(coordinator);
   }
 
   /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */
   @Override
   protected TSStatus executeNonQueryPlan(PhysicalPlan plan) {
-    try {
-      plan.checkIntegrity();
-      if (!(plan instanceof SetSystemModePlan)
-          && !(plan instanceof FlushPlan)
-          && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-        throw new QueryProcessException(
-            "Current system mode is read-only, does not support non-query operation");
-      }
-    } catch (QueryProcessException e) {
-      logger.warn("Illegal plan detected： {}", plan);
-      return RpcUtils.getStatus(TSStatusCode.EXECUTE_STATEMENT_ERROR, e.getMessage());
-    }
-
-    return coordinator.executeNonQueryPlan(plan);
+    return clusterBasicServiceProvider.executeNonQueryPlan(plan);
   }
 
   /**
@@ -88,12 +63,9 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
    *
    * @return a RemoteQueryContext using queryId
    */
-  @Override
   public QueryContext genQueryContext(
       long queryId, boolean debug, long startTime, String statement, long timeout) {
-    RemoteQueryContext context =
-        new RemoteQueryContext(queryId, debug, startTime, statement, timeout);
-    ClusterSessionManager.getInstance().putContext(queryId, context);
-    return context;
+    return clusterBasicServiceProvider.genQueryContext(
+        queryId, debug, startTime, statement, timeout);
   }
 }
