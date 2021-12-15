@@ -608,10 +608,10 @@ public class IoTDBConfig {
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
   /**
-   * When the insert plan rowcount reaches a certain quantity and exceeds a certain ratio, turn on
-   * Multithreading acceleration
+   * When the insert plan column count reaches the specified threshold, which means that the plan is
+   * relatively large. At this time, may be enabled multithreading.
    */
-  private int insertMultiTabletEnableThreadPoolRowCountThreshold = 10;
+  private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
@@ -1563,14 +1563,14 @@ public class IoTDBConfig {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public int getInsertMultiTabletEnableThreadPoolRowCountThreshold() {
-    return insertMultiTabletEnableThreadPoolRowCountThreshold;
+  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
+    return insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
-  public void setInsertMultiTabletEnableThreadPoolRowCountThreshold(
-      int insertMultiTabletEnableThreadPoolRowCountThreshold) {
-    this.insertMultiTabletEnableThreadPoolRowCountThreshold =
-        insertMultiTabletEnableThreadPoolRowCountThreshold;
+  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
+      int insertMultiTabletEnableMultithreadingColumnThreshold) {
+    this.insertMultiTabletEnableMultithreadingColumnThreshold =
+        insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
   public int getMergeWriteThroughputMbPerSec() {

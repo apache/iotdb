@@ -96,9 +96,9 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
 
   boolean[] isExecuted;
 
-  Boolean needMulti;
+  Boolean isEnableMultithreading;
 
-  Integer insertPlanSGSize;
+  Integer differentStorageGroupsCount;
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
@@ -389,8 +389,8 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
   }
 
-  public int getInsertPlanSGSize() {
-    if (insertPlanSGSize == null) {
+  public int getDifferentStorageGroupsCount() {
+    if (differentStorageGroupsCount == null) {
       Set<String> insertPlanSGSet = new HashSet<>();
       for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
         IStorageGroupMNode storageGroupMNode = null;
@@ -401,12 +401,12 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
         } catch (MetadataException ignored) {
         }
       }
-      insertPlanSGSize = insertPlanSGSet.size();
+      differentStorageGroupsCount = insertPlanSGSet.size();
     }
-    return insertPlanSGSize;
+    return differentStorageGroupsCount;
   }
 
-  public boolean needMultiThread() {
+  public boolean isEnableMultiThreading() {
     // After testing, we can find that when there are 10 columns , the thread pool speed will exceed
     // the serial speed, so we set the threshold to 10.
     // Therefore, we set the number of core threads in the thread pool to min(the number of
@@ -414,26 +414,33 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     // It should be noted that in the latest test, we found that if the number of sg is large and
     // exceeds twice the recommended number of CPU threads, it may lead to failure to allocate out
     // of heap memory and NPE. Therefore, we will also turn off multithreading in this case.
-    if (needMulti == null) {
-      int sgSize = getInsertPlanSGSize();
-      // SG should be >= 1 so that it will not be locked and degenerate into serial.
-      // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
-      // allocate out of heap memory and NPE
-      if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
-        needMulti = false;
+    if (isEnableMultithreading == null) {
+      // In the cluster mode, RPC communication is required to obtain
+      // getDifferentStorageGroupsCount()
+      // which may greatly reduce the efficiency. Therefore, we do not turn on multithreading
+      if (IoTDB.isClusterMode()) {
+        isEnableMultithreading = false;
       } else {
-        int BigPlanCountNum = 0;
-        for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-          if (insertTabletPlan.getRowCount()
-              >= IoTDBDescriptor.getInstance()
-                  .getConfig()
-                  .getInsertMultiTabletEnableThreadPoolRowCountThreshold()) {
-            BigPlanCountNum++;
+        int sgSize = getDifferentStorageGroupsCount();
+        // SG should be >= 1 so that it will not be locked and degenerate into serial.
+        // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
+        // allocate out of heap memory and NPE
+        if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
+          isEnableMultithreading = false;
+        } else {
+          int BigPlanCountNum = 0;
+          for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+            if (insertTabletPlan.getRowCount()
+                >= IoTDBDescriptor.getInstance()
+                    .getConfig()
+                    .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
+              BigPlanCountNum++;
+            }
           }
+          isEnableMultithreading = BigPlanCountNum * 2 >= insertTabletPlanList.size();
         }
-        needMulti = BigPlanCountNum * 2 >= insertTabletPlanList.size();
       }
     }
-    return needMulti;
+    return isEnableMultithreading;
   }
 }

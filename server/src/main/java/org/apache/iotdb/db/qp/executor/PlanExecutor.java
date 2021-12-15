@@ -164,7 +164,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -218,6 +217,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
+import static org.apache.iotdb.rpc.TSStatusCode.TIME_OUT;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class PlanExecutor implements IPlanExecutor {
@@ -228,9 +228,9 @@ public class PlanExecutor implements IPlanExecutor {
   // for data query
   protected IQueryRouter queryRouter;
   // for administration
-  private IAuthorizer authorizer;
+  private final IAuthorizer authorizer;
 
-  private ThreadPoolExecutor insertTabletsPool;
+  private ThreadPoolExecutor insertionPool;
 
   private static final String INSERT_MEASUREMENTS_FAILED_MESSAGE = "failed to insert measurements ";
 
@@ -1513,51 +1513,62 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
-    if (insertMultiTabletPlan.needMultiThread()) {
-      updateInsertTabletsPool(insertMultiTabletPlan.getInsertPlanSGSize());
+    if (insertMultiTabletPlan.isEnableMultiThreading()) {
+      insertTabletParallel(insertMultiTabletPlan);
+    } else {
+      insertTabletSerial(insertMultiTabletPlan);
     }
+  }
+
+  private void insertTabletSerial(InsertMultiTabletPlan insertMultiTabletPlan)
+      throws BatchProcessException {
+    for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
+      if (insertMultiTabletPlan.getResults().containsKey(i)
+          || insertMultiTabletPlan.isExecuted(i)) {
+        continue;
+      }
+      try {
+        insertTablet(insertMultiTabletPlan.getInsertTabletPlanList().get(i));
+      } catch (QueryProcessException e) {
+        insertMultiTabletPlan
+            .getResults()
+            .put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+      }
+    }
+    if (!insertMultiTabletPlan.getResults().isEmpty()) {
+      throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
+    }
+  }
+
+  private void insertTabletParallel(InsertMultiTabletPlan insertMultiTabletPlan)
+      throws BatchProcessException {
+    updateInsertTabletsPool(insertMultiTabletPlan.getDifferentStorageGroupsCount());
 
     List<InsertTabletPlan> planList = insertMultiTabletPlan.getInsertTabletPlanList();
     List<Future<?>> futureList = new ArrayList<>();
 
     Map<Integer, TSStatus> results = insertMultiTabletPlan.getResults();
-
-    List<InsertTabletPlan> runPlanList = new ArrayList<>();
-    Map<Integer, Integer> runIndexToRealIndex = new HashMap<>();
-    for (int i = 0; i < planList.size(); i++) {
-      if (!(results.containsKey(i) || insertMultiTabletPlan.isExecuted(i))) {
-        runPlanList.add(planList.get(i));
-        runIndexToRealIndex.put(runPlanList.size() - 1, i);
-      }
+    for (InsertTabletPlan plan : planList) {
+      Future<?> f =
+          insertionPool.submit(
+              () -> {
+                insertTablet(plan);
+                return null;
+              });
+      futureList.add(f);
     }
-    for (int i = 0; i < runPlanList.size(); i++) {
-      InsertTabletPlan plan = runPlanList.get(i);
-      if (insertMultiTabletPlan.needMultiThread()) {
-        Future<?> f = insertTabletsPool.submit(() -> asyncInsertTablet(plan));
-        futureList.add(f);
-      } else {
-        try {
-          insertTablet(plan);
-        } catch (QueryProcessException e) {
-          results.put(i, RpcUtils.getStatus(e.getErrorCode(), e.getMessage()));
+    for (int i = 0; i < futureList.size(); i++) {
+      try {
+        futureList.get(i).get();
+      } catch (Exception e) {
+        if (e.getCause() instanceof QueryProcessException) {
+          QueryProcessException qe = (QueryProcessException) e.getCause();
+          results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
+        } else {
+          results.put(i, RpcUtils.getStatus(TIME_OUT, e.getMessage()));
         }
       }
     }
-    if (CollectionUtils.isNotEmpty(futureList)) {
-      for (int i = 0; i < futureList.size(); i++) {
-        try {
-          futureList.get(i).get();
-        } catch (InterruptedException ignored) {
-        } catch (ExecutionException e) {
-          if (e.getCause() instanceof QueryProcessException) {
-            QueryProcessException qe = (QueryProcessException) e.getCause();
-            results.put(
-                runIndexToRealIndex.get(i), RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
-          }
-        }
-      }
-    }
-
     if (!results.isEmpty()) {
       throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
     }
@@ -1565,20 +1576,15 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void updateInsertTabletsPool(int sgSize) {
     int updateCoreSize = Math.min(sgSize, Runtime.getRuntime().availableProcessors() / 2);
-    if (insertTabletsPool == null || insertTabletsPool.isTerminated()) {
-      insertTabletsPool =
+    if (insertionPool == null || insertionPool.isTerminated()) {
+      insertionPool =
           (ThreadPoolExecutor)
               IoTDBThreadPoolFactory.newFixedThreadPool(
                   Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
-    } else if (insertTabletsPool.getCorePoolSize() != updateCoreSize) {
-      insertTabletsPool.setCorePoolSize(updateCoreSize);
-      insertTabletsPool.setMaximumPoolSize(updateCoreSize);
+    } else if (insertionPool.getCorePoolSize() != updateCoreSize) {
+      insertionPool.setCorePoolSize(updateCoreSize);
+      insertionPool.setMaximumPoolSize(updateCoreSize);
     }
-  }
-
-  private Integer asyncInsertTablet(InsertTabletPlan plan) throws QueryProcessException {
-    insertTablet(plan);
-    return null;
   }
 
   @Override
