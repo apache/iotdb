@@ -73,6 +73,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1162,7 +1163,11 @@ public class TsFileProcessor {
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
         tsfileResourcesForQuery.add(
-            new UnclosedTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource));
+            new UnclosedTsFileResource(
+                new PartialPath(deviceId, measurementId),
+                readOnlyMemChunks,
+                chunkMetadataList,
+                tsFileResource));
       }
     } catch (QueryProcessException e) {
       logger.error(
@@ -1238,7 +1243,11 @@ public class TsFileProcessor {
 
       // get in memory data
       if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-        return new UnclosedTsFileResource(readOnlyMemChunks, chunkMetadataList, tsFileResource);
+        return new UnclosedTsFileResource(
+            new PartialPath(deviceId, measurementId),
+            readOnlyMemChunks,
+            chunkMetadataList,
+            tsFileResource);
       }
     } catch (QueryProcessException | MetadataException e) {
       logger.error(
@@ -1256,6 +1265,95 @@ public class TsFileProcessor {
       }
     }
     return null;
+  }
+
+  public void queryAll(
+      List<PartialPath> seriesPaths,
+      QueryContext context,
+      List<TsFileResource> tsfileResourcesForQuery)
+      throws IOException {
+    Map<PartialPath, List<ChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+    Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+    for (PartialPath seriesPath : seriesPaths) {
+      String deviceId = seriesPath.getDevice();
+      String measurementId = seriesPath.getMeasurement();
+
+      flushQueryLock.readLock().lock();
+      try {
+        MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(seriesPath);
+        List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
+        for (IMemTable flushingMemTable : flushingMemTables) {
+          if (flushingMemTable.isSignalMemTable()) {
+            continue;
+          }
+          List<TimeRange> deletionList =
+              constructDeletionList(
+                  flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
+          ReadOnlyMemChunk memChunk =
+              flushingMemTable.query(
+                  deviceId,
+                  measurementId,
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getProps(),
+                  context.getQueryTimeLowerBound(),
+                  deletionList);
+          if (memChunk != null) {
+            readOnlyMemChunks.add(memChunk);
+          }
+        }
+        if (workMemTable != null) {
+          ReadOnlyMemChunk memChunk =
+              workMemTable.query(
+                  deviceId,
+                  measurementId,
+                  schema.getType(),
+                  schema.getEncodingType(),
+                  schema.getProps(),
+                  context.getQueryTimeLowerBound(),
+                  null);
+          if (memChunk != null) {
+            readOnlyMemChunks.add(memChunk);
+          }
+        }
+
+        ModificationFile modificationFile = tsFileResource.getModFile();
+        List<Modification> modifications =
+            context.getPathModifications(
+                modificationFile,
+                new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
+
+        List<ChunkMetadata> chunkMetadataList =
+            writer.getVisibleMetadataList(deviceId, measurementId, schema.getType());
+        QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
+        chunkMetadataList.removeIf(context::chunkNotSatisfy);
+
+        // get in memory data
+        if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
+          pathToReadOnlyMemChunkMap.put(seriesPath, readOnlyMemChunks);
+          pathToChunkMetadataListMap.put(seriesPath, chunkMetadataList);
+        }
+      } catch (QueryProcessException | MetadataException e) {
+        logger.error(
+            "{}: {} get ReadOnlyMemChunk has error",
+            storageGroupName,
+            tsFileResource.getTsFile().getName(),
+            e);
+      } finally {
+        flushQueryLock.readLock().unlock();
+        if (logger.isDebugEnabled()) {
+          logger.debug(
+              "{}: {} release flushQueryLock",
+              storageGroupName,
+              tsFileResource.getTsFile().getName());
+        }
+      }
+    }
+    if (!pathToReadOnlyMemChunkMap.isEmpty() || !pathToChunkMetadataListMap.isEmpty()) {
+      tsfileResourcesForQuery.add(
+          new UnclosedTsFileResource(
+              pathToReadOnlyMemChunkMap, pathToChunkMetadataListMap, tsFileResource));
+    }
   }
 
   public long getTimeRangeId() {

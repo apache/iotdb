@@ -75,7 +75,8 @@ public class FillQueryExecutor {
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(selectedSeries, context, null);
     try {
       List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
       long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();

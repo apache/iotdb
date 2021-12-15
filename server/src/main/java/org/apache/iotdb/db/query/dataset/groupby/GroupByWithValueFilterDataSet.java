@@ -86,7 +86,10 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+            .mergeLockAndInitQueryDataSource(
+                paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
+                context,
+                null);
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);

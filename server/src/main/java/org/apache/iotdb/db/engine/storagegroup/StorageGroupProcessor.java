@@ -1633,6 +1633,27 @@ public class StorageGroupProcessor {
     }
   }
 
+  public QueryDataSource getAllQueryDataSource(
+      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
+      throws QueryProcessException {
+    readLock();
+    try {
+      List<TsFileResource> seqResources =
+          getFileResourceListForQuery(
+              tsFileManagement.getTsFileList(true), pathList, context, timeFilter, true);
+      List<TsFileResource> unseqResources =
+          getFileResourceListForQuery(
+              tsFileManagement.getTsFileList(false), pathList, context, timeFilter, false);
+      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
+      dataSource.setDataTTL(dataTTL);
+      return dataSource;
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
+    } finally {
+      readUnlock();
+    }
+  }
+
   public void readLock() {
     // apply read lock for SG insert lock to prevent inconsistent with concurrently writing memtable
     insertLock.readLock().lock();
@@ -1765,6 +1786,44 @@ public class StorageGroupProcessor {
       }
     }
     return new Pair<>(tsfileResourcesForQuery, unclosedTsfileResourceForQuery);
+  }
+
+  /**
+   * @param tsFileResources includes sealed and unsealed tsfile resources
+   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
+   */
+  private List<TsFileResource> getFileResourceListForQuery(
+      Collection<TsFileResource> tsFileResources,
+      List<PartialPath> pathList,
+      QueryContext context,
+      Filter timeFilter,
+      boolean isSeq)
+      throws MetadataException {
+    long timeLowerBound =
+        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
+    context.setQueryTimeLowerBound(timeLowerBound);
+
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    for (TsFileResource tsFileResource : tsFileResources) {
+      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL)) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        if (tsFileResource.isClosed()) {
+          tsfileResourcesForQuery.add(tsFileResource);
+        } else {
+          ((UnclosedTsFileResource) tsFileResource)
+              .getUnsealedFileProcessor()
+              .queryAll(pathList, context, tsfileResourcesForQuery);
+        }
+      } catch (IOException e) {
+        throw new MetadataException(e);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+    return tsfileResourcesForQuery;
   }
 
   /**
@@ -2884,6 +2943,10 @@ public class StorageGroupProcessor {
 
   public String getVirtualStorageGroupId() {
     return virtualStorageGroupId;
+  }
+
+  public String getStorageGroupPath() {
+    return logicalStorageGroupName + File.separator + virtualStorageGroupId;
   }
 
   public StorageGroupInfo getStorageGroupInfo() {

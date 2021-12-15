@@ -23,6 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -96,6 +97,27 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
+  public void initQueryDataSource(
+      Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
+      QueryContext context,
+      Filter timeFilter)
+      throws QueryProcessException {
+    for (Map.Entry<StorageGroupProcessor, List<PartialPath>> entry :
+        processorToSeriesMap.entrySet()) {
+      StorageGroupProcessor processor = entry.getKey();
+      List<PartialPath> pathList = entry.getValue();
+
+      long queryId = context.getQueryId();
+      String storageGroupPath = processor.getStorageGroupPath();
+
+      QueryDataSource cachedQueryDataSource =
+          processor.getAllQueryDataSource(pathList, context, timeFilter);
+      cachedQueryDataSourcesMap
+          .computeIfAbsent(queryId, k -> new HashMap<>())
+          .put(storageGroupPath, cachedQueryDataSource);
+    }
+  }
+
   public QueryDataSource getQueryDataSourceByPath(
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {
@@ -127,6 +149,7 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
+      //      throw new QueryProcessException("Can't find cachedQueryDataSource!");
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(selectedPath, filter);
       cachedQueryDataSource =
@@ -157,6 +180,7 @@ public class QueryResourceManager {
         cachedQueryDataSource.getUnclosedSeqResource();
     if (cachedUnclosedSeqResource != null) {
       try {
+
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
         TsFileProcessor processor = cachedUnclosedSeqResource.getUnsealedFileProcessor();
         if (processor != null) {
@@ -171,6 +195,7 @@ public class QueryResourceManager {
                 "%s: %s get ReadOnlyMemChunk has error",
                 storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
       } finally {
+
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
     }
@@ -179,6 +204,7 @@ public class QueryResourceManager {
         cachedQueryDataSource.getUnclosedUnseqResource();
     if (cachedUnclosedUnseqResource != null) {
       try {
+
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
         TsFileProcessor processor = cachedUnclosedUnseqResource.getUnsealedFileProcessor();
         if (processor != null) {
@@ -193,6 +219,7 @@ public class QueryResourceManager {
                 "%s: %s get ReadOnlyMemChunk has error",
                 storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
       } finally {
+
         StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
       }
     }

@@ -68,7 +68,8 @@ public class GroupByFillDataSet extends QueryDataSet {
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.lastQueryExecutor = lastQueryExecutor;
     this.fillTypes = fillTypes;
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(paths, context, null);
     try {
       initPreviousParis(context, groupByFillPlan);
       initLastTimeArray(context, groupByFillPlan);
