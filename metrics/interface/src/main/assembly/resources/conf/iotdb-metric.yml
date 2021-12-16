@@ -18,7 +18,7 @@
 #
 
 # whether enable the module
-enableMetric: true
+enableMetric: false
 
 # can be multiple reporter, e.g., jmx, prometheus
 metricReporterList:
