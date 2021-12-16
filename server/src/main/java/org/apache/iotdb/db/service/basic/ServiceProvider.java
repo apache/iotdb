@@ -73,10 +73,11 @@ public abstract class ServiceProvider {
   public static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
-  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
   public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
   public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
       new QueryFrequencyRecorder(CONFIG);
+
+  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
   private final Planner processor;
   protected final IPlanExecutor executor;
