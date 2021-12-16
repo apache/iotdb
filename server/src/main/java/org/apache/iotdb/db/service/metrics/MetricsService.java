@@ -166,7 +166,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Metric.FILE_SIZE.toString(),
         dataDirs,
         value ->
-            Stream.of(dataDirs)
+            Stream.of(value)
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
@@ -179,7 +179,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Metric.FILE_SIZE.toString(),
         dataDirs,
         value ->
-            Stream.of(dataDirs)
+            Stream.of(value)
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
@@ -190,9 +190,21 @@ public class MetricsService implements MetricsServiceMBean, IService {
         "unseq");
     metricManager.getOrCreateAutoGauge(
         Metric.FILE_COUNT.toString(),
+        walDir,
+        value -> {
+          File walFolder = new File(value);
+          if (walFolder.exists() && walFolder.isDirectory()) {
+            return org.apache.commons.io.FileUtils.listFiles(new File(value), null, true).size();
+          }
+          return 0L;
+        },
+        Tag.NAME.toString(),
+        "wal");
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_COUNT.toString(),
         dataDirs,
         value ->
-            Stream.of(dataDirs)
+            Stream.of(value)
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
@@ -207,7 +219,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
         Metric.FILE_COUNT.toString(),
         dataDirs,
         value ->
-            Stream.of(dataDirs)
+            Stream.of(value)
                 .mapToLong(
                     dir -> {
                       dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
