@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
@@ -113,6 +114,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         File resourceFile = new File(targetFile.getPath() + ".resource");
 
         RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile, false);
+        writer.close();
         if (writer.hasCrashed()) {
           LOGGER.info(
               "{}-{} [Compaction][Recover] target file {} crash, start to delete it",
@@ -120,7 +122,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
               virtualStorageGroup,
               targetFile);
           // the target tsfile is crashed, it is not completed
-          writer.close();
           if (!targetFile.delete()) {
             LOGGER.error(
                 "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
@@ -151,10 +152,17 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
               sourceTsFileResources.add(new TsFileResource(sourceFile));
             }
           }
+          ModificationFile modificationFileForTargetFile =
+              ModificationFile.getNormalMods(targetResource);
+          if (!modificationFileForTargetFile.exists()) {
+            InnerSpaceCompactionUtils.combineModsInCompaction(
+                sourceTsFileResources, targetResource);
+          }
 
           InnerSpaceCompactionUtils.deleteTsFilesInDisk(
               sourceTsFileResources, fullStorageGroupName);
-          combineModsInCompaction(sourceTsFileResources, targetResource);
+          InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+              sourceTsFileResources, logicalStorageGroupName + "-" + virtualStorageGroup);
         }
       }
     } catch (IOException e) {
