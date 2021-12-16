@@ -163,8 +163,7 @@ public class InnerSpaceCompactionExceptionHandler {
           Collection<Modification> newModification = compactionModificationFile.getModifications();
           compactionModificationFile.close();
           // write the modifications to a new modification file
-          sourceFile.resetModFile();
-          try (ModificationFile newModificationFile = sourceFile.getModFile()) {
+          try (ModificationFile newModificationFile = ModificationFile.getNormalMods(sourceFile)) {
             for (Modification modification : newModification) {
               newModificationFile.write(modification);
             }

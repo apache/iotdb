@@ -1534,7 +1534,9 @@ public class StorageGroupProcessor {
       return;
     }
 
-    writeLock("checkFileTTL");
+    TsFileResourceList resourceList =
+        tsFileManager.getSequenceListByTimePartition(resource.getTimePartition());
+    resourceList.writeLock();
     try {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
@@ -1544,6 +1546,7 @@ public class StorageGroupProcessor {
         try {
           // physical removal
           resource.remove();
+          resourceList.remove(resource);
           if (logger.isInfoEnabled()) {
             logger.info(
                 "Removed a file {} before {} by ttl ({}ms)",
@@ -1557,7 +1560,7 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      writeUnlock();
+      resourceList.writeUnlock();
     }
   }
 
