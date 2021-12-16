@@ -217,7 +217,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
-import static org.apache.iotdb.rpc.TSStatusCode.TIME_OUT;
+import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
 
 public class PlanExecutor implements IPlanExecutor {
@@ -1565,7 +1565,7 @@ public class PlanExecutor implements IPlanExecutor {
           QueryProcessException qe = (QueryProcessException) e.getCause();
           results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
         } else {
-          results.put(i, RpcUtils.getStatus(TIME_OUT, e.getMessage()));
+          results.put(i, RpcUtils.getStatus(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
       }
     }
@@ -1580,7 +1580,7 @@ public class PlanExecutor implements IPlanExecutor {
       insertionPool =
           (ThreadPoolExecutor)
               IoTDBThreadPoolFactory.newFixedThreadPool(
-                  Runtime.getRuntime().availableProcessors(), ThreadName.INSERT_SERVICE.getName());
+                  updateCoreSize, ThreadName.INSERTION_SERVICE.getName());
     } else if (insertionPool.getCorePoolSize() != updateCoreSize) {
       insertionPool.setCorePoolSize(updateCoreSize);
       insertionPool.setMaximumPoolSize(updateCoreSize);

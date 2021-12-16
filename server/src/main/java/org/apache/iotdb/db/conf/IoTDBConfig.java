@@ -609,7 +609,9 @@ public class IoTDBConfig {
 
   /**
    * When the insert plan column count reaches the specified threshold, which means that the plan is
-   * relatively large. At this time, may be enabled multithreading.
+   * relatively large. At this time, may be enabled multithreading. If the tablet is small, the time
+   * of each insertion is short. If we enable multithreading, we also need to consider the switching
+   * loss between threads, so we need to judge the size of the tablet.
    */
   private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
 

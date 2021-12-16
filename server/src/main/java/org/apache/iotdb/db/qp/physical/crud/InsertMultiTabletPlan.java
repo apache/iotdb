@@ -18,15 +18,12 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
-import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
@@ -392,14 +389,14 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   public int getDifferentStorageGroupsCount() {
     if (differentStorageGroupsCount == null) {
       Set<String> insertPlanSGSet = new HashSet<>();
+      int defaultStorageGroupLevel = new IoTDBConfig().getDefaultStorageGroupLevel();
       for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-        IStorageGroupMNode storageGroupMNode = null;
-        try {
-          storageGroupMNode =
-              IoTDB.metaManager.getStorageGroupNodeByPath(insertTabletPlan.getDeviceId());
-          insertPlanSGSet.add(storageGroupMNode.getFullPath());
-        } catch (MetadataException ignored) {
+        String[] nodes = insertTabletPlan.getDeviceId().getNodes();
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i <= defaultStorageGroupLevel && i < nodes.length; i++) {
+          stringBuilder.append(nodes[i]).append(".");
         }
+        insertPlanSGSet.add(stringBuilder.toString());
       }
       differentStorageGroupsCount = insertPlanSGSet.size();
     }
@@ -407,40 +404,38 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public boolean isEnableMultiThreading() {
+    return false;
     // After testing, we can find that when there are 10 columns , the thread pool speed will exceed
-    // the serial speed, so we set the threshold to 10.
+    // the serial speed, so we set the threshold to 10. Because if the tablet is small, the time of
+    // each insertion is short.
+    // If we enable multithreading, we also need to consider the loss of switching between threads,
+    // so we need to judge the size of the tablet.
     // Therefore, we set the number of core threads in the thread pool to min(the number of
     // different sg, availableProcessors()/2), and need columns >= 10
     // It should be noted that in the latest test, we found that if the number of sg is large and
     // exceeds twice the recommended number of CPU threads, it may lead to failure to allocate out
     // of heap memory and NPE. Therefore, we will also turn off multithreading in this case.
-    if (isEnableMultithreading == null) {
-      // In the cluster mode, RPC communication is required to obtain
-      // getDifferentStorageGroupsCount()
-      // which may greatly reduce the efficiency. Therefore, we do not turn on multithreading
-      if (IoTDB.isClusterMode()) {
-        isEnableMultithreading = false;
-      } else {
-        int sgSize = getDifferentStorageGroupsCount();
-        // SG should be >= 1 so that it will not be locked and degenerate into serial.
-        // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
-        // allocate out of heap memory and NPE
-        if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
-          isEnableMultithreading = false;
-        } else {
-          int BigPlanCountNum = 0;
-          for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-            if (insertTabletPlan.getRowCount()
-                >= IoTDBDescriptor.getInstance()
-                    .getConfig()
-                    .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
-              BigPlanCountNum++;
-            }
-          }
-          isEnableMultithreading = BigPlanCountNum * 2 >= insertTabletPlanList.size();
-        }
-      }
-    }
-    return isEnableMultithreading;
+    //    if (isEnableMultithreading == null) {
+    //        int sgSize = getDifferentStorageGroupsCount();
+    //        // SG should be >= 1 so that it will not be locked and degenerate into serial.
+    //        // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid
+    // failure to
+    //        // allocate out of heap memory and NPE
+    //        if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
+    //          isEnableMultithreading = false;
+    //        } else {
+    //          int BigPlanCountNum = 0;
+    //          for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+    //            if (insertTabletPlan.getRowCount()
+    //                >= IoTDBDescriptor.getInstance()
+    //                    .getConfig()
+    //                    .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
+    //              BigPlanCountNum++;
+    //            }
+    //          }
+    //          isEnableMultithreading = BigPlanCountNum * 2 >= insertTabletPlanList.size();
+    //      }
+    //    }
+    //    return isEnableMultithreading;
   }
 }
