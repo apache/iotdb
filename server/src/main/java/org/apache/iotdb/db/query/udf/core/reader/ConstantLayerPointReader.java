@@ -129,4 +129,9 @@ public class ConstantLayerPointReader implements LayerPointReader {
   public Binary currentBinary() throws IOException {
     return cachedBinary;
   }
+
+  @Override
+  public boolean isCurrentNull() {
+    return false;
+  }
 }

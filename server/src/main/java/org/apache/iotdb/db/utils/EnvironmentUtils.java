@@ -45,6 +45,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -205,8 +206,8 @@ public class EnvironmentUtils {
     }
     // try MetricService
     try (Socket socket = new Socket()) {
-      socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
-      logger.error("stop MetricService failed. 8181 can be connected now.");
+      socket.connect(new InetSocketAddress("127.0.0.1", 9091), 100);
+      logger.error("stop MetricService failed. 9091 can be connected now.");
       return false;
     } catch (Exception e) {
       // do nothing
@@ -255,8 +256,8 @@ public class EnvironmentUtils {
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
-    // we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
+    // we do not start 9091 port in test.
+    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();

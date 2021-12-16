@@ -24,9 +24,11 @@ import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,17 +74,19 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
    *
    * <ol>
    *   <li>Compaction log is incomplete, then delete it.
-   *   <li>All source files exist, then delete tmp target file, target file, resource file and
-   *       compaction log if exist.
-   *   <li>Not all source files exist, then delete the remaining source files and compaction log.
+   *   <li>All source files exist, then delete tmp target file, target file, resource file, mods
+   *       file of target file and compaction log if exist. Also append new modifications of all
+   *       source files to corresponding mods file.
+   *   <li>Not all source files exist, then delete the remaining source files, all mods files of
+   *       each source file and compaction log.
    * </ol>
    */
   @Override
   public void doCompaction() {
-    // read log -> Set<Device> -> doCompaction -> clear
+    boolean handleSuccess = true;
+    LOGGER.info(
+        "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
     try {
-      LOGGER.info(
-          "{} [Compaction][Recover] compaction log is {}", fullStorageGroupName, compactionLogFile);
       if (compactionLogFile.exists()) {
         LOGGER.info(
             "{}-{} [Compaction][Recover] compaction log file {} exists, start to recover it",
@@ -104,24 +108,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           return;
         }
 
-        // xxx.target
-        File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
-        // xxx.tsfile
-        File targetFile =
-            getFileFromDataDirs(
-                targetFileIdentifier
-                    .getFilePath()
-                    .replace(
-                        IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-        // xxx.tsfile.resource
-        File targetResourceFile =
-            getFileFromDataDirs(
-                targetFileIdentifier
-                        .getFilePath()
-                        .replace(
-                            IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)
-                    + TsFileResource.RESOURCE_SUFFIX);
-
         // check is all source files existed
         boolean isAllSourcesFileExisted = true;
         for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
@@ -133,60 +119,34 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         }
 
         if (isAllSourcesFileExisted) {
-          // all source files exist
-          if (tmpTargetFile != null && !tmpTargetFile.delete()) {
-            LOGGER.error(
-                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                tmpTargetFile);
-          }
-          if (targetFile != null && !targetFile.delete()) {
-            LOGGER.error(
-                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                targetFile);
-          }
-          if (targetResourceFile != null && !targetResourceFile.delete()) {
-            LOGGER.error(
-                "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
-                logicalStorageGroupName,
-                virtualStorageGroup,
-                targetResourceFile);
-          }
+          handleSuccess =
+              handleWithAllSourceFilesExist(targetFileIdentifier, sourceFileIdentifiers);
         } else {
-          // some source files have been deleted, which means .tsfile and .tsfile.resource exist.
-          List<TsFileResource> sourceTsFileResources = new ArrayList<>();
-          for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-            File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
-            if (sourceFile != null) {
-              sourceTsFileResources.add(new TsFileResource(sourceFile));
-            }
-          }
-          TsFileResource targetResource = new TsFileResource(targetFile);
-          InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-              sourceTsFileResources, fullStorageGroupName);
-          combineModsInCompaction(sourceTsFileResources, targetResource);
+          handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }
       }
     } catch (IOException e) {
       LOGGER.error("recover inner space compaction error", e);
     } finally {
-      // delete compaction log if exists
-      if (compactionLogFile.exists()) {
-        if (!compactionLogFile.delete()) {
-          LOGGER.warn(
-              "{}-{} [Compaction][Recover] fail to delete {}",
-              logicalStorageGroupName,
-              virtualStorageGroup,
-              compactionLogFile);
-        } else {
+      if (!handleSuccess) {
+        LOGGER.error(
+            "{} [Compaction][Recover] Failed to recover compaction, set allowCompaction to false",
+            fullStorageGroupName);
+        tsFileManager.setAllowCompaction(false);
+      } else {
+        try {
           LOGGER.info(
-              "{}-{} [Compaction][Recover] delete compaction log {}",
-              logicalStorageGroupName,
-              virtualStorageGroup,
+              "{} [Compaction][Recover] Recover compaction successfully, delete log file {}",
+              fullStorageGroupName,
               compactionLogFile);
+          FileUtils.delete(compactionLogFile);
+        } catch (IOException e) {
+          LOGGER.error(
+              "{} [Compaction][Recover] Exception occurs while deleting log file {}, set allowCompaction to false",
+              fullStorageGroupName,
+              compactionLogFile,
+              e);
+          tsFileManager.setAllowCompaction(false);
         }
       }
     }
@@ -208,6 +168,124 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
   @Override
   public boolean checkValidAndSetMerging() {
     return compactionLogFile.exists();
+  }
+
+  private boolean handleWithAllSourceFilesExist(
+      TsFileIdentifier targetFileIdentifier, List<TsFileIdentifier> sourceFileIdentifiers) {
+    boolean handleSuccess = true;
+    // xxx.target
+    File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
+    // xxx.tsfile
+    File targetFile =
+        getFileFromDataDirs(
+            targetFileIdentifier
+                .getFilePath()
+                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+    // xxx.tsfile.resource
+    File targetResourceFile =
+        getFileFromDataDirs(
+            targetFileIdentifier
+                    .getFilePath()
+                    .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)
+                + TsFileResource.RESOURCE_SUFFIX);
+    // xxx.tsfile.mods
+    File targetModFile =
+        getFileFromDataDirs(
+            targetFileIdentifier
+                    .getFilePath()
+                    .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)
+                + ModificationFile.FILE_SUFFIX);
+    if (tmpTargetFile != null && !tmpTargetFile.delete()) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+          logicalStorageGroupName,
+          virtualStorageGroup,
+          tmpTargetFile);
+      handleSuccess = false;
+    }
+    if (targetFile != null && !targetFile.delete()) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+          logicalStorageGroupName,
+          virtualStorageGroup,
+          targetFile);
+      handleSuccess = false;
+    }
+    if (targetResourceFile != null && !targetResourceFile.delete()) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+          logicalStorageGroupName,
+          virtualStorageGroup,
+          targetResourceFile);
+      handleSuccess = false;
+    }
+    if (targetModFile != null && !targetModFile.delete()) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+          logicalStorageGroupName,
+          virtualStorageGroup,
+          targetModFile);
+      handleSuccess = false;
+    }
+    // append new modifications of all source files to corresponding mod file
+    List<TsFileResource> tsFileResources = new ArrayList<>();
+    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+      tsFileResources.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
+    }
+    try {
+      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(tsFileResources);
+    } catch (IOException e) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to append new modifications to corresponding old mod file.",
+          logicalStorageGroupName,
+          virtualStorageGroup);
+      handleSuccess = false;
+    }
+    return handleSuccess;
+  }
+
+  private boolean handleWithoutAllSourceFilesExist(List<TsFileIdentifier> sourceFileIdentifiers) {
+    // some source files have been deleted, while .tsfile and .tsfile.resource must exist.
+    boolean handleSuccess = true;
+    List<TsFileResource> remainSourceTsFileResources = new ArrayList<>();
+    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+      File sourceFile = sourceFileIdentifier.getFileFromDataDirs();
+      if (sourceFile != null) {
+        remainSourceTsFileResources.add(new TsFileResource(sourceFile));
+      }
+      // delete .compaction.mods file and .mods file of all source files
+      File compactionModFile =
+          getFileFromDataDirs(
+              sourceFileIdentifier.getFilePath() + ModificationFile.COMPACTION_FILE_SUFFIX);
+      File modFile =
+          getFileFromDataDirs(sourceFileIdentifier.getFilePath() + ModificationFile.FILE_SUFFIX);
+      if (compactionModFile != null && !compactionModFile.delete()) {
+        LOGGER.error(
+            "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            compactionModFile);
+        handleSuccess = false;
+      }
+      if (modFile != null && !modFile.delete()) {
+        LOGGER.error(
+            "{}-{} [Compaction][Recover] fail to delete target file {}, this may cause data incorrectness",
+            logicalStorageGroupName,
+            virtualStorageGroup,
+            modFile);
+        handleSuccess = false;
+      }
+    }
+    // delete remaining source files
+    if (!InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+        remainSourceTsFileResources, fullStorageGroupName)) {
+      LOGGER.error(
+          "{}-{} [Compaction][Recover] fail to delete remaining source files.",
+          logicalStorageGroupName,
+          virtualStorageGroup);
+      handleSuccess = false;
+    }
+    return handleSuccess;
   }
 
   /**

@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
@@ -50,12 +48,17 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -538,27 +541,101 @@ public class InnerSpaceCompactionUtils {
                 new ModificationFile(fileName + ModificationFile.FILE_SUFFIX).getModifications()));
   }
 
-  public static void deleteTsFilesInDisk(
+  public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
-    logger.info("{} [compaction] merge starts to delete real file ", storageGroupName);
+    logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
-      deleteTsFile(mergeTsFile);
+      if (!deleteTsFile(mergeTsFile)) {
+        result = false;
+      }
       logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
+    return result;
   }
 
-  public static void deleteTsFile(TsFileResource seqFile) {
-    seqFile.writeLock();
+  /** Delete all modification files for source files */
+  public static void deleteModificationForSourceFile(
+      Collection<TsFileResource> sourceFiles, String storageGroupName) throws IOException {
+    logger.info("{} [Compaction] Start to delete modifications of source files", storageGroupName);
+    for (TsFileResource tsFileResource : sourceFiles) {
+      ModificationFile compactionModificationFile =
+          ModificationFile.getCompactionMods(tsFileResource);
+      if (compactionModificationFile.exists()) {
+        compactionModificationFile.remove();
+      }
+
+      ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
+      if (normalModification.exists()) {
+        normalModification.remove();
+      }
+    }
+  }
+
+  /**
+   * This method is called to recover modifications while an exception occurs during compaction. It
+   * append new modifications of each selected tsfile to its corresponding old mods file.
+   *
+   * @param selectedTsFileResources
+   * @throws IOException
+   */
+  public static void appendNewModificationsToOldModsFile(
+      List<TsFileResource> selectedTsFileResources) throws IOException {
+    for (TsFileResource sourceFile : selectedTsFileResources) {
+      // if there are modifications to this seqFile during compaction
+      if (sourceFile.getCompactionModFile().exists()) {
+        ModificationFile compactionModificationFile =
+            ModificationFile.getCompactionMods(sourceFile);
+        Collection<Modification> newModification = compactionModificationFile.getModifications();
+        compactionModificationFile.close();
+        sourceFile.resetModFile();
+        // write the new modifications to its old modification file
+        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
+          for (Modification modification : newModification) {
+            oldModificationFile.write(modification);
+          }
+        }
+        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+      }
+    }
+  }
+
+  /**
+   * Collect all the compaction modification files of source files, and combines them as the
+   * modification file of target file.
+   */
+  public static void combineModsInCompaction(
+      Collection<TsFileResource> mergeTsFiles, TsFileResource targetTsFile) throws IOException {
+    List<Modification> modifications = new ArrayList<>();
+    for (TsFileResource mergeTsFile : mergeTsFiles) {
+      try (ModificationFile sourceCompactionModificationFile =
+          ModificationFile.getCompactionMods(mergeTsFile)) {
+        modifications.addAll(sourceCompactionModificationFile.getModifications());
+      }
+    }
+    if (!modifications.isEmpty()) {
+      try (ModificationFile modificationFile = ModificationFile.getNormalMods(targetTsFile)) {
+        for (Modification modification : modifications) {
+          // we have to set modification offset to MAX_VALUE, as the offset of source chunk may
+          // change after compaction
+          modification.setFileOffset(Long.MAX_VALUE);
+          modificationFile.write(modification);
+        }
+      }
+    }
+  }
+
+  public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
-    } finally {
-      seqFile.writeUnlock();
+      return false;
     }
+    return true;
   }
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(

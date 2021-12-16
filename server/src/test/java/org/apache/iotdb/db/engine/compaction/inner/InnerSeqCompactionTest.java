@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
@@ -227,7 +226,8 @@ public class InnerSeqCompactionTest {
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-            SizeTieredCompactionTask.combineModsInCompaction(sourceResources, targetTsFileResource);
+            InnerSpaceCompactionUtils.combineModsInCompaction(
+                sourceResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
             // check data
@@ -454,7 +454,7 @@ public class InnerSeqCompactionTest {
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-            SizeTieredCompactionTask.combineModsInCompaction(
+            InnerSpaceCompactionUtils.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
@@ -732,7 +732,7 @@ public class InnerSeqCompactionTest {
             InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
-            SizeTieredCompactionTask.combineModsInCompaction(
+            InnerSpaceCompactionUtils.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
             List<TsFileResource> targetTsFileResources = new ArrayList<>();
             targetTsFileResources.add(targetTsFileResource);
