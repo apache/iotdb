@@ -874,8 +874,6 @@ public class ClusterReaderFactory {
         }
 
         if (executorId != -1) {
-          // record the queried node to release resources later
-          ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
           logger.debug(
               "{}: get an executorId {} for {}@{} from {}",
               metaGroupMember.getName(),
@@ -906,6 +904,9 @@ public class ClusterReaderFactory {
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
+      } finally {
+        // record the queried node to release resources later
+        ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
       }
     }
     throw new StorageEngineException(
