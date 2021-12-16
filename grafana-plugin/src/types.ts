@@ -16,7 +16,7 @@
  */
 import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
-export interface MyQuery extends DataQuery {
+export interface IoTDBQuery extends DataQuery {
   startTime: number;
   endTime: number;
   expression: string[];
@@ -29,7 +29,7 @@ export interface MyQuery extends DataQuery {
 /**
  * These are options configured for each DataSource instance
  */
-export interface MyDataSourceOptions extends DataSourceJsonData {
+export interface IoTDBOptions extends DataSourceJsonData {
   url: string;
   password: string;
   username: string;
@@ -38,6 +38,6 @@ export interface MyDataSourceOptions extends DataSourceJsonData {
 /**
  * Value that is used in the backend, but never sent over HTTP to the frontend
  */
-export interface MySecureJsonData {
+export interface IoTDBSecureJsonData {
   apiKey?: string;
 }

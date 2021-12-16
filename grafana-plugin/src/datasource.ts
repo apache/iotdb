@@ -23,23 +23,23 @@ import {
   toDataFrame,
 } from '@grafana/data';
 
-import { MyQuery, MyDataSourceOptions } from './types';
+import { IoTDBOptions, IoTDBQuery } from './types';
 import { toMetricFindValue } from './functions';
 import { getBackendSrv, getTemplateSrv } from '@grafana/runtime';
 
-export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
+export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
   username: string;
   password: string;
   url: string;
 
-  constructor(instanceSettings: DataSourceInstanceSettings<MyDataSourceOptions>) {
+  constructor(instanceSettings: DataSourceInstanceSettings<IoTDBOptions>) {
     super(instanceSettings);
     this.url = instanceSettings.jsonData.url;
     this.password = instanceSettings.jsonData.password;
     this.username = instanceSettings.jsonData.username;
   }
 
-  async query(options: DataQueryRequest<MyQuery>): Promise<DataQueryResponse> {
+  async query(options: DataQueryRequest<IoTDBQuery>): Promise<DataQueryResponse> {
     const { range } = options;
     const dataFrames = options.targets.map(target => {
       target.startTime = range!.from.valueOf();
@@ -65,7 +65,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       .then(data => ({ data }));
   }
 
-  async doRequest(query: MyQuery) {
+  async doRequest(query: IoTDBQuery) {
     const myHeader = new Headers();
     let reqURL = '/rest/grafana/query/json';
     if (query.expression.length > 0) {
@@ -83,7 +83,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
       })
       .then(response => response.data)
       .then(a => {
-        if (a instanceof Object && a.expressions !== null) {
+        if (a.expressions !== null) {
           let dataframes: any = [];
           a.expressions.map((v: any, index: any) => {
             let datapoints: any = [];
@@ -91,11 +91,9 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
               a.timestamps.map((time: any, i: any) => {
                 datapoints[i] = [a.values[index][i], time];
               });
-              const data = { target: v, datapoints: datapoints };
-              dataframes[index] = data;
+              dataframes[index] = { target: v, datapoints: datapoints };
             }
-            const data = { target: v, datapoints: datapoints };
-            dataframes[index] = data;
+            dataframes[index] = { target: v, datapoints: datapoints };
           });
           return dataframes.map(toDataFrame);
         } else {
@@ -145,8 +143,7 @@ export class DataSource extends DataSourceApi<MyQuery, MyDataSourceOptions> {
     let status = '';
     let message = '';
     await response.then(res => {
-      let b = res.data.code === 200 ? true : false;
-      if (b) {
+      if (res.data.code === 200) {
         status = 'success';
         message = 'Success';
       } else {

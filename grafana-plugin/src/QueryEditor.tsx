@@ -18,7 +18,7 @@ import defaults from 'lodash/defaults';
 import React, { ChangeEvent, PureComponent } from 'react';
 import { QueryEditorProps } from '@grafana/data';
 import { DataSource } from './datasource';
-import { MyDataSourceOptions, MyQuery } from './types';
+import { IoTDBOptions, IoTDBQuery } from './types';
 import { QueryInlineField } from './componments/Form';
 import { SelectValue } from 'componments/SelectValue';
 import { FromValue } from 'componments/FromValue';
@@ -32,7 +32,7 @@ interface State {
 
 const paths = [''];
 const expressions = [''];
-type Props = QueryEditorProps<DataSource, MyQuery, MyDataSourceOptions>;
+type Props = QueryEditorProps<DataSource, IoTDBQuery, IoTDBOptions>;
 
 export class QueryEditor extends PureComponent<Props, State> {
   state: State = {
@@ -62,13 +62,6 @@ export class QueryEditor extends PureComponent<Props, State> {
   onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
     onChange({ ...query, queryText: event.target.value });
-  };
-
-  onConstantChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const { onChange, query, onRunQuery } = this.props;
-    onChange({ ...query, constant: parseFloat(event.target.value) });
-    // executes the query
-    onRunQuery();
   };
 
   render() {
