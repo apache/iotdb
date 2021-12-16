@@ -122,14 +122,14 @@ public class TimeSeriesMetadataCache {
               Metric.CACHE_HIT.toString(),
               bloomFilterPreventCount,
               prevent -> {
-                if (bloomFilterRequestCount.get() != 0L) {
+                if (bloomFilterRequestCount.get() == 0L) {
                   return 1L;
                 }
                 return (long)
                     ((double) prevent.get() / (double) bloomFilterRequestCount.get() * 100L);
               },
               Tag.NAME.toString(),
-              "timeSeriesMeta");
+              "bloomFilter");
     }
   }
 

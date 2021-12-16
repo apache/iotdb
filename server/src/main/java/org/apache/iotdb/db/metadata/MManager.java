@@ -315,7 +315,7 @@ public class MManager {
             mtree,
             tree -> {
               try {
-                return tree.getDevicesNum(new PartialPath("root"));
+                return tree.getDevicesNum(new PartialPath("root.**"));
               } catch (MetadataException e) {
                 logger.error("get deviceNum error", e);
               }
@@ -331,7 +331,7 @@ public class MManager {
             mtree,
             tree -> {
               try {
-                return tree.getStorageGroupNum(new PartialPath("root"));
+                return tree.getStorageGroupNum(new PartialPath("root.**"));
               } catch (MetadataException e) {
                 logger.error("get storageGroupNum error", e);
               }

@@ -114,9 +114,6 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
             (header, dataGroupMember) -> {
               Node leader = dataGroupMember.getLeader();
               int delta = 1;
-              if (metaGroupMember.getLeader().equals(leader)) {
-                delta += 1;
-              }
               Integer count = leaderCountMap.getOrDefault(leader, 0);
               leaderCountMap.put(leader, count + delta);
             });
@@ -157,7 +154,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
               isAlive ? 1 : 0,
               Metric.CLUSTER_NODE_STATUS.toString(),
               Tag.NAME.toString(),
-              node.internalIp + ":" + node.clientPort);
+              node.internalIp);
     }
   }
 

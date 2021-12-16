@@ -77,7 +77,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   @Override
   public void onComplete(Long resp) {
     long voterResp = resp;
-    boolean isWin = false;
+    String result = "fail";
     synchronized (raftMember.getTerm()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
@@ -103,7 +103,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           terminated.set(true);
           raftMember.getTerm().notifyAll();
           raftMember.onElectionWins();
-          isWin = true;
+          result = "win";
           logger.info("{}: Election {} is won", memberName, currTerm);
         }
         // still need more votes
@@ -133,7 +133,13 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
-          .count(1, Metric.CLUSTER_ELECT.toString(), Tag.STATUS.toString(), String.valueOf(isWin));
+          .count(
+              1,
+              Metric.CLUSTER_ELECT.toString(),
+              Tag.NAME.toString(),
+              raftMember.getThisNode().internalIp,
+              Tag.STATUS.toString(),
+              result);
     }
   }
 
