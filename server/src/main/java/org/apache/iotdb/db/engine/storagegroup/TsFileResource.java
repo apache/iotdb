@@ -337,7 +337,22 @@ public class TsFileResource {
   }
 
   public ModificationFile getCompactionModFile() {
-    return ModificationFile.getCompactionMods(this);
+    if (modFile == null) {
+      synchronized (this) {
+        if (modFile == null) {
+          modFile = ModificationFile.getCompactionMods(this);
+        }
+      }
+    }
+    return modFile;
+  }
+
+  public void resetModFile() {
+    if (modFile != null) {
+      synchronized (this) {
+        modFile = null;
+      }
+    }
   }
 
   public void setFile(File file) {
