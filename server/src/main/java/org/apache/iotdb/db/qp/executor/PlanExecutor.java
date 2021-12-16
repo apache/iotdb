@@ -1581,9 +1581,12 @@ public class PlanExecutor implements IPlanExecutor {
           (ThreadPoolExecutor)
               IoTDBThreadPoolFactory.newFixedThreadPool(
                   updateCoreSize, ThreadName.INSERTION_SERVICE.getName());
-    } else if (insertionPool.getCorePoolSize() != updateCoreSize) {
+    } else if (insertionPool.getCorePoolSize() > updateCoreSize) {
       insertionPool.setCorePoolSize(updateCoreSize);
       insertionPool.setMaximumPoolSize(updateCoreSize);
+    } else if (insertionPool.getCorePoolSize() < updateCoreSize) {
+      insertionPool.setMaximumPoolSize(updateCoreSize);
+      insertionPool.setCorePoolSize(updateCoreSize);
     }
   }
 
