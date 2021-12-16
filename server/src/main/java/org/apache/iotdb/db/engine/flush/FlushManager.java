@@ -66,9 +66,21 @@ public class FlushManager implements FlushManagerMBean, IService {
             .getOrCreateAutoGauge(
                 Metric.QUEUE.toString(),
                 flushPool,
-                AbstractPoolManager::getTotalTasks,
+                AbstractPoolManager::getWaitingTasksNumber,
                 Tag.NAME.toString(),
-                "flush");
+                "flush",
+                Tag.STATUS.toString(),
+                "waiting");
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                flushPool,
+                AbstractPoolManager::getWorkingTasksNumber,
+                Tag.NAME.toString(),
+                "flush",
+                Tag.STATUS.toString(),
+                "running");
       }
 
     } catch (Exception e) {

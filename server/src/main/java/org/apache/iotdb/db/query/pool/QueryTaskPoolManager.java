@@ -49,11 +49,21 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
           .getOrCreateAutoGauge(
               Metric.QUEUE.toString(),
               pool,
-              p ->
-                  ((ThreadPoolExecutor) p).getQueue().size()
-                      + ((ThreadPoolExecutor) p).getActiveCount(),
+              p -> ((ThreadPoolExecutor) p).getActiveCount(),
               Tag.NAME.toString(),
-              ThreadName.QUERY_SERVICE.getName());
+              ThreadName.QUERY_SERVICE.getName(),
+              Tag.STATUS.toString(),
+              "running");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.QUEUE.toString(),
+              pool,
+              p -> ((ThreadPoolExecutor) p).getQueue().size(),
+              Tag.NAME.toString(),
+              ThreadName.QUERY_SERVICE.getName(),
+              Tag.STATUS.toString(),
+              "waiting");
     }
   }
 

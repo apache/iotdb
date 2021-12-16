@@ -199,6 +199,12 @@ public class CompactionTaskManager implements IService {
     if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
       candidateCompactionTaskQueue.add(compactionTask);
+
+      // add metrics
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        addMetrics(compactionTask, true, false);
+      }
+
       return true;
     }
     return false;
@@ -213,19 +219,25 @@ public class CompactionTaskManager implements IService {
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && candidateCompactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = candidateCompactionTaskQueue.poll();
+
+      // add metrics
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        addMetrics(task, false, false);
+      }
+
       if (task != null && task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
         runningCompactionTaskList.add(task);
 
         // add metrics
         if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-          addMetrics(task, true);
+          addMetrics(task, true, true);
         }
       }
     }
   }
 
-  private void addMetrics(AbstractCompactionTask task, boolean isAdd) {
+  private void addMetrics(AbstractCompactionTask task, boolean isAdd, boolean isRunning) {
     String taskType = "unknown";
     if (task instanceof AbstractInnerSpaceCompactionTask) {
       taskType = "inner";
@@ -238,9 +250,9 @@ public class CompactionTaskManager implements IService {
             .getOrCreateGauge(
                 Metric.QUEUE.toString(),
                 Tag.NAME.toString(),
-                "compactionRunning",
-                Tag.TYPE.toString(),
-                taskType);
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                isRunning ? "running" : "waiting");
     if (isAdd) {
       gauge.incr(1L);
     } else {
@@ -252,7 +264,7 @@ public class CompactionTaskManager implements IService {
     runningCompactionTaskList.remove(task);
     // add metrics
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
-      addMetrics(task, false);
+      addMetrics(task, false, true);
     }
   }
 
