@@ -79,7 +79,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.writeUnlock();
     }
     Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
   }
 
   @Test
@@ -192,6 +192,6 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.writeUnlock();
     }
     Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
+    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
   }
 }

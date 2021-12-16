@@ -142,9 +142,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.get(i).writeLock();
         isHoldingWriteLock[i] = true;
       }
-      LOGGER.info(
-          "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
-          fullStorageGroupName);
 
       try {
         LOGGER.info(
@@ -159,6 +156,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         InnerSpaceCompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, fullStorageGroupName);
 
+        LOGGER.info(
+            "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
+            fullStorageGroupName);
         // get write lock for TsFileResource list with timeout
         try {
           tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
