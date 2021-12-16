@@ -154,6 +154,12 @@ public class IoTDBDescriptor {
           Integer.parseInt(
               properties.getProperty("rpc_port", Integer.toString(conf.getRpcPort()))));
 
+      conf.setEnableInfluxDBRpcService(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_influxdb_rpc_service",
+                  Boolean.toString(conf.isEnableInfluxDBRpcService()))));
+
       conf.setInfluxDBRpcPort(
           Integer.parseInt(
               properties.getProperty(
@@ -547,21 +553,6 @@ public class IoTDBDescriptor {
               properties
                   .getProperty(
                       "enable_performance_stat", Boolean.toString(conf.isEnablePerformanceStat()))
-                  .trim()));
-
-      conf.setPerformanceStatDisplayInterval(
-          Long.parseLong(
-              properties
-                  .getProperty(
-                      "performance_stat_display_interval",
-                      Long.toString(conf.getPerformanceStatDisplayInterval()))
-                  .trim()));
-      conf.setPerformanceStatMemoryInKB(
-          Integer.parseInt(
-              properties
-                  .getProperty(
-                      "performance_stat_memory_in_kb",
-                      Integer.toString(conf.getPerformanceStatMemoryInKB()))
                   .trim()));
 
       int maxConcurrentClientNum =

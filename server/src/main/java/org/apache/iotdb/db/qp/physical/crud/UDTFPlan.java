@@ -87,7 +87,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     }
   }
 
-  private void setDatasetOutputIndexToResultColumnIndex(
+  protected void setDatasetOutputIndexToResultColumnIndex(
       int datasetOutputIndex, Integer originalIndex) {
     datasetOutputIndexToResultColumnIndex.put(datasetOutputIndex, originalIndex);
   }
@@ -129,5 +129,9 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   public int getReaderIndex(String pathName) {
     return pathNameToReaderIndex.get(pathName);
+  }
+
+  public int getReaderIndexByExpressionName(String expressionName) {
+    return pathNameToReaderIndex.get(expressionName);
   }
 }

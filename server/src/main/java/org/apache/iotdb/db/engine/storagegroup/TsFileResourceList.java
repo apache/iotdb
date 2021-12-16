@@ -26,6 +26,7 @@ import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
@@ -181,6 +182,64 @@ public class TsFileResourceList implements List<TsFileResource> {
         count++;
       } else {
         insertAfter(tail, newNode);
+      }
+      return true;
+    } finally {
+      writeUnlock();
+    }
+  }
+
+  /**
+   * Insert a tsfile resource to the list, the tsfile will be inserted before the first tsfile whose
+   * timestamp is greater than its. If there is no tsfile whose timestamp is greater than the new
+   * node's, the new node will be inserted to the tail of the list.
+   */
+  public boolean keepOrderInsert(TsFileResource newNode) throws IOException {
+    writeLock();
+    try {
+      if (newNode.prev != null || newNode.next != null) {
+        // this node already in a list
+        return false;
+      }
+      if (tail == null) {
+        header = newNode;
+        tail = newNode;
+        count++;
+      } else {
+        // find the position to insert of this node
+        // the list should be ordered by file timestamp
+        long timeOfNewNode =
+            TsFileNameGenerator.getTsFileName(newNode.getTsFile().getName()).getTime();
+
+        if (TsFileNameGenerator.getTsFileName(header.getTsFile().getName()).getTime()
+            > timeOfNewNode) {
+          // the timestamp of head node is greater than the new node
+          // insert it before the head
+          insertBefore(header, newNode);
+        } else if (TsFileNameGenerator.getTsFileName(tail.getTsFile().getName()).getTime()
+            < timeOfNewNode) {
+          // the timestamp of new node is greater than the tail node
+          // insert it after the tail
+          insertAfter(tail, newNode);
+        } else {
+          // the timestamp of new node is between the timestamp of head and tail node
+          // find the first node whose timestamp is greater than new node
+          // and insert the new node before this node
+          TsFileResource currNode = header;
+          while (currNode.next != null) {
+            if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+                > timeOfNewNode) {
+              break;
+            }
+            currNode = currNode.next;
+          }
+          if (TsFileNameGenerator.getTsFileName(currNode.getTsFile().getName()).getTime()
+              < timeOfNewNode) {
+            LOGGER.error("Cannot find an appropriate place to insert {}", newNode);
+          } else {
+            insertBefore(currNode, newNode);
+          }
+        }
       }
       return true;
     } finally {

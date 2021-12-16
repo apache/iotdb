@@ -16,19 +16,51 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import java.io.IOException;
 import java.util.List;
 
-public interface UDFInputDataSet {
+/**
+ * the input data set of an UDAF query. It accepts any query results as input instead of raw
+ * timeseries data
+ */
+public class UDFInputDataSet implements IUDFInputDataSet {
 
-  List<TSDataType> getDataTypes();
+  private final QueryDataSet dataSet;
+  private List<TSDataType> dataTypes;
 
-  boolean hasNextRowInObjects() throws IOException;
+  public UDFInputDataSet(QueryDataSet dataSet, List<TSDataType> dataTypes) {
+    this.dataSet = dataSet;
+    this.dataTypes = dataTypes;
+  }
 
-  Object[] nextRowInObjects() throws IOException;
+  @Override
+  public List<TSDataType> getDataTypes() {
+    return dataTypes;
+  }
+
+  @Override
+  public boolean hasNextRowInObjects() throws IOException {
+    return dataSet.hasNextWithoutConstraint();
+  }
+
+  @Override
+  public Object[] nextRowInObjects() throws IOException {
+    Object[] nextRow = new Object[dataSet.getColumnNum() + 1];
+    RowRecord r = dataSet.nextWithoutConstraint();
+    for (int i = 0; i < dataSet.getColumnNum(); i++) {
+      Field f = r.getFields().get(i);
+      if (f != null) {
+        nextRow[i] = f.getObjectValue(f.getDataType());
+      }
+    }
+    nextRow[dataSet.getColumnNum()] = r.getTimestamp();
+    return nextRow;
+  }
 }

@@ -128,6 +128,7 @@ public class ClusterNode {
       Properties engineConfig = new Properties();
       engineConfig.load(new FileInputStream(engineConfigPath));
       engineConfig.setProperty("rpc_port", String.valueOf(this.rpcPort));
+      engineConfig.setProperty("enable_influxdb_rpc_service", Boolean.toString(false));
       engineConfig.putAll(properties);
       engineConfig.store(new FileWriter(engineConfigPath), null);
 
