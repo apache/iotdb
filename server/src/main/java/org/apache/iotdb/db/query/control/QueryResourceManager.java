@@ -67,6 +67,11 @@ public class QueryResourceManager {
    */
   private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
+  /**
+   * Record QueryDataSource used in queries
+   *
+   * <p>Key: query job id. Value: QueryDataSource corresponding to each virtual storage group.
+   */
   private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
 
   private QueryResourceManager() {
@@ -99,6 +104,13 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
+  /**
+   * The method is called in mergeLock() when executing query. This method will get all the
+   * QueryDataSource needed for this query and put them in the cachedQueryDataSourcesMap.
+   *
+   * @param processorToSeriesMap Key: processor of the virtual storage group Value: selected series
+   *     under the virtual storage group
+   */
   public void initQueryDataSource(
       Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
       QueryContext context,
@@ -120,23 +132,6 @@ public class QueryResourceManager {
     }
   }
 
-  public QueryDataSource getQueryDataSourceByPath(
-      PartialPath selectedPath, QueryContext context, Filter filter)
-      throws StorageEngineException, QueryProcessException {
-
-    SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(selectedPath, filter);
-    QueryDataSource queryDataSource =
-        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
-    // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
-      TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
-    }
-    return queryDataSource;
-  }
-
   public QueryDataSource getQueryDataSource(
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {
@@ -151,6 +146,7 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
+      // after call clearCachedQueryDataSource()
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(selectedPath, filter);
       cachedQueryDataSource =
@@ -173,6 +169,25 @@ public class QueryResourceManager {
     return queryDataSource;
   }
 
+  /* This method is only used for last query and fill query */
+  public QueryDataSource getQueryDataSourceByPath(
+      PartialPath selectedPath, QueryContext context, Filter filter)
+      throws StorageEngineException, QueryProcessException {
+
+    SingleSeriesExpression singleSeriesExpression =
+        new SingleSeriesExpression(selectedPath, filter);
+    QueryDataSource queryDataSource =
+        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
+    // calculate the distinct number of seq and unseq tsfiles
+    if (CONFIG.isEnablePerformanceTracing()) {
+      TracingManager.getInstance()
+          .getTracingInfo(context.getQueryId())
+          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
+    }
+    return queryDataSource;
+  }
+
+  /* This method is only used for linear fill query  */
   public void clearCachedQueryDataSource(PartialPath path, QueryContext context)
       throws StorageEngineException {
     long queryId = context.getQueryId();

@@ -27,13 +27,22 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import java.util.List;
 
 public class QueryDataSource {
+
+  /**
+   * TsFileResources used by query job.
+   *
+   * <p>Note: Sequences under the same virtual storage group share two lists of TsFileResources (seq
+   * and unseq).
+   */
   private final List<TsFileResource> seqResources;
+
   private final List<TsFileResource> unseqResources;
+
+  /* The traversal order of unseqResources (different for each device) */
+  private int[] unSeqFileOrderIndex;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
-
-  private int[] unSeqFileOrderIndex;
 
   public QueryDataSource(List<TsFileResource> seqResources, List<TsFileResource> unseqResources) {
     this.seqResources = seqResources;
@@ -50,10 +59,6 @@ public class QueryDataSource {
 
   public long getDataTTL() {
     return dataTTL;
-  }
-
-  public int[] getUnSeqFileOrderIndex() {
-    return unSeqFileOrderIndex;
   }
 
   public void setDataTTL(long dataTTL) {
@@ -101,9 +106,5 @@ public class QueryDataSource {
 
   public int getSeqResourcesSize() {
     return seqResources.size();
-  }
-
-  public int getUnseqResourcesSize() {
-    return unseqResources.size();
   }
 }

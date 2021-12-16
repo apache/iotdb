@@ -802,7 +802,7 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** query data. */
+  /** get QueryDataSource */
   public QueryDataSource query(
       SingleSeriesExpression seriesExpression,
       QueryContext context,
