@@ -476,16 +476,23 @@ public class TsFileResource {
   }
 
   /** @return true if the TsFile lives beyond TTL */
-  public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl) {
+  public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
     if (!isAlive(endTime, ttl)) {
+      if (debug) {
+        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
+      }
       return false;
     }
 
     if (timeFilter != null) {
-      return timeFilter.satisfyStartEndTime(startTime, endTime);
+      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
+      if (debug && !res) {
+        DEBUG_LOGGER.info("Path: file {} is not satisfied because of time filter!", fsFactory);
+      }
+      return res;
     }
     return true;
   }
@@ -499,6 +506,10 @@ public class TsFileResource {
       long ttl,
       boolean debug) {
     if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of fileFilter!", deviceId, file);
+      }
       return false;
     }
 

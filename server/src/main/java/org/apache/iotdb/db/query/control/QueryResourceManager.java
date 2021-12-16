@@ -24,8 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -48,15 +46,19 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
  * the jobs. During the life cycle of a query, the following methods must be called in strict order:
- * 1. assignQueryId - get an Id for the new query. 2. getQueryDataSource - open files for the job or
- * reuse existing readers. 3. endQueryForGivenJob - release the resource used by this job.
+ *
+ * <p>1. assignQueryId - get an Id for the new query.
+ *
+ * <p>2. getQueryDataSource - open files for the job or reuse existing readers.
+ *
+ * <p>3. endQueryForGivenJob - release the resource used by this job.
  */
 public class QueryResourceManager {
 
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
-  private IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * Record temporary files used for external sorting.
@@ -70,7 +72,7 @@ public class QueryResourceManager {
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
-    cachedQueryDataSourcesMap = new HashMap<>();
+    cachedQueryDataSourcesMap = new ConcurrentHashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -111,7 +113,7 @@ public class QueryResourceManager {
       String storageGroupPath = processor.getStorageGroupPath();
 
       QueryDataSource cachedQueryDataSource =
-          processor.getAllQueryDataSource(pathList, context, timeFilter);
+          processor.query(pathList, context, filePathsManager, timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
@@ -149,25 +151,14 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
-      //      throw new QueryProcessException("Can't find cachedQueryDataSource!");
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(selectedPath, filter);
       cachedQueryDataSource =
-          StorageEngine.getInstance().getAllQueryDataSource(singleSeriesExpression);
+          StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
-
-      // used files should be added before mergeLock is unlocked, or they may be deleted by running
-      // merge
-      filePathsManager.addUsedFilesForQuery(context.getQueryId(), cachedQueryDataSource);
     }
-
-    // set query time lower bound according TTL
-    long dataTTL = cachedQueryDataSource.getDataTTL();
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
 
     // construct QueryDataSource for selectedPath
     QueryDataSource queryDataSource =
@@ -175,54 +166,6 @@ public class QueryResourceManager {
             cachedQueryDataSource.getSeqResources(), cachedQueryDataSource.getUnseqResources());
 
     queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
-
-    UnclosedTsFileResource cachedUnclosedSeqResource =
-        cachedQueryDataSource.getUnclosedSeqResource();
-    if (cachedUnclosedSeqResource != null) {
-      try {
-
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
-        TsFileProcessor processor = cachedUnclosedSeqResource.getUnsealedFileProcessor();
-        if (processor != null) {
-          queryDataSource.setUnclosedSeqResource(processor.query(selectedPath, context));
-        } else {
-          // tsFileResource is closed
-          queryDataSource.setUnclosedSeqResource(cachedUnclosedSeqResource);
-        }
-      } catch (IOException e) {
-        throw new QueryProcessException(
-            String.format(
-                "%s: %s get ReadOnlyMemChunk has error",
-                storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
-      } finally {
-
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
-      }
-    }
-
-    UnclosedTsFileResource cachedUnclosedUnseqResource =
-        cachedQueryDataSource.getUnclosedUnseqResource();
-    if (cachedUnclosedUnseqResource != null) {
-      try {
-
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
-        TsFileProcessor processor = cachedUnclosedUnseqResource.getUnsealedFileProcessor();
-        if (processor != null) {
-          queryDataSource.setUnclosedUnseqResource(processor.query(selectedPath, context));
-        } else {
-          // tsFileResource is closed
-          queryDataSource.setUnclosedUnseqResource(cachedUnclosedUnseqResource);
-        }
-      } catch (IOException e) {
-        throw new QueryProcessException(
-            String.format(
-                "%s: %s get ReadOnlyMemChunk has error",
-                storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
-      } finally {
-
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
-      }
-    }
 
     // calculate the read order of unseqResources
     QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());

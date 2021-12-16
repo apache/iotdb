@@ -1573,7 +1573,6 @@ public class StorageGroupProcessor {
     }
   }
 
-  // TODO need a read lock, please consider the concurrency with flush manager threads.
   public QueryDataSource query(
       PartialPath fullPath,
       QueryContext context,
@@ -1614,37 +1613,35 @@ public class StorageGroupProcessor {
     }
   }
 
-  public QueryDataSource getAllQueryDataSource(Filter timeFilter) throws QueryProcessException {
-    readLock();
-    try {
-      Pair<List<TsFileResource>, UnclosedTsFileResource> seqResources =
-          getFileResourceListForQuery(tsFileManagement.getTsFileList(true), timeFilter, true);
-      Pair<List<TsFileResource>, UnclosedTsFileResource> unseqResources =
-          getFileResourceListForQuery(tsFileManagement.getTsFileList(false), timeFilter, false);
-      QueryDataSource dataSource = new QueryDataSource(seqResources.left, unseqResources.left);
-      dataSource.setUnclosedSeqResource(seqResources.right);
-      dataSource.setUnclosedUnseqResource(unseqResources.right);
-      dataSource.setDataTTL(dataTTL);
-      return dataSource;
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    } finally {
-      readUnlock();
-    }
-  }
-
-  public QueryDataSource getAllQueryDataSource(
-      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
+  public QueryDataSource query(
+      List<PartialPath> pathList,
+      QueryContext context,
+      QueryFileManager filePathsManager,
+      Filter timeFilter)
       throws QueryProcessException {
     readLock();
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
-              tsFileManagement.getTsFileList(true), pathList, context, timeFilter, true);
+              tsFileManagement.getTsFileList(true),
+              upgradeSeqFileList,
+              pathList,
+              context,
+              timeFilter,
+              true);
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
-              tsFileManagement.getTsFileList(false), pathList, context, timeFilter, false);
+              tsFileManagement.getTsFileList(false),
+              upgradeSeqFileList,
+              pathList,
+              context,
+              timeFilter,
+              false);
       QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
+      // is null only in tests
+      if (filePathsManager != null) {
+        filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
+      }
       dataSource.setDataTTL(dataTTL);
       return dataSource;
     } catch (MetadataException e) {
@@ -1676,14 +1673,6 @@ public class StorageGroupProcessor {
     insertLock.writeLock().unlock();
   }
 
-  public void closeQueryLock() {
-    closeQueryLock.readLock().lock();
-  }
-
-  public void closeQueryUnLock() {
-    closeQueryLock.readLock().unlock();
-  }
-
   /**
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
@@ -1709,9 +1698,8 @@ public class StorageGroupProcessor {
           (timeFilter == null ? "null" : timeFilter));
     }
 
-    MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+
     long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
@@ -1740,8 +1728,9 @@ public class StorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
+          MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
           ((UnclosedTsFileResource) tsFileResource)
-              .getUnsealedFileProcessor()
+              .getProcessor()
               .query(
                   deviceId,
                   fullPath.getMeasurement(),
@@ -1757,55 +1746,49 @@ public class StorageGroupProcessor {
         closeQueryLock.readLock().unlock();
       }
     }
+
     return tsfileResourcesForQuery;
   }
 
-  /**
-   * @param tsFileResources includes sealed and unsealed tsfile resources
-   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
-   */
-  private Pair<List<TsFileResource>, UnclosedTsFileResource> getFileResourceListForQuery(
-      Collection<TsFileResource> tsFileResources, Filter timeFilter, boolean isSeq)
-      throws MetadataException {
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    UnclosedTsFileResource unclosedTsfileResourceForQuery = null;
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL)) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        if (tsFileResource.isClosed()) {
-          tsfileResourcesForQuery.add(tsFileResource);
-        } else {
-          // There is at most one unclosed tsFile
-          unclosedTsfileResourceForQuery = (UnclosedTsFileResource) tsFileResource;
-        }
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-    return new Pair<>(tsfileResourcesForQuery, unclosedTsfileResourceForQuery);
-  }
-
-  /**
-   * @param tsFileResources includes sealed and unsealed tsfile resources
-   * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
-   */
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
+      List<TsFileResource> upgradeTsFileResources,
       List<PartialPath> pathList,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
       throws MetadataException {
+
+    if (context.isDebug()) {
+      DEBUG_LOGGER.info(
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          pathList,
+          tsFileResources,
+          isSeq,
+          (timeFilter == null ? "null" : timeFilter));
+    }
+
+    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+
     long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
     context.setQueryTimeLowerBound(timeLowerBound);
 
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
+    // for upgrade files and old files must be closed
+    for (TsFileResource tsFileResource : upgradeTsFileResources) {
+      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL, context.isDebug())) {
+        continue;
+      }
+      closeQueryLock.readLock().lock();
+      try {
+        tsfileResourcesForQuery.add(tsFileResource);
+      } finally {
+        closeQueryLock.readLock().unlock();
+      }
+    }
+
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL)) {
+      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1814,8 +1797,8 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           ((UnclosedTsFileResource) tsFileResource)
-              .getUnsealedFileProcessor()
-              .queryAll(pathList, context, tsfileResourcesForQuery);
+              .getProcessor()
+              .query(pathList, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -1951,8 +1934,7 @@ public class StorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor =
-            ((UnclosedTsFileResource) tsFileResource).getUnsealedFileProcessor();
+        TsFileProcessor tsfileProcessor = ((UnclosedTsFileResource) tsFileResource).getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 

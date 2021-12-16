@@ -39,18 +39,12 @@ public class UnclosedTsFileResource extends TsFileResource {
    * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
    * process.
    */
-  private List<ChunkMetadata> chunkMetadataList;
-
-  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
-  private List<ReadOnlyMemChunk> readOnlyMemChunk;
-
-  /** used for unsealed file to get TimeseriesMetadata */
-  private TimeseriesMetadata timeSeriesMetadata;
-
   private Map<PartialPath, List<ChunkMetadata>> pathToChunkMetadataListMap;
 
+  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
   private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap;
 
+  /** used for unsealed file to get TimeseriesMetadata */
   private Map<PartialPath, TimeseriesMetadata> pathToTimeSeriesMetadataMap;
 
   /**
@@ -70,22 +64,6 @@ public class UnclosedTsFileResource extends TsFileResource {
     this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex(deviceNumInLastClosedTsFile);
     this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
     this.processor = processor;
-  }
-
-  /** unsealed TsFile, for query */
-  public UnclosedTsFileResource(
-      List<ReadOnlyMemChunk> readOnlyMemChunk,
-      List<ChunkMetadata> chunkMetadataList,
-      TsFileResource originTsFileResource)
-      throws IOException {
-    this.file = originTsFileResource.file;
-    this.timeIndex = originTsFileResource.timeIndex;
-    this.timeIndexType = originTsFileResource.timeIndexType;
-    this.chunkMetadataList = chunkMetadataList;
-    this.readOnlyMemChunk = readOnlyMemChunk;
-    this.originTsFileResource = originTsFileResource;
-    this.version = originTsFileResource.version;
-    generateTimeSeriesMetadata();
   }
 
   /** unsealed TsFile, for query */
@@ -123,24 +101,12 @@ public class UnclosedTsFileResource extends TsFileResource {
     generatePathToTimeSeriesMetadataMap();
   }
 
-  public List<ChunkMetadata> getChunkMetadataList() {
-    return new ArrayList<>(chunkMetadataList);
-  }
-
   public List<ChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
     return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
-    return readOnlyMemChunk;
-  }
-
   public List<ReadOnlyMemChunk> getReadOnlyMemChunk(PartialPath seriesPath) {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
-  }
-
-  public TimeseriesMetadata getTimeSeriesMetadata() {
-    return timeSeriesMetadata;
   }
 
   public TimeseriesMetadata getTimeSeriesMetadataByPath(PartialPath seriesPath) {
@@ -148,39 +114,6 @@ public class UnclosedTsFileResource extends TsFileResource {
       return pathToTimeSeriesMetadataMap.get(seriesPath);
     }
     return null;
-  }
-
-  private void generateTimeSeriesMetadata() throws IOException {
-    timeSeriesMetadata = new TimeseriesMetadata();
-    timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
-    timeSeriesMetadata.setDataSizeOfChunkMetaDataList(-1);
-
-    if (!(chunkMetadataList == null || chunkMetadataList.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(chunkMetadataList.get(0).getMeasurementUid());
-      TSDataType dataType = chunkMetadataList.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
-    } else if (!(readOnlyMemChunk == null || readOnlyMemChunk.isEmpty())) {
-      timeSeriesMetadata.setMeasurementId(readOnlyMemChunk.get(0).getMeasurementUid());
-      TSDataType dataType = readOnlyMemChunk.get(0).getDataType();
-      timeSeriesMetadata.setTSDataType(dataType);
-    }
-    if (timeSeriesMetadata.getTSDataType() != null) {
-      Statistics<?> seriesStatistics =
-          Statistics.getStatsByType(timeSeriesMetadata.getTSDataType());
-      // flush chunkMetadataList one by one
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        seriesStatistics.mergeStatistics(chunkMetadata.getStatistics());
-      }
-
-      for (ReadOnlyMemChunk memChunk : readOnlyMemChunk) {
-        if (!memChunk.isEmpty()) {
-          seriesStatistics.mergeStatistics(memChunk.getChunkMetaData().getStatistics());
-        }
-      }
-      timeSeriesMetadata.setStatistics(seriesStatistics);
-    } else {
-      timeSeriesMetadata = null;
-    }
   }
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
@@ -224,43 +157,18 @@ public class UnclosedTsFileResource extends TsFileResource {
     }
   }
 
-  public TsFileResource getOriginTsFileResource() {
-    return originTsFileResource;
-  }
-
   public TsFileProcessor getProcessor() {
     return processor;
-  }
-
-  public TsFileProcessor getUnsealedFileProcessor() {
-    return processor;
-  }
-
-  public void setOriginTsFileResource(TsFileResource originTsFileResource) {
-    this.originTsFileResource = originTsFileResource;
   }
 
   public void setProcessor(TsFileProcessor processor) {
     this.processor = processor;
   }
 
-  @Override
-  public void close() throws IOException {
-    closed = true;
-    if (modFile != null) {
-      modFile.close();
-      modFile = null;
-    }
-    processor = null;
-    chunkMetadataList = null;
-    readOnlyMemChunk = null;
-    timeSeriesMetadata = null;
-    pathToChunkMetadataListMap = null;
-    pathToReadOnlyMemChunkMap = null;
-    pathToTimeSeriesMetadataMap = null;
-    timeIndex.close();
-  }
-
+  /**
+   * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
+   * before construct the current TsFileResource
+   */
   @Override
   public void writeLock() {
     if (originTsFileResource == null) {
@@ -279,10 +187,6 @@ public class UnclosedTsFileResource extends TsFileResource {
     }
   }
 
-  /**
-   * If originTsFileResource is not null, we should acquire the read lock of originTsFileResource
-   * before construct the current TsFileResource
-   */
   @Override
   public void readLock() {
     if (originTsFileResource == null) {
