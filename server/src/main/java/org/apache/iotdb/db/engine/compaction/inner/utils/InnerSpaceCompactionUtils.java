@@ -575,7 +575,8 @@ public class InnerSpaceCompactionUtils {
 
   /**
    * This method is called to recover modifications while an exception occurs during compaction. It
-   * append new modifications of each selected tsfile to its corresponding old mods file.
+   * append new modifications of each selected tsfile to its corresponding old mods file and delete
+   * the compaction mods file.
    *
    * @param selectedTsFileResources
    * @throws IOException
