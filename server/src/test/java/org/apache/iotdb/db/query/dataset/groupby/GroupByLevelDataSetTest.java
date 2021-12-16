@@ -107,7 +107,7 @@ public class GroupByLevelDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=1");
     QueryDataSet dataSet =
-        queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(1));
+        queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
@@ -115,7 +115,7 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=0");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(2));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
@@ -123,7 +123,7 @@ public class GroupByLevelDataSetTest {
     queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan("select count(s1) from root.test.* group by level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(3));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12", dataSet.next().toString());
@@ -133,7 +133,7 @@ public class GroupByLevelDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.*,root.vehicle.* group by level=1");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(4));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12\t10", dataSet.next().toString());
@@ -143,7 +143,7 @@ public class GroupByLevelDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(\"s3.xy\") from root.test.* group by level=2");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(5));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
@@ -153,7 +153,7 @@ public class GroupByLevelDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.*,root.vehicle.* group by level=1,2");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(6));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t12\t10", dataSet.next().toString());

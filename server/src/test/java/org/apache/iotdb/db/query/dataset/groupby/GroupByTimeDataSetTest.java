@@ -108,7 +108,7 @@ public class GroupByTimeDataSetTest {
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.* group by ([0,20), 1ms), level=1");
     QueryDataSet dataSet =
-        queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(1));
+        queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t0", dataSet.next().toString());
@@ -121,7 +121,7 @@ public class GroupByTimeDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.* group by ([0,20), 1ms), level=0");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(2));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t0", dataSet.next().toString());
@@ -134,7 +134,7 @@ public class GroupByTimeDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.* group by ([0,20), 1ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(3));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t0", dataSet.next().toString());
@@ -148,7 +148,7 @@ public class GroupByTimeDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.*,root.vehicle.* group by ([0,20), 1ms), level=1");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(4));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t0\t0", dataSet.next().toString());
@@ -162,7 +162,7 @@ public class GroupByTimeDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(s1) from root.test.* group by ([0,20), 3ms, 10ms), level=6");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(5));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t1", dataSet.next().toString());
@@ -172,7 +172,7 @@ public class GroupByTimeDataSetTest {
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
                 "select count(\"s3.xy\") from root.test.* group by ([0,20), 3ms, 10ms), level=2");
-    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.getTestQueryContext(6));
+    dataSet = queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
 
     assertTrue(dataSet.hasNext());
     assertEquals("0\t0", dataSet.next().toString());
