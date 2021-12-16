@@ -42,8 +42,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
             <a
               className="gf-form-label query-part"
               onClick={() => {
-                let itemString = '';
-                prefixPath[prefixPath.length] = itemString;
+                prefixPath[prefixPath.length] = '';
                 onChange(prefixPath);
               }}
             >
@@ -54,7 +53,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
             <a
               itemID={index.toString()}
               className="gf-form-label query-part"
-              onClick={e => {
+              onClick={_ => {
                 prefixPath.splice(index, 1);
                 onChange(prefixPath);
               }}
@@ -82,7 +81,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
                     <a
                       itemID={index.toString()}
                       className="gf-form-label query-part"
-                      onClick={e => {
+                      onClick={_ => {
                         prefixPath.splice(index, 1);
                         onChange(prefixPath);
                       }}
@@ -94,8 +93,7 @@ export const FromValue: FunctionComponent<Props> = ({ prefixPath, onChange }) =>
                     <a
                       className="gf-form-label query-part"
                       onClick={() => {
-                        let itemString = '';
-                        prefixPath[prefixPath.length] = itemString;
+                        prefixPath[prefixPath.length] = '';
                         onChange(prefixPath);
                       }}
                     >

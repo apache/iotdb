@@ -41,8 +41,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
             <a
               className="gf-form-label query-part"
               onClick={() => {
-                let itemString = '';
-                expressions[expressions.length] = itemString;
+                expressions[expressions.length] = '';
                 onChange(expressions);
               }}
             >
@@ -53,7 +52,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
             <a
               itemID={index.toString()}
               className="gf-form-label query-part"
-              onClick={e => {
+              onClick={_ => {
                 expressions.splice(index, 1);
                 onChange(expressions);
               }}
@@ -81,7 +80,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
                     <a
                       itemID={index.toString()}
                       className="gf-form-label query-part"
-                      onClick={e => {
+                      onClick={_ => {
                         expressions.splice(index, 1);
                         onChange(expressions);
                       }}
@@ -93,8 +92,7 @@ export const SelectValue: FunctionComponent<Props> = ({ expressions, onChange })
                     <a
                       className="gf-form-label query-part"
                       onClick={() => {
-                        let itemString = '';
-                        expressions[expressions.length] = itemString;
+                        expressions[expressions.length] = '';
                         onChange(expressions);
                       }}
                     >
