@@ -39,7 +39,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -169,7 +172,7 @@ public class QueryResourceManager {
     return queryDataSource;
   }
 
-  /* This method is only used for last query and fill query */
+  /* This method is only used for fill query */
   public QueryDataSource getQueryDataSourceByPath(
       PartialPath selectedPath, QueryContext context, Filter filter)
       throws StorageEngineException, QueryProcessException {

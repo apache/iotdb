@@ -127,11 +127,14 @@ public class DeletionFileNodeTest {
             new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+            .mergeLockAndInitQueryDataSource(
+                Collections.singletonList((PartialPath) expression.getSeriesPath()),
+                TEST_QUERY_CONTEXT,
+                null);
     try {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
-              .getQueryDataSourceByPath(
+              .getQueryDataSource(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
       TsFileResource tsFileResource = dataSource.getSeqResources().get(0);
       List<ReadOnlyMemChunk> timeValuePairs =
@@ -252,12 +255,15 @@ public class DeletionFileNodeTest {
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+            .mergeLockAndInitQueryDataSource(
+                Collections.singletonList((PartialPath) expression.getSeriesPath()),
+                TEST_QUERY_CONTEXT,
+                null);
 
     try {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
-              .getQueryDataSourceByPath(
+              .getQueryDataSource(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
       TsFileResource tsFileResource = dataSource.getUnseqResources().get(0);
       List<ReadOnlyMemChunk> timeValuePairs =
