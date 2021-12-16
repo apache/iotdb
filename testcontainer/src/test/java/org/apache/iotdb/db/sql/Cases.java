@@ -47,11 +47,12 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
@@ -600,7 +601,7 @@ public abstract class Cases {
     } catch (Exception e) {
       Assert.assertTrue(
           e.getMessage()
-              .contains("Current system mode is read-only, does not support non-query operation"));
+              .contains("Database is read-only, and does not accept non-query operation now"));
     }
 
     writeStatement.execute(setWritable);
