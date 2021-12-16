@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

@@ -134,19 +134,21 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
             fullStorageGroupName);
         tsFileManager.setAllowCompaction(false);
       } else {
-        try {
-          LOGGER.info(
-              "{} [Compaction][Recover] Recover compaction successfully, delete log file {}",
-              fullStorageGroupName,
-              compactionLogFile);
-          FileUtils.delete(compactionLogFile);
-        } catch (IOException e) {
-          LOGGER.error(
-              "{} [Compaction][Recover] Exception occurs while deleting log file {}, set allowCompaction to false",
-              fullStorageGroupName,
-              compactionLogFile,
-              e);
-          tsFileManager.setAllowCompaction(false);
+        if (compactionLogFile.exists()) {
+          try {
+            LOGGER.info(
+                "{} [Compaction][Recover] Recover compaction successfully, delete log file {}",
+                fullStorageGroupName,
+                compactionLogFile);
+            FileUtils.delete(compactionLogFile);
+          } catch (IOException e) {
+            LOGGER.error(
+                "{} [Compaction][Recover] Exception occurs while deleting log file {}, set allowCompaction to false",
+                fullStorageGroupName,
+                compactionLogFile,
+                e);
+            tsFileManager.setAllowCompaction(false);
+          }
         }
       }
     }
@@ -227,7 +229,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           targetModFile);
       handleSuccess = false;
     }
-    // append new modifications of all source files to corresponding mod file
+    // append new modifications of all source files to corresponding old mod file
     List<TsFileResource> tsFileResources = new ArrayList<>();
     for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
       tsFileResources.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
