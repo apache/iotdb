@@ -75,7 +75,7 @@
                             <goal>yarn</goal>
                         </goals>
                         <configuration>
-                            <arguments>add  @types/base-64 --dev</arguments>
+                            <arguments>add @types/base-64 --dev</arguments>
                         </configuration>
                     </execution>
                     <execution>
@@ -86,6 +86,23 @@
                         <configuration>
                             <arguments>build</arguments>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.rat</groupId>
+                <artifactId>apache-rat-plugin</artifactId>
+                <version>0.13</version>
+                <configuration>
+                    <consoleOutput>false</consoleOutput>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>license-check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
