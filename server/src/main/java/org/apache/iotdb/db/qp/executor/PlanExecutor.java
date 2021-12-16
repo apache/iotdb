@@ -1548,7 +1548,16 @@ public class PlanExecutor implements IPlanExecutor {
     List<Future<?>> futureList = new ArrayList<>();
 
     Map<Integer, TSStatus> results = insertMultiTabletPlan.getResults();
-    for (InsertTabletPlan plan : planList) {
+
+    List<InsertTabletPlan> runPlanList = new ArrayList<>();
+    Map<Integer, Integer> runIndexToRealIndex = new HashMap<>();
+    for (int i = 0; i < planList.size(); i++) {
+      if (!(results.containsKey(i) || insertMultiTabletPlan.isExecuted(i))) {
+        runPlanList.add(planList.get(i));
+        runIndexToRealIndex.put(runPlanList.size() - 1, i);
+      }
+    }
+    for (InsertTabletPlan plan : runPlanList) {
       Future<?> f =
           insertionPool.submit(
               () -> {
@@ -1563,12 +1572,16 @@ public class PlanExecutor implements IPlanExecutor {
       } catch (Exception e) {
         if (e.getCause() instanceof QueryProcessException) {
           QueryProcessException qe = (QueryProcessException) e.getCause();
-          results.put(i, RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
+          results.put(
+              runIndexToRealIndex.get(i), RpcUtils.getStatus(qe.getErrorCode(), qe.getMessage()));
         } else {
-          results.put(i, RpcUtils.getStatus(INTERNAL_SERVER_ERROR, e.getMessage()));
+          results.put(
+              runIndexToRealIndex.get(i),
+              RpcUtils.getStatus(INTERNAL_SERVER_ERROR, e.getMessage()));
         }
       }
     }
+
     if (!results.isEmpty()) {
       throw new BatchProcessException(insertMultiTabletPlan.getFailingStatus());
     }
