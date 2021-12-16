@@ -44,15 +44,14 @@ import javax.ws.rs.core.SecurityContext;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  protected final Planner planner = new Planner();
-
   public static ServiceProvider serviceProvider = IoTDB.serviceProvider;
+
+  protected final Planner planner;
   private final AuthorizationHandler authorizationHandler;
 
-  public RestApiServiceImpl() throws QueryProcessException {}
-
-  {
+  public RestApiServiceImpl() throws QueryProcessException {
     this.authorizationHandler = new AuthorizationHandler(serviceProvider);
+    planner = serviceProvider.getProcessor();
   }
 
   @Override
@@ -111,7 +110,7 @@ public class RestApiServiceImpl extends RestApiService {
           serviceProvider.createQueryDataSet(
               queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       response = QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
-      ServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       return response;
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

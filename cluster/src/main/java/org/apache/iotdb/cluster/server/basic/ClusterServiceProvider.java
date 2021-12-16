@@ -50,9 +50,8 @@ public class ClusterServiceProvider extends ServiceProvider {
 
   public ClusterServiceProvider(Coordinator coordinator, MetaGroupMember metaGroupMember)
       throws QueryProcessException {
-    super();
+    super(new ClusterPlanExecutor(metaGroupMember));
     this.coordinator = coordinator;
-    this.executor = new ClusterPlanExecutor(metaGroupMember);
   }
 
   /** Redirect the plan to the local Coordinator so that it will be processed cluster-wide. */

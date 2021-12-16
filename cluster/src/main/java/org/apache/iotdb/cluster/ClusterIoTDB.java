@@ -162,6 +162,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
+    // set coordinator for serviceProvider construction
+    try {
+      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator, metaGroupMember));
+    } catch (QueryProcessException e) {
+      logger.error("Failed to set clusterServiceProvider.", e);
+      stop();
+      return false;
+    }
 
     // from the scope of the DataGroupEngine,it should be singleton pattern
     // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
@@ -175,13 +183,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
             ClientManager.Type.RequestForwardClient);
     initTasks();
     try {
-      // set coordinator for serviceProvider construction
-      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator, metaGroupMember));
-
       // we need to check config after initLocalEngines.
       startServerCheck();
       JMXService.registerMBean(metaGroupMember, metaGroupMember.getMBeanName());
-    } catch (StartupException | QueryProcessException e) {
+    } catch (StartupException e) {
       logger.error("Failed to check cluster config.", e);
       stop();
       return false;
@@ -394,7 +399,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // we must wait until the metaGroup established.
     // So that the ClusterRPCService can work.
     ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
-    ServiceProvider.sessionManager = ClusterSessionManager.getInstance();
+    ServiceProvider.SESSION_MANAGER = ClusterSessionManager.getInstance();
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());

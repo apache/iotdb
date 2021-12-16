@@ -32,8 +32,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 public class LocalServiceProvider extends ServiceProvider {
 
   public LocalServiceProvider() throws QueryProcessException {
-    super();
-    executor = new PlanExecutor();
+    super(new PlanExecutor());
   }
 
   @Override

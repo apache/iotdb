@@ -69,10 +69,10 @@ public class SessionTimeoutManager {
 
   public boolean unregister(long sessionId) {
     if (SESSION_TIMEOUT == 0) {
-      return ServiceProvider.sessionManager.releaseSessionResource(sessionId);
+      return ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId);
     }
 
-    if (ServiceProvider.sessionManager.releaseSessionResource(sessionId)) {
+    if (ServiceProvider.SESSION_MANAGER.releaseSessionResource(sessionId)) {
       return sessionIdToLastActiveTime.remove(sessionId) != null;
     }
 

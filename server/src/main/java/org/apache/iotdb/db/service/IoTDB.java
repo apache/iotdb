@@ -177,7 +177,6 @@ public class IoTDB implements IoTDBMBean {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
     }
-
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
     }

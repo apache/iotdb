@@ -129,7 +129,7 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
   }
 
   public void handleClientExit() {
-    Long sessionId = ServiceProvider.sessionManager.getCurrSessionId();
+    Long sessionId = ServiceProvider.SESSION_MANAGER.getCurrSessionId();
     if (sessionId != null) {
       closeSession(new TSCloseSessionReq(sessionId));
     }

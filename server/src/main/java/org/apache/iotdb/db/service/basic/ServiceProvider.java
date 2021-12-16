@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -60,7 +61,7 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedExce
 
 public abstract class ServiceProvider {
 
-  public static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
   public static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
   public static final Logger SLOW_SQL_LOGGER =
@@ -71,17 +72,26 @@ public abstract class ServiceProvider {
 
   public static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  public static final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  public static SessionManager sessionManager = SessionManager.getInstance();
-  public static final TracingManager tracingManager = TracingManager.getInstance();
-  public static QueryFrequencyRecorder queryFrequencyRecorder;
+  public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
+  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
+  public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
+  public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
+      new QueryFrequencyRecorder(CONFIG);
 
-  public Planner processor;
-  public IPlanExecutor executor;
+  private final Planner processor;
+  protected final IPlanExecutor executor;
 
-  public ServiceProvider() throws QueryProcessException {
-    queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
+  public Planner getProcessor() {
+    return processor;
+  }
+
+  public IPlanExecutor getExecutor() {
+    return executor;
+  }
+
+  public ServiceProvider(PlanExecutor executor) throws QueryProcessException {
     processor = new Planner();
+    this.executor = executor;
   }
 
   public abstract QueryContext genQueryContext(
@@ -96,7 +106,7 @@ public abstract class ServiceProvider {
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
+    boolean isLoggedIn = SESSION_MANAGER.getUsername(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
@@ -117,7 +127,7 @@ public abstract class ServiceProvider {
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<? extends PartialPath> paths = plan.getPaths();
     try {
-      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
+      if (!checkAuthorization(paths, plan, SESSION_MANAGER.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation " + plan.getOperatorType());
@@ -167,7 +177,7 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = sessionManager.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
       LOGGER.info(
           "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
@@ -178,7 +188,7 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = sessionManager.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
@@ -189,7 +199,7 @@ public abstract class ServiceProvider {
   public boolean closeSession(long sessionId) {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
-    sessionManager.removeCurrSessionId();
+    SESSION_MANAGER.removeCurrSessionId();
 
     return SessionTimeoutManager.getInstance().unregister(sessionId);
   }
@@ -210,15 +220,15 @@ public abstract class ServiceProvider {
       AUDIT_LOGGER.debug(
           "{}: receive close operation from Session {}",
           IoTDBConstant.GLOBAL_DB_NAME,
-          sessionManager.getCurrSessionId());
+          SESSION_MANAGER.getCurrSessionId());
     }
 
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {
-          sessionManager.closeDataset(statementId, queryId);
+          SESSION_MANAGER.closeDataset(statementId, queryId);
         } else {
-          sessionManager.closeStatement(sessionId, statementId);
+          SESSION_MANAGER.closeStatement(sessionId, statementId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -239,7 +249,7 @@ public abstract class ServiceProvider {
 
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
-    sessionManager.setDataset(context.getQueryId(), queryDataSet);
+    SESSION_MANAGER.setDataset(context.getQueryId(), queryDataSet);
     return queryDataSet;
   }
 

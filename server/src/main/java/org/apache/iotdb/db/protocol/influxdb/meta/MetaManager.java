@@ -49,11 +49,11 @@ import java.util.Map;
 
 public class MetaManager {
 
-  protected final Planner planner = new Planner();
+  protected final Planner planner;
 
   private final ServiceProvider serviceProvider;
 
-  private static String SELECT_TAG_INFO_SQL =
+  private static final String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
 
   public static MetaManager getInstance() {
@@ -67,6 +67,7 @@ public class MetaManager {
   private MetaManager() {
     serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
+    planner = serviceProvider.getProcessor();
     recover();
   }
 
@@ -117,7 +118,7 @@ public class MetaManager {
         | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
     } finally {
-      ServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
