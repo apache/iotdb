@@ -197,7 +197,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         queryPlan.isAscending());
     this.rowLimit = queryPlan.getRowLimit();
     this.rowOffset = queryPlan.getRowOffset();
-    if (rowLimit != 0) {
+    this.withoutAnyNull = queryPlan.isWithoutAnyNull();
+    this.withoutAllNull = queryPlan.isWithoutAllNull();
+    if (rowLimit != 0 && !withoutAllNull && !withoutAnyNull) {
       batchDataLengthList = new int[readers.size()];
     }
 
