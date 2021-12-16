@@ -66,7 +66,7 @@ public class SHA256DeviceID implements IDeviceID {
    *
    * @param deviceID device path
    */
-  private void buildSHA256(String deviceID) {
+  private synchronized void buildSHA256(String deviceID) {
     byte[] hashVal = md.digest(deviceID.getBytes());
     md.reset();
 
