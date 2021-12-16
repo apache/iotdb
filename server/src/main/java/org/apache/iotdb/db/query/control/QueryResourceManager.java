@@ -149,7 +149,7 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
-      // after call clearCachedQueryDataSource()
+      // QueryDataSource is not cached earlier in cluster mode
       SingleSeriesExpression singleSeriesExpression =
           new SingleSeriesExpression(selectedPath, filter);
       cachedQueryDataSource =
@@ -170,34 +170,6 @@ public class QueryResourceManager {
     QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());
 
     return queryDataSource;
-  }
-
-  /* This method is only used for fill query */
-  public QueryDataSource getQueryDataSourceByPath(
-      PartialPath selectedPath, QueryContext context, Filter filter)
-      throws StorageEngineException, QueryProcessException {
-
-    SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(selectedPath, filter);
-    QueryDataSource queryDataSource =
-        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
-    // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
-      TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
-    }
-    return queryDataSource;
-  }
-
-  /* This method is only used for linear fill query  */
-  public void clearCachedQueryDataSource(PartialPath path, QueryContext context)
-      throws StorageEngineException {
-    long queryId = context.getQueryId();
-    String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(path);
-    if (cachedQueryDataSourcesMap.containsKey(queryId)) {
-      cachedQueryDataSourcesMap.get(queryId).remove(storageGroupPath);
-    }
   }
 
   /**

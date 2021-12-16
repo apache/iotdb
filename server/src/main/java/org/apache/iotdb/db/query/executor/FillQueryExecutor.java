@@ -31,7 +31,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.activation.UnsupportedDataTypeException;
@@ -76,7 +79,8 @@ public class FillQueryExecutor {
     RowRecord record = new RowRecord(queryTime);
 
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(selectedSeries, context, null);
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(selectedSeries, context, contructTimeFilter());
     try {
       List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
       long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
@@ -130,6 +134,52 @@ public class FillQueryExecutor {
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  private Filter contructTimeFilter() throws UnsupportedDataTypeException {
+    long lowerBound = Long.MAX_VALUE;
+    long upperBound = Long.MIN_VALUE;
+    long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      TSDataType dataType = dataTypes.get(i);
+      if (!typeIFillMap.containsKey(dataType)) {
+        switch (dataType) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case BOOLEAN:
+          case TEXT:
+            lowerBound =
+                Math.min(
+                    lowerBound,
+                    defaultFillInterval == -1 ? Long.MIN_VALUE : queryTime - defaultFillInterval);
+            upperBound = Math.max(upperBound, queryTime);
+            break;
+          default:
+            throw new UnsupportedDataTypeException("unsupported data type " + dataType);
+        }
+      } else {
+        IFill fill = typeIFillMap.get(dataType).copy();
+        if (fill instanceof PreviousFill) {
+          long beforeRange = ((PreviousFill) fill).getBeforeRange();
+          lowerBound =
+              Math.min(lowerBound, beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange);
+          upperBound = Math.max(upperBound, queryTime);
+        } else if (fill instanceof LinearFill) {
+          long beforeRange = ((LinearFill) fill).getBeforeRange();
+          long afterRange = ((LinearFill) fill).getAfterRange();
+          lowerBound =
+              Math.min(lowerBound, beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange);
+          upperBound =
+              Math.max(upperBound, afterRange == -1 ? Long.MAX_VALUE : queryTime + afterRange);
+        } else if (fill instanceof ValueFill) {
+          lowerBound = Math.min(lowerBound, queryTime);
+          upperBound = Math.max(upperBound, queryTime);
+        }
+      }
+    }
+    return FilterFactory.and(TimeFilter.gtEq(lowerBound), TimeFilter.ltEq(upperBound));
   }
 
   protected IFill configureFill(
