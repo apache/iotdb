@@ -405,16 +405,17 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public boolean isEnableMultiThreading() {
-    // After testing, we can find that when there are 10 columns , the thread pool speed will exceed
-    // the serial speed, so we set the threshold to 10. Because if the tablet is small, the time of
-    // each insertion is short.
-    // If we enable multithreading, we also need to consider the loss of switching between threads,
-    // so we need to judge the size of the tablet.
-    // Therefore, we set the number of core threads in the thread pool to min(the number of
-    // different sg, availableProcessors()/2), and need columns >= 10
-    // It should be noted that in the latest test, we found that if the number of sg is large and
-    // exceeds twice the recommended number of CPU threads, it may lead to failure to allocate out
-    // of heap memory and NPE. Therefore, we will also turn off multithreading in this case.
+    // If we enable multithreading, we need to consider the loss of switching between threads,
+    // so we need to judge the core threads of the thread pool and the size of the tablet.
+
+    // Therefore, we set the number of core threads in the thread pool to
+    // min(the number of different sg, availableProcessors()/2),
+    // and need columns >= insertMultiTabletEnableMultithreadingColumnThreshold.
+
+    // It should be noted that if the number of sg is large and exceeds twice of the recommended
+    // number of CPU threads,
+    // it may lead to failure to allocate out of heap memory and NPE.
+    // Therefore, we will also turn off multithreading in this case.
     if (isEnableMultithreading == null) {
       int sgSize = getDifferentStorageGroupsCount();
       // SG should be >= 1 so that it will not be locked and degenerate into serial.
@@ -423,16 +424,16 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
         isEnableMultithreading = false;
       } else {
-        int BigPlanCountNum = 0;
+        int count = 0;
         for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-          if (insertTabletPlan.getRowCount()
+          if (insertTabletPlan.getColumns().length
               >= IoTDBDescriptor.getInstance()
                   .getConfig()
                   .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
-            BigPlanCountNum++;
+            count++;
           }
         }
-        isEnableMultithreading = BigPlanCountNum * 2 >= insertTabletPlanList.size();
+        isEnableMultithreading = count * 2 >= insertTabletPlanList.size();
       }
     }
     return isEnableMultithreading;
