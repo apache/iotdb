@@ -734,7 +734,7 @@ public class StorageGroupProcessor {
           }
           workUnsequenceTsFileProcessors.put(timePartitionId, tsFileProcessor);
         }
-        ((UnclosedTsFileResource) tsFileResource).setProcessor(tsFileProcessor);
+        tsFileResource.setProcessor(tsFileProcessor);
         tsFileResource.removeResourceFile();
         tsFileProcessor.setTimeRangeId(timePartitionId);
         writer.makeMetadataVisible();
@@ -1729,7 +1729,7 @@ public class StorageGroupProcessor {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
           MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-          ((UnclosedTsFileResource) tsFileResource)
+          tsFileResource
               .getProcessor()
               .query(
                   deviceId,
@@ -1796,9 +1796,7 @@ public class StorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          ((UnclosedTsFileResource) tsFileResource)
-              .getProcessor()
-              .query(pathList, context, tsfileResourcesForQuery);
+          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -1934,7 +1932,7 @@ public class StorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = ((UnclosedTsFileResource) tsFileResource).getProcessor();
+        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
@@ -2442,9 +2440,9 @@ public class StorageGroupProcessor {
     for (int i = 0; i < sequenceList.size(); i++) {
       TsFileResource localFile = sequenceList.get(i);
 
-      if (!localFile.isClosed() && ((UnclosedTsFileResource) localFile).getProcessor() != null) {
+      if (!localFile.isClosed() && localFile.getProcessor() != null) {
         // we cannot compare two files by TsFileResource unless they are both closed
-        syncCloseOneTsFileProcessor(true, ((UnclosedTsFileResource) localFile).getProcessor());
+        syncCloseOneTsFileProcessor(true, localFile.getProcessor());
       }
       int fileComparison = compareTsFileDevices(newTsFileResource, localFile);
       switch (fileComparison) {

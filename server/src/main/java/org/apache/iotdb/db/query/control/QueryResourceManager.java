@@ -108,7 +108,7 @@ public class QueryResourceManager {
    * The method is called in mergeLock() when executing query. This method will get all the
    * QueryDataSource needed for this query and put them in the cachedQueryDataSourcesMap.
    *
-   * @param processorToSeriesMap Key: processor of the virtual storage group Value: selected series
+   * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
    *     under the virtual storage group
    */
   public void initQueryDataSource(

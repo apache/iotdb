@@ -21,7 +21,6 @@ package org.apache.iotdb.db.utils;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -117,12 +116,10 @@ public class FileLoaderUtils {
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     } else {
-      timeSeriesMetadata =
-          ((UnclosedTsFileResource) resource).getTimeSeriesMetadataByPath(seriesPath);
+      timeSeriesMetadata = resource.getTimeSeriesMetadataByPath(seriesPath);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
-            new MemChunkMetadataLoader(
-                (UnclosedTsFileResource) resource, seriesPath, context, filter));
+            new MemChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     }
 

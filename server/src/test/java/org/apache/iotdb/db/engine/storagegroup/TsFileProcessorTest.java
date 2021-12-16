@@ -125,7 +125,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
 
-    UnclosedTsFileResource tsFileResource = (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(
         tsFileResource.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId)).isEmpty());
     List<ReadOnlyMemChunk> memChunks =
@@ -147,8 +147,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
 
-    UnclosedTsFileResource tsFileResource1 =
-        (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource1 = tsfileResourcesForQuery.get(0);
     List<ReadOnlyMemChunk> readOnlyMemChunk =
         tsFileResource1.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId));
     List<ChunkMetadata> chunkMetadataList =
@@ -196,7 +195,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
 
-    UnclosedTsFileResource tsFileResource = (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(
         tsFileResource.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId)).isEmpty());
     int num = 1;
@@ -219,8 +218,7 @@ public class TsFileProcessorTest {
     processor.query(
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
 
-    UnclosedTsFileResource tsFileResource1 =
-        (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource1 = tsfileResourcesForQuery.get(0);
     List<ReadOnlyMemChunk> readOnlyMemChunk =
         tsFileResource1.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId));
     List<ChunkMetadata> chunkMetadataList =
@@ -301,7 +299,7 @@ public class TsFileProcessorTest {
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
 
-    UnclosedTsFileResource tsFileResource = (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     List<ReadOnlyMemChunk> readOnlyMemChunk =
         tsFileResource.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId));
     List<ChunkMetadata> chunkMetadataList =
@@ -349,7 +347,7 @@ public class TsFileProcessorTest {
         deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
 
-    UnclosedTsFileResource tsFileResource = (UnclosedTsFileResource) tsfileResourcesForQuery.get(0);
+    TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(
         tsFileResource.getReadOnlyMemChunk(new PartialPath(deviceId, measurementId)).isEmpty());
     List<ReadOnlyMemChunk> memChunks =

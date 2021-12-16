@@ -26,7 +26,7 @@ import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.UnclosedTsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -133,8 +133,7 @@ public class DeletionFileNodeTest {
           QueryResourceManager.getInstance()
               .getQueryDataSourceByPath(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
-      UnclosedTsFileResource tsFileResource =
-          (UnclosedTsFileResource) dataSource.getSeqResources().get(0);
+      TsFileResource tsFileResource = dataSource.getSeqResources().get(0);
       List<ReadOnlyMemChunk> timeValuePairs =
           tsFileResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
@@ -260,8 +259,7 @@ public class DeletionFileNodeTest {
           QueryResourceManager.getInstance()
               .getQueryDataSourceByPath(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
-      UnclosedTsFileResource tsFileResource =
-          (UnclosedTsFileResource) dataSource.getUnseqResources().get(0);
+      TsFileResource tsFileResource = dataSource.getUnseqResources().get(0);
       List<ReadOnlyMemChunk> timeValuePairs =
           tsFileResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
