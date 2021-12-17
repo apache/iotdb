@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -779,8 +780,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     compactionLogger.close();
     for (TsFileResource resource : new ArrayList<>(seqResources.subList(0, 3))) {
+      resource.remove();
       tsFileManager.remove(resource, true);
-      deleteFileIfExists(resource.getTsFile());
     }
     tsFileManager.add(targetTsFileResource, true);
     new SizeTieredCompactionRecoverTask(
@@ -1064,9 +1065,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   public void deleteFileIfExists(File file) {
     long waitingTime = 0l;
     while (file.exists()) {
-      if (!file.delete()) {
-        logger.warn("Fail to delete {}", file);
-      }
+      file.delete();
       System.gc();
       try {
         Thread.sleep(100);
