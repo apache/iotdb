@@ -57,6 +57,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -266,62 +267,31 @@ public class InnerSpaceCompactionUtils {
       Map<String, List<Modification>> modificationCache = new HashMap<>();
       RateLimiter compactionWriteRateLimiter =
           MergeManager.getINSTANCE().getMergeWriteRateLimiter();
-      Set<String> tsFileDevicesMap =
+      Set<String> tsFileDevicesSet =
           getTsFileDevicesSet(tsFileResources, tsFileSequenceReaderMap, storageGroup);
-      for (String device : tsFileDevicesMap) {
+      for (String device : tsFileDevicesSet) {
         writer.startChunkGroup(device);
+
         // tsfile -> measurement -> List<ChunkMetadata>
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
-            new TreeMap<>(
-                (o1, o2) ->
-                    TsFileManager.compareFileName(
-                        new File(o1.getFileName()), new File(o2.getFileName())));
+            new TreeMap<>(new TsFileNameComparator());
+
         // tsfile -> iterator to get next Map<Measurement, List<ChunkMetadata>>
         Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
-            chunkMetadataListIteratorCache =
-                new TreeMap<>(
-                    (o1, o2) ->
-                        TsFileManager.compareFileName(
-                            new File(o1.getFileName()), new File(o2.getFileName())));
-        for (TsFileResource tsFileResource : tsFileResources) {
-          TsFileSequenceReader reader =
-              buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderMap, storageGroup);
-          if (reader == null) {
-            throw new IOException();
-          }
-          Iterator<Map<String, List<ChunkMetadata>>> iterator =
-              reader.getMeasurementChunkMetadataListMapIterator(device);
-          chunkMetadataListIteratorCache.put(reader, iterator);
-          chunkMetadataListCacheForMerge.put(reader, new TreeMap<>());
-        }
+            chunkMetadataListIteratorCache = new TreeMap<>(new TsFileNameComparator());
+        //
+        collectChunkMedataListIteratorFromResources(
+            chunkMetadataListCacheForMerge,
+            chunkMetadataListIteratorCache,
+            tsFileResources,
+            tsFileSequenceReaderMap,
+            storageGroup,
+            device);
         while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
-          String lastSensor = null;
           Set<String> allSensors = new HashSet<>();
-          for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
-              chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
-            TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-            Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
-                chunkMetadataListCacheForMergeEntry.getValue();
-            if (sensorChunkMetadataListMap.size() <= 0) {
-              if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
-                sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
-                chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
-              } else {
-                continue;
-              }
-            }
-            // get the min last sensor in the current chunkMetadata cache list for merge
-            String maxSensor = Collections.max(sensorChunkMetadataListMap.keySet());
-            if (lastSensor == null) {
-              lastSensor = maxSensor;
-            } else {
-              if (maxSensor.compareTo(lastSensor) < 0) {
-                lastSensor = maxSensor;
-              }
-            }
-            // get all sensor used later
-            allSensors.addAll(sensorChunkMetadataListMap.keySet());
-          }
+          String lastSensor =
+              collectMeasurementToBeCompacted(
+                  chunkMetadataListCacheForMerge, chunkMetadataListIteratorCache, allSensors);
 
           // if there is no more chunkMetaData, merge all the sensors
           if (!hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
@@ -331,21 +301,11 @@ public class InnerSpaceCompactionUtils {
           for (String sensor : allSensors) {
             if (sensor.compareTo(lastSensor) <= 0) {
               Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataListMap =
-                  new TreeMap<>(
-                      (o1, o2) ->
-                          TsFileManager.compareFileName(
-                              new File(o1.getFileName()), new File(o2.getFileName())));
+                  new TreeMap<>(new TsFileNameComparator());
               // find all chunkMetadata of a sensor
-              for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
-                  chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
-                TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-                Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
-                    chunkMetadataListCacheForMergeEntry.getValue();
-                if (sensorChunkMetadataListMap.containsKey(sensor)) {
-                  readerChunkMetadataListMap.put(reader, sensorChunkMetadataListMap.get(sensor));
-                  sensorChunkMetadataListMap.remove(sensor);
-                }
-              }
+              collectAllChunkMedataForOneMeasurement(
+                  sensor, chunkMetadataListCacheForMerge, readerChunkMetadataListMap);
+
               Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>>
                   sensorReaderChunkMetadataListEntry =
                       new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
@@ -358,55 +318,21 @@ public class InnerSpaceCompactionUtils {
                     writer,
                     modificationCache);
               } else {
-                boolean isChunkEnoughLarge = true;
-                boolean isPageEnoughLarge = true;
-                BigInteger totalChunkPointNum = new BigInteger("0");
-                long totalChunkNum = 0;
-                long maxChunkPointNum = Long.MIN_VALUE;
-                long minChunkPointNum = Long.MAX_VALUE;
-                for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
-                  for (ChunkMetadata chunkMetadata : chunkMetadatas) {
-                    if (chunkMetadata.getNumOfPoints()
-                        < IoTDBDescriptor.getInstance()
-                            .getConfig()
-                            .getMergePagePointNumberThreshold()) {
-                      isPageEnoughLarge = false;
-                    }
-                    if (chunkMetadata.getNumOfPoints()
-                        < IoTDBDescriptor.getInstance()
-                            .getConfig()
-                            .getMergeChunkPointNumberThreshold()) {
-                      isChunkEnoughLarge = false;
-                    }
-                    totalChunkPointNum =
-                        totalChunkPointNum.add(BigInteger.valueOf(chunkMetadata.getNumOfPoints()));
-                    if (chunkMetadata.getNumOfPoints() > maxChunkPointNum) {
-                      maxChunkPointNum = chunkMetadata.getNumOfPoints();
-                    }
-                    if (chunkMetadata.getNumOfPoints() < minChunkPointNum) {
-                      minChunkPointNum = chunkMetadata.getNumOfPoints();
-                    }
-                  }
-                  totalChunkNum += chunkMetadatas.size();
-                }
-                logger.debug(
-                    "{} [Compaction] compacting {}.{}, max chunk num is {},  min chunk num is {},"
-                        + " average chunk num is {}, using {} compaction",
-                    storageGroup,
-                    device,
-                    sensor,
-                    maxChunkPointNum,
-                    minChunkPointNum,
-                    totalChunkPointNum.divide(BigInteger.valueOf(totalChunkNum)).longValue(),
-                    isChunkEnoughLarge ? "flushing chunk" : isPageEnoughLarge ? "merge chunk" : "");
+                boolean notDeserializeChunk;
+                boolean notDeserializePage;
+                Pair<Boolean, Boolean> checkResult =
+                    checkAllChunkSize(readerChunkMetadataListMap, storageGroup, device, sensor);
+                notDeserializeChunk = checkResult.left;
+                notDeserializePage = checkResult.right;
+
                 if (isFileListHasModifications(
                     readerChunkMetadataListMap.keySet(), modificationCache, device, sensor)) {
-                  isPageEnoughLarge = false;
-                  isChunkEnoughLarge = false;
+                  notDeserializePage = false;
+                  notDeserializeChunk = false;
                 }
 
                 // if a chunk is large enough, it's page must be large enough too
-                if (isChunkEnoughLarge) {
+                if (notDeserializeChunk) {
                   logger.debug(
                       "{} [Compaction] {} chunk enough large, use append chunk merge",
                       storageGroup,
@@ -418,7 +344,7 @@ public class InnerSpaceCompactionUtils {
                       sensorReaderChunkMetadataListEntry,
                       targetResource,
                       writer);
-                } else if (isPageEnoughLarge) {
+                } else if (notDeserializePage) {
                   logger.debug(
                       "{} [Compaction] {} page enough large, use append page merge",
                       storageGroup,
@@ -457,7 +383,6 @@ public class InnerSpaceCompactionUtils {
       targetResource.serialize();
       writer.endFile();
       targetResource.close();
-
     } finally {
       for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
         reader.close();
@@ -466,6 +391,127 @@ public class InnerSpaceCompactionUtils {
         writer.close();
       }
     }
+  }
+
+  private static void collectChunkMedataListIteratorFromResources(
+      Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge,
+      Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
+          chunkMetadataListIteratorCache,
+      List<TsFileResource> tsFileResources,
+      Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
+      String storageGroup,
+      String device)
+      throws IOException {
+    for (TsFileResource tsFileResource : tsFileResources) {
+      TsFileSequenceReader reader =
+          buildReaderFromTsFileResource(tsFileResource, tsFileSequenceReaderMap, storageGroup);
+      if (reader == null) {
+        throw new IOException();
+      }
+      Iterator<Map<String, List<ChunkMetadata>>> iterator =
+          reader.getMeasurementChunkMetadataListMapIterator(device);
+      chunkMetadataListIteratorCache.put(reader, iterator);
+      chunkMetadataListCacheForMerge.put(reader, new TreeMap<>());
+    }
+  }
+
+  private static String collectMeasurementToBeCompacted(
+      Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+          chunkMetadataListCacheForCompaction,
+      Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
+          chunkMetadataListIteratorCache,
+      Set<String> collectedSensors) {
+    String lastSensor = null;
+    for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+        chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForCompaction.entrySet()) {
+      TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
+      Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
+          chunkMetadataListCacheForMergeEntry.getValue();
+      if (sensorChunkMetadataListMap.size() <= 0) {
+        if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
+          sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
+          chunkMetadataListCacheForCompaction.put(reader, sensorChunkMetadataListMap);
+        } else {
+          continue;
+        }
+      }
+      // get the min last sensor in the current chunkMetadata cache list for merge
+      String maxSensor = Collections.max(sensorChunkMetadataListMap.keySet());
+      if (lastSensor == null) {
+        lastSensor = maxSensor;
+      } else {
+        if (maxSensor.compareTo(lastSensor) < 0) {
+          lastSensor = maxSensor;
+        }
+      }
+      // get all sensor used later
+      collectedSensors.addAll(sensorChunkMetadataListMap.keySet());
+    }
+    return lastSensor;
+  }
+
+  private static void collectAllChunkMedataForOneMeasurement(
+      String currMeasurement,
+      Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+          chunkMetadataListCacheForCompaction,
+      Map<TsFileSequenceReader, List<ChunkMetadata>> collectedChunkMetadata) {
+    for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+        chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForCompaction.entrySet()) {
+      TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
+      Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
+          chunkMetadataListCacheForMergeEntry.getValue();
+      if (sensorChunkMetadataListMap.containsKey(currMeasurement)) {
+        collectedChunkMetadata.put(reader, sensorChunkMetadataListMap.get(currMeasurement));
+        sensorChunkMetadataListMap.remove(currMeasurement);
+      }
+    }
+  }
+
+  private static Pair<Boolean, Boolean> checkAllChunkSize(
+      Map<TsFileSequenceReader, List<ChunkMetadata>> collectedChunkMetadata,
+      String storageGroup,
+      String device,
+      String measurement) {
+    boolean notDeserializeChunk = true;
+    boolean notDeserializePage = true;
+    long pageThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
+    long chunkThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+    BigInteger totalChunkPointNum = new BigInteger("0");
+    long totalChunkNum = 0;
+    long maxChunkPointNum = Long.MIN_VALUE;
+    long minChunkPointNum = Long.MAX_VALUE;
+    for (List<ChunkMetadata> chunkMetadatas : collectedChunkMetadata.values()) {
+      for (ChunkMetadata chunkMetadata : chunkMetadatas) {
+        if (chunkMetadata.getNumOfPoints() < pageThreshold) {
+          notDeserializePage = false;
+        }
+        if (chunkMetadata.getNumOfPoints() < chunkThreshold) {
+          notDeserializeChunk = false;
+        }
+        totalChunkPointNum =
+            totalChunkPointNum.add(BigInteger.valueOf(chunkMetadata.getNumOfPoints()));
+        if (chunkMetadata.getNumOfPoints() > maxChunkPointNum) {
+          maxChunkPointNum = chunkMetadata.getNumOfPoints();
+        }
+        if (chunkMetadata.getNumOfPoints() < minChunkPointNum) {
+          minChunkPointNum = chunkMetadata.getNumOfPoints();
+        }
+      }
+      totalChunkNum += chunkMetadatas.size();
+    }
+    logger.debug(
+        "{} [Compaction] compacting {}.{}, max chunk num is {},  min chunk num is {},"
+            + " average chunk num is {}, using {} compaction",
+        storageGroup,
+        device,
+        measurement,
+        maxChunkPointNum,
+        minChunkPointNum,
+        totalChunkPointNum.divide(BigInteger.valueOf(totalChunkNum)).longValue(),
+        notDeserializeChunk ? "flushing chunk" : notDeserializePage ? "merge chunk" : "");
+    return new Pair<>(notDeserializeChunk, notDeserializePage);
   }
 
   private static TsFileSequenceReader buildReaderFromTsFileResource(
@@ -623,6 +669,14 @@ public class InnerSpaceCompactionUtils {
           (dir, name) -> name.endsWith(SizeTieredCompactionLogger.COMPACTION_LOG_NAME));
     } else {
       return new File[0];
+    }
+  }
+
+  private static class TsFileNameComparator implements Comparator<TsFileSequenceReader> {
+
+    @Override
+    public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
+      return TsFileManager.compareFileName(new File(o1.getFileName()), new File(o2.getFileName()));
     }
   }
 }
