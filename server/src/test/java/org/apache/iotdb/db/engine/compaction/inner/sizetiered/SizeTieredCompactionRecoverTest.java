@@ -33,6 +33,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
@@ -139,6 +140,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
     TsFileResource targetTsFileResource =
         new TsFileResource(
@@ -444,6 +446,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -838,6 +841,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -1176,6 +1180,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
         System.out.println("fail to delete " + file);
         break;
       }
+    }
+  }
+
+  private void closeTsFileSequenceReader() throws IOException {
+    for (TsFileResource tsFileResource : seqResources) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
     }
   }
 }
