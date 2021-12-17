@@ -33,6 +33,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -68,8 +73,22 @@ public class GroupByFillDataSet extends QueryDataSet {
     this.groupByEngineDataSet = groupByEngineDataSet;
     this.lastQueryExecutor = lastQueryExecutor;
     this.fillTypes = fillTypes;
+
+    IExpression expression = groupByFillPlan.getExpression();
+    Filter timeFilter = null;
+    if (expression != null) {
+      if (expression instanceof GlobalTimeExpression) {
+        timeFilter = ((GlobalTimeExpression) expression).getFilter();
+      } else {
+        timeFilter =
+            FilterFactory.and(
+                TimeFilter.gtEq(groupByFillPlan.getStartTime()),
+                TimeFilter.lt(groupByFillPlan.getEndTime()));
+      }
+    }
+
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(paths, context, null);
+        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(paths, context, timeFilter);
     try {
       initPreviousParis(context, groupByFillPlan);
       initLastTimeArray(context, groupByFillPlan);

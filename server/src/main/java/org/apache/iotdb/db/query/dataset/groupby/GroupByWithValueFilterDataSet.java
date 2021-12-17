@@ -39,6 +39,9 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -84,12 +87,17 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.allDataReaderList = new ArrayList<>();
     this.groupByTimePlan = groupByTimePlan;
 
+    Filter timeFilter =
+        FilterFactory.and(
+            TimeFilter.gtEq(groupByTimePlan.getStartTime()),
+            TimeFilter.lt(groupByTimePlan.getEndTime()));
+
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLockAndInitQueryDataSource(
                 paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
                 context,
-                null);
+                timeFilter);
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
