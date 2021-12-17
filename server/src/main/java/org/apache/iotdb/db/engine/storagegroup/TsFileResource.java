@@ -41,7 +41,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -461,7 +460,6 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
-      e.printStackTrace();
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
@@ -471,7 +469,6 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
-      e.printStackTrace();
       logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
@@ -482,7 +479,6 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
     } catch (IOException e) {
-      e.printStackTrace();
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
