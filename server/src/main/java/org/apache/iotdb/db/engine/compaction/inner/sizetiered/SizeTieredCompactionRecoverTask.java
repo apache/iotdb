@@ -142,7 +142,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
           handleSuccess =
               InnerSpaceCompactionExceptionHandler.handleWhenAllSourceFilesExist(
                   fullStorageGroupName, targetResource, sourceResources);
-          //  handleWithAllSourceFilesExist(targetFileIdentifier, sourceFileIdentifiers);
         } else {
           handleSuccess = handleWithoutAllSourceFilesExist(sourceFileIdentifiers);
         }
