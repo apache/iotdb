@@ -1064,6 +1064,7 @@ public class StorageEngine implements IService {
       } else {
         IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
         insertPlan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDeviceId()));
+        insertPlan.setDevicePath(insertPlan.getDeviceId());
       }
     } catch (IOException e) {
       throw new StorageEngineException(e);
