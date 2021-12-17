@@ -214,15 +214,95 @@ public class CompactionUtils {
       logger.error("{} get schema {} error, skip this sensor", device, entry.getKey(), e);
       return;
     }
-    for (TimeValuePair timeValuePair : timeValuePairMap.values()) {
-      writeTVPair(timeValuePair, chunkWriter);
-      targetResource.updateStartTime(device, timeValuePair.getTimestamp());
-      targetResource.updateEndTime(device, timeValuePair.getTimestamp());
-    }
     // wait for limit write
     MergeManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(writer);
+  }
+
+  public static void writeByDeserializePageMergeV2(
+      String device,
+      RateLimiter compactionRateLimiter,
+      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> collectedChunkMetadata,
+      TsFileResource targetResource,
+      RestorableTsFileIOWriter writer,
+      Map<String, List<Modification>> modificationCache,
+      List<Modification> modifications)
+      throws IOException, IllegalPathException {
+    PartialPath currPath = new PartialPath(device, collectedChunkMetadata.getKey());
+    IChunkWriter chunkWriter;
+    try {
+      chunkWriter = new ChunkWriterImpl(IoTDB.metaManager.getSeriesSchema(currPath), true);
+    } catch (MetadataException e) {
+      // this may caused in IT by restart
+      logger.error(
+          "{} get schema {} error, skip this sensor", device, collectedChunkMetadata.getKey(), e);
+      return;
+    }
+    Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap =
+        collectedChunkMetadata.getValue();
+    for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
+        readerChunkMetadataMap.entrySet()) {
+      TsFileSequenceReader reader = entry.getKey();
+      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      modifyChunkMetaDataWithCache(
+          reader, chunkMetadataList, modificationCache, currPath, modifications);
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        collectOneChunkAndMayFlushIt(
+            device,
+            compactionRateLimiter,
+            targetResource,
+            reader,
+            chunkMetadata,
+            writer,
+            chunkWriter);
+      }
+    }
+    if (chunkWriter.getSerializedChunkSize() > 0) {
+      MergeManager.mergeRateLimiterAcquire(
+          compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+      chunkWriter.writeToFileWriter(writer);
+    }
+  }
+
+  private static boolean collectOneChunkAndMayFlushIt(
+      String device,
+      RateLimiter rateLimiter,
+      TsFileResource targetResource,
+      TsFileSequenceReader reader,
+      ChunkMetadata chunkMetadata,
+      RestorableTsFileIOWriter writer,
+      IChunkWriter chunkWriter)
+      throws IOException {
+    Chunk currChunk = reader.readMemChunk(chunkMetadata);
+    boolean hasFlushChunkWriter = false;
+    if (currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize()
+            >= 512 * 1024L
+        && chunkWriter.getSerializedChunkSize() == 0) {
+      MergeManager.mergeRateLimiterAcquire(
+          rateLimiter,
+          (long) currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize());
+      writer.writeChunk(currChunk, chunkMetadata);
+      targetResource.updateStartTime(device, chunkMetadata.getStartTime());
+      targetResource.updateEndTime(device, chunkMetadata.getEndTime());
+    } else {
+      IChunkReader chunkReader = new ChunkReaderByTimestamp(currChunk);
+      while (chunkReader.hasNextSatisfiedPage()) {
+        IPointReader pointReader = new BatchDataIterator(chunkReader.nextPageData());
+        while (pointReader.hasNextTimeValuePair()) {
+          TimeValuePair timeValuePair = pointReader.nextTimeValuePair();
+          writeTVPair(timeValuePair, chunkWriter);
+          targetResource.updateStartTime(device, timeValuePair.getTimestamp());
+          targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+        }
+      }
+      if (chunkWriter.getSerializedChunkSize() >= 512 * 1024L) {
+        MergeManager.mergeRateLimiterAcquire(rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+        chunkWriter.writeToFileWriter(writer);
+        hasFlushChunkWriter = true;
+      }
+    }
+    return hasFlushChunkWriter;
   }
 
   private static Set<String> getTsFileDevicesSet(
@@ -362,7 +442,7 @@ public class CompactionUtils {
                   sensorReaderChunkMetadataListEntry =
                       new DefaultMapEntry<>(sensor, readerChunkMetadataListMap);
               if (!sequence) {
-                writeByDeserializePageMerge(
+                writeByDeserializePageMergeV2(
                     device,
                     compactionWriteRateLimiter,
                     sensorReaderChunkMetadataListEntry,
@@ -414,7 +494,7 @@ public class CompactionUtils {
                   logger.debug(
                       "{} [Compaction] page too small, use deserialize page merge", storageGroup);
                   // we have to deserialize chunks to merge pages
-                  writeByDeserializePageMerge(
+                  writeByDeserializePageMergeV2(
                       device,
                       compactionWriteRateLimiter,
                       sensorReaderChunkMetadataListEntry,
