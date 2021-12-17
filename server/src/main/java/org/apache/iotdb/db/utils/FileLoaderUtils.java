@@ -116,7 +116,7 @@ public class FileLoaderUtils {
             new DiskChunkMetadataLoader(resource, seriesPath, context, filter));
       }
     } else {
-      timeSeriesMetadata = resource.getTimeSeriesMetadataByPath(seriesPath);
+      timeSeriesMetadata = resource.getTimeSeriesMetadata(seriesPath);
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
             new MemChunkMetadataLoader(resource, seriesPath, context, filter));

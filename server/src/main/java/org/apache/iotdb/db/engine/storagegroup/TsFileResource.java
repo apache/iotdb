@@ -152,22 +152,21 @@ public class TsFileResource {
 
   public TsFileResource(TsFileResource other) throws IOException {
     this.file = other.file;
+    this.processor = other.processor;
     this.timeIndex = other.timeIndex;
     this.timeIndexType = other.timeIndexType;
     this.modFile = other.modFile;
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
+    this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
+    this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
+    generatePathToTimeSeriesMetadataMap();
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
-    this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
-    this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
-    this.originTsFileResource = other.originTsFileResource;
-    this.processor = other.processor;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -447,7 +446,7 @@ public class TsFileResource {
     return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
-  public TimeseriesMetadata getTimeSeriesMetadataByPath(PartialPath seriesPath) {
+  public TimeseriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
     if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
       return pathToTimeSeriesMetadataMap.get(seriesPath);
     }
@@ -468,9 +467,10 @@ public class TsFileResource {
       modFile.close();
       modFile = null;
     }
-    pathToTimeSeriesMetadataMap = null;
-    pathToReadOnlyMemChunkMap = null;
+    processor = null;
     pathToChunkMetadataListMap = null;
+    pathToReadOnlyMemChunkMap = null;
+    pathToTimeSeriesMetadataMap = null;
     timeIndex.close();
   }
 

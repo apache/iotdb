@@ -1597,6 +1597,8 @@ public class StorageGroupProcessor {
               timeFilter,
               false);
       QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
+      // used files should be added before mergeLock is unlocked, or they may be deleted by
+      // running merge
       // is null only in tests
       if (filePathsManager != null) {
         filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
