@@ -34,6 +34,10 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
 
+/**
+ * Schema entry of id table <br>
+ * Notice that this class is also a last cache container for last cache
+ */
 public class SchemaEntry implements ILastCacheContainer {
 
   /* 39 bits of disk pointer */

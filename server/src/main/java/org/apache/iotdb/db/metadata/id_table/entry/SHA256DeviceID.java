@@ -23,6 +23,7 @@ import java.security.NoSuchAlgorithmException;
 
 /** Using sha 256 hash value of device path as device ID */
 public class SHA256DeviceID implements IDeviceID {
+  // four long value form a 32 bytes sha 256 value
   long l1;
   long l2;
   long l3;
@@ -48,6 +49,7 @@ public class SHA256DeviceID implements IDeviceID {
   }
 
   public SHA256DeviceID(String deviceID) {
+    // if this device id string is a sha 256 form, we just translate it without sha256
     if (deviceID.indexOf('.') == -1) {
       fromSHA256String(deviceID);
     } else {

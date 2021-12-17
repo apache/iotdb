@@ -22,6 +22,7 @@ package org.apache.iotdb.db.metadata.id_table.entry;
 import java.util.HashMap;
 import java.util.Map;
 
+/** device entry in id table */
 public class DeviceEntry {
   /** for device ID reuse in memtable */
   IDeviceID deviceID;

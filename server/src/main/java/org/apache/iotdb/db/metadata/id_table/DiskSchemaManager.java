@@ -24,6 +24,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import java.io.IOException;
 import java.util.Collection;
 
+/** This class manages IO of id table's schema entry */
 public interface DiskSchemaManager {
 
   /**

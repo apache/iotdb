@@ -19,6 +19,13 @@
 
 package org.apache.iotdb.db.metadata.id_table.entry;
 
+/** device id interface */
 public interface IDeviceID {
+
+  /**
+   * to string format
+   *
+   * @return string format device id
+   */
   public String toStringID();
 }

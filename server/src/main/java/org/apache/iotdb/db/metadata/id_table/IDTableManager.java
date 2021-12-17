@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.HashMap;
 
+/** This class manages one id table for each logical storage group */
 public class IDTableManager {
 
   /** logger */

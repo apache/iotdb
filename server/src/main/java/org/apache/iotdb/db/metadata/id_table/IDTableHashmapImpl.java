@@ -182,6 +182,7 @@ public class IDTableHashmapImpl implements IDTable {
     plan.setDeviceID(deviceEntry.getDeviceID());
     // for last flushed time map
     plan.setDevicePath(devicePath);
+    // change device path to device id string for insertion
     plan.setDeviceId(new PartialPath(deviceEntry.getDeviceID().toStringID()));
 
     return deviceEntry.getDeviceID();
