@@ -68,7 +68,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (allSourceFileExist) {
       handleSuccess =
           handleWhenAllSourceFilesExist(
-              fullStorageGroupName, targetTsFile, selectedTsFileResourceList, tsFileResourceList);
+              fullStorageGroupName, targetTsFile, selectedTsFileResourceList);
     } else {
       // some source file does not exists
       // it means we start to delete source file
@@ -131,11 +131,10 @@ public class InnerSpaceCompactionExceptionHandler {
     return allSourceFileExist;
   }
 
-  private static boolean handleWhenAllSourceFilesExist(
+  public static boolean handleWhenAllSourceFilesExist(
       String fullStorageGroupName,
       TsFileResource targetTsFile,
-      List<TsFileResource> selectedTsFileResourceList,
-      TsFileResourceList tsFileResourceList) {
+      List<TsFileResource> selectedTsFileResourceList) {
     // all source file exists, delete the target file
     LOGGER.info(
         "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
