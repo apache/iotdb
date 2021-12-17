@@ -20,6 +20,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
@@ -112,18 +113,16 @@ public class IoTDBQueryWithIDTableIT {
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
 
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
-    IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    ConfigFactory.getConfig().setEnableIDTable(true);
+    ConfigFactory.getConfig().setDeviceIDTransformationMethod("SHA256");
     EnvFactory.getEnv().initBeforeClass();
     insertData();
   }
 
   @AfterClass
   public static void tearDown() throws Exception {
-    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
+    ConfigFactory.getConfig().setEnableIDTable(isEnableIDTable);
+    ConfigFactory.getConfig().setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
     // reset id method
     DeviceIDFactory.getInstance().reset();
 

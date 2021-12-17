@@ -131,4 +131,14 @@ public class ClusterEnvConfig implements BaseConfig {
         "enable_cross_space_compaction", String.valueOf(enableCrossSpaceCompaction));
     return this;
   }
+
+  public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    properties.setProperty("enable_id_table", String.valueOf(isEnableIDTable));
+    return this;
+  }
+
+  public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    properties.setProperty("device_id_transformation_method", deviceIDTransformationMethod);
+    return this;
+  }
 }

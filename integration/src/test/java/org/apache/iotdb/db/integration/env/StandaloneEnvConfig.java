@@ -125,4 +125,16 @@ public class StandaloneEnvConfig implements BaseConfig {
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     return this;
   }
+
+  public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(isEnableIDTable);
+    return this;
+  }
+
+  public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setDeviceIDTransformationMethod(deviceIDTransformationMethod);
+    return this;
+  }
 }

@@ -533,7 +533,7 @@ public class IDTableTest {
       Planner processor = new Planner();
 
       String sql =
-          "CREATE TRIGGER trigger1 BEFORE INSERT ON root.laptop.d1.non_aligned_device.s1 AS 'org.apache.iotdb.db.metadata.id_table.trigger_example.Counter'";
+          "CREATE TRIGGER trigger1 BEFORE INSERT ON root.laptop.d1.non_aligned_device.s1 AS 'org.apache.iotdb.db.metadata.idtable.trigger_example.Counter'";
 
       CreateTriggerPlan plan = (CreateTriggerPlan) processor.parseSQLToPhysicalPlan(sql);
 

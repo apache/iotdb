@@ -97,4 +97,12 @@ public interface BaseConfig {
   default BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
     return this;
   }
+
+  default BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    return this;
+  }
+
+  default BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    return this;
+  }
 }
