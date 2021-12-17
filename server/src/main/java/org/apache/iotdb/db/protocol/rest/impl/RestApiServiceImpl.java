@@ -49,9 +49,7 @@ public class RestApiServiceImpl extends RestApiService {
   public final BasicServiceProvider basicServiceProvider = new BasicServiceProvider();
   private final AuthorizationHandler authorizationHandler;
 
-  public RestApiServiceImpl() throws QueryProcessException {}
-
-  {
+  public RestApiServiceImpl() throws QueryProcessException {
     this.authorizationHandler = new AuthorizationHandler(basicServiceProvider);
   }
 

@@ -113,11 +113,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/QueryDataSet'
 
-  /grafana/v1/query:
+  /grafana/v1/variable:
     post:
-      summary: executeGrafanaQueryStatement
-      description: executeGrafanaQueryStatement
-      operationId: executeGrafanaQueryStatement
+      summary: variables
+      description: variables
+      operationId: variables
       requestBody:
         content:
           application/json:

@@ -46,14 +46,20 @@ import javax.ws.rs.core.SecurityContext;
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   // todo cluster
-  protected final IPlanExecutor executor = new PlanExecutor();
-  protected final Planner planner = new Planner();
-  private float timePrecision = 1; // the timestamp Precision is default ms
-  public final BasicServiceProvider basicServiceProvider = new BasicServiceProvider();
-  private final AuthorizationHandler authorizationHandler;
+  protected final IPlanExecutor executor;
+  protected final Planner planner;
+  protected final BasicServiceProvider basicServiceProvider;
+  protected final AuthorizationHandler authorizationHandler;
+
+  private float timePrecision; // the timestamp Precision is default ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
+    executor = new PlanExecutor();
+    planner = new Planner();
+    basicServiceProvider = new BasicServiceProvider();
+    authorizationHandler = new AuthorizationHandler(basicServiceProvider);
     String timestampPrecision = IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision();
+    timePrecision = 1;
     switch (timestampPrecision) {
       case "ns":
         timePrecision = timePrecision * 1000000;
@@ -67,12 +73,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     }
   }
 
-  {
-    this.authorizationHandler = new AuthorizationHandler(basicServiceProvider);
-  }
-
   @Override
-  public Response executeGrafanaQueryStatement(SQL sql, SecurityContext securityContext) {
+  public Response variables(SQL sql, SecurityContext securityContext) {
     try {
       RequestValidationHandler.validateSQL(sql);
 
@@ -90,6 +92,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (response != null) {
         return response;
       }
+
       return QueryDataSetHandler.constructVariablesResult(
           QueryDataSetHandler.constructQueryDataSet(executor, physicalPlan), physicalPlan);
     } catch (Exception e) {
@@ -100,30 +103,30 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
   @Override
   public Response expression(ExpressionRequest expressionRequest, SecurityContext securityContext)
       throws NotFoundException {
-    long startTime = (long) (expressionRequest.getStartTime().doubleValue() * timePrecision);
-    long endTime = (long) (expressionRequest.getEndTime().doubleValue() * timePrecision);
-    String prefixPaths = Joiner.on(",").join(expressionRequest.getPrefixPath());
-    String expression = Joiner.on(",").join(expressionRequest.getExpression());
-
-    String sql =
-        "select "
-            + expression
-            + " from "
-            + prefixPaths
-            + " where timestamp>="
-            + startTime
-            + " and timestamp<= "
-            + endTime;
-    if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
-      sql += " and " + expressionRequest.getCondition();
-    }
     try {
-      Planner planner = new Planner();
+      long startTime = (long) (expressionRequest.getStartTime().doubleValue() * timePrecision);
+      long endTime = (long) (expressionRequest.getEndTime().doubleValue() * timePrecision);
+      String prefixPaths = Joiner.on(",").join(expressionRequest.getPrefixPath());
+      String expression = Joiner.on(",").join(expressionRequest.getExpression());
+
+      String sql =
+          "select "
+              + expression
+              + " from "
+              + prefixPaths
+              + " where timestamp>="
+              + startTime
+              + " and timestamp<= "
+              + endTime;
+      if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
+        sql += " and " + expressionRequest.getCondition();
+      }
       PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql);
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
+
       return QueryDataSetHandler.fillDateSet(
           QueryDataSetHandler.constructQueryDataSet(executor, physicalPlan),
           (QueryPlan) physicalPlan);
