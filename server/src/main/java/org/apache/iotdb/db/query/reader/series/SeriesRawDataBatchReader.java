@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -145,6 +146,12 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
   @Override
   public void close() throws IOException {
     // no resources need to close
+    for (TsFileResource seqResource : seriesReader.seqFileResource) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(seqResource.getTsFilePath());
+    }
+    for (TsFileResource unseqResource : seriesReader.unseqFileResource) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(unseqResource.getTsFilePath());
+    }
   }
 
   @Override
