@@ -104,7 +104,7 @@ public class RecoverCrossMergeTask extends CrossSpaceMergeTask {
     }
   }
 
-  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException {
+  private void resumeAfterFilesLogged(boolean continueMerge) throws IOException, MetadataException {
     if (continueMerge) {
       resumeMergeProgress();
       calculateConcurrentSeriesNum();
