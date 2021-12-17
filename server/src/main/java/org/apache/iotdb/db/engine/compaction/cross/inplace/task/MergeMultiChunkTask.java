@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
@@ -129,7 +128,7 @@ public class MergeMultiChunkTask {
     this.storageGroupName = storageGroupName;
   }
 
-  void mergeSeries() throws IOException {
+  void mergeSeries() throws IOException, MetadataException {
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       // record the unmergeChunkStartTime for each sensor in each file
@@ -140,37 +139,25 @@ public class MergeMultiChunkTask {
     for (PartialPath device : unmergedDevice) {
       // TODO: use statistics of queries to better rearrange series
       List<PartialPath> measurementPathListByDevice;
-      try {
-        measurementPathListByDevice =
-            new ArrayList<>(IoTDB.metaManager.getAllMeasurementByDevicePath(device));
-      } catch (PathNotExistException e) {
-        logger.error("Can not get all measurements of {}.", device.getDevice());
-        continue;
-      }
+      measurementPathListByDevice =
+          new ArrayList<>(IoTDB.metaManager.getAllMeasurementByDevicePath(device));
       // just for unit tests, we need to consider whether there is a need to exist
       Collections.sort(measurementPathListByDevice);
 
       IMergePathSelector pathSelector =
           new NaivePathSelector(measurementPathListByDevice, concurrentMergeSeriesNum);
-      try {
-        while (pathSelector.hasNext()) {
-          currMergingPaths = pathSelector.next();
-          mergePaths();
-          resource.clearChunkWriterCache();
-          if (Thread.interrupted()) {
-            logger.info("MergeMultiChunkTask {} aborted", taskName);
-            Thread.currentThread().interrupt();
-            return;
-          }
+      while (pathSelector.hasNext()) {
+        currMergingPaths = pathSelector.next();
+        mergePaths();
+        resource.clearChunkWriterCache();
+        if (Thread.interrupted()) {
+          logger.info("MergeMultiChunkTask {} aborted", taskName);
+          Thread.currentThread().interrupt();
+          return;
         }
-        mergedDeviceCnt++;
-        logMergeProgress();
-      } catch (MetadataException e) {
-        logger.warn(
-            "Failed to get data type by {} in merge process,{}",
-            device.getDevice(),
-            e.getMessage());
       }
+      mergedDeviceCnt++;
+      logMergeProgress();
       measurementChunkMetadataListMapIteratorCache.clear();
       chunkMetadataListCacheForMerge.clear();
     }
