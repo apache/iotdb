@@ -28,10 +28,11 @@ import java.util.List;
 
 import static org.junit.Assert.*;
 
-public class LogicalGeneratorTest {
+public class InfluxDBLogicalGeneratorTest {
   @Test
   public void testParserSql1() {
-    QueryOperator operator = (QueryOperator) LogicalGenerator.generate("SELECT * FROM h2o_feet");
+    QueryOperator operator =
+        (QueryOperator) InfluxDBLogicalGenerator.generate("SELECT * FROM h2o_feet");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 1);
     NodeExpression nodeExpression = (NodeExpression) resultColumnList.get(0).getExpression();
@@ -43,7 +44,8 @@ public class LogicalGeneratorTest {
   @Test
   public void testParserSql2() {
     QueryOperator operator =
-        (QueryOperator) LogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
+        (QueryOperator)
+            InfluxDBLogicalGenerator.generate("SELECT a,b,c FROM h2o_feet where a>1 and b<1");
     List<ResultColumn> resultColumnList = operator.getSelectComponent().getResultColumns();
     assertEquals(resultColumnList.size(), 3);
     NodeExpression nodeExpression = (NodeExpression) resultColumnList.get(0).getExpression();
