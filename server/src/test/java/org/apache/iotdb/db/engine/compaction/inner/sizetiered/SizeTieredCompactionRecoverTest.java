@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
@@ -42,6 +43,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -76,8 +78,56 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   }
 
   @Test
-  public void testWhetherSelectedFileCanBeDeleted() {
+  public void testWhetherSelectedFileCanBeDeleted() throws IllegalPathException, IOException {
     logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted");
+    if (!seqResources.get(0).remove()) {
+      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
+    }
+  }
+
+  @Test
+  public void testWhetherSelectedFileCanBeDeleted1() throws IllegalPathException, IOException {
+    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted1");
+    TsFileResource targetTsFileResource =
+        new TsFileResource(
+            new File(
+                SEQ_DIRS
+                    + File.separator.concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+    InnerSpaceCompactionUtils.compact(
+        targetTsFileResource,
+        new ArrayList<>(seqResources.subList(0, 2)),
+        COMPACTION_TEST_SG,
+        true);
+    if (!seqResources.get(0).remove()) {
+      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
+    }
+  }
+
+  @Test
+  public void testWhetherSelectedFileCanBeDeleted2() throws IllegalPathException, IOException {
+    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted2");
+    TsFileResource targetTsFileResource =
+        new TsFileResource(
+            new File(
+                SEQ_DIRS
+                    + File.separator.concat(
+                        0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 1
+                            + IoTDBConstant.FILE_NAME_SEPARATOR
+                            + 0
+                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
     if (!seqResources.get(0).remove()) {
       logger.error("Meet Errors when deleting file {}", seqResources.get(0));
     }
@@ -575,7 +625,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     }
     InnerSpaceCompactionUtils.combineModsInCompaction(seqResources, targetResource);
     seqResources.get(0).remove();
-    seqResources.get(4).remove();
     compactionLogger.close();
 
     new SizeTieredCompactionRecoverTask(
