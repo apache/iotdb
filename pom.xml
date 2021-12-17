@@ -92,6 +92,7 @@
         <module>openapi</module>
         <module>server</module>
         <module>example</module>
+        <module>grafana-plugin</module>
         <module>grafana-connector</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
@@ -108,7 +109,6 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
-        <module>grafana-plugin</module>
     </modules>
     <!-- Properties Management -->
     <properties>
