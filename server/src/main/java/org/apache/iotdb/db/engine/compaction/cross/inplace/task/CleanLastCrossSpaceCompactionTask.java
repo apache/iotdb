@@ -32,11 +32,12 @@ import java.util.List;
  * RecoverCrossMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class CleanLastMergeTask extends CrossSpaceMergeTask {
+public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
 
-  private static final Logger logger = LoggerFactory.getLogger(CleanLastMergeTask.class);
+  private static final Logger logger =
+      LoggerFactory.getLogger(CleanLastCrossSpaceCompactionTask.class);
 
-  public CleanLastMergeTask(
+  public CleanLastCrossSpaceCompactionTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
@@ -48,16 +49,19 @@ public class CleanLastMergeTask extends CrossSpaceMergeTask {
         seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
   }
 
-  public void cleanLastMergeInfo(boolean continueMerge, File logFile) throws IOException {
+  public void cleanLastCrossSpaceCompactionInfo(boolean continueMerge, File logFile)
+      throws IOException {
     if (!logFile.exists()) {
-      logger.info("{} no merge.log, merge clean ends.", taskName);
+      logger.info("{} no merge.log, cross space compaction clean ends.", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
     cleanUp(continueMerge);
     if (logger.isInfoEnabled()) {
       logger.info(
-          "{} merge clean ends after {}ms.", taskName, (System.currentTimeMillis() - startTime));
+          "{} cross space compaction clean ends after {}ms.",
+          taskName,
+          (System.currentTimeMillis() - startTime));
     }
   }
 }

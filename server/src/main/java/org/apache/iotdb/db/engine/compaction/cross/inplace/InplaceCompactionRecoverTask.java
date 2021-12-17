@@ -20,7 +20,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CleanLastMergeTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CleanLastCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -80,8 +80,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
     while (unSeqIterator.hasNext()) {
       unSeqFileList.add(unSeqIterator.next());
     }
-    CleanLastMergeTask recoverCrossMergeTask =
-        new CleanLastMergeTask(
+    CleanLastCrossSpaceCompactionTask cleanLastCrossSpaceCompactionTask =
+        new CleanLastCrossSpaceCompactionTask(
             seqFileList,
             unSeqFileList,
             storageGroupDir,
@@ -89,8 +89,9 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             logicalStorageGroupName);
-    LOGGER.info("{} a CleanLastMergeTask {} starts...", fullStorageGroupName, taskName);
-    recoverCrossMergeTask.cleanLastMergeInfo(
+    LOGGER.info(
+        "{} a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName, taskName);
+    cleanLastCrossSpaceCompactionTask.cleanLastCrossSpaceCompactionInfo(
         IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot(), logFile);
     if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
       for (TsFileResource seqFile : seqFileList) {
