@@ -199,4 +199,56 @@ public class SessionUT {
     session.setQueryTimeout(60000);
     Assert.assertEquals(60000, session.getQueryTimeout());
   }
+
+  @Test
+  public void testCreateTimeseriesWithWrongTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    try {
+      session.createTimeseries(
+          deviceId + ".s1 _wrong_sensor",
+          TSDataType.INT64,
+          TSEncoding.RLE,
+          CompressionType.UNCOMPRESSED);
+    } catch (StatementExecutionException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("extraneous input '_wrong_sensor' expecting {<EOF>, ';"));
+    }
+  }
+
+  @Test
+  public void testInsertWithWrongTimeseries()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root", null);
+    session.open();
+
+    String deviceId = "root.sg1.d1";
+    List<String> measurements = new ArrayList<>();
+    measurements.add("s3 _wrong_sensor");
+    List<String> deviceIds = new ArrayList<>();
+    List<List<String>> measurementsList = new ArrayList<>();
+    List<List<Object>> valuesList = new ArrayList<>();
+    List<Long> timestamps = new ArrayList<>();
+    List<List<TSDataType>> typesList = new ArrayList<>();
+
+    List<Object> values = new ArrayList<>();
+    List<TSDataType> types = new ArrayList<>();
+    values.add(1L);
+    types.add(TSDataType.INT64);
+    deviceIds.add(deviceId);
+    measurementsList.add(measurements);
+    valuesList.add(values);
+    typesList.add(types);
+    timestamps.add(10000l);
+
+    try {
+      session.insertRecords(deviceIds, timestamps, measurementsList, typesList, valuesList);
+    } catch (StatementExecutionException e) {
+      Assert.assertTrue(
+          e.getMessage().contains("extraneous input '_wrong_sensor' expecting {<EOF>, ';"));
+    }
+  }
 }

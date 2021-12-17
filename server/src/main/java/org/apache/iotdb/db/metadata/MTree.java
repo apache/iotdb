@@ -223,11 +223,7 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    long startTime = System.nanoTime();
     LogicalGenerator.checkCreateTimeseriesGrammar(path.getFullPath());
-    long endTime = System.nanoTime();
-    logger.error("qihouliang, cost={}", (endTime-startTime));
-//    checkTimeseries(path);
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();
