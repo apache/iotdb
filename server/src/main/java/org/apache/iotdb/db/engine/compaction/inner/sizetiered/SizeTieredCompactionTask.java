@@ -92,18 +92,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         selectedTsFileResourceList.size());
     File logFile = null;
     SizeTieredCompactionLogger sizeTieredCompactionLogger = null;
-    // to mark if we got the write lock or read lock of the selected tsfile
-
-    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-      isHoldingReadLock[i] = false;
-      isHoldingWriteLock[i] = false;
-    }
-    LOGGER.info(
-        "{} [Compaction] Try to get the read lock of all selected files", fullStorageGroupName);
-    for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
-      selectedTsFileResourceList.get(i).readLock();
-      isHoldingReadLock[i] = true;
-    }
 
     try {
       logFile =
@@ -219,7 +207,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           tsFileManager,
           tsFileResourceList);
     } finally {
-      releaseFileLocksAndResetMergingStatus();
+      releaseFileLocksAndResetMergingStatus(true);
     }
   }
 
@@ -248,7 +236,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
             || resource.isDeleted()) {
           // this source file cannot be compacted
           // release the lock of locked files, and return
-          releaseFileLocksAndResetMergingStatus();
+          releaseFileLocksAndResetMergingStatus(false);
           return false;
         }
       }
@@ -266,7 +254,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
    * release the read lock and write lock of files if it is held, and set the merging status of
    * selected files to false
    */
-  private void releaseFileLocksAndResetMergingStatus() {
+  private void releaseFileLocksAndResetMergingStatus(boolean resetCompactingStatus) {
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       if (isHoldingReadLock[i]) {
         selectedTsFileResourceList.get(i).readUnlock();
@@ -274,7 +262,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       if (isHoldingWriteLock[i]) {
         selectedTsFileResourceList.get(i).writeUnlock();
       }
-      selectedTsFileResourceList.get(i).setMerging(false);
+      if (resetCompactingStatus) {
+        selectedTsFileResourceList.get(i).setMerging(false);
+      }
     }
   }
 }
