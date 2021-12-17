@@ -76,6 +76,14 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     super.tearDown();
   }
 
+  @Test
+  public void testWhetherSelectedFileCanBeDeleted() {
+    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted");
+    if (!seqResources.get(0).remove()) {
+      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
+    }
+  }
+
   /** Target file uncompleted, source files and log exists */
   @Test
   public void testCompactionRecoverWithUncompletedTargetFileAndLog() throws Exception {

@@ -462,6 +462,7 @@ public class TsFileResource {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      e.printStackTrace();
       return false;
     }
     if (!removeResourceFile()) {
@@ -471,6 +472,7 @@ public class TsFileResource {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
       logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      e.printStackTrace();
       return false;
     }
     return true;
@@ -481,6 +483,7 @@ public class TsFileResource {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
     } catch (IOException e) {
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      e.printStackTrace();
       return false;
     }
     return true;
