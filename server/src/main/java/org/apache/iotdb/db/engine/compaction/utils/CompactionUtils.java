@@ -37,7 +37,6 @@ import org.apache.iotdb.tsfile.read.reader.BatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
@@ -70,28 +69,6 @@ public class CompactionUtils {
 
   private CompactionUtils() {
     throw new IllegalStateException("Utility class");
-  }
-
-  private static Pair<ChunkMetadata, Chunk> readByAppendPageMerge(
-      Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap) throws IOException {
-    ChunkMetadata newChunkMetadata = null;
-    Chunk newChunk = null;
-    for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
-        readerChunkMetadataMap.entrySet()) {
-      TsFileSequenceReader reader = entry.getKey();
-      List<ChunkMetadata> chunkMetadataList = entry.getValue();
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk chunk = reader.readMemChunk(chunkMetadata);
-        if (newChunkMetadata == null) {
-          newChunkMetadata = chunkMetadata;
-          newChunk = chunk;
-        } else {
-          newChunk.mergeChunk(chunk);
-          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
-        }
-      }
-    }
-    return new Pair<>(newChunkMetadata, newChunk);
   }
 
   private static void readByDeserializePageMerge(
@@ -151,19 +128,47 @@ public class CompactionUtils {
 
   public static void writeByAppendPageMerge(
       String device,
-      RateLimiter compactionWriteRateLimiter,
-      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
+      RateLimiter rateLimiter,
+      Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> readerEntry,
       TsFileResource targetResource,
       RestorableTsFileIOWriter writer)
       throws IOException {
-    Pair<ChunkMetadata, Chunk> chunkPair = readByAppendPageMerge(entry.getValue());
-    ChunkMetadata newChunkMetadata = chunkPair.left;
-    Chunk newChunk = chunkPair.right;
-    if (newChunkMetadata != null && newChunk != null) {
-      // wait for limit write
+    ChunkMetadata newChunkMetadata = null;
+    Chunk newChunk = null;
+    long flushChunkPointNumThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
+
+    Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = readerEntry.getValue();
+    for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
+        readerChunkMetadataMap.entrySet()) {
+      TsFileSequenceReader reader = entry.getKey();
+      List<ChunkMetadata> chunkMetadataList = entry.getValue();
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Chunk chunk = reader.readMemChunk(chunkMetadata);
+        if (newChunkMetadata == null) {
+          newChunkMetadata = chunkMetadata;
+          newChunk = chunk;
+        } else {
+          newChunk.mergeChunk(chunk);
+          newChunkMetadata.mergeChunkMetadata(chunkMetadata);
+        }
+        // limit chunk size to 512 KB
+        if (newChunk.getHeader().getDataSize() + newChunk.getHeader().getSerializedSize()
+            >= 512 * 1024) {
+          MergeManager.mergeRateLimiterAcquire(
+              rateLimiter,
+              (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
+          writer.writeChunk(newChunk, newChunkMetadata);
+          targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
+          targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
+          newChunk = null;
+          newChunkMetadata = null;
+        }
+      }
+    }
+    if (newChunk != null && newChunkMetadata != null) {
       MergeManager.mergeRateLimiterAcquire(
-          compactionWriteRateLimiter,
-          (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
+          rateLimiter, (long) newChunk.getHeader().getDataSize() + newChunk.getData().position());
       writer.writeChunk(newChunk, newChunkMetadata);
       targetResource.updateStartTime(device, newChunkMetadata.getStartTime());
       targetResource.updateEndTime(device, newChunkMetadata.getEndTime());
