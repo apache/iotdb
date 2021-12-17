@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 
@@ -34,7 +35,7 @@ public class ClusterPlanner extends Planner {
   @Override
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
-    Operator operator = logicalGenerator.generate(sqlStr, zoneId);
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
     operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new ClusterPhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);
