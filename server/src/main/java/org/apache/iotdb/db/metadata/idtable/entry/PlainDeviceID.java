@@ -16,30 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.id_table;
 
-import org.apache.iotdb.db.metadata.id_table.entry.DiskSchemaEntry;
-import org.apache.iotdb.db.utils.TestOnly;
+package org.apache.iotdb.db.metadata.idtable.entry;
 
-import java.io.IOException;
-import java.util.Collection;
+import java.util.Objects;
 
-/** This class manages IO of id table's schema entry */
-public interface DiskSchemaManager {
+/** Using device id path as id */
+public class PlainDeviceID implements IDeviceID {
+  String deviceID;
 
-  /**
-   * serialize a disk schema entry
-   *
-   * @param schemaEntry disk schema entry
-   * @return disk position of that entry
-   */
-  public long serialize(DiskSchemaEntry schemaEntry);
+  public PlainDeviceID(String deviceID) {
+    this.deviceID = deviceID;
+  }
 
-  /**
-   * get all disk schema entries from file
-   *
-   * @return collection of all disk schema entires
-   */
-  @TestOnly
-  public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof PlainDeviceID)) {
+      return false;
+    }
+    PlainDeviceID that = (PlainDeviceID) o;
+    return Objects.equals(deviceID, that.deviceID);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(deviceID);
+  }
+
+  @Override
+  public String toString() {
+    return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
+  }
+
+  @Override
+  public String toStringID() {
+    return deviceID;
+  }
 }

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table.trigger_example;
+package org.apache.iotdb.db.metadata.idtable.trigger_example;
 
 import org.apache.iotdb.db.engine.trigger.api.Trigger;
 import org.apache.iotdb.db.engine.trigger.api.TriggerAttributes;

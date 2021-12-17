@@ -19,9 +19,8 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
-import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
 import org.junit.AfterClass;
@@ -43,7 +42,7 @@ import java.util.Map;
 
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class, ClusterTest.class})
+@Category({LocalStandaloneTest.class})
 public class IoTDBQueryWithIDTableIT {
 
   private static String[] sqls =

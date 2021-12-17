@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table;
+package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;

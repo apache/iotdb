@@ -16,43 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.metadata.idtable.entry;
 
-package org.apache.iotdb.db.metadata.id_table.entry;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
-import java.util.Objects;
+/** A po class contains device id and measurement, represents a timeseries */
+public class TimeseriesID {
 
-/** Using device id path as id */
-public class PlainDeviceID implements IDeviceID {
-  String deviceID;
+  private IDeviceID deviceID;
+  private String measurement;
 
-  public PlainDeviceID(String deviceID) {
-    this.deviceID = deviceID;
+  /** build timeseries id from full path */
+  public TimeseriesID(PartialPath fullPath) {
+    deviceID = DeviceIDFactory.getInstance().getDeviceID(fullPath.getDevicePath());
+    measurement = fullPath.getMeasurement();
   }
 
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (!(o instanceof PlainDeviceID)) {
-      return false;
-    }
-    PlainDeviceID that = (PlainDeviceID) o;
-    return Objects.equals(deviceID, that.deviceID);
+  public IDeviceID getDeviceID() {
+    return deviceID;
   }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(deviceID);
+  public String getMeasurement() {
+    return measurement;
+  }
+
+  public void setMeasurement(String measurement) {
+    this.measurement = measurement;
   }
 
   @Override
   public String toString() {
-    return "PlainDeviceID{" + "deviceID='" + deviceID + '\'' + '}';
-  }
-
-  @Override
-  public String toStringID() {
-    return deviceID;
+    return "TimeseriesID{" + "deviceID=" + deviceID + ", measurement='" + measurement + '\'' + '}';
   }
 }

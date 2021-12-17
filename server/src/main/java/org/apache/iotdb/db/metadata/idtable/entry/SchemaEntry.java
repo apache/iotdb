@@ -17,11 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table.entry;
+package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.id_table.DiskSchemaManager;
+import org.apache.iotdb.db.metadata.idtable.DiskSchemaManager;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;

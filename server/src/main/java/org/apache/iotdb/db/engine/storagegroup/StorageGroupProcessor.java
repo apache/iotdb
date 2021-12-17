@@ -56,8 +56,8 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.id_table.IDTable;
-import org.apache.iotdb.db.metadata.id_table.IDTableManager;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -1084,11 +1084,8 @@ public class StorageGroupProcessor {
 
     lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
     // try to update the latest time of the device of this tsRecord
-    if (sequence
-        && lastFlushTimeManager.getLastTime(
-                timePartitionId, insertTabletPlan.getDeviceId().getFullPath())
-            < insertTabletPlan.getTimes()[end - 1]) {
-      lastFlushTimeManager.setLastTime(
+    if (sequence) {
+      lastFlushTimeManager.updateLastTime(
           timePartitionId,
           insertTabletPlan.getDeviceId().getFullPath(),
           insertTabletPlan.getTimes()[end - 1]);

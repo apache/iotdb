@@ -17,9 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table;
+package org.apache.iotdb.db.metadata.idtable;
 
-import org.apache.iotdb.db.metadata.id_table.entry.DiskSchemaEntry;
+import org.apache.iotdb.db.metadata.idtable.entry.DiskSchemaEntry;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;

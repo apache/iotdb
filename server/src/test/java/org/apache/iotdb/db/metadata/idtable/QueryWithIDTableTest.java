@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table;
+package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -25,7 +25,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -62,7 +62,7 @@ import java.util.Set;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class QueryAlignedTimeseriesWithIDTableTest {
+public class QueryWithIDTableTest {
   private final Planner processor = new Planner();
 
   private boolean isEnableIDTable = false;
@@ -165,11 +165,10 @@ public class QueryAlignedTimeseriesWithIDTableTest {
     PlanExecutor executor = new PlanExecutor();
     QueryPlan queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
     QueryDataSet dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
-
+    Assert.assertEquals(6, dataSet.getPaths().size());
     int count = 0;
     while (dataSet.hasNext()) {
       RowRecord record = dataSet.next();
-      System.out.println(record);
       count++;
     }
 
@@ -315,8 +314,7 @@ public class QueryAlignedTimeseriesWithIDTableTest {
         new InsertTabletPlan(
             new PartialPath("root.isp.d1"),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes,
-            true);
+            dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);
@@ -358,8 +356,7 @@ public class QueryAlignedTimeseriesWithIDTableTest {
         new InsertTabletPlan(
             new PartialPath("root.isp.d1"),
             new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
-            dataTypes,
-            true);
+            dataTypes);
     tabletPlan.setTimes(times);
     tabletPlan.setColumns(columns);
     tabletPlan.setRowCount(times.length);

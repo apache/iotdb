@@ -17,15 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metadata.id_table;
+package org.apache.iotdb.db.metadata.idtable;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.id_table.entry.DeviceEntry;
-import org.apache.iotdb.db.metadata.id_table.entry.DeviceIDFactory;
-import org.apache.iotdb.db.metadata.id_table.entry.IDeviceID;
-import org.apache.iotdb.db.metadata.id_table.entry.TimeseriesID;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
+import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;

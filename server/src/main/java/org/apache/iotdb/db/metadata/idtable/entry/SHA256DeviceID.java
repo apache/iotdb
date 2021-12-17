@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.id_table.entry;
+package org.apache.iotdb.db.metadata.idtable.entry;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
