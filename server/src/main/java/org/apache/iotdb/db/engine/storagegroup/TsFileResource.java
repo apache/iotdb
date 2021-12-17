@@ -399,6 +399,7 @@ public class TsFileResource {
 
   private void generatePathToTimeSeriesMetadataMap() throws IOException {
     pathToTimeSeriesMetadataMap = new HashMap<>();
+    if (pathToChunkMetadataListMap == null || pathToReadOnlyMemChunkMap == null) return;
     for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
       TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
       timeSeriesMetadata.setOffsetOfChunkMetaDataList(-1);
