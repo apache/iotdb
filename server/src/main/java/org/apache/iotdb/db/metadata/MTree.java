@@ -43,6 +43,7 @@ import org.apache.iotdb.db.qp.physical.sys.MeasurementMNodePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
@@ -222,7 +223,11 @@ public class MTree implements Serializable {
     if (nodeNames.length <= 2 || !nodeNames[0].equals(root.getName())) {
       throw new IllegalPathException(path.getFullPath());
     }
-    checkTimeseries(path);
+    long startTime = System.nanoTime();
+    LogicalGenerator.checkCreateTimeseriesGrammar(path.getFullPath());
+    long endTime = System.nanoTime();
+    logger.error("qihouliang, cost={}", (endTime-startTime));
+//    checkTimeseries(path);
     MNode cur = root;
     boolean hasSetStorageGroup = false;
     Template upperTemplate = cur.getDeviceTemplate();

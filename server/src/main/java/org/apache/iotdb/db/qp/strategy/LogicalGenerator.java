@@ -35,9 +35,9 @@ import java.time.ZoneId;
 /** LogicalGenerator. */
 public class LogicalGenerator {
 
-  public LogicalGenerator() {}
+  private LogicalGenerator() {}
 
-  public Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
+  public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
     CharStream charStream1 = CharStreams.fromString(sql);
@@ -66,5 +66,10 @@ public class LogicalGenerator {
       // if we parse ok, it's LL not SLL
     }
     return ioTDBSqlVisitor.visit(tree);
+  }
+
+  public static void checkCreateTimeseriesGrammar(String sql) throws ParseCancellationException {
+    String checkSql = "SHOW TIMESERIES " + sql;
+    generate(checkSql, ZoneId.systemDefault());
   }
 }

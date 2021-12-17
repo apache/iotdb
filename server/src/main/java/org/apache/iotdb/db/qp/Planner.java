@@ -52,11 +52,11 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.TIME;
 /** provide a integration method for other user. */
 public class Planner {
 
-  protected LogicalGenerator logicalGenerator;
-
-  public Planner() {
-    this.logicalGenerator = new LogicalGenerator();
-  }
+//  protected LogicalGenerator logicalGenerator;
+//
+//  public Planner() {
+//    this.logicalGenerator = new LogicalGenerator();
+//  }
 
   @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
@@ -66,7 +66,7 @@ public class Planner {
   /** @param fetchSize this parameter only take effect when it is a query plan */
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId, int fetchSize)
       throws QueryProcessException {
-    Operator operator = logicalGenerator.generate(sqlStr, zoneId);
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
     operator = logicalOptimize(operator);
     PhysicalGenerator physicalGenerator = new PhysicalGenerator();
     return physicalGenerator.transformToPhysicalPlan(operator, fetchSize);

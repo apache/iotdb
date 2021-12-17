@@ -41,18 +41,11 @@ import static org.apache.iotdb.db.index.common.IndexConstant.TOP_K;
 
 public class IndexLogicalPlanTest {
 
-  private LogicalGenerator generator;
-
-  @Before
-  public void before() {
-    generator = new LogicalGenerator();
-  }
-
   @Test
   public void testParseCreateIndexWholeMatching() {
     String sqlStr =
         "CREATE INDEX ON root.Ery.*.Glu WHERE time > 50 WITH INDEX=RTREE_PAA, PAA_dim=8";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
@@ -68,7 +61,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseCreateIndexSubMatching() {
     String sqlStr = "CREATE INDEX ON root.Wind.AZQ02.Speed WITH INDEX=ELB_INDEX, BLOCK_SIZE=5";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(CreateIndexOperator.class, op.getClass());
     CreateIndexOperator createOperator = (CreateIndexOperator) op;
     Assert.assertEquals(OperatorType.CREATE_INDEX, createOperator.getType());
@@ -84,7 +77,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseDropIndexWholeMatching() {
     String sqlStr = "DROP INDEX RTREE_PAA ON root.Ery.*.Glu";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
@@ -97,7 +90,7 @@ public class IndexLogicalPlanTest {
   @Test
   public void testParseDropIndexSubMatching() {
     String sqlStr = "DROP INDEX ELB_INDEX ON root.Wind.AZQ02.Speed";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(DropIndexOperator.class, op.getClass());
     DropIndexOperator dropIndexOperator = (DropIndexOperator) op;
     Assert.assertEquals(OperatorType.DROP_INDEX, dropIndexOperator.getType());
@@ -112,7 +105,7 @@ public class IndexLogicalPlanTest {
   public void testParseQueryIndexWholeMatching() {
     String sqlStr =
         "SELECT TOP 2 Glu FROM root.Ery.* WHERE Glu LIKE (0, 120, 20, 80, 120, 100, 80, 0)";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
@@ -134,7 +127,7 @@ public class IndexLogicalPlanTest {
             + "CONTAIN (15, 14, 12, 12, 12, 11) WITH TOLERANCE 1 "
             + "CONCAT (10, 20, 25, 24, 14, 8) WITH TOLERANCE 2 "
             + "CONCAT  (8, 9, 10, 14, 15, 15) WITH TOLERANCE 1";
-    Operator op = generator.generate(sqlStr, ZoneId.systemDefault());
+    Operator op = LogicalGenerator.generate(sqlStr, ZoneId.systemDefault());
     Assert.assertEquals(QueryOperator.class, op.getClass());
     QueryOperator queryOperator = (QueryOperator) op;
     Assert.assertEquals(OperatorType.QUERY, queryOperator.getType());
