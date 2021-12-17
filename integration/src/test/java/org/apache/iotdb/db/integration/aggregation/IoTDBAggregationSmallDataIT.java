@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration.aggregation;
 
-import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -213,14 +212,7 @@ public class IoTDBAggregationSmallDataIT {
             "SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
-        Assert.assertTrue(
-            e.toString()
-                .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+        Assert.assertTrue(e.toString().contains("Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =
@@ -247,7 +239,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void extremeWithoutFilterTest() throws ClassNotFoundException {
+  public void extremeWithoutFilterTest() {
     String[] retArray = new String[] {"0,22222,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -257,14 +249,7 @@ public class IoTDBAggregationSmallDataIT {
         statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
-        Assert.assertTrue(
-            e.toString()
-                .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+        Assert.assertTrue(e.toString().contains("Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =
