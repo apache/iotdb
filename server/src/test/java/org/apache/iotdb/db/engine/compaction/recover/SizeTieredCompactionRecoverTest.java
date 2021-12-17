@@ -432,7 +432,7 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should still exist
+      // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
         Assert.assertTrue(
             new File(
@@ -625,7 +625,7 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should still exist
+      // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
         Assert.assertTrue(
             new File(

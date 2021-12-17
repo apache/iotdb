@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
@@ -78,98 +77,9 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     super.tearDown();
   }
 
-  @Test
-  public void testWhetherSelectedFileCanBeDeleted() throws IllegalPathException, IOException {
-    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted");
-    if (!seqResources.get(0).remove()) {
-      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
-    }
-  }
-
-  @Test
-  public void testWhetherSelectedFileCanBeDeleted1() throws IllegalPathException, IOException {
-    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted1");
-    TsFileResource targetTsFileResource =
-        new TsFileResource(
-            new File(
-                SEQ_DIRS
-                    + File.separator.concat(
-                        0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 1
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
-    InnerSpaceCompactionUtils.compact(
-        targetTsFileResource,
-        new ArrayList<>(seqResources.subList(0, 2)),
-        COMPACTION_TEST_SG,
-        true);
-    if (!seqResources.get(0).remove()) {
-      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
-    }
-    Assert.assertFalse(seqResources.get(0).getTsFile().exists());
-  }
-
-  @Test
-  public void testWhetherSelectedFileCanBeDeleted2() throws MetadataException, IOException {
-    logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted2");
-    MeasurementPath path =
-        SchemaTestUtils.getMeasurementPath(
-            deviceIds[0]
-                + TsFileConstant.PATH_SEPARATOR
-                + measurementSchemas[0].getMeasurementId());
-    IBatchReader tsFilesReader =
-        new SeriesRawDataBatchReader(
-            path,
-            measurementSchemas[0].getType(),
-            EnvironmentUtils.TEST_QUERY_CONTEXT,
-            seqResources,
-            new ArrayList<>(),
-            null,
-            null,
-            true);
-    int count = 0;
-    while (tsFilesReader.hasNextBatch()) {
-      BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
-        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
-        count++;
-      }
-    }
-    tsFilesReader.close();
-    closeTsFileSequenceReader();
-    assertEquals(500, count);
-    TsFileResource targetTsFileResource =
-        new TsFileResource(
-            new File(
-                SEQ_DIRS
-                    + File.separator.concat(
-                        0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 1
-                            + IoTDBConstant.FILE_NAME_SEPARATOR
-                            + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
-    InnerSpaceCompactionUtils.compact(
-        targetTsFileResource,
-        new ArrayList<>(seqResources.subList(0, 2)),
-        COMPACTION_TEST_SG,
-        true);
-    if (!seqResources.get(0).remove()) {
-      logger.error("Meet Errors when deleting file {}", seqResources.get(0));
-    }
-    Assert.assertFalse(seqResources.get(0).getTsFile().exists());
-  }
-
   /** Target file uncompleted, source files and log exists */
   @Test
   public void testCompactionRecoverWithUncompletedTargetFileAndLog() throws Exception {
-    logger.warn("!!!!!!!!testCompactionRecoverWithUncompletedTargetFileAndLog");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -198,6 +108,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -293,12 +204,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
   @Test
   public void testRecoverWithAllSourceFilesExisted() throws Exception {
-    logger.warn("!!!!!!!!testRecoverWithAllSourceFilesExisted");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -327,6 +238,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -412,12 +324,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
   @Test
   public void testRecoverWithoutAllSourceFilesExisted() throws Exception {
-    logger.warn("!!!!!!!!testRecoverWithoutAllSourceFilesExisted");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -537,6 +449,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
@@ -546,7 +459,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
    */
   @Test
   public void testRecoverWithAllSourcesFileAndCompactonModFileExist() throws Exception {
-    logger.warn("!!!!!!!!testRecoverWithAllSourcesFileAndCompactonModFileExist");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
@@ -630,7 +542,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
    */
   @Test
   public void testRecoverWithoutAllSourceFilesExistAndModFiles() throws Exception {
-    logger.warn("!!!!!!!!testRecoverWithoutAllSourceFilesExistAndModFiles");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
@@ -707,7 +618,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   /** compaction recover merge finished, delete one offset */
   @Test
   public void testRecoverCompleteTargetFileAndCompactionLog() throws Exception {
-    logger.warn("!!!!!!!!testRecoverCompleteTargetFileAndCompactionLog");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -736,6 +646,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -807,12 +718,12 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
   @Test
   public void testCompactionRecoverWithCompletedTargetFileAndLog() throws Exception {
-    logger.warn("!!!!!!!!testCompactionRecoverWithCompletedTargetFileAndLog");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -916,13 +827,13 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
   /** compeleted target file, and not resource files, compaction log exists */
   @Test
   public void testCompactionRecoverWithCompletedTargetFile() throws Exception {
-    logger.warn("!!!!!!!!testCompactionRecoverWithCompletedTargetFile");
     TsFileManager tsFileManager =
         new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
     tsFileManager.addAll(seqResources, true);
@@ -951,6 +862,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
 
     TsFileResource targetTsFileResource =
@@ -1027,6 +939,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
@@ -1034,7 +947,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   @Test
   public void testCompactionMergeRecoverMergeStartSourceLog()
       throws IOException, MetadataException {
-    logger.warn("!!!!!!!!testCompactionMergeRecoverMergeStartSourceLog");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
@@ -1067,6 +979,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
@@ -1074,7 +987,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   @Test
   public void testCompactionMergeRecoverMergeStartSequenceLog()
       throws IOException, MetadataException {
-    logger.warn("!!!!!!!!testCompactionMergeRecoverMergeStartSequenceLog");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
@@ -1108,13 +1020,13 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
       }
     }
     tsFilesReader.close();
+    closeTsFileSequenceReader();
     assertEquals(500, count);
   }
 
   /** compaction recover merge start target file logged */
   @Test
   public void testCompactionMergeRecoverMergeStart() throws IOException, MetadataException {
-    logger.warn("!!!!!!!!testCompactionMergeRecoverMergeStart");
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionLogger sizeTieredCompactionLogger =
