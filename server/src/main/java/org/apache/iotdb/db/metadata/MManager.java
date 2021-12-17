@@ -1067,7 +1067,7 @@ public class MManager {
    * @param isPrefixMatch whether to use prefix matching
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
-  public Set<PartialPath> getMatchedDeviceByPrex(PartialPath pathPattern, boolean isPrefixMatch)
+  public Set<PartialPath> getMatchedDeviceByPrefix(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
     return mtree.getDevices(pathPattern, isPrefixMatch);
   }
