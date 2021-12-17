@@ -109,11 +109,37 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     if (!seqResources.get(0).remove()) {
       logger.error("Meet Errors when deleting file {}", seqResources.get(0));
     }
+    Assert.assertFalse(seqResources.get(0).getTsFile().exists());
   }
 
   @Test
-  public void testWhetherSelectedFileCanBeDeleted2() throws IllegalPathException, IOException {
+  public void testWhetherSelectedFileCanBeDeleted2() throws MetadataException, IOException {
     logger.warn("!!!!!!!!testWhetherSelectedFileCanBeDeleted2");
+    MeasurementPath path =
+        SchemaTestUtils.getMeasurementPath(
+            deviceIds[0]
+                + TsFileConstant.PATH_SEPARATOR
+                + measurementSchemas[0].getMeasurementId());
+    IBatchReader tsFilesReader =
+        new SeriesRawDataBatchReader(
+            path,
+            measurementSchemas[0].getType(),
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            seqResources,
+            new ArrayList<>(),
+            null,
+            null,
+            true);
+    int count = 0;
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
+      for (int i = 0; i < batchData.length(); i++) {
+        assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        count++;
+      }
+    }
+    tsFilesReader.close();
+    assertEquals(500, count);
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -127,10 +153,15 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
                             + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(
+        targetTsFileResource,
+        new ArrayList<>(seqResources.subList(0, 2)),
+        COMPACTION_TEST_SG,
+        true);
     if (!seqResources.get(0).remove()) {
       logger.error("Meet Errors when deleting file {}", seqResources.get(0));
     }
+    Assert.assertFalse(seqResources.get(0).getTsFile().exists());
   }
 
   /** Target file uncompleted, source files and log exists */
