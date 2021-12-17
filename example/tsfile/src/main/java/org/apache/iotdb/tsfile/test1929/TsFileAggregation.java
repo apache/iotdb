@@ -94,7 +94,9 @@ public class TsFileAggregation {
         if (treeType == 0) {
           timeseriesMetadata = reader.readTimeseriesMetadataV4(seriesPath, false);
         } else if (treeType == 1) {
-          timeseriesMetadata = reader.readTimeseriesMetadataV5(seriesPath, false);
+          timeseriesMetadata = reader.readTimeseriesMetadataV5(seriesPath);
+        } else if (treeType == 2) {
+          timeseriesMetadata = reader.readTimeseriesMetadataHash(seriesPath);
         }
         long count = timeseriesMetadata.getStatistics().getCount();
       }

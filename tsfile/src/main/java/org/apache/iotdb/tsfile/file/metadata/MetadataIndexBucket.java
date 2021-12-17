@@ -19,121 +19,78 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
-import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
-import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
-import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class MetadataIndexBucket {
 
-  private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
-  private final List<MetadataIndexEntry> children;
-  private long endOffset;
-  private static final Logger resourceLogger = LoggerFactory.getLogger("FileMonitor");
+  private final List<MetadataIndexBucketEntry> children;
 
-  /** type of the child node at offset */
-  private final MetadataIndexNodeType nodeType;
-
-  public MetadataIndexBucket(MetadataIndexNodeType nodeType) {
-    children = new ArrayList<>();
-    endOffset = -1L;
-    this.nodeType = nodeType;
+  public MetadataIndexBucket() {
+    this.children = new ArrayList<>();
   }
 
-  public MetadataIndexBucket(
-      List<MetadataIndexEntry> children, long endOffset, MetadataIndexNodeType nodeType) {
+  public MetadataIndexBucket(List<MetadataIndexBucketEntry> children) {
     this.children = children;
-    this.endOffset = endOffset;
-    this.nodeType = nodeType;
   }
 
-  public List<MetadataIndexEntry> getChildren() {
+  public List<MetadataIndexBucketEntry> getChildren() {
     return children;
   }
 
-  public long getEndOffset() {
-    return endOffset;
+  public void addEntry(MetadataIndexBucketEntry entry) {
+    this.children.add(entry);
   }
 
-  public void setEndOffset(long endOffset) {
-    this.endOffset = endOffset;
+  public void orderEntries() {
+    this.children.sort(Comparator.comparing(MetadataIndexBucketEntry::getPath));
   }
 
-  public MetadataIndexNodeType getNodeType() {
-    return nodeType;
-  }
-
-  public void addEntry(MetadataIndexEntry metadataIndexEntry) {
-    this.children.add(metadataIndexEntry);
-  }
-
-  boolean isFull() {
-    return children.size() >= config.getMaxDegreeOfIndexNode();
-  }
-
-  MetadataIndexEntry peek() {
-    if (children.isEmpty()) {
-      return null;
-    }
-    return children.get(0);
-  }
-
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public int serializeTo(ByteBuffer buffer) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(children.size(), outputStream);
-    for (MetadataIndexEntry metadataIndexEntry : children) {
-      byteLen += metadataIndexEntry.serializeTo(outputStream);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(children.size(), buffer);
+    for (MetadataIndexBucketEntry entry : children) {
+      byteLen += entry.serializeTo(buffer);
     }
-    byteLen += ReadWriteIOUtils.write(endOffset, outputStream);
-    byteLen += ReadWriteIOUtils.write(nodeType.serialize(), outputStream);
     return byteLen;
   }
 
   public static MetadataIndexBucket deserializeFrom(ByteBuffer buffer) {
-    List<MetadataIndexEntry> children = new ArrayList<>();
+    List<MetadataIndexBucketEntry> children = new ArrayList<>();
     int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
     for (int i = 0; i < size; i++) {
-      children.add(MetadataIndexEntry.deserializeFrom(buffer));
+      children.add(MetadataIndexBucketEntry.deserializeFrom(buffer));
     }
-    long offset = ReadWriteIOUtils.readLong(buffer);
-    MetadataIndexNodeType nodeType =
-        MetadataIndexNodeType.deserialize(ReadWriteIOUtils.readByte(buffer));
-    return new MetadataIndexBucket(children, offset, nodeType);
+    return new MetadataIndexBucket(children);
   }
 
-  public Pair<MetadataIndexEntry, Long> getChildIndexEntry(String key, boolean exactSearch) {
-    int index = binarySearchInChildren(key, exactSearch);
+  /**
+   * get startOffset and endOffset of the TimeseriesMetadata
+   *
+   * @param key path
+   */
+  public Pair<Long, Integer> getChildIndexEntry(String key) {
+    int index = binarySearchInChildren(key);
     if (index == -1) {
       return null;
     }
-    long childEndOffset;
-    if (index != children.size() - 1) {
-      childEndOffset = children.get(index + 1).getOffset();
-    } else {
-      childEndOffset = this.endOffset;
-    }
-    return new Pair<>(children.get(index), childEndOffset);
+    return new Pair<>(children.get(index).getOffset(), children.get(index).getSize());
   }
 
-  int binarySearchInChildren(String key, boolean exactSearch) {
+  int binarySearchInChildren(String key) {
     int low = 0;
     int high = children.size() - 1;
 
     while (low <= high) {
       int mid = (low + high) >>> 1;
-      MetadataIndexEntry midVal = children.get(mid);
-      int cmp = midVal.getName().compareTo(key);
+      MetadataIndexBucketEntry midVal = children.get(mid);
+      int cmp = midVal.getPath().compareTo(key);
 
       if (cmp < 0) {
         low = mid + 1;
@@ -145,10 +102,14 @@ public class MetadataIndexBucket {
     }
 
     // key not found
-    if (exactSearch) {
-      return -1;
-    } else {
-      return low == 0 ? low : low - 1;
+    return -1;
+  }
+
+  public int getSerializeSize() {
+    int size = ReadWriteForEncodingUtils.uVarIntSize(children.size());
+    for (MetadataIndexBucketEntry entry : children) {
+      size += entry.getSerializeSize();
     }
+    return size;
   }
 }

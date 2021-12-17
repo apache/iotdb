@@ -27,12 +27,14 @@ import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexBucket;
+import org.apache.iotdb.tsfile.file.metadata.MetadataIndexBucketsConstructor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructor;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexConstructorV2;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNodeV2;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TsFileMetadataHash;
 import org.apache.iotdb.tsfile.file.metadata.TsFileMetadataV2;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,6 +44,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -554,16 +557,20 @@ public class TsFileIOWriter {
       }
     }
 
-    TsFileMetadata tsFileMetaData = new TsFileMetadata();
+    TsFileMetadataHash tsFileMetaData = new TsFileMetadataHash();
     TsFileOutput metadataIndexOutput =
         new LocalTsFileOutput(new FileOutputStream(new File(file.getAbsolutePath() + ".index")));
-    MetadataIndexNodeV2 metadataIndex =
-        flushMetadataIndexV2(chunkMetadataListMap, vectorToPathsMap, metadataIndexOutput);
-    tsFileMetaData.setMetadataIndex(metadataIndex);
+    Pair<MetadataIndexBucket[], Integer> buckets =
+        flushMetadataIndexHash(chunkMetadataListMap, vectorToPathsMap);
 
-    long rootNodeOffset = metadataIndexOutput.getPosition();
     // write TsFileMetaData
-    int size = tsFileMetaData.serializeToV2(metadataIndexOutput.wrapAsStream());
+    tsFileMetaData.setMetadataIndexBuckets(buckets.left);
+    tsFileMetaData.setBucketNum(buckets.left.length);
+    tsFileMetaData.setBucketSize(buckets.right);
+
+    tsFileMetaData.serializeBuckets(metadataIndexOutput.wrapAsStream());
+    long metadataPosition = metadataIndexOutput.getPosition();
+    int size = tsFileMetaData.serializeTo(metadataIndexOutput.wrapAsStream());
     if (logger.isDebugEnabled()) {
       logger.debug(
           "finish flushing the footer {}, file pos:{}",
@@ -583,7 +590,7 @@ public class TsFileIOWriter {
     // write TsFileMetaData size
     ReadWriteIOUtils.write(
         size, metadataIndexOutput.wrapAsStream()); // write the size of the file metadata.
-    ReadWriteIOUtils.write(rootNodeOffset, metadataIndexOutput.wrapAsStream());
+    ReadWriteIOUtils.write(metadataPosition, metadataIndexOutput.wrapAsStream());
 
     metadataIndexOutput.close();
     ReadWriteIOUtils.write(metaOffset, out.wrapAsStream());
@@ -644,10 +651,9 @@ public class TsFileIOWriter {
         deviceTimeseriesMetadataMap, out, metadataIndexOutput);
   }
 
-  private MetadataIndexBucket[] flushMetadataIndexHash(
+  private Pair<MetadataIndexBucket[], Integer> flushMetadataIndexHash(
       Map<Path, List<IChunkMetadata>> chunkMetadataListMap,
-      Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap,
-      TsFileOutput metadataIndexOutput)
+      Map<Path, Map<Path, List<IChunkMetadata>>> vectorToPathsMap)
       throws IOException {
 
     // convert ChunkMetadataList to this field
@@ -659,7 +665,8 @@ public class TsFileIOWriter {
     }
 
     // construct TsFileMetadata and return
-    return new MetadataIndexBucket[0];
+    return MetadataIndexBucketsConstructor.constructMetadataIndexBuckets(
+        deviceTimeseriesMetadataMap, out);
   }
 
   /**

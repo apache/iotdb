@@ -43,6 +43,10 @@ public class TsFileRawRead {
   public static int treeType; // 0=Zesong Tree, 1=B+ Tree
   public static int fileNum;
 
+  public static long readFileMetadata;
+  public static long readBuffer;
+  public static long queryTime;
+
   private static final TSFileConfig config = TSFileDescriptor.getInstance().getConfig();
 
   public static void main(String[] args) throws IOException {
@@ -70,17 +74,19 @@ public class TsFileRawRead {
       deviceNum = Integer.parseInt(cl.getOptionValue("d"));
       sensorNum = Integer.parseInt(cl.getOptionValue("m"));
       fileNum = Integer.parseInt(cl.getOptionValue("f"));
-      treeType = 1; // Integer.parseInt(cl.getOptionValue("t"));
-      config.setMaxDegreeOfIndexNode(Integer.parseInt(cl.getOptionValue("c")));
+      treeType = Integer.parseInt(cl.getOptionValue("t"));
+      config.setMaxDegreeOfIndexNode(1024);
     } catch (Exception e) {
       e.printStackTrace();
     }
 
     long totalStartTime = System.nanoTime();
     for (int fileIndex = 0; fileIndex < fileNum; fileIndex++) {
+      String folder = treeType == 1 ? "root.b/" : "root.hash/";
       // file path
       String path =
-          "/data/szs/data/data/sequence/root.b/"
+          "/data/szs/data/data/sequence/"
+              + folder
               + config.getMaxDegreeOfIndexNode()
               + "/"
               + deviceNum
@@ -103,8 +109,14 @@ public class TsFileRawRead {
         while (queryDataSet.hasNext()) {
           queryDataSet.next();
         }
+        readFileMetadata += reader.readFileMetadata;
+        readBuffer += reader.readBuffer;
+        queryTime += reader.queryTime;
       }
     }
+    System.out.println("readBuffer: " + (double) readBuffer / (double) fileNum + "ms");
+    System.out.println("readFileMetadata: " + (double) readFileMetadata / (double) fileNum + "ms");
+    System.out.println("query time: " + (double) queryTime / (double) fileNum + "ms");
     long totalTime = (System.nanoTime() - totalStartTime) / 1000_000;
     System.out.println("Average cost time: " + (double) totalTime / (double) fileNum + "ms");
   }

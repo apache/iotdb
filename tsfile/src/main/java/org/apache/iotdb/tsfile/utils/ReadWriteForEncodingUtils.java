@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.tsfile.utils;
 
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -250,6 +252,15 @@ public class ReadWriteForEncodingUtils {
       position++;
     }
     return position;
+  }
+
+  public static int varSize(String s) {
+    if (s == null) {
+      return varIntSize(-1);
+    }
+
+    byte[] bytes = s.getBytes(TSFileConfig.STRING_CHARSET);
+    return varIntSize(bytes.length) + bytes.length;
   }
 
   /**

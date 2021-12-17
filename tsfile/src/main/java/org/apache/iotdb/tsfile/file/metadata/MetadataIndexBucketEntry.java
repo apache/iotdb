@@ -19,20 +19,22 @@
 
 package org.apache.iotdb.tsfile.file.metadata;
 
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
-import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
 public class MetadataIndexBucketEntry {
 
   private String path;
   private long offset;
+  private int size;
 
-  public MetadataIndexBucketEntry(String path, long offset) {
+  public MetadataIndexBucketEntry(String path, long offset, int size) {
     this.path = path;
     this.offset = offset;
+    this.size = size;
   }
 
   public String getPath() {
@@ -51,20 +53,36 @@ public class MetadataIndexBucketEntry {
     this.offset = offset;
   }
 
-  public String toString() {
-    return "<" + path + "," + offset + ">";
+  public int getSize() {
+    return size;
   }
 
-  public int serializeTo(OutputStream outputStream) throws IOException {
+  public void setSize(int size) {
+    this.size = size;
+  }
+
+  public String toString() {
+    return "<" + path + "," + offset + "," + size + ">";
+  }
+
+  public int serializeTo(ByteBuffer buffer) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.writeVar(path, outputStream);
-    byteLen += ReadWriteIOUtils.write(offset, outputStream);
+    byteLen += ReadWriteIOUtils.writeVar(path, buffer);
+    byteLen += ReadWriteIOUtils.write(offset, buffer);
+    byteLen += ReadWriteForEncodingUtils.writeUnsignedVarInt(size, buffer);
     return byteLen;
   }
 
   public static MetadataIndexBucketEntry deserializeFrom(ByteBuffer buffer) {
     String name = ReadWriteIOUtils.readVarIntString(buffer);
     long offset = ReadWriteIOUtils.readLong(buffer);
-    return new MetadataIndexBucketEntry(name, offset);
+    int size = ReadWriteForEncodingUtils.readUnsignedVarInt(buffer);
+    return new MetadataIndexBucketEntry(name, offset, size);
+  }
+
+  public int getSerializeSize() {
+    return ReadWriteForEncodingUtils.varSize(path)
+        + ReadWriteIOUtils.LONG_LEN
+        + ReadWriteForEncodingUtils.uVarIntSize(size);
   }
 }

@@ -135,6 +135,8 @@ public class TsFileWrite {
             tsFileWriter.close();
           } else if (treeType == 1) {
             tsFileWriter.closeBTree();
+          } else if (treeType == 2) {
+            tsFileWriter.closeHash();
           }
         } catch (Throwable e) {
           e.printStackTrace();

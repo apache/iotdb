@@ -99,7 +99,14 @@ public class TsFileExecutor implements QueryExecutor {
   @Override
   public QueryDataSet execute(QueryExpression queryExpression, int treeType) throws IOException {
     // bloom filter
-    BloomFilter bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+
+    BloomFilter bloomFilter;
+    if (treeType != 2) {
+      bloomFilter = metadataQuerier.getWholeFileMetadata().getBloomFilter();
+    } else {
+      bloomFilter = metadataQuerier.getWholeFileMetadataHash().getBloomFilter();
+    }
+
     List<Path> filteredSeriesPath = new ArrayList<>();
     if (bloomFilter != null) {
       for (Path path : queryExpression.getSelectedSeries()) {
@@ -114,6 +121,8 @@ public class TsFileExecutor implements QueryExecutor {
       metadataQuerier.loadChunkMetaDatasV3(queryExpression.getSelectedSeries());
     } else if (treeType == 1) {
       metadataQuerier.loadChunkMetaDatasV4(queryExpression.getSelectedSeries());
+    } else if (treeType == 2) {
+      metadataQuerier.loadChunkMetaDatasHash(queryExpression.getSelectedSeries());
     }
     if (queryExpression.hasQueryFilter()) {
       try {
