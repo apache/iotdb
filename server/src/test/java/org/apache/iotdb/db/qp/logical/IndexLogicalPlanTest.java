@@ -26,7 +26,6 @@ import org.apache.iotdb.db.qp.logical.sys.DropIndexOperator;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.time.ZoneId;
