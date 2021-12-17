@@ -46,6 +46,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collections;
+
 public class ConcurrentMergeTest {
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static Logger logger = LoggerFactory.getLogger(StorageGroupProcessorTest.class);
@@ -113,7 +115,11 @@ public class ConcurrentMergeTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(5, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());

@@ -59,7 +59,6 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -1090,102 +1089,8 @@ public class TsFileProcessor {
    * memtables and then compact them into one TimeValuePairSorter). Then get the related
    * ChunkMetadata of data on disk.
    *
-   * @param deviceId device id
-   * @param measurementId measurements id
-   * @param dataType data type
-   * @param encoding encoding
+   * @param seriesPaths selected paths
    */
-  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  public void query(
-      String deviceId,
-      String measurementId,
-      TSDataType dataType,
-      TSEncoding encoding,
-      Map<String, String> props,
-      QueryContext context,
-      List<TsFileResource> tsfileResourcesForQuery)
-      throws IOException, MetadataException {
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: {} get flushQueryLock and hotCompactionMergeLock read lock",
-          storageGroupName,
-          tsFileResource.getTsFile().getName());
-    }
-    flushQueryLock.readLock().lock();
-    try {
-      List<ReadOnlyMemChunk> readOnlyMemChunks = new ArrayList<>();
-      for (IMemTable flushingMemTable : flushingMemTables) {
-        if (flushingMemTable.isSignalMemTable()) {
-          continue;
-        }
-        List<TimeRange> deletionList =
-            constructDeletionList(
-                flushingMemTable, deviceId, measurementId, context.getQueryTimeLowerBound());
-        ReadOnlyMemChunk memChunk =
-            flushingMemTable.query(
-                deviceId,
-                measurementId,
-                dataType,
-                encoding,
-                props,
-                context.getQueryTimeLowerBound(),
-                deletionList);
-        if (memChunk != null) {
-          readOnlyMemChunks.add(memChunk);
-        }
-      }
-      if (workMemTable != null) {
-        ReadOnlyMemChunk memChunk =
-            workMemTable.query(
-                deviceId,
-                measurementId,
-                dataType,
-                encoding,
-                props,
-                context.getQueryTimeLowerBound(),
-                null);
-        if (memChunk != null) {
-          readOnlyMemChunks.add(memChunk);
-        }
-      }
-
-      ModificationFile modificationFile = tsFileResource.getModFile();
-      List<Modification> modifications =
-          context.getPathModifications(
-              modificationFile,
-              new PartialPath(deviceId + IoTDBConstant.PATH_SEPARATOR + measurementId));
-
-      List<ChunkMetadata> chunkMetadataList =
-          writer.getVisibleMetadataList(deviceId, measurementId, dataType);
-      QueryUtils.modifyChunkMetaData(chunkMetadataList, modifications);
-      chunkMetadataList.removeIf(context::chunkNotSatisfy);
-
-      // get in memory data
-      if (!readOnlyMemChunks.isEmpty() || !chunkMetadataList.isEmpty()) {
-        tsfileResourcesForQuery.add(
-            new TsFileResource(
-                new PartialPath(deviceId, measurementId),
-                readOnlyMemChunks,
-                chunkMetadataList,
-                tsFileResource));
-      }
-    } catch (QueryProcessException e) {
-      logger.error(
-          "{}: {} get ReadOnlyMemChunk has error",
-          storageGroupName,
-          tsFileResource.getTsFile().getName(),
-          e);
-    } finally {
-      flushQueryLock.readLock().unlock();
-      if (logger.isDebugEnabled()) {
-        logger.debug(
-            "{}: {} release flushQueryLock",
-            storageGroupName,
-            tsFileResource.getTsFile().getName());
-      }
-    }
-  }
-
   public void query(
       List<PartialPath> seriesPaths,
       QueryContext context,

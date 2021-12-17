@@ -111,7 +111,9 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -123,7 +125,9 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(
@@ -145,7 +149,9 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
 
     TsFileResource tsFileResource1 = tsfileResourcesForQuery.get(0);
     List<ReadOnlyMemChunk> readOnlyMemChunk =
@@ -181,7 +187,9 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -193,7 +201,9 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
     assertFalse(
@@ -216,7 +226,9 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
 
     TsFileResource tsFileResource1 = tsfileResourcesForQuery.get(0);
     List<ReadOnlyMemChunk> readOnlyMemChunk =
@@ -281,7 +293,9 @@ public class TsFileProcessorTest {
     SystemInfo.getInstance().reportStorageGroupStatus(sgInfo, processor);
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int flushId = 0; flushId < 10; flushId++) {
@@ -296,7 +310,9 @@ public class TsFileProcessorTest {
 
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);
@@ -332,7 +348,9 @@ public class TsFileProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
 
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
 
     for (int i = 1; i <= 100; i++) {
@@ -344,7 +362,9 @@ public class TsFileProcessorTest {
     // query data in memory
     tsfileResourcesForQuery.clear();
     processor.query(
-        deviceId, measurementId, dataType, encoding, props, context, tsfileResourcesForQuery);
+        Collections.singletonList(new PartialPath(deviceId, measurementId)),
+        context,
+        tsfileResourcesForQuery);
     assertFalse(tsfileResourcesForQuery.isEmpty());
 
     TsFileResource tsFileResource = tsfileResourcesForQuery.get(0);

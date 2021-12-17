@@ -77,7 +77,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -1574,46 +1573,6 @@ public class StorageGroupProcessor {
   }
 
   public QueryDataSource query(
-      PartialPath fullPath,
-      QueryContext context,
-      QueryFileManager filePathsManager,
-      Filter timeFilter)
-      throws QueryProcessException {
-    readLock();
-    try {
-      List<TsFileResource> seqResources =
-          getFileResourceListForQuery(
-              tsFileManagement.getTsFileList(true),
-              upgradeSeqFileList,
-              fullPath,
-              context,
-              timeFilter,
-              true);
-      List<TsFileResource> unseqResources =
-          getFileResourceListForQuery(
-              tsFileManagement.getTsFileList(false),
-              upgradeUnseqFileList,
-              fullPath,
-              context,
-              timeFilter,
-              false);
-      QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
-      // used files should be added before mergeLock is unlocked, or they may be deleted by
-      // running merge
-      // is null only in tests
-      if (filePathsManager != null) {
-        filePathsManager.addUsedFilesForQuery(context.getQueryId(), dataSource);
-      }
-      dataSource.setDataTTL(dataTTL);
-      return dataSource;
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
-    } finally {
-      readUnlock();
-    }
-  }
-
-  public QueryDataSource query(
       List<PartialPath> pathList,
       QueryContext context,
       QueryFileManager filePathsManager,
@@ -1677,79 +1636,6 @@ public class StorageGroupProcessor {
    * @param tsFileResources includes sealed and unsealed tsfile resources
    * @return fill unsealed tsfile resources with memory data and ChunkMetadataList of data in disk
    */
-  private List<TsFileResource> getFileResourceListForQuery(
-      Collection<TsFileResource> tsFileResources,
-      List<TsFileResource> upgradeTsFileResources,
-      PartialPath fullPath,
-      QueryContext context,
-      Filter timeFilter,
-      boolean isSeq)
-      throws MetadataException {
-
-    String deviceId = fullPath.getDevice();
-
-    if (context.isDebug()) {
-      DEBUG_LOGGER.info(
-          "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
-          deviceId,
-          fullPath.getMeasurement(),
-          tsFileResources,
-          isSeq,
-          (timeFilter == null ? "null" : timeFilter));
-    }
-
-    List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
-
-    // for upgrade files and old files must be closed
-    for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(
-          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        tsfileResourcesForQuery.add(tsFileResource);
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-
-    for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(
-          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
-        continue;
-      }
-      closeQueryLock.readLock().lock();
-      try {
-        if (tsFileResource.isClosed()) {
-          tsfileResourcesForQuery.add(tsFileResource);
-        } else {
-          MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(fullPath);
-          tsFileResource
-              .getProcessor()
-              .query(
-                  deviceId,
-                  fullPath.getMeasurement(),
-                  schema.getType(),
-                  schema.getEncodingType(),
-                  schema.getProps(),
-                  context,
-                  tsfileResourcesForQuery);
-        }
-      } catch (IOException e) {
-        throw new MetadataException(e);
-      } finally {
-        closeQueryLock.readLock().unlock();
-      }
-    }
-
-    return tsfileResourcesForQuery;
-  }
-
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,

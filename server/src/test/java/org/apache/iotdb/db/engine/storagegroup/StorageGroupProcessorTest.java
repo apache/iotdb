@@ -127,11 +127,7 @@ public class StorageGroupProcessorTest {
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
     for (TsFileProcessor tsfileProcessor : processor.getWorkUnsequenceTsFileProcessors()) {
       tsfileProcessor.query(
-          deviceId,
-          measurementId,
-          TSDataType.INT32,
-          TSEncoding.RLE,
-          Collections.emptyMap(),
+          Collections.singletonList(new PartialPath(deviceId, measurementId)),
           new QueryContext(),
           tsfileResourcesForQuery);
     }
@@ -170,7 +166,11 @@ public class StorageGroupProcessorTest {
     }
     processor.syncCloseAllWorkingTsFileProcessors();
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());
@@ -199,7 +199,11 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
   }
 
@@ -260,7 +264,11 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(1, queryDataSource.getUnseqResources().size());
@@ -290,7 +298,11 @@ public class StorageGroupProcessorTest {
     processor.syncCloseAllWorkingTsFileProcessors();
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(10, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -329,7 +341,11 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
@@ -410,7 +426,11 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -491,7 +511,11 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -572,7 +596,11 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
 
     Assert.assertEquals(2, queryDataSource.getSeqResources().size());
     Assert.assertEquals(0, queryDataSource.getUnseqResources().size());
@@ -610,7 +638,11 @@ public class StorageGroupProcessorTest {
     }
 
     QueryDataSource queryDataSource =
-        processor.query(new PartialPath(deviceId, measurementId), context, null, null);
+        processor.query(
+            Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            context,
+            null,
+            null);
     Assert.assertEquals(10, queryDataSource.getSeqResources().size());
     for (TsFileResource resource : queryDataSource.getSeqResources()) {
       Assert.assertTrue(resource.isClosed());

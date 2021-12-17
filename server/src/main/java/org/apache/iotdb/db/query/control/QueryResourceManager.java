@@ -31,7 +31,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -39,10 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -136,7 +132,7 @@ public class QueryResourceManager {
   }
 
   public QueryDataSource getQueryDataSource(
-      PartialPath selectedPath, QueryContext context, Filter filter)
+      PartialPath selectedPath, QueryContext context, Filter timeFilter)
       throws StorageEngineException, QueryProcessException {
 
     long queryId = context.getQueryId();
@@ -150,10 +146,11 @@ public class QueryResourceManager {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
       // QueryDataSource is not cached earlier in cluster mode
-      SingleSeriesExpression singleSeriesExpression =
-          new SingleSeriesExpression(selectedPath, filter);
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
-          StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
+          processor.query(
+              Collections.singletonList(selectedPath), context, filePathsManager, timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
