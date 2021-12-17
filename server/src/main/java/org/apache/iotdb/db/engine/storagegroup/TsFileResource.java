@@ -607,38 +607,6 @@ public class TsFileResource {
     return timeIndex.stillLives(timeLowerBound);
   }
 
-  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
-  public boolean isSatisfied(
-      String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!getDevices().contains(deviceId)) {
-      if (debug) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
-      }
-      return false;
-    }
-
-    long startTime = getStartTime(deviceId);
-    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
-
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
-      }
-      return false;
-    }
-
-    if (timeFilter != null) {
-      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
-      if (debug && !res) {
-        DEBUG_LOGGER.info(
-            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
-      }
-      return res;
-    }
-    return true;
-  }
-
   /** @return true if the TsFile lives beyond TTL */
   public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
@@ -687,13 +655,6 @@ public class TsFileResource {
 
     long startTime = getStartTime(deviceId);
     long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
-
-    if (!isAlive(endTime, ttl)) {
-      if (debug) {
-        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
-      }
-      return false;
-    }
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);

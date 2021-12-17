@@ -1591,7 +1591,7 @@ public class StorageGroupProcessor {
       List<TsFileResource> unseqResources =
           getFileResourceListForQuery(
               tsFileManagement.getTsFileList(false),
-              upgradeSeqFileList,
+              upgradeUnseqFileList,
               pathList,
               context,
               timeFilter,
@@ -2813,6 +2813,7 @@ public class StorageGroupProcessor {
     return virtualStorageGroupId;
   }
 
+  /** @return virtual storage group name, like root.sg1/0 */
   public String getStorageGroupPath() {
     return logicalStorageGroupName + File.separator + virtualStorageGroupId;
   }
