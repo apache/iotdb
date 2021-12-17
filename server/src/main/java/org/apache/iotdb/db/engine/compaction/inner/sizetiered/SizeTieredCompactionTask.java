@@ -150,12 +150,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         InnerSpaceCompactionUtils.combineModsInCompaction(
             selectedTsFileResourceList, targetTsFileResource);
 
-        // delete the old files
-        InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-            selectedTsFileResourceList, fullStorageGroupName);
-        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
-            selectedTsFileResourceList, fullStorageGroupName);
-
         LOGGER.info(
             "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
             fullStorageGroupName);
@@ -175,6 +169,13 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
                   "%s [Compaction] compaction abort because cannot acquire write lock",
                   fullStorageGroupName));
         }
+
+        // delete the old files
+        InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+            selectedTsFileResourceList, fullStorageGroupName);
+        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+            selectedTsFileResourceList, fullStorageGroupName);
+
         // replace the old files with new file, the new is in same position as the old
         for (TsFileResource resource : selectedTsFileResourceList) {
           TsFileResourceManager.getInstance().removeTsFileResource(resource);
