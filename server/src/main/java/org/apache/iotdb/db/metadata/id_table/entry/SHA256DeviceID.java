@@ -30,11 +30,18 @@ public class SHA256DeviceID implements IDeviceID {
 
   private static final String SEPERATOR = "#";
 
-  private static MessageDigest md;
+  /** using lots of message digest for improving parallelism */
+  private static MessageDigest[] md;
+
+  /** number of message digest, for improve parallelism */
+  private static final int MD_NUM = 256;
 
   static {
     try {
-      md = MessageDigest.getInstance("SHA-256");
+      md = new MessageDigest[256];
+      for (int i = 0; i < 256; i++) {
+        md[i] = MessageDigest.getInstance("SHA-256");
+      }
     } catch (NoSuchAlgorithmException e) {
       e.printStackTrace();
     }
@@ -66,9 +73,14 @@ public class SHA256DeviceID implements IDeviceID {
    *
    * @param deviceID device path
    */
-  private synchronized void buildSHA256(String deviceID) {
-    byte[] hashVal = md.digest(deviceID.getBytes());
-    md.reset();
+  private void buildSHA256(String deviceID) {
+    byte[] hashVal;
+    int slot = calculateSlot(deviceID);
+
+    synchronized (md[slot]) {
+      hashVal = md[slot].digest(deviceID.getBytes());
+      md[slot].reset();
+    }
 
     l1 = toLong(hashVal, 0);
     l2 = toLong(hashVal, 8);
@@ -101,6 +113,16 @@ public class SHA256DeviceID implements IDeviceID {
     }
 
     return res;
+  }
+
+  /**
+   * calculate slot that this deviceID should in
+   *
+   * @param deviceID device id
+   * @return slot number
+   */
+  private int calculateSlot(String deviceID) {
+    return Math.abs(deviceID.hashCode()) % MD_NUM;
   }
 
   @Override
