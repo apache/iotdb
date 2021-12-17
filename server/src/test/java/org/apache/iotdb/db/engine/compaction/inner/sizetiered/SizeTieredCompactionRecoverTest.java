@@ -42,6 +42,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -68,9 +69,6 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
-    if (!seqResources.get(0).remove()) {
-      logger.error("~~~~~Here is setUp! Fail to delete {}", seqResources.get(0));
-    }
   }
 
   @After
