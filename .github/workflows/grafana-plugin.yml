@@ -41,7 +41,13 @@ jobs:
             ${{ runner.os }}-${{ matrix.node-version }}-nodemodules-
 
       - name: Change dir
-        run: cd grafana-plugin
+        run: pwd
+
+      - name: Change dir
+          run: ls
+
+      - name: Change dir
+        run: cd ./grafana-plugin
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
