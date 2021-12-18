@@ -261,6 +261,9 @@ public class CompactionUtils {
       }
     }
     if (chunkWriter.getSerializedChunkSize() > 0) {
+      logger.debug(
+          "[Compaction] Deserialize page merge end, chunk size is {},  flush it",
+          chunkWriter.getSerializedChunkSize());
       MergeManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(writer);
@@ -281,7 +284,7 @@ public class CompactionUtils {
         IoTDBDescriptor.getInstance().getConfig().getChunkSizeThresholdInCompaction();
     boolean hasFlushChunkWriter = false;
     if (currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize()
-            >= 512 * 1024L
+            >= chunkSizeThreshold
         && chunkWriter.getSerializedChunkSize() == 0) {
       MergeManager.mergeRateLimiterAcquire(
           rateLimiter,
@@ -298,12 +301,16 @@ public class CompactionUtils {
           writeTVPair(timeValuePair, chunkWriter);
           targetResource.updateStartTime(device, timeValuePair.getTimestamp());
           targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+          if (chunkWriter.getSerializedChunkSize() >= chunkSizeThreshold) {
+            logger.debug(
+                "[Compaction] Deserialize page merge, chunk size is {}, large enough, flush it",
+                chunkWriter.getSerializedChunkSize());
+            MergeManager.mergeRateLimiterAcquire(
+                rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
+            chunkWriter.writeToFileWriter(writer);
+            hasFlushChunkWriter = true;
+          }
         }
-      }
-      if (chunkWriter.getSerializedChunkSize() >= chunkSizeThreshold) {
-        MergeManager.mergeRateLimiterAcquire(rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-        chunkWriter.writeToFileWriter(writer);
-        hasFlushChunkWriter = true;
       }
     }
     return hasFlushChunkWriter;
@@ -455,8 +462,8 @@ public class CompactionUtils {
                     modificationCache,
                     modifications);
               } else {
-                boolean isChunkEnoughLarge = true;
-                boolean isPageEnoughLarge = true;
+                boolean isChunkEnoughLarge = false;
+                boolean isPageEnoughLarge = false;
                 for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
                   for (ChunkMetadata chunkMetadata : chunkMetadatas) {
                     if (chunkMetadata.getNumOfPoints()
