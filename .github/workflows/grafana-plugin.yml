@@ -43,7 +43,6 @@ jobs:
       - name: Install dependencies and Build and test frontend
         run: |
           cd ./grafana-plugin
-          ls
           yarn install --frozen-lockfile
           yarn add @grafana/runtime
           yarn add  @types/base-64 --dev
