@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileManagement;
 import org.apache.iotdb.db.engine.merge.manage.MergeManager;
@@ -40,9 +42,6 @@ import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import com.google.common.util.concurrent.RateLimiter;
-import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -243,6 +242,7 @@ public class CompactionUtils {
     }
     Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap =
         collectedChunkMetadata.getValue();
+    boolean chunkWriterEmpty = true;
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
         readerChunkMetadataMap.entrySet()) {
       TsFileSequenceReader reader = entry.getKey();
@@ -250,17 +250,19 @@ public class CompactionUtils {
       modifyChunkMetaDataWithCache(
           reader, chunkMetadataList, modificationCache, currPath, modifications);
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        collectOneChunkAndMayFlushIt(
-            device,
-            compactionRateLimiter,
-            targetResource,
-            reader,
-            chunkMetadata,
-            writer,
-            chunkWriter);
+        chunkWriterEmpty =
+            !collectOneChunkAndMayFlushIt(
+                device,
+                compactionRateLimiter,
+                targetResource,
+                reader,
+                chunkMetadata,
+                writer,
+                chunkWriter,
+                chunkWriterEmpty);
       }
     }
-    if (chunkWriter.getSerializedChunkSize() > 0) {
+    if (!chunkWriterEmpty) {
       logger.debug(
           "[Compaction] Deserialize page merge end, chunk size is {},  flush it",
           chunkWriter.getSerializedChunkSize());
@@ -277,15 +279,16 @@ public class CompactionUtils {
       TsFileSequenceReader reader,
       ChunkMetadata chunkMetadata,
       RestorableTsFileIOWriter writer,
-      IChunkWriter chunkWriter)
+      IChunkWriter chunkWriter,
+      boolean chunkWriterEmpty)
       throws IOException {
     Chunk currChunk = reader.readMemChunk(chunkMetadata);
     long chunkSizeThreshold =
         IoTDBDescriptor.getInstance().getConfig().getChunkSizeThresholdInCompaction();
-    boolean hasFlushChunkWriter = false;
+    boolean hasDataRemainingInChunkWriter = false;
     if (currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize()
             >= chunkSizeThreshold
-        && chunkWriter.getSerializedChunkSize() == 0) {
+        && chunkWriterEmpty) {
       MergeManager.mergeRateLimiterAcquire(
           rateLimiter,
           (long) currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize());
@@ -301,6 +304,7 @@ public class CompactionUtils {
           writeTVPair(timeValuePair, chunkWriter);
           targetResource.updateStartTime(device, timeValuePair.getTimestamp());
           targetResource.updateEndTime(device, timeValuePair.getTimestamp());
+          hasDataRemainingInChunkWriter = true;
           if (chunkWriter.getSerializedChunkSize() >= chunkSizeThreshold) {
             logger.debug(
                 "[Compaction] Deserialize page merge, chunk size is {}, large enough, flush it",
@@ -308,12 +312,12 @@ public class CompactionUtils {
             MergeManager.mergeRateLimiterAcquire(
                 rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
             chunkWriter.writeToFileWriter(writer);
-            hasFlushChunkWriter = true;
+            hasDataRemainingInChunkWriter = false;
           }
         }
       }
     }
-    return hasFlushChunkWriter;
+    return hasDataRemainingInChunkWriter;
   }
 
   private static Set<String> getTsFileDevicesSet(
@@ -462,8 +466,8 @@ public class CompactionUtils {
                     modificationCache,
                     modifications);
               } else {
-                boolean isChunkEnoughLarge = false;
-                boolean isPageEnoughLarge = false;
+                boolean isChunkEnoughLarge = true;
+                boolean isPageEnoughLarge = true;
                 for (List<ChunkMetadata> chunkMetadatas : readerChunkMetadataListMap.values()) {
                   for (ChunkMetadata chunkMetadata : chunkMetadatas) {
                     if (chunkMetadata.getNumOfPoints()
