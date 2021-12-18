@@ -104,7 +104,9 @@ public class AggregationExecutor {
     AggregateResult[] aggregateResultList = new AggregateResult[selectedSeries.size()];
     // TODO-Cluster: group the paths by storage group to reduce communications
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(
+                new ArrayList<>(pathToAggrIndexesMap.keySet()), context, timeFilter);
     try {
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         aggregateOneSeries(
@@ -344,7 +346,8 @@ public class AggregationExecutor {
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         groupAggregationsBySeries(selectedSeries);
     Map<IReaderByTimestamp, List<Integer>> readerToAggrIndexesMap = new HashMap<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(selectedSeries, context, null);
     try {
       for (int i = 0; i < selectedSeries.size(); i++) {
         PartialPath path = selectedSeries.get(i);

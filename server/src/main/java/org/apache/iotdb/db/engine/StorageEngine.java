@@ -27,7 +27,6 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
@@ -47,7 +46,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -57,7 +56,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -809,27 +808,6 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** query data. */
-  public QueryDataSource query(
-      SingleSeriesExpression seriesExpression,
-      QueryContext context,
-      QueryFileManager filePathsManager)
-      throws StorageEngineException, QueryProcessException {
-    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
-    PartialPath deviceId = fullPath.getDevicePath();
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(
-        fullPath, context, filePathsManager, seriesExpression.getFilter());
-  }
-
-  public QueryDataSource getAllQueryDataSource(SingleSeriesExpression seriesExpression)
-      throws StorageEngineException, QueryProcessException {
-    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
-    PartialPath deviceId = fullPath.getDevicePath();
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.getAllQueryDataSource(seriesExpression.getFilter());
-  }
-
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
@@ -1074,6 +1052,28 @@ public class StorageEngine implements IService {
             .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
     list.forEach(StorageGroupProcessor::readLock);
+    return list;
+  }
+
+  /**
+   * get all merge lock of the storage group processor related to the query and init QueryDataSource
+   */
+  public List<StorageGroupProcessor> mergeLockAndInitQueryDataSource(
+      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
+      throws StorageEngineException, QueryProcessException {
+    Map<StorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
+    for (PartialPath path : pathList) {
+      map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
+    }
+    List<StorageGroupProcessor> list =
+        map.keySet().stream()
+            .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
+            .collect(Collectors.toList());
+    list.forEach(StorageGroupProcessor::readLock);
+
+    // init QueryDataSource
+    QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
+
     return list;
   }
 
