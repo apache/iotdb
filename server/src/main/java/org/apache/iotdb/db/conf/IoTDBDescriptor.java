@@ -346,6 +346,12 @@ public class IoTDBDescriptor {
                   "seq_file_num_in_each_level",
                   Integer.toString(conf.getSeqFileNumInEachLevel()))));
 
+      conf.setChunkSizeThresholdInCompaction(
+          Long.parseLong(
+              properties.getProperty(
+                  "chunk_size_threshold_in_compaction",
+                  Long.toString(conf.getChunkSizeThresholdInCompaction()))));
+
       conf.setUnseqLevelNum(
           Integer.parseInt(
               properties.getProperty(

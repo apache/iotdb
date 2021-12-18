@@ -352,6 +352,9 @@ public class IoTDBConfig {
   /** Works when the compaction_strategy is LEVEL_COMPACTION. The max num of seq level. */
   private int seqLevelNum = 3;
 
+  /** If size of a compacted chunk is larger than this, it will be flushed. */
+  private long chunkSizeThresholdInCompaction = 1048576L;
+
   /**
    * Works when compaction_strategy is LEVEL_COMPACTION. The max ujseq file num of each level. When
    * the num of files in one level exceeds this, the files in this level will merge to one and put
@@ -2290,5 +2293,13 @@ public class IoTDBConfig {
 
   public void setCompactionMonitorPeriod(long compactionMonitorPeriod) {
     this.compactionMonitorPeriod = compactionMonitorPeriod;
+  }
+
+  public long getChunkSizeThresholdInCompaction() {
+    return chunkSizeThresholdInCompaction;
+  }
+
+  public void setChunkSizeThresholdInCompaction(long chunkSizeThresholdInCompaction) {
+    this.chunkSizeThresholdInCompaction = chunkSizeThresholdInCompaction;
   }
 }

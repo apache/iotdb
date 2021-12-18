@@ -135,6 +135,8 @@ public class CompactionUtils {
       throws IOException {
     ChunkMetadata newChunkMetadata = null;
     Chunk newChunk = null;
+    long chunkSizeThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeThresholdInCompaction();
 
     Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataMap = readerEntry.getValue();
     for (Entry<TsFileSequenceReader, List<ChunkMetadata>> entry :
@@ -150,9 +152,9 @@ public class CompactionUtils {
           newChunk.mergeChunk(chunk);
           newChunkMetadata.mergeChunkMetadata(chunkMetadata);
         }
-        // limit chunk size to 512 KB
+        // limit chunk size to chunkSizeThreshold
         if (newChunk.getHeader().getDataSize() + newChunk.getHeader().getSerializedSize()
-            >= 512 * 1024) {
+            >= chunkSizeThreshold) {
           logger.debug(
               "merging {}, current size is {}, flush it",
               device,
@@ -275,6 +277,8 @@ public class CompactionUtils {
       IChunkWriter chunkWriter)
       throws IOException {
     Chunk currChunk = reader.readMemChunk(chunkMetadata);
+    long chunkSizeThreshold =
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeThresholdInCompaction();
     boolean hasFlushChunkWriter = false;
     if (currChunk.getHeader().getSerializedSize() + currChunk.getHeader().getDataSize()
             >= 512 * 1024L
@@ -296,7 +300,7 @@ public class CompactionUtils {
           targetResource.updateEndTime(device, timeValuePair.getTimestamp());
         }
       }
-      if (chunkWriter.getSerializedChunkSize() >= 512 * 1024L) {
+      if (chunkWriter.getSerializedChunkSize() >= chunkSizeThreshold) {
         MergeManager.mergeRateLimiterAcquire(rateLimiter, chunkWriter.estimateMaxSeriesMemSize());
         chunkWriter.writeToFileWriter(writer);
         hasFlushChunkWriter = true;
