@@ -40,8 +40,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.node-version }}-nodemodules-
 
-      - name: pwd
-        run: pwd
+      - name: ls
+        run: ls
 
       - name: Change dir
         run: cd iotdb/grafana-plugin
