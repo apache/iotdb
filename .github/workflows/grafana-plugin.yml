@@ -40,20 +40,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.node-version }}-nodemodules-
 
-      - name: ls
-        run: ls
-
-      - name: Change dir
-        run: cd iotdb/grafana-plugin
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Install dependencies
-        run: yarn add @grafana/runtime
-
-      - name: Install dependencies
-        run: yarn add  @types/base-64 --dev
-
-      - name: Build and test frontend
-        run: yarn build
+      - name: Install dependencies and Build and test frontend
+        run: |
+          cd ./grafana-plugin
+          ls
+          yarn install --frozen-lockfile
+          yarn add @grafana/runtime
+          yarn add  @types/base-64 --dev
+          yarn build
