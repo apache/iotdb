@@ -330,12 +330,14 @@ public class IDTableTest {
       // call getSeriesSchemasAndReadLockDevice
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
-      idTable.getSeriesSchemas(insertRowPlan);
-      fail("should throw exception");
-    } catch (MetadataException e) {
-      assertEquals(
-          "Timeseries under path [root.laptop.d1.non_aligned_device]'s align value is [false], which is not consistent with insert plan",
-          e.getMessage());
+      try {
+        idTable.getSeriesSchemas(insertRowPlan);
+        fail("should throw exception");
+      } catch (MetadataException e) {
+        assertEquals(
+            "Timeseries under path [root.laptop.d1.non_aligned_device]'s align value is [false], which is not consistent with insert plan",
+            e.getMessage());
+      }
     } catch (Exception e) {
       fail("throw wrong exception");
     }

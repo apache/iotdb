@@ -372,7 +372,8 @@ public class IDTableHashmapImpl implements IDTable {
    * @return slot number
    */
   private int calculateSlot(IDeviceID deviceID) {
-    return Math.abs(deviceID.hashCode()) % NUM_OF_SLOTS;
+    int hashVal = deviceID.hashCode();
+    return Math.abs(hashVal == Integer.MIN_VALUE ? 0 : hashVal) % NUM_OF_SLOTS;
   }
 
   /**

@@ -94,9 +94,12 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
   public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException {
     FileInputStream inputStream = new FileInputStream(dataFile);
     List<DiskSchemaEntry> res = new ArrayList<>();
+    // for test, we read at most 1000 entries.
+    int maxCount = 1000;
 
-    while (true) {
+    while (maxCount > 0) {
       try {
+        maxCount--;
         DiskSchemaEntry cur = DiskSchemaEntry.deserialize(inputStream);
         res.add(cur);
       } catch (IOException e) {

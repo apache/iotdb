@@ -124,7 +124,8 @@ public class SHA256DeviceID implements IDeviceID {
    * @return slot number
    */
   private int calculateSlot(String deviceID) {
-    return Math.abs(deviceID.hashCode()) % MD_NUM;
+    int hashVal = deviceID.hashCode();
+    return Math.abs(hashVal == Integer.MIN_VALUE ? 0 : hashVal) % MD_NUM;
   }
 
   @Override
