@@ -33,7 +33,14 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -722,10 +729,12 @@ public class StorageEngine implements IService {
           continue;
         }
 
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap
-            .get(storageGroupPath)
-            .delete(newPath, startTime, endTime, planIndex, timePartitionFilter);
+        List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
+        for (PartialPath possiblePath : possiblePaths) {
+          processorMap
+              .get(storageGroupPath)
+              .delete(possiblePath, startTime, endTime, planIndex, timePartitionFilter);
+        }
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -744,10 +753,12 @@ public class StorageEngine implements IService {
           continue;
         }
 
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap
-            .get(storageGroupPath)
-            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
+        List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
+        for (PartialPath possiblePath : possiblePaths) {
+          processorMap
+              .get(storageGroupPath)
+              .delete(possiblePath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
+        }
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
