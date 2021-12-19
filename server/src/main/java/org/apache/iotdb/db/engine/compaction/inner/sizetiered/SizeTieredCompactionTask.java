@@ -143,50 +143,46 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         isHoldingWriteLock[i] = true;
       }
 
+      LOGGER.info(
+          "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
+          fullStorageGroupName);
+      InnerSpaceCompactionUtils.combineModsInCompaction(
+          selectedTsFileResourceList, targetTsFileResource);
+
+      LOGGER.info(
+          "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
+          fullStorageGroupName);
+      // get write lock for TsFileResource list with timeout
       try {
-        LOGGER.info(
-            "{} [SizeTiredCompactionTask] old file deleted, start to rename mods file",
-            fullStorageGroupName);
-        InnerSpaceCompactionUtils.combineModsInCompaction(
-            selectedTsFileResourceList, targetTsFileResource);
+        tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
+      } catch (WriteLockFailedException e) {
+        // if current compaction thread couldn't get write lock
+        // a WriteLockFailException will be thrown, then terminate the thread itself
+        LOGGER.warn(
+            "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
+            fullStorageGroupName,
+            targetTsFileResource.getTsFile(),
+            e);
+        throw new InterruptedException(
+            String.format(
+                "%s [Compaction] compaction abort because cannot acquire write lock",
+                fullStorageGroupName));
+      }
 
-        LOGGER.info(
-            "{} [Compaction] Get the write lock of files, try to get the write lock of TsFileResourceList",
-            fullStorageGroupName);
-        // get write lock for TsFileResource list with timeout
-        try {
-          tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
-        } catch (WriteLockFailedException e) {
-          // if current compaction thread couldn't get write lock
-          // a WriteLockFailException will be thrown, then terminate the thread itself
-          LOGGER.warn(
-              "{} [SizeTiredCompactionTask] failed to get write lock, abort the task and delete the target file {}",
-              fullStorageGroupName,
-              targetTsFileResource.getTsFile(),
-              e);
-          throw new InterruptedException(
-              String.format(
-                  "%s [Compaction] compaction abort because cannot acquire write lock",
-                  fullStorageGroupName));
-        }
+      // delete the old files
+      InnerSpaceCompactionUtils.deleteTsFilesInDisk(
+          selectedTsFileResourceList, fullStorageGroupName);
+      InnerSpaceCompactionUtils.deleteModificationForSourceFile(
+          selectedTsFileResourceList, fullStorageGroupName);
 
-        // delete the old files
-        InnerSpaceCompactionUtils.deleteTsFilesInDisk(
-            selectedTsFileResourceList, fullStorageGroupName);
-        InnerSpaceCompactionUtils.deleteModificationForSourceFile(
-            selectedTsFileResourceList, fullStorageGroupName);
-
-        // replace the old files with new file, the new is in same position as the old
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          TsFileResourceManager.getInstance().removeTsFileResource(resource);
-        }
-        tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
-        TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
-        for (TsFileResource resource : selectedTsFileResourceList) {
-          tsFileResourceList.remove(resource);
-        }
-      } finally {
-        tsFileManager.writeUnlock();
+      // replace the old files with new file, the new is in same position as the old
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        TsFileResourceManager.getInstance().removeTsFileResource(resource);
+      }
+      tsFileResourceList.insertBefore(selectedTsFileResourceList.get(0), targetTsFileResource);
+      TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
+      for (TsFileResource resource : selectedTsFileResourceList) {
+        tsFileResourceList.remove(resource);
       }
 
       long costTime = System.currentTimeMillis() - startTime;
@@ -216,6 +212,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           tsFileManager,
           tsFileResourceList);
     } finally {
+      tsFileManager.writeUnlock();
       for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
         if (isHoldingReadLock[i]) {
           selectedTsFileResourceList.get(i).readUnlock();

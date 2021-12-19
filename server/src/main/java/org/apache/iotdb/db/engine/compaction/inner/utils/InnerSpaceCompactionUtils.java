@@ -688,11 +688,7 @@ public class InnerSpaceCompactionUtils {
     FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
 
     // serialize xxx.tsfile.resource
-    targetResource.setFile(
-        new File(
-            targetResource
-                .getTsFilePath()
-                .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    targetResource.setFile(newFile);
     targetResource.serialize();
     targetResource.close();
   }

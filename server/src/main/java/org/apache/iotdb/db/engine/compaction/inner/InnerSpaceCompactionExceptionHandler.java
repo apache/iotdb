@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.apache.commons.io.FileUtils;
@@ -141,6 +143,34 @@ public class InnerSpaceCompactionExceptionHandler {
         fullStorageGroupName,
         selectedTsFileResourceList,
         targetTsFile);
+    TsFileResource tmpTargetTsFile;
+    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+      tmpTargetTsFile = targetTsFile;
+      targetTsFile =
+          new TsFileResource(
+              new File(
+                  tmpTargetTsFile
+                      .getTsFilePath()
+                      .replace(
+                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    } else {
+      tmpTargetTsFile =
+          new TsFileResource(
+              new File(
+                  targetTsFile
+                      .getTsFilePath()
+                      .replace(
+                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+    }
+    if (!tmpTargetTsFile.remove()) {
+      // failed to remove tmp target tsfile
+      // system should not carry out the subsequent compaction in case of data redundant
+      LOGGER.warn(
+          "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+          fullStorageGroupName,
+          tmpTargetTsFile);
+      return false;
+    }
     if (!targetTsFile.remove()) {
       // failed to remove target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
