@@ -22,6 +22,7 @@ import org.apache.iotdb.itbase.env.BaseEnv;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
+import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.fail;
 
@@ -49,41 +51,23 @@ public abstract class ClusterEnvBase implements BaseEnv {
     // 6671-6680, 20001-20010, 40001-40010. If any one of these 30 ports is occupied, it will be
     // added up as a whole (add 10 to each port) to look for the next batch of ports.
 
-    String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | grep -E ";
     int rpcPortStart = 6671;
     int metaPortStart = 20001;
     int dataPortStart = 40001;
     boolean flag = true;
     int counter = 0;
     do {
-      StringBuilder port =
-          new StringBuilder("" + rpcPortStart++)
-              .append("|")
-              .append(metaPortStart++)
-              .append("|")
-              .append(dataPortStart++)
-              .append("|")
-              .append(rpcPortStart++)
-              .append("|")
-              .append(metaPortStart++)
-              .append("|")
-              .append(dataPortStart++);
-      for (int i = 1; i < nodeNum; i++) {
-        port.append("|")
-            .append(rpcPortStart++)
-            .append("|")
-            .append(metaPortStart++)
-            .append("|")
-            .append(dataPortStart++)
-            .append("|")
-            .append(rpcPortStart++)
-            .append("|")
-            .append(metaPortStart++)
-            .append("|")
-            .append(dataPortStart++);
+      List<Integer> searchedPortList = new ArrayList<>(6 * nodeNum);
+      for (int i = 0; i < nodeNum * 2; i++) {
+        searchedPortList.add(rpcPortStart);
+        rpcPortStart++;
+        searchedPortList.add(metaPortStart);
+        metaPortStart++;
+        searchedPortList.add(dataPortStart);
+        dataPortStart++;
       }
       try {
-        Process proc = Runtime.getRuntime().exec(cmd + "\"" + port + "\"");
+        Process proc = Runtime.getRuntime().exec(getSearchAvailablePortCmd(searchedPortList));
         BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
         String line;
         while ((line = br.readLine()) != null) {
@@ -113,6 +97,24 @@ public abstract class ClusterEnvBase implements BaseEnv {
     return portList;
   }
 
+  private String getSearchAvailablePortCmd(List<Integer> ports) {
+    if (SystemUtils.IS_OS_WINDOWS) {
+      return getWindowsSearchPortCmd(ports);
+    }
+    return getUnixSearchPortCmd(ports);
+  }
+
+  private String getWindowsSearchPortCmd(List<Integer> ports) {
+    String cmd = "netstat -aon -p tcp | findStr ";
+    return cmd
+        + ports.stream().map(v -> "/C:'127.0.0.1:" + v + "'").collect(Collectors.joining(" "));
+  }
+
+  private String getUnixSearchPortCmd(List<Integer> ports) {
+    String cmd = "lsof -iTCP -sTCP:LISTEN -P -n | grep -E \"";
+    return cmd + ports.stream().map(String::valueOf).collect(Collectors.joining("|")) + "\"";
+  }
+
   public void testWorking() throws InterruptedException {
     int counter = 0;
     Thread.sleep(2000);
@@ -139,6 +141,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
       }
 
       if (counter > 30) {
+        stopCluster();
         fail("After 30 times retry, the cluster can't work!");
       }
     } while (true);
@@ -148,6 +151,9 @@ public abstract class ClusterEnvBase implements BaseEnv {
     try {
       for (ClusterNode node : this.nodes) {
         node.start();
+        // It seems that if we launch all the nodes at the same time, it has a high probability to
+        // get an unstable cluster.
+        Thread.sleep(200);
       }
     } catch (IOException ex) {
       fail(ex.getMessage());
@@ -158,7 +164,11 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
   public void stopCluster() {
     for (ClusterNode node : this.nodes) {
-      node.stop();
+      try {
+        node.stop();
+      } catch (IOException e) {
+        fail(e.getMessage());
+      }
     }
   }
 
