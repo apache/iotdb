@@ -213,7 +213,8 @@ public class MergeMultiChunkTask {
     return maxSensor;
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
+  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
+      throws IOException, MetadataException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     // all paths in one call are from the same device
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -631,7 +632,7 @@ public class MergeMultiChunkTask {
     }
 
     @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
-    private void mergeChunkHeap() throws IOException {
+    private void mergeChunkHeap() throws IOException, MetadataException {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);
