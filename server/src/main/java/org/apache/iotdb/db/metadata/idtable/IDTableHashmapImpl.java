@@ -75,7 +75,9 @@ public class IDTableHashmapImpl implements IDTable {
     for (int i = 0; i < NUM_OF_SLOTS; i++) {
       idTables[i] = new HashMap<>();
     }
-    diskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
+    if (config.isEnableIDTableLogFile()) {
+      diskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
+    }
   }
 
   /**
@@ -269,6 +271,13 @@ public class IDTableHashmapImpl implements IDTable {
       Long latestFlushedTime)
       throws MetadataException {
     getSchemaEntry(timeseriesID).updateCachedLast(pair, highPriorityUpdate, latestFlushedTime);
+  }
+
+  @Override
+  public void clear() {
+    if (diskSchemaManager != null) {
+      diskSchemaManager.close();
+    }
   }
 
   /**

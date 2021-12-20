@@ -134,6 +134,9 @@ public interface IDTable {
       Long latestFlushedTime)
       throws MetadataException;
 
+  /** clear id table and close file */
+  void clear();
+
   /**
    * translate query path's device path to device id
    *

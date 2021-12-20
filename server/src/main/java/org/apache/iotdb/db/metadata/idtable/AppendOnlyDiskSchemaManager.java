@@ -110,4 +110,13 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
 
     return res;
   }
+
+  @Override
+  public void close() {
+    try {
+      outputStream.close();
+    } catch (IOException e) {
+      logger.error("close schema file failed");
+    }
+  }
 }

@@ -95,6 +95,10 @@ public class IDTableManager {
 
   /** clear id table map */
   public void clear() {
+    for (IDTable idTable : idTableMap.values()) {
+      idTable.clear();
+    }
+
     idTableMap.clear();
   }
 }

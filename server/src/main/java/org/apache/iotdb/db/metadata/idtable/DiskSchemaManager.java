@@ -42,4 +42,7 @@ public interface DiskSchemaManager {
    */
   @TestOnly
   public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
+
+  /** close file and free resource */
+  void close();
 }
