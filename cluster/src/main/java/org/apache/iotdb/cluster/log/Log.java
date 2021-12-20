@@ -43,8 +43,10 @@ public abstract class Log implements Comparable<Log> {
   @SuppressWarnings("java:S3077")
   private volatile Exception exception;
 
+  private long receiveTime;
   private long createTime;
   private long enqueueTime;
+  private long sequenceStartTime;
 
   private int byteSize = 0;
 
@@ -63,7 +65,8 @@ public abstract class Log implements Comparable<Log> {
     CLOSE_FILE,
     REMOVE_NODE,
     EMPTY_CONTENT,
-    TEST_LARGE_CONTENT
+    TEST_LARGE_CONTENT,
+    FRAGMENTED
   }
 
   public long getCurrLogIndex() {
@@ -146,5 +149,21 @@ public abstract class Log implements Comparable<Log> {
 
   public void setByteSize(int byteSize) {
     this.byteSize = byteSize;
+  }
+
+  public long getReceiveTime() {
+    return receiveTime;
+  }
+
+  public void setReceiveTime(long receiveTime) {
+    this.receiveTime = receiveTime;
+  }
+
+  public long getSequenceStartTime() {
+    return sequenceStartTime;
+  }
+
+  public void setSequenceStartTime(long sequenceStartTime) {
+    this.sequenceStartTime = sequenceStartTime;
   }
 }

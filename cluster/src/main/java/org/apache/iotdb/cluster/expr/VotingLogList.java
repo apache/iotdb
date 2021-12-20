@@ -79,7 +79,7 @@ public class VotingLogList {
           if (votingLog.getStronglyAcceptedNodeIds().size()
                   + votingLog.getWeaklyAcceptedNodeIds().size()
               >= quorumSize) {
-            votingLog.acceptedTime = System.nanoTime();
+            votingLog.acceptedTime.set(System.nanoTime());
           }
         } else if (votingLog.getLog().getCurrLogIndex() > index) {
           break;
@@ -93,9 +93,9 @@ public class VotingLogList {
 
     if (lastEntryIndexToCommit != -1) {
       for (VotingLog acceptedLog : acceptedLogs) {
-        synchronized (acceptedLog) {
-          acceptedLog.acceptedTime = System.nanoTime();
-          acceptedLog.notifyAll();
+        synchronized (acceptedLog.getStronglyAcceptedNodeIds()) {
+          acceptedLog.acceptedTime.set(System.nanoTime());
+          acceptedLog.getStronglyAcceptedNodeIds().notifyAll();
         }
       }
     }

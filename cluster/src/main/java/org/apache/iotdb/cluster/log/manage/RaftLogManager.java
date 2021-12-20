@@ -65,7 +65,7 @@ public abstract class RaftLogManager {
   /** manage committed entries in disk for safety */
   private StableEntryManager stableEntryManager;
 
-  private long commitIndex;
+  private volatile long commitIndex;
 
   /**
    * The committed logs whose index is smaller than this are all have been applied, for example,
@@ -693,7 +693,7 @@ public abstract class RaftLogManager {
 
     long unappliedLogSize = commitLogIndex - maxHaveAppliedCommitIndex;
     if (unappliedLogSize > ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem()) {
-      logger.debug(
+      logger.info(
           "There are too many unapplied logs [{}], wait for a while to avoid memory overflow",
           unappliedLogSize);
       try {
@@ -995,7 +995,7 @@ public abstract class RaftLogManager {
           || nextToCheckIndex > getCommittedEntryManager().getLastIndex()
           || (blockAppliedCommitIndex > 0 && blockAppliedCommitIndex < nextToCheckIndex)) {
         // avoid spinning
-        Thread.sleep(5);
+        Thread.sleep(0);
         return;
       }
       Log log = getCommittedEntryManager().getEntry(nextToCheckIndex);
@@ -1007,10 +1007,12 @@ public abstract class RaftLogManager {
             nextToCheckIndex);
         return;
       }
-      synchronized (log) {
-        while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
-          // wait until the log is applied or a newer snapshot is installed
-          log.wait(5);
+      if (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
+        synchronized (log) {
+          while (!log.isApplied() && maxHaveAppliedCommitIndex < log.getCurrLogIndex()) {
+            // wait until the log is applied or a newer snapshot is installed
+            log.wait(1);
+          }
         }
       }
       synchronized (changeApplyCommitIndexCond) {

@@ -68,13 +68,12 @@ public class MetaHeartbeatServer extends HeartbeatServer {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       return new TNonblockingServerSocket(
           new InetSocketAddress(
-              config.getInternalIp(),
-              config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
+              "0.0.0.0", config.getInternalMetaPort() + ClusterUtils.META_HEARTBEAT_PORT_OFFSET),
           getConnectionTimeoutInMS());
     } else {
       return new TServerSocket(
           new InetSocketAddress(
-              metaClusterServer.getMember().getThisNode().getInternalIp(),
+              "0.0.0.0",
               metaClusterServer.getMember().getThisNode().getMetaPort()
                   + ClusterUtils.META_HEARTBEAT_PORT_OFFSET));
     }

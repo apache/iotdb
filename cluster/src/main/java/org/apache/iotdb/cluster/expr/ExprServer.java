@@ -61,8 +61,7 @@ public class ExprServer extends MetaClusterServer {
 
   @Override
   protected TServerTransport getServerSocket() throws TTransportException {
-    return new TServerSocket(
-        new InetSocketAddress(thisNode.getInternalIp(), thisNode.getMetaPort()));
+    return new TServerSocket(new InetSocketAddress("0.0.0.0", thisNode.getMetaPort()));
   }
 
   public static void main(String[] args)
@@ -82,6 +81,7 @@ public class ExprServer extends MetaClusterServer {
     boolean enableCommitReturn = Boolean.parseBoolean(args[7]);
     int maxBatchSize = Integer.parseInt(args[8]);
     int defaultLogBufferSize = Integer.parseInt(args[9]);
+    boolean useCRaft = Boolean.parseBoolean(args[10]);
 
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(Arrays.asList(allNodeStr));
     ClusterDescriptor.getInstance().getConfig().setInternalMetaPort(port);
@@ -98,6 +98,7 @@ public class ExprServer extends MetaClusterServer {
     ExprMember.ENABLE_WEAK_ACCEPTANCE = enableWeakAcceptance;
     ExprMember.ENABLE_COMMIT_RETURN = enableCommitReturn;
     Log.DEFAULT_BUFFER_SIZE = defaultLogBufferSize * 1024 + 512;
+    RaftMember.USE_CRAFT = useCRaft;
 
     ExprServer server = new ExprServer();
     server.start();

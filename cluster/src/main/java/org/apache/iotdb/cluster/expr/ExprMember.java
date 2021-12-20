@@ -133,7 +133,10 @@ public class ExprMember extends MetaGroupMember {
         latch.await();
         return StatusUtils.OK;
       }
-      return processNonPartitionedMetaPlan(plan);
+      long startTime = Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.getOperationStartTime();
+      TSStatus tsStatus = processNonPartitionedMetaPlan(plan);
+      Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY.calOperationCostTimeFromStart(startTime);
+      return tsStatus;
     } catch (Exception e) {
       logger.error("Exception in processing plan", e);
       return StatusUtils.INTERNAL_ERROR.deepCopy().setMessage(e.getMessage());

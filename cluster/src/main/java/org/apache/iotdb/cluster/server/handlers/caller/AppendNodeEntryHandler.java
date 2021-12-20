@@ -88,13 +88,13 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
     long resp = response.status;
 
     if (resp == RESPONSE_STRONG_ACCEPT) {
-      synchronized (log) {
+      synchronized (log.getStronglyAcceptedNodeIds()) {
         if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
             >= quorumSize) {
-          log.acceptedTime = System.nanoTime();
+          log.acceptedTime.set(System.nanoTime());
         }
         log.getStronglyAcceptedNodeIds().add(receiver.nodeIdentifier);
-        log.notifyAll();
+        log.getStronglyAcceptedNodeIds().notifyAll();
       }
       member
           .getVotingLogList()
@@ -117,17 +117,17 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
         receiverTerm.set(resp);
       }
       leaderShipStale.set(true);
-      synchronized (log) {
-        log.notifyAll();
+      synchronized (log.getStronglyAcceptedNodeIds()) {
+        log.getStronglyAcceptedNodeIds().notifyAll();
       }
     } else if (resp == RESPONSE_WEAK_ACCEPT) {
-      synchronized (log) {
+      synchronized (log.getStronglyAcceptedNodeIds()) {
+        log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
         if (log.getWeaklyAcceptedNodeIds().size() + log.getStronglyAcceptedNodeIds().size()
             >= quorumSize) {
-          log.acceptedTime = System.nanoTime();
+          log.acceptedTime.set(System.nanoTime());
         }
-        log.getWeaklyAcceptedNodeIds().add(receiver.nodeIdentifier);
-        log.notifyAll();
+        log.getStronglyAcceptedNodeIds().notifyAll();
       }
     } else {
       // e.g., Response.RESPONSE_LOG_MISMATCH
@@ -155,12 +155,12 @@ public class AppendNodeEntryHandler implements AsyncMethodCallback<AppendEntryRe
   }
 
   private void onFail() {
-    synchronized (log) {
+    synchronized (log.getStronglyAcceptedNodeIds()) {
       failedDecreasingCounter--;
       if (failedDecreasingCounter <= 0) {
         // quorum members have failed, there is no need to wait for others
         log.getStronglyAcceptedNodeIds().add(Integer.MAX_VALUE);
-        log.notifyAll();
+        log.getStronglyAcceptedNodeIds().notifyAll();
       }
     }
   }

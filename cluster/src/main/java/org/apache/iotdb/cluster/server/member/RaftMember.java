@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.expr.VotingLogList;
 import org.apache.iotdb.cluster.log.CommitLogCallback;
 import org.apache.iotdb.cluster.log.CommitLogTask;
+import org.apache.iotdb.cluster.log.FragmentedLogDispatcher;
 import org.apache.iotdb.cluster.log.HardState;
 import org.apache.iotdb.cluster.log.IndirectLogDispatcher;
 import org.apache.iotdb.cluster.log.Log;
@@ -39,6 +40,7 @@ import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.LogParser;
 import org.apache.iotdb.cluster.log.VotingLog;
 import org.apache.iotdb.cluster.log.catchup.CatchUpTask;
+import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.log.sequencing.AsynchronousSequencer.Factory;
@@ -133,6 +135,7 @@ public abstract class RaftMember {
   public static boolean USE_INDIRECT_LOG_DISPATCHER = false;
   public static boolean ENABLE_WEAK_ACCEPTANCE = true;
   public static boolean ENABLE_COMMIT_RETURN = false;
+  public static boolean USE_CRAFT = false;
 
   protected static final LogSequencerFactory SEQUENCER_FACTORY =
       ClusterDescriptor.getInstance().getConfig().isUseAsyncSequencing()
@@ -1195,6 +1198,11 @@ public abstract class RaftMember {
       ((PhysicalPlanLog) log).setPlan(plan);
     }
 
+    if (USE_CRAFT && allNodes.size() > 2) {
+      log = new FragmentedLog(log, allNodes.size());
+    }
+    log.setReceiveTime(System.nanoTime());
+
     // just like processPlanLocally,we need to check the size of log
     //    if (log.serialize().capacity() + Integer.BYTES
     //        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
@@ -1606,6 +1614,8 @@ public abstract class RaftMember {
     if (logDispatcher == null) {
       if (USE_INDIRECT_LOG_DISPATCHER) {
         logDispatcher = new IndirectLogDispatcher(this);
+      } else if (USE_CRAFT && allNodes.size() > 2) {
+        logDispatcher = new FragmentedLogDispatcher(this);
       } else {
         logDispatcher = new LogDispatcher(this);
       }
@@ -1613,63 +1623,92 @@ public abstract class RaftMember {
     return logDispatcher;
   }
 
+  @SuppressWarnings({"java:S2445"}) // safe synchronized
+  private void waitAppendResultLoop(VotingLog log, int quorumSize) {
+    int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
+    int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+    int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
+    long nextTimeToPrint = 1000;
+
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    while (stronglyAcceptedNodeNum < quorumSize
+        && (!ENABLE_WEAK_ACCEPTANCE
+            || (totalAccepted < quorumSize)
+            || votingLogList.size() > config.getMaxNumOfLogsInMem())
+        && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
+        && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+      long singleWaitTime = 0;
+      long singleWaitStart = System.nanoTime();
+      try {
+        synchronized (log.getStronglyAcceptedNodeIds()) {
+          log.getStronglyAcceptedNodeIds().wait(1);
+        }
+        singleWaitTime = (System.nanoTime() - singleWaitStart) / 1000000;
+        logger.debug("{} ends waiting", log);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        logger.warn("Unexpected interruption when sending a log", e);
+      }
+      alreadyWait = System.currentTimeMillis() - waitStart;
+      if (alreadyWait > nextTimeToPrint) {
+        logger.info(
+            "Still not receive enough votes for {}, strongly accepted {}, weakly "
+                + "accepted {}, voting logs {}, wait {}ms, wait to sequence {}ms, wait to enqueue "
+                + "{}ms, wait to accept "
+                + "{}ms",
+            log,
+            log.getStronglyAcceptedNodeIds(),
+            log.getWeaklyAcceptedNodeIds(),
+            votingLogList.size(),
+            singleWaitTime,
+            (log.getLog().getSequenceStartTime() - singleWaitStart) / 1000000,
+            (log.getLog().getEnqueueTime() - singleWaitStart) / 1000000,
+            (log.acceptedTime.get() - singleWaitStart) / 1000000);
+        nextTimeToPrint *= 2;
+      }
+      stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
+      weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+      totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
+    }
+
+    if (alreadyWait > 15000) {
+      logger.info(
+          "Slow entry {}, strongly accepted {}, weakly " + "accepted {}, waited time {}ms",
+          log,
+          log.getStronglyAcceptedNodeIds(),
+          log.getWeaklyAcceptedNodeIds(),
+          alreadyWait);
+    }
+  }
+
   /**
    * wait until "voteCounter" counts down to zero, which means the quorum has received the log, or
    * one follower tells the node that it is no longer a valid leader, or a timeout is triggered.
    */
-  @SuppressWarnings({"java:S2445"}) // safe synchronized
   protected AppendLogResult waitAppendResult(
       VotingLog log, AtomicBoolean leaderShipStale, AtomicLong newLeaderTerm, int quorumSize) {
     // wait for the followers to vote
     long startTime = Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.getOperationStartTime();
-    long nextTimeToPrint = 15000;
 
     int stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
     int weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
     int totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
 
-    synchronized (log) {
-      long waitStart = System.currentTimeMillis();
-      long alreadyWait = 0;
-      while (stronglyAcceptedNodeNum < quorumSize
-          && (!ENABLE_WEAK_ACCEPTANCE
-              || (totalAccepted < allNodes.size() - 1)
-              || votingLogList.size() > config.getMaxNumOfLogsInMem())
-          && alreadyWait < RaftServer.getWriteOperationTimeoutMS()
-          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
-        try {
-          log.wait(0);
-          logger.debug("{} ends waiting", log);
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          logger.warn("Unexpected interruption when sending a log", e);
-        }
-        alreadyWait = System.currentTimeMillis() - waitStart;
-        if (alreadyWait > nextTimeToPrint) {
-          logger.info(
-              "Still not receive enough votes for {}, strongly accepted {}, weakly "
-                  + "accepted {}",
-              log,
-              log.getStronglyAcceptedNodeIds(),
-              log.getWeaklyAcceptedNodeIds());
-          nextTimeToPrint *= 2;
-        }
-        stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
-        weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
-        totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
-      }
-
-      if (alreadyWait > 15000) {
-        logger.info(
-            "Slow entry {}, strongly accepted {}, weakly " + "accepted {}, waited time {}ms",
-            log,
-            log.getStronglyAcceptedNodeIds(),
-            log.getWeaklyAcceptedNodeIds(),
-            alreadyWait);
-      }
+    if (stronglyAcceptedNodeNum < quorumSize
+        && (!ENABLE_WEAK_ACCEPTANCE
+            || (totalAccepted < quorumSize)
+            || votingLogList.size() > config.getMaxNumOfLogsInMem())
+        && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+      waitAppendResultLoop(log, quorumSize);
     }
-    if (log.acceptedTime != 0) {
-      Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime);
+
+    stronglyAcceptedNodeNum = log.getStronglyAcceptedNodeIds().size();
+    weaklyAcceptedNodeNum = log.getWeaklyAcceptedNodeIds().size();
+    totalAccepted = stronglyAcceptedNodeNum + weaklyAcceptedNodeNum;
+
+    if (log.acceptedTime.get() != 0) {
+      Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime.get());
     }
     Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calOperationCostTimeFromStart(startTime);
 
@@ -1702,16 +1741,14 @@ public abstract class RaftMember {
     if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
       startTime = Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.getOperationStartTime();
       synchronized (logManager) {
+        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
+            startTime);
         if (log.getCurrLogIndex() > logManager.getCommitLogIndex()) {
-          Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_COMMIT.calOperationCostTimeFromStart(
-              startTime);
-
           startTime = Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.getOperationStartTime();
           logManager.commitTo(log.getCurrLogIndex());
           Statistic.RAFT_SENDER_COMMIT_LOG_IN_MANAGER.calOperationCostTimeFromStart(startTime);
-
-          startTime = Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.getOperationStartTime();
         }
+        startTime = Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.getOperationStartTime();
       }
       Statistic.RAFT_SENDER_EXIT_LOG_MANAGER.calOperationCostTimeFromStart(startTime);
     }
@@ -1725,7 +1762,7 @@ public abstract class RaftMember {
       while (!log.isApplied()) {
         // wait until the log is applied
         try {
-          log.wait(0);
+          log.wait(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new LogExecutionException(e);

@@ -41,6 +41,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.apache.iotdb.cluster.server.monitor.Timer.Statistic.RAFT_SENDER_SEQUENCE_LOG;
+
 public class AsynchronousSequencer implements LogSequencer {
 
   private static final Logger logger = LoggerFactory.getLogger(AsynchronousSequencer.class);
@@ -56,7 +58,7 @@ public class AsynchronousSequencer implements LogSequencer {
   public AsynchronousSequencer(RaftMember member, RaftLogManager logManager) {
     this.member = member;
     this.logManager = logManager;
-    unsequencedLogQueue = new ArrayBlockingQueue<>(4096);
+    unsequencedLogQueue = new ArrayBlockingQueue<>(40960, true);
     for (int i = 0; i < SEQUENCER_PARALLELISM; i++) {
       SEQUENCER_POOL.submit(this::sequenceTask);
     }
@@ -83,7 +85,9 @@ public class AsynchronousSequencer implements LogSequencer {
     long startTime;
     synchronized (logManager) {
       for (SendLogRequest sendLogRequest : sendLogRequests) {
+        long sequenceStartTime = RAFT_SENDER_SEQUENCE_LOG.getOperationStartTime();
         Log log = sendLogRequest.getVotingLog().getLog();
+        log.setSequenceStartTime(sequenceStartTime);
         log.setCurrLogTerm(member.getTerm().get());
         log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
         if (log instanceof PhysicalPlanLog) {
@@ -101,10 +105,13 @@ public class AsynchronousSequencer implements LogSequencer {
         sendLogRequest.setAppendEntryRequest(appendEntryRequest);
 
         startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+        Statistic.LOG_DISPATCHER_FROM_RECEIVE_TO_CREATE.calOperationCostTimeFromStart(
+            log.getReceiveTime());
         log.setCreateTime(System.nanoTime());
         member.getVotingLogList().insert(sendLogRequest.getVotingLog());
         member.getLogDispatcher().offer(sendLogRequest);
         Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+        RAFT_SENDER_SEQUENCE_LOG.calOperationCostTimeFromStart(sequenceStartTime);
       }
     }
     sendLogRequests.clear();

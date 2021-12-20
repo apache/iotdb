@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -187,6 +188,15 @@ public class LogDispatcher {
       this.setQuorumSize(quorumSize);
     }
 
+    public SendLogRequest(SendLogRequest request) {
+      this.setVotingLog(request.votingLog);
+      this.setLeaderShipStale(request.leaderShipStale);
+      this.setNewLeaderTerm(request.newLeaderTerm);
+      this.setAppendEntryRequest(request.appendEntryRequest);
+      this.setQuorumSize(request.quorumSize);
+      this.setEnqueueTime(request.enqueueTime);
+    }
+
     public VotingLog getVotingLog() {
       return votingLog;
     }
@@ -245,7 +255,7 @@ public class LogDispatcher {
 
     Node receiver;
     private BlockingQueue<SendLogRequest> logBlockingDeque;
-    private List<SendLogRequest> currBatch = new ArrayList<>();
+    protected List<SendLogRequest> currBatch = new ArrayList<>();
     private Peer peer;
     Client client;
 
@@ -275,13 +285,7 @@ public class LogDispatcher {
             logger.debug("Sending {} logs to {}", currBatch.size(), receiver);
           }
           Statistic.LOG_DISPATCHER_LOG_BATCH_SIZE.add(currBatch.size());
-          for (SendLogRequest request : currBatch) {
-            Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
-                request.getVotingLog().getLog().getEnqueueTime());
-            long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
-            request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
-            Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
-          }
+          serializeEntries();
           sendBatchLogs(currBatch);
           currBatch.clear();
         }
@@ -291,6 +295,16 @@ public class LogDispatcher {
         logger.error("Unexpected error in log dispatcher", e);
       }
       logger.info("Dispatcher exits");
+    }
+
+    protected void serializeEntries() throws ExecutionException, InterruptedException {
+      for (SendLogRequest request : currBatch) {
+        Timer.Statistic.LOG_DISPATCHER_LOG_IN_QUEUE.calOperationCostTimeFromStart(
+            request.getVotingLog().getLog().getEnqueueTime());
+        long start = Statistic.RAFT_SENDER_SERIALIZE_LOG.getOperationStartTime();
+        request.getAppendEntryRequest().entry = request.serializedLogFuture.get();
+        Statistic.RAFT_SENDER_SERIALIZE_LOG.calOperationCostTimeFromStart(start);
+      }
     }
 
     private void appendEntriesAsync(
@@ -424,7 +438,7 @@ public class LogDispatcher {
               peer,
               logRequest.quorumSize);
       // TODO add async interface
-      int retries = 5;
+      int retries = 50;
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {

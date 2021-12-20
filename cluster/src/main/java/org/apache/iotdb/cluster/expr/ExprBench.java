@@ -43,6 +43,7 @@ public class ExprBench {
   private long maxLatency = 0;
   private int threadNum = 64;
   private int workloadSize = 64 * 1024;
+  private int printInterval = 1000;
   private SyncClientPool clientPool;
   private Node target;
   private int maxRequestNum;
@@ -84,7 +85,7 @@ public class ExprBench {
                 e.printStackTrace();
               }
 
-              if (currRequsetNum % 1000 == 0) {
+              if (currRequsetNum % printInterval == 0) {
                 long elapsedTime = System.currentTimeMillis() - startTime;
                 System.out.println(
                     String.format(
@@ -118,6 +119,7 @@ public class ExprBench {
     bench.maxRequestNum = Integer.parseInt(args[2]);
     bench.threadNum = Integer.parseInt(args[3]);
     bench.workloadSize = Integer.parseInt(args[4]) * 1024;
+    bench.printInterval = Integer.parseInt(args[5]);
     bench.benchmark();
   }
 }

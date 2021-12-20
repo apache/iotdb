@@ -24,6 +24,7 @@ import org.apache.iotdb.cluster.log.Log.Types;
 import org.apache.iotdb.cluster.log.logtypes.AddNodeLog;
 import org.apache.iotdb.cluster.log.logtypes.CloseFileLog;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.logtypes.FragmentedLog;
 import org.apache.iotdb.cluster.log.logtypes.LargeTestLog;
 import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.logtypes.RemoveNodeLog;
@@ -100,6 +101,11 @@ public class LogParser {
         LargeTestLog largeLog = new LargeTestLog();
         largeLog.deserialize(buffer);
         log = largeLog;
+        break;
+      case FRAGMENTED:
+        FragmentedLog fragmentedLog = new FragmentedLog();
+        fragmentedLog.deserialize(buffer);
+        log = fragmentedLog;
         break;
       default:
         throw new IllegalArgumentException(type.toString());
