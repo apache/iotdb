@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -124,17 +123,8 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
       try (IoTDBConnection connection = getConnection(60);
           Statement statement = connection.createStatement()) {
-        statement.execute("SET STORAGE GROUP TO root.test" + counter);
-        statement.execute(
-            "CREATE TIMESERIES root.test" + counter + ".d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
-        if (statement.execute("SHOW TIMESERIES")) {
-          ResultSet resultSet = statement.getResultSet();
-          if (resultSet.next()) {
-            statement.execute("DELETE STORAGE GROUP root.*");
-            break;
-          }
-        }
-
+        statement.execute("SHOW TIMESERIES");
+        break;
       } catch (SQLException e) {
         logger.debug(++counter + " time(s) connect to cluster failed!");
         logger.debug(e.getMessage());
@@ -153,7 +143,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
         node.start();
         // It seems that if we launch all the nodes at the same time, it has a high probability to
         // get an unstable cluster.
-        Thread.sleep(200);
+        Thread.sleep(500);
       }
     } catch (IOException ex) {
       fail(ex.getMessage());
