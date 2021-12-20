@@ -370,12 +370,6 @@ public class IoTDBConfig {
    */
   private int maxSelectUnseqFileNumInEachUnseqCompaction = 2000;
 
-  /** Enable Compaction Monitor to monitor the status of the compaction thread */
-  private boolean enableCompactionMonitor = false;
-
-  /** Monitoring period of Compaction Monitor */
-  private long compactionMonitorPeriod = 60000L;
-
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
 
@@ -2274,21 +2268,5 @@ public class IoTDBConfig {
 
   public void setAdminPassword(String adminPassword) {
     this.adminPassword = adminPassword;
-  }
-
-  public boolean isEnableCompactionMonitor() {
-    return enableCompactionMonitor;
-  }
-
-  public void setEnableCompactionMonitor(boolean enableCompactionMonitor) {
-    this.enableCompactionMonitor = enableCompactionMonitor;
-  }
-
-  public long getCompactionMonitorPeriod() {
-    return compactionMonitorPeriod;
-  }
-
-  public void setCompactionMonitorPeriod(long compactionMonitorPeriod) {
-    this.compactionMonitorPeriod = compactionMonitorPeriod;
   }
 }
