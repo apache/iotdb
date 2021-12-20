@@ -335,6 +335,11 @@ public class ClusterDescriptor {
                 "dispatcher_binding_thread_num",
                 String.valueOf(config.getDispatcherBindingThreadNum()))));
 
+    config.setUseAsyncSequencing(
+        Boolean.parseBoolean(
+            properties.getProperty(
+                "use_async_sequencing", String.valueOf(config.isUseAsyncSequencing()))));
+
     String consistencyLevel = properties.getProperty("consistency_level");
     if (consistencyLevel != null) {
       config.setConsistencyLevel(ConsistencyLevel.getConsistencyLevel(consistencyLevel));

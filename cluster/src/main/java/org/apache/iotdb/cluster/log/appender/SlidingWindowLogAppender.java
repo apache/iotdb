@@ -33,8 +33,7 @@ import java.util.List;
 
 public class SlidingWindowLogAppender implements LogAppender {
 
-  private int windowCapacity =
-      ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem() * 2;
+  private int windowCapacity = ClusterDescriptor.getInstance().getConfig().getMaxNumOfLogsInMem();
   private int windowLength = 0;
   private Log[] logWindow = new Log[windowCapacity];
   private long firstPosPrevIndex;
