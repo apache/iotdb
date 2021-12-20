@@ -20,13 +20,18 @@
 package org.apache.iotdb.metrics.impl;
 
 import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.type.*;
+import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.type.Gauge;
+import org.apache.iotdb.metrics.type.Histogram;
+import org.apache.iotdb.metrics.type.Rate;
+import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 
 public class DoNothingMetricManager implements MetricManager {
 
@@ -39,6 +44,12 @@ public class DoNothingMetricManager implements MetricManager {
   @Override
   public Counter getOrCreateCounter(String metric, String... tags) {
     return doNothingCounter;
+  }
+
+  @Override
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+    return doNothingGauge;
   }
 
   @Override

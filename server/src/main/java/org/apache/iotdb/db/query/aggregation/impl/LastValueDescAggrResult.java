@@ -50,7 +50,7 @@ public class LastValueDescAggrResult extends LastValueAggrResult {
     }
     long time = Long.MIN_VALUE;
     Object lastVal = null;
-    if (batchIterator.hasNext()
+    if (batchIterator.hasNext(minBound, maxBound)
         && batchIterator.currentTime() < maxBound
         && batchIterator.currentTime() >= minBound) {
       time = batchIterator.currentTime();

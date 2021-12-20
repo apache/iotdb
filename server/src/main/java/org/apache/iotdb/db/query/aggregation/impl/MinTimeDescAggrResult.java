@@ -36,7 +36,7 @@ public class MinTimeDescAggrResult extends MinTimeAggrResult {
   @Override
   public void updateResultFromPageData(
       IBatchDataIterator batchIterator, long minBound, long maxBound) {
-    while (batchIterator.hasNext() && batchIterator.currentTime() >= minBound) {
+    while (batchIterator.hasNext(minBound, maxBound) && batchIterator.currentTime() >= minBound) {
       setValue(batchIterator.currentTime());
       batchIterator.next();
     }

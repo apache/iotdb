@@ -236,8 +236,8 @@ public class TsFileResource {
   /** deserialize from disk */
   public void deserialize() throws IOException {
     try (InputStream inputStream = fsFactory.getBufferedInputStream(file + RESOURCE_SUFFIX)) {
-      readVersionNumber(inputStream);
-      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 1)[0];
+      // The first byte is VERSION_NUMBER, second byte is timeIndexType.
+      timeIndexType = ReadWriteIOUtils.readBytes(inputStream, 2)[1];
       timeIndex = TimeIndexLevel.valueOf(timeIndexType).getTimeIndex().deserialize(inputStream);
       maxPlanIndex = ReadWriteIOUtils.readLong(inputStream);
       minPlanIndex = ReadWriteIOUtils.readLong(inputStream);
@@ -347,6 +347,14 @@ public class TsFileResource {
     return modFile;
   }
 
+  public void resetModFile() {
+    if (modFile != null) {
+      synchronized (this) {
+        modFile = null;
+      }
+    }
+  }
+
   public void setFile(File file) {
     this.file = file;
   }
@@ -449,26 +457,34 @@ public class TsFileResource {
   }
 
   /** Remove the data file, its resource file, and its modification file physically. */
-  public void remove() {
+  public boolean remove() {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
       logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
-    removeResourceFile();
+    if (!removeResourceFile()) {
+      return false;
+    }
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
       logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
+    return true;
   }
 
-  public void removeResourceFile() {
+  public boolean removeResourceFile() {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      return false;
     }
+    return true;
   }
 
   void moveTo(File targetDir) {

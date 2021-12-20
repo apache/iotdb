@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.integration;
 
+import org.apache.iotdb.db.query.udf.example.ExampleUDFConstant;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
@@ -40,18 +41,6 @@ import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
 public class IoTDBUDFWindowQueryIT {
-
-  public static final String ACCESS_STRATEGY_KEY = "access";
-  public static final String ACCESS_STRATEGY_ROW_BY_ROW = "row-by-row";
-  public static final String ACCESS_STRATEGY_SLIDING_SIZE = "size";
-  public static final String ACCESS_STRATEGY_SLIDING_TIME = "time";
-
-  public static final String WINDOW_SIZE_KEY = "windowSize";
-
-  public static final String TIME_INTERVAL_KEY = "timeInterval";
-  public static final String SLIDING_STEP_KEY = "slidingStep";
-  public static final String DISPLAY_WINDOW_BEGIN_KEY = "displayWindowBegin";
-  public static final String DISPLAY_WINDOW_END_KEY = "displayWindowEnd";
 
   protected static final int ITERATION_TIMES = 100_000;
 
@@ -123,7 +112,7 @@ public class IoTDBUDFWindowQueryIT {
     String sql =
         String.format(
             "select counter(s1, '%s'='%s') from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_ROW_BY_ROW);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY, ExampleUDFConstant.ACCESS_STRATEGY_ROW_BY_ROW);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -183,7 +172,10 @@ public class IoTDBUDFWindowQueryIT {
     String sql =
         String.format(
             "select accumulator(s1, '%s'='%s', '%s'='%s') from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY, ACCESS_STRATEGY_SLIDING_SIZE, WINDOW_SIZE_KEY, windowSize);
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+            ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_SIZE,
+            ExampleUDFConstant.WINDOW_SIZE_KEY,
+            windowSize);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
         Statement statement = conn.createStatement()) {
@@ -304,15 +296,15 @@ public class IoTDBUDFWindowQueryIT {
     String sql =
         String.format(
             "select accumulator(s1, s1, s1, '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s', '%s'='%s') from root.vehicle.d1",
-            ACCESS_STRATEGY_KEY,
-            ACCESS_STRATEGY_SLIDING_TIME,
-            TIME_INTERVAL_KEY,
+            ExampleUDFConstant.ACCESS_STRATEGY_KEY,
+            ExampleUDFConstant.ACCESS_STRATEGY_SLIDING_TIME,
+            ExampleUDFConstant.TIME_INTERVAL_KEY,
             timeInterval,
-            SLIDING_STEP_KEY,
+            ExampleUDFConstant.SLIDING_STEP_KEY,
             slidingStep,
-            DISPLAY_WINDOW_BEGIN_KEY,
+            ExampleUDFConstant.DISPLAY_WINDOW_BEGIN_KEY,
             displayWindowBegin,
-            DISPLAY_WINDOW_END_KEY,
+            ExampleUDFConstant.DISPLAY_WINDOW_END_KEY,
             displayWindowEnd);
 
     try (Connection conn = EnvFactory.getEnv().getConnection();
@@ -377,7 +369,7 @@ public class IoTDBUDFWindowQueryIT {
     String sql =
         String.format(
             "select time_window_tester(s1, '%s'='%s') from root.vehicle.d1",
-            TIME_INTERVAL_KEY, timeInterval);
+            ExampleUDFConstant.TIME_INTERVAL_KEY, timeInterval);
 
     int displayWindowBegin = 0;
     int displayWindowEnd = ITERATION_TIMES;

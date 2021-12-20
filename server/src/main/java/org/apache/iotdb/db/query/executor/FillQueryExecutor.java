@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -56,11 +57,13 @@ public class FillQueryExecutor {
   protected List<PartialPath> selectedSeries;
   protected List<TSDataType> dataTypes;
   protected Map<TSDataType, IFill> typeIFillMap;
+  protected IFill singleFill;
   protected long queryTime;
 
   public FillQueryExecutor(FillQueryPlan fillQueryPlan) {
     this.plan = fillQueryPlan;
     this.selectedSeries = plan.getDeduplicatedPaths();
+    this.singleFill = plan.getSingleFill();
     this.typeIFillMap = plan.getFillType();
     this.dataTypes = plan.getDeduplicatedDataTypes();
     this.queryTime = plan.getQueryTime();
@@ -90,7 +93,10 @@ public class FillQueryExecutor {
         }
 
         IFill fill;
-        if (!typeIFillMap.containsKey(dataType)) {
+        if (singleFill != null) {
+          fill = singleFill.copy();
+        } else if (!typeIFillMap.containsKey(dataType)) {
+          // old type fill logic
           switch (dataType) {
             case INT32:
             case INT64:
@@ -104,6 +110,7 @@ public class FillQueryExecutor {
               throw new UnsupportedDataTypeException("unsupported data type " + dataType);
           }
         } else {
+          // old type fill logic
           fill = typeIFillMap.get(dataType).copy();
         }
         fill =
@@ -115,7 +122,16 @@ public class FillQueryExecutor {
                 plan.getAllMeasurementsInDevice(path.getDevice()),
                 context);
 
-        TimeValuePair timeValuePair = fill.getFillResult();
+        TimeValuePair timeValuePair;
+        try {
+          timeValuePair = fill.getFillResult();
+          if (timeValuePair == null && fill instanceof ValueFill) {
+            timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
+          }
+        } catch (QueryProcessException | NumberFormatException ignored) {
+          record.addField(null);
+          continue;
+        }
         if (timeValuePair == null || timeValuePair.getValue() == null) {
           record.addField(null);
         } else {

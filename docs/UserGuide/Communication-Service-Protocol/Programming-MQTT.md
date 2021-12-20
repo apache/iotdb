@@ -116,12 +116,13 @@ Steps:
 ```
 * Define your implementation which implements `org.apache.iotdb.db.mqtt.PayloadFormatter.java`
 e.g.,
+
 ```java
 package org.apache.iotdb.mqtt.server;
 
 import io.netty.buffer.ByteBuf;
-import org.apache.iotdb.db.mqtt.Message;
-import org.apache.iotdb.db.mqtt.PayloadFormatter;
+import org.apache.iotdb.db.protocol.mqtt.Message;
+import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -130,34 +131,34 @@ import java.util.List;
 
 public class CustomizedJsonPayloadFormatter implements PayloadFormatter {
 
-  @Override
-  public List<Message> format(ByteBuf payload) {
-    // Suppose the payload is a json format
-    if (payload == null) {
-      return null;
+    @Override
+    public List<Message> format(ByteBuf payload) {
+        // Suppose the payload is a json format
+        if (payload == null) {
+            return null;
+        }
+
+        String json = payload.toString(StandardCharsets.UTF_8);
+        // parse data from the json and generate Messages and put them into List<Meesage> ret
+        List<Message> ret = new ArrayList<>();
+        // this is just an example, so we just generate some Messages directly
+        for (int i = 0; i < 2; i++) {
+            long ts = i;
+            Message message = new Message();
+            message.setDevice("d" + i);
+            message.setTimestamp(ts);
+            message.setMeasurements(Arrays.asList("s1", "s2"));
+            message.setValues(Arrays.asList("4.0" + i, "5.0" + i));
+            ret.add(message);
+        }
+        return ret;
     }
 
-    String json = payload.toString(StandardCharsets.UTF_8);
-    // parse data from the json and generate Messages and put them into List<Meesage> ret
-    List<Message> ret = new ArrayList<>();
-    // this is just an example, so we just generate some Messages directly
-    for (int i = 0; i < 2; i++) {
-      long ts = i;
-      Message message = new Message();
-      message.setDevice("d" + i);
-      message.setTimestamp(ts);
-      message.setMeasurements(Arrays.asList("s1", "s2"));
-      message.setValues(Arrays.asList("4.0" + i, "5.0" + i));
-      ret.add(message);
+    @Override
+    public String getName() {
+        // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
+        return "CustomizedJson";
     }
-    return ret;
-  }
-
-  @Override
-  public String getName() {
-    // set the value of mqtt_payload_formatter in iotdb-engine.properties as the following string:
-    return "CustomizedJson";
-  }
 }
 ```
 * modify the file in `src/main/resources/META-INF/services/org.apache.iotdb.db.mqtt.PayloadFormatter`:

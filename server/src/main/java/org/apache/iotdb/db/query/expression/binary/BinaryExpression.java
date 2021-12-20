@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +54,14 @@ public abstract class BinaryExpression extends Expression {
     this.rightExpression = rightExpression;
   }
 
+  public Expression getLeftExpression() {
+    return leftExpression;
+  }
+
+  public Expression getRightExpression() {
+    return rightExpression;
+  }
+
   @Override
   public boolean isConstantOperandInternal() {
     return leftExpression.isConstantOperand() && rightExpression.isConstantOperand();
@@ -60,7 +69,20 @@ public abstract class BinaryExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
+    return !isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return leftExpression.isPlainAggregationFunctionExpression()
+        || rightExpression.isPlainAggregationFunctionExpression()
+        || leftExpression.isUserDefinedAggregationFunctionExpression()
+        || rightExpression.isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public List<Expression> getExpressions() {
+    return Arrays.asList(leftExpression, rightExpression);
   }
 
   @Override

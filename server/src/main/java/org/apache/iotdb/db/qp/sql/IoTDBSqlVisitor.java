@@ -49,7 +49,8 @@ import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
-import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -131,7 +132,15 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1297,16 +1306,40 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
 
-    List<IoTDBSqlParser.TypeClauseContext> list = ctx.typeClause();
-    Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-    for (IoTDBSqlParser.TypeClauseContext typeClause : list) {
-      if (typeClause.ALL() != null) {
-        parseAllTypeClause(typeClause, fillTypes);
-      } else {
-        parsePrimitiveTypeClause(typeClause, fillTypes);
+    if (ctx.fillClause().oldTypeClause().size() > 0) {
+      // old type fill logic
+      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.fillClause().oldTypeClause();
+      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
+      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
+        if (typeClause.ALL() != null) {
+          parseAllTypeClause(typeClause, fillTypes);
+        } else {
+          parsePrimitiveTypeClause(typeClause, fillTypes);
+        }
       }
+
+      int usePrevious = 0;
+      int useLinear = 0;
+      int useValue = 0;
+      for (IFill iFill : fillTypes.values()) {
+        if (iFill instanceof PreviousFill) {
+          usePrevious = 1;
+        }
+        if (iFill instanceof LinearFill) {
+          useLinear = 1;
+        }
+        if (iFill instanceof ValueFill) {
+          useValue = 1;
+        }
+      }
+      if (usePrevious + useLinear + useValue > 1) {
+        throw new SQLParserException("The old type logic could only use one type of fill");
+      }
+
+      groupByFillClauseComponent.setFillTypes(fillTypes);
+    } else {
+      groupByFillClauseComponent.setSingleFill(getSingleIFill(ctx.fillClause()));
     }
-    groupByFillClauseComponent.setFillTypes(fillTypes);
     queryOp.setSpecialClauseComponent(groupByFillClauseComponent);
   }
 
@@ -1323,20 +1356,27 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillClauseComponent fillClauseComponent = new FillClauseComponent();
-    List<IoTDBSqlParser.TypeClauseContext> list = ctx.typeClause();
-    Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-    for (IoTDBSqlParser.TypeClauseContext typeClause : list) {
-      if (typeClause.ALL() != null) {
-        if (typeClause.linearClause() != null) {
-          throw new SQLParserException("fill all doesn't support linear fill");
+
+    if (ctx.oldTypeClause().size() > 0) {
+      // old type fill logic
+      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.oldTypeClause();
+      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
+      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
+        if (typeClause.ALL() != null) {
+          if (typeClause.linearClause() != null) {
+            throw new SQLParserException("fill all doesn't support linear fill");
+          }
+          parseAllTypeClause(typeClause, fillTypes);
+          break;
+        } else {
+          parsePrimitiveTypeClause(typeClause, fillTypes);
         }
-        parseAllTypeClause(typeClause, fillTypes);
-        break;
-      } else {
-        parsePrimitiveTypeClause(typeClause, fillTypes);
       }
+      fillClauseComponent.setFillTypes(fillTypes);
+    } else {
+      // new single fill logic
+      fillClauseComponent.setSingleFill(getSingleIFill(ctx));
     }
-    fillClauseComponent.setFillTypes(fillTypes);
     queryOp.setSpecialClauseComponent(fillClauseComponent);
   }
 
@@ -1379,8 +1419,43 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     queryOp.setSpecialClauseComponent(specialClauseComponent);
   }
 
+  private IFill getSingleIFill(IoTDBSqlParser.FillClauseContext ctx) {
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+    if (ctx.linearClause() != null) { // linear
+      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
+        String beforeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
+        String afterStr = ctx.linearClause().DURATION_LITERAL(1).getText();
+        return new LinearFill(beforeStr, afterStr);
+      } else {
+        return new LinearFill(defaultFillInterval, defaultFillInterval);
+      }
+    } else if (ctx.previousClause() != null) { // previous
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
+        String preRangeStr = ctx.previousClause().DURATION_LITERAL().getText();
+        return new PreviousFill(preRangeStr);
+      } else {
+        return new PreviousFill(defaultFillInterval);
+      }
+    } else if (ctx.specificValueClause() != null) { // value
+      if (ctx.specificValueClause().constant() != null) {
+        return new ValueFill(ctx.specificValueClause().constant().getText());
+      } else {
+        throw new SQLParserException("fill value cannot be null");
+      }
+    } else if (ctx.previousUntilLastClause() != null) { // previous until last
+      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
+        String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
+        return new PreviousFill(preRangeStr, true);
+      } else {
+        return new PreviousFill(defaultFillInterval, true);
+      }
+    } else {
+      throw new SQLParserException("unknown single fill type");
+    }
+  }
+
   private void parseAllTypeClause(
-      IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     IFill fill;
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
 
@@ -1424,7 +1499,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parsePrimitiveTypeClause(
-      IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
     if (dataType == TSDataType.VECTOR) {
       throw new SQLParserException(String.format("type %s cannot use fill function", dataType));
@@ -2453,17 +2528,20 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
-    boolean isFirstElement = true;
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
-      // judge query type according to the first select element
-      if (!hasDecidedQueryType()) {
-        if (selectComponent.hasAggregationFunction()) {
-          queryOp = new AggregationQueryOperator(queryOp);
-        } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-          queryOp = new UDFQueryOperator(queryOp);
-        }
+    }
+    // judge query type
+    if (!hasDecidedQueryType()) {
+      if (selectComponent.hasUserDefinedAggregationFunction()) {
+        queryOp = new UDAFQueryOperator(new AggregationQueryOperator(queryOp));
+      } else if (selectComponent.hasPlainAggregationFunction()) {
+        queryOp = new AggregationQueryOperator(queryOp);
+      } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        queryOp = new UDTFQueryOperator(queryOp);
       }
+    } else if (selectComponent.hasUserDefinedAggregationFunction()) {
+      queryOp = new UDAFQueryOperator((AggregationQueryOperator) (queryOp));
     }
 
     queryOp.setSelectComponent(selectComponent);
@@ -2639,7 +2717,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         || queryOp instanceof FillQueryOperator
         || queryOp instanceof LastQueryOperator
         || queryOp instanceof AggregationQueryOperator
-        || queryOp instanceof UDFQueryOperator;
+        || queryOp instanceof UDTFQueryOperator
+        || queryOp instanceof UDAFQueryOperator;
   }
 
   private String parseStringWithQuotes(String src) {

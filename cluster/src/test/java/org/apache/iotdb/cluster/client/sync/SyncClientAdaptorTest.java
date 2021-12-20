@@ -438,6 +438,7 @@ public class SyncClientAdaptorTest {
             dataClient,
             Collections.singletonList(new PartialPath("1")),
             Collections.singletonList(TSDataType.INT64.ordinal()),
+            null,
             new QueryContext(),
             Collections.emptyMap(),
             TestUtils.getRaftNode(0, 0)));

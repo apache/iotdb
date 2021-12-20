@@ -29,6 +29,7 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.slf4j.Logger;
@@ -106,6 +107,9 @@ public class ErrorHandlingUtils {
     } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+    } else if (e instanceof TsFileRuntimeException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
+      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, getRootCause(e));
     }
     return null;
   }

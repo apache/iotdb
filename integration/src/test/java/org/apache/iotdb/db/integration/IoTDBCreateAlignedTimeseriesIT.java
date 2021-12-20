@@ -23,7 +23,10 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.*;
+import org.junit.After;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
@@ -71,6 +74,36 @@ public class IoTDBCreateAlignedTimeseriesIT {
       statement.execute(
           "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
     } catch (IoTDBSQLException ignored) {
+    }
+
+    // ensure that current storage group in cache is right.
+    assertTimeseriesEquals(timeSeriesArray);
+
+    statement.close();
+    connection.close();
+    EnvironmentUtils.stopDaemon();
+    setUp();
+
+    // ensure storage group in cache is right after recovering.
+    assertTimeseriesEquals(timeSeriesArray);
+  }
+
+  @Test
+  public void testCreateAlignedTimeseriesWithDeletion() throws Exception {
+    String[] timeSeriesArray =
+        new String[] {
+          "root.sg1.d1.vector1.s1,DOUBLE,PLAIN,SNAPPY", "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY"
+        };
+
+    statement.execute("SET STORAGE GROUP TO root.sg1");
+    try {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 FLOAT encoding=PLAIN compressor=UNCOMPRESSED,s2 INT64 encoding=RLE)");
+      statement.execute("DELETE TIMESERIES root.sg1.d1.vector1.s1");
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.sg1.d1.vector1(s1 DOUBLE encoding=PLAIN compressor=SNAPPY)");
+    } catch (IoTDBSQLException e) {
+      e.printStackTrace();
     }
 
     // ensure that current storage group in cache is right.
