@@ -22,6 +22,7 @@ package org.apache.iotdb.db.query.dataset;
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.pool.QueryTaskPoolManager;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
@@ -185,18 +186,23 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   /**
    * constructor of EngineDataSetWithoutValueFilter.
    *
-   * @param paths paths in List structure
-   * @param dataTypes time series data type
    * @param readers readers in List(IPointReader) structure
    */
   public RawQueryDataSetWithoutValueFilter(
-      long queryId,
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers,
-      boolean ascending)
+      long queryId, RawDataQueryPlan queryPlan, List<ManagedSeriesReader> readers)
       throws IOException, InterruptedException {
-    super(new ArrayList<>(paths), dataTypes, ascending);
+    super(
+        new ArrayList<>(queryPlan.getDeduplicatedPaths()),
+        queryPlan.getDeduplicatedDataTypes(),
+        queryPlan.isAscending());
+    this.rowLimit = queryPlan.getRowLimit();
+    this.rowOffset = queryPlan.getRowOffset();
+    this.withoutAnyNull = queryPlan.isWithoutAnyNull();
+    this.withoutAllNull = queryPlan.isWithoutAllNull();
+    if (rowLimit != 0 && !withoutAllNull && !withoutAnyNull) {
+      batchDataLengthList = new int[readers.size()];
+    }
+
     this.queryId = queryId;
     this.seriesReaderList = readers;
     blockingQueueArray = new BlockingQueue[readers.size()];
@@ -206,15 +212,12 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
     cachedBatchDataArray = new BatchData[readers.size()];
     noMoreDataInQueueArray = new boolean[readers.size()];
     bufferNum = 0;
-    for (PartialPath path : paths) {
+    for (PartialPath path : queryPlan.getDeduplicatedPaths()) {
       if (path instanceof AlignedPath) {
         bufferNum += ((AlignedPath) path).getMeasurementList().size();
       } else {
         bufferNum += 1;
       }
-    }
-    if (rowLimit != 0) {
-      batchDataLengthList = new int[readers.size()];
     }
     init();
   }
@@ -554,6 +557,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         throw (IOException) exceptionBatchData.getThrowable();
       } else if (exceptionBatchData.getThrowable() instanceof RuntimeException) {
         throw (RuntimeException) exceptionBatchData.getThrowable();
+      } else {
+        throw new RuntimeException("some other unknown errors!");
       }
 
     } else { // there are more batch data in this time series queue

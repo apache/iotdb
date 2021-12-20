@@ -16,15 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.exception.write;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-public class UnSupportedDataTypeException extends TsFileRuntimeException {
+/** the exception when writing to a read-only system */
+public class StorageEngineReadonlyException extends StorageEngineException {
 
-  private static final long serialVersionUID = 6399248887091915203L;
+  public static final String ERROR_MESSAGE =
+      "Database is read-only, and does not accept non-query operation now";
 
-  public UnSupportedDataTypeException(String dataTypeName) {
-    super("Unsupported dataType: " + dataTypeName);
+  public StorageEngineReadonlyException() {
+    super(ERROR_MESSAGE, TSStatusCode.READ_ONLY_SYSTEM_ERROR.getStatusCode());
   }
 }
