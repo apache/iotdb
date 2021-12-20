@@ -24,6 +24,7 @@
 ## New Features
 
 * [IOTDB-1823] group by multi level
+* [IOTDB-2095] Monitoring compaction performance
 
 
 ## Improvements
@@ -40,7 +41,7 @@
 
 
 ## Bug Fixes
-
+* [IOTDB-1408] Statement with 'as' executes incorrectly in mutil-path scenes
 * [IOTDB-2023] Fix serializing and deserializing bugs of Filters
 * [IOTDB-2025] Fix count nodes and devices incorrectly in cluster
 * [IOTDB-2031] Fix incorrect result of descending query with value filter in cluster
@@ -52,8 +53,13 @@
 * [IOTDB-2064] Fix the NPE caused by map serde
 * [IOTDB-2068] Fix GZIP compressor meets ArrayIndexOutOfBoundsException
 * [IOTDB-2124] the filtering condition does not take efffect for last query in cluster
+* [IOTDB-2138] Fix data loss after IoTDB recover
+* [IOTDB-2140] Fix merge throw NullPointerException
+* [IOTDB-2152] PyClient: Override `__eq__()` of TSDataType, TSEncoding and Compressor to avoid unexpected comparation behaviour
+* [IOTDB-2160] Fix cluster groupby query cross-node reference leaks
 * [ISSUE-3335] Fix the bug of start-cli.sh -e mode can't work with wild card \*
 * fix memory leak: replace RandomDeleteCache with Caffine CacheLoader
+* Fix connection refused using session when users forget to set client ip
 
 
 # Apache IoTDB 0.12.3
