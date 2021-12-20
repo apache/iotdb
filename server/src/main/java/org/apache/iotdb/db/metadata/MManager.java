@@ -297,7 +297,6 @@ public class MManager {
             "spend {} ms to deserialize mtree from mlog.bin", System.currentTimeMillis() - time);
         return idx;
       } catch (Exception e) {
-        e.printStackTrace();
         throw new IOException("Failed to parser mlog.bin for err:" + e);
       }
     } else {

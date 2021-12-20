@@ -18,6 +18,11 @@
  */
 package org.apache.iotdb.db.metadata.idtable.entry;
 
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -37,6 +42,9 @@ public class SHA256DeviceID implements IDeviceID {
   /** number of message digest, for improve parallelism */
   private static final int MD_NUM = 256;
 
+  /** logger */
+  private static Logger logger = LoggerFactory.getLogger(IDTable.class);
+
   static {
     try {
       md = new MessageDigest[256];
@@ -44,7 +52,7 @@ public class SHA256DeviceID implements IDeviceID {
         md[i] = MessageDigest.getInstance("SHA-256");
       }
     } catch (NoSuchAlgorithmException e) {
-      e.printStackTrace();
+      logger.error("can't use sha 256 hash on this platform");
     }
   }
 

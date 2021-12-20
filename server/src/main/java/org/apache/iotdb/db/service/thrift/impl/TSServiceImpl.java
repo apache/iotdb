@@ -1949,7 +1949,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
       return resp;
     } catch (MetadataException e) {
-      e.printStackTrace();
+      LOGGER.error("fail to query schema template because: " + e);
     }
     return null;
   }
