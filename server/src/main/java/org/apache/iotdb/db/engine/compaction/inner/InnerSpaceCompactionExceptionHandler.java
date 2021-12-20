@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -201,9 +201,7 @@ public class InnerSpaceCompactionExceptionHandler {
       List<TsFileResource> lostSourceFiles) {
     boolean handleSuccess = true;
     try {
-      RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetTsFile.getTsFile());
-      writer.close();
-      if (!writer.hasCrashed()) {
+      if (TsFileUtils.isTsFileComplete(targetTsFile.getTsFile())) {
         // target file is complete, delete source files
         LOGGER.info(
             "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
