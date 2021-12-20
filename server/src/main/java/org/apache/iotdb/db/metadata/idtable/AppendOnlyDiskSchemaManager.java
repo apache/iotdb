@@ -108,6 +108,9 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
       }
     }
 
+    // free resource
+    inputStream.close();
+
     return res;
   }
 
