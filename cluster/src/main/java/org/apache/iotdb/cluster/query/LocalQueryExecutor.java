@@ -221,7 +221,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
-    path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -306,7 +309,10 @@ public class LocalQueryExecutor {
       MeasurementPath path =
           getAssembledPathFromRequest(
               request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue());
-      path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
+      // The request is routed to this node since this node contains the data and
+      // metadata of the designated timeseries. Because of which, the following metadata access will
+      // not trigger an RPC.
+      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
       paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
@@ -549,7 +555,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
-    path.setMeasurementSchema(CMManager.getInstance().getSeriesSchema(path));
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
