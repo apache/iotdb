@@ -107,12 +107,8 @@ public class CrossSpaceMergeResource {
     chunkWriterCache.clear();
   }
 
-  public IMeasurementSchema getSchema(PartialPath path) {
-    try {
-      return IoTDB.metaManager.getSeriesSchema(path);
-    } catch (MetadataException e) {
-      return null;
-    }
+  public IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchema(path);
   }
 
   /**
