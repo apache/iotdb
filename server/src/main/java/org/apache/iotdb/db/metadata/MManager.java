@@ -1061,6 +1061,18 @@ public class MManager {
   }
 
   /**
+   * Get all device paths matching the path pattern by prefix.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @param isPrefixMatch whether to use prefix matching
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   */
+  public Set<PartialPath> getMatchedDeviceByPrefix(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevices(pathPattern, isPrefixMatch);
+  }
+
+  /**
    * Get all device paths and according storage group paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
@@ -1276,7 +1288,7 @@ public class MManager {
     return mtree.getAllStorageGroupNodes();
   }
 
-  IMNode getDeviceNode(PartialPath path) throws MetadataException {
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
       node = mNodeCache.get(path);

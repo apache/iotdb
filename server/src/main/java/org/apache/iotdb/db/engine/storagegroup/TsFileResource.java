@@ -479,6 +479,7 @@ public class TsFileResource {
   public boolean removeResourceFile() {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
+      fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
       logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
       return false;
