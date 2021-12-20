@@ -1700,9 +1700,6 @@ public abstract class RaftMember implements RaftMemberMBean {
             alreadyWait);
       }
     }
-    if (log.acceptedTime != 0) {
-      Statistic.RAFT_WAIT_AFTER_ACCEPTED.calOperationCostTimeFromStart(log.acceptedTime);
-    }
     Timer.Statistic.RAFT_SENDER_VOTE_COUNTER.calOperationCostTimeFromStart(startTime);
 
     // a node has a larger term than the local node, so this node is no longer a valid leader

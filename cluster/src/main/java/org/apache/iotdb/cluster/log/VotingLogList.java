@@ -40,7 +40,7 @@ public class VotingLogList {
    */
   public synchronized void insert(VotingLog log) {
     if (log.getLog().getCurrLogTerm() != currTerm) {
-      logList.clear();
+      clear();
       currTerm = log.getLog().getCurrLogTerm();
     }
     logList.add(log);
@@ -69,11 +69,6 @@ public class VotingLogList {
           if (votingLog.getStronglyAcceptedNodeIds().size() >= quorumSize) {
             lastEntryIndexToCommit = i;
           }
-          if (votingLog.getStronglyAcceptedNodeIds().size()
-                  + votingLog.getWeaklyAcceptedNodeIds().size()
-              >= quorumSize) {
-            votingLog.acceptedTime = System.nanoTime();
-          }
         } else if (votingLog.getLog().getCurrLogIndex() > index) {
           break;
         }
@@ -87,7 +82,6 @@ public class VotingLogList {
     if (lastEntryIndexToCommit != -1) {
       for (VotingLog acceptedLog : acceptedLogs) {
         synchronized (acceptedLog) {
-          acceptedLog.acceptedTime = System.nanoTime();
           acceptedLog.notifyAll();
         }
       }
