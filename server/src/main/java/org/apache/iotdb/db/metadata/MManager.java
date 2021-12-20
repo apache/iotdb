@@ -1136,6 +1136,9 @@ public class MManager {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
+                  leaf.getLastCacheContainer().getCachedLast() != null
+                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
+                      : 0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right));
           if (limit != 0) {
@@ -1180,6 +1183,7 @@ public class MManager {
                 TSDataType.valueOf(ansString.right[2]),
                 TSEncoding.valueOf(ansString.right[3]),
                 CompressionType.valueOf(ansString.right[4]),
+                ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
                 tagAndAttributePair.right));
       } catch (IOException e) {
