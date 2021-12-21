@@ -43,7 +43,7 @@ public class PlainDeviceID implements IDeviceID {
 
   @Override
   public int hashCode() {
-    return Objects.hash(deviceID);
+    return deviceID.hashCode();
   }
 
   @Override
