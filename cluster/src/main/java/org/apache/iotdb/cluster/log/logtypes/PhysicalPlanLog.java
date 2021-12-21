@@ -48,7 +48,7 @@ public class PhysicalPlanLog extends Log {
 
   @Override
   public ByteBuffer serialize() {
-    PublicBAOS byteArrayOutputStream = new PublicBAOS(DEFAULT_BUFFER_SIZE);
+    PublicBAOS byteArrayOutputStream = new PublicBAOS(getDefaultBufferSize());
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {
       dataOutputStream.writeByte((byte) PHYSICAL_PLAN.ordinal());
 

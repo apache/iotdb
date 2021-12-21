@@ -59,6 +59,8 @@ public class CatchUpTask implements Runnable {
   private String name;
   private int raftId;
 
+  private long startTime;
+
   public CatchUpTask(Node node, int raftId, Peer peer, RaftMember raftMember, long lastLogIdx) {
     this.node = node;
     this.raftId = raftId;
@@ -345,6 +347,7 @@ public class CatchUpTask implements Runnable {
 
   @Override
   public void run() {
+    startTime = System.currentTimeMillis();
     try {
       boolean findMatchedIndex = checkMatchIndex();
       if (abort) {
@@ -378,10 +381,11 @@ public class CatchUpTask implements Runnable {
         }
         if (logger.isInfoEnabled()) {
           logger.info(
-              "{}: Catch up {} finished, update it's matchIndex to {}",
+              "{}: Catch up {} finished, update it's matchIndex to {}, time consumption: {}ms",
               raftMember.getName(),
               node,
-              peer.getMatchIndex());
+              peer.getMatchIndex(),
+              System.currentTimeMillis() - startTime);
         }
         peer.resetInconsistentHeartbeatNum();
       }

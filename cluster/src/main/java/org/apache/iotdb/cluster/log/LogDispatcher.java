@@ -320,10 +320,8 @@ public class LogDispatcher {
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-      Client client = member.getSyncClient(receiver);
       if (client == null) {
-        logger.error("No available client for {}", receiver);
-        return;
+        client = member.getSyncClient(receiver);
       }
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
@@ -333,10 +331,10 @@ public class LogDispatcher {
         handler.onComplete(result);
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
-        handler.onError(e);
-        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
-      } finally {
         ClientUtils.putBackSyncClient(client);
+        client = member.getSyncClient(receiver);
+        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
+        handler.onError(e);
       }
     }
 

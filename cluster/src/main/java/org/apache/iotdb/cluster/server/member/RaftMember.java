@@ -445,6 +445,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         // tell the leader the local log progress so it may decide whether to perform a catch up
         response.setLastLogIndex(logManager.getLastLogIndex());
         response.setLastLogTerm(logManager.getLastLogTerm());
+        response.setCommitIndex(logManager.getCommitLogIndex());
 
         if (logger.isDebugEnabled()) {
           logger.debug(
@@ -1117,8 +1118,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
-    if (log.serialize().capacity() + Integer.BYTES
-        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    if (config.isEnableRaftLogPersistence()
+        && (log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize())) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1166,8 +1168,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     // just like processPlanLocally,we need to check the size of log
-    if (log.serialize().capacity() + Integer.BYTES
-        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    if (config.isEnableRaftLogPersistence()
+        && (log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize())) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
