@@ -24,8 +24,6 @@
 ## New Features
 
 * [IOTDB-1823] group by multi level
-* [IOTDB-2095] Monitoring compaction performance
-
 
 ## Improvements
 
