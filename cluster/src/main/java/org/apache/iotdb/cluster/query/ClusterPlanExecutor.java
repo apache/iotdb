@@ -313,7 +313,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     }
     Map<String, String> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
     if (sgPathMap.isEmpty()) {
-      if ("root".equals(wildcardPath.getFullPath().replaceAll("\\.\\|\\*\\*", ""))) {
+      if ("root".equals(wildcardPath.getFullPath().replaceAll("\\.|\\*\\*", ""))) {
         return 0;
       }
       throw new PathNotExistException(path.getFullPath());
