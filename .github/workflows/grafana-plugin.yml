@@ -44,6 +44,4 @@ jobs:
         run: |
           cd ./grafana-plugin
           yarn install --frozen-lockfile
-          yarn add @grafana/runtime
-          yarn add  @types/base-64 --dev
           yarn build
