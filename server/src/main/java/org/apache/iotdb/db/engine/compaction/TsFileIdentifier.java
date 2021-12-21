@@ -166,6 +166,18 @@ public class TsFileIdentifier {
     return filename;
   }
 
+  public String getFilePath() {
+    return (sequence ? IoTDBConstant.SEQUENCE_FLODER_NAME : IoTDBConstant.UNSEQUENCE_FLODER_NAME)
+        + File.separator
+        + logicalStorageGroupName
+        + File.separator
+        + virtualStorageGroupId
+        + File.separator
+        + timePartitionId
+        + File.separator
+        + filename;
+  }
+
   public String getLogicalStorageGroupName() {
     return logicalStorageGroupName;
   }

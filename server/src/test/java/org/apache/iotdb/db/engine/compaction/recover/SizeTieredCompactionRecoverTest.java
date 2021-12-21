@@ -31,6 +31,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -150,7 +151,8 @@ public class SizeTieredCompactionRecoverTest {
   }
 
   /**
-   * Test a compaction task in finished. The compaction log use file info to record files.
+   * Test a compaction task in finished. The compaction log use file info to record files. The
+   * sources file are all existed.
    *
    * @throws Exception
    */
@@ -191,15 +193,16 @@ public class SizeTieredCompactionRecoverTest {
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
             COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
     recoverTask.doCompaction();
-    // all the source file should be deleted
+    // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
-      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertTrue(resource.getTsFile().exists());
     }
-    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
   /**
@@ -244,6 +247,7 @@ public class SizeTieredCompactionRecoverTest {
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
     channel.truncate(targetResource.getTsFile().length() - 100);
@@ -260,7 +264,8 @@ public class SizeTieredCompactionRecoverTest {
   }
 
   /**
-   * Test a compaction task in finished. The compaction log use file path to record files.
+   * Test a compaction task in finished. The compaction log use file path to record files. All the
+   * sources file is still existed.
    *
    * @throws Exception
    */
@@ -301,15 +306,16 @@ public class SizeTieredCompactionRecoverTest {
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
             COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
     recoverTask.doCompaction();
-    // all the source file should be deleted
+    // all the source file should still exist
     for (TsFileResource resource : sourceFiles) {
-      Assert.assertFalse(resource.getTsFile().exists());
+      Assert.assertTrue(resource.getTsFile().exists());
     }
-    Assert.assertTrue(targetResource.getTsFile().exists());
+    Assert.assertFalse(targetResource.getTsFile().exists());
   }
 
   /**
@@ -354,6 +360,7 @@ public class SizeTieredCompactionRecoverTest {
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
     InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
     channel.truncate(targetResource.getTsFile().length() - 100);
@@ -415,6 +422,7 @@ public class SizeTieredCompactionRecoverTest {
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
@@ -424,9 +432,9 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should be deleted
+      // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
-        Assert.assertFalse(
+        Assert.assertTrue(
             new File(
                     TestConstant.BASE_OUTPUT_PATH
                         + File.separator
@@ -455,9 +463,9 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName);
-      Assert.assertTrue(targetFileAfterMoved.exists());
-      Assert.assertEquals(targetFileAfterMoved.length(), sizeOfTargetFile);
+              targetFileName.replace(
+                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+      Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
     }
@@ -510,6 +518,7 @@ public class SizeTieredCompactionRecoverTest {
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();
       channel.truncate(targetResource.getTsFile().length() - 100);
@@ -606,6 +615,7 @@ public class SizeTieredCompactionRecoverTest {
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
           new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data"),
@@ -615,9 +625,9 @@ public class SizeTieredCompactionRecoverTest {
           new SizeTieredCompactionRecoverTask(
               COMPACTION_TEST_SG, "0", 0, new File(logFilePath), "", true, new AtomicInteger(0));
       recoverTask.doCompaction();
-      // all the source file should be deleted
+      // all the source files should exist
       for (String sourceFileName : sourceFileNames) {
-        Assert.assertFalse(
+        Assert.assertTrue(
             new File(
                     TestConstant.BASE_OUTPUT_PATH
                         + File.separator
@@ -646,9 +656,9 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName);
-      Assert.assertTrue(targetFileAfterMoved.exists());
-      Assert.assertEquals(targetFileAfterMoved.length(), sizeOfTargetFile);
+              targetFileName.replace(
+                  IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+      Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
     }
@@ -701,6 +711,7 @@ public class SizeTieredCompactionRecoverTest {
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
       InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();
       channel.truncate(targetResource.getTsFile().length() - 100);
