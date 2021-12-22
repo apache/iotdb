@@ -291,13 +291,13 @@ static_configs:
 
 更多细节可以参考下面的文档：
 
-Prometheus安装使用文档：https://prometheus.io/docs/prometheus/latest/getting_started/
+[Prometheus安装使用文档](https://prometheus.io/docs/prometheus/latest/getting_started/)
 
-Prometheus从HTTP接口拉取metrics数据的配置说明：https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+[Prometheus从HTTP接口拉取metrics数据的配置说明](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config)
 
-Grafana安装使用文档：https://grafana.com/docs/grafana/latest/getting-started/getting-started/
+[Grafana安装使用文档](https://grafana.com/docs/grafana/latest/getting-started/getting-started/)
 
-Grafana从Prometheus查询数据并绘图的文档：https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus
+[Grafana从Prometheus查询数据并绘图的文档](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
 最后是IoTDB的metrics数据在Grafana中显示的效果图：
 
