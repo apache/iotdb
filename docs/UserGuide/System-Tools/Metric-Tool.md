@@ -280,7 +280,7 @@ So, we need to do some additional works to configure and deploy Prometheus and G
 For instance, you can config your Prometheus as follows to get metrics data from IoTDB:
 
 ```yaml
-job_name: push-metrics
+job_name: pull-metrics
 honor_labels: true
 honor_timestamps: true
 scrape_interval: 15s
