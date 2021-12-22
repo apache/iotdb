@@ -180,7 +180,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
@@ -618,23 +619,6 @@ public class PlanExecutor implements IPlanExecutor {
       } else if (queryPlan instanceof LastQueryPlan) {
         queryDataSet = queryRouter.lastQuery((LastQueryPlan) queryPlan, context);
       } else {
-        RawDataQueryPlan plan = (RawDataQueryPlan) queryPlan;
-        //        List<PartialPath> list = new ArrayList<>();
-        //        for (PartialPath path : plan.getDeduplicatedPaths()) {
-        //          TimeseriesID timeseriesID = new TimeseriesID(path);
-        //          try {
-        //            PartialPath fullPath =
-        //                new PartialPath(
-        //                    timeseriesID.getDeviceID().toStringID(),
-        // timeseriesID.getMeasurement());
-        //            list.add(fullPath);
-        //          } catch (IllegalPathException e) {
-        //            e.printStackTrace();
-        //          }
-        //        }
-        //        plan.setDeduplicatedPaths(list);
-        //        plan.setDeduplicatedVectorPaths(list);
-
         queryDataSet = queryRouter.rawDataQuery((RawDataQueryPlan) queryPlan, context);
       }
     }
