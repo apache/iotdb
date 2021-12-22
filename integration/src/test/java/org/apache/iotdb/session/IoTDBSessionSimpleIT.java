@@ -731,7 +731,7 @@ public class IoTDBSessionSimpleIT {
     session.close();
   }
 
-  @Test(expected = BatchExecutionException.class)
+  @Test
   public void testInsertOneDeviceRecordsWithIncorrectOrder()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
