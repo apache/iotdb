@@ -262,10 +262,21 @@ mem{name="mtree",} 1328.0
 
 如上面所述，IoTDB对外透出标准Prometheus格式的metrics数据，可以直接和Prometheus以及Grafana集成。
 
-你可以对Prometheus进行如下的配置（部分参数可以自行调整）来从IoTDB获取监控数据
+IoTDB、Prometheus、Grafana三者的关系如下图所示:
+
+![iotdb_prometheus_grafana](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/iotdb_prometheus_grafana.png)
+
+1. IoTDB在运行过程中持续收集metrics数据。
+2. Prometheus以固定的间隔（可配置）从IoTDB的HTTP接口拉取metrics数据。
+3. Prometheus将拉取到的metrics数据存储到自己的TSDB中。
+4. Grafana以固定的间隔（可配置）从Prometheus查询metrics数据并绘图展示。
+
+从交互流程可以看出，我们需要做一些额外的工作来部署和配置Prometheus和Grafana。
+
+比如，你可以对Prometheus进行如下的配置（部分参数可以自行调整）来从IoTDB获取监控数据
 
 ```yaml
-job_name: push-metrics
+job_name: pull-metrics
 honor_labels: true
 honor_timestamps: true
 scrape_interval: 15s
@@ -277,9 +288,18 @@ static_configs:
 - targets:
   - localhost:9091
 ```
-更多细节请参考Prometheus和Grafana官方文档
 
-下面是IoTDB的metrics数据在Grafana中显示的效果图：
+更多细节可以参考下面的文档：
+
+Prometheus安装使用文档：https://prometheus.io/docs/prometheus/latest/getting_started/
+
+Prometheus从HTTP接口拉取metrics数据的配置说明：https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+
+Grafana安装使用文档：https://grafana.com/docs/grafana/latest/getting-started/getting-started/
+
+Grafana从Prometheus查询数据并绘图的文档：https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus
+
+最后是IoTDB的metrics数据在Grafana中显示的效果图：
 
 ![metrics_demo_1](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/metrics_demo_1.png)
 

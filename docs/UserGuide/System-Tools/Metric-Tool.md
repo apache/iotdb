@@ -264,9 +264,20 @@ mem{name="mtree",} 1328.0
 
 ### Integrating with Prometheus and Grafana
 
-As above descriptions，IoTDB provides metrics data in standard Prometheus format，so we can Integrate with Prometheus and Grafana directly. 
+As above descriptions，IoTDB provides metrics data in standard Prometheus format，so we can integrate with Prometheus and Grafana directly. 
 
-You can config your Prometheus as follows to get metrics data from IoTDB:
+The following picture describes the relationships among IoTDB, Prometheus and Grafana
+
+![iotdb_prometheus_grafana](https://raw.githubusercontent.com/apache/iotdb-bin-resources/main/docs/UserGuide/System%20Tools/Metrics/iotdb_prometheus_grafana.png)
+
+1. Along with running, IoTDB will collect its metrics continuously.
+2. Prometheus scrapes metrics from IoTDB at a constant interval (can be configured).
+3. Prometheus saves these metrics to its inner TSDB.
+4. Grafana queries metrics from Prometheus at a constant interval (can be configured) and then presents them on the graph.
+
+So, we need to do some additional works to configure and deploy Prometheus and Grafana.
+
+For instance, you can config your Prometheus as follows to get metrics data from IoTDB:
 
 ```yaml
 job_name: push-metrics
@@ -282,7 +293,15 @@ static_configs:
   - localhost:9091
 ```
 
-More details please see the web site of Prometheus and Grafana.
+The following documents may help you have a good journey with Prometheus and Grafana.
+
+[Prometheus getting_started](https://prometheus.io/docs/prometheus/latest/getting_started/)
+
+[Prometheus scrape metrics](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config)
+
+[Grafana getting_started](https://grafana.com/docs/grafana/latest/getting-started/getting-started/)
+
+[Grafana query metrics from Prometheus](https://prometheus.io/docs/visualization/grafana/#grafana-support-for-prometheus)
 
 Here are two demo pictures of IoTDB's metrics data in Grafana.
 
