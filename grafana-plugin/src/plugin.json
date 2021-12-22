@@ -8,9 +8,16 @@
     "description": "Apache IoTDB",
     "author": {
       "name": "the Apache Software Foundation (ASF)",
-      "url": ""
+      "url": "https://iotdb.apache.org/"
     },
-    "keywords": [],
+    "keywords": [
+      "apache",
+      "iotdb",
+      "tsdb",
+      "timeseries",
+      "grafana",
+      "plugin"
+    ],
     "logos": {
       "small": "img/logo.svg",
       "large": "img/logo.svg"
@@ -18,11 +25,15 @@
     "links": [
       {
         "name": "Website",
-        "url": "https://github.com/grafana/grafana-starter-datasource"
+        "url": "https://iotdb.apache.org/"
+      },
+      {
+        "name": "Github",
+        "url": "https://github.com/apache/iotdb"
       },
       {
         "name": "License",
-        "url": "https://github.com/grafana/grafana-starter-datasource/blob/master/LICENSE"
+        "url": "https://github.com/apache/iotdb/blob/master/LICENSE"
       }
     ],
     "screenshots": [],
