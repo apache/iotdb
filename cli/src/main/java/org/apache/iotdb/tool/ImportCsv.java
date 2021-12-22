@@ -44,7 +44,12 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -681,7 +686,7 @@ public class ImportCsv extends AbstractCsvTool {
         case TEXT:
           return value.substring(1, value.length() - 1);
         case BOOLEAN:
-          if (!value.equals("true") && !value.equals("false")) {
+          if (!"true".equals(value) && !"false".equals(value)) {
             return null;
           }
           return Boolean.valueOf(value);
