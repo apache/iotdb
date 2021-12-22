@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -215,6 +216,7 @@ public abstract class TsFileManagement {
     }
     isUnseqMerging = true;
     writeLock();
+    List[] mergeFiles = null;
     try {
       if (seqMergeList.isEmpty()) {
         logger.info("{} no seq files to be merged", storageGroupName);
@@ -242,7 +244,7 @@ public abstract class TsFileManagement {
 
       IMergeFileSelector fileSelector = getMergeFileSelector(budget, mergeResource);
       try {
-        List[] mergeFiles = fileSelector.select();
+        mergeFiles = fileSelector.select();
         if (mergeFiles.length == 0) {
           logger.info(
               "{} cannot select merge candidates under the budget {}", storageGroupName, budget);
@@ -289,6 +291,10 @@ public abstract class TsFileManagement {
         return false;
       }
     } finally {
+      if (mergeFiles != null) {
+        releaseReadLockOfTsFiles(mergeFiles[0]);
+        releaseReadLockOfTsFiles(mergeFiles[1]);
+      }
       writeUnlock();
     }
     // wait until unseq merge has finished
@@ -479,9 +485,13 @@ public abstract class TsFileManagement {
    */
   protected boolean checkAndSetFilesMergingIfNotSet(
       Collection<TsFileResource> seqFiles, Collection<TsFileResource> unseqFiles) {
+    List<TsFileResource> resourcesWithReadLock = new ArrayList<>();
     if (seqFiles != null) {
       for (TsFileResource seqFile : seqFiles) {
-        if (seqFile.isMerging()) {
+        seqFile.readLock();
+        resourcesWithReadLock.add(seqFile);
+        if (seqFile.isMerging() || seqFile.isDeleted() || !seqFile.isClosed()) {
+          releaseReadLockOfTsFiles(resourcesWithReadLock);
           logger.debug("return because {} is merging", seqFile.getTsFile());
           return false;
         }
@@ -489,7 +499,10 @@ public abstract class TsFileManagement {
     }
     if (unseqFiles != null) {
       for (TsFileResource unseqFile : unseqFiles) {
-        if (unseqFile.isMerging()) {
+        unseqFile.readLock();
+        resourcesWithReadLock.add(unseqFile);
+        if (unseqFile.isMerging() || unseqFile.isDeleted() || !unseqFile.isClosed()) {
+          releaseReadLockOfTsFiles(resourcesWithReadLock);
           logger.debug("return because {} is merging", unseqFile.getTsFile());
           return false;
         }
@@ -506,5 +519,11 @@ public abstract class TsFileManagement {
       }
     }
     return true;
+  }
+
+  protected void releaseReadLockOfTsFiles(List<TsFileResource> resources) {
+    for (TsFileResource resource : resources) {
+      resource.readUnlock();
+    }
   }
 }

@@ -571,6 +571,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
     boolean isMergeExecutedInCurrentTask = false;
     CompactionLogger compactionLogger = null;
     TsFileResource newResource = null;
+    List<TsFileResource> toMergeTsFiles = null;
     try {
       logger.debug("{} start to filter compaction condition", storageGroupName);
       for (int i = 0; i < currMaxLevel - 1; i++) {
@@ -590,8 +591,7 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
                     mergeResources.get(i),
                     Long.MAX_VALUE);
           } else {
-            List<TsFileResource> toMergeTsFiles =
-                mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
+            toMergeTsFiles = mergeResources.get(i).subList(0, currMaxFileNumInEachLevel);
             compactionSelectionLock.lock();
             try {
               if (!checkAndSetFilesMergingIfNotSet(toMergeTsFiles, null)) {
@@ -695,6 +695,9 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
       handleExceptionForCompaction(mergingFiles, newResource, sequence);
       logger.error("Error occurred in Compaction Merge thread", e);
     } finally {
+      if (toMergeTsFiles != null) {
+        releaseReadLockOfTsFiles(toMergeTsFiles);
+      }
       isSeqMerging = false;
       // reset the merge working state to false
       if (isMergeExecutedInCurrentTask) {
