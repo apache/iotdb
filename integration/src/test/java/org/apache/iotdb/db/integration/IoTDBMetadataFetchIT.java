@@ -26,9 +26,9 @@ import org.apache.iotdb.itbase.category.RemoteTest;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -52,7 +52,6 @@ import static org.junit.Assert.fail;
  * Notice that, all test begins with "IoTDB" is integration test. All test which will start the
  * IoTDB server should be defined as integration test.
  */
-@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBMetadataFetchIT {
 
   private DatabaseMetaData databaseMetaData;
@@ -81,19 +80,20 @@ public class IoTDBMetadataFetchIT {
     }
   }
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
 
     insertSQL();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showTimeseriesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -151,6 +151,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showStorageGroupTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -194,6 +195,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class})
   public void databaseMetaDataTest() throws SQLException {
     Connection connection = null;
     try {
@@ -212,7 +214,8 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
-  public void showVersion() throws SQLException {
+  @Category({LocalStandaloneTest.class})
+  public void showVersionTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String sql = "show version";
@@ -231,6 +234,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showDevicesWithSgTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -273,6 +277,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showDevicesTest() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -310,6 +315,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showChildPaths() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -342,6 +348,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showChildNodes() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -374,6 +381,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showCountTimeSeries() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -406,6 +414,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showCountDevices() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -443,6 +452,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showCountStorageGroup() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -480,6 +490,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showCountTimeSeriesGroupBy() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -510,6 +521,7 @@ public class IoTDBMetadataFetchIT {
   }
 
   @Test
+  @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
   public void showCountNodes() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

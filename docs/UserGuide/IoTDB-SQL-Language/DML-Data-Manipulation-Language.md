@@ -589,69 +589,112 @@ It costs 0.016s
 
 #### Aggregation By Level
 
-**Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
-For all timeseries paths, by convention, "level=0" represents *root* level. 
-That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
+Aggregation by level statement is used to group the query result whose name is the same at the given level. Keyword `LEVEL` is used to specify the level that need to be grouped.  By convention, `level=0` represents *root* level. 
 
-For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
-To count the number of "status" points of all these series, use query:
+For example：there are multiple series named `status` under different storage groups， like "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", and "root.sgcc.wf03.wt01.status". If you need to count the number of data points of the `status` sequence under different storage groups, use the following query:
 
 ```sql
-select count(status) from root.ln.wf01.* group by level=2
+select count(status)
+from root.**
+group by level = 1
 ```
-Result:
+
+Result：
 
 ```
-+----------------------------+
-|COUNT(root.ln.wf01.*.status)|
-+----------------------------+
-|                       10080|
-+----------------------------+
++-------------------------+---------------------------+
+|count(root.ln.*.*.status)|count(root.sgcc.*.*.status)|
++-------------------------+---------------------------+
+|                    20160|                      10080|
++-------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Similarly，if you need to count the number of data points under different devices, you can specify level = 3,
+
+```sql
+select count(status)
+from root.**
+group by level = 3
+```
+
+Result：
+
+```
++---------------------------+---------------------------+
+|count(root.*.*.wt01.status)|count(root.*.*.wt02.status)|
++---------------------------+---------------------------+
+|                      20160|                      10080|
++---------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Attention，the devices named `wt01` under storage groups `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different storage groups, you can use the following query:
+
+```sql
+select count(status)
+from root.**
+group by level = 1, 3
+```
+
+Result：
+
+```
++----------------------------+----------------------------+------------------------------+
+|count(root.ln.*.wt01.status)|count(root.ln.*.wt02.status)|count(root.sgcc.*.wt01.status)|
++----------------------------+----------------------------+------------------------------+
+|                       10080|                       10080|                         10080|
++----------------------------+----------------------------+------------------------------+
 Total line number = 1
 It costs 0.003s
 ```
 
 
-Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature".
-To query the count and the sum of "temperature" under path "root.ln.*.*", 
-aggregating on level=2, use following statement:
+
+Assuming that you want to query the maximum value of temperature sensor under all time series, you can use the following query statement:
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=2
+select max_value(temperature)
+from root.**
+group by level = 0
 ```
+
 Result：
 
 ```
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|                                8|                                4|                          228.0|              91.83000183105469|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
++---------------------------------+
+|max_value(root.*.*.*.temperature)|
++---------------------------------+
+|                             26.0|
++---------------------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
-To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
-simply set level=1
+The above queries are for a certain sensor. In particular, **if you want to query the total data points owned by all sensors at a certain level**, you need to explicitly specify `*` is selected.
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=1
+select count(*)
+from root.ln.**
+group by level = 2
 ```
+
 Result：
 
 ```
-+------------------------------+----------------------------+
-|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
-+------------------------------+----------------------------+
-|                            12|           319.8300018310547|
-+------------------------------+----------------------------+
++----------------------+----------------------+
+|count(root.*.wf01.*.*)|count(root.*.wf02.*.*)|
++----------------------+----------------------+
+|                 20160|                 20160|
++----------------------+----------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
-When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
-Otherwise, it will generate a syntax error.
+When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type. Otherwise, it will generate a syntax error.
 
 #### Down-Frequency Aggregate Query
 

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
@@ -71,6 +72,7 @@ public class PartitionUtils {
   public static boolean isLocalNonQueryPlan(PhysicalPlan plan) {
     return plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
+        || plan instanceof KillQueryPlan
         || (plan instanceof LoadConfigurationPlan
             && ((LoadConfigurationPlan) plan)
                 .getLoadConfigurationPlanType()

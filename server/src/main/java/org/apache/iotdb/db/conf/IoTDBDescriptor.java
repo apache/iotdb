@@ -738,6 +738,12 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
+      conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "insert_multi_tablet_enable_multithreading_column_threshold",
+                  String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()

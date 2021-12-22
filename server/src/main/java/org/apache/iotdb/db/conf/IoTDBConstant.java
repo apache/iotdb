@@ -169,4 +169,7 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
+
+  // compaction
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
 }
