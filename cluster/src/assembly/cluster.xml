@@ -27,5 +27,9 @@
             <directory>${maven.multiModuleProjectDirectory}/server/src/assembly/resources/tools</directory>
             <outputDirectory>${file.separator}tools</outputDirectory>
         </fileSet>
+        <fileSet>
+            <directory>${maven.multiModuleProjectDirectory}/metrics/interface/src/main/assembly/resources/conf</directory>
+            <outputDirectory>conf</outputDirectory>
+        </fileSet>
     </fileSets>
 </assembly>
