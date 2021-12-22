@@ -46,6 +46,7 @@ public class ShowTimeSeriesResultTest {
             TSDataType.DOUBLE,
             TSEncoding.GORILLA,
             CompressionType.SNAPPY,
+            100,
             tag,
             attribute);
 
@@ -60,6 +61,7 @@ public class ShowTimeSeriesResultTest {
     Assert.assertEquals(TSDataType.DOUBLE, result.getDataType());
     Assert.assertEquals(TSEncoding.GORILLA, result.getEncoding());
     Assert.assertEquals(CompressionType.SNAPPY, result.getCompressor());
+    Assert.assertEquals(100, result.getLastTime());
     Assert.assertEquals(tag, result.getTag());
     Assert.assertEquals(attribute, result.getAttribute());
   }
