@@ -77,12 +77,12 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
-import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -2011,10 +2011,12 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (CONFIG.isEnablePerformanceStat()) {
-      MetricService.getMetricManager()
+      MetricsService.getInstance()
+          .getMetricManager()
           .getOrCreateHistogram("operation_histogram", "name", operation.getName())
           .update(System.currentTimeMillis() - startTime);
-      MetricService.getMetricManager()
+      MetricsService.getInstance()
+          .getMetricManager()
           .getOrCreateCounter("operation_count", "name", operation.getName())
           .inc();
     }
