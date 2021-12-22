@@ -23,10 +23,17 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.concurrent.threadpool.WrappedScheduledExecutorService;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.type.Gauge;
 
 import com.google.common.collect.MinMaxPriorityQueue;
 import org.slf4j.Logger;
@@ -192,6 +199,12 @@ public class CompactionTaskManager implements IService {
     if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
       candidateCompactionTaskQueue.add(compactionTask);
+
+      // add metrics
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        addMetrics(compactionTask, true, false);
+      }
+
       return true;
     }
     return false;
@@ -206,15 +219,53 @@ public class CompactionTaskManager implements IService {
             < IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread()
         && candidateCompactionTaskQueue.size() > 0) {
       AbstractCompactionTask task = candidateCompactionTaskQueue.poll();
+
+      // add metrics
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        addMetrics(task, false, false);
+      }
+
       if (task != null && task.checkValidAndSetMerging()) {
         submitTask(task.getFullStorageGroupName(), task.getTimePartition(), task);
         runningCompactionTaskList.add(task);
+
+        // add metrics
+        if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+          addMetrics(task, true, true);
+        }
       }
+    }
+  }
+
+  private void addMetrics(AbstractCompactionTask task, boolean isAdd, boolean isRunning) {
+    String taskType = "unknown";
+    if (task instanceof AbstractInnerSpaceCompactionTask) {
+      taskType = "inner";
+    } else if (task instanceof AbstractCrossSpaceCompactionTask) {
+      taskType = "cross";
+    }
+    Gauge gauge =
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateGauge(
+                Metric.QUEUE.toString(),
+                Tag.NAME.toString(),
+                "compaction_" + taskType,
+                Tag.STATUS.toString(),
+                isRunning ? "running" : "waiting");
+    if (isAdd) {
+      gauge.incr(1L);
+    } else {
+      gauge.decr(1L);
     }
   }
 
   public synchronized void removeRunningTaskFromList(AbstractCompactionTask task) {
     runningCompactionTaskList.remove(task);
+    // add metrics
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      addMetrics(task, false, true);
+    }
   }
 
   /**

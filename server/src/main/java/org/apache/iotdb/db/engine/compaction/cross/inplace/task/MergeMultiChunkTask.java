@@ -29,7 +29,9 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.NaivePathSel
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -50,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -73,7 +76,7 @@ public class MergeMultiChunkTask {
       IoTDBDescriptor.getInstance().getConfig().getMergeChunkPointNumberThreshold();
 
   private InplaceCompactionLogger inplaceCompactionLogger;
-  private List<PartialPath> unmergedSeries;
+  private List<PartialPath> unmergedDevice;
 
   private String taskName;
   private CrossSpaceMergeResource resource;
@@ -84,7 +87,7 @@ public class MergeMultiChunkTask {
 
   private AtomicInteger mergedChunkNum = new AtomicInteger();
   private AtomicInteger unmergedChunkNum = new AtomicInteger();
-  private int mergedSeriesCnt;
+  private int mergedDeviceCnt;
   private double progress;
 
   private int concurrentMergeSeriesNum;
@@ -112,7 +115,7 @@ public class MergeMultiChunkTask {
       InplaceCompactionLogger inplaceCompactionLogger,
       CrossSpaceMergeResource mergeResource,
       boolean fullMerge,
-      List<PartialPath> unmergedSeries,
+      List<PartialPath> unmergedDevice,
       int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.mergeContext = context;
@@ -120,25 +123,29 @@ public class MergeMultiChunkTask {
     this.inplaceCompactionLogger = inplaceCompactionLogger;
     this.resource = mergeResource;
     this.fullMerge = fullMerge;
-    this.unmergedSeries = unmergedSeries;
+    this.unmergedDevice = unmergedDevice;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
-  void mergeSeries() throws IOException {
-    if (logger.isInfoEnabled()) {
-      logger.info("{} starts to merge {} series", taskName, unmergedSeries.size());
-    }
+  void mergeSeries() throws IOException, MetadataException {
     long startTime = System.currentTimeMillis();
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       // record the unmergeChunkStartTime for each sensor in each file
       mergeContext.getUnmergedChunkStartTimes().put(seqFile, new HashMap<>());
     }
+    mergedDeviceCnt = 0;
     // merge each series and write data into each seqFile's corresponding temp merge file
-    List<List<PartialPath>> devicePaths = MergeUtils.splitPathsByDevice(unmergedSeries);
-    for (List<PartialPath> pathList : devicePaths) {
+    for (PartialPath device : unmergedDevice) {
       // TODO: use statistics of queries to better rearrange series
-      IMergePathSelector pathSelector = new NaivePathSelector(pathList, concurrentMergeSeriesNum);
+      List<PartialPath> measurementPathListByDevice;
+      measurementPathListByDevice =
+          new ArrayList<>(IoTDB.metaManager.getAllMeasurementByDevicePath(device));
+      // just for unit tests, we need to consider whether there is a need to exist
+      Collections.sort(measurementPathListByDevice);
+
+      IMergePathSelector pathSelector =
+          new NaivePathSelector(measurementPathListByDevice, concurrentMergeSeriesNum);
       while (pathSelector.hasNext()) {
         currMergingPaths = pathSelector.next();
         mergePaths();
@@ -148,9 +155,9 @@ public class MergeMultiChunkTask {
           Thread.currentThread().interrupt();
           return;
         }
-        mergedSeriesCnt += currMergingPaths.size();
-        logMergeProgress();
       }
+      mergedDeviceCnt++;
+      logMergeProgress();
       measurementChunkMetadataListMapIteratorCache.clear();
       chunkMetadataListCacheForMerge.clear();
     }
@@ -163,19 +170,19 @@ public class MergeMultiChunkTask {
 
   private void logMergeProgress() {
     if (logger.isInfoEnabled()) {
-      double newProgress = 100 * mergedSeriesCnt / (double) (unmergedSeries.size());
+      double newProgress = 100 * mergedDeviceCnt / (double) (unmergedDevice.size());
       if (newProgress - progress >= 10.0) {
         progress = newProgress;
-        logger.info("{} has merged {}% series", taskName, progress);
+        logger.info("{} has merged {}% devices", taskName, progress);
       }
     }
   }
 
   public String getProgress() {
-    return String.format("Processed %d/%d series", mergedSeriesCnt, unmergedSeries.size());
+    return String.format("Processed %d/%d devices", mergedDeviceCnt, unmergedDevice.size());
   }
 
-  private void mergePaths() throws IOException {
+  private void mergePaths() throws IOException, MetadataException {
     inplaceCompactionLogger.logTSStart(currMergingPaths);
     IPointReader[] unseqReaders = resource.getUnseqReaders(currMergingPaths);
     currTimeValuePairs = new TimeValuePair[currMergingPaths.size()];
@@ -206,7 +213,8 @@ public class MergeMultiChunkTask {
     return maxSensor;
   }
 
-  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders) throws IOException {
+  private void pathsMergeOneFile(int seqFileIdx, IPointReader[] unseqReaders)
+      throws IOException, MetadataException {
     TsFileResource currTsFile = resource.getSeqFiles().get(seqFileIdx);
     // all paths in one call are from the same device
     String deviceId = currMergingPaths.get(0).getDevice();
@@ -624,7 +632,7 @@ public class MergeMultiChunkTask {
     }
 
     @SuppressWarnings("java:S2445") // avoid reading the same reader concurrently
-    private void mergeChunkHeap() throws IOException {
+    private void mergeChunkHeap() throws IOException, MetadataException {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);

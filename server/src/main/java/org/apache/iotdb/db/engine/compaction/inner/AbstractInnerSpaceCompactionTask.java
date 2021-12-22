@@ -98,10 +98,6 @@ public abstract class AbstractInnerSpaceCompactionTask extends AbstractCompactio
     return maxFileVersion;
   }
 
-  public int getMaxCompactionCount() {
-    return maxCompactionCount;
-  }
-
   @Override
   public boolean checkValidAndSetMerging() {
     for (TsFileResource resource : selectedTsFileResourceList) {
