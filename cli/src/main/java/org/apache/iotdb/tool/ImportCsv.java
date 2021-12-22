@@ -315,7 +315,7 @@ public class ImportCsv extends AbstractCsvTool {
                         measurementName -> {
                           String header = deviceId + "." + measurementName;
                           String value = record.get(header);
-                          if (!value.equals("")) {
+                          if (!"".equals(value)) {
                             TSDataType type;
                             if (!headerTypeMap.containsKey(headerNameMap.get(header))) {
                               type = typeInfer(value);
@@ -432,7 +432,7 @@ public class ImportCsv extends AbstractCsvTool {
                             .forEach(
                                 measurement -> {
                                   String value = record.get(measurement);
-                                  if (!value.equals("")) {
+                                  if (!"".equals(value)) {
                                     TSDataType type;
                                     if (!headerTypeMap.containsKey(
                                         headerNameMap.get(measurement))) {
@@ -537,7 +537,9 @@ public class ImportCsv extends AbstractCsvTool {
     String regex = "(?<=\\()\\S+(?=\\))";
     Pattern pattern = Pattern.compile(regex);
     for (String headerName : headerNames) {
-      if (headerName.equals("Time") || headerName.equals("Device")) continue;
+      if ("Time".equals(headerName) || "Device".equals(headerName)) {
+        continue;
+      }
       Matcher matcher = pattern.matcher(headerName);
       String type;
       if (matcher.find()) {
