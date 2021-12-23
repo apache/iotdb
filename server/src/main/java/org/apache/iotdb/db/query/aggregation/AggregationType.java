@@ -34,7 +34,8 @@ public enum AggregationType {
   MAX_TIME,
   MIN_TIME,
   MAX_VALUE,
-  MIN_VALUE;
+  MIN_VALUE,
+  EXTREME;
 
   /**
    * give an integer to return a data type.
@@ -62,6 +63,8 @@ public enum AggregationType {
         return MAX_VALUE;
       case 8:
         return MIN_VALUE;
+      case 9:
+        return EXTREME;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + i);
     }
