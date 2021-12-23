@@ -42,6 +42,7 @@ public class MicrometerMetricManagerTest {
     System.setProperty("line.separator", "\n");
     // set up path of yml
     System.setProperty("IOTDB_CONF", "src/test/resources");
+    MetricService.init();
     metricManager = MetricService.getMetricManager();
   }
 

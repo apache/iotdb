@@ -1188,7 +1188,13 @@ public class CMManager extends MManager {
     return paths;
   }
 
-  /** Similar to method getAllTimeseriesPath(), but return Path with alias alias. */
+  /**
+   * Similar to method getAllTimeseriesPath(), but return Path with alias.
+   *
+   * <p>Please note that for a returned measurement path, the name, alias and datatype are
+   * guaranteed to be accurate, while the compression type, encoding and other fields are not. See
+   * {@link GetAllPathsResult}
+   */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
@@ -1213,7 +1219,11 @@ public class CMManager extends MManager {
   }
 
   /**
-   * Get all paths after removing wildcards in the path
+   * Get all paths after removing wildcards in the path.
+   *
+   * <p>Please note that for a returned measurement path, the name, alias and datatype are
+   * guaranteed to be accurate, while the compression type, encoding and other fields are not. See
+   * {@link GetAllPathsResult}.
    *
    * @param originPath a path potentially with wildcard
    * @return all paths after removing wildcards in the path

@@ -68,12 +68,16 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -407,6 +411,16 @@ public class StorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
     recover();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              storageGroupInfo.getMemCost(),
+              Long::longValue,
+              Tag.NAME.toString(),
+              "storageGroup");
+    }
   }
 
   public String getLogicalStorageGroupName() {
@@ -1534,7 +1548,9 @@ public class StorageGroupProcessor {
       return;
     }
 
-    writeLock("checkFileTTL");
+    TsFileResourceList resourceList =
+        tsFileManager.getSequenceListByTimePartition(resource.getTimePartition());
+    resourceList.writeLock();
     try {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
@@ -1544,6 +1560,7 @@ public class StorageGroupProcessor {
         try {
           // physical removal
           resource.remove();
+          resourceList.remove(resource);
           if (logger.isInfoEnabled()) {
             logger.info(
                 "Removed a file {} before {} by ttl ({}ms)",
@@ -1557,7 +1574,7 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      writeUnlock();
+      resourceList.writeUnlock();
     }
   }
 
