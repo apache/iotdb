@@ -101,7 +101,7 @@ public enum AggregationType {
         i = 8;
         break;
       case EXTREME:
-        i = 8;
+        i = 9;
         break;
       default:
         throw new IllegalArgumentException("Invalid Aggregation Type: " + this.name());
