@@ -134,7 +134,7 @@ public class LastQueryExecutor {
     return dataSet;
   }
 
-  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+  public List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
       List<PartialPath> seriesPaths,
       List<TSDataType> dataTypes,
       QueryContext context,
@@ -172,12 +172,14 @@ public class LastQueryExecutor {
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(nonCachedPaths, context, filter);
     try {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, null);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
         LastPointReader lastReader =
             new LastPointReader(
                 nonCachedPaths.get(i),
@@ -186,7 +188,7 @@ public class LastQueryExecutor {
                 context,
                 dataSource,
                 Long.MAX_VALUE,
-                null);
+                filter);
         readerList.add(lastReader);
       }
     } finally {

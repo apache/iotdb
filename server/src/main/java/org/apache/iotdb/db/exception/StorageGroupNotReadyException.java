@@ -16,13 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.spark.db;
 
-/** this class contains several constants used in SQL. */
-public class SQLConstant {
+package org.apache.iotdb.db.exception;
 
-  public static final String RESERVED_TIME = "time";
-  public static final String TIMESTAMP_STR = "Time";
-  public static final String NULL_STR = "null";
-  public static final String WHERE = "where";
+public class StorageGroupNotReadyException extends StorageEngineException {
+
+  public StorageGroupNotReadyException(String storageGroup, int errorCode) {
+    super("the sg " + storageGroup + " may not ready now, please wait and retry later", errorCode);
+  }
 }

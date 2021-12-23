@@ -28,10 +28,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.db.exception.QueryInBatchStatementException;
-import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -250,12 +247,12 @@ public class TSServiceImpl implements TSIService.Iface {
       tsStatus = RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Login successfully");
 
       sessionId = sessionManager.requestSessionId(req.getUsername(), req.getZoneId());
-      AUDIT_LOGGER.info("User {} opens Session-{}", req.getUsername(), sessionId);
       LOGGER.info(
-          "{}: Login status: {}. User : {}",
+          "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
           tsStatus.message,
-          req.getUsername());
+          req.getUsername(),
+          sessionId);
     } else {
       tsStatus =
           RpcUtils.getStatus(
@@ -281,7 +278,7 @@ public class TSServiceImpl implements TSIService.Iface {
     sessionManager.removeCurrSessionId();
 
     return new TSStatus(
-        !sessionManager.releaseSessionResource(sessionId)
+        !sessionManager.releaseSessionResource(this, sessionId)
             ? RpcUtils.getStatus(TSStatusCode.NOT_LOGIN_ERROR)
             : RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS));
   }
@@ -308,9 +305,9 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       if (req.isSetStatementId()) {
         if (req.isSetQueryId()) {
-          sessionManager.closeDataset(req.statementId, req.queryId);
+          sessionManager.closeDataset(this, req.statementId, req.queryId);
         } else {
-          sessionManager.closeStatement(req.sessionId, req.statementId);
+          sessionManager.closeStatement(this, req.sessionId, req.statementId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -324,8 +321,18 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   /** release single operation resource */
-  protected void releaseQueryResource(long queryId) throws StorageEngineException {
+  public void releaseQueryResource(long queryId) throws StorageEngineException {
     sessionManager.releaseQueryResource(queryId);
+  }
+
+  public void releaseQueryResourceNoExceptions(long queryId) {
+    if (queryId != -1) {
+      try {
+        releaseQueryResource(queryId);
+      } catch (Exception e) {
+        LOGGER.warn("Error occurred while releasing query resource: ", e);
+      }
+    }
   }
 
   @Override
@@ -805,7 +812,7 @@ public class TSServiceImpl implements TSIService.Iface {
       }
       return resp;
     } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(queryId);
+      releaseQueryResourceNoExceptions(queryId);
       throw e;
     } finally {
       Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
@@ -830,7 +837,7 @@ public class TSServiceImpl implements TSIService.Iface {
     List<String> columnsTypes = new ArrayList<>();
 
     // check permissions
-    if (!checkAuthorization(physicalPlan.getPaths(), physicalPlan, username)) {
+    if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -848,7 +855,7 @@ public class TSServiceImpl implements TSIService.Iface {
       // because the query dataset and query id is different although the header of last query is
       // same.
       return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).getLevel() >= 0) {
+    } else if (plan instanceof AggregationPlan && ((AggregationPlan) plan).isGroupByLevel()) {
       Map<String, AggregateResult> finalPaths = ((AggregationPlan) plan).getAggPathByLevel();
       for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {
         respColumns.add(entry.getKey());
@@ -1009,7 +1016,7 @@ public class TSServiceImpl implements TSIService.Iface {
                 req.fetchSize, queryDataSet, sessionManager.getUsername(req.sessionId));
         boolean hasResultSet = result.bufferForTime().limit() != 0;
         if (!hasResultSet) {
-          sessionManager.releaseQueryResourceNoExceptions(req.queryId);
+          releaseQueryResourceNoExceptions(req.queryId);
         }
         TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
         resp.setHasResultSet(hasResultSet);
@@ -1047,7 +1054,7 @@ public class TSServiceImpl implements TSIService.Iface {
           onNPEOrUnexpectedException(
               e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
     } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(req.queryId);
+      releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(
           onNPEOrUnexpectedException(
               e, "executing fetchResults", TSStatusCode.INTERNAL_SERVER_ERROR));
@@ -1097,6 +1104,9 @@ public class TSServiceImpl implements TSIService.Iface {
           IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryContext context = genQueryContext(queryId, physicalPlan.isDebug());
+    if (physicalPlan instanceof QueryPlan) {
+      context.setAscending(((QueryPlan) physicalPlan).isAscending());
+    }
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
     sessionManager.setDataset(queryId, queryDataSet);
@@ -1924,7 +1934,7 @@ public class TSServiceImpl implements TSIService.Iface {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
       return RpcUtils.getStatus(
           TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e));
-    } else if (e instanceof IoTDBException) {
+    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
       DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
       return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
     }
@@ -1943,7 +1953,7 @@ public class TSServiceImpl implements TSIService.Iface {
     if (e instanceof BatchProcessException) {
       LOGGER.warn(message, e);
       return RpcUtils.getStatus(Arrays.asList(((BatchProcessException) e).getFailingStatus()));
-    } else if (e instanceof IoTDBException) {
+    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
       if (((IoTDBException) e).isUserException()) {
         LOGGER.warn(message + e.getMessage());
       } else {

@@ -36,35 +36,44 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class AggregateUtils {
   /**
-   * Transform an originalPath to a partial path that satisfies given level. Path nodes exceed the
-   * given level will be replaced by "*", e.g. generatePartialPathByLevel("root.sg.dh.d1.s1", 2)
-   * will return "root.sg.dh.*.s1"
+   * Transform an originalPath to a partial path that satisfies given level. Path nodes don't
+   * satisfy the given level will be replaced by "*" except the sensor level, e.g.
+   * generatePartialPathByLevel("root.sg.dh.d1.s1", 2) will return "root.*.dh.*.s1".
    *
-   * @param originalPath the original timeseries path
-   * @param pathLevel the expected path level
+   * <p>Especially, if count(*), then the sensor level will be replaced by "*" too.
+   *
    * @return result partial path
    */
-  public static String generatePartialPathByLevel(String originalPath, int pathLevel)
-      throws IllegalPathException {
-    String[] tmpPath = MetaUtils.splitPathToDetachedPath(originalPath);
-    if (tmpPath.length <= pathLevel) {
-      return originalPath;
+  public static String generatePartialPathByLevel(
+      String originalPath, int[] pathLevels, boolean isCountStar) throws IllegalPathException {
+    String[] nodes = MetaUtils.splitPathToDetachedPath(originalPath);
+    Set<Integer> levelSet = new HashSet<>();
+    for (int level : pathLevels) {
+      levelSet.add(level);
     }
+
     StringBuilder transformedPath = new StringBuilder();
-    transformedPath.append(tmpPath[0]);
-    for (int k = 1; k < tmpPath.length - 1; k++) {
-      if (k <= pathLevel) {
-        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[k]);
+    transformedPath.append(nodes[0]).append(TsFileConstant.PATH_SEPARATOR);
+    for (int k = 1; k < nodes.length - 1; k++) {
+      if (levelSet.contains(k)) {
+        transformedPath.append(nodes[k]);
       } else {
-        transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(IoTDBConstant.PATH_WILDCARD);
+        transformedPath.append(IoTDBConstant.PATH_WILDCARD);
       }
+      transformedPath.append(TsFileConstant.PATH_SEPARATOR);
     }
-    transformedPath.append(TsFileConstant.PATH_SEPARATOR).append(tmpPath[tmpPath.length - 1]);
+    if (isCountStar) {
+      transformedPath.append(IoTDBConstant.PATH_WILDCARD);
+    } else {
+      transformedPath.append(nodes[nodes.length - 1]);
+    }
     return transformedPath.toString();
   }
 
@@ -140,23 +149,19 @@ public class AggregateUtils {
 
     List<AggregateResult> resultSet = new ArrayList<>();
     List<PartialPath> dupPaths = plan.getDeduplicatedPaths();
-    try {
-      for (int i = 0; i < aggResults.size(); i++) {
-        if (aggResults.get(i) != null) {
-          String transformedPath =
-              generatePartialPathByLevel(dupPaths.get(i).getFullPath(), plan.getLevel());
-          String key = plan.getDeduplicatedAggregations().get(i) + "(" + transformedPath + ")";
-          AggregateResult tempAggResult = finalPaths.get(key);
-          if (tempAggResult == null) {
-            finalPaths.put(key, aggResults.get(i));
-          } else {
-            tempAggResult.merge(aggResults.get(i));
-            finalPaths.put(key, tempAggResult);
-          }
+    for (int i = 0; i < aggResults.size(); i++) {
+      if (aggResults.get(i) != null) {
+        String rawPath =
+            plan.getDeduplicatedAggregations().get(i) + "(" + dupPaths.get(i).getFullPath() + ")";
+        String key = plan.getGroupByLevelController().getGroupedPath(rawPath);
+        AggregateResult tempAggResult = finalPaths.get(key);
+        if (tempAggResult == null) {
+          finalPaths.put(key, aggResults.get(i));
+        } else {
+          tempAggResult.merge(aggResults.get(i));
+          finalPaths.put(key, tempAggResult);
         }
       }
-    } catch (IllegalPathException e) {
-      throw new QueryProcessException(e.getMessage());
     }
 
     for (Map.Entry<String, AggregateResult> entry : finalPaths.entrySet()) {

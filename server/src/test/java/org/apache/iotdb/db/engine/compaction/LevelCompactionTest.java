@@ -206,7 +206,6 @@ abstract class LevelCompactionTest {
       resourceFile.delete();
     }
     FileReaderManager.getInstance().closeAndRemoveAllOpenedReaders();
-    FileReaderManager.getInstance().stop();
   }
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
@@ -256,6 +255,8 @@ abstract class LevelCompactionTest {
     TsFileResource tsFileResource1 = new TsFileResource(file1);
     tsFileResource1.setClosed(true);
     tsFileResource1.updatePlanIndexes((long) 0);
+    tsFileResource1.updateStartTime(deviceIds[0], 0);
+    tsFileResource1.updateEndTime(deviceIds[0], 0);
     TsFileWriter fileWriter1 = new TsFileWriter(tsFileResource1.getTsFile());
     fileWriter1.registerTimeseries(
         new Path(deviceIds[0], measurementSchemas[0].getMeasurementId()), measurementSchemas[0]);
@@ -282,6 +283,8 @@ abstract class LevelCompactionTest {
     TsFileResource tsFileResource2 = new TsFileResource(file2);
     tsFileResource2.setClosed(true);
     tsFileResource2.updatePlanIndexes((long) 1);
+    tsFileResource2.updateStartTime(deviceIds[0], 0);
+    tsFileResource2.updateEndTime(deviceIds[0], 0);
     TsFileWriter fileWriter2 = new TsFileWriter(tsFileResource2.getTsFile());
     fileWriter2.registerTimeseries(
         new Path(deviceIds[0], measurementSchemas[1].getMeasurementId()), measurementSchemas[1]);

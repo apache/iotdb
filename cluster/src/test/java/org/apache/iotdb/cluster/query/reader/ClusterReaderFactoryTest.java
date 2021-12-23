@@ -36,7 +36,6 @@ import java.io.IOException;
 import java.util.Collections;
 
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 public class ClusterReaderFactoryTest extends BaseQueryTest {
 
@@ -73,7 +72,7 @@ public class ClusterReaderFactoryTest extends BaseQueryTest {
                   context,
                   dataGroupMemberMap.get(TestUtils.getNode(10)),
                   true);
-      assertNull(seriesReader);
+      assertNotNull(seriesReader);
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
       StorageEngine.getInstance().setTTL(new PartialPath(TestUtils.getTestSg(0)), Long.MAX_VALUE);

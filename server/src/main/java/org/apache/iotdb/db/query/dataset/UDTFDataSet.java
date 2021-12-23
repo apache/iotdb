@@ -95,12 +95,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     queryId = queryContext.getQueryId();
     this.udtfPlan = udtfPlan;
     inputLayer =
-        new InputLayer(
-            queryId,
-            UDF_READER_MEMORY_BUDGET_IN_MB,
-            deduplicatedPaths,
-            deduplicatedDataTypes,
-            readersOfSelectedSeries);
+        new InputLayer(queryId, UDF_READER_MEMORY_BUDGET_IN_MB, udtfPlan, readersOfSelectedSeries);
     udtfPlan.initializeUdfExecutors(queryId, UDF_COLLECTOR_MEMORY_BUDGET_IN_MB);
     initTransformers(UDF_TRANSFORMER_MEMORY_BUDGET_IN_MB);
   }

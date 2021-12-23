@@ -23,11 +23,13 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 public class QueryUtils {
 
@@ -94,15 +96,26 @@ public class QueryUtils {
     }
   }
 
-  // remove files that do not satisfy the filter
-  public static void filterQueryDataSource(
-      QueryDataSource queryDataSource, TsFileFilter fileFilter) {
-    if (fileFilter == null) {
-      return;
-    }
-    List<TsFileResource> seqResources = queryDataSource.getSeqResources();
-    List<TsFileResource> unseqResources = queryDataSource.getUnseqResources();
-    seqResources.removeIf(fileFilter::fileNotSatisfy);
-    unseqResources.removeIf(fileFilter::fileNotSatisfy);
+  public static void fillOrderIndexes(
+      QueryDataSource dataSource, String deviceId, boolean ascending) {
+    List<TsFileResource> unseqResources = dataSource.getUnseqResources();
+    int[] orderIndex = new int[unseqResources.size() + 1];
+    AtomicInteger index = new AtomicInteger();
+    Map<Integer, Long> intToOrderTimeMap =
+        unseqResources.stream()
+            .collect(
+                Collectors.toMap(
+                    key -> index.getAndIncrement(),
+                    resource -> resource.getOrderTime(deviceId, ascending)));
+    index.set(0);
+    intToOrderTimeMap.entrySet().stream()
+        .sorted(
+            (t1, t2) ->
+                ascending
+                    ? Long.compare(t1.getValue(), t2.getValue())
+                    : Long.compare(t2.getValue(), t1.getValue()))
+        .collect(Collectors.toList())
+        .forEach(item -> orderIndex[index.getAndIncrement()] = item.getKey());
+    dataSource.setUnSeqFileOrderIndex(orderIndex);
   }
 }

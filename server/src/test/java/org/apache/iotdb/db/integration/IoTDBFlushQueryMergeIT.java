@@ -152,7 +152,7 @@ public class IoTDBFlushQueryMergeIT {
 
       int i = 0;
       try (ResultSet resultSet =
-          statement.executeQuery("SELECT * FROM root.group1,root.group2,root" + ".group3")) {
+          statement.executeQuery("SELECT * FROM root.group1,root.group2,root.group3")) {
         while (resultSet.next()) {
           i++;
         }

@@ -354,7 +354,7 @@ public class IoTDBDescriptor {
       conf.setMaxSelectUnseqFileNumInEachUnseqCompaction(
           Integer.parseInt(
               properties.getProperty(
-                  "max_open_file_num_in_each_unseq_compaction",
+                  "max_select_unseq_file_num_in_each_unseq_compaction",
                   Integer.toString(conf.getMaxSelectUnseqFileNumInEachUnseqCompaction()))));
 
       conf.setUnseqFileNumInEachLevel(
@@ -1228,10 +1228,13 @@ public class IoTDBDescriptor {
                   + queryMemoryAllocateProportion);
         }
       }
-
-      conf.setMaxQueryDeduplicatedPathNum(
-          Integer.parseInt(properties.getProperty("max_deduplicated_path_num")));
     }
+
+    conf.setMaxQueryDeduplicatedPathNum(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_deduplicated_path_num",
+                Integer.toString(conf.getMaxQueryDeduplicatedPathNum()))));
   }
 
   @SuppressWarnings("squid:S3518") // "proportionSum" can't be zero

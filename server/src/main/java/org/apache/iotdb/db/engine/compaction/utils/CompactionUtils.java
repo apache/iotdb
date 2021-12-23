@@ -428,8 +428,8 @@ public class CompactionUtils {
       for (TsFileResource tsFileResource : tsFileResources) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
-      targetResource.serialize();
       writer.endFile();
+      targetResource.serialize();
       targetResource.close();
     } finally {
       if (writer.canWrite()) {

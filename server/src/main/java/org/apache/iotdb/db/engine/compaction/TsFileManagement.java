@@ -59,6 +59,7 @@ public abstract class TsFileManagement {
   private static final Logger logger = LoggerFactory.getLogger(TsFileManagement.class);
   protected String storageGroupName;
   protected String storageGroupDir;
+  protected String virtualStorageGroupId;
 
   /** Serialize queries, delete resource files, compaction cleanup files */
   private final ReadWriteLock compactionMergeLock = new ReentrantReadWriteLock();
@@ -66,6 +67,11 @@ public abstract class TsFileManagement {
   public volatile boolean isUnseqMerging = false;
   public volatile boolean isSeqMerging = false;
   public volatile boolean recovered = false;
+  /**
+   * This flag is true by default, it means the compaction run without any problems. It is set to
+   * false if exception occurs and it cannot be handled correctly.
+   */
+  public volatile boolean canMerge = true;
   /**
    * This is the modification file of the result of the current merge. Because the merged file may
    * be invisible at this moment, without this, deletion/update during merge could be lost.
@@ -81,9 +87,11 @@ public abstract class TsFileManagement {
 
   protected ReentrantLock compactionSelectionLock = new ReentrantLock();
 
-  public TsFileManagement(String storageGroupName, String storageGroupDir) {
+  public TsFileManagement(
+      String storageGroupName, String virtualStorageGroupId, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
     this.storageGroupDir = storageGroupDir;
+    this.virtualStorageGroupId = virtualStorageGroupId;
   }
 
   public void setForceFullMerge(boolean forceFullMerge) {
@@ -112,9 +120,6 @@ public abstract class TsFileManagement {
 
   /** add one TsFile to list */
   public abstract void add(TsFileResource tsFileResource, boolean sequence) throws IOException;
-
-  /** add one TsFile to list for recover */
-  public abstract void addRecover(TsFileResource tsFileResource, boolean sequence);
 
   /** add some TsFiles to list */
   public abstract void addAll(List<TsFileResource> tsFileResourceList, boolean sequence)
@@ -172,26 +177,23 @@ public abstract class TsFileManagement {
     }
 
     public Void call() {
-      merge(timePartitionId);
-      closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      if (canMerge) {
+        merge(timePartitionId);
+        closeCompactionMergeCallBack.call(isMergeExecutedInCurrentTask, timePartitionId);
+      }
       return null;
     }
   }
 
   public class CompactionRecoverTask extends StorageGroupCompactionTask {
 
-    private CloseCompactionMergeCallBack closeCompactionMergeCallBack;
-
-    public CompactionRecoverTask(CloseCompactionMergeCallBack closeCompactionMergeCallBack) {
+    public CompactionRecoverTask() {
       super(storageGroupName);
-      this.closeCompactionMergeCallBack = closeCompactionMergeCallBack;
     }
 
     @Override
     public Void call() {
       recover();
-      // in recover logic, the param time partition is useless, we can just pass 0L
-      closeCompactionMergeCallBack.call(false, 0L);
       return null;
     }
   }
@@ -480,7 +482,7 @@ public abstract class TsFileManagement {
     if (seqFiles != null) {
       for (TsFileResource seqFile : seqFiles) {
         if (seqFile.isMerging()) {
-          logger.warn("return because {} is merging", seqFile.getTsFile());
+          logger.debug("return because {} is merging", seqFile.getTsFile());
           return false;
         }
       }
@@ -488,7 +490,7 @@ public abstract class TsFileManagement {
     if (unseqFiles != null) {
       for (TsFileResource unseqFile : unseqFiles) {
         if (unseqFile.isMerging()) {
-          logger.warn("return because {} is merging", unseqFile.getTsFile());
+          logger.debug("return because {} is merging", unseqFile.getTsFile());
           return false;
         }
       }

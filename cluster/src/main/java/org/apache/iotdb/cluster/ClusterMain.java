@@ -96,6 +96,13 @@ public class ClusterMain {
       return;
     }
 
+    // if client ip is the default address, set it same with internal ip
+    if (IoTDBDescriptor.getInstance().getConfig().getRpcAddress().equals("0.0.0.0")) {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setRpcAddress(ClusterDescriptor.getInstance().getConfig().getInternalIp());
+    }
+
     String mode = args[0];
 
     logger.info("Running mode {}", mode);

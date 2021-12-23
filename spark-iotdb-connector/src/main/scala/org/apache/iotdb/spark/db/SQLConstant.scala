@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.rescon;
 
-public interface TVListAllocatorMBean {
+package org.apache.iotdb.spark.db
 
-  int getNumberOfTVLists();
+object SQLConstant {
+  val RESERVED_TIME = "time"
+  val TIMESTAMP_STR = "Time"
+  val NULL_STR = "null"
+  val WHERE = "where"
 }

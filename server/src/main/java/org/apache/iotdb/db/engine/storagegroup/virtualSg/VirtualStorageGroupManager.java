@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartiti
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -141,11 +142,8 @@ public class VirtualStorageGroupManager {
         }
       } else {
         // not finished recover, refuse the request
-        throw new StorageEngineException(
-            "the sg "
-                + storageGroupMNode.getFullPath()
-                + " may not ready now, please wait and retry later",
-            TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+        throw new StorageGroupNotReadyException(
+            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
 

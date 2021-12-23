@@ -85,11 +85,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     try {
       List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
-          context.getQueryId(),
-          queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(),
-          readersOfSelectedSeries,
-          queryPlan.isAscending());
+          context.getQueryId(), queryPlan, readersOfSelectedSeries);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
@@ -112,9 +108,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       throw new StorageEngineException(e);
     }
     List<ManagedSeriesReader> readersOfSelectedSeries = Lists.newArrayList();
-    List<AbstractMultPointReader> multPointReaders = Lists.newArrayList();
-
-    multPointReaders =
+    List<AbstractMultPointReader> multPointReaders =
         readerFactory.getMultSeriesReader(
             queryPlan.getDeduplicatedPaths(),
             queryPlan.getDeviceToMeasurements(),
@@ -130,7 +124,8 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
       AssignPathManagedMergeReader assignPathManagedMergeReader =
-          new AssignPathManagedMergeReader(partialPath.getFullPath(), dataType);
+          new AssignPathManagedMergeReader(
+              partialPath.getFullPath(), dataType, queryPlan.isAscending());
       for (AbstractMultPointReader multPointReader : multPointReaders) {
         if (multPointReader.getAllPaths().contains(partialPath.getFullPath())) {
           assignPathManagedMergeReader.addReader(multPointReader, 0);

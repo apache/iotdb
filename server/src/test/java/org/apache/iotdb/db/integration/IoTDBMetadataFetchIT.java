@@ -555,8 +555,14 @@ public class IoTDBMetadataFetchIT {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT NODES root level=1"};
-      String[] standards = new String[] {"3,\n"};
+
+      String[] sqls =
+          new String[] {
+            "COUNT NODES root.* level=1",
+            "COUNT NODES root.ln level=1",
+            "COUNT NODES root.ln.wf01.* level=1",
+          };
+      String[] standards = new String[] {"3,\n", "1,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];

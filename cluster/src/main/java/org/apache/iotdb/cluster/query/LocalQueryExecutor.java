@@ -627,37 +627,35 @@ public class LocalQueryExecutor {
 
     ClusterQueryUtils.checkPathExistence(path);
     List<AggregateResult> results = new ArrayList<>();
+    List<AggregateResult> ascResults = new ArrayList<>();
+    List<AggregateResult> descResults = new ArrayList<>();
     for (String aggregation : aggregations) {
-      results.add(AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending));
+      AggregateResult ar =
+          AggregateResultFactory.getAggrResultByName(aggregation, dataType, ascending);
+      if (ar.isAscending()) {
+        ascResults.add(ar);
+      } else {
+        descResults.add(ar);
+      }
+      results.add(ar);
     }
     List<Integer> nodeSlots =
         ((SlotPartitionTable) dataGroupMember.getMetaGroupMember().getPartitionTable())
             .getNodeSlots(dataGroupMember.getHeader());
     try {
-      if (ascending) {
-        AggregationExecutor.aggregateOneSeries(
-            new PartialPath(path),
-            allSensors,
-            context,
-            timeFilter,
-            dataType,
-            results,
-            null,
-            new SlotTsFileFilter(nodeSlots));
-      } else {
-        AggregationExecutor.aggregateOneSeries(
-            new PartialPath(path),
-            allSensors,
-            context,
-            timeFilter,
-            dataType,
-            null,
-            results,
-            new SlotTsFileFilter(nodeSlots));
-      }
+      AggregationExecutor.aggregateOneSeries(
+          new PartialPath(path),
+          allSensors,
+          context,
+          timeFilter,
+          dataType,
+          ascResults,
+          descResults,
+          new SlotTsFileFilter(nodeSlots));
     } catch (IllegalPathException e) {
       // ignore
     }
+
     return results;
   }
 
@@ -823,6 +821,10 @@ public class LocalQueryExecutor {
     return resultBuffers;
   }
 
+  /**
+   * returns a non-nul ByteBuffer as thrift response, which not allows null objects. If the
+   * ByteBuffer data equals <0, null>, it means that the NextNotNullValue is null.
+   */
   public ByteBuffer peekNextNotNullValue(long executorId, long startTime, long endTime)
       throws ReaderNotFoundException, IOException {
     GroupByExecutor executor = queryManager.getGroupByExecutor(executorId);
@@ -830,6 +832,9 @@ public class LocalQueryExecutor {
       throw new ReaderNotFoundException(executorId);
     }
     Pair<Long, Object> pair = executor.peekNextNotNullValue(startTime, endTime);
+    if (pair == null) {
+      pair = new Pair<>(0L, null);
+    }
     ByteBuffer resultBuffer;
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream)) {

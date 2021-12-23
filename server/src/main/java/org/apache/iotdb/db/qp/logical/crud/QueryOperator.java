@@ -43,9 +43,6 @@ public class QueryOperator extends SFWOperator {
   private Map<TSDataType, IFill> fillTypes;
   private boolean isFill = false;
 
-  private boolean isGroupByLevel = false;
-  private int level = -1;
-
   private int rowLimit = 0;
   private int rowOffset = 0;
   private int seriesLimit = 0;
@@ -105,12 +102,24 @@ public class QueryOperator extends SFWOperator {
     this.fillTypes = fillTypes;
   }
 
-  public boolean isGroupByLevel() {
-    return isGroupByLevel;
+  public int[] getLevels() {
+    if (getSelectOperator() != null) {
+      return getSelectOperator().getLevels();
+    }
+    return new int[0];
   }
 
-  public void setGroupByLevel(boolean isGroupBy) {
-    this.isGroupByLevel = isGroupBy;
+  public void setLevels(int[] levels) {
+    if (getSelectOperator() != null) {
+      getSelectOperator().setLevels(levels);
+    }
+  }
+
+  public boolean isGroupByLevel() {
+    if (getSelectOperator() != null) {
+      return getSelectOperator().isGroupByLevel();
+    }
+    return false;
   }
 
   public boolean isLeftCRightO() {
@@ -207,14 +216,6 @@ public class QueryOperator extends SFWOperator {
 
   public void setAlignByTime(boolean isAlignByTime) {
     this.isAlignByTime = isAlignByTime;
-  }
-
-  public int getLevel() {
-    return level;
-  }
-
-  public void setLevel(int level) {
-    this.level = level;
   }
 
   public boolean isGroupByTime() {

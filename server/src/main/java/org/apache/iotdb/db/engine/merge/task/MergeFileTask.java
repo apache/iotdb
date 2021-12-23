@@ -176,7 +176,7 @@ public class MergeFileTask {
       // filter the chunks that have been merged
       oldFileWriter.filterChunks(new HashMap<>(context.getUnmergedChunkStartTimes().get(seqFile)));
 
-      RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile);
+      RestorableTsFileIOWriter newFileWriter = resource.getMergeFileWriter(seqFile, false);
       newFileWriter.close();
       try (TsFileSequenceReader newFileReader =
           new TsFileSequenceReader(newFileWriter.getFile().getPath())) {
@@ -309,7 +309,7 @@ public class MergeFileTask {
   private void moveUnmergedToNew(TsFileResource seqFile) throws IOException {
     Map<PartialPath, List<Long>> fileUnmergedChunkStartTimes =
         context.getUnmergedChunkStartTimes().get(seqFile);
-    RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile);
+    RestorableTsFileIOWriter fileWriter = resource.getMergeFileWriter(seqFile, false);
 
     mergeLogger.logFileMergeStart(fileWriter.getFile(), fileWriter.getFile().length());
     logger.debug("{} moving unmerged chunks of {} to the new file", taskName, seqFile);

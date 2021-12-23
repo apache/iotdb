@@ -18,7 +18,9 @@
  */
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.udf.core.context.UDFContext;
 
@@ -37,6 +39,10 @@ public final class SelectOperator extends Operator {
   private boolean lastQuery;
   private boolean udfQuery;
   private boolean hasBuiltinAggregation;
+
+  private GroupByLevelController groupByLevelController;
+  private boolean isCountStar;
+  private int[] levels;
 
   /** init with tokenIntType, default operatorType is <code>OperatorType.SELECT</code>. */
   public SelectOperator(int tokenIntType, ZoneId zoneId) {
@@ -112,5 +118,40 @@ public final class SelectOperator extends Operator {
 
   public void setUdfList(List<UDFContext> udfList) {
     this.udfList = udfList;
+  }
+
+  public boolean isCountStar() {
+    return isCountStar;
+  }
+
+  /** check whether is count star */
+  public void checkCountStar() {
+    if (hasAggregation()
+        && getAggregations().size() == 1
+        && getAggregations().get(0).equals(SQLConstant.COUNT)
+        && getSuffixPaths().size() == 1
+        && getSuffixPaths().get(0).equals(IoTDBConstant.PATH_WILDCARD)) {
+      isCountStar = true;
+    }
+  }
+
+  public int[] getLevels() {
+    return levels;
+  }
+
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public boolean isGroupByLevel() {
+    return !(levels == null || levels.length == 0);
+  }
+
+  public GroupByLevelController getGroupByLevelController() {
+    return groupByLevelController;
+  }
+
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
   }
 }

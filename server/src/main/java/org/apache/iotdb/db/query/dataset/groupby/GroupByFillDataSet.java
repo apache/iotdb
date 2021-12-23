@@ -33,6 +33,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -41,10 +44,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class GroupByFillDataSet extends QueryDataSet {
 
   private GroupByEngineDataSet groupByEngineDataSet;
+  private final LastQueryExecutor lastQueryExecutor;
   private Map<TSDataType, IFill> fillTypes;
   // the first value for each time series
   private Object[] previousValue;
@@ -52,6 +57,7 @@ public class GroupByFillDataSet extends QueryDataSet {
   // last timestamp for each time series
   private long[] lastTimeArray;
   private TimeValuePair[] firstNotNullTV;
+  private PreviousFill[] previousFillExecutors;
   private boolean isPeekEnded = false;
 
   public GroupByFillDataSet(
@@ -60,18 +66,16 @@ public class GroupByFillDataSet extends QueryDataSet {
       GroupByEngineDataSet groupByEngineDataSet,
       Map<TSDataType, IFill> fillTypes,
       QueryContext context,
-      GroupByTimeFillPlan groupByFillPlan)
+      GroupByTimeFillPlan groupByFillPlan,
+      LastQueryExecutor lastQueryExecutor)
       throws StorageEngineException, IOException, QueryProcessException {
     super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
     this.groupByEngineDataSet = groupByEngineDataSet;
+    this.lastQueryExecutor = lastQueryExecutor;
     this.fillTypes = fillTypes;
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
-    try {
-      initPreviousParis(context, groupByFillPlan);
-      initLastTimeArray(context, groupByFillPlan);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
-    }
+
+    initPreviousParis(context, groupByFillPlan);
+    initLastTimeArray(context, groupByFillPlan);
   }
 
   private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
@@ -79,24 +83,25 @@ public class GroupByFillDataSet extends QueryDataSet {
     previousValue = new Object[paths.size()];
     previousTime = new long[paths.size()];
     firstNotNullTV = new TimeValuePair[paths.size()];
+    previousFillExecutors = new PreviousFill[paths.size()];
 
+    long lowerBound = Long.MAX_VALUE;
     for (int i = 0; i < paths.size(); i++) {
       PartialPath path = (PartialPath) paths.get(i);
       TSDataType dataType = dataTypes.get(i);
-      IFill fill;
+      PreviousFill fill;
+      long beforeRange;
       if (fillTypes.containsKey(dataType)) {
+        beforeRange = ((PreviousFill) fillTypes.get(dataType)).getBeforeRange();
         fill =
             new PreviousFill(
                 dataType,
                 groupByEngineDataSet.getStartTime(),
-                ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
+                beforeRange,
                 ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
       } else {
-        fill =
-            new PreviousFill(
-                dataType,
-                groupByEngineDataSet.getStartTime(),
-                IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+        beforeRange = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+        fill = new PreviousFill(dataType, groupByEngineDataSet.getStartTime(), beforeRange);
       }
       fill.configureFill(
           path,
@@ -104,15 +109,40 @@ public class GroupByFillDataSet extends QueryDataSet {
           groupByEngineDataSet.getStartTime(),
           groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()),
           context);
+      previousFillExecutors[i] = fill;
 
-      firstNotNullTV[i] = fill.getFillResult();
-      TimeValuePair timeValuePair = firstNotNullTV[i];
-      previousValue[i] = null;
-      previousTime[i] = Long.MAX_VALUE;
-      if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
-        previousValue[i] = timeValuePair.getValue().getValue();
-        previousTime[i] = timeValuePair.getTimestamp();
+      lowerBound =
+          Math.min(
+              lowerBound,
+              beforeRange == -1
+                  ? Long.MIN_VALUE
+                  : groupByEngineDataSet.getStartTime() - beforeRange);
+    }
+
+    Filter timeFilter =
+        FilterFactory.and(
+            TimeFilter.gtEq(lowerBound), TimeFilter.ltEq(groupByEngineDataSet.getStartTime()));
+
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(
+                paths.stream().map(path -> (PartialPath) path).collect(Collectors.toList()),
+                context,
+                timeFilter);
+    try {
+      for (int i = 0; i < paths.size(); i++) {
+        PreviousFill fill = previousFillExecutors[i];
+        firstNotNullTV[i] = fill.getFillResult();
+        TimeValuePair timeValuePair = firstNotNullTV[i];
+        previousValue[i] = null;
+        previousTime[i] = Long.MAX_VALUE;
+        if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
+          previousValue[i] = timeValuePair.getValue().getValue();
+          previousTime[i] = timeValuePair.getTimestamp();
+        }
       }
+    } finally {
+      StorageEngine.getInstance().mergeUnLock(list);
     }
   }
 
@@ -125,8 +155,8 @@ public class GroupByFillDataSet extends QueryDataSet {
       seriesPaths.add((PartialPath) paths.get(i));
     }
     List<Pair<Boolean, TimeValuePair>> lastValueContainer =
-        LastQueryExecutor.calculateLastPairForSeriesLocally(
-            seriesPaths, dataTypes, context, null, groupByFillPlan.getDeviceToMeasurements());
+        lastQueryExecutor.calculateLastPairForSeries(
+            seriesPaths, dataTypes, context, null, groupByFillPlan);
     for (int i = 0; i < lastValueContainer.size(); i++) {
       if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
         lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();

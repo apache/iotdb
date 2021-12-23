@@ -27,20 +27,12 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
-import org.apache.iotdb.db.exception.BatchProcessException;
-import org.apache.iotdb.db.exception.LoadFileException;
-import org.apache.iotdb.db.exception.ShutdownException;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageGroupProcessorException;
-import org.apache.iotdb.db.exception.TsFileProcessorException;
-import org.apache.iotdb.db.exception.WriteProcessException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -54,7 +46,7 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryFileManager;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -64,7 +56,7 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -569,11 +561,8 @@ public class StorageEngine implements IService {
         }
       } else {
         // not finished recover, refuse the request
-        throw new StorageEngineException(
-            "the sg "
-                + storageGroupMNode.getPartialPath()
-                + " may not ready now, please wait and retry later",
-            TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
+        throw new StorageGroupNotReadyException(
+            storageGroupMNode.getFullPath(), TSStatusCode.STORAGE_GROUP_NOT_READY.getStatusCode());
       }
     }
     return virtualStorageGroupManager.getProcessor(devicePath, storageGroupMNode);
@@ -819,17 +808,12 @@ public class StorageEngine implements IService {
     }
   }
 
-  /** query data. */
-  public QueryDataSource query(
-      SingleSeriesExpression seriesExpression,
-      QueryContext context,
-      QueryFileManager filePathsManager)
-      throws StorageEngineException, QueryProcessException {
-    PartialPath fullPath = (PartialPath) seriesExpression.getSeriesPath();
-    PartialPath deviceId = fullPath.getDevicePath();
+  public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
+    PartialPath deviceId = path.getDevicePath();
     StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(
-        fullPath, context, filePathsManager, seriesExpression.getFilter());
+    return storageGroupProcessor.getLogicalStorageGroupName()
+        + File.separator
+        + storageGroupProcessor.getVirtualStorageGroupId();
   }
 
   /**
@@ -1068,6 +1052,28 @@ public class StorageEngine implements IService {
             .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
     list.forEach(StorageGroupProcessor::readLock);
+    return list;
+  }
+
+  /**
+   * get all merge lock of the storage group processor related to the query and init QueryDataSource
+   */
+  public List<StorageGroupProcessor> mergeLockAndInitQueryDataSource(
+      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
+      throws StorageEngineException, QueryProcessException {
+    Map<StorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
+    for (PartialPath path : pathList) {
+      map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
+    }
+    List<StorageGroupProcessor> list =
+        map.keySet().stream()
+            .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
+            .collect(Collectors.toList());
+    list.forEach(StorageGroupProcessor::readLock);
+
+    // init QueryDataSource
+    QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
+
     return list;
   }
 

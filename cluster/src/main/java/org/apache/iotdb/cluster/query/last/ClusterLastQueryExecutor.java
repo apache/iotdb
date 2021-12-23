@@ -43,6 +43,8 @@ import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.thrift.TException;
@@ -74,7 +76,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
   }
 
   @Override
-  protected List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
+  public List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeries(
       List<PartialPath> seriesPaths,
       List<TSDataType> dataTypes,
       QueryContext context,
@@ -247,11 +249,14 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         logger.warn("can not get client for node= {}", node);
         return null;
       }
+      Filter timeFilter =
+          (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
       buffer =
           SyncClientAdaptor.last(
               asyncDataClient,
               seriesPaths,
               dataTypeOrdinals,
+              timeFilter,
               context,
               queryPlan.getDeviceToMeasurements(),
               group.getHeader());
@@ -263,14 +268,20 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           metaGroupMember
               .getClientProvider()
               .getSyncDataClient(node, RaftServer.getReadOperationTimeoutMS())) {
-        return client.last(
+        LastQueryRequest lastQueryRequest =
             new LastQueryRequest(
                 PartialPath.toStringList(seriesPaths),
                 dataTypeOrdinals,
                 context.getQueryId(),
                 queryPlan.getDeviceToMeasurements(),
                 group.getHeader(),
-                client.getNode()));
+                client.getNode());
+        Filter timeFilter =
+            (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
+        if (timeFilter != null) {
+          lastQueryRequest.setFilterBytes(SerializeUtils.serializeFilter(timeFilter));
+        }
+        return client.last(lastQueryRequest);
       } catch (IOException e) {
         logger.warn("can not get client for node= {}", node);
         return null;

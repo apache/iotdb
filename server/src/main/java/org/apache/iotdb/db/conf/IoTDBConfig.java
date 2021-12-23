@@ -234,7 +234,7 @@ public class IoTDBConfig {
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
   /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = Runtime.getRuntime().availableProcessors();
+  private int concurrentQueryThread = 8;
 
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
@@ -1168,6 +1168,20 @@ public class IoTDBConfig {
 
   void setLanguageVersion(String languageVersion) {
     this.languageVersion = languageVersion;
+  }
+
+  public String getIoTDBVersion() {
+    return IoTDBConstant.VERSION;
+  }
+
+  public String getIoTDBMajorVersion() {
+    return IoTDBConstant.MAJOR_VERSION;
+  }
+
+  public String getIoTDBMajorVersion(String version) {
+    return version.equals("UNKNOWN")
+        ? "UNKNOWN"
+        : version.split("\\.")[0] + "." + version.split("\\.")[1];
   }
 
   public String getIpWhiteList() {

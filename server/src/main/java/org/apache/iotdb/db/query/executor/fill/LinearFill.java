@@ -152,7 +152,6 @@ public class LinearFill extends IFill {
 
   protected TimeValuePair calculateSucceedingPoint()
       throws IOException, StorageEngineException, QueryProcessException {
-
     List<AggregateResult> aggregateResultList = new ArrayList<>();
     AggregateResult minTimeResult = new MinTimeAggrResult();
     AggregateResult firstValueResult = new FirstValueAggrResult(dataType);

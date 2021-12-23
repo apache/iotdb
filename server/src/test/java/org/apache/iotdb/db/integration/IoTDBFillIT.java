@@ -489,7 +489,7 @@ public class IoTDBFillIT {
 
         hasResultSet =
             statement.execute(
-                "select temperature,status, hardware "
+                "select temperature, status, hardware "
                     + "from root.ln.wf01.wt01 where time = 70 "
                     + "Fill(int32[linear], double[linear], boolean[previous])");
 

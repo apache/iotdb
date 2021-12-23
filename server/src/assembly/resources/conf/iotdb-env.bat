@@ -29,16 +29,16 @@ set JMX_IP="127.0.0.1"
 
 if %JMX_LOCAL% == "false" (
   echo "setting remote JMX..."
-  #you may have no permission to run chmod. If so, contact your system administrator.
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.port=%JMX_PORT%"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.randomIDs=true"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.ssl=false"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.authenticate=true"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access"
-  set IOTDB_JMX_OPTS="%IOTDB_JMX_OPTS% -Djava.rmi.server.hostname=%JMX_IP%"
+  @REM you may have no permission to run chmod. If so, contact your system administrator.
+  set IOTDB_JMX_OPTS=-Dcom.sun.management.jmxremote^
+  -Dcom.sun.management.jmxremote.port=%JMX_PORT%^
+  -Dcom.sun.management.jmxremote.rmi.port=%JMX_PORT%^
+  -Djava.rmi.server.randomIDs=true^
+  -Dcom.sun.management.jmxremote.ssl=false^
+  -Dcom.sun.management.jmxremote.authenticate=false^
+  -Dcom.sun.management.jmxremote.password.file=%IOTDB_CONF%\jmx.password^
+  -Dcom.sun.management.jmxremote.access.file=%IOTDB_CONF%\jmx.access^
+  -Djava.rmi.server.hostname=%JMX_IP%
 ) else (
   echo "setting local JMX..."
 )
@@ -103,9 +103,17 @@ for /f "tokens=1-3" %%j in ('java -version 2^>^&1') do (
 
 @REM maximum direct memory size
 set MAX_DIRECT_MEMORY_SIZE=%MAX_HEAP_SIZE%
+@REM threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
+set threads_number=16
+@REM the size of buffer cache pool(IOV_MAX) depends on operating system
+set temp_buffer_pool_size=1024
+@REM Max cached buffer size, Note: unit can only be B!
+@REM which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
+set MAX_CACHED_BUFFER_SIZE=%max_heap_size_in_mb%*1024*1024/%threads_number%/%temp_buffer_pool_size%
 
 set IOTDB_HEAP_OPTS=-Xmx%MAX_HEAP_SIZE% -Xms%HEAP_NEWSIZE% -Xlog:gc:"..\gc.log"
 set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -XX:MaxDirectMemorySize=%MAX_DIRECT_MEMORY_SIZE%
+set IOTDB_HEAP_OPTS=%IOTDB_HEAP_OPTS% -Djdk.nio.maxCachedBufferSize=%MAX_CACHED_BUFFER_SIZE%
 
 @REM You can put your env variable here
 @REM set JAVA_HOME=%JAVA_HOME%

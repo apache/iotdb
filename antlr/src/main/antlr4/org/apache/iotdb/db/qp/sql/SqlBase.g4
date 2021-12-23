@@ -322,7 +322,7 @@ groupByTimeClause
             COMMA DURATION
             (COMMA DURATION)?
             RR_BRACKET
-            COMMA LEVEL OPERATOR_EQ INT
+            COMMA LEVEL OPERATOR_EQ INT (COMMA INT)*
     ;
 
 groupByFillClause
@@ -334,7 +334,7 @@ groupByFillClause
      ;
 
 groupByLevelClause
-    : GROUP BY LEVEL OPERATOR_EQ INT
+    : GROUP BY LEVEL OPERATOR_EQ INT (COMMA INT)*
     ;
 
 typeClause
