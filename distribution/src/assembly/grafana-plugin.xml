@@ -29,7 +29,7 @@
     <fileSets>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/grafana-plugin/dist</directory>
-            <outputDirectory>iotdb/${file.separator}</outputDirectory>
+            <outputDirectory>iotdb-grafana-plugin/${file.separator}</outputDirectory>
         </fileSet>
     </fileSets>
     <componentDescriptors>
