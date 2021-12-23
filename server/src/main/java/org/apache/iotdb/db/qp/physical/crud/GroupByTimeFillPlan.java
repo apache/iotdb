@@ -20,11 +20,19 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
+import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
+import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.MS_TO_MONTH;
+import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.calcIntervalByMonth;
+
 public class GroupByTimeFillPlan extends GroupByTimePlan {
+
+  private long queryStartTime;
+  private long queryEndTime;
 
   private Map<TSDataType, IFill> fillTypes;
   private IFill singleFill;
@@ -48,5 +56,66 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
 
   public void setFillType(Map<TSDataType, IFill> fillTypes) {
     this.fillTypes = fillTypes;
+  }
+
+  public long getQueryStartTime() {
+    return queryStartTime;
+  }
+
+  public long getQueryEndTime() {
+    return queryEndTime;
+  }
+
+  public void init() {
+    long minQueryStartTime = Long.MAX_VALUE;
+    long maxQueryEndTime = Long.MIN_VALUE;
+    if (fillTypes != null) {
+      // old type fill logic
+      for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
+        IFill fill = IFillEntry.getValue();
+        if (fill instanceof PreviousFill) {
+          fill.convertRange(startTime, endTime);
+          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        } else if (fill instanceof LinearFill) {
+          fill.convertRange(startTime, endTime);
+          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+          maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
+        }
+      }
+    } else {
+      IFill fill = singleFill;
+      if (fill instanceof PreviousFill) {
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = fill.getQueryStartTime();
+      } else if (fill instanceof LinearFill) {
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = fill.getQueryStartTime();
+        maxQueryEndTime = fill.getQueryEndTime();
+      }
+    }
+
+    if (minQueryStartTime < Long.MAX_VALUE) {
+      long queryRange = minQueryStartTime - startTime;
+      long extraStartTime, intervalNum;
+      if (isSlidingStepByMonth) {
+        intervalNum = (long) Math.ceil(queryRange / (double) (getSlidingStep() * MS_TO_MONTH));
+        extraStartTime = calcIntervalByMonth(startTime, intervalNum * slidingStep);
+        while (extraStartTime < minQueryStartTime) {
+          intervalNum += 1;
+          extraStartTime = calcIntervalByMonth(startTime, intervalNum * endTime);
+        }
+      } else {
+        intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+        extraStartTime = slidingStep * intervalNum + startTime;
+      }
+      minQueryStartTime = Math.min(extraStartTime, startTime);
+    }
+
+    maxQueryEndTime = Math.max(maxQueryEndTime, endTime);
+
+    queryStartTime = startTime;
+    queryEndTime = endTime;
+    startTime = minQueryStartTime;
+    endTime = maxQueryEndTime;
   }
 }

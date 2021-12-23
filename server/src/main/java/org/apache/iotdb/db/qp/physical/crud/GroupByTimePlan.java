@@ -23,18 +23,18 @@ import org.apache.iotdb.db.qp.logical.Operator;
 public class GroupByTimePlan extends AggregationPlan {
 
   // [startTime, endTime)
-  private long startTime;
-  private long endTime;
+  protected long startTime;
+  protected long endTime;
   // aggregation time interval
-  private long interval;
+  protected long interval;
   // sliding step
-  private long slidingStep;
+  protected long slidingStep;
   // if group by query is by natural month
-  private boolean isIntervalByMonth;
-  private boolean isSlidingStepByMonth;
+  protected boolean isIntervalByMonth;
+  protected boolean isSlidingStepByMonth;
 
   // if it is left close and right open interval
-  private boolean leftCRightO = true;
+  protected boolean leftCRightO = true;
 
   public GroupByTimePlan() {
     super();
