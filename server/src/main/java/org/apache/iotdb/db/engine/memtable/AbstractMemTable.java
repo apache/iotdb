@@ -159,7 +159,7 @@ public abstract class AbstractMemTable implements IMemTable {
     memSize += MemUtils.getRecordsSize(dataTypes, values, disableMemControl);
     write(insertRowPlan.getDeviceID(), schemaList, insertRowPlan.getTime(), values);
 
-    long pointsInserted =
+    int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
 
     totalPointsNum += pointsInserted;
@@ -201,7 +201,7 @@ public abstract class AbstractMemTable implements IMemTable {
         schemaList,
         insertRowPlan.getTime(),
         insertRowPlan.getValues());
-    long pointsInserted =
+    int pointsInserted =
         insertRowPlan.getMeasurements().length - insertRowPlan.getFailedMeasurementNumber();
     totalPointsNum += pointsInserted;
 
@@ -219,7 +219,7 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       write(insertTabletPlan, start, end);
       memSize += MemUtils.getTabletSize(insertTabletPlan, start, end, disableMemControl);
-      long pointsInserted =
+      int pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
@@ -241,7 +241,7 @@ public abstract class AbstractMemTable implements IMemTable {
     try {
       writeAlignedTablet(insertTabletPlan, start, end);
       memSize += MemUtils.getAlignedTabletSize(insertTabletPlan, start, end, disableMemControl);
-      long pointsInserted =
+      int pointsInserted =
           (insertTabletPlan.getDataTypes().length - insertTabletPlan.getFailedMeasurementNumber())
               * (end - start);
       totalPointsNum += pointsInserted;
