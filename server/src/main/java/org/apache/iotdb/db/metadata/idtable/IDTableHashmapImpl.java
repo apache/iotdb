@@ -66,7 +66,7 @@ public class IDTableHashmapImpl implements IDTable {
   private Map<IDeviceID, DeviceEntry>[] idTables;
 
   /** disk schema manager to manage disk schema entry */
-  private DiskSchemaManager diskSchemaManager;
+  private IDiskSchemaManager IDiskSchemaManager;
   /** iotdb config */
   protected static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -76,7 +76,7 @@ public class IDTableHashmapImpl implements IDTable {
       idTables[i] = new HashMap<>();
     }
     if (config.isEnableIDTableLogFile()) {
-      diskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
+      IDiskSchemaManager = new AppendOnlyDiskSchemaManager(storageGroupDir);
     }
   }
 
@@ -100,7 +100,7 @@ public class IDTableHashmapImpl implements IDTable {
               plan.getCompressors().get(i),
               deviceEntry.getDeviceID(),
               fullPath,
-              diskSchemaManager);
+              IDiskSchemaManager);
       deviceEntry.putSchemaEntry(plan.getMeasurements().get(i), schemaEntry);
     }
   }
@@ -120,7 +120,7 @@ public class IDTableHashmapImpl implements IDTable {
             plan.getCompressor(),
             deviceEntry.getDeviceID(),
             plan.getPath(),
-            diskSchemaManager);
+            IDiskSchemaManager);
     deviceEntry.putSchemaEntry(plan.getPath().getMeasurement(), schemaEntry);
   }
 
@@ -275,8 +275,8 @@ public class IDTableHashmapImpl implements IDTable {
 
   @Override
   public void clear() {
-    if (diskSchemaManager != null) {
-      diskSchemaManager.close();
+    if (IDiskSchemaManager != null) {
+      IDiskSchemaManager.close();
     }
   }
 
@@ -318,7 +318,7 @@ public class IDTableHashmapImpl implements IDTable {
                   schema.getCompressor(),
                   deviceEntry.getDeviceID(),
                   seriesKey,
-                  diskSchemaManager);
+                  IDiskSchemaManager);
           deviceEntry.putSchemaEntry(measurementMNode.getName(), curEntry);
         }
       }
@@ -459,7 +459,7 @@ public class IDTableHashmapImpl implements IDTable {
   }
 
   @TestOnly
-  public DiskSchemaManager getDiskSchemaManager() {
-    return diskSchemaManager;
+  public IDiskSchemaManager getIDiskSchemaManager() {
+    return IDiskSchemaManager;
   }
 }

@@ -30,12 +30,13 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 /** store id table schema in append only file */
-public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
+public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
 
   private static final String FILE_NAME = "SeriesKeyMapping.meta";
 
@@ -68,6 +69,9 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
     dataFile = new File(dir, FILE_NAME);
     if (dataFile.exists()) {
       loc = dataFile.length();
+      if (!checkLastEntry(loc)) {
+        throw new IOException("File corruption");
+      }
     } else {
       logger.debug("create new file for id table: " + dir.getName());
       boolean createRes = dataFile.createNewFile();
@@ -78,6 +82,32 @@ public class AppendOnlyDiskSchemaManager implements DiskSchemaManager {
 
       loc = 0;
     }
+  }
+
+  private boolean checkLastEntry(long pos) {
+    // file length is smaller than one int
+    if (pos <= Integer.BYTES) {
+      return false;
+    }
+
+    pos -= Integer.BYTES;
+    try (RandomAccessFile randomAccessFile = new RandomAccessFile(dataFile, "r");
+        FileInputStream inputStream = new FileInputStream(dataFile)) {
+      randomAccessFile.seek(pos);
+      int lastEntrySize = randomAccessFile.readInt();
+      // last int is not right
+      if (pos - lastEntrySize < 0) {
+        return false;
+      }
+
+      inputStream.skip(pos - lastEntrySize);
+      DiskSchemaEntry.deserialize(inputStream);
+    } catch (Exception e) {
+      logger.error("can't deserialize last entry, file corruption." + e);
+      return false;
+    }
+
+    return true;
   }
 
   @Override

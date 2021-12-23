@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.util.Collection;
 
 /** This class manages IO of id table's schema entry */
-public interface DiskSchemaManager {
+public interface IDiskSchemaManager {
 
   /**
    * serialize a disk schema entry

@@ -41,10 +41,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 
@@ -56,15 +53,7 @@ public class IDTableRestartTest {
 
   private String originalDeviceIDTransformationMethod = null;
 
-  Set<String> retSet =
-      new HashSet<>(
-          Arrays.asList(
-              "113\troot.isp.d1.s3\t100003\tINT64",
-              "113\troot.isp.d1.s4\t1003\tINT32",
-              "113\troot.isp.d1.s5\tfalse\tBOOLEAN",
-              "113\troot.isp.d1.s6\tmm3\tTEXT",
-              "113\troot.isp.d1.s1\t13.0\tDOUBLE",
-              "113\troot.isp.d1.s2\t23.0\tFLOAT"));
+  private boolean isEnableIDTableLogFile = false;
 
   @Before
   public void before() {
@@ -72,9 +61,11 @@ public class IDTableRestartTest {
     isEnableIDTable = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
     originalDeviceIDTransformationMethod =
         IoTDBDescriptor.getInstance().getConfig().getDeviceIDTransformationMethod();
+    isEnableIDTableLogFile = IoTDBDescriptor.getInstance().getConfig().isEnableIDTableLogFile();
 
     IoTDBDescriptor.getInstance().getConfig().setEnableIDTable(true);
     IoTDBDescriptor.getInstance().getConfig().setDeviceIDTransformationMethod("SHA256");
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(true);
     EnvironmentUtils.envSetUp();
   }
 
@@ -84,6 +75,8 @@ public class IDTableRestartTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setDeviceIDTransformationMethod(originalDeviceIDTransformationMethod);
+    IoTDBDescriptor.getInstance().getConfig().setEnableIDTableLogFile(isEnableIDTableLogFile);
+
     EnvironmentUtils.cleanEnv();
   }
 

@@ -177,5 +177,5 @@ public interface IDTable {
   Map<IDeviceID, DeviceEntry>[] getIdTables();
 
   @TestOnly
-  DiskSchemaManager getDiskSchemaManager();
+  IDiskSchemaManager getIDiskSchemaManager();
 }

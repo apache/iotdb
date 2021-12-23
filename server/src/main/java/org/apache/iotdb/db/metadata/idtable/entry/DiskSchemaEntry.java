@@ -66,6 +66,7 @@ public class DiskSchemaEntry {
     byteLen += ReadWriteIOUtils.write(type, outputStream);
     byteLen += ReadWriteIOUtils.write(encoding, outputStream);
     byteLen += ReadWriteIOUtils.write(compressor, outputStream);
+    byteLen += ReadWriteIOUtils.write(byteLen, outputStream);
 
     return byteLen;
   }
@@ -78,6 +79,8 @@ public class DiskSchemaEntry {
     res.type = ReadWriteIOUtils.readByte(inputStream);
     res.encoding = ReadWriteIOUtils.readByte(inputStream);
     res.compressor = ReadWriteIOUtils.readByte(inputStream);
+    // read byte len
+    ReadWriteIOUtils.readInt(inputStream);
 
     return res;
   }

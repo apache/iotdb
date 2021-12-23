@@ -41,6 +41,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
@@ -167,6 +168,9 @@ public class EnvironmentUtils {
 
     // clear id table manager
     IDTableManager.getInstance().clear();
+
+    // clear last query executor
+    LastQueryExecutor.clear();
 
     // delete all directory
     cleanAllDir();

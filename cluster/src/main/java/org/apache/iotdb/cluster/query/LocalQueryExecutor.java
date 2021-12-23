@@ -41,7 +41,6 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -1044,12 +1043,7 @@ public class LocalQueryExecutor {
 
     List<Pair<Boolean, TimeValuePair>> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
-            partialPaths,
-            dataTypes,
-            queryContext,
-            expression,
-            request.getDeviceMeasurements(),
-            IoTDBDescriptor.getInstance().getConfig().isEnableIDTable());
+            partialPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {

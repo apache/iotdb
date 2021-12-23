@@ -73,8 +73,8 @@ public class LastQueryExecutor {
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
-  // for test to reload this parameter after restart, it can't be static
-  private final boolean isIdTableEnabled =
+  // for test to reload this parameter after restart, it can't be final
+  private static boolean ID_TABLE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
 
   private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
@@ -146,12 +146,7 @@ public class LastQueryExecutor {
       RawDataQueryPlan lastQueryPlan)
       throws QueryProcessException, StorageEngineException, IOException {
     return calculateLastPairForSeriesLocally(
-        seriesPaths,
-        dataTypes,
-        context,
-        expression,
-        lastQueryPlan.getDeviceToMeasurements(),
-        isIdTableEnabled);
+        seriesPaths, dataTypes, context, expression, lastQueryPlan.getDeviceToMeasurements());
   }
 
   public static List<Pair<Boolean, TimeValuePair>> calculateLastPairForSeriesLocally(
@@ -159,8 +154,7 @@ public class LastQueryExecutor {
       List<TSDataType> dataTypes,
       QueryContext context,
       IExpression expression,
-      Map<String, Set<String>> deviceMeasurementsMap,
-      boolean isIdTableEnabled)
+      Map<String, Set<String>> deviceMeasurementsMap)
       throws QueryProcessException, StorageEngineException, IOException {
     List<LastCacheAccessor> cacheAccessors = new ArrayList<>();
     Filter filter = (expression == null) ? null : ((GlobalTimeExpression) expression).getFilter();
@@ -175,8 +169,7 @@ public class LastQueryExecutor {
             cacheAccessors,
             nonCachedPaths,
             nonCachedDataTypes,
-            context.isDebug(),
-            isIdTableEnabled);
+            context.isDebug());
     if (nonCachedPaths.isEmpty()) {
       return resultContainer;
     }
@@ -235,12 +228,11 @@ public class LastQueryExecutor {
       List<LastCacheAccessor> cacheAccessors,
       List<PartialPath> restPaths,
       List<TSDataType> restDataType,
-      boolean debugOn,
-      boolean isIdTableEnabled) {
+      boolean debugOn) {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
-        if (isIdTableEnabled) {
+        if (ID_TABLE_ENABLED) {
           cacheAccessors.add(new IDTableLastCacheAccessor(path));
         } else {
           cacheAccessors.add(new MManagerLastCacheAccessor(path));
@@ -358,5 +350,9 @@ public class LastQueryExecutor {
 
   private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
     return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
+  }
+
+  public static void clear() {
+    ID_TABLE_ENABLED = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
   }
 }

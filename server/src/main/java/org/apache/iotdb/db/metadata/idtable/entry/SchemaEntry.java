@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.idtable.entry;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.metadata.idtable.DiskSchemaManager;
+import org.apache.iotdb.db.metadata.idtable.IDiskSchemaManager;
 import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -75,7 +75,7 @@ public class SchemaEntry implements ILastCacheContainer {
       CompressionType compressionType,
       IDeviceID deviceID,
       PartialPath fullPath,
-      DiskSchemaManager diskSchemaManager) {
+      IDiskSchemaManager IDiskSchemaManager) {
     schema |= dataType.serialize();
     schema |= (((long) encoding.serialize()) << 8);
     schema |= (((long) compressionType.serialize()) << 16);
@@ -93,7 +93,7 @@ public class SchemaEntry implements ILastCacheContainer {
               dataType.serialize(),
               encoding.serialize(),
               compressionType.serialize());
-      schema |= (diskSchemaManager.serialize(diskSchemaEntry) << 25);
+      schema |= (IDiskSchemaManager.serialize(diskSchemaEntry) << 25);
     }
   }
 

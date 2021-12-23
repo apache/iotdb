@@ -135,7 +135,7 @@ public class IDTableLogFileTest {
           d2Set);
 
       int count = 0;
-      for (DiskSchemaEntry entry : idTable.getDiskSchemaManager().getAllSchemaEntry()) {
+      for (DiskSchemaEntry entry : idTable.getIDiskSchemaManager().getAllSchemaEntry()) {
         String deviceID = entry.deviceID;
         HashSet<String> set = deviceIdToNameMap.get(deviceID);
 
