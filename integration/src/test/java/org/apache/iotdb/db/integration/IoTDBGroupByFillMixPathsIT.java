@@ -21,16 +21,16 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
@@ -97,26 +97,22 @@ public class IoTDBGroupByFillMixPathsIT {
         "flush"
       };
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  @BeforeClass
+  public static void setUp() throws Exception {
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
-  private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+  private static void prepareData() {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       for (String sql : dataSet1) {
         statement.execute(sql);
@@ -145,9 +141,8 @@ public class IoTDBGroupByFillMixPathsIT {
           // "72,33.0,33,72"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature), last_value(temperature), max_time(temperature) "
@@ -204,7 +199,7 @@ public class IoTDBGroupByFillMixPathsIT {
   }
 
   @Test
-  public void MultiPathsMixTest() {
+  public void multiPathsMixTest() {
     String[] retArray =
         new String[] {
           "17,41.66666666666667,23.0,null,23,23.5,null",
@@ -235,9 +230,8 @@ public class IoTDBGroupByFillMixPathsIT {
          72,        33.0,        46.8,       74,       33,         46.8,       true
     */
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature), avg(hardware), max_time(status), "
@@ -323,9 +317,8 @@ public class IoTDBGroupByFillMixPathsIT {
           // "162,33.0,33.0,166"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware), last_value(hardware), max_time(hardware) "
@@ -411,9 +404,8 @@ public class IoTDBGroupByFillMixPathsIT {
          162,        40.0,        33.0,       166,       40,        33.0,       null
     */
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature), avg(hardware), max_time(status), "

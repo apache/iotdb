@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset.groupby;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
@@ -28,12 +29,16 @@ import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,23 +50,29 @@ import java.util.Objects;
 
 public class GroupByFillDataSet extends GroupByEngineDataSet {
 
-  private GroupByEngineDataSet dataSet;
+  private static final Logger logger =
+    LoggerFactory.getLogger(GroupByFillDataSet.class);
+
+  private QueryDataSet dataSet;
 
   private final Map<TSDataType, IFill> fillTypes;
   private final IFill singleFill;
   private final List<String> aggregations;
 
-  // the result datatype for each time series
+  // the result datatype for each aggregation
   private final TSDataType[] resultDataType;
 
-  // the last value and time for each time series
+  // the last value and time for each aggregation
   private long[] previousTimes;
   private Object[] previousValues;
 
-  // the next not null and unused rowId for each time series
-  private int[] nextIds;
-  // the next value and time for each time series
+  // the next not null and unused rowId for each aggregation
+  private int[] nextIndices;
+  // the next value and time for each aggregation
   private List<ElasticSerializableTVList> nextTVLists;
+
+  private final float groupByFillCacheSizeInMB =
+      IoTDBDescriptor.getInstance().getConfig().getGroupByFillCacheSizeInMB();
 
   public GroupByFillDataSet(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
       throws QueryProcessException {
@@ -76,70 +87,56 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
 
   private void initArrays(QueryContext context) throws QueryProcessException {
     for (int i = 0; i < aggregations.size(); i++) {
-      switch (aggregations.get(i)) {
-        case "avg":
-        case "sum":
-          resultDataType[i] = TSDataType.DOUBLE;
-          break;
-        case "count":
-        case "max_time":
-        case "min_time":
-          resultDataType[i] = TSDataType.INT64;
-          break;
-        case "first_value":
-        case "last_value":
-        case "max_value":
-        case "min_value":
-          resultDataType[i] = dataTypes.get(i);
-          break;
-        default:
-          throw new QueryProcessException("unknown aggregation type, please update this code!");
-      }
+      resultDataType[i] = TypeInferenceUtils.getAggrDataType(aggregations.get(i), dataTypes.get(i));
     }
 
     previousTimes = new long[aggregations.size()];
     previousValues = new Object[aggregations.size()];
-    nextIds = new int[aggregations.size()];
+    nextIndices = new int[aggregations.size()];
     Arrays.fill(previousTimes, Long.MAX_VALUE);
     Arrays.fill(previousValues, null);
-    Arrays.fill(nextIds, 0);
+    Arrays.fill(nextIndices, 0);
 
-    nextTVLists = new ArrayList<>();
+    nextTVLists = new ArrayList<>(aggregations.size());
     for (int i = 0; i < aggregations.size(); i++) {
       nextTVLists.add(
           ElasticSerializableTVList.newElasticSerializableTVList(
-              resultDataType[i], context.getQueryId(), 10, 2));
+              resultDataType[i], context.getQueryId(), groupByFillCacheSizeInMB, 2));
     }
   }
 
-  public void setDataSet(GroupByEngineDataSet dataSet) {
+  public void setDataSet(QueryDataSet dataSet) {
     this.dataSet = dataSet;
   }
 
-  public void initCache() throws IOException, QueryProcessException {
+  public void initCache() throws QueryProcessException {
     BitSet cacheSet = new BitSet(aggregations.size());
-    cacheSet.clear();
-    while (cacheSet.cardinality() < aggregations.size() && dataSet.hasNextWithoutConstraint()) {
-      RowRecord record = dataSet.nextWithoutConstraint();
-      long timestamp = record.getTimestamp();
-      List<Field> fields = record.getFields();
-      for (int i = 0; i < fields.size(); i++) {
-        Field field = fields.get(i);
-        if (field == null) {
-          continue;
-        }
+    try {
+      while (cacheSet.cardinality() < aggregations.size() && dataSet.hasNextWithoutConstraint()) {
+        RowRecord record = dataSet.nextWithoutConstraint();
+        long timestamp = record.getTimestamp();
+        List<Field> fields = record.getFields();
+        for (int i = 0; i < fields.size(); i++) {
+          Field field = fields.get(i);
+          if (field == null) {
+            continue;
+          }
 
-        if (ascending && timestamp < startTime) {
-          previousTimes[i] = timestamp;
-          previousValues[i] = field.getObjectValue(resultDataType[i]);
-        } else if (!ascending && timestamp >= endTime) {
-          previousTimes[i] = timestamp;
-          previousValues[i] = field.getObjectValue(resultDataType[i]);
-        } else {
-          nextTVLists.get(i).put(timestamp, field.getObjectValue(resultDataType[i]));
-          cacheSet.set(i);
+          if (ascending && timestamp < startTime) {
+            previousTimes[i] = timestamp;
+            previousValues[i] = field.getObjectValue(resultDataType[i]);
+          } else if (!ascending && timestamp >= endTime) {
+            previousTimes[i] = timestamp;
+            previousValues[i] = field.getObjectValue(resultDataType[i]);
+          } else {
+            nextTVLists.get(i).put(timestamp, field.getObjectValue(resultDataType[i]));
+            cacheSet.set(i);
+          }
         }
       }
+    } catch (IOException e) {
+      logger.error("there has an exception while init: ", e);
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
@@ -162,12 +159,12 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     }
 
     for (int i = 0; i < aggregations.size(); i++) {
-      if (nextTVLists.get(i).size() == nextIds[i]) {
+      if (nextTVLists.get(i).size() == nextIndices[i]) {
         fillRecord(i, record);
         continue;
       }
 
-      long cacheTime = nextTVLists.get(i).getTime(nextIds[i]);
+      long cacheTime = nextTVLists.get(i).getTime(nextIndices[i]);
       if (cacheTime == curTimestamp) {
         record.addField(getNextCacheValue(i), resultDataType[i]);
       } else {
@@ -178,7 +175,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     try {
       slideCache(record.getTimestamp());
     } catch (QueryProcessException e) {
-      // ignored
+      logger.warn("group by fill has an exception while sliding: ", e);
     }
 
     return record;
@@ -210,16 +207,16 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
       } else {
         beforePair = null;
       }
-      if (nextIds[index] < nextTVLists.get(index).size()) {
+      if (nextIndices[index] < nextTVLists.get(index).size()) {
         afterPair =
-            new Pair<>(nextTVLists.get(index).getTime(nextIds[index]), getNextCacheValue(index));
+            new Pair<>(nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
       } else {
         afterPair = null;
       }
     } else {
-      if (nextIds[index] < nextTVLists.get(index).size()) {
+      if (nextIndices[index] < nextTVLists.get(index).size()) {
         beforePair =
-            new Pair<>(nextTVLists.get(index).getTime(nextIds[index]), getNextCacheValue(index));
+            new Pair<>(nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
       } else {
         beforePair = null;
       }
@@ -286,17 +283,17 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
   private Object getNextCacheValue(int index) throws IOException {
     switch (resultDataType[index]) {
       case INT32:
-        return nextTVLists.get(index).getInt(nextIds[index]);
+        return nextTVLists.get(index).getInt(nextIndices[index]);
       case INT64:
-        return nextTVLists.get(index).getLong(nextIds[index]);
+        return nextTVLists.get(index).getLong(nextIndices[index]);
       case FLOAT:
-        return nextTVLists.get(index).getFloat(nextIds[index]);
+        return nextTVLists.get(index).getFloat(nextIndices[index]);
       case DOUBLE:
-        return nextTVLists.get(index).getDouble(nextIds[index]);
+        return nextTVLists.get(index).getDouble(nextIndices[index]);
       case BOOLEAN:
-        return nextTVLists.get(index).getBoolean(nextIds[index]);
+        return nextTVLists.get(index).getBoolean(nextIndices[index]);
       case TEXT:
-        return nextTVLists.get(index).getBinary(nextIds[index]);
+        return nextTVLists.get(index).getBinary(nextIndices[index]);
       default:
         throw new IOException("unknown data type!");
     }
@@ -304,18 +301,17 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
 
   private void slideCache(long curTimestamp) throws IOException, QueryProcessException {
     BitSet slideSet = new BitSet(aggregations.size());
-    slideSet.clear();
     for (int i = 0; i < aggregations.size(); i++) {
-      if (nextTVLists.get(i).size() == nextIds[i]) {
+      if (nextTVLists.get(i).size() == nextIndices[i]) {
         continue;
       }
 
       // slide cache when the current TV is used
-      if (nextTVLists.get(i).getTime(nextIds[i]) == curTimestamp) {
+      if (nextTVLists.get(i).getTime(nextIndices[i]) == curTimestamp) {
         previousTimes[i] = curTimestamp;
         previousValues[i] = getNextCacheValue(i);
-        nextIds[i] += 1;
-        nextTVLists.get(i).setEvictionUpperBound(nextIds[i]);
+        nextIndices[i]++;
+        nextTVLists.get(i).setEvictionUpperBound(nextIndices[i]);
         slideSet.set(i);
       }
     }
@@ -330,6 +326,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
           continue;
         }
         nextTVLists.get(i).put(timestamp, field.getObjectValue(resultDataType[i]));
+        slideSet.clear(i);
       }
     }
   }

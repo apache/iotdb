@@ -305,11 +305,7 @@ public class QueryRouter implements IQueryRouter {
     }
 
     dataSet.setDataSet(engineDataSet);
-    try {
-      dataSet.initCache();
-    } catch (IOException e) {
-      // ignored
-    }
+    dataSet.initCache();
 
     return dataSet;
   }
