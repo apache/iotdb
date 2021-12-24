@@ -30,6 +30,7 @@
     <artifactId>grafana-plugin</artifactId>
     <name>IoTDB Grafana plugin</name>
     <description>IoTDB Grafana plugin</description>
+    <packaging>pom</packaging>
     <build>
         <plugins>
             <plugin>

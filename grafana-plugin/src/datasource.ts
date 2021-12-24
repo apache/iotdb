@@ -67,10 +67,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
 
   async doRequest(query: IoTDBQuery) {
     const myHeader = new Headers();
-    let reqURL = '/rest/grafana/query/json';
-    if (query.expression.length > 0) {
-      reqURL = '/grafana/v1/query/expression';
-    }
+    let reqURL = '/grafana/v1/query/expression';
     myHeader.append('Content-Type', 'application/json');
     const Authorization = 'Basic ' + Buffer.from(this.username + ':' + this.password).toString('base64');
     myHeader.append('Authorization', Authorization);
@@ -97,7 +94,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
           });
           return dataframes.map(toDataFrame);
         } else {
-          throw 'the result is not object';
+          throw 'the result is null';
         }
       });
   }
@@ -116,7 +113,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
     return await getBackendSrv()
       .datasourceRequest({
         method: 'POST',
-        url: this.url + '/grafana/v1/query',
+        url: this.url + '/grafana/v1/variable',
         data: sql,
         headers: myHeader,
       })

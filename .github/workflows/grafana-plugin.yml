@@ -40,17 +40,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.node-version }}-nodemodules-
 
-      - name: Change dir
-        run: cd grafana-plugin
-
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
-
-      - name: Install dependencies
-        run: yarn add @grafana/runtime
-
-      - name: Install dependencies
-        run: yarn add  @types/base-64 --dev
-
-      - name: Build and test frontend
-        run: yarn build
+      - name: Install dependencies and Build and test frontend
+        run: |
+          cd ./grafana-plugin
+          yarn install --frozen-lockfile
+          yarn build

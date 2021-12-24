@@ -603,6 +603,14 @@ public class IoTDBConfig {
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
+  /**
+   * When the insert plan column count reaches the specified threshold, which means that the plan is
+   * relatively large. At this time, may be enabled multithreading. If the tablet is small, the time
+   * of each insertion is short. If we enable multithreading, we also need to consider the switching
+   * loss between threads, so we need to judge the size of the tablet.
+   */
+  private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -1531,12 +1539,22 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  }
+
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
-    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
+    return insertMultiTabletEnableMultithreadingColumnThreshold;
+  }
+
+  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
+      int insertMultiTabletEnableMultithreadingColumnThreshold) {
+    this.insertMultiTabletEnableMultithreadingColumnThreshold =
+        insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
   public int getMergeWriteThroughputMbPerSec() {
