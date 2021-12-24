@@ -27,7 +27,7 @@
         <version>0.13.0-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <artifactId>grafana-plugin</artifactId>
+    <artifactId>iotdb-grafana-plugin</artifactId>
     <name>IoTDB Grafana plugin</name>
     <description>IoTDB Grafana plugin</description>
     <packaging>pom</packaging>
