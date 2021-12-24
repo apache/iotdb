@@ -70,6 +70,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
           .toLowerCase()
           .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
         metricManager = mf;
+        break;
       }
     }
 
