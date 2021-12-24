@@ -1197,8 +1197,8 @@ public abstract class RaftMember implements RaftMemberMBean {
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
               log.getCreateTime());
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED)
-              .setMessage(log.getCurrLogIndex() + "-" + log.getCurrLogTerm());
+          return includeLogNumbersInStatus(
+              StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED), log);
         case OK:
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
@@ -1207,9 +1207,7 @@ public abstract class RaftMember implements RaftMemberMBean {
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
               log.getCreateTime());
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return StatusUtils.OK
-              .deepCopy()
-              .setMessage(log.getCurrLogIndex() + "-" + log.getCurrLogTerm());
+          return includeLogNumbersInStatus(StatusUtils.OK.deepCopy(), log);
         case TIME_OUT:
           logger.debug("{}: log {} timed out...", name, log);
           break;
@@ -1222,6 +1220,11 @@ public abstract class RaftMember implements RaftMemberMBean {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
+  }
+
+  private TSStatus includeLogNumbersInStatus(TSStatus status, Log log) {
+    return status.setMessage(
+        getRaftGroupFullId() + "-" + log.getCurrLogIndex() + "-" + log.getCurrLogTerm());
   }
 
   public SendLogRequest buildSendLogRequest(Log log) {
@@ -1898,9 +1901,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
       commitLog(log.getLog());
       Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
-      return StatusUtils.OK
-          .deepCopy()
-          .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
+      return includeLogNumbersInStatus(StatusUtils.OK.deepCopy(), log.getLog());
     }
 
     int retryTime = 0;
@@ -1920,17 +1921,15 @@ public abstract class RaftMember implements RaftMemberMBean {
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
               log.getLog().getCreateTime());
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED)
-              .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
+          return includeLogNumbersInStatus(
+              StatusUtils.getStatus(TSStatusCode.WEAKLY_ACCEPTED), log.getLog());
         case OK:
           startTime = Timer.Statistic.RAFT_SENDER_COMMIT_LOG.getOperationStartTime();
           logger.debug(MSG_LOG_IS_ACCEPTED, name, log);
           commitLog(log.getLog());
           Timer.Statistic.RAFT_SENDER_COMMIT_LOG.calOperationCostTimeFromStart(startTime);
           Statistic.LOG_DISPATCHER_TOTAL.calOperationCostTimeFromStart(totalStartTime);
-          return StatusUtils.OK
-              .deepCopy()
-              .setMessage(log.getLog().getCurrLogIndex() + "-" + log.getLog().getCurrLogTerm());
+          return includeLogNumbersInStatus(StatusUtils.OK.deepCopy(), log.getLog());
         case TIME_OUT:
           logger.debug("{}: log {} timed out, retrying...", name, log);
           try {
@@ -2281,5 +2280,9 @@ public abstract class RaftMember implements RaftMemberMBean {
   @Override
   public String getLastCatchUpResponseTimeAsString() {
     return lastCatchUpResponseTime.toString();
+  }
+
+  public String getRaftGroupFullId() {
+    return (getHeader() != null ? getHeader().node.nodeIdentifier : 0) + "#" + getRaftGroupId();
   }
 }

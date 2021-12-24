@@ -782,7 +782,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   private TSStatus executeNonQueryPlanWithKnownLeader(PhysicalPlan plan) {
     if (character == NodeCharacter.LEADER) {
       if (plan.getTargetedTerm() > 0 && plan.getTargetedTerm() != term.get()) {
-        return StatusUtils.getStatus(TSStatusCode.LEADER_CHANGED).setMessage(term.get() + "");
+        return StatusUtils.getStatus(TSStatusCode.LEADER_CHANGED)
+            .setMessage(getRaftGroupFullId() + "-" + term.get());
       }
 
       long startTime = Statistic.DATA_GROUP_MEMBER_LOCAL_EXECUTION.getOperationStartTime();

@@ -66,7 +66,9 @@ import org.slf4j.LoggerFactory;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class SessionConnection {
@@ -84,7 +86,7 @@ public class SessionConnection {
   private List<EndPoint> endPointList = new ArrayList<>();
   private boolean enableRedirect = false;
 
-  private List<UnconfirmedRequest> unconfirmedRequests = new ArrayList<>();
+  private Map<String, List<UnconfirmedRequest>> groupUnconfirmedRequests = new HashMap<>();
   private long latestTerm;
 
   // TestOnly
@@ -984,8 +986,11 @@ public class SessionConnection {
     }
     try {
       String[] split = message.split("-");
-      long index = Long.parseLong(split[0]);
-      long term = Long.parseLong(split[1]);
+      String raftGroupId = split[0];
+      long index = Long.parseLong(split[1]);
+      long term = Long.parseLong(split[2]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
       if (!unconfirmedRequests.isEmpty() && unconfirmedRequests.get(0).term == term) {
         unconfirmedRequests.removeIf(r -> r.index < index);
       }
@@ -996,13 +1001,16 @@ public class SessionConnection {
   }
 
   private void onWeaklyAccepted(String message, Object request) {
-    if (message == null) {
+    if (message == null || message.isEmpty()) {
       return;
     }
     try {
       String[] split = message.split("-");
-      long index = Long.parseLong(split[0]);
-      long term = Long.parseLong(split[1]);
+      String raftGroupId = split[0];
+      long index = Long.parseLong(split[1]);
+      long term = Long.parseLong(split[2]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
       UnconfirmedRequest unconfirmedRequest = new UnconfirmedRequest();
       unconfirmedRequest.index = index;
       unconfirmedRequest.term = term;
@@ -1019,7 +1027,11 @@ public class SessionConnection {
       return;
     }
     try {
-      latestTerm = Long.parseLong(message);
+      String[] split = message.split("-");
+      String raftGroupId = split[0];
+      latestTerm = Long.parseLong(split[1]);
+      List<UnconfirmedRequest> unconfirmedRequests =
+          groupUnconfirmedRequests.computeIfAbsent(raftGroupId, r -> new ArrayList<>());
       List<UnconfirmedRequest> tempUnconfirmedRequests = new ArrayList<>(unconfirmedRequests);
       unconfirmedRequests.clear();
       for (UnconfirmedRequest tempUnconfirmedRequest : tempUnconfirmedRequests) {
@@ -1061,5 +1073,10 @@ public class SessionConnection {
     private long index;
     private long term;
     private Object request;
+
+    @Override
+    public String toString() {
+      return index + "-" + term;
+    }
   }
 }
