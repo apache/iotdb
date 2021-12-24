@@ -967,34 +967,39 @@ public abstract class RaftMember implements RaftMemberMBean {
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
 
     Log log;
+
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
+      }
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog) log).setPlan(plan);
+    }
+    log.setCurrLogTerm(getTerm().get());
+    // if a single log exceeds the threshold
+    // we need to return error code to the client as in server mode
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        & log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
+
     // assign term and index to the new log and append it
     synchronized (logManager) {
-      if (plan instanceof LogPlan) {
-        try {
-          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-        } catch (UnknownLogTypeException e) {
-          logger.error("Can not parse LogPlan {}", plan, e);
-          return StatusUtils.PARSE_LOG_ERROR;
-        }
-      } else {
-        log = new PhysicalPlanLog();
-        ((PhysicalPlanLog) log).setPlan(plan);
+      if (!(plan instanceof LogPlan)) {
         plan.setIndex(logManager.getLastLogIndex() + 1);
       }
-      log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      // if a single log exceeds the threshold
-      // we need to return error code to the client as in server mode
-      if (log.serialize().capacity() + Integer.BYTES
-          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-        logger.error(
-            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-                + "or reduce the size of requests you send.");
-        return StatusUtils.INTERNAL_ERROR;
-      }
       logManager.append(log);
     }
+
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
@@ -1015,38 +1020,42 @@ public abstract class RaftMember implements RaftMemberMBean {
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
+    Log log;
+    if (plan instanceof LogPlan) {
+      try {
+        log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+      } catch (UnknownLogTypeException e) {
+        logger.error("Can not parse LogPlan {}", plan, e);
+        return StatusUtils.PARSE_LOG_ERROR;
+      }
+    } else {
+      log = new PhysicalPlanLog();
+      ((PhysicalPlanLog) log).setPlan(plan);
+    }
+
+    log.setCurrLogTerm(getTerm().get());
+
+    // just like processPlanLocally,we need to check the size of log
+    if (log.serialize().capacity() + Integer.BYTES
+        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
+
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
-    Log log;
     synchronized (logManager) {
       Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
           startTime);
 
-      if (plan instanceof LogPlan) {
-        try {
-          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
-        } catch (UnknownLogTypeException e) {
-          logger.error("Can not parse LogPlan {}", plan, e);
-          return StatusUtils.PARSE_LOG_ERROR;
-        }
-      } else {
-        log = new PhysicalPlanLog();
-        ((PhysicalPlanLog) log).setPlan(plan);
+      if (!(plan instanceof LogPlan)) {
         plan.setIndex(logManager.getLastLogIndex() + 1);
       }
-      log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-      // just like processPlanLocally,we need to check the size of log
-      if (log.serialize().capacity() + Integer.BYTES
-          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
-        logger.error(
-            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
-                + "or reduce the size of requests you send.");
-        return StatusUtils.INTERNAL_ERROR;
-      }
-      // logDispatcher will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
 
@@ -1059,6 +1068,49 @@ public abstract class RaftMember implements RaftMemberMBean {
       getLogDispatcher().offer(sendLogRequest);
       Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     }
+
+    //    synchronized (logManager) {
+    //
+    // Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+    //          startTime);
+    //
+    //      if (plan instanceof LogPlan) {
+    //        try {
+    //          log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
+    //        } catch (UnknownLogTypeException e) {
+    //          logger.error("Can not parse LogPlan {}", plan, e);
+    //          return StatusUtils.PARSE_LOG_ERROR;
+    //        }
+    //      } else {
+    //        log = new PhysicalPlanLog();
+    //        ((PhysicalPlanLog) log).setPlan(plan);
+    //        plan.setIndex(logManager.getLastLogIndex() + 1);
+    //      }
+    //      log.setCurrLogTerm(getTerm().get());
+    //      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+    //
+    //      startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+    //      // just like processPlanLocally,we need to check the size of log
+    //      if (log.serialize().capacity() + Integer.BYTES
+    //          >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    //        logger.error(
+    //            "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+    //                + "or reduce the size of requests you send.");
+    //        return StatusUtils.INTERNAL_ERROR;
+    //      }
+    //      // logDispatcher will serialize log, and set log size, and we will use the size after it
+    //      logManager.append(log);
+    //      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+    //
+    //      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+    //      sendLogRequest = buildSendLogRequest(log);
+    //      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
+    //
+    //      startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+    //      log.setCreateTime(System.nanoTime());
+    //      getLogDispatcher().offer(sendLogRequest);
+    //      Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
+    //    }
 
     try {
       AppendLogResult appendLogResult =
