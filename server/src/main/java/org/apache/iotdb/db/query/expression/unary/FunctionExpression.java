@@ -125,7 +125,8 @@ public class FunctionExpression extends Expression {
 
   public boolean isCountStar() {
     return getPaths().size() == 1
-        && paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        && (paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+            || paths.get(0).getTailNode().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
         && functionName.equals(IoTDBConstant.COLUMN_COUNT);
   }
 
