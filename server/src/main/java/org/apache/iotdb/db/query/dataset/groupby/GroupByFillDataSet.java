@@ -261,7 +261,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
                   resultDataType[index]);
           record.addField(filledPair.getValue().getValue(), resultDataType[index]);
         } catch (UnSupportedFillTypeException e) {
-          // Don't fill and ignore exception
+          // Don't fill and ignore unsupported type exception
           record.addField(null);
         }
       } else {
@@ -274,6 +274,9 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
           filledPair = ((ValueFill) fill).getSpecifiedFillResult(resultDataType[index]);
         }
         record.addField(filledPair.getValue().getValue(), resultDataType[index]);
+      } catch (NumberFormatException ne) {
+        // Don't fill and ignore type convert exception
+        record.addField(null);
       } catch (QueryProcessException | StorageEngineException e) {
         throw new IOException(e);
       }
@@ -293,7 +296,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
       case BOOLEAN:
         return nextTVLists.get(index).getBoolean(nextIds[index]);
       case TEXT:
-        return nextTVLists.get(index).getString(nextIds[index]);
+        return nextTVLists.get(index).getBinary(nextIds[index]);
       default:
         throw new IOException("unknown data type!");
     }
