@@ -51,7 +51,6 @@ public class ShowPlan extends PhysicalPlan {
     this.limit = limit;
     this.offset = offset;
     if (limit == 0) {
-      this.limit = fetchSize;
       this.hasLimit = false;
     } else {
       this.hasLimit = true;
