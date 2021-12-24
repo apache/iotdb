@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,8 +51,7 @@ import java.util.Objects;
 
 public class GroupByFillDataSet extends GroupByEngineDataSet {
 
-  private static final Logger logger =
-    LoggerFactory.getLogger(GroupByFillDataSet.class);
+  private static final Logger logger = LoggerFactory.getLogger(GroupByFillDataSet.class);
 
   private QueryDataSet dataSet;
 
@@ -209,14 +209,16 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
       }
       if (nextIndices[index] < nextTVLists.get(index).size()) {
         afterPair =
-            new Pair<>(nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
+            new Pair<>(
+                nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
       } else {
         afterPair = null;
       }
     } else {
       if (nextIndices[index] < nextTVLists.get(index).size()) {
         beforePair =
-            new Pair<>(nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
+            new Pair<>(
+                nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
       } else {
         beforePair = null;
       }
