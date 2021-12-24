@@ -86,9 +86,9 @@
                                         <include>apache-iotdb-${project.version}-server-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cli-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-cluster-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-grafana-connector.zip</include>
+                                        <include>apache-iotdb-${project.version}-grafana-connector-bin.zip</include>
                                         <include>apache-iotdb-${project.version}-client-cpp-${os.classifier}-bin.zip</include>
-                                        <include>apache-iotdb-${project.version}-grafana-plugin.zip</include>
+                                        <include>apache-iotdb-${project.version}-grafana-plugin-bin.zip</include>
                                     </includes>
                                 </fileSet>
                             </fileSets>
@@ -113,7 +113,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-grafana-connector</artifactId>
+            <artifactId>iotdb-grafana</artifactId>
             <version>${project.version}</version>
             <type>war</type>
         </dependency>

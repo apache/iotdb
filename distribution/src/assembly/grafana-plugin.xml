@@ -20,12 +20,12 @@
 
 -->
 <assembly>
-    <id>grafana-plugin</id>
+    <id>grafana-plugin-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-grafana-plugin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-grafana-plugin-bin</baseDirectory>
     <fileSets>
         <fileSet>
             <directory>${maven.multiModuleProjectDirectory}/grafana-plugin/dist</directory>

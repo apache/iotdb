@@ -33,7 +33,7 @@
   <version>1.5.4.RELEASE</version>
   <relativePath />
 </parent-->
-    <artifactId>iotdb-grafana-connector</artifactId>
+    <artifactId>iotdb-grafana</artifactId>
     <packaging>war</packaging>
     <name>IoTDB Grafana connector</name>
     <description>Grafana data source connector for IoTDB</description>
