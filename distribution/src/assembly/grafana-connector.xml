@@ -20,7 +20,7 @@
 
 -->
 <assembly>
-    <id>grafana-connector</id>
+    <id>grafana-connector-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
