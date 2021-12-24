@@ -39,7 +39,7 @@
         </dependencySet>
         <dependencySet>
             <includes>
-                <include>*:iotdb-grafana:war:*</include>
+                <include>*:iotdb-grafana-connector:war:*</include>
             </includes>
             <outputDirectory>tools/grafana/</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>

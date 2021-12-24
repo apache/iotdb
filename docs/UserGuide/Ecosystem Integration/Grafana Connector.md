@@ -20,9 +20,9 @@
 -->
 # Ecosystem Integration
 
-## Grafana-IoTDB
+## Grafana-IoTDB-Connector
 
-Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. IoTDB-Grafana is a connector which we developed to show time series data in IoTDB by reading data from IoTDB and sends to Grafana(https://grafana.com/). Before using this tool, make sure Grafana and IoTDB are correctly installed and started.
+Grafana is an open source volume metrics monitoring and visualization tool, which can be used to display time series data and application runtime analysis. Grafana supports Graphite, InfluxDB and other major time series databases as data sources. IoTDB-Grafana-Connector is a connector which we developed to show time series data in IoTDB by reading data from IoTDB and sends to Grafana(https://grafana.com/). Before using this tool, make sure Grafana and IoTDB are correctly installed and started.
 
 ### Grafana installation and deployment
 
@@ -78,17 +78,17 @@ If Windows is used, start Grafana by executing grafana-server.exe, located in th
 
 See https://github.com/apache/iotdb
 
-### IoTDB-Grafana installation
+### IoTDB-Grafana-Connector installation
 
 ```shell
 git clone https://github.com/apache/iotdb.git
 ```
 
-### Start IoTDB-Grafana
+### Start IoTDB-Grafana-Connector
 
 * Option one
 
-Import the entire project, after the maven dependency is installed, directly run`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
+Import the entire project, after the maven dependency is installed, directly run`iotdb/grafana-connector/rc/main/java/org/apache/iotdb/web/grafana`directory` TsfileWebDemoApplication.java`, this grafana connector is developed by springboot
 
 * Option two
 
@@ -96,15 +96,15 @@ In `/grafana/target/`directory
 
 ```shell
 cd iotdb
-mvn clean package -pl grafana -am -Dmaven.test.skip=true
+mvn clean package -pl grafana-connector -am -Dmaven.test.skip=true
 cd grafana/target
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
 ```
 
-If following output is displayed, then iotdb-grafana connector is successfully activated.
+If following output is displayed, then iotdb-grafana-connector connector is successfully activated.
 
 ```shell
-$ java -jar iotdb-grafana-{version}.war
+$ java -jar iotdb-grafana-connector-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -116,7 +116,7 @@ $ java -jar iotdb-grafana-{version}.war
 ...
 ```
 
-To configure properties, move the `grafana/src/main/resources/application.properties` to the same directory as the war package (`grafana/target`)
+To configure properties, move the `grafana-connector/src/main/resources/application.properties` to the same directory as the war package (`grafana/target`)
 
 ### Explore in Grafana
 
@@ -176,6 +176,6 @@ The specific configuration information of interval is as follows
 After configuration, please re-run war package
 
 ```
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
 ```
 

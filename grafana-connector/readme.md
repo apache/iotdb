@@ -18,24 +18,24 @@
     under the License.
 
 -->
-# IoTDB-Grafana
+# IoTDB-Grafana-Connector
 <!-- TOC -->
 ## Outline
 
-- IoTDB-Grafana
+- IoTDB-Grafana-Connector
     - Grafana installation
         - Install Grafana
         - Install data source plugin
         - Start Grafana
     - IoTDB installation
-    - IoTDB-Grafana installation
-        - Start IoTDB-Grafana
+    - IoTDB-Grafana-Connector installation
+        - Start IoTDB-Grafana-Connector
     - Explore in Grafana
         - Add data source
         - Design in dashboard
 
 <!-- /TOC -->
-# IoTDB-Grafana
+# IoTDB-Grafana-Connector
 
 This project provides a connector which reads data from IoTDB and sends to Grafana(https://grafana.com/). Before you use this tool, make sure Grafana and IoTDB are correctly installed and started.
 
@@ -93,13 +93,13 @@ If you use Windows, start Grafana by executing grafana-server.exe, located in th
 
 See https://github.com/apache/iotdb
 
-## IoTDB-Grafana installation
+## IoTDB-Grafana-Connector installation
 
 ```shell
 git clone https://github.com/apache/iotdb.git
 ```
 
-### Start IoTDB-Grafana
+### Start IoTDB-Grafana-Connector
 
 #### Option one
 
@@ -113,13 +113,13 @@ In `/grafana/target/`directory
 cd iotdb
 mvn clean package -pl grafana -am -Dmaven.test.skip=true
 cd grafana/target
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
 ```
 
-If you see the following output, iotdb-grafana connector is successfully activated.
+If you see the following output, iotdb-grafana-connector connector is successfully activated.
 
 ```shell
-$ java -jar iotdb-grafana-{version}.war
+$ java -jar iotdb-grafana-connector-{version}.war
 
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
@@ -187,6 +187,6 @@ The specific configuration information of interval is as follows
 After configuration, please re-run war package
 
 ```
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
 ```
 

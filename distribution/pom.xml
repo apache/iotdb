@@ -113,7 +113,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.iotdb</groupId>
-            <artifactId>iotdb-grafana</artifactId>
+            <artifactId>iotdb-grafana-connector</artifactId>
             <version>${project.version}</version>
             <type>war</type>
         </dependency>

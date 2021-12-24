@@ -25,11 +25,11 @@
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-grafana-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-grafana-connector-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:iotdb-grafana:war:*</include>
+                <include>*:iotdb-grafana-connector:war:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>

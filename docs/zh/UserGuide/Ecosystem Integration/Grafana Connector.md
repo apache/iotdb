@@ -21,7 +21,7 @@
 
 ## Grafana 连接器
 
-Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana 支持 Graphite，InfluxDB 等国际主流时序数据库作为数据源。在 IoTDB 项目中，我们开发了 Grafana 展现 IoTDB 中时序数据的连接器 IoTDB-Grafana，为您提供使用 Grafana 展示 IoTDB 数据库中的时序数据的可视化方法。
+Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。Grafana 支持 Graphite，InfluxDB 等国际主流时序数据库作为数据源。在 IoTDB 项目中，我们开发了 Grafana 展现 IoTDB 中时序数据的连接器 IoTDB-Grafana-Connector，为您提供使用 Grafana 展示 IoTDB 数据库中的时序数据的可视化方法。
 
 ### Grafana 的安装与部署
 
@@ -89,25 +89,25 @@ Shell > grafana-server --config=/usr/local/etc/grafana/grafana.ini --homepath /u
 
 参见 [https://github.com/apache/iotdb](https://github.com/apache/iotdb)
 
-### Grafana-IoTDB 连接器安装
+### Grafana-IoTDB-Connector 连接器安装
 
 ```shell
 git clone https://github.com/apache/iotdb.git
 ```
 
-### 启动 Grafana-IoTDB
+### 启动 Grafana-IoTDB-Connector
 
  * 方案一（适合开发者）
 
-导入整个项目，maven 依赖安装完后，直接运行`iotdb/grafana/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个 grafana 连接器采用 springboot 开发
+导入整个项目，maven 依赖安装完后，直接运行`iotdb/grafana-connector/rc/main/java/org/apache/iotdb/web/grafana`目录下`TsfileWebDemoApplication.java`，这个 grafana 连接器采用 springboot 开发
 
  * 方案二（适合使用者）
 
 ```shell
 cd iotdb
-mvn clean package -pl grafana -am -Dmaven.test.skip=true
+mvn clean package -pl grafana-connector -am -Dmaven.test.skip=true
 cd grafana/target
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
   .   ____          _            __ _ _
  /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
 ( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
@@ -133,7 +133,7 @@ Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打�
 点击左上角的“Grafana”图标，选择`Data Source`选项，然后再点击`Add data source`。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664777-2766ae00-1ff5-11e9-9d2f-7489f8ccbfc2.png">
 
-在编辑数据源的时候，`Type`一栏选择`Simplejson`，`URL`一栏填写 http://\<ip\>:\<port\>，IP 为您的 IoTDB-Grafana 连接器所在的服务器 IP，Port 为运行端口（默认 8888）。之后确保 IoTDB 已经启动，点击“Save & Test”，出现“Data Source is working”提示表示配置成功。
+在编辑数据源的时候，`Type`一栏选择`Simplejson`，`URL`一栏填写 http://\<ip\>:\<port\>，IP 为您的 IoTDB-Grafana-Connector 连接器所在的服务器 IP，Port 为运行端口（默认 8888）。之后确保 IoTDB 已经启动，点击“Save & Test”，出现“Data Source is working”提示表示配置成功。
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/13203019/51664842-554bf280-1ff5-11e9-97d2-54eebe0b2ca1.png">
 
 #### 操作 Grafana
@@ -180,5 +180,5 @@ discrete_data_function=LAST_VALUE
 配置完后，请重新运行 war 包
 
 ```
-java -jar iotdb-grafana-{version}.war
+java -jar iotdb-grafana-connector-{version}.war
 ```
