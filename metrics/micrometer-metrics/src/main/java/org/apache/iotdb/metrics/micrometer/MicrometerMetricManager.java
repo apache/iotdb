@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.metrics.micrometer;
 
+import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
+import io.micrometer.core.instrument.logging.LoggingRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.micrometer.registry.IoTDBMeterRegistry;
+import org.apache.iotdb.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.micrometer.reporter.IoTDBJmxConfig;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
@@ -80,6 +84,9 @@ public class MicrometerMetricManager implements MetricManager {
     if (reporters == null) {
       return false;
     }
+
+    Metrics.addRegistry(new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
+    Metrics.addRegistry(new LoggingMeterRegistry(LoggingRegistryConfig.DEFAULT, Clock.SYSTEM));
     for (ReporterType report : reporters) {
       if (!addMeterRegistry(report)) {
         return false;

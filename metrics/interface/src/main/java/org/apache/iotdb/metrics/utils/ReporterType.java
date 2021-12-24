@@ -24,7 +24,7 @@ public enum ReporterType {
   // why all below are in lower case.
   jmx,
   prometheus,
-  internal;
+  iotdb;
 
   @Override
   public String toString() {
