@@ -17,16 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer;
+package org.apache.iotdb.db.metrics.micrometer;
 
-import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
-import io.micrometer.core.instrument.logging.LoggingRegistryConfig;
+import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
+import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.micrometer.registry.IoTDBMeterRegistry;
-import org.apache.iotdb.metrics.micrometer.registry.IoTDBRegistryConfig;
+import org.apache.iotdb.metrics.micrometer.MeterIdUtils;
 import org.apache.iotdb.metrics.micrometer.reporter.IoTDBJmxConfig;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
@@ -39,6 +38,8 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.binder.jvm.*;
 import io.micrometer.core.instrument.binder.logging.LogbackMetrics;
+import io.micrometer.core.instrument.logging.LoggingMeterRegistry;
+import io.micrometer.core.instrument.logging.LoggingRegistryConfig;
 import io.micrometer.jmx.JmxMeterRegistry;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
@@ -85,8 +86,6 @@ public class MicrometerMetricManager implements MetricManager {
       return false;
     }
 
-    Metrics.addRegistry(new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
-    Metrics.addRegistry(new LoggingMeterRegistry(LoggingRegistryConfig.DEFAULT, Clock.SYSTEM));
     for (ReporterType report : reporters) {
       if (!addMeterRegistry(report)) {
         return false;
@@ -497,6 +496,9 @@ public class MicrometerMetricManager implements MetricManager {
         break;
       case prometheus:
         Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+        break;
+      case iotdb:
+        Metrics.addRegistry(new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
         break;
       default:
         logger.warn("Unsupported report type {}, please check the config.", reporter);
