@@ -37,7 +37,7 @@ public class MetricConfig {
 
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
-      Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
+      Arrays.asList(ReporterType.jmx, ReporterType.prometheus, ReporterType.iotdb);
 
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
