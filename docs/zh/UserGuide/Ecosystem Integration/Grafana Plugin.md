@@ -27,7 +27,7 @@
 
 Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。
 
-在 IoTDB 项目中，我们开发了 Grafana 插件，该插件通过调用 IoTDB REST 服务来展现 IoTDB 中时序数据 ，提供了众多时序数据的可视化方法。Grafana 插件相较于 IoTDB-Grafana 连接器执行效率更高、支持的查询种类更多。只要在您部署环境允许的情况下，*我们都推荐直接使用 Grafana 插件而不使用 IoTDB-Grafana 连接器*。
+在 IoTDB 项目中，我们开发了 Grafana 插件，该插件通过调用 IoTDB REST 服务来展现 IoTDB 中时序数据 ，提供了众多时序数据的可视化方法。Grafana 插件相较于 IoTDB-Grafana-Connector 连接器执行效率更高、支持的查询种类更多。只要在您部署环境允许的情况下，*我们都推荐直接使用 Grafana 插件而不使用 IoTDB-Grafana-Connector 连接器*。
 
 
 
