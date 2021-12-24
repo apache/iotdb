@@ -158,6 +158,7 @@ functionName
     | FIRST_VALUE
     | SUM
     | LAST_VALUE
+    | EXTREME
     ;
 
 functionAsClause
@@ -1141,6 +1142,10 @@ MIN_VALUE
 
 MAX_VALUE
     : M A X UNDERLINE V A L U E
+    ;
+
+EXTREME
+    : E X T R E M E
     ;
 
 AVG

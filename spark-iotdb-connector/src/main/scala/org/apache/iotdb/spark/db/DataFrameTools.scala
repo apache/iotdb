@@ -84,7 +84,7 @@ object DataFrameTools {
       case TSDataType.TEXT => value
       case TSDataType.BOOLEAN => lang.Boolean.valueOf(value)
       case TSDataType.INT32 => lang.Integer.valueOf(value)
-      case TSDataType.INT32 => lang.Long.valueOf(value)
+      case TSDataType.INT64 => lang.Long.valueOf(value)
       case TSDataType.FLOAT => lang.Float.valueOf(value)
       case TSDataType.DOUBLE => lang.Double.valueOf(value)
       case _ => null

@@ -593,9 +593,9 @@ Total line number = 1
 It costs 0.013s
 ```
 
-分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value
+分层聚合查询也可被用于其他聚合函数，当前所支持的聚合函数为：count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme
 
-对于sum, avg, min_value, max_value四种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
+对于sum, avg, min_value, max_value, extreme五种聚合函数，需保证所有聚合的时间序列数据类型相同。其他聚合函数没有此限制。
 
 #### 时间区间和路径层级分组聚合查询
 
