@@ -129,7 +129,7 @@ public class IoTDBGroupByMonthFillIT {
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
                   + "GROUP BY ([1581732000000, 1607997600000), 1mo) "
-                  + "FILL(ALL[previous, 2mo])");
+                  + "FILL(previous, 2mo)");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
@@ -228,7 +228,7 @@ public class IoTDBGroupByMonthFillIT {
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
                   + "GROUP BY ([1581732000000, 1607997600000), 1mo) "
-                  + "FILL(ALL[linear, 2mo, 2mo])");
+                  + "FILL(linear, 2mo, 2mo)");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;

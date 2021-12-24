@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
-import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.MS_TO_MONTH;
 import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.calcIntervalByMonth;
 
 public class GroupByTimeFillPlan extends GroupByTimePlan {
@@ -66,9 +65,10 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
     return queryEndTime;
   }
 
-  public void init() {
-    long minQueryStartTime = Long.MAX_VALUE;
-    long maxQueryEndTime = Long.MIN_VALUE;
+  /** union the query time range with the extra fill range */
+  public void initFillRange() {
+    long minQueryStartTime = startTime;
+    long maxQueryEndTime = endTime;
     if (fillTypes != null) {
       // old type fill logic
       for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
@@ -94,15 +94,15 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
       }
     }
 
-    if (minQueryStartTime < Long.MAX_VALUE) {
+    if (minQueryStartTime < startTime) {
       long queryRange = minQueryStartTime - startTime;
       long extraStartTime, intervalNum;
       if (isSlidingStepByMonth) {
-        intervalNum = (long) Math.ceil(queryRange / (double) (getSlidingStep() * MS_TO_MONTH));
-        extraStartTime = calcIntervalByMonth(startTime, intervalNum * slidingStep);
+        intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep));
+        extraStartTime = calcIntervalByMonth(startTime, intervalNum);
         while (extraStartTime < minQueryStartTime) {
           intervalNum += 1;
-          extraStartTime = calcIntervalByMonth(startTime, intervalNum * endTime);
+          extraStartTime = calcIntervalByMonth(startTime, intervalNum);
         }
       } else {
         intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
@@ -113,8 +113,10 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
 
     maxQueryEndTime = Math.max(maxQueryEndTime, endTime);
 
+    // save origin query range
     queryStartTime = startTime;
     queryEndTime = endTime;
+
     startTime = minQueryStartTime;
     endTime = maxQueryEndTime;
   }

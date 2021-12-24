@@ -274,11 +274,6 @@ public class QueryRouter implements IQueryRouter {
     return new GroupByWithValueFilterDataSet(context, plan);
   }
 
-  protected GroupByFillDataSet getGroupByFillDataSet(
-      QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan) throws QueryProcessException {
-    return new GroupByFillDataSet(context, groupByTimeFillPlan);
-  }
-
   @Override
   public QueryDataSet fill(FillQueryPlan fillQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException, IOException {
@@ -296,7 +291,7 @@ public class QueryRouter implements IQueryRouter {
 
     GroupByFillDataSet dataSet = new GroupByFillDataSet(context, groupByFillPlan);
 
-    groupByFillPlan.init();
+    groupByFillPlan.initFillRange();
     IExpression optimizedExpression = getOptimizeExpression(groupByFillPlan);
     groupByFillPlan.setExpression(optimizedExpression);
 
@@ -311,7 +306,7 @@ public class QueryRouter implements IQueryRouter {
 
     dataSet.setDataSet(engineDataSet);
     try {
-      dataSet.init();
+      dataSet.initCache();
     } catch (IOException e) {
       // ignored
     }

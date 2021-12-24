@@ -36,10 +36,12 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
   // the result datatype for each time series
   private final TSDataType[] resultDataType;
 
+  // the last value and time for each time series
   private long[] previousTimes;
   private Object[] previousValues;
-  private int[] nextIds;
 
+  // the next value and time for each time series
+  private int[] nextIds;
   private List<ElasticSerializableTVList> nextTVLists;
 
   public GroupByFillDataSet(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
@@ -95,7 +97,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
     this.dataSet = dataSet;
   }
 
-  public void init() throws IOException, QueryProcessException {
+  public void initCache() throws IOException, QueryProcessException {
     BitSet cacheSet = new BitSet(aggregations.size());
     cacheSet.clear();
     while (cacheSet.cardinality() < aggregations.size() && dataSet.hasNextWithoutConstraint()) {
@@ -184,7 +186,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
 
     Pair<Long, Object> beforePair, afterPair;
     if (ascending) {
-      beforePair = new Pair<>(previousTimes[index], previousValues[index]);
+      if (previousValues[index] != null) {
+        beforePair = new Pair<>(previousTimes[index], previousValues[index]);
+      } else {
+        beforePair = null;
+      }
       if (nextIds[index] < nextTVLists.get(index).size()) {
         afterPair =
             new Pair<>(nextTVLists.get(index).getTime(nextIds[index]), getNextCacheValue(index));
@@ -198,7 +204,11 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
       } else {
         beforePair = null;
       }
-      afterPair = new Pair<>(previousTimes[index], previousValues[index]);
+      if (previousValues[index] != null) {
+        afterPair = new Pair<>(previousTimes[index], previousValues[index]);
+      } else {
+        afterPair = null;
+      }
     }
 
     if (fill instanceof PreviousFill) {
@@ -278,6 +288,7 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
         continue;
       }
 
+      // slide cache when the current TV is used
       if (nextTVLists.get(i).getTime(nextIds[i]) == curTimestamp) {
         previousTimes[i] = curTimestamp;
         previousValues[i] = getNextCacheValue(i);
