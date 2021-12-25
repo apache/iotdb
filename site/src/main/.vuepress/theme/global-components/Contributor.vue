@@ -344,6 +344,13 @@
           id: 'wangchao316',
           date: '2021/06/30'
         },
+        {
+          avatar:'/img/contributor-avatar/ericpai.jpg',
+          name: 'Jian Bai',
+          role: 'Committer',
+          id: 'ericpai',
+          date: '2021/12/24'
+        },
         ]
       }
     },
