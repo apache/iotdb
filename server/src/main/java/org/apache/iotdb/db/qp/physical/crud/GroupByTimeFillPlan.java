@@ -73,25 +73,15 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
       // old type fill logic
       for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
         IFill fill = IFillEntry.getValue();
-        if (fill instanceof PreviousFill) {
-          fill.convertRange(startTime, endTime);
-          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
-        } else if (fill instanceof LinearFill) {
-          fill.convertRange(startTime, endTime);
-          minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
-          maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
-        }
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
       }
     } else {
       IFill fill = singleFill;
-      if (fill instanceof PreviousFill) {
-        fill.convertRange(startTime, endTime);
-        minQueryStartTime = fill.getQueryStartTime();
-      } else if (fill instanceof LinearFill) {
-        fill.convertRange(startTime, endTime);
-        minQueryStartTime = fill.getQueryStartTime();
-        maxQueryEndTime = fill.getQueryEndTime();
-      }
+      fill.convertRange(startTime, endTime);
+      minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+      maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
     }
 
     if (minQueryStartTime < startTime) {
