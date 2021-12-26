@@ -49,7 +49,9 @@ import java.util.Map.Entry;
 
 public abstract class AbstractMemTable implements IMemTable {
 
+  /** DeviceId -> chunkGroup(MeasurementId -> chunk) */
   private final Map<IDeviceID, IWritableMemChunkGroup> memTableMap;
+
   /**
    * The initial value is true because we want calculate the text data size when recover memTable!!
    */

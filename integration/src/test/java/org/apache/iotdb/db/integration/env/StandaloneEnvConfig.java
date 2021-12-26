@@ -137,4 +137,9 @@ public class StandaloneEnvConfig implements BaseConfig {
         .setDeviceIDTransformationMethod(deviceIDTransformationMethod);
     return this;
   }
+
+  public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(enableAutoCreateSchema);
+    return this;
+  }
 }
