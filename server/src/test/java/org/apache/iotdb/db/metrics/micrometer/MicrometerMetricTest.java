@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.micrometer;
+package org.apache.iotdb.db.metrics.micrometer;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
@@ -32,7 +32,7 @@ public class MicrometerMetricTest {
   private Integer searchNumber;
   private String[] TAGS;
   private static Random random = new Random(43);
-  private static MetricManager metricManager = MetricService.getMetricManager();
+  private static MetricManager metricManager;
   private static Map<String, String[]> name2Tags = new HashMap<>();
 
   /**
@@ -52,6 +52,8 @@ public class MicrometerMetricTest {
     for (int i = 0; i < tagTotalNumber; i++) {
       TAGS[i] = initTag(i);
     }
+    MetricService.init();
+    metricManager = MetricService.getMetricManager();
   }
 
   /**
