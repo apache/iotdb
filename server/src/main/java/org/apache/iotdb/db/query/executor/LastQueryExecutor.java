@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
-import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -328,9 +327,10 @@ public class LastQueryExecutor {
     @Override
     public TimeValuePair read() {
       try {
-        IDTable table = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
         return table.getLastCache(new TimeseriesID(fullPath));
-      } catch (MetadataException e) {
+      } catch (StorageEngineException | MetadataException e) {
         logger.error("last query can't find storage group: path is: " + fullPath);
       }
 
@@ -340,9 +340,10 @@ public class LastQueryExecutor {
     @Override
     public void write(TimeValuePair pair) {
       try {
-        IDTable table = IDTableManager.getInstance().getIDTable(fullPath.getDevicePath());
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
         table.updateLastCache(new TimeseriesID(fullPath), pair, false, Long.MIN_VALUE);
-      } catch (MetadataException e) {
+      } catch (MetadataException | StorageEngineException e) {
         logger.error("last query can't find storage group: path is: " + fullPath);
       }
     }

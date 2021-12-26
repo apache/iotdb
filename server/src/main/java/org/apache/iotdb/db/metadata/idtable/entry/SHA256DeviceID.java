@@ -47,8 +47,8 @@ public class SHA256DeviceID implements IDeviceID {
 
   static {
     try {
-      md = new MessageDigest[256];
-      for (int i = 0; i < 256; i++) {
+      md = new MessageDigest[MD_NUM];
+      for (int i = 0; i < MD_NUM; i++) {
         md[i] = MessageDigest.getInstance("SHA-256");
       }
     } catch (NoSuchAlgorithmException e) {
