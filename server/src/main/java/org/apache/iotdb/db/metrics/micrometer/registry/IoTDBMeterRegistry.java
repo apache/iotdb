@@ -25,6 +25,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metrics.metricsUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
@@ -38,9 +39,7 @@ import io.micrometer.core.instrument.step.StepRegistryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
@@ -69,37 +68,60 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
               Meter.Id id = meter.getId();
               String name = id.getName();
               List<Tag> tags = id.getTags();
-              Double value =
-                  (Double)
-                      meter.match(
-                          Gauge::value,
-                          Counter::count,
-                          timer -> {
-                            HistogramSnapshot snapshot = timer.takeSnapshot();
-                            return ((Long) snapshot.count()).doubleValue();
-                          },
-                          summary -> {
-                            HistogramSnapshot snapshot = summary.takeSnapshot();
-                            return ((Long) snapshot.count()).doubleValue();
-                          },
-                          LongTaskTimer::activeTasks,
-                          timeGauge -> timeGauge.value(getBaseTimeUnit()),
-                          FunctionCounter::count,
-                          FunctionTimer::count,
-                          m -> {
-                            logger.debug("unknown meter:" + meter);
-                            return null;
-                          });
-              updateValue(name, tags, value);
+              Map<String, String> labels = tagsConvertToMap(tags);
+              meter.use(
+                  gauge -> {
+                    updateValue(name, labels, gauge.value());
+                  },
+                  counter -> {
+                    updateValue(name, labels, counter.count());
+                  },
+                  timer -> {
+                    writeSnapshotAndCount(name, labels, timer.takeSnapshot());
+                  },
+                  summary -> {
+                    writeSnapshotAndCount(name, labels, summary.takeSnapshot());
+                  },
+                  longTaskTimer -> {
+                    updateValue(name, labels, (double) longTaskTimer.activeTasks());
+                  },
+                  timeGauge -> {
+                    updateValue(name, labels, timeGauge.value(getBaseTimeUnit()));
+                  },
+                  functionCounter -> {
+                    updateValue(name, labels, functionCounter.count());
+                  },
+                  functionTimer -> {
+                    updateValue(name, labels, functionTimer.count());
+                  },
+                  m -> {
+                    logger.debug("unknown meter:" + meter);
+                  });
             });
   }
 
-  private void updateValue(String name, List<Tag> tags, Double value) {
+  private void writeSnapshotAndCount(
+      String name, Map<String, String> labels, HistogramSnapshot snapshot) {
+    updateValue(name + "_max", labels, snapshot.max());
+    updateValue(name + "_mean", labels, snapshot.mean());
+    updateValue(name + "_total", labels, snapshot.total());
+    updateValue(name + "_count", labels, (double) snapshot.count());
+  }
+
+  private Map<String, String> tagsConvertToMap(List<Tag> tags) {
+    Map<String, String> labels = new HashMap<>();
+    for (Tag tag : tags) {
+      labels.put(tag.getKey(), tag.getValue());
+    }
+    return labels;
+  }
+
+  private void updateValue(String name, Map<String, String> labels, Double value) {
     if (value != null) {
       try {
         InsertRowPlan insertRowPlan =
             new InsertRowPlan(
-                new PartialPath(generatePath(name, tags)),
+                new PartialPath(metricsUtils.generatePath(address, rpcPort, name, labels)),
                 System.currentTimeMillis(),
                 new String[] {"value"},
                 DataTypeUtils.getValueBuffer(
@@ -115,24 +137,6 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
         logger.error("illegal insertRowPlan,reason:" + e.getMessage());
       }
     }
-  }
-
-  private String generatePath(String name, List<Tag> tags) {
-    StringBuilder stringBuilder = new StringBuilder();
-    stringBuilder
-        .append("root._metric.\"")
-        .append(address)
-        .append(":")
-        .append(rpcPort)
-        .append("\"")
-        .append(".")
-        .append("\"")
-        .append(name)
-        .append("\"");
-    for (Tag tag : tags) {
-      stringBuilder.append(".\"").append(tag.getValue()).append("\"");
-    }
-    return stringBuilder.toString();
   }
 
   @Override
