@@ -15,24 +15,28 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.impl;
+import React, { InputHTMLAttributes, FunctionComponent } from 'react';
+import { InlineFormLabel } from '@grafana/ui';
 
-import org.apache.iotdb.db.protocol.rest.PingApiService;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-
-public class PingApiServiceImpl extends PingApiService {
-
-  @Override
-  public Response tryPing(SecurityContext securityContext) {
-    return Response.ok()
-        .entity(
-            new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .message(TSStatusCode.SUCCESS_STATUS.name()))
-        .build();
-  }
+export interface Props extends InputHTMLAttributes<HTMLInputElement> {
+  label: string;
+  tooltip?: string;
+  children?: React.ReactNode;
 }
+
+export const QueryField: FunctionComponent<Partial<Props>> = ({ label, tooltip, children }) => (
+  <>
+    <InlineFormLabel width={9} className="query-keyword" tooltip={tooltip}>
+      {label}
+    </InlineFormLabel>
+    {children}
+  </>
+);
+
+export const QueryInlineField: FunctionComponent<Props> = ({ ...props }) => {
+  return (
+    <div className={'gf-form-inline'}>
+      <QueryField {...props} />
+    </div>
+  );
+};

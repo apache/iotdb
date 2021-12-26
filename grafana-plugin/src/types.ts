@@ -14,25 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { DataQuery, DataSourceJsonData } from '@grafana/data';
 
-package org.apache.iotdb.db.protocol.rest.impl;
+export interface IoTDBQuery extends DataQuery {
+  startTime: number;
+  endTime: number;
+  expression: string[];
+  prefixPath: string[];
+  condition: string;
+  queryText?: string;
+  constant: number;
+}
 
-import org.apache.iotdb.db.protocol.rest.PingApiService;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.rpc.TSStatusCode;
+/**
+ * These are options configured for each DataSource instance
+ */
+export interface IoTDBOptions extends DataSourceJsonData {
+  url: string;
+  password: string;
+  username: string;
+}
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-
-public class PingApiServiceImpl extends PingApiService {
-
-  @Override
-  public Response tryPing(SecurityContext securityContext) {
-    return Response.ok()
-        .entity(
-            new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .message(TSStatusCode.SUCCESS_STATUS.name()))
-        .build();
-  }
+/**
+ * Value that is used in the backend, but never sent over HTTP to the frontend
+ */
+export interface IoTDBSecureJsonData {
+  apiKey?: string;
 }
