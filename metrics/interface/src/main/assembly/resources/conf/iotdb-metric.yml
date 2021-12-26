@@ -18,12 +18,13 @@
 #
 
 # whether enable the module
-enableMetric: true
+enableMetric: false
 
-# can be multiple reporter, e.g., jmx, prometheus
+# can be multiple reporter, e.g., jmx, prometheus, iotdb
 metricReporterList:
   - jmx
   - prometheus
+  - iotdb
 
 # you can check choose one type of monitor frame, such as dropwizard, micrometer
 monitorType: micrometer

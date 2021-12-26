@@ -18,12 +18,13 @@
 #
 
 # whether enable the module
-enableMetric: true
+enableMetric: false
 
 # can be multiple reporter, e.g., jmx,prometheus,iotdb
 metricReporterList:
   - jmx
   - prometheus
+  - iotdb
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter
