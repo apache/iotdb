@@ -304,7 +304,7 @@ public class DataLogApplierTest extends IoTDBTest {
     log.setPlan(insertPlan);
 
     // this series is already created
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(1)));
+    insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
@@ -323,7 +323,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series is not created but can be fetched
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(4)));
+    insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(4)));
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(4)));
     applier.apply(log);
     dataSet = query(Collections.singletonList(TestUtils.getTestSeries(4, 0)), null);
@@ -335,7 +335,7 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series does not exists any where
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(5)));
+    insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(5)));
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(5)));
     applier.apply(log);
     assertEquals(
@@ -343,7 +343,7 @@ public class DataLogApplierTest extends IoTDBTest {
         log.getException().getMessage());
 
     // this storage group is not even set
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
+    insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(16)));
     insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
@@ -361,7 +361,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
     for (int i = 1; i <= 4; i++) {
       InsertRowPlan insertPlan = new InsertRowPlan();
-      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(i)));
       insertPlan.setTime(1);
       insertPlan.setNeedInferType(true);
       insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});

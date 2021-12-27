@@ -146,7 +146,7 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setIdFormDevicePath(new PartialPath(sg1));
     plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
@@ -183,7 +183,7 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setIdFormDevicePath(new PartialPath(sg1));
     plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});

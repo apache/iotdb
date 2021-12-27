@@ -39,6 +39,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Map;
 
 public interface IDTable {
@@ -135,7 +136,7 @@ public interface IDTable {
       throws MetadataException;
 
   /** clear id table and close file */
-  void clear();
+  void clear() throws IOException;
 
   /**
    * translate query path's device path to device id
@@ -168,9 +169,8 @@ public interface IDTable {
           fullPath.getMeasurementSchema());
     } catch (MetadataException e) {
       logger.error("Error when translate query path: " + fullPath);
+      throw new IllegalArgumentException("can't translate path to device id, path is: " + fullPath);
     }
-
-    return null;
   }
 
   @TestOnly

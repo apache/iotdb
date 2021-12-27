@@ -345,7 +345,13 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    IDeviceID deviceID = getDeviceID(insertRowPlan.getDeviceId().getFullPath());
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertRowPlan.getIdFormDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -384,7 +390,13 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk alignedMemChunk = null;
-    IDeviceID deviceID = getDeviceID(insertRowPlan.getDeviceId().getFullPath());
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertRowPlan.getIdFormDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
@@ -432,7 +444,13 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    IDeviceID deviceID = getDeviceID(insertTabletPlan.getDeviceId().getFullPath());
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertTabletPlan.getIdFormDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -458,11 +476,17 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    IDeviceID deviceId = getDeviceID(insertTabletPlan.getDeviceId().getFullPath());
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertTabletPlan.getIdFormDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
-        deviceId,
+        deviceID,
         insertTabletPlan.getMeasurements(),
         start,
         end,
@@ -1367,14 +1391,13 @@ public class TsFileProcessor {
     return shouldClose;
   }
 
-  private IDeviceID getDeviceID(String deviceId) {
+  private IDeviceID getDeviceID(String deviceId) throws IllegalPathException {
     try {
       return DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId));
     } catch (IllegalPathException e) {
       logger.error("device id is illegal");
+      throw e;
     }
-
-    return null;
   }
 
   @TestOnly

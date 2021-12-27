@@ -446,12 +446,12 @@ public class MManager {
     switch (plan.getOperatorType()) {
       case CREATE_TIMESERIES:
         CreateTimeSeriesPlan createTimeSeriesPlan = (CreateTimeSeriesPlan) plan;
-        createTimeseriesEntry(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
+        createTimeseries(createTimeSeriesPlan, createTimeSeriesPlan.getTagOffset());
         break;
       case CREATE_ALIGNED_TIMESERIES:
         CreateAlignedTimeSeriesPlan createAlignedTimeSeriesPlan =
             (CreateAlignedTimeSeriesPlan) plan;
-        createAlignedTimeSeriesEntry(createAlignedTimeSeriesPlan);
+        createAlignedTimeSeries(createAlignedTimeSeriesPlan);
         break;
       case DELETE_TIMESERIES:
         DeleteTimeSeriesPlan deleteTimeSeriesPlan = (DeleteTimeSeriesPlan) plan;
@@ -517,18 +517,7 @@ public class MManager {
   // including create and delete
 
   public void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    createTimeseriesEntry(plan, -1);
-  }
-
-  public void createTimeseriesEntry(CreateTimeSeriesPlan plan, long offset)
-      throws MetadataException {
-    createTimeseries(plan, offset);
-
-    // update id table
-    if (config.isEnableIDTable()) {
-      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
-      idTable.createTimeseries(plan);
-    }
+    createTimeseries(plan, -1);
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
@@ -591,6 +580,12 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
+      idTable.createTimeseries(plan);
+    }
   }
 
   /**
@@ -628,20 +623,9 @@ public class MManager {
       List<TSEncoding> encodings,
       List<CompressionType> compressors)
       throws MetadataException {
-    createAlignedTimeSeriesEntry(
+    createAlignedTimeSeries(
         new CreateAlignedTimeSeriesPlan(
             prefixPath, measurements, dataTypes, encodings, compressors, null));
-  }
-
-  public void createAlignedTimeSeriesEntry(CreateAlignedTimeSeriesPlan plan)
-      throws MetadataException {
-    createAlignedTimeSeries(plan);
-
-    // update id table
-    if (config.isEnableIDTable()) {
-      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
-      idTable.createAlignedTimeseries(plan);
-    }
   }
 
   /**
@@ -690,6 +674,12 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      idTable.createAlignedTimeseries(plan);
     }
   }
 
@@ -1838,7 +1828,7 @@ public class MManager {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getIdFormDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -1868,7 +1858,7 @@ public class MManager {
       throw new MetadataException(
           String.format(
               "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-              plan.getDeviceId()));
+              plan.getIdFormDevicePath()));
     }
 
     // 2. get schema of each measurement
@@ -1926,7 +1916,7 @@ public class MManager {
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getIdFormDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);

@@ -587,7 +587,7 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getIdFormDevicePath());
     getSeriesSchemas(insertRowPlan, storageGroupProcessor);
     try {
       insertRowPlan.transferType();
@@ -601,7 +601,7 @@ public class StorageEngine implements IService {
         try {
           updateMonitorStatistics(
               processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDeviceId())),
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getIdFormDevicePath())),
               insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
@@ -622,7 +622,7 @@ public class StorageEngine implements IService {
       }
     }
     StorageGroupProcessor storageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+        getProcessor(insertRowsOfOneDevicePlan.getIdFormDevicePath());
 
     for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
       plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
@@ -652,11 +652,12 @@ public class StorageEngine implements IService {
     }
     StorageGroupProcessor storageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      storageGroupProcessor = getProcessor(insertTabletPlan.getIdFormDevicePath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getIdFormDevicePath()),
           e);
     }
 
@@ -667,7 +668,7 @@ public class StorageEngine implements IService {
       try {
         updateMonitorStatistics(
             processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDeviceId())),
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getIdFormDevicePath())),
             insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
@@ -1063,8 +1064,9 @@ public class StorageEngine implements IService {
         processor.getIdTable().getSeriesSchemas(insertPlan);
       } else {
         IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
-        insertPlan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDeviceId()));
-        insertPlan.setDevicePath(insertPlan.getDeviceId());
+        insertPlan.setDeviceID(
+            DeviceIDFactory.getInstance().getDeviceID(insertPlan.getIdFormDevicePath()));
+        insertPlan.setDevicePath(insertPlan.getIdFormDevicePath());
       }
     } catch (IOException e) {
       throw new StorageEngineException(e);

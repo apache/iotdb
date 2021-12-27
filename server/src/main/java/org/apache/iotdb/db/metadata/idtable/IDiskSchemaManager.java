@@ -44,5 +44,5 @@ public interface IDiskSchemaManager {
   public Collection<DiskSchemaEntry> getAllSchemaEntry() throws IOException;
 
   /** close file and free resource */
-  void close();
+  void close() throws IOException;
 }

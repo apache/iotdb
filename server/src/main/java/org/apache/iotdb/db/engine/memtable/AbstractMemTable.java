@@ -138,10 +138,11 @@ public abstract class AbstractMemTable implements IMemTable {
 
   @Override
   public void insert(InsertRowPlan insertRowPlan) {
-    // if this insert plan isn't from storage engine, we should set a temp device id for it
+    // if this insert plan isn't from storage engine (mainly from test), we should set a temp device
+    // id for it
     if (insertRowPlan.getDeviceID() == null) {
       insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDeviceId()));
+          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getIdFormDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -178,7 +179,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertRowPlan.getDeviceID() == null) {
       insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDeviceId()));
+          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getIdFormDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -286,7 +287,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDeviceId()));
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getIdFormDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -313,7 +314,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDeviceId()));
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getIdFormDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();

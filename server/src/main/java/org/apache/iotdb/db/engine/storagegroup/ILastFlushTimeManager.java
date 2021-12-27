@@ -20,10 +20,7 @@ package org.apache.iotdb.db.engine.storagegroup;
 
 import java.util.Map;
 
-/**
- * This interface manages last time and flush time for sequence and unsequence determination This
- * class
- */
+/** This interface manages last time and flush time for sequence and unsequence determination */
 public interface ILastFlushTimeManager {
 
   // region set

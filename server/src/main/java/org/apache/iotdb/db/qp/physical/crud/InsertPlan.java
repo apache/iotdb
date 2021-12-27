@@ -33,9 +33,17 @@ import java.util.List;
 
 public abstract class InsertPlan extends PhysicalPlan {
 
-  // id form of device path
-  protected PartialPath deviceId;
-  // device path
+  /**
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
+   * used in flush time manager, last cache, tsfile processor
+   */
+  protected PartialPath idFormDevicePath;
+
+  /**
+   * tree-structured device path, used in wal <br>
+   * use this field in other place should test id table compatibility
+   */
   protected PartialPath devicePath;
 
   protected boolean isAligned;
@@ -45,6 +53,10 @@ public abstract class InsertPlan extends PhysicalPlan {
   // get from MManager
   protected IMeasurementMNode[] measurementMNodes;
 
+  /**
+   * device id reference, for reuse device id in both id table and memtable <br>
+   * used in memtable
+   */
   protected IDeviceID deviceID;
 
   // record the failed measurements, their reasons, and positions in "measurements"
@@ -57,12 +69,17 @@ public abstract class InsertPlan extends PhysicalPlan {
     super.canBeSplit = false;
   }
 
-  public PartialPath getDeviceId() {
-    return deviceId;
+  /**
+   * if use id table, this filed is id form of device path <br>
+   * if not, this filed is device path<br>
+   * used in flush time manager, last cache, tsfile processor
+   */
+  public PartialPath getIdFormDevicePath() {
+    return idFormDevicePath;
   }
 
-  public void setDeviceId(PartialPath deviceId) {
-    this.deviceId = deviceId;
+  public void setIdFormDevicePath(PartialPath idFormDevicePath) {
+    this.idFormDevicePath = idFormDevicePath;
   }
 
   public String[] getMeasurements() {
@@ -181,7 +198,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (deviceId == null) {
+    if (idFormDevicePath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {
@@ -195,6 +212,10 @@ public abstract class InsertPlan extends PhysicalPlan {
     }
   }
 
+  /**
+   * device id reference, for reuse device id in both id table and memtable <br>
+   * used in memtable
+   */
   public IDeviceID getDeviceID() {
     return deviceID;
   }
@@ -203,6 +224,10 @@ public abstract class InsertPlan extends PhysicalPlan {
     this.deviceID = deviceID;
   }
 
+  /**
+   * tree-structured device path, used in wal <br>
+   * use this field in other place should test id table compatibility
+   */
   public PartialPath getDevicePath() {
     return devicePath;
   }

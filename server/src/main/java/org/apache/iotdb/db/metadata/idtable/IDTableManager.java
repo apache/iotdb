@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 
 /** This class manages one id table for each logical storage group */
@@ -94,7 +95,7 @@ public class IDTableManager {
   }
 
   /** clear id table map */
-  public void clear() {
+  public void clear() throws IOException {
     for (IDTable idTable : idTableMap.values()) {
       idTable.clear();
     }

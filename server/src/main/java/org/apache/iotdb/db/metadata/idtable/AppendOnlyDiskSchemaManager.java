@@ -49,12 +49,12 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   private static final Logger logger = LoggerFactory.getLogger(AppendOnlyDiskSchemaManager.class);
 
   public AppendOnlyDiskSchemaManager(File dir) {
-
     try {
       initFile(dir);
       outputStream = new FileOutputStream(dataFile);
     } catch (IOException e) {
       logger.error(e.getMessage());
+      throw new IllegalArgumentException("can't initialize disk schema manager at " + dataFile);
     }
   }
 
@@ -116,7 +116,9 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
       schemaEntry.serialize(outputStream);
     } catch (IOException e) {
       logger.error("failed to serialize schema entry: " + schemaEntry);
+      throw new IllegalArgumentException("can't serialize disk entry of " + schemaEntry);
     }
+
     return 0;
   }
 
@@ -145,11 +147,12 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
   }
 
   @Override
-  public void close() {
+  public void close() throws IOException {
     try {
       outputStream.close();
     } catch (IOException e) {
       logger.error("close schema file failed");
+      throw e;
     }
   }
 }
