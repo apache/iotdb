@@ -28,7 +28,6 @@ import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
-import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
@@ -64,6 +63,7 @@ public class RestApiServiceImpl extends RestApiService {
       if (response != null) {
         return response;
       }
+
       return Response.ok()
           .entity(
               serviceProvider.executeNonQuery(physicalPlan)
@@ -98,20 +98,23 @@ public class RestApiServiceImpl extends RestApiService {
       if (response != null) {
         return response;
       }
+
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
-      QueryContext queryContext =
-          serviceProvider.genQueryContext(
-              queryId,
-              physicalPlan.isDebug(),
-              System.currentTimeMillis(),
-              sql.getSql(),
-              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
-      QueryDataSet queryDataSet =
-          serviceProvider.createQueryDataSet(
-              queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-      response = QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
-      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-      return response;
+      try {
+        QueryContext queryContext =
+            serviceProvider.genQueryContext(
+                queryId,
+                physicalPlan.isDebug(),
+                System.currentTimeMillis(),
+                sql.getSql(),
+                IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+        QueryDataSet queryDataSet =
+            serviceProvider.createQueryDataSet(
+                queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
+        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+      } finally {
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+      }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }

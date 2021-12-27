@@ -25,6 +25,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
 public class PingApiServiceImpl extends PingApiService {
+
   @Override
   public Response tryPing(SecurityContext securityContext) {
     return Response.ok()

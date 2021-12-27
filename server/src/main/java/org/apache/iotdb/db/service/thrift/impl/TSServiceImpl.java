@@ -2029,10 +2029,12 @@ public class TSServiceImpl implements TSIService.Iface {
   /** Add stat of operation into metrics */
   private void addOperationLatency(Operation operation, long startTime) {
     if (CONFIG.isEnablePerformanceStat()) {
-      MetricService.getMetricManager()
+      MetricsService.getInstance()
+          .getMetricManager()
           .getOrCreateHistogram("operation_histogram", "name", operation.getName())
           .update(System.currentTimeMillis() - startTime);
-      MetricService.getMetricManager()
+      MetricsService.getInstance()
+          .getMetricManager()
           .getOrCreateCounter("operation_count", "name", operation.getName())
           .inc();
     }

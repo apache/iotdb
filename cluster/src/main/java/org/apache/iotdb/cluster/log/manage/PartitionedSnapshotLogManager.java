@@ -31,6 +31,10 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -77,6 +81,17 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
     this.factory = factory;
     this.thisNode = thisNode;
     this.dataGroupMember = dataGroupMember;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CLUSTER_UNCOMMITTED_LOG.toString(),
+              getUnCommittedEntryManager().getAllEntries(),
+              List::size,
+              Tag.NAME.toString(),
+              thisNode.internalIp + "_" + dataGroupMember.getName());
+    }
   }
 
   public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)

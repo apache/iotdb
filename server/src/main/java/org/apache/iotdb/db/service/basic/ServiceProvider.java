@@ -257,4 +257,8 @@ public abstract class ServiceProvider {
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
   }
+
+  public Planner getPlanner() {
+    return processor;
+  }
 }
