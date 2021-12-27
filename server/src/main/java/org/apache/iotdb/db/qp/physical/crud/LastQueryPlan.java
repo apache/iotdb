@@ -24,16 +24,16 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import org.apache.thrift.TException;
+
+import java.util.*;
 
 public class LastQueryPlan extends RawDataQueryPlan {
 
@@ -55,6 +55,13 @@ public class LastQueryPlan extends RawDataQueryPlan {
       }
     }
     setResultColumns(deduplicatedResultColumns);
+  }
+
+  @Override
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      throws TException {
+    throw new TException("unsupported query type: " + getOperatorType());
   }
 
   @Override

@@ -18,15 +18,16 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
+import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class AggregationPlan extends RawDataQueryPlan {
 
@@ -45,6 +46,24 @@ public class AggregationPlan extends RawDataQueryPlan {
   public AggregationPlan() {
     super();
     setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  @Override
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      throws MetadataException {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    List<String> aggregations = getAggregations();
+    if (aggregations.size() != paths.size()) {
+      for (int i = 1; i < paths.size(); i++) {
+        aggregations.add(aggregations.get(0));
+      }
+    }
+    for (ResultColumn resultColumn : resultColumns) {
+      respColumns.add(resultColumn.getResultColumnName());
+    }
+    seriesTypes.addAll(SchemaUtils.getSeriesTypesByPaths(paths, aggregations));
+    return seriesTypes;
   }
 
   @Override

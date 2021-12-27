@@ -25,13 +25,13 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import org.apache.thrift.TException;
+
+import java.util.*;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -66,6 +66,29 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
+
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      throws TException, MetadataException {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    for (int i = 0; i < resultColumns.size(); ++i) {
+      if (isJdbcQuery) {
+        String sgName = IoTDB.metaManager.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
+        respSgColumns.add(sgName);
+        if (resultColumns.get(i).getAlias() == null) {
+          respColumns.add(
+              resultColumns.get(i).getResultColumnName().substring(sgName.length() + 1));
+        } else {
+          aliasList.set(i);
+          respColumns.add(resultColumns.get(i).getResultColumnName());
+        }
+      } else {
+        respColumns.add(resultColumns.get(i).getResultColumnName());
+      }
+      seriesTypes.add(paths.get(i).getSeriesType());
+    }
+    return seriesTypes;
+  }
 
   @Override
   public List<MeasurementPath> getPaths() {
