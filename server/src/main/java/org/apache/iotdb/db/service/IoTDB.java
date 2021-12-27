@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
-import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -59,7 +58,7 @@ public class IoTDB implements IoTDBMBean {
   private static final Logger logger = LoggerFactory.getLogger(IoTDB.class);
   private final String mbeanName =
       String.format("%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, "IoTDB");
-  private final RegisterManager registerManager = new RegisterManager();
+  private static final RegisterManager registerManager = new RegisterManager();
   public static MManager metaManager = MManager.getInstance();
   public static ServiceProvider serviceProvider;
   private static boolean clusterMode = false;
@@ -145,7 +144,9 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(RPCService.getInstance());
     }
 
-    initProtocols();
+    if (!isClusterMode()) {
+      initProtocols();
+    }
 
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
 
@@ -174,12 +175,9 @@ public class IoTDB implements IoTDBMBean {
     }
   }
 
-  private void initProtocols() throws StartupException {
+  public static void initProtocols() throws StartupException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
-      if (!IoTDB.isClusterMode()) {
-        InfluxDBMetaManager.getInstance().recover();
-      }
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
