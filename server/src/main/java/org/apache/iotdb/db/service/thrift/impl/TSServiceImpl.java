@@ -35,12 +35,10 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.*;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
@@ -67,7 +65,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -676,10 +673,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private TSExecuteStatementResp getQueryColumnHeaders(
       PhysicalPlan physicalPlan, String username, boolean isJdbcQuery)
       throws AuthException, TException, MetadataException {
-
-    List<String> respColumns = new ArrayList<>();
-    List<String> columnsTypes = new ArrayList<>();
-
     // check permissions
     if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
@@ -688,85 +681,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               "No permissions for this operation " + physicalPlan.getOperatorType()));
     }
 
-    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
-
-    // align by device query
-    QueryPlan plan = (QueryPlan) physicalPlan;
-    if (plan instanceof AlignByDevicePlan) {
-      getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
-    } else if (plan instanceof LastQueryPlan) {
-      // Last Query should return different respond instead of the static one
-      // because the query dataset and query id is different although the header of last query is
-      // same.
-      return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan.isGroupByLevel()) {
-      for (Map.Entry<String, AggregateResult> groupPathResult :
-          ((AggregationPlan) plan).getGroupPathsResultMap().entrySet()) {
-        respColumns.add(groupPathResult.getKey());
-        columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
-      }
-    } else {
-      List<String> respSgColumns = new ArrayList<>();
-      BitSet aliasMap = new BitSet();
-      List<TSDataType> seriesTypes =
-          plan.getWideQueryHeaders(respColumns, respSgColumns, isJdbcQuery, aliasMap);
-      for (TSDataType seriesType : seriesTypes) {
-        columnsTypes.add(seriesType.toString());
-      }
-      resp.setColumnNameIndexMap(plan.getPathToIndex());
-      resp.setSgColumns(respSgColumns);
-      List<Byte> byteList = new ArrayList<>();
-      byteList.addAll(Bytes.asList(aliasMap.toByteArray()));
-      resp.setAliasColumns(byteList);
-    }
-    resp.setColumns(respColumns);
-    resp.setDataTypeList(columnsTypes);
-    return resp;
-  }
-
-  private void getAlignByDeviceQueryHeaders(
-      AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
-    // set columns in TSExecuteStatementResp.
-    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
-
-    // get column types and do deduplication
-    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
-
-    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, MeasurementInfo> measurementInfoMap = plan.getMeasurementInfoMap();
-
-    // build column header with constant and non exist column and deduplication
-    List<String> measurements = plan.getMeasurements();
-    for (String measurement : measurements) {
-      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
-      TSDataType type = TSDataType.TEXT;
-      switch (measurementInfo.getMeasurementType()) {
-        case Exist:
-          type = measurementInfo.getColumnDataType();
-          break;
-        case NonExist:
-        case Constant:
-          type = TSDataType.TEXT;
-      }
-      String measurementAlias = measurementInfo.getMeasurementAlias();
-      respColumns.add(measurementAlias != null ? measurementAlias : measurement);
-      columnTypes.add(type.toString());
-
-      if (!deduplicatedMeasurements.contains(measurement)) {
-        deduplicatedMeasurements.add(measurement);
-        deduplicatedColumnsType.add(type);
-      }
-    }
-
-    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
-    plan.setMeasurements(new ArrayList<>(deduplicatedMeasurements));
-    plan.setDataTypes(deduplicatedColumnsType);
-
-    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
-    plan.setPaths(null);
+    return ((QueryPlan) physicalPlan).getTSExecuteStatementResp(isJdbcQuery);
   }
 
   private TSExecuteStatementResp executeSelectIntoStatement(

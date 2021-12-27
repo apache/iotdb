@@ -27,8 +27,12 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 
 import java.util.*;
@@ -66,6 +70,31 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
+
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    List<String> respColumns = new ArrayList<>();
+    List<String> columnsTypes = new ArrayList<>();
+
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+    List<String> respSgColumns = new ArrayList<>();
+    BitSet aliasMap = new BitSet();
+    List<TSDataType> seriesTypes =
+        getWideQueryHeaders(respColumns, respSgColumns, isJdbcQuery, aliasMap);
+    for (TSDataType seriesType : seriesTypes) {
+      columnsTypes.add(seriesType.toString());
+    }
+    resp.setColumnNameIndexMap(getPathToIndex());
+    resp.setSgColumns(respSgColumns);
+    List<Byte> byteList = new ArrayList<>();
+    byteList.addAll(Bytes.asList(aliasMap.toByteArray()));
+    resp.setAliasColumns(byteList);
+
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
+    return resp;
+  }
 
   public List<TSDataType> getWideQueryHeaders(
       List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)

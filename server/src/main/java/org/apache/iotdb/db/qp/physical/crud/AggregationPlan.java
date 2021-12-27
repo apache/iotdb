@@ -25,7 +25,12 @@ import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import org.apache.thrift.TException;
 
 import java.util.*;
 
@@ -46,6 +51,27 @@ public class AggregationPlan extends RawDataQueryPlan {
   public AggregationPlan() {
     super();
     setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    if (isGroupByLevel()) {
+      List<String> respColumns = new ArrayList<>();
+      List<String> columnsTypes = new ArrayList<>();
+
+      TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+      for (Map.Entry<String, AggregateResult> groupPathResult :
+          getGroupPathsResultMap().entrySet()) {
+        respColumns.add(groupPathResult.getKey());
+        columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
+      }
+      resp.setColumns(respColumns);
+      resp.setDataTypeList(columnsTypes);
+      return resp;
+    } else {
+      return super.getTSExecuteStatementResp(isJdbcQuery);
+    }
   }
 
   @Override
