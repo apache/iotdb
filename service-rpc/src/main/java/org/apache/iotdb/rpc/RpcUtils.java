@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.rpc;
 
-import org.apache.iotdb.protocol.influxdb.rpc.thrift.*;
 import org.apache.iotdb.protocol.influxdb.rpc.thrift.InfluxDBService;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;

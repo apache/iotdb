@@ -47,7 +47,7 @@ import javax.ws.rs.core.SecurityContext;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
-  private final ServiceProvider serviceProvider= IoTDB.serviceProvider;
+  private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private final AuthorizationHandler authorizationHandler;
 
   private final float timePrecision; // the default timestamp precision is ms
@@ -75,8 +75,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      PhysicalPlan physicalPlan =
-          serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
       if (!(physicalPlan instanceof ShowPlan) && !(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
