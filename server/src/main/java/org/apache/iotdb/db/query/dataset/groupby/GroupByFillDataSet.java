@@ -182,12 +182,6 @@ public class GroupByFillDataSet extends GroupByEngineDataSet {
   }
 
   private void fillRecord(int index, RowRecord record) throws IOException {
-    // Don't fill count aggregation
-    if (Objects.equals(aggregations.get(index), "count")) {
-      record.addField((long) 0, TSDataType.INT64);
-      return;
-    }
-
     IFill fill;
     if (fillTypes != null) {
       // old type fill logic
