@@ -100,7 +100,12 @@ public class AppendOnlyDiskSchemaManager implements IDiskSchemaManager {
         return false;
       }
 
-      inputStream.skip(pos - lastEntrySize);
+      long realSkip = inputStream.skip(pos - lastEntrySize);
+      // file length isn't right
+      if (realSkip != pos - lastEntrySize) {
+        return false;
+      }
+
       DiskSchemaEntry.deserialize(inputStream);
     } catch (Exception e) {
       logger.error("can't deserialize last entry, file corruption." + e);
