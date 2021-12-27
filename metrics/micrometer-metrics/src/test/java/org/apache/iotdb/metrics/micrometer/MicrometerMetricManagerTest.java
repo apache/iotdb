@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer;
+package org.apache.iotdb.metrics.micrometer;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
@@ -41,7 +41,7 @@ public class MicrometerMetricManagerTest {
   public static void init() {
     System.setProperty("line.separator", "\n");
     // set up path of yml
-    System.setProperty("IOTDB_CONF", "server/src/test/resources");
+    System.setProperty("IOTDB_CONF", "src/test/resources");
     MetricService.init();
     metricManager = MetricService.getMetricManager();
   }

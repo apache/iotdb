@@ -17,15 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer;
+package org.apache.iotdb.metrics.micrometer;
 
-import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
-import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.micrometer.MeterIdUtils;
 import org.apache.iotdb.metrics.micrometer.reporter.IoTDBJmxConfig;
 import org.apache.iotdb.metrics.micrometer.type.*;
 import org.apache.iotdb.metrics.type.*;
@@ -496,12 +493,16 @@ public class MicrometerMetricManager implements MetricManager {
         Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
         break;
       case iotdb:
-        Metrics.addRegistry(new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
         break;
       default:
         logger.warn("Unsupported report type {}, please check the config.", reporter);
         return false;
     }
+    return true;
+  }
+
+  public boolean addMeterRegistry(MeterRegistry registry){
+    Metrics.addRegistry(registry);
     return true;
   }
 

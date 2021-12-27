@@ -22,6 +22,8 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.StartupException;
+import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
+import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -32,9 +34,11 @@ import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
+import org.apache.iotdb.metrics.micrometer.MicrometerMetricManager;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import io.micrometer.core.instrument.Clock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -145,7 +149,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     // load reporter
     loadReporter();
     // do some init work
-    metricManager.init();
+    metricManagerInit();
     // start reporter
     compositeReporter.startAll();
 
@@ -153,6 +157,16 @@ public class MetricsService implements MetricsServiceMBean, IService {
     enablePredefinedMetric(PredefinedMetric.LOGBACK);
 
     collectFileSystemInfo();
+  }
+
+  private void metricManagerInit() {
+    metricManager.init();
+    if (metricManager instanceof MicrometerMetricManager) {
+      if (metricConfig.getMetricReporterList().contains(ReporterType.iotdb)) {
+        ((MicrometerMetricManager) metricManager)
+            .addMeterRegistry(new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM));
+      }
+    }
   }
 
   private void collectFileSystemInfo() {

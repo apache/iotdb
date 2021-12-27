@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.metrics.micrometer;
+package org.apache.iotdb.metrics.micrometer;
 
 public class MicrometerMetricTestPlan {
   private static final Integer[] TAG_NUMBERS = {2, 4, 6, 8, 10};
@@ -52,7 +52,7 @@ public class MicrometerMetricTestPlan {
   }
 
   public static void main(String[] args) {
-    System.setProperty("IOTDB_CONF", "server/src/test/resources");
+    System.setProperty("IOTDB_CONF", "metrics/micrometer-metrics/src/test/resources");
     for (Integer metric : METRIC_NUMBERS) {
       for (Integer tag : TAG_NUMBERS) {
         test(metric, tag);
