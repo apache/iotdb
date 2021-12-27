@@ -14,25 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { FunctionComponent } from 'react';
+import { SegmentInput } from '@grafana/ui';
+import React from 'react';
 
-package org.apache.iotdb.db.protocol.rest.impl;
-
-import org.apache.iotdb.db.protocol.rest.PingApiService;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-
-public class PingApiServiceImpl extends PingApiService {
-
-  @Override
-  public Response tryPing(SecurityContext securityContext) {
-    return Response.ok()
-        .entity(
-            new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .message(TSStatusCode.SUCCESS_STATUS.name()))
-        .build();
-  }
+export interface Props {
+  condition: string;
+  onChange: (conditionStr: string) => void;
 }
+
+export const WhereValue: FunctionComponent<Props> = ({ condition, onChange }) => (
+  <>
+    {
+      <>
+        <SegmentInput
+          className="min-width-8"
+          placeholder="(optional)"
+          value={condition}
+          onChange={string => onChange(string.toString())}
+        />
+      </>
+    }
+  </>
+);

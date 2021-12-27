@@ -15,24 +15,6 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.db.protocol.rest.impl;
-
-import org.apache.iotdb.db.protocol.rest.PingApiService;
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
-import org.apache.iotdb.rpc.TSStatusCode;
-
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.SecurityContext;
-
-public class PingApiServiceImpl extends PingApiService {
-
-  @Override
-  public Response tryPing(SecurityContext securityContext) {
-    return Response.ok()
-        .entity(
-            new ExecutionStatus()
-                .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
-                .message(TSStatusCode.SUCCESS_STATUS.name()))
-        .build();
-  }
-}
+module.exports = {
+  ...require('@grafana/toolkit/src/config/prettier.plugin.config.json'),
+};
