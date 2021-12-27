@@ -112,7 +112,7 @@ public class IDTableTest {
               Arrays.asList(compressionType, compressionType, compressionType),
               null);
 
-      manager.createAlignedTimeSeriesAndCheckIDTable(plan);
+      manager.createAlignedTimeSeries(plan);
 
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
@@ -191,7 +191,7 @@ public class IDTableTest {
               Arrays.asList(compressionType, compressionType, compressionType),
               null);
 
-      manager.createAlignedTimeSeriesAndCheckIDTable(plan);
+      manager.createAlignedTimeSeries(plan);
 
       IDTable idTable = IDTableManager.getInstance().getIDTable(new PartialPath("root.laptop"));
 
