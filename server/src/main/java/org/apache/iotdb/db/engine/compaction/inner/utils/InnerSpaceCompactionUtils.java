@@ -669,12 +669,12 @@ public class InnerSpaceCompactionUtils {
    */
   public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
       throws IOException {
-    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       logger.warn(
           "{} [Compaction] Tmp target tsfile {} should be end with {}",
           fullStorageGroupName,
           targetResource.getTsFilePath(),
-          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
+          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
       return;
     }
     File oldFile = targetResource.getTsFile();
@@ -683,7 +683,7 @@ public class InnerSpaceCompactionUtils {
     String newFilePath =
         targetResource
             .getTsFilePath()
-            .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
+            .replace(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
     File newFile = new File(newFilePath);
     FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
 

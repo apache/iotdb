@@ -59,7 +59,7 @@ public class CompactionFileGeneratorUtils {
                     + (tsFileName.getInnerCompactionCnt() + 1)
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + tsFileName.getCrossCompactionCnt()
-                    + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                    + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
   }
 
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {

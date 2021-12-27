@@ -1,6 +1,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.writer.ICompactionWriter;
+import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -19,14 +20,8 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -53,16 +48,16 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    TsFileIOWriter targetFileWriter = null;
+    ICompactionWriter compactionWriter = null;
     try {
-      targetFileWriter = getFileIOWriter(seqFileResources, unseqFileResources);
+      compactionWriter = getCompactionWriter(seqFileResources, unseqFileResources);
       Set<String> tsFileDevicesSet = getTsFileDevicesSet(seqFileResources, unseqFileResources);
 
       for (String device : tsFileDevicesSet) {
-        targetFileWriter.startChunkGroup(device);
         boolean isAligned =
             ((EntityMNode) MManager.getInstance().getDeviceNode(new PartialPath(device)))
                 .isAligned();
+        compactionWriter.startChunkGroup(device, isAligned);
         Map<String, TimeseriesMetadata> deviceMeasurementsMap =
             getDeviceMeasurementsMap(device, seqFileResources, unseqFileResources);
         PartialPath seriesPath;
@@ -74,42 +69,38 @@ public class CompactionUtils {
                 measurementSchemas.add(
                     new UnaryMeasurementSchema(measurementId, timeseriesMetadata.getTSDataType()));
               });
+          compactionWriter.startMeasurement(measurementSchemas);
+
           seriesPath =
               new AlignedPath(
                   device, new ArrayList<>(deviceMeasurementsMap.keySet()), measurementSchemas);
           SeriesRawDataBatchReader dataBatchReader =
-                  new SeriesRawDataBatchReader(
-                          seriesPath,
-                          deviceMeasurementsMap.keySet(),
-                          TSDataType.VECTOR,
-                          queryContext,
-                          queryDataSource,
-                          null,
-                          null,
-                          null,
-                          true);
-          IChunkWriter chunkWriter=new AlignedChunkWriterImpl(measurementSchemas);
+              new SeriesRawDataBatchReader(
+                  seriesPath,
+                  deviceMeasurementsMap.keySet(),
+                  TSDataType.VECTOR,
+                  queryContext,
+                  queryDataSource,
+                  null,
+                  null,
+                  null,
+                  true);
           while (dataBatchReader.hasNextBatch()) {
             BatchData batchData = dataBatchReader.nextBatch();
             while (batchData.hasCurrent()) {
-              writeDataPoint(batchData.currentTime(), batchData.currentValue(), chunkWriter);
+              compactionWriter.write(batchData.currentTime(), batchData.currentValue());
               batchData.next();
-              if (chunkWriter.getSerializedChunkSize() > 2 * 1024 * 1024) { // Todo:
-                writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-                chunkWriter.writeToFileWriter(targetFileWriter);
-                targetFileWriter.endChunkGroup();
-                if (batchData.hasCurrent() || dataBatchReader.hasNextBatch()) {
-                  targetFileWriter.startChunkGroup(device);
-                }
-              }
             }
           }
-          writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-          chunkWriter.writeToFileWriter(targetFileWriter);
-
+          compactionWriter.endMeasurement();
         } else {
           //  nonAligned
           for (Map.Entry<String, TimeseriesMetadata> entry : deviceMeasurementsMap.entrySet()) {
+            List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+            measurementSchemas.add(
+                IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())));
+            compactionWriter.startMeasurement(measurementSchemas);
+
             seriesPath =
                 new MeasurementPath(
                     device,
@@ -126,46 +117,24 @@ public class CompactionUtils {
                     null,
                     null,
                     true);
-            ChunkWriterImpl chunkWriter =
-                new ChunkWriterImpl(
-                    IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())),
-                    true);
             while (dataBatchReader.hasNextBatch()) {
               BatchData batchData = dataBatchReader.nextBatch();
               while (batchData.hasCurrent()) {
-                writeDataPoint(batchData.currentTime(), batchData.currentValue(), chunkWriter);
+                compactionWriter.write(batchData.currentTime(), batchData.currentValue());
                 batchData.next();
-                if (chunkWriter.getSerializedChunkSize() > 2 * 1024 * 1024) { // Todo:
-                  writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-                  chunkWriter.writeToFileWriter(targetFileWriter);
-                  targetFileWriter.endChunkGroup();
-                  if (batchData.hasCurrent() || dataBatchReader.hasNextBatch()) {
-                    targetFileWriter.startChunkGroup(device);
-                  }
-                }
               }
             }
-            writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-            chunkWriter.writeToFileWriter(targetFileWriter);
+            compactionWriter.endMeasurement();
           }
         }
-        targetFileWriter.endChunkGroup();
+        compactionWriter.endChunkGroup();
       }
-      targetFileWriter.endFile();
+      compactionWriter.endFile();
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
-      if (targetFileWriter != null && targetFileWriter.canWrite()) {
-        targetFileWriter.close();
-      }
+      compactionWriter.close();
     }
   }
-
-  private static void writeWithReader(
-      PartialPath path,
-      Set<String> allSensors,
-      TSDataType dataType,
-      QueryContext queryContext,
-      QueryDataSource queryDataSource) {}
 
   private static Set<String> getTsFileDevicesSet(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
@@ -181,12 +150,7 @@ public class CompactionUtils {
     return deviceSet;
   }
 
-  private static void writeRateLimit(long bytesLength) {
-    MergeManager.mergeRateLimiterAcquire(
-        MergeManager.getINSTANCE().getMergeWriteRateLimiter(), bytesLength);
-  }
-
-  private static TsFileIOWriter getFileIOWriter(
+  private static ICompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources, List<TsFileResource> unseqFileResources)
       throws IOException {
     String dataDirectory = seqFileResources.get(0).getTsFile().getParent();
@@ -207,7 +171,7 @@ public class CompactionUtils {
       }
       TsFileResource targetTsFileResource =
           new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
-      return new RestorableTsFileIOWriter(targetTsFileResource.getTsFile());
+      return new InnerSpaceCompactionWriter(targetTsFileResource.getTsFile());
     }
   }
 
@@ -228,55 +192,5 @@ public class CompactionUtils {
               .readDeviceMetadata(device));
     }
     return deviceMeasurementsMap;
-  }
-
-  public static void writeDataPoint(Long time, Object value, ChunkWriterImpl chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(time, (Binary) value);
-        break;
-      case DOUBLE:
-        chunkWriter.write(time, (Double) value);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(time, (Boolean) value);
-        break;
-      case INT64:
-        chunkWriter.write(time, (Long) value);
-        break;
-      case INT32:
-        chunkWriter.write(time, (Integer) value);
-        break;
-      case FLOAT:
-        chunkWriter.write(time, (Float) value);
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
-  }
-
-  public static void writeAlignedDataPoint(Long time, Object value, AlignedChunkWriterImpl chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(time, (Binary) value);
-        break;
-      case DOUBLE:
-        chunkWriter.write(time, (Double) value);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(time, (Boolean) value);
-        break;
-      case INT64:
-        chunkWriter.write(time, (Long) value);
-        break;
-      case INT32:
-        chunkWriter.write(time, (Integer) value);
-        break;
-      case FLOAT:
-        chunkWriter.write(time, (Float) value);
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
   }
 }

@@ -81,7 +81,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File targetFile =
         new File(
             TestConstant.getTestTsFileDir("root.compactionTest", 0, 0)

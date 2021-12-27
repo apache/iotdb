@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.TsFileOutput;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -123,7 +122,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -253,7 +252,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -294,7 +293,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 targetTsFileResource
                     .getTsFilePath()
                     .replace(
-                        IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX))
+                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                        TsFileConstant.TSFILE_SUFFIX))
             .exists());
     Assert.assertFalse(
         new File(targetTsFileResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
@@ -373,7 +373,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -420,7 +420,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 targetTsFileResource
                     .getTsFilePath()
                     .replace(
-                        TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX))
+                        TsFileConstant.TSFILE_SUFFIX,
+                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
             .exists());
 
     tsFileManager.add(targetTsFileResource, true);
@@ -510,7 +511,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 targetResource
                     .getTsFilePath()
                     .replace(
-                        IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX))
+                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                        TsFileConstant.TSFILE_SUFFIX))
             .exists());
     Assert.assertFalse(
         new File(targetResource.getTsFilePath() + TsFileResource.RESOURCE_SUFFIX).exists());
@@ -597,7 +599,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                 targetResource
                     .getTsFilePath()
                     .replace(
-                        TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX))
+                        TsFileConstant.TSFILE_SUFFIX,
+                        IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX))
             .exists());
 
     // all compaction mods file and old mods file of each source file should not exist
@@ -661,7 +664,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -767,7 +770,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -877,7 +880,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     File compactionLogFile =
         new File(
             seqResources.get(0).getTsFile().getParent()
@@ -1047,7 +1050,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
                             + 1
                             + IoTDBConstant.FILE_NAME_SEPARATOR
                             + 0
-                            + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                            + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     sizeTieredCompactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
     tsFileManager.addForRecover(targetTsFileResource, true);
     sizeTieredCompactionLogger.close();

@@ -144,7 +144,7 @@ public class InnerSpaceCompactionExceptionHandler {
         selectedTsFileResourceList,
         targetTsFile);
     TsFileResource tmpTargetTsFile;
-    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
       tmpTargetTsFile = targetTsFile;
       targetTsFile =
           new TsFileResource(
@@ -152,7 +152,7 @@ public class InnerSpaceCompactionExceptionHandler {
                   tmpTargetTsFile
                       .getTsFilePath()
                       .replace(
-                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+                          IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
     } else {
       tmpTargetTsFile =
           new TsFileResource(
@@ -160,7 +160,7 @@ public class InnerSpaceCompactionExceptionHandler {
                   targetTsFile
                       .getTsFilePath()
                       .replace(
-                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
     }
     if (!tmpTargetTsFile.remove()) {
       // failed to remove tmp target tsfile
