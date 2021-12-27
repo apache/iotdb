@@ -27,6 +27,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -251,13 +252,16 @@ public class BasicServiceProvider {
     if (!(plan instanceof SetSystemModePlan)
         && !(plan instanceof FlushPlan)
         && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new QueryProcessException(
-          "Current system mode is read-only, does not support non-query operation");
+      throw new StorageEngineReadonlyException();
     }
     return executor.processNonQuery(plan);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
+  }
+
+  public Planner getPlanner() {
+    return processor;
   }
 }
