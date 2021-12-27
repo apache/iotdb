@@ -47,7 +47,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MetaManager {
+public class InfluxDBMetaManager {
 
   protected final Planner planner;
 
@@ -56,7 +56,7 @@ public class MetaManager {
   private static final String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
 
-  public static MetaManager getInstance() {
+  public static InfluxDBMetaManager getInstance() {
     return MetaManagerHolder.INSTANCE;
   }
 
@@ -64,7 +64,7 @@ public class MetaManager {
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  private MetaManager() {
+  private InfluxDBMetaManager() {
     serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
     planner = serviceProvider.getProcessor();
@@ -206,7 +206,7 @@ public class MetaManager {
   }
 
   private static class MetaManagerHolder {
-    private static final MetaManager INSTANCE = new MetaManager();
+    private static final InfluxDBMetaManager INSTANCE = new InfluxDBMetaManager();
 
     private MetaManagerHolder() {}
   }

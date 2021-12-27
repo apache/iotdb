@@ -63,7 +63,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
@@ -404,7 +404,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
-    MetaManager.getInstance().recover();
+    InfluxDBMetaManager.getInstance().recover();
   }
 
   /** Be added to the cluster by seed nodes */

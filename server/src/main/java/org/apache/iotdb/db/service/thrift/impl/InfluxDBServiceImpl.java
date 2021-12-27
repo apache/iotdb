@@ -26,7 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.protocol.influxdb.dto.IoTDBPoint;
 import org.apache.iotdb.db.protocol.influxdb.input.InfluxLineParser;
-import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -57,11 +57,11 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
   private final ServiceProvider serviceProvider;
 
-  private final MetaManager metaManager;
+  private final InfluxDBMetaManager metaManager;
 
   public InfluxDBServiceImpl() {
     serviceProvider = IoTDB.serviceProvider;
-    metaManager = MetaManager.getInstance();
+    metaManager = InfluxDBMetaManager.getInstance();
   }
 
   @Override
