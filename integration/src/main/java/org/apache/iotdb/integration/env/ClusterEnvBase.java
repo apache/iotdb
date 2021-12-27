@@ -177,10 +177,13 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public void changeNodesConfig() {
     try {
       for (ClusterNode node : this.nodes) {
-        node.changeConfig(ConfigFactory.getConfig().getProperties());
+        node.changeConfig(
+            ConfigFactory.getConfig().getEngineProperties(),
+            ConfigFactory.getConfig().getClusterProperties());
       }
-      ConfigFactory.getConfig().clearProperties();
+      ConfigFactory.getConfig().clearAllProperties();
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
   }

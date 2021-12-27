@@ -17,12 +17,14 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
+import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 
 import java.util.Objects;
 
 public class RequestValidationHandler {
+
   private RequestValidationHandler() {}
 
   public static void validateSQL(SQL sql) {
@@ -35,5 +37,12 @@ public class RequestValidationHandler {
     Objects.requireNonNull(insertTabletRequest.getDeviceId(), "deviceId should not be null");
     Objects.requireNonNull(insertTabletRequest.getDataTypes(), "dataTypes should not be null");
     Objects.requireNonNull(insertTabletRequest.getValues(), "values should not be null");
+  }
+
+  public static void validateExpressionRequest(ExpressionRequest expressionRequest) {
+    Objects.requireNonNull(expressionRequest.getExpression(), "expression should not be null");
+    Objects.requireNonNull(expressionRequest.getPrefixPath(), "prefixPath should not be null");
+    Objects.requireNonNull(expressionRequest.getStartTime(), "startTime should not be null");
+    Objects.requireNonNull(expressionRequest.getEndTime(), "endTime should not be null");
   }
 }
