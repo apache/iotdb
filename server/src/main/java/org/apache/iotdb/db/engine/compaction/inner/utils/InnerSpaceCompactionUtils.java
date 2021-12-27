@@ -133,7 +133,7 @@ public class InnerSpaceCompactionUtils {
    * When chunk is large enough, we do not have to merge them any more. Just read chunks and write
    * them to the new file directly.
    */
-  public static void writeByAppendChunkMerge(
+  private static void writeByAppendChunkMerge(
       String device,
       RateLimiter compactionWriteRateLimiter,
       Entry<String, Map<TsFileSequenceReader, List<ChunkMetadata>>> entry,
@@ -225,7 +225,7 @@ public class InnerSpaceCompactionUtils {
     chunkWriter.writeToFileWriter(writer);
   }
 
-  private static Set<String> getTsFileDevicesSet(
+  public static Set<String> getTsFileDevicesSet(
       List<TsFileResource> subLevelResources,
       Map<String, TsFileSequenceReader> tsFileSequenceReaderMap,
       String storageGroup)
