@@ -129,7 +129,8 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(reader);
       }
     } catch (Exception e) {
-      logger.error("Meet error when init series reader " + e);
+      logger.error("Meet error when init series reader ", e);
+      throw new QueryProcessException("Meet error when init series reader.", e);
     } finally {
       StorageEngine.getInstance().mergeUnLock(list);
     }
