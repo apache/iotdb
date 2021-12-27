@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.protocol.influxdb.meta.MetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -176,6 +177,9 @@ public class IoTDB implements IoTDBMBean {
   private void initProtocols() throws StartupException {
     if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       registerManager.register(InfluxDBRPCService.getInstance());
+      if (!IoTDB.isClusterMode()) {
+        MetaManager.getInstance().recover();
+      }
     }
     if (IoTDBDescriptor.getInstance().getConfig().isEnableMQTTService()) {
       registerManager.register(MQTTService.getInstance());
