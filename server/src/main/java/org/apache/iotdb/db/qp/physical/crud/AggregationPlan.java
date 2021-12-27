@@ -72,7 +72,6 @@ public class AggregationPlan extends RawDataQueryPlan {
       }
       resp.setColumns(respColumns);
       resp.setDataTypeList(columnsTypes);
-      return resp;
     } else {
       resp = super.getTSExecuteStatementResp(isJdbcQuery);
     }

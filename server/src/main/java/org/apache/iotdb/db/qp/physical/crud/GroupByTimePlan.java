@@ -18,7 +18,11 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+
+import org.apache.thrift.TException;
 
 public class GroupByTimePlan extends AggregationPlan {
 
@@ -39,6 +43,14 @@ public class GroupByTimePlan extends AggregationPlan {
   public GroupByTimePlan() {
     super();
     setOperatorType(Operator.OperatorType.GROUP_BY_TIME);
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    TSExecuteStatementResp resp = super.getTSExecuteStatementResp(isJdbcQuery);
+    resp.setIgnoreTimeStamp(false);
+    return resp;
   }
 
   public long getStartTime() {
