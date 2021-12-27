@@ -201,7 +201,7 @@ public abstract class GroupByEngineDataSet extends QueryDataSet {
    * @param numMonths numMonths is updated in hasNextWithoutConstraint()
    * @return nextStartTime
    */
-  public long calcIntervalByMonth(long startTime, long numMonths) {
+  public static long calcIntervalByMonth(long startTime, long numMonths) {
     Calendar calendar = Calendar.getInstance();
     calendar.setTimeZone(SessionManager.getInstance().getCurrSessionTimeZone());
     calendar.setTimeInMillis(startTime);
