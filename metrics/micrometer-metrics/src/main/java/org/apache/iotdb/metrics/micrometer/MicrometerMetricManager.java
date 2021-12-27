@@ -501,7 +501,7 @@ public class MicrometerMetricManager implements MetricManager {
     return true;
   }
 
-  public boolean addMeterRegistry(MeterRegistry registry){
+  public boolean addMeterRegistry(MeterRegistry registry) {
     Metrics.addRegistry(registry);
     return true;
   }
