@@ -19,14 +19,17 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class AlignByDevicePlan extends QueryPlan {
 
@@ -55,6 +58,61 @@ public class AlignByDevicePlan extends QueryPlan {
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
     // do nothing
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery) {
+    List<String> respColumns = new ArrayList<>();
+    List<String> columnsTypes = new ArrayList<>();
+
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+    // set columns in TSExecuteStatementResp.
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+
+    // get column types and do deduplication
+    // the DEVICE column of ALIGN_BY_DEVICE result
+    columnsTypes.add(TSDataType.TEXT.toString());
+    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
+    // the DEVICE column of ALIGN_BY_DEVICE result
+    deduplicatedColumnsType.add(TSDataType.TEXT);
+
+    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
+    Map<String, MeasurementInfo> measurementInfoMap = getMeasurementInfoMap();
+
+    // build column header with constant and non exist column and deduplication
+    List<String> measurements = getMeasurements();
+    for (String measurement : measurements) {
+      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
+      TSDataType type = TSDataType.TEXT;
+      switch (measurementInfo.getMeasurementType()) {
+        case Exist:
+          type = measurementInfo.getColumnDataType();
+          break;
+        case NonExist:
+        case Constant:
+          type = TSDataType.TEXT;
+      }
+      String measurementAlias = measurementInfo.getMeasurementAlias();
+      respColumns.add(measurementAlias != null ? measurementAlias : measurement);
+      columnsTypes.add(type.toString());
+
+      if (!deduplicatedMeasurements.contains(measurement)) {
+        deduplicatedMeasurements.add(measurement);
+        deduplicatedColumnsType.add(type);
+      }
+    }
+
+    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
+    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
+    setMeasurements(new ArrayList<>(deduplicatedMeasurements));
+    setDataTypes(deduplicatedColumnsType);
+
+    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
+    setPaths(null);
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnsTypes);
+    return resp;
   }
 
   public void setMeasurements(List<String> measurements) {

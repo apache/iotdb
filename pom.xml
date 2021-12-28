@@ -92,7 +92,8 @@
         <module>openapi</module>
         <module>server</module>
         <module>example</module>
-        <module>grafana</module>
+        <module>grafana-plugin</module>
+        <module>grafana-connector</module>
         <module>spark-tsfile</module>
         <module>hadoop</module>
         <module>spark-iotdb-connector</module>

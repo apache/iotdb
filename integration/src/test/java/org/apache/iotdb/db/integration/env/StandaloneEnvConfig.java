@@ -125,4 +125,9 @@ public class StandaloneEnvConfig implements BaseConfig {
         .setEnableCrossSpaceCompaction(enableCrossSpaceCompaction);
     return this;
   }
+
+  public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(enableAutoCreateSchema);
+    return this;
+  }
 }
