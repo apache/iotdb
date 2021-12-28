@@ -28,10 +28,10 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
 import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -515,8 +515,7 @@ public class StorageEngine implements IService {
   private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
-    StorageGroupManager storageGroupManager =
-        processorMap.get(storageGroupMNode.getPartialPath());
+    StorageGroupManager storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
     if (storageGroupManager == null) {
       synchronized (this) {
         storageGroupManager = processorMap.get(storageGroupMNode.getPartialPath());
@@ -578,7 +577,8 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    VirtualStorageGroupProcessor virtualStorageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
+        getProcessor(insertRowPlan.getDeviceId());
 
     try {
       virtualStorageGroupProcessor.insert(insertRowPlan);
@@ -654,7 +654,7 @@ public class StorageEngine implements IService {
   }
 
   private void updateMonitorStatistics(
-          StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
+      StorageGroupManager storageGroupManager, InsertPlan insertPlan) {
     StatMonitor monitor = StatMonitor.getInstance();
     int successPointsNum =
         insertPlan.getMeasurements().length - insertPlan.getFailedMeasurementNumber();
