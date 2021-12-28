@@ -27,7 +27,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
@@ -140,7 +140,7 @@ public class SizeTieredCompactionRecoverTest {
       File timePartitionDir = new File(SEQ_FILE_DIR);
       File f = new File(timePartitionDir.getParent() + File.separator + "test.tmp");
       f.createNewFile();
-      new StorageGroupProcessor(
+      new VirtualStorageGroupProcessor(
           TestConstant.BASE_OUTPUT_PATH + File.separator + "data" + File.separator + "sequence",
           "0",
           new TsFileFlushPolicy.DirectFlushPolicy(),

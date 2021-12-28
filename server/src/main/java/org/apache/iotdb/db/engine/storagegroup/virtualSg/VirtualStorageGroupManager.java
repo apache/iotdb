@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.storagegroup.virtualSg;
 
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -56,7 +56,7 @@ public class VirtualStorageGroupManager {
   VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
 
   /** all virtual storage group processor */
-  StorageGroupProcessor[] virtualStorageGroupProcessor;
+  VirtualStorageGroupProcessor[] virtualStorageGroupProcessor;
 
   /**
    * recover status of each virtual storage group processor, null if this logical storage group is
@@ -74,7 +74,7 @@ public class VirtualStorageGroupManager {
   }
 
   public VirtualStorageGroupManager(boolean needRecovering) {
-    virtualStorageGroupProcessor = new StorageGroupProcessor[partitioner.getPartitionCount()];
+    virtualStorageGroupProcessor = new VirtualStorageGroupProcessor[partitioner.getPartitionCount()];
     isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
     boolean recoverReady = !needRecovering;
     for (int i = 0; i < partitioner.getPartitionCount(); i++) {
@@ -84,54 +84,54 @@ public class VirtualStorageGroupManager {
 
   /** push forceCloseAllWorkingTsFileProcessors down to all sg */
   public void forceCloseAllWorkingTsFileProcessors() throws TsFileProcessorException {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.forceCloseAllWorkingTsFileProcessors();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.forceCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   /** push syncCloseAllWorkingTsFileProcessors down to all sg */
   public void syncCloseAllWorkingTsFileProcessors() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
 
   /** push check ttl down to all sg */
   public void checkTTL() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.checkFilesTTL();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.checkFilesTTL();
       }
     }
   }
 
   /** push check sequence memtable flush interval down to all sg */
   public void timedFlushSeqMemTable() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.timedFlushSeqMemTable();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.timedFlushSeqMemTable();
       }
     }
   }
 
   /** push check unsequence memtable flush interval down to all sg */
   public void timedFlushUnseqMemTable() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.timedFlushUnseqMemTable();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.timedFlushUnseqMemTable();
       }
     }
   }
 
   /** push check TsFileProcessor close interval down to all sg */
   public void timedCloseTsFileProcessor() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.timedCloseTsFileProcessor();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.timedCloseTsFileProcessor();
       }
     }
   }
@@ -144,12 +144,12 @@ public class VirtualStorageGroupManager {
    */
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  public StorageGroupProcessor getProcessor(
+  public VirtualStorageGroupProcessor getProcessor(
       PartialPath partialPath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     int loc = partitioner.deviceToVirtualStorageGroupId(partialPath);
 
-    StorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
+    VirtualStorageGroupProcessor processor = virtualStorageGroupProcessor[loc];
     if (processor == null) {
       // if finish recover
       if (isVsgReady[loc].get()) {
@@ -187,7 +187,7 @@ public class VirtualStorageGroupManager {
       Callable<Void> recoverVsgTask =
           () -> {
             isVsgReady[cur].set(false);
-            StorageGroupProcessor processor = null;
+            VirtualStorageGroupProcessor processor = null;
             try {
               processor =
                   StorageEngine.getInstance()
@@ -224,7 +224,7 @@ public class VirtualStorageGroupManager {
 
   /** push closeStorageGroupProcessor operation down to all virtual storage group processors */
   public void closeStorageGroupProcessor(boolean isSeq, boolean isSync) {
-    for (StorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
       if (processor == null) {
         continue;
       }
@@ -268,7 +268,7 @@ public class VirtualStorageGroupManager {
 
   /** push closeStorageGroupProcessor operation down to all virtual storage group processors */
   public void closeStorageGroupProcessor(long partitionId, boolean isSeq, boolean isSync) {
-    for (StorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
       if (processor != null) {
         logger.info(
             "async closing sg processor is called for closing {}, seq = {}, partitionId = {}",
@@ -307,9 +307,9 @@ public class VirtualStorageGroupManager {
       long planIndex,
       TimePartitionFilter timePartitionFilter)
       throws IOException {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.delete(path, startTime, endTime, planIndex, timePartitionFilter);
       }
     }
   }
@@ -317,9 +317,9 @@ public class VirtualStorageGroupManager {
   /** push countUpgradeFiles operation down to all virtual storage group processors */
   public int countUpgradeFiles() {
     int totalUpgradeFileNum = 0;
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        totalUpgradeFileNum += storageGroupProcessor.countUpgradeFiles();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        totalUpgradeFileNum += virtualStorageGroupProcessor.countUpgradeFiles();
       }
     }
 
@@ -328,9 +328,9 @@ public class VirtualStorageGroupManager {
 
   /** push upgradeAll operation down to all virtual storage group processors */
   public void upgradeAll() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.upgrade();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.upgrade();
       }
     }
   }
@@ -339,9 +339,9 @@ public class VirtualStorageGroupManager {
       List<TsFileResource> seqResourcesToBeSettled,
       List<TsFileResource> unseqResourcesToBeSettled,
       List<String> tsFilePaths) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.addSettleFilesToList(
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.addSettleFilesToList(
             seqResourcesToBeSettled, unseqResourcesToBeSettled, tsFilePaths);
       }
     }
@@ -349,34 +349,34 @@ public class VirtualStorageGroupManager {
 
   /** push mergeAll operation down to all virtual storage group processors */
   public void mergeAll(boolean isFullMerge) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.merge(isFullMerge);
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.merge(isFullMerge);
       }
     }
   }
 
   /** push syncDeleteDataFiles operation down to all virtual storage group processors */
   public void syncDeleteDataFiles() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.syncDeleteDataFiles();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.syncDeleteDataFiles();
       }
     }
   }
 
   /** push setTTL operation down to all virtual storage group processors */
   public void setTTL(long dataTTL) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.setDataTTL(dataTTL);
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.setDataTTL(dataTTL);
       }
     }
   }
 
   /** push deleteStorageGroup operation down to all virtual storage group processors */
   public void deleteStorageGroupSystemFolder(String path) {
-    for (StorageGroupProcessor processor : virtualStorageGroupProcessor) {
+    for (VirtualStorageGroupProcessor processor : virtualStorageGroupProcessor) {
       if (processor != null) {
         processor.deleteFolder(path);
       }
@@ -386,10 +386,10 @@ public class VirtualStorageGroupManager {
   /** push getAllClosedStorageGroupTsFile operation down to all virtual storage group processors */
   public void getAllClosedStorageGroupTsFile(
       PartialPath storageGroupName, Map<PartialPath, Map<Long, List<TsFileResource>>> ret) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        List<TsFileResource> allResources = storageGroupProcessor.getSequenceFileTreeSet();
-        allResources.addAll(storageGroupProcessor.getUnSequenceFileList());
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        List<TsFileResource> allResources = virtualStorageGroupProcessor.getSequenceFileTreeSet();
+        allResources.addAll(virtualStorageGroupProcessor.getUnSequenceFileList());
         for (TsFileResource tsfile : allResources) {
           if (!tsfile.isClosed()) {
             continue;
@@ -405,18 +405,18 @@ public class VirtualStorageGroupManager {
 
   /** push setPartitionVersionToMax operation down to all virtual storage group processors */
   public void setPartitionVersionToMax(long partitionId, long newMaxVersion) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.setPartitionFileVersionToMax(partitionId, newMaxVersion);
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.setPartitionFileVersionToMax(partitionId, newMaxVersion);
       }
     }
   }
 
   /** push removePartitions operation down to all virtual storage group processors */
   public void removePartitions(TimePartitionFilter filter) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.removePartitions(filter);
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.removePartitions(filter);
       }
     }
   }
@@ -426,17 +426,17 @@ public class VirtualStorageGroupManager {
    */
   public void getWorkingStorageGroupPartitions(
       String storageGroupName, Map<String, List<Pair<Long, Boolean>>> res) {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
         List<Pair<Long, Boolean>> partitionIdList = new ArrayList<>();
         for (TsFileProcessor tsFileProcessor :
-            storageGroupProcessor.getWorkSequenceTsFileProcessors()) {
+            virtualStorageGroupProcessor.getWorkSequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), true);
           partitionIdList.add(tmpPair);
         }
 
         for (TsFileProcessor tsFileProcessor :
-            storageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
+            virtualStorageGroupProcessor.getWorkUnsequenceTsFileProcessors()) {
           Pair<Long, Boolean> tmpPair = new Pair<>(tsFileProcessor.getTimeRangeId(), false);
           partitionIdList.add(tmpPair);
         }
@@ -448,9 +448,9 @@ public class VirtualStorageGroupManager {
 
   /** release resource of direct wal buffer */
   public void releaseWalDirectByteBufferPool() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.releaseWalDirectByteBufferPool();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.releaseWalDirectByteBufferPool();
       }
     }
   }
@@ -461,9 +461,9 @@ public class VirtualStorageGroupManager {
   }
 
   public void stopCompactionSchedulerPool() {
-    for (StorageGroupProcessor storageGroupProcessor : virtualStorageGroupProcessor) {
-      if (storageGroupProcessor != null) {
-        storageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor : this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.getTimedCompactionScheduleTask().shutdown();
       }
     }
   }

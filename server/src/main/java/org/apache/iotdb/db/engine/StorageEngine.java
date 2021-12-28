@@ -28,8 +28,8 @@ import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
@@ -455,7 +455,7 @@ public class StorageEngine implements IService {
    * @param path storage group path
    * @return storage group processor
    */
-  public StorageGroupProcessor getProcessorDirectly(PartialPath path)
+  public VirtualStorageGroupProcessor getProcessorDirectly(PartialPath path)
       throws StorageEngineException {
     PartialPath storageGroupPath;
     try {
@@ -473,7 +473,7 @@ public class StorageEngine implements IService {
    * @param path device path
    * @return storage group processor
    */
-  public StorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
+  public VirtualStorageGroupProcessor getProcessor(PartialPath path) throws StorageEngineException {
     try {
       IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
       return getStorageGroupProcessorByPath(path, storageGroupMNode);
@@ -492,9 +492,9 @@ public class StorageEngine implements IService {
       List<String> lockHolderList = new ArrayList<>(pathList.size());
       for (PartialPath path : pathList) {
         IStorageGroupMNode storageGroupMNode = IoTDB.metaManager.getStorageGroupNodeByPath(path);
-        StorageGroupProcessor storageGroupProcessor =
+        VirtualStorageGroupProcessor virtualStorageGroupProcessor =
             getStorageGroupProcessorByPath(path, storageGroupMNode);
-        lockHolderList.add(storageGroupProcessor.getInsertWriteLockHolder());
+        lockHolderList.add(virtualStorageGroupProcessor.getInsertWriteLockHolder());
       }
       return lockHolderList;
     } catch (StorageGroupProcessorException | MetadataException e) {
@@ -512,7 +512,7 @@ public class StorageEngine implements IService {
    */
   @SuppressWarnings("java:S2445")
   // actually storageGroupMNode is a unique object on the mtree, synchronize it is reasonable
-  private StorageGroupProcessor getStorageGroupProcessorByPath(
+  private VirtualStorageGroupProcessor getStorageGroupProcessorByPath(
       PartialPath devicePath, IStorageGroupMNode storageGroupMNode)
       throws StorageGroupProcessorException, StorageEngineException {
     VirtualStorageGroupManager virtualStorageGroupManager =
@@ -535,18 +535,18 @@ public class StorageEngine implements IService {
    * @param virtualStorageGroupId virtual storage group id e.g. 1
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public StorageGroupProcessor buildNewStorageGroupProcessor(
+  public VirtualStorageGroupProcessor buildNewStorageGroupProcessor(
       PartialPath logicalStorageGroupName,
       IStorageGroupMNode storageGroupMNode,
       String virtualStorageGroupId)
       throws StorageGroupProcessorException {
-    StorageGroupProcessor processor;
+    VirtualStorageGroupProcessor processor;
     logger.info(
         "construct a processor instance, the storage group is {}, Thread is {}",
         logicalStorageGroupName,
         Thread.currentThread().getId());
     processor =
-        new StorageGroupProcessor(
+        new VirtualStorageGroupProcessor(
             systemDir + File.separator + logicalStorageGroupName,
             virtualStorageGroupId,
             fileFlushPolicy,
@@ -578,10 +578,10 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor = getProcessor(insertRowPlan.getDeviceId());
 
     try {
-      storageGroupProcessor.insert(insertRowPlan);
+      virtualStorageGroupProcessor.insert(insertRowPlan);
       if (config.isEnableStatMonitor()) {
         try {
           updateMonitorStatistics(
@@ -606,12 +606,12 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
-    StorageGroupProcessor storageGroupProcessor =
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor =
         getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
 
     // TODO monitor: update statistics
     try {
-      storageGroupProcessor.insert(insertRowsOfOneDevicePlan);
+      virtualStorageGroupProcessor.insert(insertRowsOfOneDevicePlan);
     } catch (WriteProcessException e) {
       throw new StorageEngineException(e);
     }
@@ -629,9 +629,9 @@ public class StorageEngine implements IService {
         throw new BatchProcessException(results);
       }
     }
-    StorageGroupProcessor storageGroupProcessor;
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor;
     try {
-      storageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
@@ -639,7 +639,7 @@ public class StorageEngine implements IService {
           e);
     }
 
-    storageGroupProcessor.insertTablet(insertTabletPlan);
+    virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
 
     if (config.isEnableStatMonitor()) {
       try {
@@ -759,8 +759,8 @@ public class StorageEngine implements IService {
       PartialPath fullPath, Filter filter, QueryContext context, QueryFileManager filePathsManager)
       throws StorageEngineException, QueryProcessException {
     PartialPath deviceId = fullPath.getDevicePath();
-    StorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
-    return storageGroupProcessor.query(fullPath, context, filePathsManager, filter);
+    VirtualStorageGroupProcessor virtualStorageGroupProcessor = getProcessor(deviceId);
+    return virtualStorageGroupProcessor.query(fullPath, context, filePathsManager, filter);
   }
 
   /**
@@ -1015,23 +1015,23 @@ public class StorageEngine implements IService {
   }
 
   /** get all merge lock of the storage group processor related to the query */
-  public List<StorageGroupProcessor> mergeLock(List<PartialPath> pathList)
+  public List<VirtualStorageGroupProcessor> mergeLock(List<PartialPath> pathList)
       throws StorageEngineException {
-    Set<StorageGroupProcessor> set = new HashSet<>();
+    Set<VirtualStorageGroupProcessor> set = new HashSet<>();
     for (PartialPath path : pathList) {
       set.add(getProcessor(path.getDevicePath()));
     }
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         set.stream()
-            .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
+            .sorted(Comparator.comparing(VirtualStorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
-    list.forEach(StorageGroupProcessor::readLock);
+    list.forEach(VirtualStorageGroupProcessor::readLock);
     return list;
   }
 
   /** unlock all merge lock of the storage group processor related to the query */
-  public void mergeUnLock(List<StorageGroupProcessor> list) {
-    list.forEach(StorageGroupProcessor::readUnlock);
+  public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
+    list.forEach(VirtualStorageGroupProcessor::readUnlock);
   }
 
   static class InstanceHolder {
