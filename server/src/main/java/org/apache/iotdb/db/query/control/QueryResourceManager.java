@@ -152,7 +152,7 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
-      // QueryDataSource is not cached earlier in cluster mode
+      // QueryDataSource is never cached in cluster mode
       StorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
@@ -162,9 +162,6 @@ public class QueryResourceManager {
               context,
               filePathsManager,
               timeFilter);
-      cachedQueryDataSourcesMap
-          .computeIfAbsent(queryId, k -> new HashMap<>())
-          .put(storageGroupPath, cachedQueryDataSource);
     }
 
     // construct QueryDataSource for selectedPath
