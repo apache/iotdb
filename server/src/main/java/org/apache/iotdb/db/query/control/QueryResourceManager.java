@@ -38,7 +38,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -109,9 +113,12 @@ public class QueryResourceManager {
    *
    * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
    *     under the virtual storage group
+   * @param singleDeviceId selected deviceId (not null only when the selected series is under the
+   *     same device)
    */
   public void initQueryDataSource(
       Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
+      String singleDeviceId,
       QueryContext context,
       Filter timeFilter)
       throws QueryProcessException {
@@ -124,7 +131,7 @@ public class QueryResourceManager {
       String storageGroupPath = processor.getStorageGroupPath();
 
       QueryDataSource cachedQueryDataSource =
-          processor.query(pathList, context, filePathsManager, timeFilter);
+          processor.query(pathList, singleDeviceId, context, filePathsManager, timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
@@ -150,7 +157,11 @@ public class QueryResourceManager {
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
           processor.query(
-              Collections.singletonList(selectedPath), context, filePathsManager, timeFilter);
+              Collections.singletonList(selectedPath),
+              selectedPath.getDevice(),
+              context,
+              filePathsManager,
+              timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);

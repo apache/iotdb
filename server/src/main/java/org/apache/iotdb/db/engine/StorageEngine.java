@@ -1062,8 +1062,10 @@ public class StorageEngine implements IService {
       List<PartialPath> pathList, QueryContext context, Filter timeFilter)
       throws StorageEngineException, QueryProcessException {
     Map<StorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
+    Set<String> selectedDevices = new HashSet<>();
     for (PartialPath path : pathList) {
       map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
+      selectedDevices.add(path.getDevice());
     }
     List<StorageGroupProcessor> list =
         map.keySet().stream()
@@ -1072,7 +1074,12 @@ public class StorageEngine implements IService {
     list.forEach(StorageGroupProcessor::readLock);
 
     // init QueryDataSource
-    QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
+    QueryResourceManager.getInstance()
+        .initQueryDataSource(
+            map,
+            selectedDevices.size() == 1 ? selectedDevices.iterator().next() : null,
+            context,
+            timeFilter);
 
     return list;
   }
