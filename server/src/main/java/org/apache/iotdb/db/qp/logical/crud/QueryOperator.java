@@ -177,8 +177,7 @@ public class QueryOperator extends Operator {
       }
 
       for (PartialPath path : selectComponent.getPaths()) {
-        String device = path.getDevice();
-        if (!device.isEmpty()) {
+        if (path.getNodes().length > 1) {
           throw new LogicalOperatorException(AlignByDevicePlan.MEASUREMENT_ERROR_MESSAGE);
         }
       }
