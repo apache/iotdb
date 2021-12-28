@@ -49,7 +49,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -202,7 +207,12 @@ public class MetadataIndexConstructorTest {
         new ArrayList<>(); // contains first measurements of every leaf, group by device
     List<String> correctPaths = new ArrayList<>(); // contains all paths by sequence
     generateCorrectResult(
-        correctDevices, correctFirstMeasurements, correctPaths, devices, vectorMeasurement, singleMeasurement);
+        correctDevices,
+        correctFirstMeasurements,
+        correctPaths,
+        devices,
+        vectorMeasurement,
+        singleMeasurement);
     // 4. compare correct result with TsFile's metadata
     Arrays.sort(devices);
     // 4.1 make sure device in order
@@ -244,6 +254,7 @@ public class MetadataIndexConstructorTest {
           idx++;
         }
       }
+      assertEquals(correctPaths.size(), idx);
     } catch (IOException e) {
       e.printStackTrace();
       fail(e.getMessage());
