@@ -22,10 +22,18 @@ package org.apache.iotdb.cluster.query;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
+import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
@@ -35,13 +43,16 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 
 public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
@@ -151,6 +162,66 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       assertEquals("ip:port=0.0.0.0:6667", dataSet.getEndPoint().toString());
+    } finally {
+      QueryResourceManager.getInstance().endQuery(context.getQueryId());
+    }
+  }
+
+  @Test // IOTDB-2219
+  public void testQueryInMemory()
+          throws IOException, StorageEngineException, IllegalPathException, QueryProcessException, StorageGroupNotSetException {
+    PlanExecutor planExecutor = new PlanExecutor();
+    PartialPath[] paths = new PartialPath[] {
+            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(0)),
+            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(1)),
+            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(2)),
+    };
+    String[] measurements = new String[] {
+            TestUtils.getTestMeasurement(0),
+            TestUtils.getTestMeasurement(1),
+            TestUtils.getTestMeasurement(2)
+    };
+    MeasurementMNode[] schemas = new MeasurementMNode[] {
+            TestUtils.getTestMeasurementMNode(0),
+            TestUtils.getTestMeasurementMNode(1),
+            TestUtils.getTestMeasurementMNode(2)
+    };
+    TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE};
+    Object[] values = new Object[] {1.0, 2.0, 3.0};
+
+    // set storage group
+    SetStorageGroupPlan setStorageGroupPlan = new SetStorageGroupPlan();
+    setStorageGroupPlan.setPath(new PartialPath(TestUtils.getTestSg(100)));
+    planExecutor.setStorageGroup(setStorageGroupPlan);
+
+    // insert data
+    InsertRowPlan insertPlan = new InsertRowPlan();
+    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(100)));
+    insertPlan.setMeasurements(measurements);
+    insertPlan.setMeasurementMNodes(schemas);
+    insertPlan.setDataTypes(dataTypes);
+    insertPlan.setNeedInferType(true);
+    insertPlan.setTime(0);
+    insertPlan.setValues(values);
+
+    planExecutor.processNonQuery(insertPlan);
+
+    // query data
+    RawDataQueryPlan queryPlan = new RawDataQueryPlan();
+    queryPlan.setDeduplicatedPaths(Arrays.asList(paths));
+    queryPlan.setDeduplicatedDataTypes(Arrays.asList(dataTypes));
+    queryExecutor = new ClusterDataQueryExecutor(queryPlan, testMetaMember);
+    RemoteQueryContext context =
+            new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+    try {
+      QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
+      RowRecord record = dataSet.next();
+      List<Field> fields = record.getFields();
+      Assert.assertEquals(values.length, fields.size());
+      for (int i = 0; i < values.length; i++) {
+        Assert.assertEquals(String.valueOf(values[i]), fields.get(i).getStringValue());
+      }
+      assertFalse(dataSet.hasNext());
     } finally {
       QueryResourceManager.getInstance().endQuery(context.getQueryId());
     }
