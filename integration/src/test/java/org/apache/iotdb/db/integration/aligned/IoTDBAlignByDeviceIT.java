@@ -1181,4 +1181,169 @@ public class IoTDBAlignByDeviceIT {
       }
     }
   }
+
+  @Test
+  public void countSumAvgPreviousFillTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,4,40.0,7.5",
+          "11,root.sg1.d1,10,130142.0,13014.2",
+          "21,root.sg1.d1,1,130142.0,230000.0",
+          "31,root.sg1.d1,0,355.0,230000.0"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
+                  + "where time > 5 GROUP BY ([1, 41), 10ms) FILL (previous, 15ms) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(count("s1"))
+                  + ","
+                  + resultSet.getString(sum("s2"))
+                  + ","
+                  + resultSet.getString(avg("s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void countSumAvgValueFillTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,1,3.14,30000.0",
+          "6,root.sg1.d1,4,40.0,7.5",
+          "11,root.sg1.d1,5,130052.0,26010.4",
+          "16,root.sg1.d1,5,90.0,18.0",
+          "21,root.sg1.d1,1,3.14,230000.0",
+          "26,root.sg1.d1,0,3.14,3.14",
+          "31,root.sg1.d1,0,3.14,3.14"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select count(s1), sum(s2), avg(s1) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 36), 5ms) FILL (3.14) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(count("s1"))
+                  + ","
+                  + resultSet.getString(sum("s2"))
+                  + ","
+                  + resultSet.getString(avg("s1"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void maxMinValueTimePreviousUntilLastFillTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,30000,6.0,9,3",
+          "11,root.sg1.d1,130000,11.0,20,11",
+          "21,root.sg1.d1,230000,230000.0,null,23",
+          "31,root.sg1.d1,null,null,null,null"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where s1 > 5 and time < 35 GROUP BY ([1, 41), 10ms) FILL(previousUntilLast) align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(maxValue("s3"))
+                  + ","
+                  + resultSet.getString(minValue("s1"))
+                  + ","
+                  + resultSet.getString(maxTime("s2"))
+                  + ","
+                  + resultSet.getString(minTime("s3"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void maxMinValueTimeValueFillTest() throws SQLException {
+    String[] retArray =
+        new String[] {
+          "1,root.sg1.d1,30000,30000.0,null,3",
+          "6,root.sg1.d1,10,6.0,10,6",
+          "11,root.sg1.d1,130000,11.0,15,11",
+          "16,root.sg1.d1,20,16.0,20,16",
+          "21,root.sg1.d1,230000,230000.0,null,21",
+          "26,root.sg1.d1,29,null,null,26"
+        };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select max_value(s3), min_value(s1), max_time(s2), min_time(s3) from root.sg1.d1 "
+                  + "where s3 > 5 and time < 30 GROUP BY ([1, 31), 5ms) FILL ('fill string') align by device");
+      Assert.assertTrue(hasResultSet);
+
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("Device")
+                  + ","
+                  + resultSet.getString(maxValue("s3"))
+                  + ","
+                  + resultSet.getString(minValue("s1"))
+                  + ","
+                  + resultSet.getString(maxTime("s2"))
+                  + ","
+                  + resultSet.getString(minTime("s3"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(retArray.length, cnt);
+      }
+    }
+  }
 }

@@ -56,6 +56,7 @@ public class AlignByDevicePlan extends QueryPlan {
   private Map<String, IExpression> deviceToFilterMap;
 
   private GroupByTimePlan groupByTimePlan;
+  private GroupByTimeFillPlan groupByFillPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -179,6 +180,15 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
     this.groupByTimePlan = groupByTimePlan;
     this.setOperatorType(OperatorType.GROUP_BY_TIME);
+  }
+
+  public GroupByTimeFillPlan getGroupByFillPlan() {
+    return groupByFillPlan;
+  }
+
+  public void setGroupByFillPlan(GroupByTimeFillPlan groupByFillPlan) {
+    this.groupByFillPlan = groupByFillPlan;
+    this.setOperatorType(OperatorType.GROUP_BY_FILL);
   }
 
   public FillQueryPlan getFillQueryPlan() {

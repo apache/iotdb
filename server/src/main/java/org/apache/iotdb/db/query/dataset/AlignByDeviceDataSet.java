@@ -25,6 +25,7 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.FillQueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
@@ -60,6 +61,7 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   private Map<String, IExpression> deviceToFilterMap;
 
   private GroupByTimePlan groupByTimePlan;
+  private GroupByTimeFillPlan groupByFillPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
   private RawDataQueryPlan rawDataQueryPlan;
@@ -88,8 +90,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
     this.deviceToFilterMap = alignByDevicePlan.getDeviceToFilterMap();
 
     switch (alignByDevicePlan.getOperatorType()) {
+      case GROUP_BY_FILL:
+        this.dataSetType = DataSetType.GROUP_BY_FILL;
+        this.groupByFillPlan = alignByDevicePlan.getGroupByFillPlan();
+        this.groupByFillPlan.setAscending(alignByDevicePlan.isAscending());
+        break;
       case GROUP_BY_TIME:
-        this.dataSetType = DataSetType.GROUPBYTIME;
+        this.dataSetType = DataSetType.GROUP_BY_TIME;
         this.groupByTimePlan = alignByDevicePlan.getGroupByTimePlan();
         this.groupByTimePlan.setAscending(alignByDevicePlan.isAscending());
         break;
@@ -154,7 +161,13 @@ public class AlignByDeviceDataSet extends QueryDataSet {
 
       try {
         switch (dataSetType) {
-          case GROUPBYTIME:
+          case GROUP_BY_FILL:
+            groupByFillPlan.setDeduplicatedPathsAndUpdate(executePaths);
+            groupByFillPlan.setDeduplicatedAggregations(executeAggregations);
+            groupByFillPlan.setExpression(expression);
+            currentDataSet = queryRouter.groupByFill(groupByFillPlan, context);
+            break;
+          case GROUP_BY_TIME:
             groupByTimePlan.setDeduplicatedPathsAndUpdate(executePaths);
             groupByTimePlan.setDeduplicatedAggregations(executeAggregations);
             groupByTimePlan.setExpression(expression);
@@ -233,7 +246,8 @@ public class AlignByDeviceDataSet extends QueryDataSet {
   }
 
   private enum DataSetType {
-    GROUPBYTIME,
+    GROUP_BY_FILL,
+    GROUP_BY_TIME,
     AGGREGATE,
     FILL,
     QUERY
