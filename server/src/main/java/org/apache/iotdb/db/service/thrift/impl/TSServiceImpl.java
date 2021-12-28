@@ -628,16 +628,20 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     QueryContext context =
         genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
 
-    if (plan instanceof QueryPlan && ((QueryPlan) plan).isEnableTracing()) {
-      context.setEnableTracing(true);
-      tracingManager.setStartTime(queryId, this.startTime);
-      tracingManager.registerActivity(
-          queryId,
-          String.format(TracingConstant.ACTIVITY_START_EXECUTE, statement),
-          this.startTime);
-      tracingManager.registerActivity(queryId, TracingConstant.ACTIVITY_PARSE_SQL, queryStartTime);
-      if (!(plan instanceof AlignByDevicePlan)) {
-        tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
+    if (plan instanceof QueryPlan) {
+      context.setAscending(((QueryPlan) plan).isAscending());
+      context.setEnableTracing(((QueryPlan) plan).isEnableTracing());
+      if (((QueryPlan) plan).isEnableTracing()) {
+        tracingManager.setStartTime(queryId, this.startTime);
+        tracingManager.registerActivity(
+            queryId,
+            String.format(TracingConstant.ACTIVITY_START_EXECUTE, statement),
+            this.startTime);
+        tracingManager.registerActivity(
+            queryId, TracingConstant.ACTIVITY_PARSE_SQL, queryStartTime);
+        if (!(plan instanceof AlignByDevicePlan)) {
+          tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
+        }
       }
     }
 

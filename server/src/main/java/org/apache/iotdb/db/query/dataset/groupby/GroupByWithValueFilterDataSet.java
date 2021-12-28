@@ -41,6 +41,9 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.io.IOException;
@@ -51,7 +54,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -88,6 +90,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.readerToAggrIndexesMap = new HashMap<>();
     this.groupByTimePlan = groupByTimePlan;
 
+    Filter timeFilter =
+        FilterFactory.and(
+            TimeFilter.gtEq(groupByTimePlan.getStartTime()),
+            TimeFilter.lt(groupByTimePlan.getEndTime()));
+
     List<PartialPath> selectedSeries = new ArrayList<>();
     groupByTimePlan
         .getDeduplicatedPaths()
@@ -98,9 +105,14 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
+    List<PartialPath> groupedPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+            .mergeLockAndInitQueryDataSource(groupedPathList, context, timeFilter);
     try {
       // init non-aligned series reader
       for (PartialPath path : pathToAggrIndexesMap.keySet()) {

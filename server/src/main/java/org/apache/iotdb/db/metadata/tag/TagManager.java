@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -145,7 +146,12 @@ public class TagManager {
       try {
         list =
             StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
+                .mergeLockAndInitQueryDataSource(
+                    allMatchedNodes.stream()
+                        .map(IMeasurementMNode::getMeasurementPath)
+                        .collect(toList()),
+                    context,
+                    null);
         try {
           allMatchedNodes =
               allMatchedNodes.stream()
@@ -159,7 +165,7 @@ public class TagManager {
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }
     } else {

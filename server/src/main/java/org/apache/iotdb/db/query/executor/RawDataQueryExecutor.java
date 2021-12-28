@@ -100,7 +100,8 @@ public class RawDataQueryExecutor {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, timeFilter);
     try {
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
@@ -164,7 +165,8 @@ public class RawDataQueryExecutor {
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, null);
     try {
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {

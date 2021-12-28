@@ -286,9 +286,9 @@ public class AlignedPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -296,7 +296,7 @@ public class AlignedPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+  public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
@@ -472,5 +472,9 @@ public class AlignedPath extends PartialPath {
       logger.warn("path is illegal: {}", this.getFullPath(), e);
     }
     return alignedPath;
+  }
+
+  public boolean isMeasurementContains(MeasurementPath path) {
+    return measurementList.contains(path.getMeasurement());
   }
 }

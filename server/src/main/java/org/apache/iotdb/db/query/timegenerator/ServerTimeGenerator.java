@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -64,16 +65,17 @@ public class ServerTimeGenerator extends TimeGenerator {
     this.queryPlan = queryPlan;
     try {
       serverConstructNode(queryPlan.getExpression());
-    } catch (IOException e) {
+    } catch (IOException | QueryProcessException e) {
       throw new StorageEngineException(e);
     }
   }
 
   public void serverConstructNode(IExpression expression)
-      throws IOException, StorageEngineException {
+      throws IOException, StorageEngineException, QueryProcessException {
     List<PartialPath> pathList = new ArrayList<>();
     getAndTransformPartialPathFromExpression(expression, pathList);
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(pathList, context, null);
     try {
       operatorNode = construct(expression);
     } finally {

@@ -105,7 +105,10 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
     this.allDataReaderList = new ArrayList<>();
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+            .mergeLockAndInitQueryDataSource(
+                paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
+                context,
+                null);
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
@@ -245,7 +248,10 @@ public class GroupByFillWithValueFilterDataSet extends GroupByFillEngineDataSet 
     extraNextDataReaderList = new ArrayList<>();
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+            .mergeLockAndInitQueryDataSource(
+                paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
+                context,
+                null);
     try {
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);

@@ -46,7 +46,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -98,14 +97,19 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throw new QueryProcessException("TimeFilter cannot be null in GroupBy query.");
     }
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
-
     // init resultIndexes, group aligned series
     pathToAggrIndexesMap = MetaUtils.groupAggregationsBySeries(paths);
     alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
+
+    List<PartialPath> groupPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(groupPathList, context, timeFilter);
 
     try {
       // init GroupByExecutor for non-aligned series

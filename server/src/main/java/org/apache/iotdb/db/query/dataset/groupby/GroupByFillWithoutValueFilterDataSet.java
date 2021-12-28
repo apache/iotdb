@@ -109,7 +109,10 @@ public class GroupByFillWithoutValueFilterDataSet extends GroupByFillEngineDataS
       throws StorageEngineException, QueryProcessException {
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+            .mergeLockAndInitQueryDataSource(
+                paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
+                context,
+                timeFilter);
     try {
       // init resultIndexes, group result indexes by path
       for (int i = 0; i < paths.size(); i++) {

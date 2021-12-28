@@ -167,7 +167,10 @@ public class DeletionFileNodeTest {
             null);
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+            .mergeLockAndInitQueryDataSource(
+                Collections.singletonList((PartialPath) expression.getSeriesPath()),
+                TEST_QUERY_CONTEXT,
+                null);
     try {
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
@@ -176,7 +179,8 @@ public class DeletionFileNodeTest {
 
       int count = 0;
       for (TsFileResource seqResource : dataSource.getSeqResources()) {
-        List<ReadOnlyMemChunk> timeValuePairs = seqResource.getReadOnlyMemChunk();
+        List<ReadOnlyMemChunk> timeValuePairs =
+            seqResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
         if (timeValuePairs == null) {
           continue;
         }
@@ -305,7 +309,10 @@ public class DeletionFileNodeTest {
 
     List<StorageGroupProcessor> list =
         StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+            .mergeLockAndInitQueryDataSource(
+                Collections.singletonList((PartialPath) expression.getSeriesPath()),
+                TEST_QUERY_CONTEXT,
+                null);
 
     try {
       QueryDataSource dataSource =
@@ -314,7 +321,10 @@ public class DeletionFileNodeTest {
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
       List<ReadOnlyMemChunk> timeValuePairs =
-          dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
+          dataSource
+              .getUnseqResources()
+              .get(0)
+              .getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
       for (ReadOnlyMemChunk chunk : timeValuePairs) {
         IPointReader iterator = chunk.getPointReader();
