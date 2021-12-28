@@ -224,6 +224,7 @@ public class TTLTest {
     QueryDataSource dataSource =
         storageGroupProcessor.query(
             Collections.singletonList(new PartialPath(sg1, s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -238,6 +239,7 @@ public class TTLTest {
     dataSource =
         storageGroupProcessor.query(
             Collections.singletonList(new PartialPath(sg1, s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -276,6 +278,7 @@ public class TTLTest {
     dataSource =
         storageGroupProcessor.query(
             Collections.singletonList(new PartialPath(sg1, s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
