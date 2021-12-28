@@ -48,11 +48,12 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
@@ -169,24 +170,29 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
   @Test // IOTDB-2219
   public void testQueryInMemory()
-          throws IOException, StorageEngineException, IllegalPathException, QueryProcessException, StorageGroupNotSetException {
+      throws IOException, StorageEngineException, IllegalPathException, QueryProcessException,
+          StorageGroupNotSetException {
     PlanExecutor planExecutor = new PlanExecutor();
-    PartialPath[] paths = new PartialPath[] {
-            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(0)),
-            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(1)),
-            new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(2)),
-    };
-    String[] measurements = new String[] {
-            TestUtils.getTestMeasurement(0),
-            TestUtils.getTestMeasurement(1),
-            TestUtils.getTestMeasurement(2)
-    };
-    MeasurementMNode[] schemas = new MeasurementMNode[] {
-            TestUtils.getTestMeasurementMNode(0),
-            TestUtils.getTestMeasurementMNode(1),
-            TestUtils.getTestMeasurementMNode(2)
-    };
-    TSDataType[] dataTypes = new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE};
+    PartialPath[] paths =
+        new PartialPath[] {
+          new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(0)),
+          new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(1)),
+          new PartialPath(TestUtils.getTestSg(100), TestUtils.getTestMeasurement(2)),
+        };
+    String[] measurements =
+        new String[] {
+          TestUtils.getTestMeasurement(0),
+          TestUtils.getTestMeasurement(1),
+          TestUtils.getTestMeasurement(2)
+        };
+    MeasurementMNode[] schemas =
+        new MeasurementMNode[] {
+          TestUtils.getTestMeasurementMNode(0),
+          TestUtils.getTestMeasurementMNode(1),
+          TestUtils.getTestMeasurementMNode(2)
+        };
+    TSDataType[] dataTypes =
+        new TSDataType[] {TSDataType.DOUBLE, TSDataType.DOUBLE, TSDataType.DOUBLE};
     Object[] values = new Object[] {1.0, 2.0, 3.0};
 
     // set storage group
@@ -212,7 +218,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
     queryPlan.setDeduplicatedDataTypes(Arrays.asList(dataTypes));
     queryExecutor = new ClusterDataQueryExecutor(queryPlan, testMetaMember);
     RemoteQueryContext context =
-            new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
+        new RemoteQueryContext(QueryResourceManager.getInstance().assignQueryId(true));
     try {
       QueryDataSet dataSet = queryExecutor.executeWithoutValueFilter(context);
       RowRecord record = dataSet.next();
