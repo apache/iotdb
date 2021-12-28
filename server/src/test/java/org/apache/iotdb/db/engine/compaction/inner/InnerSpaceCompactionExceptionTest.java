@@ -51,7 +51,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -100,7 +100,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -145,7 +145,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -194,7 +194,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -247,7 +247,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -313,7 +313,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =
@@ -372,7 +372,7 @@ public class InnerSpaceCompactionExceptionTest extends AbstractInnerSpaceCompact
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
     File logFile =

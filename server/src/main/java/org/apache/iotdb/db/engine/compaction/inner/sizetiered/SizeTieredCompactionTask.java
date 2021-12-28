@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,7 +82,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     // Here is tmpTargetFile, which is xxx.target
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(selectedTsFileResourceList, sequence)
+        TsFileNameGenerator.getInnerCompactionTargetFile(selectedTsFileResourceList, sequence)
             .getName();
     TsFileResource targetTsFileResource =
         new TsFileResource(new File(dataDirectory + File.separator + targetFileName));

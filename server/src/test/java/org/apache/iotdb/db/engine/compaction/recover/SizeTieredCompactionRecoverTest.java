@@ -182,7 +182,7 @@ public class SizeTieredCompactionRecoverTest {
       sourceFiles.add(tsFileResource);
     }
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -236,7 +236,7 @@ public class SizeTieredCompactionRecoverTest {
       sourceFiles.add(tsFileResource);
     }
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -295,7 +295,7 @@ public class SizeTieredCompactionRecoverTest {
       sourceFiles.add(tsFileResource);
     }
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -349,7 +349,7 @@ public class SizeTieredCompactionRecoverTest {
       sourceFiles.add(tsFileResource);
     }
     String targetFileName =
-        TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
         new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -411,7 +411,7 @@ public class SizeTieredCompactionRecoverTest {
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
       String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
           new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -507,7 +507,7 @@ public class SizeTieredCompactionRecoverTest {
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
       String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
           new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -604,7 +604,7 @@ public class SizeTieredCompactionRecoverTest {
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
       String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
           new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
@@ -700,7 +700,7 @@ public class SizeTieredCompactionRecoverTest {
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
       String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(sourceFiles, true).getName();
+          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
           new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);

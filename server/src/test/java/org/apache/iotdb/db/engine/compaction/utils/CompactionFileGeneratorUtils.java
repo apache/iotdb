@@ -62,6 +62,25 @@ public class CompactionFileGeneratorUtils {
                     + IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)));
   }
 
+  public static List<TsFileResource> getInnerCompactionTargetTsFileResources(
+      List<TsFileResource> seqFileResources, boolean seq) throws IOException {
+    List<TsFileResource> resources = new ArrayList<>();
+    resources.add(
+        new TsFileResource(
+            TsFileNameGenerator.getInnerCompactionTargetFile(seqFileResources, seq)));
+    return resources;
+  }
+
+  public static List<TsFileResource> getCrossCompactionTargetTsFileResources(
+      List<TsFileResource> seqFileResources) throws IOException {
+    List<File> targetFiles = TsFileNameGenerator.getCrossCompactionTargetFile(seqFileResources);
+    List<TsFileResource> targetResources = new ArrayList<>();
+    for (File f : targetFiles) {
+      targetResources.add(new TsFileResource(f));
+    }
+    return targetResources;
+  }
+
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {
     if (sequence) {
       return new TsFileResource(

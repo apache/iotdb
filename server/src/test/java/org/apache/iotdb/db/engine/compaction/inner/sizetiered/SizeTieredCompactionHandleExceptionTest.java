@@ -181,7 +181,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
           .start();
       Thread.sleep(10_000);
       String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+          TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
       File targetFile = new File(seqResources.get(0).getTsFile().getParent(), targetFileName);
       FileChannel channel = new FileOutputStream(targetFile, true).getChannel();
       channel.truncate(10);
