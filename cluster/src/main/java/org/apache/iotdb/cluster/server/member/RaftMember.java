@@ -979,7 +979,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       log = new PhysicalPlanLog();
       ((PhysicalPlanLog) log).setPlan(plan);
     }
-    log.setCurrLogTerm(getTerm().get());
+
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
@@ -996,6 +996,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       if (!(plan instanceof LogPlan)) {
         plan.setIndex(logManager.getLastLogIndex() + 1);
       }
+      log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       logManager.append(log);
     }
@@ -1033,8 +1034,6 @@ public abstract class RaftMember implements RaftMemberMBean {
       ((PhysicalPlanLog) log).setPlan(plan);
     }
 
-    log.setCurrLogTerm(getTerm().get());
-
     // just like processPlanLocally,we need to check the size of log
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
         & log.serialize().capacity() + Integer.BYTES
@@ -1054,6 +1053,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       if (!(plan instanceof LogPlan)) {
         plan.setIndex(logManager.getLastLogIndex() + 1);
       }
+      log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
