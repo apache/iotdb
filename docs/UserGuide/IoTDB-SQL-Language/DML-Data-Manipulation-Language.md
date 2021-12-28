@@ -1250,6 +1250,8 @@ Total line number = 9
 It costs 0.008s
 ```
 
+> Note: Set the initial down-frequency query interval to [start_time, end_time). The query result will keep the same as not setting before_range and after_range parameters. However, the query interval is changed to [start_time - before_range, end_time + after_range). Pay attention to the sizes of these two parameters to avoid efficiency impact.
+
 ##### ValueFill
 The ValueFill method parses the input constant value into a string. During fill, the string constant is converted to the corresponding type of data. If the conversion succeeds, the null record will be filled; otherwise, it is not filled. Examples are as follows:
 
