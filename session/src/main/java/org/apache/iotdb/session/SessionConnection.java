@@ -137,6 +137,7 @@ public class SessionConnection {
       TSOpenSessionResp openResp = client.openSession(openReq);
 
       RpcUtils.verifySuccess(openResp.getStatus());
+      logger.info("Connected to {}", endPoint);
 
       if (Session.protocolVersion.getValue() != openResp.getServerProtocolVersion().getValue()) {
         logger.warn(
