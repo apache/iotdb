@@ -151,7 +151,7 @@ public class MetadataIndexConstructorTest {
     int[][] vectorMeasurement = new int[deviceNum][];
     String[][] singleMeasurement = new String[deviceNum][];
     for (int i = 0; i < deviceNum; i++) {
-      devices[i] = "d" + i;
+      devices[i] = "d" + generateIndexString(i, deviceNum);
       vectorMeasurement[i] = new int[0];
       singleMeasurement[i] = new String[measurementNum];
       for (int j = 0; j < measurementNum; j++) {
@@ -204,8 +204,9 @@ public class MetadataIndexConstructorTest {
     List<String> correctDevices = new ArrayList<>(); // contains all device by sequence
     List<List<String>> correctFirstMeasurements =
         new ArrayList<>(); // contains first measurements of every leaf, group by device
+    List<String> correctPaths = new ArrayList<>(); // contains all paths by sequence
     generateCorrectResult(
-        correctDevices, correctFirstMeasurements, devices, vectorMeasurement, singleMeasurement);
+        correctDevices, correctFirstMeasurements, correctPaths, devices, vectorMeasurement, singleMeasurement);
     // 4. compare correct result with TsFile's metadata
     Arrays.sort(devices);
     // 4.1 make sure device in order
@@ -229,6 +230,7 @@ public class MetadataIndexConstructorTest {
       e.printStackTrace();
       fail(e.getMessage());
     }
+
     // 4.3 make sure split leaf correctly
     for (int j = 0; j < actualDevices.size(); j++) {
       for (int i = 0; i < actualMeasurements.get(j).size(); i++) {
@@ -236,6 +238,15 @@ public class MetadataIndexConstructorTest {
             actualMeasurements.get(j).get(i),
             correctFirstMeasurements.get(j).get(i * conf.getMaxDegreeOfIndexNode()));
       }
+    }
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      List<Path> actualPaths = reader.getAllPaths();
+      for (int i = 0; i < actualPaths.size(); i++) {
+        assertEquals(actualPaths.get(i).getFullPath(), correctPaths.get(i));
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
     }
   }
 
@@ -331,6 +342,7 @@ public class MetadataIndexConstructorTest {
   private void generateCorrectResult(
       List<String> correctDevices,
       List<List<String>> correctMeasurements,
+      List<String> correctPaths,
       String[] devices,
       int[][] vectorMeasurement,
       String[][] singleMeasurement) {
@@ -341,16 +353,21 @@ public class MetadataIndexConstructorTest {
       List<String> measurements = new ArrayList<>();
       // single-variable measurement
       if (singleMeasurement != null) {
-        measurements.addAll(Arrays.asList(singleMeasurement[i]));
+        for (String measurement : singleMeasurement[i]) {
+          measurements.add(measurement);
+          correctPaths.add(new Path(device, measurement).getFullPath());
+        }
       }
       // multi-variable measurement
       for (int vectorIndex = 0; vectorIndex < vectorMeasurement[i].length; vectorIndex++) {
         measurements.add("");
+        correctPaths.add(new Path(device, "").getFullPath());
         int measurementNum = vectorMeasurement[i][vectorIndex];
         for (int measurementIndex = 0; measurementIndex < measurementNum; measurementIndex++) {
           String measurementName =
               measurementPrefix + generateIndexString(measurementIndex, measurementNum);
           measurements.add(TsFileConstant.PATH_SEPARATOR + measurementName);
+          correctPaths.add(new Path(device, measurementName).getFullPath());
         }
       }
       Collections.sort(measurements);

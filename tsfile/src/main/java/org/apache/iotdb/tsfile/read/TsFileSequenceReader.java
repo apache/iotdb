@@ -649,20 +649,81 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /**
-   * this function return all timeseries names in this file
+   * this function return all timeseries names in dictionary order
    *
    * @return list of Paths
    * @throws IOException io error
    */
   public List<Path> getAllPaths() throws IOException {
+    if (tsFileMetaData == null) {
+      readFileMetadata();
+    }
     List<Path> paths = new ArrayList<>();
-    for (String device : getAllDevices()) {
-      Map<String, TimeseriesMetadata> timeseriesMetadataMap = readDeviceMetadata(device);
-      for (String measurementId : timeseriesMetadataMap.keySet()) {
-        paths.add(new Path(device, measurementId));
+
+    MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+    for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
+      if (i != metadataIndexEntryList.size() - 1) {
+        endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
+      ByteBuffer buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+      getAllPaths(
+              metadataIndexEntry,
+              buffer,
+              null,
+              metadataIndexNode.getNodeType(),
+              paths,
+              false);
     }
     return paths;
+  }
+
+  private void getAllPaths(
+          MetadataIndexEntry metadataIndex,
+          ByteBuffer buffer,
+          String deviceId,
+          MetadataIndexNodeType type,
+          List<Path> timeseriesMetadataMap,
+          boolean needChunkMetadata)
+          throws IOException {
+    try {
+      if (type.equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        while (buffer.hasRemaining()) {
+          timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, needChunkMetadata));
+        }
+        for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
+          timeseriesMetadataMap.add(new Path(deviceId, timeseriesMetadata.getMeasurementId()));
+        }
+      } else {
+        // deviceId should be determined by LEAF_DEVICE node
+        if (type.equals(MetadataIndexNodeType.LEAF_DEVICE)) {
+          deviceId = metadataIndex.getName();
+        }
+        MetadataIndexNode metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+        int metadataIndexListSize = metadataIndexNode.getChildren().size();
+        for (int i = 0; i < metadataIndexListSize; i++) {
+          long endOffset = metadataIndexNode.getEndOffset();
+          if (i != metadataIndexListSize - 1) {
+            endOffset = metadataIndexNode.getChildren().get(i + 1).getOffset();
+          }
+          ByteBuffer nextBuffer =
+                  readData(metadataIndexNode.getChildren().get(i).getOffset(), endOffset);
+          getAllPaths(
+                  metadataIndexNode.getChildren().get(i),
+                  nextBuffer,
+                  deviceId,
+                  metadataIndexNode.getNodeType(),
+                  timeseriesMetadataMap,
+                  needChunkMetadata);
+        }
+      }
+    } catch (BufferOverflowException e) {
+      logger.error("Something error happened while getting all paths of file {}", file);
+      throw e;
+    }
   }
 
   private TimeseriesMetadata tryToGetFirstTimeseriesMetadata(MetadataIndexNode measurementNode)
