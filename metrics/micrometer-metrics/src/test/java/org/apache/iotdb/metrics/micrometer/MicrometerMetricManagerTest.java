@@ -21,25 +21,32 @@ package org.apache.iotdb.metrics.micrometer;
 
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.type.Gauge;
 import org.apache.iotdb.metrics.type.Timer;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
 public class MicrometerMetricManagerTest {
+  static MetricManager metricManager;
 
   @BeforeClass
   public static void init() {
     System.setProperty("line.separator", "\n");
     // set up path of yml
     System.setProperty("IOTDB_CONF", "src/test/resources");
+    MetricService.init();
+    metricManager = MetricService.getMetricManager();
   }
 
   private void getOrCreateDifferentMetricsWithSameName() {
-    MetricManager metricManager = MetricService.getMetricManager();
     Timer timer = metricManager.getOrCreateTimer("metric", "tag1", "tag2");
     assertNotNull(timer);
     metricManager.getOrCreateCounter("metric", "tag1", "tag2");
@@ -48,5 +55,22 @@ public class MicrometerMetricManagerTest {
   @Test
   public void getOrCreateDifferentMetricsWithSameNameTest() {
     assertThrows(IllegalArgumentException.class, this::getOrCreateDifferentMetricsWithSameName);
+  }
+
+  @Test
+  public void testAutoGauge() {
+    List<Integer> list = new ArrayList<>();
+    Gauge autoGauge =
+        metricManager.getOrCreateAutoGauge("autoGaugeMetric", list, List::size, "tagk", "tagv");
+    assertEquals(0L, autoGauge.value());
+    list.add(1);
+    assertEquals(1L, autoGauge.value());
+    list.clear();
+    assertEquals(0L, autoGauge.value());
+    list.add(1);
+    assertEquals(1L, autoGauge.value());
+    list = null;
+    System.gc();
+    assertEquals(0L, autoGauge.value());
   }
 }

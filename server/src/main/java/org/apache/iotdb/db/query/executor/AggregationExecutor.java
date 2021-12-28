@@ -45,7 +45,6 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
-import org.apache.iotdb.db.utils.AlignedValueIterator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,7 +57,6 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -696,13 +694,15 @@ public class AggregationExecutor {
           // if cached in timeGenerator
           if (cached.get(pathId)) {
             Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
-            ValueIterator valueIterator = generateValueIterator(values);
-            for (Integer index : subIndexes) {
-              aggregateResultList[index].updateResultUsingValues(
-                  timeArray, timeArrayLength, valueIterator);
-              valueIterator.reset();
+            ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
+            if (valueIterator != null) {
+              for (Integer index : subIndexes) {
+                aggregateResultList[index].updateResultUsingValues(
+                    timeArray, timeArrayLength, valueIterator);
+                valueIterator.reset();
+              }
+              cachedOrNot[i] = true;
             }
-            cachedOrNot[i] = true;
           }
         }
 
@@ -710,8 +710,8 @@ public class AggregationExecutor {
           // TODO: if we only need to get firstValue/minTime that's not need to traverse all values,
           //  it's enough to get the exact number of values for these specific aggregate func
           Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-          if (values != null) {
-            ValueIterator valueIterator = generateValueIterator(values);
+          ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
+          if (valueIterator != null) {
             for (int i = 0; i < entry.getValue().size(); i++) {
               if (!cachedOrNot[i]) {
                 valueIterator.setSubMeasurementIndex(i);
@@ -725,14 +725,6 @@ public class AggregationExecutor {
           }
         }
       }
-    }
-  }
-
-  private ValueIterator generateValueIterator(Object[] values) {
-    if (values[0] instanceof TsPrimitiveType[]) {
-      return new AlignedValueIterator(values);
-    } else {
-      return new ValueIterator(values);
     }
   }
 

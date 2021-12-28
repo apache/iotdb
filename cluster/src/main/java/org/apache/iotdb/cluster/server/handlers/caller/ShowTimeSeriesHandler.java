@@ -40,21 +40,6 @@ import java.util.stream.Collectors;
 /** Handler for getting the schemas from each data group concurrently. */
 public class ShowTimeSeriesHandler implements AsyncMethodCallback<List<ShowTimeSeriesResult>> {
 
-  private static class ShowTimeSeriesResultComparator implements Comparator<ShowTimeSeriesResult> {
-
-    @Override
-    public int compare(ShowTimeSeriesResult o1, ShowTimeSeriesResult o2) {
-      if (o1 == null && o2 == null) {
-        return 0;
-      } else if (o1 == null) {
-        return -1;
-      } else if (o2 == null) {
-        return 1;
-      }
-      return o1.getName().compareTo(o2.getName());
-    }
-  }
-
   private static final Logger logger = LoggerFactory.getLogger(ShowTimeSeriesHandler.class);
 
   /** String representation of a partial path for logging */
@@ -127,7 +112,10 @@ public class ShowTimeSeriesHandler implements AsyncMethodCallback<List<ShowTimeS
     }
 
     return timeSeriesNameToResult.values().stream()
-        .sorted(new ShowTimeSeriesResultComparator())
+        .sorted(
+            Comparator.comparingLong(ShowTimeSeriesResult::getLastTime)
+                .reversed()
+                .thenComparing(ShowTimeSeriesResult::getName))
         .collect(Collectors.toList());
   }
 }

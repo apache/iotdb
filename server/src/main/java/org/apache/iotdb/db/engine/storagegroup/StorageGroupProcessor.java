@@ -68,12 +68,16 @@ import org.apache.iotdb.db.query.control.QueryFileManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.tools.settle.TsFileAndModSettleTool;
 import org.apache.iotdb.db.utils.CopyOnReadLinkedList;
 import org.apache.iotdb.db.utils.MmapUtil;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.db.writelog.recover.TsFileRecoverPerformer;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
@@ -113,6 +117,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
@@ -406,6 +411,16 @@ public class StorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
     recover();
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              storageGroupInfo.getMemCost(),
+              Long::longValue,
+              Tag.NAME.toString(),
+              "storageGroup");
+    }
   }
 
   public String getLogicalStorageGroupName() {
@@ -555,6 +570,10 @@ public class StorageGroupProcessor {
         return;
       }
       for (File timePartitionDir : timePartitionDirs) {
+        if (!timePartitionDir.isDirectory()
+            || !Pattern.compile("[0-9]*").matcher(timePartitionDir.getName()).matches()) {
+          continue;
+        }
         File[] compactionLogs =
             InnerSpaceCompactionUtils.findInnerSpaceCompactionLogs(timePartitionDir.getPath());
         for (File compactionLog : compactionLogs) {
@@ -785,7 +804,7 @@ public class StorageGroupProcessor {
         if (TsFileResource.getInnerCompactionCount(tsFileResource.getTsFile().getName()) > 0) {
           writer =
               recoverPerformer.recover(false, this::getWalDirectByteBuffer, this::releaseWalBuffer);
-          if (writer.hasCrashed()) {
+          if (writer != null && writer.hasCrashed()) {
             tsFileManager.addForRecover(tsFileResource, isSeq);
           } else {
             tsFileResource.setClosed(true);
@@ -798,7 +817,7 @@ public class StorageGroupProcessor {
               recoverPerformer.recover(true, this::getWalDirectByteBuffer, this::releaseWalBuffer);
         }
 
-        if (i != tsFiles.size() - 1 || !writer.canWrite()) {
+        if (i != tsFiles.size() - 1 || writer == null || !writer.canWrite()) {
           // not the last file or cannot write, just close it
           tsFileResource.close();
           tsFileResourceManager.registerSealedTsFileResource(tsFileResource);
@@ -1529,7 +1548,9 @@ public class StorageGroupProcessor {
       return;
     }
 
-    writeLock("checkFileTTL");
+    TsFileResourceList resourceList =
+        tsFileManager.getSequenceListByTimePartition(resource.getTimePartition());
+    resourceList.writeLock();
     try {
       // prevent new merges and queries from choosing this file
       resource.setDeleted(true);
@@ -1539,6 +1560,7 @@ public class StorageGroupProcessor {
         try {
           // physical removal
           resource.remove();
+          resourceList.remove(resource);
           if (logger.isInfoEnabled()) {
             logger.info(
                 "Removed a file {} before {} by ttl ({}ms)",
@@ -1552,7 +1574,7 @@ public class StorageGroupProcessor {
         }
       }
     } finally {
-      writeUnlock();
+      resourceList.writeUnlock();
     }
   }
 

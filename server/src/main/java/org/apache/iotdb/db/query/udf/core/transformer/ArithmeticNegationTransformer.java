@@ -44,22 +44,26 @@ public class ArithmeticNegationTransformer extends Transformer {
       return false;
     }
     cachedTime = layerPointReader.currentTime();
-    switch (layerPointReader.getDataType()) {
-      case INT32:
-        cachedInt = -layerPointReader.currentInt();
-        break;
-      case INT64:
-        cachedLong = -layerPointReader.currentLong();
-        break;
-      case FLOAT:
-        cachedFloat = -layerPointReader.currentFloat();
-        break;
-      case DOUBLE:
-        cachedDouble = -layerPointReader.currentDouble();
-        break;
-      default:
-        throw new QueryProcessException(
-            "Unsupported data type: " + layerPointReader.getDataType().toString());
+    if (layerPointReader.isCurrentNull()) {
+      currentNull = true;
+    } else {
+      switch (layerPointReader.getDataType()) {
+        case INT32:
+          cachedInt = -layerPointReader.currentInt();
+          break;
+        case INT64:
+          cachedLong = -layerPointReader.currentLong();
+          break;
+        case FLOAT:
+          cachedFloat = -layerPointReader.currentFloat();
+          break;
+        case DOUBLE:
+          cachedDouble = -layerPointReader.currentDouble();
+          break;
+        default:
+          throw new QueryProcessException(
+              "Unsupported data type: " + layerPointReader.getDataType().toString());
+      }
     }
     layerPointReader.readyForNext();
     return true;

@@ -186,13 +186,13 @@ Prometheus 和 Druid 也因为时间序列数据管理而闻名，但是 Prometh
 #### 2.1.2 高级功能
 
 | TSDB                         | IoTDB  | InfluxDB | OpenTSDB | KairosDB | TimescaleDB |
-| ---------------------------- | :----: | :------: | :------: | :------: | :---------: |
+| ---------------------------- | :----: | :------: | :------: | :------: |:-----------:|
 | *Align by time*              | **++** |    +     |    -     |    -     |      +      |
 | *Compression*                | **++** |    +-    |    +-    |    +-    |     +-      |
 | *MQTT support*               | **++** |    +     |    -     |    -     |     +-      |
 | *Run on Edge-side Device*    | **++** |    +     |    -     |    +-    |      +      |
 | *Multi\-instance Sync*       | **++** |    -     |    -     |    -     |      -      |
-| *JDBC Driver*                | **+**  |    -     |    -     |    -     |      -      |
+| *JDBC Driver*                | **+**  |    -     |    -     |    -     |     ++      |
 | *Standard SQL*               |   +    |    -     |    -     |    -     |   **++**    |
 | *Spark integration*          | **++** |    -     |    -     |    -     |      -      |
 | *Hive integration*           | **++** |    -     |    -     |    -     |      -      |

@@ -19,9 +19,14 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.rpc.RpcUtils;
+import org.apache.iotdb.rpc.TSStatusCode;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
 import java.util.ArrayList;
@@ -95,6 +100,43 @@ public class AlignByDevicePlan extends QueryPlan {
 
   public Map<String, MeasurementInfo> getMeasurementInfoMap() {
     return measurementInfoMap;
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery) {
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
+    List<String> respColumns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
+
+    // the DEVICE column of ALIGN_BY_DEVICE result
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+    columnTypes.add(TSDataType.TEXT.toString());
+
+    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
+    // build column header with constant and non exist column and deduplication
+    for (String measurement : measurements) {
+      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
+      TSDataType type = TSDataType.TEXT;
+      String measurementName = measurement;
+      if (measurementInfo != null) {
+        type = measurementInfo.getColumnDataType();
+        measurementName = measurementInfo.getMeasurementAlias();
+      }
+      respColumns.add(measurementName != null ? measurementName : measurement);
+      columnTypes.add(type.toString());
+
+      deduplicatedMeasurements.add(measurement);
+    }
+
+    // save deduplicated measurements in AlignByDevicePlan for AlignByDeviceDataSet to use.
+    measurements = new ArrayList<>(deduplicatedMeasurements);
+    resp.setColumns(respColumns);
+    resp.setDataTypeList(columnTypes);
+    if (getOperatorType() == OperatorType.AGGREGATION) {
+      resp.setIgnoreTimeStamp(true);
+    }
+    return resp;
   }
 
   public void setMeasurements(List<String> measurements) {

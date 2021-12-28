@@ -37,6 +37,7 @@ import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.ToLongFunction;
 
 /**
  * Metric manager based on dropwizard metrics. More details in https://metrics.dropwizard.io/4.1.2/.
@@ -70,6 +71,27 @@ public class DropwizardMetricManager implements MetricManager {
             name, key -> new DropwizardCounter(metricRegistry.counter(name.toFlatString())));
     if (m instanceof Counter) {
       return (Counter) m;
+    }
+    throw new IllegalArgumentException(name + " is already used for a different type of metric");
+  }
+
+  @Override
+  public <T> Gauge getOrCreateAutoGauge(
+      String metric, T obj, ToLongFunction<T> mapper, String... tags) {
+    if (!isEnable) {
+      return DoNothingMetricManager.doNothingGauge;
+    }
+    MetricName name = new MetricName(metric, tags);
+    IMetric m =
+        currentMeters.computeIfAbsent(
+            name,
+            key -> {
+              DropwizardAutoGauge<T> dropwizardGauge = new DropwizardAutoGauge<>(obj, mapper);
+              metricRegistry.register(name.toFlatString(), dropwizardGauge);
+              return dropwizardGauge;
+            });
+    if (m instanceof Gauge) {
+      return (Gauge) m;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
   }

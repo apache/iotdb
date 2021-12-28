@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
-import org.apache.iotdb.db.rescon.TVListAllocator;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,7 +41,7 @@ public class WritableMemChunk implements IWritableMemChunk {
 
   public WritableMemChunk(IMeasurementSchema schema) {
     this.schema = schema;
-    this.list = TVListAllocator.getInstance().allocate(schema.getType());
+    this.list = TVList.newList(schema.getType());
   }
 
   @Override
@@ -348,7 +347,7 @@ public class WritableMemChunk implements IWritableMemChunk {
   @Override
   public void release() {
     if (list.getReferenceCount() == 0) {
-      TVListAllocator.getInstance().release(list);
+      list.clear();
     }
   }
 }

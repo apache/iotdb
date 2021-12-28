@@ -209,7 +209,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long querySingleSeries(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -220,6 +221,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.getDataTypeOrdinal()];
     Filter timeFilter = null;
     Filter valueFilter = null;
@@ -288,7 +293,8 @@ public class LocalQueryExecutor {
    * @param request
    */
   public long queryMultSeries(MultSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException, IOException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {}, queryId: {}",
         name,
@@ -300,9 +306,14 @@ public class LocalQueryExecutor {
     List<MeasurementPath> paths = Lists.newArrayList();
     List<TSDataType> dataTypes = Lists.newArrayList();
     for (int i = 0; i < request.getPath().size(); i++) {
-      paths.add(
+      MeasurementPath path =
           getAssembledPathFromRequest(
-              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue()));
+              request.getPath().get(i), request.getDataTypeOrdinal().get(i).byteValue());
+      // The request is routed to this node since this node contains the data and
+      // metadata of the designated timeseries. Because of which, the following metadata access will
+      // not trigger an RPC.
+      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+      paths.add(path);
       dataTypes.add(TSDataType.values()[request.getDataTypeOrdinal().get(i)]);
     }
     Filter timeFilter = null;
@@ -532,7 +543,8 @@ public class LocalQueryExecutor {
    * be returned.
    */
   public long querySingleSeriesByTimestamp(SingleSeriesQueryRequest request)
-      throws CheckConsistencyException, QueryProcessException, StorageEngineException {
+      throws CheckConsistencyException, QueryProcessException, StorageEngineException,
+          MetadataException {
     logger.debug(
         "{}: {} is querying {} by timestamp, queryId: {}",
         name,
@@ -543,6 +555,10 @@ public class LocalQueryExecutor {
 
     MeasurementPath path =
         getAssembledPathFromRequest(request.getPath(), (byte) request.getDataTypeOrdinal());
+    // The request is routed to this node since this node contains the data and
+    // metadata of the designated timeseries. Because of which, the following metadata access will
+    // not trigger an RPC.
+    path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
     TSDataType dataType = TSDataType.values()[request.dataTypeOrdinal];
     Set<String> deviceMeasurements = request.getDeviceMeasurements();
 
@@ -1012,7 +1028,7 @@ public class LocalQueryExecutor {
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
     List<PartialPath> partialPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
-      partialPaths.add(new PartialPath(path));
+      partialPaths.add(new MeasurementPath(path));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {

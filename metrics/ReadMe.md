@@ -136,7 +136,7 @@ public class PrometheusRunTest {
    1. The name of MetricManager should start with `monitorType`, MetricService will init manager according to the prefix of class name.
    2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.MetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
 2. implement your reporter
-   1. You need to implement jmx reporter and prometheus reporter
+   1. You need to implement jmx reporter and prometheus reporter, notice that your jmx bean name should be unified as `org.apache.iotdb.metrics`
    2. The name of your reporter should also start with `monitorType`
    3. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter`
 3. implement your specific metric

@@ -117,6 +117,7 @@ public class TypeInferenceUtils {
       case SQLConstant.LAST_VALUE:
       case SQLConstant.FIRST_VALUE:
       case SQLConstant.MAX_VALUE:
+      case SQLConstant.EXTREME:
         return dataType;
       case SQLConstant.AVG:
       case SQLConstant.SUM:

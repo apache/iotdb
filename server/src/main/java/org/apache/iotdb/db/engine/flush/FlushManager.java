@@ -28,9 +28,14 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.rescon.AbstractPoolManager;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +60,29 @@ public class FlushManager implements FlushManagerMBean, IService {
     flushPool.start();
     try {
       JMXService.registerMBean(this, ServiceType.FLUSH_SERVICE.getJmxName());
+      if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                flushPool,
+                AbstractPoolManager::getWaitingTasksNumber,
+                Tag.NAME.toString(),
+                "flush",
+                Tag.STATUS.toString(),
+                "waiting");
+        MetricsService.getInstance()
+            .getMetricManager()
+            .getOrCreateAutoGauge(
+                Metric.QUEUE.toString(),
+                flushPool,
+                AbstractPoolManager::getWorkingTasksNumber,
+                Tag.NAME.toString(),
+                "flush",
+                Tag.STATUS.toString(),
+                "running");
+      }
+
     } catch (Exception e) {
       throw new StartupException(this.getID().getName(), e.getMessage());
     }

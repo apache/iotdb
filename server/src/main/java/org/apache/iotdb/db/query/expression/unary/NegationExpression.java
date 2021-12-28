@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -60,8 +61,19 @@ public class NegationExpression extends Expression {
   }
 
   @Override
+  public List<Expression> getExpressions() {
+    return Collections.singletonList(expression);
+  }
+
+  @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return true;
+    return !isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return expression.isUserDefinedAggregationFunctionExpression()
+        || expression.isPlainAggregationFunctionExpression();
   }
 
   @Override

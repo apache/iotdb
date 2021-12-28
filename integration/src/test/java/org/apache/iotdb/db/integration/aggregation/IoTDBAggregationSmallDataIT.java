@@ -19,15 +19,14 @@
 
 package org.apache.iotdb.db.integration.aggregation;
 
-import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -35,7 +34,16 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
-import static org.apache.iotdb.db.constant.TestConstant.*;
+import static org.apache.iotdb.db.constant.TestConstant.avg;
+import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
+import static org.apache.iotdb.db.constant.TestConstant.firstValue;
+import static org.apache.iotdb.db.constant.TestConstant.lastValue;
+import static org.apache.iotdb.db.constant.TestConstant.maxTime;
+import static org.apache.iotdb.db.constant.TestConstant.maxValue;
+import static org.apache.iotdb.db.constant.TestConstant.minTime;
+import static org.apache.iotdb.db.constant.TestConstant.minValue;
+import static org.apache.iotdb.db.constant.TestConstant.sum;
 import static org.junit.Assert.fail;
 
 /** Multiple aggregation with filter test. */
@@ -106,15 +114,15 @@ public class IoTDBAggregationSmallDataIT {
         "insert into root.vehicle.d0(timestamp,s4) values(100, true)"
       };
 
-  @Before
-  public void setUp() throws Exception {
-    EnvFactory.getEnv().initBeforeTest();
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     insertSQL();
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
@@ -204,14 +212,7 @@ public class IoTDBAggregationSmallDataIT {
             "SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
-        Assert.assertTrue(
-            e.toString()
-                .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+        Assert.assertTrue(e.toString().contains("Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =
@@ -238,7 +239,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void extremeWithoutFilterTest() throws ClassNotFoundException {
+  public void extremeWithoutFilterTest() {
     String[] retArray = new String[] {"0,22222,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -248,14 +249,7 @@ public class IoTDBAggregationSmallDataIT {
         statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
         fail();
       } catch (IoTDBSQLException e) {
-        Assert.assertTrue(
-            e.toString()
-                .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+        Assert.assertTrue(e.toString().contains("Binary statistics does not support: max"));
       }
 
       boolean hasResultSet =

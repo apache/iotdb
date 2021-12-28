@@ -589,69 +589,112 @@ It costs 0.016s
 
 #### Aggregation By Level
 
-**Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
-For all timeseries paths, by convention, "level=0" represents *root* level. 
-That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
+Aggregation by level statement is used to group the query result whose name is the same at the given level. Keyword `LEVEL` is used to specify the level that need to be grouped.  By convention, `level=0` represents *root* level. 
 
-For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
-To count the number of "status" points of all these series, use query:
+For example：there are multiple series named `status` under different storage groups， like "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", and "root.sgcc.wf03.wt01.status". If you need to count the number of data points of the `status` sequence under different storage groups, use the following query:
 
 ```sql
-select count(status) from root.ln.wf01.* group by level=2
+select count(status)
+from root.**
+group by level = 1
 ```
-Result:
+
+Result：
 
 ```
-+----------------------------+
-|COUNT(root.ln.wf01.*.status)|
-+----------------------------+
-|                       10080|
-+----------------------------+
++-------------------------+---------------------------+
+|count(root.ln.*.*.status)|count(root.sgcc.*.*.status)|
++-------------------------+---------------------------+
+|                    20160|                      10080|
++-------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Similarly，if you need to count the number of data points under different devices, you can specify level = 3,
+
+```sql
+select count(status)
+from root.**
+group by level = 3
+```
+
+Result：
+
+```
++---------------------------+---------------------------+
+|count(root.*.*.wt01.status)|count(root.*.*.wt02.status)|
++---------------------------+---------------------------+
+|                      20160|                      10080|
++---------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Attention，the devices named `wt01` under storage groups `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different storage groups, you can use the following query:
+
+```sql
+select count(status)
+from root.**
+group by level = 1, 3
+```
+
+Result：
+
+```
++----------------------------+----------------------------+------------------------------+
+|count(root.ln.*.wt01.status)|count(root.ln.*.wt02.status)|count(root.sgcc.*.wt01.status)|
++----------------------------+----------------------------+------------------------------+
+|                       10080|                       10080|                         10080|
++----------------------------+----------------------------+------------------------------+
 Total line number = 1
 It costs 0.003s
 ```
 
 
-Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature".
-To query the count and the sum of "temperature" under path "root.ln.*.*", 
-aggregating on level=2, use following statement:
+
+Assuming that you want to query the maximum value of temperature sensor under all time series, you can use the following query statement:
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=2
+select max_value(temperature)
+from root.**
+group by level = 0
 ```
+
 Result：
 
 ```
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|                                8|                                4|                          228.0|              91.83000183105469|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
++---------------------------------+
+|max_value(root.*.*.*.temperature)|
++---------------------------------+
+|                             26.0|
++---------------------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
-To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
-simply set level=1
+The above queries are for a certain sensor. In particular, **if you want to query the total data points owned by all sensors at a certain level**, you need to explicitly specify `*` is selected.
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=1
+select count(*)
+from root.ln.**
+group by level = 2
 ```
+
 Result：
 
 ```
-+------------------------------+----------------------------+
-|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
-+------------------------------+----------------------------+
-|                            12|           319.8300018310547|
-+------------------------------+----------------------------+
++----------------------+----------------------+
+|count(root.*.wf01.*.*)|count(root.*.wf02.*.*)|
++----------------------+----------------------+
+|                 20160|                 20160|
++----------------------+----------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
-When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
-Otherwise, it will generate a syntax error.
+When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type. Otherwise, it will generate a syntax error.
 
 #### Down-Frequency Aggregate Query
 
@@ -871,93 +914,163 @@ It costs 0.004s
 ```
 
 #### Down-Frequency Aggregate Query with Fill Clause
+All aggregation operators can use a uniform filling method to fill the null values
 
 In group by fill, sliding step is not supported in group by clause
-
-Now, only last_value aggregation function is supported in group by fill.
-
-Linear fill is not supported in group by fill.
-
 
 Difference Between PREVIOUSUNTILLAST And PREVIOUS:
 
 * PREVIOUS will fill any null value as long as there exist value is not null before it.
 * PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
 
-first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:50:00.
+first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:49:00.
 
 ```
-IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
+IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:49:00
 +-----------------------------+-----------------------------+
 |                         Time|root.ln.wf01.wt01.temperature|
 +-----------------------------+-----------------------------+
-|2017-11-07T23:50:00.000+08:00|                         23.7|
+|2017-11-07T23:49:00.000+08:00|                         23.7|
 |2017-11-07T23:51:00.000+08:00|                        22.24|
-|2017-11-07T23:52:00.000+08:00|                        20.18|
 |2017-11-07T23:53:00.000+08:00|                        24.58|
 |2017-11-07T23:54:00.000+08:00|                        22.52|
-|2017-11-07T23:55:00.000+08:00|                         25.9|
-|2017-11-07T23:56:00.000+08:00|                        24.44|
 |2017-11-07T23:57:00.000+08:00|                        24.39|
-|2017-11-07T23:58:00.000+08:00|                        22.93|
-|2017-11-07T23:59:00.000+08:00|                        21.07|
+|2017-11-08T00:00:00.000+08:00|                        21.07|
 +-----------------------------+-----------------------------+
-Total line number = 10
-It costs 0.002s
+Total line number = 6
+It costs 0.010s
 ```
 
-we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07 respectively. 
+we will find that in root.ln.wf01.wt01.temperature the first time and value are 2017-11-07T23:49:00 and 23.7 and the last time and value are 2017-11-08T00:00:00 and 21.07 respectively. 
 
 Then execute SQL statements:
 
 ```sql
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUSUNTILLAST);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS);
 ```
 
 result:
 
 ```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUSUNTILLAST);
 +-----------------------------+-----------------------------------------+
 |                         Time|last_value(root.ln.wf01.wt01.temperature)|
 +-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:50:00.000+08:00|                                     null|
 |2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
 |2017-11-07T23:53:00.000+08:00|                                    24.58|
 |2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                    22.52|
 |2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                     null|
+|2017-11-07T23:58:00.000+08:00|                                     null|
 +-----------------------------+-----------------------------------------+
-Total line number = 11
-It costs 0.005s
+Total line number = 9
+It costs 0.007s
 
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS);
 +-----------------------------+-----------------------------------------+
 |                         Time|last_value(root.ln.wf01.wt01.temperature)|
 +-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:50:00.000+08:00|                                     null|
 |2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
 |2017-11-07T23:53:00.000+08:00|                                    24.58|
 |2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                    22.52|
 |2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                    21.07|
+|2017-11-07T23:58:00.000+08:00|                                    24.39|
 +-----------------------------+-----------------------------------------+
-Total line number = 11
+Total line number = 9
 It costs 0.006s
 ```
 
 which means:
 
-using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
+using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:57.
+
+In addition, there is no data in the first time interval [2017-11-07T23:50:00, 2017-11-07T23:51:00). The last time interval with data is [2017-11-01T23:49:00, 2017-11-07T23:50:00). The first interval can be filled by setting the forward query parameter beforeRange of PreviousFill as shown in the following example:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
+```
+
+result:
+
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                     null|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                    24.39|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.005s
+```
+
+explain:
+
+Because the beforeRange parameter sets the maximum value of forward query at the same time, and there is no data within the time interval [2017-11-07T23:55:00, 2017-11-07T23:57:00), [2017-11-07T23:56:00, 2017-11-07T23:57:00]. If beforeRange is not specified, PreviousFill will use the previous not null value in the query range by default
+
+Time range group aggregation query results can also be filled using VALUE and LINEAR, as shown in the following example:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (10.0);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
+```
+
+result：
+
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (10.0);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     10.0|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                     10.0|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     10.0|
+|2017-11-07T23:56:00.000+08:00|                                     10.0|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     10.0|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.018s
+
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                22.970001|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    23.41|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                23.143333|
+|2017-11-07T23:56:00.000+08:00|                                23.766666|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                23.283333|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.008s
+```
+
+explain：
+
+Similar to PREVIOUS, LINEAR has two parameters, beforeRange and afterRange, which can be filled with data outside the query interval
 
 #### Down-Frequency Aggregate Query with Level Clause
 
@@ -1014,6 +1127,105 @@ Total line number = 7
 It costs 0.004s
 ```
 
+#### Nested Expressions query with aggregations
+
+IoTDB supports aggregation query nested by any other expressions.
+
+##### Example
+
+1. Aggregation query without `GROUP BY`.
+
+Input:
+
+```sql
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware)
+from root.ln.wf01.wt01;
+```
+
+Result:
+
+```
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|avg(root.ln.wf01.wt01.temperature) + sum(root.ln.wf01.wt01.hardware)|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|                15.927999999999999|                   -0.21826546964855045|                    16.927999999999997|                         -7426.0|                                                            7441.928|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+Total line number = 1
+It costs 0.009s
+```
+
+Input:
+
+```sql
+select count(a),
+       count(b),
+       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
+       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
+from root.sg;
+```
+
+Result:
+
+```
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+Total line number = 1
+It costs 0.013s
+```
+
+2. Aggregation with `GROUP BY`.
+
+Input:
+
+```sql
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware) as custom_sum
+from root.ln.wf01.wt01
+GROUP BY([10, 90), 10ms);
+```
+
+Result:
+
+```
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|                         Time|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|custom_sum|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|1970-01-01T08:00:00.010+08:00|                13.987499999999999|                     0.9888207947857667|                    14.987499999999999|                         -3211.0| 3224.9875|
+|1970-01-01T08:00:00.020+08:00|                              29.6|                    -0.9701057337071853|                                  30.6|                         -3720.0|    3749.6|
+|1970-01-01T08:00:00.030+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.040+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.050+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.060+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.070+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.080+08:00|                              null|                                   null|                                  null|                            null|      null|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+Total line number = 8
+It costs 0.012s
+```
+
+##### Note
+
+> Automated fill (`FILL`) and grouped by level (`GROUP BY LEVEL`) are not supported in an aggregation query with expression nested. They may be supported in future versions.
+>
+> The aggregation expression must be the lowest level input of one expression tree. Any kind expressions except timeseries are not valid as aggregation function parameters。
+>
+> In a word, the following queries are not valid.
+> ```sql
+> SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
+> SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill
+> ```
+
 ### Automated Fill
 
 In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
@@ -1027,7 +1239,7 @@ Automated fill function refers to filling empty values according to the user's s
 When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
 
 ```sql
-select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <before_range>], …)
+select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
 ```
 
 Detailed descriptions of all parameters are given in Table 3-4.
@@ -1036,18 +1248,18 @@ Detailed descriptions of all parameters are given in Table 3-4.
 
 **Table 3-4 Previous fill paramter list**
 
+
 |Parameter name (case insensitive)|Interpretation|
 |:---|:---|
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
-|data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
 |before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
 </center>
 
 Here we give an example of filling null values using the previous method. The SQL statement is as follows:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1s) 
 ```
 which means:
 
@@ -1083,7 +1295,7 @@ It costs 0.004s
 When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
 
 ```sql
-select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <before_range>, <after_range>]…)
+select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
 ```
 Detailed descriptions of all parameters are given in Table 3-5.
 
@@ -1095,7 +1307,6 @@ Detailed descriptions of all parameters are given in Table 3-5.
 |:---|:---|
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
-|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
 |before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
 </center>
 
@@ -1105,7 +1316,7 @@ Otherwise, if there is no valid fill value in either range [T-before_range，T] 
 Here we give an example of filling null values using the linear method. The SQL statement is as follows:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(linear, 1m, 1m)
 ```
 which means:
 
@@ -1128,7 +1339,7 @@ It costs 0.017s
 When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
 ```sql
-select <path> from <prefixPath> where time = <T> fill(<data_type>[constant]…)
+select <path> from <prefixPath> where time = <T> fill(constant)
 ```
 Detailed descriptions of all parameters are given in Table 3-6.
 
@@ -1140,7 +1351,6 @@ Detailed descriptions of all parameters are given in Table 3-6.
 |:---|:---|
 |path, prefixPath|query path; mandatory field|
 |T|query timestamp (only one can be specified); mandatory field|
-|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
 |constant|represents given fill value|
 </center>
 
@@ -1149,7 +1359,7 @@ Detailed descriptions of all parameters are given in Table 3-6.
 Here we give an example of filling null values using the value method. The SQL statement is as follows:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [2.0])
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(2.0)
 ```
 which means:
 
@@ -1162,6 +1372,26 @@ On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial
 |                         Time|root.sgcc.wf03.wt01.temperature|
 +-----------------------------+-------------------------------+
 |2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
+When using the ValueFill, note that IoTDB will not fill the query result if the data type is different from the input constant
+
+example:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill('test')
+```
+
+result:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                          null |
 +-----------------------------+-------------------------------+
 Total line number = 1
 It costs 0.007s

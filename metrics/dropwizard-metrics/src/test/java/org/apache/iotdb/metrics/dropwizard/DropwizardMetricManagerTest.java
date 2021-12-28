@@ -28,6 +28,7 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +43,7 @@ public class DropwizardMetricManagerTest {
     System.setProperty("line.separator", "\n");
     // set up path of yml
     System.setProperty("IOTDB_CONF", "src/test/resources");
+    MetricService.init();
     metricManager = MetricService.getMetricManager();
   }
 
@@ -70,6 +72,23 @@ public class DropwizardMetricManagerTest {
     assertNotNull(gauge1);
     Gauge gauge2 = metricManager.getOrCreateGauge("gauge_test", "tag1", "tag2");
     assertEquals(gauge1, gauge2);
+  }
+
+  @Test
+  public void testAutoGauge() {
+    List<Integer> list = new ArrayList<>();
+    Gauge autoGauge =
+        metricManager.getOrCreateAutoGauge("autoGaugeMetric", list, List::size, "tagk", "tagv");
+    assertEquals(0L, autoGauge.value());
+    list.add(1);
+    assertEquals(1L, autoGauge.value());
+    list.clear();
+    assertEquals(0L, autoGauge.value());
+    list.add(1);
+    assertEquals(1L, autoGauge.value());
+    list = null;
+    System.gc();
+    assertEquals(0L, autoGauge.value());
   }
 
   @Test

@@ -21,18 +21,16 @@ package org.apache.iotdb.db.integration.aggregation;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
@@ -67,26 +65,26 @@ public class IoTDBAggregationByLevelIT {
 
   private static final double DOUBLE_PRECISION = 0.001d;
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  @BeforeClass
+  public static void setUp() throws Exception {
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
   }
 
   @Test
   public void sumFuncGroupByLevelTest() throws Exception {
     double[] retArray = new double[] {243.410d, 380.460d, 623.870d, 91.83d, 151.58d};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("select sum(temperature) from root.sg1.* GROUP BY level=1");
+      // Here we duplicate the column to test the bug
+      // https://issues.apache.org/jira/browse/IOTDB-2088
+      statement.execute(
+          "select sum(temperature), sum(temperature) from root.sg1.* GROUP BY level=1");
 
       int cnt = 0;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -131,8 +129,7 @@ public class IoTDBAggregationByLevelIT {
   @Test
   public void avgFuncGroupByLevelTest() throws Exception {
     double[] retArray = new double[] {48.682d, 95.115d, 69.319d, 45.915d, 50.527d};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select avg(temperature) from root.sg1.* GROUP BY level=1");
 
@@ -179,8 +176,7 @@ public class IoTDBAggregationByLevelIT {
   @Test
   public void timeFuncGroupByLevelTest() throws Exception {
     String[] retArray = new String[] {"5,3,100,200", "600,700,2,3", "600,700,500"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "select count(status), min_time(temperature) from root.*.* GROUP BY level=2");
@@ -241,8 +237,7 @@ public class IoTDBAggregationByLevelIT {
         new String[] {
           "61.22,125.5", "71.12,62.15,71.12,62.15",
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "select last_value(temperature), max_value(temperature) from root.*.* GROUP BY level=0");
@@ -281,13 +276,22 @@ public class IoTDBAggregationByLevelIT {
 
   @Test
   public void countStarGroupByLevelTest() throws Exception {
-    String[] retArray = new String[] {"17", "8"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    String[] retArray = new String[] {"17", "17", "8"};
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select count(*) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TestConstant.count("root.*.*.*"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+
+      statement.execute("select count(**) from root GROUP BY level=0");
+
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TestConstant.count("root.*.*.*"));
@@ -311,8 +315,7 @@ public class IoTDBAggregationByLevelIT {
   @Test
   public void GroupByLevelSLimitTest() throws Exception {
     String[] retArray = new String[] {"5,4", "4,6", "3"};
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "select count(temperature), count(status) from root.*.* GROUP BY level=1 slimit 2");
@@ -371,8 +374,7 @@ public class IoTDBAggregationByLevelIT {
           "null,null,null,null",
           "null,500,null,125.5",
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute(
@@ -412,8 +414,7 @@ public class IoTDBAggregationByLevelIT {
         new String[] {
           "null", "88.24", "105.5", "null", "null", "125.5",
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute(
@@ -436,8 +437,7 @@ public class IoTDBAggregationByLevelIT {
     String[] retArray2 =
         new String[] {"0,0,0", "100,1,1", "200,1,2", "300,0,1", "400,0,0", "500,1,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute(
@@ -480,8 +480,7 @@ public class IoTDBAggregationByLevelIT {
         new String[] {
           "true", "3",
         };
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select last_value(status) from root.*.* GROUP BY level=0");
 
@@ -508,8 +507,7 @@ public class IoTDBAggregationByLevelIT {
    */
   @Test
   public void TestGroupByLevelWithoutAggregationFunc() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("select temperature from root.sg1.* group by level = 2");
@@ -520,10 +518,8 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
-  private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+  private static void prepareData() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       for (String sql : dataSet) {
