@@ -44,11 +44,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -555,7 +551,7 @@ public class ImportCsv extends AbstractCsvTool {
       }
       String[] split = headerName.split("\\.");
       String measurementName = split[split.length - 1];
-      String deviceName = headerName.replace("." + measurementName, "");
+      String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
         if (!deviceAndMeasurementNames.containsKey(deviceName)) {
           deviceAndMeasurementNames.put(deviceName, new ArrayList<>());
@@ -610,7 +606,6 @@ public class ImportCsv extends AbstractCsvTool {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
         format.parse(time).getTime();
-        System.out.println(timeFormat);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
