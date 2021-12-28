@@ -110,6 +110,7 @@ public class EnvironmentUtils {
       daemon.stop();
       daemon = null;
     }
+    long start = System.currentTimeMillis();
     QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
 
     // clear opened file streams
@@ -131,7 +132,8 @@ public class EnvironmentUtils {
         }
       }
     }
-
+    System.out.printf("clean 1 cost %d\n", (System.currentTimeMillis() - start));
+    start = System.currentTimeMillis();
     // clean storage group manager
     if (!StorageEngine.getInstance().deleteAll()) {
       logger.error("Can't close the storage group manager in EnvironmentUtils");
@@ -165,12 +167,14 @@ public class EnvironmentUtils {
 
     // clear tsFileResource manager info
     TsFileResourceManager.getInstance().clear();
-
+    System.out.printf("clean 2 cost %d\n", (System.currentTimeMillis() - start));
+    start = System.currentTimeMillis();
     // delete all directory
     cleanAllDir();
     config.setSeqTsFileSize(oldSeqTsFileSize);
     config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
+    System.out.printf("clean 3 cost %d\n", (System.currentTimeMillis() - start));
   }
 
   private static boolean examinePorts() {

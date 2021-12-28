@@ -57,10 +57,7 @@ public class RegisterManager {
     Collections.reverse(iServices);
     for (IService service : iServices) {
       try {
-        long start = System.currentTimeMillis();
         service.waitAndStop(deregisterTimeOut);
-        System.out.printf(
-            "### Stop service: %s in %d\n", service.getID(), (System.currentTimeMillis() - start));
         logger.debug("{} deregistered", service.getID());
       } catch (Exception e) {
         logger.error("Failed to stop {} because:", service.getID().getName(), e);
