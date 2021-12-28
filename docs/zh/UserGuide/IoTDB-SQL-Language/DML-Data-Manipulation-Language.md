@@ -1274,7 +1274,7 @@ Total line number = 9
 It costs 0.008s
 ```
 
-> 注意：设原始降采样查询区间为 [start_time, end_time)，在指定 before_range, after_range 参数后，降采样查询结果不变，但查询区间将转变为 [start_time - before_range, end_time + after_range)。使用时需注意这两个参数的大小，防止影响效率。
+> 注意：设原始降采样查询区间为 [start_time, end_time)，在指定 before_range, after_range 参数后，降采样查询结果不变，但查询区间将转变为 [start_time - before_range, end_time + after_range)。因此这两个参数设置较大时会影响效率，使用时需注意。
 
 ##### Value 填充
 值填充方式会将输入的常量值解析为字符串，填充时尝试将字符串常量转换为对应类型的数据，若转换成功则进行填充，否则就不填充。举例如下：
