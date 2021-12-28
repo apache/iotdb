@@ -49,11 +49,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -240,9 +236,13 @@ public class MetadataIndexConstructorTest {
       }
     }
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
-      List<Path> actualPaths = reader.getAllPaths();
-      for (int i = 0; i < actualPaths.size(); i++) {
-        assertEquals(actualPaths.get(i).getFullPath(), correctPaths.get(i));
+      Iterator<List<Path>> iterator = reader.getPathsIterator();
+      int idx = 0;
+      while (iterator.hasNext()) {
+        for (Path actualPath : iterator.next()) {
+          assertEquals(actualPath.getFullPath(), correctPaths.get(idx));
+          idx++;
+        }
       }
     } catch (IOException e) {
       e.printStackTrace();
