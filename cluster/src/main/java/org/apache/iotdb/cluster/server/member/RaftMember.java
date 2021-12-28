@@ -1059,11 +1059,10 @@ public abstract class RaftMember implements RaftMemberMBean {
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
       logManager.append(log);
       Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+      sendLogRequest = buildSendLogRequest(log);
+      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
     }
-
-    startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-    sendLogRequest = buildSendLogRequest(log);
-    Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
 
     startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
     log.setCreateTime(System.nanoTime());
