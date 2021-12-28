@@ -44,7 +44,10 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
@@ -275,11 +278,11 @@ public class InnerSpaceCompactionUtils {
         // tsfile -> measurement -> List<ChunkMetadata>
         Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge =
             new TreeMap<>(new TsFileNameComparator());
-
         // tsfile -> iterator to get next Map<Measurement, List<ChunkMetadata>>
         Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
             chunkMetadataListIteratorCache = new TreeMap<>(new TsFileNameComparator());
-        //
+
+        // construct and cache chunk metadata list iterator from source tsfiles
         collectChunkMedataListIteratorFromResources(
             chunkMetadataListCacheForMerge,
             chunkMetadataListIteratorCache,
@@ -287,13 +290,15 @@ public class InnerSpaceCompactionUtils {
             tsFileSequenceReaderMap,
             storageGroup,
             device);
+
         while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
           Set<String> allSensors = new HashSet<>();
+          // collect the sensors to be compacted in this loop
           String lastSensor =
               collectMeasurementToBeCompacted(
                   chunkMetadataListCacheForMerge, chunkMetadataListIteratorCache, allSensors);
 
-          // if there is no more chunkMetaData, merge all the sensors
+          // if there is no more chunk metadata, merge all the sensors
           if (!hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
             lastSensor = Collections.max(allSensors);
           }
@@ -392,6 +397,79 @@ public class InnerSpaceCompactionUtils {
       }
     }
   }
+
+  public static void compactV2(
+      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
+      throws IOException, IllegalPathException, MetadataException {
+    Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+    TsFileIOWriter writer = null;
+    try {
+      writer = new TsFileIOWriter(targetResource.getTsFile());
+      Map<String, List<Modification>> modificationCache = new HashMap<>();
+      RateLimiter compactionWriteRateLimiter =
+          MergeManager.getINSTANCE().getMergeWriteRateLimiter();
+
+      CompactionDeviceVisitor visitor = new CompactionDeviceVisitor(tsFileResources);
+      Set<String> devices = visitor.getDevices();
+
+      for (String device : devices) {
+        writer.startChunkGroup(device);
+        // TODO: compact a aligned device
+        CompactionDeviceVisitor.CompactionSensorsIterator sensorsIterator = visitor.visit(device);
+        while (sensorsIterator.hasNextSensor()) {
+          String currentSensor = sensorsIterator.nextSensor();
+          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
+              sensorsIterator.getMetadataListForCurrentSensor();
+          IMeasurementSchema schemaOfCurrentSensor =
+              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, currentSensor));
+
+          compactOneSensor(schemaOfCurrentSensor, readerAndChunkMetadataList, writer);
+        }
+      }
+
+      for (TsFileResource tsFileResource : tsFileResources) {
+        targetResource.updatePlanIndexes(tsFileResource);
+      }
+      targetResource.serialize();
+      writer.endFile();
+      targetResource.close();
+    } finally {
+      for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
+        reader.close();
+      }
+      if (writer != null && writer.canWrite()) {
+        writer.close();
+      }
+    }
+  }
+
+  private static void compactOneSensor(
+      IMeasurementSchema schema,
+      LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
+      TsFileIOWriter fileWriter)
+      throws IOException {
+    IChunkWriter chunkWriter = new ChunkWriterImpl(schema, true);
+    Chunk cachedChunk = null;
+    while (readerAndChunkMetadataList.size() > 0) {
+      Pair<TsFileSequenceReader, List<ChunkMetadata>> readerListPair =
+          readerAndChunkMetadataList.removeFirst();
+      TsFileSequenceReader reader = readerListPair.left;
+      List<ChunkMetadata> chunkMetadataList = readerListPair.right;
+      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
+        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
+        // this chunk is modified, deserialize it into points
+        if (chunkMetadata.getDeleteIntervalList() != null) {
+          if (cachedChunk != null) {
+            writeCachedChunkIntoChunkWriterMayFlush(cachedChunk, chunkWriter, fileWriter);
+            cachedChunk = null;
+          }
+        }
+      }
+    }
+  }
+
+  private static void writeCachedChunkIntoChunkWriterMayFlush(
+      Chunk cachedChunk, IChunkWriter chunkWriter, TsFileIOWriter fileWriter) {}
 
   private static void collectChunkMedataListIteratorFromResources(
       Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge,
@@ -672,7 +750,7 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
-  private static class TsFileNameComparator implements Comparator<TsFileSequenceReader> {
+  public static class TsFileNameComparator implements Comparator<TsFileSequenceReader> {
 
     @Override
     public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
