@@ -128,9 +128,10 @@ public class RawDataQueryPlan extends QueryPlan {
         path -> {
           Set<String> set =
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
-          set.add(path.getMeasurement());
           if (path instanceof AlignedPath) {
             set.addAll(((AlignedPath) path).getMeasurementList());
+          } else {
+            set.add(path.getMeasurement());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;
