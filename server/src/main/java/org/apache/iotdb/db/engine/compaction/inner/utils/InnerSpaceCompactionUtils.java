@@ -47,8 +47,6 @@ import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -424,7 +422,10 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compactV2(
-      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
+      TsFileResource targetResource,
+      List<TsFileResource> tsFileResources,
+      String storageGroup,
+      boolean sequence)
       throws IOException, IllegalPathException, MetadataException {
     Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
     TsFileIOWriter writer = null;
@@ -445,10 +446,9 @@ public class InnerSpaceCompactionUtils {
           String currentSensor = sensorsIterator.nextSensor();
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
               sensorsIterator.getMetadataListForCurrentSensor();
-          IMeasurementSchema schemaOfCurrentSensor =
-              IoTDB.metaManager.getSeriesSchema(new PartialPath(device, currentSensor));
-
-          compactOneSensor(schemaOfCurrentSensor, readerAndChunkMetadataList, writer);
+          TimeSeriesCompactor compactorOfCurrentTimeSeries =
+              new TimeSeriesCompactor(
+                  storageGroup, device, currentSensor, readerAndChunkMetadataList, writer);
         }
       }
 
@@ -467,34 +467,6 @@ public class InnerSpaceCompactionUtils {
       }
     }
   }
-
-  private static void compactOneSensor(
-      IMeasurementSchema schema,
-      LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter fileWriter)
-      throws IOException {
-    IChunkWriter chunkWriter = new ChunkWriterImpl(schema, true);
-    Chunk cachedChunk = null;
-    while (readerAndChunkMetadataList.size() > 0) {
-      Pair<TsFileSequenceReader, List<ChunkMetadata>> readerListPair =
-          readerAndChunkMetadataList.removeFirst();
-      TsFileSequenceReader reader = readerListPair.left;
-      List<ChunkMetadata> chunkMetadataList = readerListPair.right;
-      for (ChunkMetadata chunkMetadata : chunkMetadataList) {
-        Chunk currentChunk = reader.readMemChunk(chunkMetadata);
-        // this chunk is modified, deserialize it into points
-        if (chunkMetadata.getDeleteIntervalList() != null) {
-          if (cachedChunk != null) {
-            writeCachedChunkIntoChunkWriterMayFlush(cachedChunk, chunkWriter, fileWriter);
-            cachedChunk = null;
-          }
-        }
-      }
-    }
-  }
-
-  private static void writeCachedChunkIntoChunkWriterMayFlush(
-      Chunk cachedChunk, IChunkWriter chunkWriter, TsFileIOWriter fileWriter) {}
 
   private static void collectChunkMedataListIteratorFromResources(
       Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataListCacheForMerge,

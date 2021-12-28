@@ -374,7 +374,16 @@ public class IoTDBConfig {
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
   /** The target tsfile size in compaction. */
-  private long targetCompactionFileSize = 2147483648L;
+  private long targetCompactionFileSize = 536870912L;
+
+  /** The target chunk size in compaction. */
+  private long targetChunkSize = 1048576L;
+
+  /**
+   * If the chunk size is lower than this threshold, it will be deserialize into points, default is
+   * 16KB
+   */
+  private long chunkSizeLowerBoundInCompaction = 16384L;
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
@@ -2431,6 +2440,22 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public long getTargetChunkSize() {
+    return targetChunkSize;
+  }
+
+  public void setTargetChunkSize(long targetChunkSize) {
+    this.targetChunkSize = targetChunkSize;
+  }
+
+  public long getChunkSizeLowerBoundInCompaction() {
+    return chunkSizeLowerBoundInCompaction;
+  }
+
+  public void setChunkSizeLowerBoundInCompaction(long chunkSizeLowerBoundInCompaction) {
+    this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
   }
 
   public long getCompactionScheduleInterval() {
