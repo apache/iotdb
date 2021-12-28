@@ -47,10 +47,10 @@ import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Each storage group that set by users corresponds to a StorageGroupManager */
-public class VirtualStorageGroupManager {
+public class StorageGroupManager {
 
   /** logger of this class */
-  private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupManager.class);
+  private static final Logger logger = LoggerFactory.getLogger(StorageGroupManager.class);
 
   /** virtual storage group partitioner */
   VirtualPartitioner partitioner = HashVirtualPartitioner.getInstance();
@@ -69,11 +69,11 @@ public class VirtualStorageGroupManager {
   /** value of root.stats."root.sg".TOTAL_POINTS */
   private long monitorSeriesValue;
 
-  public VirtualStorageGroupManager() {
+  public StorageGroupManager() {
     this(false);
   }
 
-  public VirtualStorageGroupManager(boolean needRecovering) {
+  public StorageGroupManager(boolean needRecovering) {
     virtualStorageGroupProcessor = new VirtualStorageGroupProcessor[partitioner.getPartitionCount()];
     isVsgReady = new AtomicBoolean[partitioner.getPartitionCount()];
     boolean recoverReady = !needRecovering;
