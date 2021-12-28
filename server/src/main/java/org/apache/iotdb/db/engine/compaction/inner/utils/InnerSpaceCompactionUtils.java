@@ -816,6 +816,7 @@ public class InnerSpaceCompactionUtils {
     public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
       return TsFileManager.compareFileName(new File(o1.getFileName()), new File(o2.getFileName()));
     }
+  }
   /**
    * Update the targetResource. Move xxx.target to xxx.tsfile and serialize xxx.tsfile.resource .
    *
