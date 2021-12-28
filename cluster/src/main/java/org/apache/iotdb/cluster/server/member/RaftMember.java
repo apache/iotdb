@@ -1036,8 +1036,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     log.setCurrLogTerm(getTerm().get());
 
     // just like processPlanLocally,we need to check the size of log
-    if (log.serialize().capacity() + Integer.BYTES
-        >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        & log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
