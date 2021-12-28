@@ -151,9 +151,6 @@ public class QueryResourceManager {
       cachedQueryDataSource =
           processor.query(
               Collections.singletonList(selectedPath), context, filePathsManager, timeFilter);
-      cachedQueryDataSourcesMap
-          .computeIfAbsent(queryId, k -> new HashMap<>())
-          .put(storageGroupPath, cachedQueryDataSource);
     }
 
     // construct QueryDataSource for selectedPath
