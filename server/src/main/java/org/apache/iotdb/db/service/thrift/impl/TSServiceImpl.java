@@ -35,10 +35,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.TemplateQueryType;
-import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
@@ -46,11 +44,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
-import org.apache.iotdb.db.qp.physical.crud.MeasurementInfo;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.SelectIntoPlan;
-import org.apache.iotdb.db.qp.physical.crud.UDAFPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDFPlan;
 import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
@@ -66,13 +61,11 @@ import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowQueryProcesslistPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
-import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
-import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -82,7 +75,6 @@ import org.apache.iotdb.db.service.metrics.Operation;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
-import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -135,7 +127,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -146,13 +137,10 @@ import java.sql.SQLException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.BitSet;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
@@ -678,22 +666,13 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       }
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
-        resp = getListDataSetHeaders(newDataSet);
+        resp = getListDataSetHeaders(plan, newDataSet);
       } else if (plan instanceof UDFPlan
           || (plan instanceof QueryPlan && ((QueryPlan) plan).isGroupByLevel())) {
         resp = getQueryColumnHeaders(plan, username, isJdbcQuery);
       }
 
       resp.setOperationType(plan.getOperatorType().toString());
-      if (plan.getOperatorType() == OperatorType.AGGREGATION
-          || (plan instanceof UDAFPlan
-              && ((UDAFPlan) plan).getInnerAggregationPlan().getOperatorType()
-                  == OperatorType.AGGREGATION)) {
-        resp.setIgnoreTimeStamp(true);
-      } else if (plan instanceof ShowQueryProcesslistPlan) {
-        resp.setIgnoreTimeStamp(false);
-      }
-
       if (newDataSet instanceof DirectNonAlignDataSet) {
         resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
       } else {
@@ -749,20 +728,21 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
   }
 
-  private TSExecuteStatementResp getListDataSetHeaders(QueryDataSet dataSet) {
-    return StaticResps.getNoTimeExecuteResp(
-        dataSet.getPaths().stream().map(Path::getFullPath).collect(Collectors.toList()),
-        dataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
+  private TSExecuteStatementResp getListDataSetHeaders(PhysicalPlan plan, QueryDataSet dataSet) {
+    TSExecuteStatementResp resp =
+        StaticResps.getNoTimeExecuteResp(
+            dataSet.getPaths().stream().map(Path::getFullPath).collect(Collectors.toList()),
+            dataSet.getDataTypes().stream().map(Enum::toString).collect(Collectors.toList()));
+    if (plan instanceof ShowQueryProcesslistPlan) {
+      resp.setIgnoreTimeStamp(false);
+    }
+    return resp;
   }
 
   /** get ResultSet schema */
   private TSExecuteStatementResp getQueryColumnHeaders(
       PhysicalPlan physicalPlan, String username, boolean isJdbcQuery)
       throws AuthException, TException, MetadataException {
-
-    List<String> respColumns = new ArrayList<>();
-    List<String> columnsTypes = new ArrayList<>();
-
     // check permissions
     if (!checkAuthorization(physicalPlan.getAuthPaths(), physicalPlan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
@@ -771,145 +751,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               "No permissions for this operation " + physicalPlan.getOperatorType()));
     }
 
-    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
-
-    // align by device query
-    QueryPlan plan = (QueryPlan) physicalPlan;
-    if (plan instanceof AlignByDevicePlan) {
-      getAlignByDeviceQueryHeaders((AlignByDevicePlan) plan, respColumns, columnsTypes);
-    } else if (plan instanceof LastQueryPlan) {
-      // Last Query should return different respond instead of the static one
-      // because the query dataset and query id is different although the header of last query is
-      // same.
-      return StaticResps.LAST_RESP.deepCopy();
-    } else if (plan.isGroupByLevel()) {
-      for (Map.Entry<String, AggregateResult> groupPathResult :
-          ((AggregationPlan) plan).getGroupPathsResultMap().entrySet()) {
-        respColumns.add(groupPathResult.getKey());
-        columnsTypes.add(groupPathResult.getValue().getResultDataType().toString());
-      }
-    } else {
-      List<String> respSgColumns = new ArrayList<>();
-      BitSet aliasMap = new BitSet();
-      getWideQueryHeaders(plan, respColumns, columnsTypes, respSgColumns, isJdbcQuery, aliasMap);
-      resp.setColumnNameIndexMap(plan.getPathToIndex());
-      resp.setSgColumns(respSgColumns);
-      List<Byte> byteList = new ArrayList<>();
-      byteList.addAll(Bytes.asList(aliasMap.toByteArray()));
-      resp.setAliasColumns(byteList);
-    }
-    resp.setColumns(respColumns);
-    resp.setDataTypeList(columnsTypes);
-    return resp;
-  }
-
-  // wide means not align by device
-  private void getWideQueryHeaders(
-      QueryPlan plan,
-      List<String> respColumns,
-      List<String> columnTypes,
-      List<String> respSgColumns,
-      Boolean isJdbcQuery,
-      BitSet aliasList)
-      throws TException, MetadataException {
-    List<ResultColumn> resultColumns = plan.getResultColumns();
-    List<MeasurementPath> paths = plan.getPaths();
-    List<TSDataType> seriesTypes = new ArrayList<>();
-    switch (plan.getOperatorType()) {
-      case QUERY:
-      case FILL:
-        for (int i = 0; i < resultColumns.size(); ++i) {
-          if (isJdbcQuery) {
-            String sgName =
-                IoTDB.metaManager.getBelongedStorageGroup(plan.getPaths().get(i)).getFullPath();
-            respSgColumns.add(sgName);
-            if (resultColumns.get(i).getAlias() == null) {
-              respColumns.add(
-                  resultColumns.get(i).getResultColumnName().substring(sgName.length() + 1));
-            } else {
-              aliasList.set(i);
-              respColumns.add(resultColumns.get(i).getResultColumnName());
-            }
-          } else {
-            respColumns.add(resultColumns.get(i).getResultColumnName());
-          }
-          seriesTypes.add(paths.get(i).getSeriesType());
-        }
-        break;
-      case AGGREGATION:
-      case GROUP_BY_TIME:
-      case GROUP_BY_FILL:
-        List<String> aggregations = plan.getAggregations();
-        if (aggregations.size() != paths.size()) {
-          for (int i = 1; i < paths.size(); i++) {
-            aggregations.add(aggregations.get(0));
-          }
-        }
-        for (ResultColumn resultColumn : resultColumns) {
-          respColumns.add(resultColumn.getResultColumnName());
-        }
-        seriesTypes = SchemaUtils.getSeriesTypesByPaths(paths, aggregations);
-        break;
-      case UDAF:
-      case UDTF:
-        seriesTypes = new ArrayList<>();
-        for (int i = 0; i < paths.size(); i++) {
-          respColumns.add(resultColumns.get(i).getResultColumnName());
-          seriesTypes.add(resultColumns.get(i).getDataType());
-        }
-        break;
-      default:
-        throw new TException("unsupported query type: " + plan.getOperatorType());
-    }
-
-    for (TSDataType seriesType : seriesTypes) {
-      columnTypes.add(seriesType.toString());
-    }
-  }
-
-  private void getAlignByDeviceQueryHeaders(
-      AlignByDevicePlan plan, List<String> respColumns, List<String> columnTypes) {
-    // set columns in TSExecuteStatementResp.
-    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
-
-    // get column types and do deduplication
-    columnTypes.add(TSDataType.TEXT.toString()); // the DEVICE column of ALIGN_BY_DEVICE result
-    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    deduplicatedColumnsType.add(TSDataType.TEXT); // the DEVICE column of ALIGN_BY_DEVICE result
-
-    Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, MeasurementInfo> measurementInfoMap = plan.getMeasurementInfoMap();
-
-    // build column header with constant and non exist column and deduplication
-    List<String> measurements = plan.getMeasurements();
-    for (String measurement : measurements) {
-      MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
-      TSDataType type = TSDataType.TEXT;
-      switch (measurementInfo.getMeasurementType()) {
-        case Exist:
-          type = measurementInfo.getColumnDataType();
-          break;
-        case NonExist:
-        case Constant:
-          type = TSDataType.TEXT;
-      }
-      String measurementAlias = measurementInfo.getMeasurementAlias();
-      respColumns.add(measurementAlias != null ? measurementAlias : measurement);
-      columnTypes.add(type.toString());
-
-      if (!deduplicatedMeasurements.contains(measurement)) {
-        deduplicatedMeasurements.add(measurement);
-        deduplicatedColumnsType.add(type);
-      }
-    }
-
-    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
-    plan.setMeasurements(new ArrayList<>(deduplicatedMeasurements));
-    plan.setDataTypes(deduplicatedColumnsType);
-
-    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
-    plan.setPaths(null);
+    return ((QueryPlan) physicalPlan).getTSExecuteStatementResp(isJdbcQuery);
   }
 
   private TSExecuteStatementResp executeSelectIntoStatement(

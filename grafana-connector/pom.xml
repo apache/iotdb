@@ -33,9 +33,9 @@
   <version>1.5.4.RELEASE</version>
   <relativePath />
 </parent-->
-    <artifactId>iotdb-grafana</artifactId>
+    <artifactId>iotdb-grafana-connector</artifactId>
     <packaging>war</packaging>
-    <name>IoTDB Grafana</name>
+    <name>IoTDB Grafana connector</name>
     <description>Grafana data source connector for IoTDB</description>
     <properties>
         <start-class>org.apache.iotdb.web.grafana.TsfileWebDemoApplication</start-class>
