@@ -29,7 +29,11 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AlignByDevicePlan extends QueryPlan {
 
@@ -62,19 +66,17 @@ public class AlignByDevicePlan extends QueryPlan {
 
   @Override
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery) {
+    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
+
     List<String> respColumns = new ArrayList<>();
     List<String> columnsTypes = new ArrayList<>();
 
-    TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
-
-    // set columns in TSExecuteStatementResp.
+    // the DEVICE column of ALIGN_BY_DEVICE result
     respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+    columnsTypes.add(TSDataType.TEXT.toString());
 
     // get column types and do deduplication
-    // the DEVICE column of ALIGN_BY_DEVICE result
-    columnsTypes.add(TSDataType.TEXT.toString());
     List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    // the DEVICE column of ALIGN_BY_DEVICE result
     deduplicatedColumnsType.add(TSDataType.TEXT);
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
@@ -112,6 +114,9 @@ public class AlignByDevicePlan extends QueryPlan {
     setPaths(null);
     resp.setColumns(respColumns);
     resp.setDataTypeList(columnsTypes);
+    if (getOperatorType() == OperatorType.AGGREGATION) {
+      resp.setIgnoreTimeStamp(true);
+    }
     return resp;
   }
 
