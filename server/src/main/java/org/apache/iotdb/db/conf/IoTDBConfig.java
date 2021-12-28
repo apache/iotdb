@@ -377,7 +377,7 @@ public class IoTDBConfig {
   private long targetCompactionFileSize = 2147483648L;
 
   /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 10;
+  private int maxCompactionCandidateFileNum = 30;
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
@@ -402,7 +402,7 @@ public class IoTDBConfig {
    * num # This parameters have to be much smaller than the permitted max open file num of each
    * process controlled by operator system(65535 in most system).
    */
-  private int maxOpenFileNumInCrossSpaceCompaction = 2000;
+  private int maxOpenFileNumInCrossSpaceCompaction = 100;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -603,6 +603,14 @@ public class IoTDBConfig {
    */
   private int selectIntoInsertTabletPlanRowLimit = 10000;
 
+  /**
+   * When the insert plan column count reaches the specified threshold, which means that the plan is
+   * relatively large. At this time, may be enabled multithreading. If the tablet is small, the time
+   * of each insertion is short. If we enable multithreading, we also need to consider the switching
+   * loss between threads, so we need to judge the size of the tablet.
+   */
+  private int insertMultiTabletEnableMultithreadingColumnThreshold = 10;
+
   private MergeFileStrategy mergeFileStrategy = MergeFileStrategy.MAX_SERIES_NUM;
 
   /** Default system file storage is in local file system (unsupported) */
@@ -736,6 +744,9 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
+  /** The cached record size (in MB) of each series in group by fill query */
+  private float groupByFillCacheSizeInMB = (float) 1.0;
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -782,6 +793,14 @@ public class IoTDBConfig {
 
   public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
     this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getGroupByFillCacheSizeInMB() {
+    return groupByFillCacheSizeInMB;
+  }
+
+  public void setGroupByFillCacheSizeInMB(float groupByFillCacheSizeInMB) {
+    this.groupByFillCacheSizeInMB = groupByFillCacheSizeInMB;
   }
 
   public float getUdfReaderMemoryBudgetInMB() {
@@ -1531,12 +1550,22 @@ public class IoTDBConfig {
     this.continuousQueryMinimumEveryInterval = minimumEveryInterval;
   }
 
+  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
+    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  }
+
   public int getSelectIntoInsertTabletPlanRowLimit() {
     return selectIntoInsertTabletPlanRowLimit;
   }
 
-  public void setSelectIntoInsertTabletPlanRowLimit(int selectIntoInsertTabletPlanRowLimit) {
-    this.selectIntoInsertTabletPlanRowLimit = selectIntoInsertTabletPlanRowLimit;
+  public int getInsertMultiTabletEnableMultithreadingColumnThreshold() {
+    return insertMultiTabletEnableMultithreadingColumnThreshold;
+  }
+
+  public void setInsertMultiTabletEnableMultithreadingColumnThreshold(
+      int insertMultiTabletEnableMultithreadingColumnThreshold) {
+    this.insertMultiTabletEnableMultithreadingColumnThreshold =
+        insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
   public int getMergeWriteThroughputMbPerSec() {

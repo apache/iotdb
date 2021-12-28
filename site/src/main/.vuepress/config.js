@@ -1551,7 +1551,8 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],

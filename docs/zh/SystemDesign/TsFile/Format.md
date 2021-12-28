@@ -179,7 +179,6 @@ PageHeader 结构：
 | firstValue | 第一个值 | double | float | int | long | Binary | boolean|
 | lastValue | 最后一个值 | double | float | int | long | Binary | boolean|
 | sumValue | 和 | double | double | double | double | - | - |
-| extreme | 极值 | double | float | int | long | - | - |
 
 ##### ChunkGroupFooter 数据块组结尾
 

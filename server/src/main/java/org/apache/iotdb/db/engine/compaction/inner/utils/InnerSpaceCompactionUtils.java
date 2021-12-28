@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
@@ -35,7 +36,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
@@ -51,6 +54,7 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.collections4.keyvalue.DefaultMapEntry;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -292,18 +296,40 @@ public class InnerSpaceCompactionUtils {
             device);
 
         while (hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
-          Set<String> allSensors = new HashSet<>();
-          // collect the sensors to be compacted in this loop
-          String lastSensor =
-              collectMeasurementToBeCompacted(
-                  chunkMetadataListCacheForMerge, chunkMetadataListIteratorCache, allSensors);
+          String lastSensor = null;
+          Set<String> candidateSensors = new HashSet<>();
+          for (Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
+              chunkMetadataListCacheForMergeEntry : chunkMetadataListCacheForMerge.entrySet()) {
+            TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
+            Map<String, List<ChunkMetadata>> sensorChunkMetadataListMap =
+                chunkMetadataListCacheForMergeEntry.getValue();
+            if (sensorChunkMetadataListMap.size() <= 0) {
+              if (chunkMetadataListIteratorCache.get(reader).hasNext()) {
+                sensorChunkMetadataListMap = chunkMetadataListIteratorCache.get(reader).next();
+                chunkMetadataListCacheForMerge.put(reader, sensorChunkMetadataListMap);
+              } else {
+                continue;
+              }
+            }
+            // get the min last sensor in the current chunkMetadata cache list for merge
+            String maxSensor = Collections.max(sensorChunkMetadataListMap.keySet());
+            if (lastSensor == null) {
+              lastSensor = maxSensor;
+            } else {
+              if (maxSensor.compareTo(lastSensor) < 0) {
+                lastSensor = maxSensor;
+              }
+            }
+            // get all sensor used later
+            candidateSensors.addAll(sensorChunkMetadataListMap.keySet());
+          }
 
           // if there is no more chunk metadata, merge all the sensors
           if (!hasNextChunkMetadataList(chunkMetadataListIteratorCache.values())) {
-            lastSensor = Collections.max(allSensors);
+            lastSensor = Collections.max(candidateSensors);
           }
 
-          for (String sensor : allSensors) {
+          for (String sensor : candidateSensors) {
             if (sensor.compareTo(lastSensor) <= 0) {
               Map<TsFileSequenceReader, List<ChunkMetadata>> readerChunkMetadataListMap =
                   new TreeMap<>(new TsFileNameComparator());
@@ -385,7 +411,6 @@ public class InnerSpaceCompactionUtils {
       for (TsFileResource tsFileResource : tsFileResources) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
-      targetResource.serialize();
       writer.endFile();
       targetResource.close();
     } finally {
@@ -664,14 +689,18 @@ public class InnerSpaceCompactionUtils {
                 new ModificationFile(fileName + ModificationFile.FILE_SUFFIX).getModifications()));
   }
 
-  public static void deleteTsFilesInDisk(
+  public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
     logger.info("{} [Compaction] Compaction starts to delete real file ", storageGroupName);
+    boolean result = true;
     for (TsFileResource mergeTsFile : mergeTsFiles) {
-      deleteTsFile(mergeTsFile);
+      if (!deleteTsFile(mergeTsFile)) {
+        result = false;
+      }
       logger.info(
           "{} [Compaction] delete TsFile {}", storageGroupName, mergeTsFile.getTsFilePath());
     }
+    return result;
   }
 
   /** Delete all modification files for source files */
@@ -688,6 +717,35 @@ public class InnerSpaceCompactionUtils {
       ModificationFile normalModification = ModificationFile.getNormalMods(tsFileResource);
       if (normalModification.exists()) {
         normalModification.remove();
+      }
+    }
+  }
+
+  /**
+   * This method is called to recover modifications while an exception occurs during compaction. It
+   * append new modifications of each selected tsfile to its corresponding old mods file and delete
+   * the compaction mods file.
+   *
+   * @param selectedTsFileResources
+   * @throws IOException
+   */
+  public static void appendNewModificationsToOldModsFile(
+      List<TsFileResource> selectedTsFileResources) throws IOException {
+    for (TsFileResource sourceFile : selectedTsFileResources) {
+      // if there are modifications to this seqFile during compaction
+      if (sourceFile.getCompactionModFile().exists()) {
+        ModificationFile compactionModificationFile =
+            ModificationFile.getCompactionMods(sourceFile);
+        Collection<Modification> newModification = compactionModificationFile.getModifications();
+        compactionModificationFile.close();
+        sourceFile.resetModFile();
+        // write the new modifications to its old modification file
+        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
+          for (Modification modification : newModification) {
+            oldModificationFile.write(modification);
+          }
+        }
+        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
       }
     }
   }
@@ -717,14 +775,16 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
-  public static void deleteTsFile(TsFileResource seqFile) {
+  public static boolean deleteTsFile(TsFileResource seqFile) {
     try {
       FileReaderManager.getInstance().closeFileAndRemoveReader(seqFile.getTsFilePath());
       seqFile.setDeleted(true);
       seqFile.delete();
     } catch (IOException e) {
       logger.error(e.getMessage(), e);
+      return false;
     }
+    return true;
   }
 
   public static ICrossSpaceMergeFileSelector getCrossSpaceFileSelector(
@@ -756,5 +816,34 @@ public class InnerSpaceCompactionUtils {
     public int compare(TsFileSequenceReader o1, TsFileSequenceReader o2) {
       return TsFileManager.compareFileName(new File(o1.getFileName()), new File(o2.getFileName()));
     }
+  /**
+   * Update the targetResource. Move xxx.target to xxx.tsfile and serialize xxx.tsfile.resource .
+   *
+   * @param targetResource the old tsfile to be moved, which is xxx.target
+   */
+  public static void moveTargetFile(TsFileResource targetResource, String fullStorageGroupName)
+      throws IOException {
+    if (!targetResource.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+      logger.warn(
+          "{} [Compaction] Tmp target tsfile {} should be end with {}",
+          fullStorageGroupName,
+          targetResource.getTsFilePath(),
+          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
+      return;
+    }
+    File oldFile = targetResource.getTsFile();
+
+    // move TsFile and delete old tsfile
+    String newFilePath =
+        targetResource
+            .getTsFilePath()
+            .replace(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX);
+    File newFile = new File(newFilePath);
+    FSFactoryProducer.getFSFactory().moveFile(oldFile, newFile);
+
+    // serialize xxx.tsfile.resource
+    targetResource.setFile(newFile);
+    targetResource.serialize();
+    targetResource.close();
   }
 }

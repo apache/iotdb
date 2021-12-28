@@ -738,6 +738,12 @@ public class IoTDBDescriptor {
                   "select_into_insert_tablet_plan_row_limit",
                   String.valueOf(conf.getSelectIntoInsertTabletPlanRowLimit()))));
 
+      conf.setInsertMultiTabletEnableMultithreadingColumnThreshold(
+          Integer.parseInt(
+              properties.getProperty(
+                  "insert_multi_tablet_enable_multithreading_column_threshold",
+                  String.valueOf(conf.getInsertMultiTabletEnableMultithreadingColumnThreshold()))));
+
       // At the same time, set TSFileConfig
       TSFileDescriptor.getInstance()
           .getConfig()
@@ -1287,6 +1293,11 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
+    }
+
+    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
+    if (groupByFillCacheSizeInMB != null) {
+      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =
