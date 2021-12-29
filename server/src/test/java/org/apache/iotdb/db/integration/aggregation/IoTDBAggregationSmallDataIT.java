@@ -37,6 +37,7 @@ import java.sql.Statement;
 
 import static org.apache.iotdb.db.constant.TestConstant.avg;
 import static org.apache.iotdb.db.constant.TestConstant.count;
+import static org.apache.iotdb.db.constant.TestConstant.extreme;
 import static org.apache.iotdb.db.constant.TestConstant.first_value;
 import static org.apache.iotdb.db.constant.TestConstant.last_value;
 import static org.apache.iotdb.db.constant.TestConstant.max_time;
@@ -748,6 +749,45 @@ public class IoTDBAggregationSmallDataIT {
           }
           Assert.assertEquals(1, cnt);
         }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void extremeWithoutFilterTest() throws ClassNotFoundException {
+    String[] retArray = new String[] {"0,22222,null"};
+
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection connection =
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+
+      try {
+        statement.execute("SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) FROM root.vehicle");
+        fail();
+      } catch (IoTDBSQLException e) {
+        Assert.assertTrue(e.toString().contains("Binary statistics does not support: max"));
+      }
+
+      boolean hasResultSet =
+          statement.execute("SELECT extreme(d0.s0),extreme(d1.s1) FROM root.vehicle");
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(extreme(d0s0))
+                  + ","
+                  + resultSet.getString(extreme(d1s1));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        Assert.assertEquals(1, cnt);
       }
     } catch (Exception e) {
       e.printStackTrace();

@@ -953,6 +953,17 @@ Eg. SELECT MAX_VALUE(status), MAX_VALUE(temperature) FROM root.ln.wf01.wt01 WHER
 Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
 ```
 
+* EXTREME
+
+The EXTREME function returns the extreme value(lexicographically ordered) of the choosen timeseries (one or more).
+extreme value: The value that has the maximum absolute value.
+If the maximum absolute value of a positive value and a negative value is equal, return the positive value.
+```
+SELECT EXTREME (Path) (COMMA EXTREME (Path))* FROM <FromClause> [WHERE <WhereClause>]?
+Eg. SELECT EXTREME(status), EXTREME(temperature) FROM root.ln.wf01.wt01 WHERE root.ln.wf01.wt01.temperature < 24
+Note: the statement needs to satisfy this constraint: <PrefixPath> + <Path> = <Timeseries>
+```
+
 * AVG(Rename from `MEAN` at `V0.9.0`)
 
 The AVG function returns the arithmetic mean value of the choosen timeseries over a specified period of time. The timeseries must be int32, int64, float, double type, and the other types are not to be calculated. The result is a double type number.

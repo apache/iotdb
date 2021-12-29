@@ -172,12 +172,14 @@ public class LastQueryExecutor {
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+    List<StorageGroupProcessor> list =
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(nonCachedPaths, context, filter);
     try {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSourceByPath(nonCachedPaths.get(i), context, filter);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
         LastPointReader lastReader =
             new LastPointReader(
                 nonCachedPaths.get(i),

@@ -45,9 +45,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /** concat paths in select and from clause. */
@@ -386,6 +388,7 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     List<PartialPath> newSuffixPathList = new ArrayList<>();
     List<String> newAggregations = new ArrayList<>();
     List<UDFContext> newUdfList = new ArrayList<>();
+    Map<String, PartialPath> aliasMap = new HashMap<>();
 
     if (selectOperator.isGroupByLevel()) {
       GroupByLevelController groupByLevelController =
@@ -400,7 +403,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
 
           Pair<List<PartialPath>, Integer> pair = removeWildcard(afterConcatPath, 0, 0);
           List<PartialPath> truePaths = pair.left;
-          checkAndSetTsAlias(truePaths, afterConcatPath);
+          for (PartialPath actualPath : truePaths) {
+            checkAndSetTsAlias(actualPath, afterConcatPath, aliasMap);
+          }
           resultColumns.addAll(truePaths);
 
           groupByLevelController.control(
@@ -436,7 +441,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
                 atLeastOneSeriesNotExisted = true;
                 break;
               }
-              checkAndSetTsAlias(actualPaths, originPath);
+              for (PartialPath actualPath : actualPaths) {
+                checkAndSetTsAlias(actualPath, originPath, aliasMap);
+              }
               extendedPaths.add(actualPaths);
             }
             if (atLeastOneSeriesNotExisted) {
@@ -465,7 +472,9 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
           } else { // non-udf
             Pair<List<PartialPath>, Integer> pair = removeWildcard(afterConcatPath, limit, offset);
             List<PartialPath> actualPaths = pair.left;
-            checkAndSetTsAlias(actualPaths, afterConcatPath);
+            for (PartialPath actualPath : actualPaths) {
+              checkAndSetTsAlias(actualPath, afterConcatPath, aliasMap);
+            }
 
             for (PartialPath actualPath : actualPaths) {
               newSuffixPathList.add(actualPath);
@@ -515,15 +524,17 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     return IoTDB.metaManager.getAllTimeseriesPathWithAlias(path, limit, offset);
   }
 
-  private void checkAndSetTsAlias(List<PartialPath> actualPaths, PartialPath originPath)
+  private void checkAndSetTsAlias(
+      PartialPath actualPath, PartialPath originPath, Map<String, PartialPath> aliasMap)
       throws LogicalOptimizeException {
-    if (originPath.isTsAliasExists()) {
-      if (actualPaths.size() == 1) {
-        actualPaths.get(0).setTsAlias(originPath.getTsAlias());
-      } else if (actualPaths.size() >= 2) {
+    String tsAlias = originPath.getTsAlias();
+    if (null != tsAlias && !"".equals(tsAlias.trim())) {
+      if (aliasMap.containsKey(tsAlias) && !aliasMap.get(tsAlias).equals(actualPath)) {
         throw new LogicalOptimizeException(
             "alias '" + originPath.getTsAlias() + "' can only be matched with one time series");
       }
+      actualPath.setTsAlias(tsAlias);
+      aliasMap.put(tsAlias, actualPath);
     }
   }
 

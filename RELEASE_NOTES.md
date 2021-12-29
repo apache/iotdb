@@ -25,21 +25,21 @@
 
 * [IOTDB-1823] group by multi level
 
-
 ## Improvements
 
-* [IOTDB-2027] Ignore too many WAL BufferOverflow log
+* [IOTDB-2027] Rollback invalid entry after WAL writing failure
 * [IOTDB-2061] Add max concurrent sub query parameter, read data in batches to limit max IO and add max cached buffer size configuration
 * [IOTDB-2065] release TsFileSequenceReader soon when it is no longer used
 * [IOTDB-2072] Remove TVListAllocator to reduce the TVList mem cost
-* [ISSUE-2101] Reduce the memory footprint of QueryDataSource
-* [ISSUE-2102] Push limit operator down to each reader
+* [IOTDB-2101] Reduce the memory footprint of QueryDataSource
+* [IOTDB-2102] Push limit operator down to each reader
 * [IOTDB-2123] Accelerate recovery process
 * update user guide for cpp-cpi and disable compiling nodejs in cpp-cli
+* Ignore too many WAL BufferOverflow log
 
 
 ## Bug Fixes
-
+* [IOTDB-1408] Statement with 'as' executes incorrectly in mutil-path scenes
 * [IOTDB-2023] Fix serializing and deserializing bugs of Filters
 * [IOTDB-2025] Fix count nodes and devices incorrectly in cluster
 * [IOTDB-2031] Fix incorrect result of descending query with value filter in cluster
@@ -51,8 +51,13 @@
 * [IOTDB-2064] Fix the NPE caused by map serde
 * [IOTDB-2068] Fix GZIP compressor meets ArrayIndexOutOfBoundsException
 * [IOTDB-2124] the filtering condition does not take efffect for last query in cluster
-* [IOTDB-3335] Fix the bug of start-cli.sh -e mode can't work with wild card \*
+* [IOTDB-2138] Fix data loss after IoTDB recover
+* [IOTDB-2140] Fix merge throw NullPointerException
+* [IOTDB-2152] PyClient: Override `__eq__()` of TSDataType, TSEncoding and Compressor to avoid unexpected comparation behaviour
+* [IOTDB-2160] Fix cluster groupby query cross-node reference leaks
+* [ISSUE-3335] Fix the bug of start-cli.sh -e mode can't work with wild card \*
 * fix memory leak: replace RandomDeleteCache with Caffine CacheLoader
+* Fix connection refused using session when users forget to set client ip
 
 
 # Apache IoTDB 0.12.3

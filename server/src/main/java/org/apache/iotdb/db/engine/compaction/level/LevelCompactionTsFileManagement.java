@@ -421,27 +421,24 @@ public class LevelCompactionTsFileManagement extends TsFileManagement {
         CompactionFileInfo targetFileInfo = logAnalyzer.getTargetFileInfo();
         String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
         File targetFile = null;
-        boolean isSeq = logAnalyzer.isSeq();
         if (targetFileInfo == null || sourceFileInfo.isEmpty()) {
           return;
         }
         // get tsfile resource from list, as they have been recovered in StorageGroupProcessor
         TsFileResource targetResource = null;
+        File targetResourceFile = null;
         for (String dataDir : dataDirs) {
           if ((targetFile = targetFileInfo.getFile(dataDir)).exists()) {
             targetResource = new TsFileResource(targetFile);
+            targetResourceFile = new File(targetFile.getPath() + TsFileResource.RESOURCE_SUFFIX);
           }
         }
         if (targetResource != null) {
-          RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetFile);
-          if (writer.hasCrashed()) {
-            // target tsfile is not compeleted
-            writer.close();
-            logger.info(
-                "[Compaction][Recover] target file {} is not complete, remove it", targetResource);
+          if (!targetResourceFile.exists()) {
+            // target file resource has not been generated yet
+            // delete target file if exists
             targetResource.remove();
           } else {
-            writer.close();
             // complete compaction, delete source files
             logger.info(
                 "[Compaction][Recover] target file {} is compeleted, remove resource file",

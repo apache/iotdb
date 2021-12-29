@@ -30,8 +30,8 @@ import org.apache.iotdb.db.engine.merge.selector.NaivePathSelector;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.db.utils.MergeUtils.MetaListEntry;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -311,7 +311,7 @@ public class MergeMultiChunkTask {
 
     RestorableTsFileIOWriter mergeFileWriter = resource.getMergeFileWriter(currTsFile, false);
     for (PartialPath path : currMergingPaths) {
-      MeasurementSchema schema = MManager.getInstance().getSeriesSchema(path);
+      MeasurementSchema schema = IoTDB.metaManager.getSeriesSchema(path);
       mergeFileWriter.addSchema(path, schema);
     }
     // merge unseq data with seq data in this file or small chunks in this file into a larger chunk
@@ -629,7 +629,7 @@ public class MergeMultiChunkTask {
       while (!chunkIdxHeap.isEmpty()) {
         int pathIdx = chunkIdxHeap.poll();
         PartialPath path = currMergingPaths.get(pathIdx);
-        MeasurementSchema measurementSchema = MManager.getInstance().getSeriesSchema(path);
+        MeasurementSchema measurementSchema = IoTDB.metaManager.getSeriesSchema(path);
         IChunkWriter chunkWriter = resource.getChunkWriter(measurementSchema);
         if (Thread.interrupted()) {
           Thread.currentThread().interrupt();

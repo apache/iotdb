@@ -456,8 +456,8 @@ Total line number = 1
 It costs 0.013s
 ```
 
-All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value.
-When using four aggregations: sum, avg, min_value and max_value, please make sure all the aggregated series have exactly the same data type.
+All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
+When using four aggregations: sum, avg, min_value, max_value and extreme, please make sure all the aggregated series have exactly the same data type.
 Otherwise, it will generate a syntax error.
 
 ### Down-Frequency Aggregate Query

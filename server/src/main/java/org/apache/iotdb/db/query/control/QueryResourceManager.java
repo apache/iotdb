@@ -23,8 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
@@ -32,7 +31,6 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.utils.QueryUtils;
-import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.slf4j.Logger;
@@ -47,15 +45,19 @@ import java.util.concurrent.atomic.AtomicLong;
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
  * the jobs. During the life cycle of a query, the following methods must be called in strict order:
- * 1. assignQueryId - get an Id for the new query. 2. getQueryDataSource - open files for the job or
- * reuse existing readers. 3. endQueryForGivenJob - release the resource used by this job.
+ *
+ * <p>1. assignQueryId - get an Id for the new query.
+ *
+ * <p>2. getQueryDataSource - open files for the job or reuse existing readers.
+ *
+ * <p>3. endQueryForGivenJob - release the resource used by this job.
  */
 public class QueryResourceManager {
 
   private final AtomicLong queryIdAtom = new AtomicLong();
   private final QueryFileManager filePathsManager;
   private static final Logger logger = LoggerFactory.getLogger(QueryResourceManager.class);
-  private IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  private final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /**
    * Record temporary files used for external sorting.
@@ -64,12 +66,17 @@ public class QueryResourceManager {
    */
   private final Map<Long, List<IExternalSortFileDeserializer>> externalSortFileMap;
 
+  /**
+   * Record QueryDataSource used in queries
+   *
+   * <p>Key: query job id. Value: QueryDataSource corresponding to each virtual storage group.
+   */
   private final Map<Long, Map<String, QueryDataSource>> cachedQueryDataSourcesMap;
 
   private QueryResourceManager() {
     filePathsManager = new QueryFileManager();
     externalSortFileMap = new ConcurrentHashMap<>();
-    cachedQueryDataSourcesMap = new HashMap<>();
+    cachedQueryDataSourcesMap = new ConcurrentHashMap<>();
   }
 
   public static QueryResourceManager getInstance() {
@@ -96,25 +103,36 @@ public class QueryResourceManager {
     externalSortFileMap.computeIfAbsent(queryId, x -> new ArrayList<>()).add(deserializer);
   }
 
-  public QueryDataSource getQueryDataSourceByPath(
-      PartialPath selectedPath, QueryContext context, Filter filter)
-      throws StorageEngineException, QueryProcessException {
+  /**
+   * The method is called in mergeLock() when executing query. This method will get all the
+   * QueryDataSource needed for this query and put them in the cachedQueryDataSourcesMap.
+   *
+   * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
+   *     under the virtual storage group
+   */
+  public void initQueryDataSource(
+      Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
+      QueryContext context,
+      Filter timeFilter)
+      throws QueryProcessException {
+    for (Map.Entry<StorageGroupProcessor, List<PartialPath>> entry :
+        processorToSeriesMap.entrySet()) {
+      StorageGroupProcessor processor = entry.getKey();
+      List<PartialPath> pathList = entry.getValue();
 
-    SingleSeriesExpression singleSeriesExpression =
-        new SingleSeriesExpression(selectedPath, filter);
-    QueryDataSource queryDataSource =
-        StorageEngine.getInstance().query(singleSeriesExpression, context, filePathsManager);
-    // calculate the distinct number of seq and unseq tsfiles
-    if (CONFIG.isEnablePerformanceTracing()) {
-      TracingManager.getInstance()
-          .getTracingInfo(context.getQueryId())
-          .addTsFileSet(queryDataSource.getSeqResources(), queryDataSource.getUnseqResources());
+      long queryId = context.getQueryId();
+      String storageGroupPath = processor.getStorageGroupPath();
+
+      QueryDataSource cachedQueryDataSource =
+          processor.query(pathList, context, filePathsManager, timeFilter);
+      cachedQueryDataSourcesMap
+          .computeIfAbsent(queryId, k -> new HashMap<>())
+          .put(storageGroupPath, cachedQueryDataSource);
     }
-    return queryDataSource;
   }
 
   public QueryDataSource getQueryDataSource(
-      PartialPath selectedPath, QueryContext context, Filter filter)
+      PartialPath selectedPath, QueryContext context, Filter timeFilter)
       throws StorageEngineException, QueryProcessException {
 
     long queryId = context.getQueryId();
@@ -127,24 +145,13 @@ public class QueryResourceManager {
         && cachedQueryDataSourcesMap.get(queryId).containsKey(storageGroupPath)) {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
-      SingleSeriesExpression singleSeriesExpression =
-          new SingleSeriesExpression(selectedPath, filter);
+      // QueryDataSource is never cached in cluster mode
+      StorageGroupProcessor processor =
+          StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
-          StorageEngine.getInstance().getAllQueryDataSource(singleSeriesExpression);
-      cachedQueryDataSourcesMap
-          .computeIfAbsent(queryId, k -> new HashMap<>())
-          .put(storageGroupPath, cachedQueryDataSource);
-
-      // used files should be added before mergeLock is unlocked, or they may be deleted by running
-      // merge
-      filePathsManager.addUsedFilesForQuery(context.getQueryId(), cachedQueryDataSource);
+          processor.query(
+              Collections.singletonList(selectedPath), context, filePathsManager, timeFilter);
     }
-
-    // set query time lower bound according TTL
-    long dataTTL = cachedQueryDataSource.getDataTTL();
-    long timeLowerBound =
-        dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(timeLowerBound);
 
     // construct QueryDataSource for selectedPath
     QueryDataSource queryDataSource =
@@ -153,61 +160,10 @@ public class QueryResourceManager {
 
     queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
 
-    TsFileResource cachedUnclosedSeqResource = cachedQueryDataSource.getUnclosedSeqResource();
-    if (cachedUnclosedSeqResource != null) {
-      try {
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
-        TsFileProcessor processor = cachedUnclosedSeqResource.getUnsealedFileProcessor();
-        if (processor != null) {
-          queryDataSource.setUnclosedSeqResource(processor.query(selectedPath, context));
-        } else {
-          // tsFileResource is closed
-          queryDataSource.setUnclosedSeqResource(cachedUnclosedSeqResource);
-        }
-      } catch (IOException e) {
-        throw new QueryProcessException(
-            String.format(
-                "%s: %s get ReadOnlyMemChunk has error",
-                storageGroupPath, cachedUnclosedSeqResource.getTsFile().getName()));
-      } finally {
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
-      }
-    }
-
-    TsFileResource cachedUnclosedUnseqResource = cachedQueryDataSource.getUnclosedUnseqResource();
-    if (cachedUnclosedUnseqResource != null) {
-      try {
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryLock();
-        TsFileProcessor processor = cachedUnclosedUnseqResource.getUnsealedFileProcessor();
-        if (processor != null) {
-          queryDataSource.setUnclosedUnseqResource(processor.query(selectedPath, context));
-        } else {
-          // tsFileResource is closed
-          queryDataSource.setUnclosedUnseqResource(cachedUnclosedUnseqResource);
-        }
-      } catch (IOException e) {
-        throw new QueryProcessException(
-            String.format(
-                "%s: %s get ReadOnlyMemChunk has error",
-                storageGroupPath, cachedUnclosedUnseqResource.getTsFile().getName()));
-      } finally {
-        StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath()).closeQueryUnLock();
-      }
-    }
-
     // calculate the read order of unseqResources
     QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());
 
     return queryDataSource;
-  }
-
-  public void clearCachedQueryDataSource(PartialPath path, QueryContext context)
-      throws StorageEngineException {
-    long queryId = context.getQueryId();
-    String storageGroupPath = StorageEngine.getInstance().getStorageGroupPath(path);
-    if (cachedQueryDataSourcesMap.containsKey(queryId)) {
-      cachedQueryDataSourcesMap.get(queryId).remove(storageGroupPath);
-    }
   }
 
   /**

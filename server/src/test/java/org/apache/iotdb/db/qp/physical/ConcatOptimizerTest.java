@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.qp.physical;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
@@ -43,6 +44,7 @@ import org.junit.Test;
 import java.io.IOException;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /** test the correctness of {@linkplain ConcatPathOptimizer ConcatPathOptimizer} */
 public class ConcatOptimizerTest {
@@ -134,5 +136,27 @@ public class ConcatOptimizerTest {
                 new SingleSeriesExpression(new Path("root.laptop.d2", "s1"), ValueFilter.lt(10))),
             new SingleSeriesExpression(new Path("root.laptop.d3", "s1"), ValueFilter.lt(10)));
     assertEquals(expression.toString(), ((RawDataQueryPlan) plan).getExpression().toString());
+  }
+
+  @Test
+  public void testConcatAndSetAliasInNormal() throws QueryProcessException, RecognitionException {
+    String inputSQL = "select s1 as s from root.laptop.d3";
+    PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
+    assertEquals("s", plan.getPaths().get(0).getTsAlias());
+    String inputSQL1 = "select s1 as a,s1 as a,s2 as b from root.laptop.d3";
+    PhysicalPlan plan1 = processor.parseSQLToPhysicalPlan(inputSQL1);
+    assertEquals("a", plan1.getPaths().get(0).getTsAlias());
+  }
+
+  @Test
+  public void testConcatAndSetAliasInException()
+      throws QueryProcessException, RecognitionException {
+    String inputSQL = "select s1 as s from root.laptop.d3,root.laptop.d2";
+    try {
+      PhysicalPlan plan = processor.parseSQLToPhysicalPlan(inputSQL);
+    } catch (Exception e) {
+      assertTrue(e instanceof LogicalOptimizeException);
+      assertTrue(e.getMessage().contains("only be matched with one time series"));
+    }
   }
 }

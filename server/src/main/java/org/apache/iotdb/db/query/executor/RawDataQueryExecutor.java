@@ -67,11 +67,7 @@ public class RawDataQueryExecutor {
     List<ManagedSeriesReader> readersOfSelectedSeries = initManagedSeriesReader(context);
     try {
       return new RawQueryDataSetWithoutValueFilter(
-          context.getQueryId(),
-          queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(),
-          readersOfSelectedSeries,
-          queryPlan.isAscending());
+          context.getQueryId(), queryPlan, readersOfSelectedSeries);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
@@ -103,7 +99,8 @@ public class RawDataQueryExecutor {
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, timeFilter);
     try {
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         PartialPath path = queryPlan.getDeduplicatedPaths().get(i);
@@ -167,7 +164,8 @@ public class RawDataQueryExecutor {
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
     List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+        StorageEngine.getInstance()
+            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, null);
     try {
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {
