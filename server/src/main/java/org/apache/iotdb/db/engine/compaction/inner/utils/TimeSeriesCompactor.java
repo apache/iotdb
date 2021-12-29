@@ -182,6 +182,8 @@ public class TimeSeriesCompactor {
     } else if (dataRemainsInChunkWriter) {
       flushChunkWriter();
     }
+    targetResource.updateStartTime(device, minStartTimestamp);
+    targetResource.updateEndTime(device, maxEndTimestamp);
   }
 
   private long getChunkSize(Chunk chunk) {

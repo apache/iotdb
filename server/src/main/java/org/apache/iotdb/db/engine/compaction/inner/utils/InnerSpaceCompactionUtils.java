@@ -431,9 +431,6 @@ public class InnerSpaceCompactionUtils {
     TsFileIOWriter writer = null;
     try {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-      Map<String, List<Modification>> modificationCache = new HashMap<>();
-      RateLimiter compactionWriteRateLimiter =
-          MergeManager.getINSTANCE().getMergeWriteRateLimiter();
 
       CompactionDeviceVisitor visitor = new CompactionDeviceVisitor(tsFileResources);
       Set<String> devices = visitor.getDevices();
