@@ -699,13 +699,12 @@ public class TsFileSequenceReader implements AutoCloseable {
         Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
         List<Path> paths = new ArrayList<>();
         try {
-          List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
           ByteBuffer nextBuffer = readData(startEndPair.right.left, startEndPair.right.right);
           while (nextBuffer.hasRemaining()) {
-            timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(nextBuffer, false));
-          }
-          for (TimeseriesMetadata timeseriesMetadata : timeseriesMetadataList) {
-            paths.add(new Path(startEndPair.left, timeseriesMetadata.getMeasurementId()));
+            paths.add(
+                new Path(
+                    startEndPair.left,
+                    TimeseriesMetadata.deserializeFrom(nextBuffer, false).getMeasurementId()));
           }
           return paths;
         } catch (IOException e) {
