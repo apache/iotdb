@@ -71,6 +71,7 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
+  /** Construct TSExecuteStatementResp and the header of result set. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
       throws TException, MetadataException {
     List<String> respColumns = new ArrayList<>();
@@ -97,7 +98,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws TException, MetadataException {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); ++i) {
