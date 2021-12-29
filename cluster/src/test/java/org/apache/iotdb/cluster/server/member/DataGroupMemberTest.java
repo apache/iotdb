@@ -1213,7 +1213,6 @@ public class DataGroupMemberTest extends BaseMember {
         request.timeFilterBytes.position(0);
         new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
         executorId = resultRef.get();
-        // TODO: This test is uncompleted because of shared QueryDataSource (IOTDB-2101)
         assertEquals(-1L, (long) executorId);
 
         // fetch result
