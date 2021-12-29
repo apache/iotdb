@@ -154,8 +154,6 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   private static final String INFO_INTERRUPT_ERROR =
       "Current Thread interrupted when dealing with request {}";
 
-  private long startTime = -1L;
-
   public TSServiceImpl() throws QueryProcessException {
     super();
   }
@@ -448,13 +446,12 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
   @Override
   public TSExecuteStatementResp executeStatement(TSExecuteStatementReq req) {
     String statement = req.getStatement();
-    startTime = System.currentTimeMillis();
-
     try {
       if (!checkLogin(req.getSessionId())) {
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
+      long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.getSessionId()));
 
@@ -464,6 +461,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
+              startTime,
               req.timeout,
               req.getSessionId(),
               req.isEnableRedirectQuery(),
@@ -493,6 +491,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
+      long startTime = System.currentTimeMillis();
       String statement = req.getStatement();
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.sessionId));
@@ -503,6 +502,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
+              startTime,
               req.timeout,
               req.getSessionId(),
               req.isEnableRedirectQuery(),
@@ -529,6 +529,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
+      long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           processor.rawDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
       return physicalPlan.isQuery()
@@ -537,6 +538,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
+              startTime,
               CONFIG.getQueryTimeoutThreshold(),
               req.sessionId,
               req.isEnableRedirectQuery(),
@@ -561,6 +563,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         return RpcUtils.getTSExecuteStatementResp(getNotLoggedInStatus());
       }
 
+      long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           processor.lastDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
       return physicalPlan.isQuery()
@@ -569,6 +572,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
               req.statementId,
               physicalPlan,
               req.fetchSize,
+              startTime,
               CONFIG.getQueryTimeoutThreshold(),
               req.sessionId,
               req.isEnableRedirectQuery(),
@@ -597,6 +601,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       long statementId,
       PhysicalPlan plan,
       int fetchSize,
+      long queryStartTime,
       long timeout,
       long sessionId,
       boolean enableRedirect,
@@ -606,19 +611,11 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           TException, AuthException {
     String username = sessionManager.getUsername(sessionId);
     plan.setLoginUserName(username);
-    // check permissions
-    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
-      return RpcUtils.getTSExecuteStatementResp(
-          RpcUtils.getStatus(
-              TSStatusCode.NO_PERMISSION_ERROR,
-              "No permissions for this operation " + plan.getOperatorType()));
-    }
 
     queryFrequencyRecorder.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
 
-    final long queryStartTime = System.currentTimeMillis();
     final long queryId = sessionManager.requestQueryId(statementId, true);
     QueryContext context =
         genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
@@ -652,15 +649,21 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       throws TException, MetadataException, QueryProcessException, StorageEngineException,
           SQLException, IOException, InterruptedException, QueryFilterOptimizationException,
           AuthException {
+    // check permissions
+    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
+      return RpcUtils.getTSExecuteStatementResp(
+          RpcUtils.getStatus(
+              TSStatusCode.NO_PERMISSION_ERROR,
+              "No permissions for this operation " + plan.getOperatorType()));
+    }
+
+    long queryId = context.getQueryId();
     if (plan.isEnableTracing()) {
       context.setEnableTracing(true);
-      tracingManager.setStartTime(context.getQueryId(), this.startTime);
+      tracingManager.setStartTime(queryId, context.getStartTime(), context.getStatement());
       tracingManager.registerActivity(
-          context.getQueryId(),
-          String.format(TracingConstant.ACTIVITY_START_EXECUTE, context.getStatement()),
-          this.startTime);
-      tracingManager.registerActivity(
-          context.getQueryId(), TracingConstant.ACTIVITY_PARSE_SQL, context.getStartTime());
+          queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
+      tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
     }
 
     TSExecuteStatementResp resp = null;
@@ -673,9 +676,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
     if (plan.isEnableTracing()) {
       tracingManager.registerActivity(
-          context.getQueryId(),
-          TracingConstant.ACTIVITY_CREATE_DATASET,
-          System.currentTimeMillis());
+          queryId, TracingConstant.ACTIVITY_CREATE_DATASET, System.currentTimeMillis());
     }
 
     if (newDataSet.getEndPoint() != null && plan.isEnableRedirect()) {
@@ -683,14 +684,14 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       LOGGER.debug(
           "need to redirect {} {} to node {}",
           context.getStatement(),
-          context.getQueryId(),
+          queryId,
           newDataSet.getEndPoint());
       TSStatus status = new TSStatus();
       status.setRedirectNode(
           new EndPoint(newDataSet.getEndPoint().getIp(), newDataSet.getEndPoint().getPort()));
       status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
       resp.setStatus(status);
-      resp.setQueryId(context.getQueryId());
+      resp.setQueryId(queryId);
       return resp;
     }
 
@@ -731,11 +732,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
 
     if (plan.isEnableTracing()) {
       tracingManager.registerActivity(
-          context.getQueryId(),
-          TracingConstant.ACTIVITY_REQUEST_COMPLETE,
-          System.currentTimeMillis());
-
-      TSTracingInfo tsTracingInfo = fillRpcReturnTracingInfo(context.getQueryId());
+          queryId, TracingConstant.ACTIVITY_REQUEST_COMPLETE, System.currentTimeMillis());
+      TSTracingInfo tsTracingInfo = fillRpcReturnTracingInfo(queryId);
       resp.setTracingInfo(tsTracingInfo);
     }
     return resp;
