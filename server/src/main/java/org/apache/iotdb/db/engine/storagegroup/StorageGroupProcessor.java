@@ -298,9 +298,21 @@ public class StorageGroupProcessor {
       } else {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
-        currentWalPoolSize.getAndAdd(2);
-        res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-        res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        try {
+          currentWalPoolSize.getAndAdd(2);
+          res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+          res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        } catch (OutOfMemoryError e) {
+          if (res[0] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[0]);
+            currentWalPoolSize.getAndDecrement();
+          }
+          if (res[1] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[1]);
+            currentWalPoolSize.getAndDecrement();
+          }
+          throw e;
+        }
       }
       // if the pool is empty, set the time back to MAX_VALUE
       if (walByteBufferPool.isEmpty()) {

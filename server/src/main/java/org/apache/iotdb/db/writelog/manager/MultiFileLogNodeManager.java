@@ -46,6 +46,12 @@ import java.util.function.Supplier;
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
+  // if OOM occurs when registering bytebuffer, getNode method will sleep awhile and then try again
+  private static final int REGISTER_BUFFER_SLEEP_INTERVAL = 20;
+  // if total sleep time exceeds this, getNode method will reject this write and throw original
+  // exception.
+  private static final int REGISTER_BUFFER_REJECT_THRESHOLD = 1_000;
+
   private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
@@ -90,9 +96,39 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
-        return oldNode;
+        node = oldNode;
       } else {
-        node.initBuffer(supplier.get());
+        ByteBuffer[] buffers = null;
+        int sleepTimeInMs = 0;
+        // try to get bytebuffer repeatedly
+        while (buffers == null) {
+          try {
+            buffers = supplier.get();
+          } catch (OutOfMemoryError e) {
+            // sleep awhile and then try again
+            try {
+              Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL);
+              sleepTimeInMs += REGISTER_BUFFER_SLEEP_INTERVAL;
+            } catch (InterruptedException interruptedException) {
+              e.addSuppressed(interruptedException);
+              nodeMap.remove(identifier);
+              logger.error(
+                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
+                  e);
+              throw e;
+            }
+            // sleep too long, throw exception
+            if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD) {
+              nodeMap.remove(identifier);
+              logger.error(
+                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
+                  e);
+              throw e;
+            }
+          }
+        }
+        // initialize node with bytebuffers
+        node.initBuffer(buffers);
       }
     }
     return node;
