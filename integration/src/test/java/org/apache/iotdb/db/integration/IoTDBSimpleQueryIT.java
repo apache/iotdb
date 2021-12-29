@@ -587,14 +587,14 @@ public class IoTDBSimpleQueryIT {
 
         resultSet = statement.executeQuery("select * from root.** align by device");
         // has time and device columns
-        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
 
         resultSet = statement.executeQuery("select count(*) from root align by device");
         // has device column
-        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }
@@ -604,7 +604,7 @@ public class IoTDBSimpleQueryIT {
                 "select count(*) from root where time >= 1 and time <= 100 "
                     + "group by ([0, 100), 20ms, 20ms) align by device");
         // has time and device columns
-        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
         while (resultSet.next()) {
           fail();
         }

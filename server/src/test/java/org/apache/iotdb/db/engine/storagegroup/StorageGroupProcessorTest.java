@@ -73,7 +73,7 @@ public class StorageGroupProcessorTest {
   private String systemDir = TestConstant.OUTPUT_DATA_DIR.concat("info");
   private String deviceId = "root.vehicle.d0";
   private String measurementId = "s0";
-  private StorageGroupProcessor processor;
+  private VirtualStorageGroupProcessor processor;
   private QueryContext context = EnvironmentUtils.TEST_QUERY_CONTEXT;
 
   @Before
@@ -818,7 +818,7 @@ public class StorageGroupProcessorTest {
     config.setCloseTsFileIntervalAfterFlushing(prevCloseTsFileInterval);
   }
 
-  class DummySGP extends StorageGroupProcessor {
+  class DummySGP extends VirtualStorageGroupProcessor {
 
     DummySGP(String systemInfoDir, String storageGroupName) throws StorageGroupProcessorException {
       super(
