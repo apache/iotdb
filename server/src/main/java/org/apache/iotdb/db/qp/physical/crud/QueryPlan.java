@@ -103,6 +103,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); ++i) {
       if (isJdbcQuery) {
+        // Separate sgName from the name of resultColumn to reduce the network IO
         String sgName = IoTDB.metaManager.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {

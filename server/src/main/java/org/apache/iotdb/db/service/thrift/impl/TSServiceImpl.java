@@ -697,7 +697,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       } catch (RedirectException e) {
         if (plan.isEnableRedirect()) {
           EndPoint endPoint = e.getEndPoint();
-          redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
+          return redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
         } else {
           LOGGER.error(
               "execute {} error, if session does not support redirect, should not throw redirection exception.",
