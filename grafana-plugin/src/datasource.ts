@@ -56,6 +56,9 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
         if (target.condition) {
           target.condition = getTemplateSrv().replace(target.condition, options.scopedVars);
         }
+        if (target.special) {
+          target.special = getTemplateSrv().replace(target.special, options.scopedVars);
+        }
       }
       //target.paths = ['root', ...target.paths];
       return this.doRequest(target);
