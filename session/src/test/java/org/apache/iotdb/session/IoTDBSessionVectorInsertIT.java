@@ -450,9 +450,6 @@ public class IoTDBSessionVectorInsertIT {
   @Test
   public void testInsertPartialAlignedTablet()
       throws IoTDBConnectionException, StatementExecutionException {
-    session = new Session("127.0.0.1", 6667, "root", "root");
-    session.open();
-
     List<String> multiMeasurementComponents = new ArrayList<>();
     for (int i = 1; i <= 3; i++) {
       multiMeasurementComponents.add("s" + i);
@@ -515,6 +512,5 @@ public class IoTDBSessionVectorInsertIT {
       Assert.assertEquals(1.0, rowRecord.getFields().get(1).getDoubleV(), 0.01);
       Assert.assertEquals(null, rowRecord.getFields().get(2).getObjectValue(TSDataType.TEXT));
     }
-    session.close();
   }
 }
