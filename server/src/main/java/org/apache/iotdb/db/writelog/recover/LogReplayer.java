@@ -26,8 +26,8 @@ import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -97,7 +97,7 @@ public class LogReplayer {
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
   public void replayLogs(
-      Supplier<ByteBuffer[]> supplier, StorageGroupProcessor storageGroupProcessor) {
+      Supplier<ByteBuffer[]> supplier, VirtualStorageGroupProcessor virtualStorageGroupProcessor) {
     WriteLogNode logNode =
         MultiFileLogNodeManager.getInstance()
             .getNode(
@@ -110,7 +110,7 @@ public class LogReplayer {
         try {
           PhysicalPlan plan = logReader.next();
           if (plan instanceof InsertPlan) {
-            replayInsert((InsertPlan) plan, storageGroupProcessor);
+            replayInsert((InsertPlan) plan, virtualStorageGroupProcessor);
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
           }
@@ -160,7 +160,8 @@ public class LogReplayer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void replayInsert(InsertPlan plan, StorageGroupProcessor storageGroupProcessor)
+  private void replayInsert(
+      InsertPlan plan, VirtualStorageGroupProcessor virtualStorageGroupProcessor)
       throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;
@@ -193,7 +194,7 @@ public class LogReplayer {
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
         plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
-        storageGroupProcessor.getIdTable().getSeriesSchemas(plan);
+        virtualStorageGroupProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
         IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
         plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));

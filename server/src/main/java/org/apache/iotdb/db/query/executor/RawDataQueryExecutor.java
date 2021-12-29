@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -104,7 +104,7 @@ public class RawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
@@ -171,7 +171,7 @@ public class RawDataQueryExecutor {
       QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {

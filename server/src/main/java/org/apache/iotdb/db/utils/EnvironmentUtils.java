@@ -142,6 +142,9 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
+    // unit tests.
+    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {

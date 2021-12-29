@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.tag;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
@@ -141,7 +141,7 @@ public class TagManager {
     // if ordered by heat, we sort all the timeseries by the descending order of the last insert
     // timestamp
     if (plan.isOrderByHeat()) {
-      List<StorageGroupProcessor> list;
+      List<VirtualStorageGroupProcessor> list;
       try {
         list =
             StorageEngine.getInstance()

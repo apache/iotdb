@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.timegenerator;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -73,7 +73,7 @@ public class ServerTimeGenerator extends TimeGenerator {
       throws IOException, StorageEngineException {
     List<PartialPath> pathList = new ArrayList<>();
     getAndTransformPartialPathFromExpression(expression, pathList);
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
+    List<VirtualStorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
     try {
       operatorNode = construct(expression);
     } finally {

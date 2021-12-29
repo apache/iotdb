@@ -147,7 +147,7 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
  * <p>When a TsFileProcessor is closed, the closeUnsealedTsFileProcessorCallBack() method will be
  * called as a callback.
  */
-public class StorageGroupProcessor {
+public class VirtualStorageGroupProcessor {
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
@@ -158,7 +158,7 @@ public class StorageGroupProcessor {
    */
   private static final int MERGE_MOD_START_VERSION_NUM = 1;
 
-  private static final Logger logger = LoggerFactory.getLogger(StorageGroupProcessor.class);
+  private static final Logger logger = LoggerFactory.getLogger(VirtualStorageGroupProcessor.class);
   /** indicating the file to be loaded already exists locally. */
   private static final int POS_ALREADY_EXIST = -2;
   /** indicating the file to be loaded overlap with some files. */
@@ -364,7 +364,7 @@ public class StorageGroupProcessor {
    * @param fileFlushPolicy file flush policy
    * @param logicalStorageGroupName logical storage group name e.g. root.sg1
    */
-  public StorageGroupProcessor(
+  public VirtualStorageGroupProcessor(
       String systemDir,
       String virtualStorageGroupId,
       TsFileFlushPolicy fileFlushPolicy,

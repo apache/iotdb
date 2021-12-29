@@ -20,16 +20,16 @@
 
 -->
 <assembly>
-    <id>grafana-bin</id>
+    <id>grafana-connector-bin</id>
     <formats>
         <format>dir</format>
         <format>zip</format>
     </formats>
-    <baseDirectory>apache-iotdb-${project.version}-grafana-bin</baseDirectory>
+    <baseDirectory>apache-iotdb-${project.version}-grafana-connector-bin</baseDirectory>
     <dependencySets>
         <dependencySet>
             <includes>
-                <include>*:iotdb-grafana:war:*</include>
+                <include>*:iotdb-grafana-connector:war:*</include>
             </includes>
             <outputDirectory>${file.separator}</outputDirectory>
             <outputFileNameMapping>${artifact.artifactId}.${artifact.extension}</outputFileNameMapping>
@@ -38,7 +38,7 @@
     </dependencySets>
     <files>
         <file>
-            <source>${maven.multiModuleProjectDirectory}/grafana/src/main/resources/application.properties</source>
+            <source>${maven.multiModuleProjectDirectory}/grafana-connector/src/main/resources/application.properties</source>
             <destName>application.properties</destName>
         </file>
     </files>

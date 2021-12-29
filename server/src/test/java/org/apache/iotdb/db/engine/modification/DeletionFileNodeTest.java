@@ -25,8 +25,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -165,7 +165,7 @@ public class DeletionFileNodeTest {
             SchemaTestUtils.getMeasurementPath(
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
     try {
@@ -303,7 +303,7 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
 

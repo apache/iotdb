@@ -744,6 +744,9 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
+  /** The cached record size (in MB) of each series in group by fill query */
+  private float groupByFillCacheSizeInMB = (float) 1.0;
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -801,6 +804,14 @@ public class IoTDBConfig {
 
   public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
     this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getGroupByFillCacheSizeInMB() {
+    return groupByFillCacheSizeInMB;
+  }
+
+  public void setGroupByFillCacheSizeInMB(float groupByFillCacheSizeInMB) {
+    this.groupByFillCacheSizeInMB = groupByFillCacheSizeInMB;
   }
 
   public float getUdfReaderMemoryBudgetInMB() {

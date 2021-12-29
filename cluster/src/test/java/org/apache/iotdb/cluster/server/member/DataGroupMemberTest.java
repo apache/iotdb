@@ -63,8 +63,8 @@ import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.Constants;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerExecutionException;
 import org.apache.iotdb.db.exception.WriteProcessException;
@@ -497,7 +497,7 @@ public class DataGroupMemberTest extends BaseMember {
     snapshot.addFile(tsFileResource, TestUtils.getNode(0), true);
 
     // create a local resource1
-    StorageGroupProcessor processor;
+    VirtualStorageGroupProcessor processor;
     while (true) {
       try {
         processor =
