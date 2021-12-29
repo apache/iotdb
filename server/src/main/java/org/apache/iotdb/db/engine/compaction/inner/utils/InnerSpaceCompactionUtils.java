@@ -448,8 +448,15 @@ public class InnerSpaceCompactionUtils {
               sensorsIterator.getMetadataListForCurrentSensor();
           TimeSeriesCompactor compactorOfCurrentTimeSeries =
               new TimeSeriesCompactor(
-                  storageGroup, device, currentSensor, readerAndChunkMetadataList, writer);
+                  storageGroup,
+                  device,
+                  currentSensor,
+                  readerAndChunkMetadataList,
+                  writer,
+                  targetResource);
+          compactorOfCurrentTimeSeries.execute();
         }
+        writer.endChunkGroup();
       }
 
       for (TsFileResource tsFileResource : tsFileResources) {
