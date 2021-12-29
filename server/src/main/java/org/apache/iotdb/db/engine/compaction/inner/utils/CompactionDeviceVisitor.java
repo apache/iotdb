@@ -53,8 +53,7 @@ public class CompactionDeviceVisitor {
 
   public CompactionDeviceVisitor(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
-    for (TsFileResource tsFileResource : tsFileResources) {
-      tsFileResources.add(tsFileResource);
+    for (TsFileResource tsFileResource : this.tsFileResources) {
       TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
       readerMap.put(tsFileResource, reader);
     }
@@ -69,25 +68,25 @@ public class CompactionDeviceVisitor {
     return deviceSet;
   }
 
-  public CompactionSensorsIterator visit(String device) throws IOException {
-    return new CompactionSensorsIterator(readerMap, device);
+  public CompactionSeriesIterator visit(String device) throws IOException {
+    return new CompactionSeriesIterator(readerMap, device);
   }
 
-  public class CompactionSensorsIterator {
+  public class CompactionSeriesIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
-    private String currentCompactingSensor = null;
-    private LinkedList<String> sensorsInThisIteration = new LinkedList<>();
-    // tsfile sequence reader -> sensor -> list<ChunkMetadata>
+    private String currentCompactingSeries = null;
+    private LinkedList<String> seriesInThisIteration = new LinkedList<>();
+    // tsfile sequence reader -> series -> list<ChunkMetadata>
     private Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataCacheMap =
         new TreeMap<>(new InnerSpaceCompactionUtils.TsFileNameComparator());
     // this map cache the chunk metadata list iterator for each tsfile
-    // the iterator return a batch of sensors and all chunk metadata of these sensors in this tsfile
+    // the iterator return a batch of series and all chunk metadata of these series in this tsfile
     private Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
         chunkMetadataIteratorMap =
             new TreeMap<>(new InnerSpaceCompactionUtils.TsFileNameComparator());
 
-    private CompactionSensorsIterator(
+    private CompactionSeriesIterator(
         Map<TsFileResource, TsFileSequenceReader> readerMap, String device) throws IOException {
       this.readerMap = readerMap;
       this.device = device;
@@ -99,20 +98,20 @@ public class CompactionDeviceVisitor {
     }
 
     /**
-     * Collect sensors from files using iterator, and the collected sensors will be store in
-     * sensorInThisIteration. To ensure that each sensor is compacted once, when iterator of each
-     * file returns a batch of sensors, we will find the max of it, and find the min sensor marked
-     * as `last sensor` among the max sensors in each batch.
+     * Collect series from files using iterator, and the collected series will be store in
+     * seriesInThisIteration. To ensure that each serie is compacted once, when iterator of each
+     * file returns a batch of series, we will find the max of it, and find the min series marked as
+     * `last series` among the max series in each batch.
      *
-     * <p>That is, lastSensor = min([max(sensors return in file 1),..., max(sensors return in file
-     * n)]). Only the sensors that are greater than the lastSensor in lexicographical order will be
+     * <p>That is, lastSeries = min([max(series return in file 1),..., max(series return in file
+     * n)]). Only the series that are greater than the lastSeries in lexicographical order will be
      * collected.
      *
-     * @return true if there is any sensor is collected, else false.
+     * @return true if there is any series is collected, else false.
      */
-    private boolean collectSensors() {
-      String lastSensor = null;
-      List<String> tempCollectedSensors = new ArrayList<>();
+    private boolean collectSeries() {
+      String lastSeries = null;
+      List<String> tempCollectedSeries = new ArrayList<>();
       for (Map.Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
           chunkMetadataListCacheForMergeEntry : chunkMetadataCacheMap.entrySet()) {
         TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
@@ -126,34 +125,34 @@ public class CompactionDeviceVisitor {
             continue;
           }
         }
-        // get the min last sensor in the current chunk metadata
-        String maxSensor = Collections.max(chunkMetadataListMap.keySet());
-        if (lastSensor == null) {
-          lastSensor = maxSensor;
+        // get the min last series in the current chunk metadata
+        String maxSeries = Collections.max(chunkMetadataListMap.keySet());
+        if (lastSeries == null) {
+          lastSeries = maxSeries;
         } else {
-          if (maxSensor.compareTo(lastSensor) < 0) {
-            lastSensor = maxSensor;
+          if (maxSeries.compareTo(lastSeries) < 0) {
+            lastSeries = maxSeries;
           }
         }
-        tempCollectedSensors.addAll(chunkMetadataListMap.keySet());
+        tempCollectedSeries.addAll(chunkMetadataListMap.keySet());
       }
-      if (tempCollectedSensors.size() > 0) {
-        if (!hasRemainingSensors()) {
-          lastSensor = Collections.max(tempCollectedSensors);
+      if (tempCollectedSeries.size() > 0) {
+        if (!hasRemainingSeries()) {
+          lastSeries = Collections.max(tempCollectedSeries);
         }
-        String finalLastSensor = lastSensor;
-        List<String> finalCollectedSensorsInThisIteration =
-            tempCollectedSensors.stream()
-                .filter(sensor -> sensor.compareTo(finalLastSensor) <= 0)
+        String finalLastSeries = lastSeries;
+        List<String> finalCollectedSeriesInThisIteration =
+            tempCollectedSeries.stream()
+                .filter(series -> series.compareTo(finalLastSeries) <= 0)
                 .collect(Collectors.toList());
-        sensorsInThisIteration.addAll(finalCollectedSensorsInThisIteration);
+        seriesInThisIteration.addAll(finalCollectedSeriesInThisIteration);
         return true;
       } else {
         return false;
       }
     }
 
-    private boolean hasRemainingSensors() {
+    private boolean hasRemainingSeries() {
       boolean remaining = false;
       for (Iterator<Map<String, List<ChunkMetadata>>> iterator :
           chunkMetadataIteratorMap.values()) {
@@ -162,25 +161,25 @@ public class CompactionDeviceVisitor {
       return remaining;
     }
 
-    public boolean hasNextSensor() {
-      if (sensorsInThisIteration.size() == 0 && !collectSensors()) {
+    public boolean hasNextSeries() {
+      if (seriesInThisIteration.size() == 0 && !collectSeries()) {
         return false;
       } else {
         return true;
       }
     }
 
-    public String nextSensor() {
-      if (!hasNextSensor()) {
+    public String nextSeries() {
+      if (!hasNextSeries()) {
         return null;
       } else {
-        currentCompactingSensor = sensorsInThisIteration.removeFirst();
-        return currentCompactingSensor;
+        currentCompactingSeries = seriesInThisIteration.removeFirst();
+        return currentCompactingSeries;
       }
     }
 
     /**
-     * Collect all the chunk metadata of current sensor from the source files.
+     * Collect all the chunk metadata of current series from the source files.
      *
      * <p>If there are any modifications for these chunk, we will apply them to the metadata. Use
      * `ChunkMetadata.getDeleteIntervalList() == null` to judge if the chunk is modified.
@@ -189,48 +188,48 @@ public class CompactionDeviceVisitor {
      * @throws IllegalPathException
      */
     public LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
-        getMetadataListForCurrentSensor() throws IllegalPathException {
-      if (currentCompactingSensor == null) {
+        getMetadataListForCurrentSeries() throws IllegalPathException {
+      if (currentCompactingSeries == null) {
         return null;
       }
 
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>>
-          readerAndChunkMetadataForThisSensor = new LinkedList<>();
-      PartialPath path = new PartialPath(device, currentCompactingSensor);
+          readerAndChunkMetadataForThisSeries = new LinkedList<>();
+      PartialPath path = new PartialPath(device, currentCompactingSeries);
 
       for (TsFileResource resource : tsFileResources) {
         TsFileSequenceReader reader = readerMap.get(resource);
         Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
 
-        if (chunkMetadataListMap.containsKey(currentCompactingSensor)) {
-          // get the chunk metadata list and modification list of current sensor in this tsfile
+        if (chunkMetadataListMap.containsKey(currentCompactingSeries)) {
+          // get the chunk metadata list and modification list of current series in this tsfile
           List<ChunkMetadata> chunkMetadataListInThisResource =
-              chunkMetadataListMap.get(currentCompactingSensor);
-          chunkMetadataListMap.remove(currentCompactingSensor);
+              chunkMetadataListMap.get(currentCompactingSeries);
+          chunkMetadataListMap.remove(currentCompactingSeries);
 
           List<Modification> modificationsInThisResource =
               modificationCache.computeIfAbsent(
                   resource,
                   r -> new LinkedList<>(ModificationFile.getNormalMods(r).getModifications()));
-          LinkedList<Modification> modificationForCurrentSensor = new LinkedList<>();
-          // collect the modifications for current sensor
+          LinkedList<Modification> modificationForCurrentSeries = new LinkedList<>();
+          // collect the modifications for current series
           for (Modification modification : modificationsInThisResource) {
             if (modification.getPath().matchFullPath(path)) {
-              modificationForCurrentSensor.add(modification);
+              modificationForCurrentSeries.add(modification);
             }
           }
 
-          // if there are modifications of current sensor, apply them to the chunk metadata
-          if (modificationForCurrentSensor.size() != 0) {
+          // if there are modifications of current series, apply them to the chunk metadata
+          if (modificationForCurrentSeries.size() != 0) {
             QueryUtils.modifyChunkMetaData(
-                chunkMetadataListInThisResource, modificationForCurrentSensor);
+                chunkMetadataListInThisResource, modificationForCurrentSeries);
           }
 
-          readerAndChunkMetadataForThisSensor.add(
+          readerAndChunkMetadataForThisSeries.add(
               new Pair<>(reader, chunkMetadataListInThisResource));
         }
       }
-      return readerAndChunkMetadataForThisSensor;
+      return readerAndChunkMetadataForThisSeries;
     }
   }
 }

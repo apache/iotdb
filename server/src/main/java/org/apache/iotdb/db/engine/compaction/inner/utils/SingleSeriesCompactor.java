@@ -45,7 +45,7 @@ import java.util.LinkedList;
 import java.util.List;
 
 /** This class is used to compact one series during sequence space inner compaction. */
-public class TimeSeriesCompactor {
+public class SingleSeriesCompactor {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private String storageGroup;
   private String device;
@@ -69,7 +69,7 @@ public class TimeSeriesCompactor {
   private final long chunkSizeLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
 
-  public TimeSeriesCompactor(
+  public SingleSeriesCompactor(
       String storageGroup,
       String device,
       String timeSeries,
@@ -262,11 +262,13 @@ public class TimeSeriesCompactor {
         writeTimeAndValueToChunkWriter(timeValuePair);
         if (timeValuePair.getTimestamp() > maxEndTimestamp) {
           maxEndTimestamp = timeValuePair.getTimestamp();
-        } else if (timeValuePair.getTimestamp() < minStartTimestamp) {
+        }
+        if (timeValuePair.getTimestamp() < minStartTimestamp) {
           minStartTimestamp = timeValuePair.getTimestamp();
         }
       }
     }
+    dataRemainsInChunkWriter = true;
   }
 
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
@@ -316,12 +318,20 @@ public class TimeSeriesCompactor {
       MergeManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
+      dataRemainsInChunkWriter = false;
     }
   }
 
   private void flushChunkWriter() throws IOException {
+    LOGGER.debug(
+        "{} compacting {}.{}, the size of chunk writer is {}, flush it",
+        storageGroup,
+        device,
+        timeSeries,
+        chunkWriter.estimateMaxSeriesMemSize());
     MergeManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
+    dataRemainsInChunkWriter = false;
   }
 }

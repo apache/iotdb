@@ -422,32 +422,27 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compactV2(
-      TsFileResource targetResource,
-      List<TsFileResource> tsFileResources,
-      String storageGroup,
-      boolean sequence)
-      throws IOException, IllegalPathException, MetadataException {
-    Map<String, TsFileSequenceReader> tsFileSequenceReaderMap = new HashMap<>();
+      TsFileResource targetResource, List<TsFileResource> tsFileResources, String storageGroup)
+      throws IOException, MetadataException {
     TsFileIOWriter writer = null;
     try {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-
       CompactionDeviceVisitor visitor = new CompactionDeviceVisitor(tsFileResources);
       Set<String> devices = visitor.getDevices();
 
       for (String device : devices) {
         writer.startChunkGroup(device);
         // TODO: compact a aligned device
-        CompactionDeviceVisitor.CompactionSensorsIterator sensorsIterator = visitor.visit(device);
-        while (sensorsIterator.hasNextSensor()) {
-          String currentSensor = sensorsIterator.nextSensor();
+        CompactionDeviceVisitor.CompactionSeriesIterator seriesIterator = visitor.visit(device);
+        while (seriesIterator.hasNextSeries()) {
+          String currentSeries = seriesIterator.nextSeries();
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
-              sensorsIterator.getMetadataListForCurrentSensor();
-          TimeSeriesCompactor compactorOfCurrentTimeSeries =
-              new TimeSeriesCompactor(
+              seriesIterator.getMetadataListForCurrentSeries();
+          SingleSeriesCompactor compactorOfCurrentTimeSeries =
+              new SingleSeriesCompactor(
                   storageGroup,
                   device,
-                  currentSensor,
+                  currentSeries,
                   readerAndChunkMetadataList,
                   writer,
                   targetResource);
@@ -459,13 +454,9 @@ public class InnerSpaceCompactionUtils {
       for (TsFileResource tsFileResource : tsFileResources) {
         targetResource.updatePlanIndexes(tsFileResource);
       }
-      targetResource.serialize();
       writer.endFile();
       targetResource.close();
     } finally {
-      for (TsFileSequenceReader reader : tsFileSequenceReaderMap.values()) {
-        reader.close();
-      }
       if (writer != null && writer.canWrite()) {
         writer.close();
       }
