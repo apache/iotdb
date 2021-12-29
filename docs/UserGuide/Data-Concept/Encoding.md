@@ -47,13 +47,8 @@ Currently, there are two versions of GORILLA encoding implementation, it is reco
 
 Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure that there is no data point with the value `Integer.MIN_VALUE` in the sequence. When using GORILLA to encode INT64 data, you need to ensure that there is no data point with the value `Long.MIN_VALUE` in the sequence.
 
-* REGULAR
 
-Regular data encoding is more suitable for time encoding regular sequence increasing data (e.g. the timeseries with the same time elapsed between each data point), in which case it's better than TS_2DIFF.
-
-Regular data encoding method is not suitable for the data with fluctuations (irregular data), and TS_2DIFF is recommended to deal with it.
-
-* Correspondence between data type and encoding
+Correspondence between data type and encoding
 
 The four encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
