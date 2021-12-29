@@ -1026,10 +1026,10 @@ public class LocalQueryExecutor {
 
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
-    List<PartialPath> partialPaths = new ArrayList<>();
+    List<PartialPath> seriesPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
       PartialPath partialPath = new PartialPath(path);
-      partialPaths.add(
+      seriesPaths.add(
           new MeasurementPath(partialPath, IoTDB.metaManager.getSeriesSchema(partialPath)));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
@@ -1045,7 +1045,7 @@ public class LocalQueryExecutor {
 
     List<Pair<Boolean, TimeValuePair>> timeValuePairs =
         LastQueryExecutor.calculateLastPairForSeriesLocally(
-            partialPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
+            seriesPaths, dataTypes, queryContext, expression, request.getDeviceMeasurements());
     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
     DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
     for (Pair<Boolean, TimeValuePair> timeValuePair : timeValuePairs) {

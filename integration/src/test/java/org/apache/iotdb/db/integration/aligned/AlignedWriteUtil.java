@@ -127,7 +127,7 @@ public class AlignedWriteUtil {
         "insert into root.sg1.d2(time, s2, s5) values(37, 37, 'non_aligned_test37')",
         "insert into root.sg1.d2(time, s2, s5) values(38, 38, 'non_aligned_test38')",
         "insert into root.sg1.d2(time, s2, s5) values(39, 39, 'non_aligned_test39')",
-        "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')"
+        "insert into root.sg1.d2(time, s2, s5) values(40, 40, 'non_aligned_test40')",
       };
 
   public static void insertData() throws ClassNotFoundException {

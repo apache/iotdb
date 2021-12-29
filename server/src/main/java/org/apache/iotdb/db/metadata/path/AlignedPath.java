@@ -473,8 +473,4 @@ public class AlignedPath extends PartialPath {
     }
     return alignedPath;
   }
-
-  public boolean isMeasurementContains(MeasurementPath path) {
-    return measurementList.contains(path.getMeasurement());
-  }
 }
