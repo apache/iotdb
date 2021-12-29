@@ -57,7 +57,7 @@ Recovery are performed at the granularity of the storage group, and the entry po
 
 ## Recover a TsFile(Seq/Unseq) of each partiton
 
-* org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.recoverTsFiles
+* org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.recoverTsFiles
 
 This method is mainly responsible for traversing all TsFiles passed in and recovering them one by one.
 

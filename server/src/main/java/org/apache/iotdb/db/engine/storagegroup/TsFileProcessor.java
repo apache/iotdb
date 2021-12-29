@@ -34,7 +34,7 @@ import org.apache.iotdb.db.engine.memtable.PrimitiveMemTable;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpdateEndTimeCallBack;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.UpdateEndTimeCallBack;
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
@@ -1358,7 +1358,7 @@ public class TsFileProcessor {
   }
 
   public void submitAFlushTask() {
-    this.storageGroupInfo.getStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
+    this.storageGroupInfo.getVirtualStorageGroupProcessor().submitAFlushTaskWhenShouldFlush(this);
   }
 
   public boolean alreadyMarkedClosing() {

@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -168,7 +168,7 @@ public class LastQueryExecutor {
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLockAndInitQueryDataSource(nonCachedPaths, context, filter);
     try {

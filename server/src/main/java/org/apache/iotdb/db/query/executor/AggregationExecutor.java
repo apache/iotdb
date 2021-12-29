@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -120,7 +120,7 @@ public class AggregationExecutor {
     groupPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
     // TODO-Cluster: group the paths by storage group to reduce communications
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLockAndInitQueryDataSource(groupPathList, context, timeFilter);
 
@@ -613,7 +613,7 @@ public class AggregationExecutor {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance().mergeLockAndInitQueryDataSource(groupedPathList, context, null);
 
     try {

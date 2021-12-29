@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -83,7 +83,7 @@ public class FillQueryExecutor {
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLockAndInitQueryDataSource(selectedSeries, context, contructTimeFilter(context));
     try {

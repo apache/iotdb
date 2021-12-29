@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -110,7 +110,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLockAndInitQueryDataSource(groupedPathList, context, timeFilter);
     try {
