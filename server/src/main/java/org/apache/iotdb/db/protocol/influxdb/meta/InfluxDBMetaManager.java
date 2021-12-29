@@ -68,10 +68,9 @@ public class InfluxDBMetaManager {
     serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
     planner = serviceProvider.getProcessor();
-    recover();
   }
 
-  private void recover() {
+  public void recover() {
     long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);

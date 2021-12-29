@@ -36,6 +36,7 @@ import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.protocol.influxdb.meta.InfluxDBMetaManager;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -144,8 +145,10 @@ public class IoTDB implements IoTDBMBean {
       registerManager.register(RPCService.getInstance());
     }
 
+    initProtocols();
+    // in cluster mode, InfluxDBMManager has init.
     if (!isClusterMode()) {
-      initProtocols();
+      initInfluxDBMManager();
     }
 
     logger.info("IoTDB is set up, now may some sgs are not ready, please wait several seconds...");
@@ -167,6 +170,10 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(SettleService.getINSTANCE());
 
     logger.info("Congratulation, IoTDB is set up successfully. Now, enjoy yourself!");
+  }
+
+  public static void initInfluxDBMManager() {
+    InfluxDBMetaManager.getInstance().recover();
   }
 
   private void initServiceProvider() throws QueryProcessException {
