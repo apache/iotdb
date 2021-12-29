@@ -680,19 +680,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
 
     if (newDataSet.getEndPoint() != null && plan.isEnableRedirect()) {
-      // redirect query
-      LOGGER.debug(
-          "need to redirect {} {} to node {}",
-          context.getStatement(),
-          queryId,
-          newDataSet.getEndPoint());
-      TSStatus status = new TSStatus();
-      status.setRedirectNode(
-          new EndPoint(newDataSet.getEndPoint().getIp(), newDataSet.getEndPoint().getPort()));
-      status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-      resp.setStatus(status);
-      resp.setQueryId(queryId);
-      return resp;
+      QueryDataSet.EndPoint endPoint = newDataSet.getEndPoint();
+      return redirectQueryToAnotherNode(resp, context, endPoint.getIp(), endPoint.getPort());
     }
 
     if (plan instanceof UDFPlan || plan.isGroupByLevel()) {
@@ -706,23 +695,12 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
         TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
         resp.setQueryDataSet(tsQueryDataSet);
       } catch (RedirectException e) {
-        LOGGER.debug(
-            "need to redirect {} {} to {}",
-            context.getStatement(),
-            context.getQueryId(),
-            e.getEndPoint());
         if (plan.isEnableRedirect()) {
-          // redirect query
-          TSStatus status = new TSStatus();
-          status.setRedirectNode(e.getEndPoint());
-          status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-          resp.setStatus(status);
-          resp.setQueryId(context.getQueryId());
-          return resp;
+          EndPoint endPoint = e.getEndPoint();
+          redirectQueryToAnotherNode(resp, context, endPoint.ip, endPoint.port);
         } else {
           LOGGER.error(
-              "execute {} error, if session does not support redirect,"
-                  + " should not throw redirection exception.",
+              "execute {} error, if session does not support redirect, should not throw redirection exception.",
               context.getStatement(),
               e);
         }
@@ -765,6 +743,23 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     if (plan instanceof ShowQueryProcesslistPlan) {
       resp.setIgnoreTimeStamp(false);
     }
+    return resp;
+  }
+
+  /** Redirect query */
+  private TSExecuteStatementResp redirectQueryToAnotherNode(
+      TSExecuteStatementResp resp, QueryContext context, String ip, int port) {
+    LOGGER.debug(
+        "need to redirect {} {} to node {}:{}",
+        context.getStatement(),
+        context.getQueryId(),
+        ip,
+        port);
+    TSStatus status = new TSStatus();
+    status.setRedirectNode(new EndPoint(ip, port));
+    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    resp.setStatus(status);
+    resp.setQueryId(context.getQueryId());
     return resp;
   }
 
