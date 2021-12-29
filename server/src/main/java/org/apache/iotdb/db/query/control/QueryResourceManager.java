@@ -31,13 +31,10 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
@@ -115,11 +112,21 @@ public class QueryResourceManager {
       VirtualStorageGroupProcessor processor = entry.getKey();
       List<PartialPath> pathList = entry.getValue();
 
+      // when all the selected series are under the same device, the QueryDataSource will be
+      // filtered according to timeIndex
+      Set<String> selectedDeviceIdSet =
+          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+
       long queryId = context.getQueryId();
       String storageGroupPath = processor.getStorageGroupPath();
 
       QueryDataSource cachedQueryDataSource =
-          processor.query(pathList, context, filePathsManager, timeFilter);
+          processor.query(
+              pathList,
+              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              context,
+              filePathsManager,
+              timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
@@ -149,7 +156,11 @@ public class QueryResourceManager {
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
           processor.query(
-              Collections.singletonList(selectedPath), context, filePathsManager, timeFilter);
+              Collections.singletonList(selectedPath),
+              selectedPath.getDevice(),
+              context,
+              filePathsManager,
+              timeFilter);
     }
 
     // construct QueryDataSource for selectedPath

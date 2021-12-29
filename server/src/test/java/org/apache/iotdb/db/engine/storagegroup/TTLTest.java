@@ -227,6 +227,7 @@ public class TTLTest {
         virtualStorageGroupProcessor.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -242,6 +243,7 @@ public class TTLTest {
         virtualStorageGroupProcessor.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -281,6 +283,7 @@ public class TTLTest {
         virtualStorageGroupProcessor.query(
             Collections.singletonList(
                 SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);

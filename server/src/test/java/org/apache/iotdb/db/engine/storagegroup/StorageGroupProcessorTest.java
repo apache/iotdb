@@ -176,6 +176,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -210,6 +211,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -275,6 +277,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -310,6 +313,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -354,6 +358,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -439,6 +444,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -524,6 +530,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -609,6 +616,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
@@ -675,6 +683,7 @@ public class StorageGroupProcessorTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);
