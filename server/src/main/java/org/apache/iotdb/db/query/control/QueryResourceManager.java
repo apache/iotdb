@@ -113,8 +113,8 @@ public class QueryResourceManager {
    *
    * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
    *     under the virtual storage group
-   * @param singleDeviceId selected deviceId (not null only when the selected series is under the
-   *     same device)
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
    */
   public void initQueryDataSource(
       Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,

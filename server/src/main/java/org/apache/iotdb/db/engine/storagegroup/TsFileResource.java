@@ -644,7 +644,7 @@ public class TsFileResource {
   }
 
   /** @return true if the TsFile lives beyond TTL */
-  public boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+  private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
     long startTime = getFileStartTime();
     long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
 
@@ -665,7 +665,7 @@ public class TsFileResource {
     return true;
   }
 
-  /** @return true if the device is contained in the TsFile and it lives beyond TTL */
+  /** @return true if the device is contained in the TsFile */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, TsFileFilter fileFilter, boolean isSeq, boolean debug) {
     if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
