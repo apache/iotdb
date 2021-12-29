@@ -1021,14 +1021,16 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
-          IllegalPathException {
+          MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
     List<PartialPath> partialPaths = new ArrayList<>();
     for (String path : request.getPaths()) {
-      partialPaths.add(new MeasurementPath(path));
+      PartialPath partialPath = new PartialPath(path);
+      partialPaths.add(
+          new MeasurementPath(partialPath, IoTDB.metaManager.getSeriesSchema(partialPath)));
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
