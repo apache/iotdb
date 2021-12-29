@@ -191,9 +191,9 @@ public class LogReplayer {
       }
     }
 
+    plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
     try {
       if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
-        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
         virtualStorageGroupProcessor.getIdTable().getSeriesSchemas(plan);
       } else {
         IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
