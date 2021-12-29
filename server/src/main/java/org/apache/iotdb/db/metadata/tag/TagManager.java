@@ -32,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -144,14 +145,23 @@ public class TagManager {
     if (plan.isOrderByHeat()) {
       List<VirtualStorageGroupProcessor> list;
       try {
-        list =
-            StorageEngine.getInstance()
-                .mergeLockAndInitQueryDataSource(
-                    allMatchedNodes.stream()
-                        .map(IMeasurementMNode::getMeasurementPath)
-                        .collect(toList()),
-                    context,
-                    null);
+        Pair<
+                List<VirtualStorageGroupProcessor>,
+                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+            lockListAndProcessorToSeriesMapPair =
+                StorageEngine.getInstance()
+                    .mergeLock(
+                        allMatchedNodes.stream()
+                            .map(IMeasurementMNode::getMeasurementPath)
+                            .collect(toList()));
+        list = lockListAndProcessorToSeriesMapPair.left;
+        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+            lockListAndProcessorToSeriesMapPair.right;
+
+        // init QueryDataSource cache
+        QueryResourceManager.getInstance()
+            .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
         try {
           allMatchedNodes =
               allMatchedNodes.stream()

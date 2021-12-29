@@ -36,7 +36,6 @@ import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -45,8 +44,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -56,7 +53,6 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -71,7 +67,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -1005,31 +1000,9 @@ public class StorageEngine implements IService {
   }
 
   /** get all merge lock of the storage group processor related to the query */
-  public List<VirtualStorageGroupProcessor> mergeLock(List<PartialPath> pathList)
-      throws StorageEngineException {
-    Set<VirtualStorageGroupProcessor> set = new HashSet<>();
-    for (PartialPath path : pathList) {
-      set.add(getProcessor(path.getDevicePath()));
-    }
-    List<VirtualStorageGroupProcessor> list =
-        set.stream()
-            .sorted(Comparator.comparing(VirtualStorageGroupProcessor::getVirtualStorageGroupId))
-            .collect(Collectors.toList());
-    list.forEach(VirtualStorageGroupProcessor::readLock);
-    return list;
-  }
-
-  /** unlock all merge lock of the storage group processor related to the query */
-  public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
-    list.forEach(VirtualStorageGroupProcessor::readUnlock);
-  }
-
-  /**
-   * get all merge lock of the storage group processor related to the query and init QueryDataSource
-   */
-  public List<VirtualStorageGroupProcessor> mergeLockAndInitQueryDataSource(
-      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
-      throws StorageEngineException, QueryProcessException {
+  public Pair<
+          List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+      mergeLock(List<PartialPath> pathList) throws StorageEngineException {
     Map<VirtualStorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
     for (PartialPath path : pathList) {
       map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
@@ -1040,10 +1013,12 @@ public class StorageEngine implements IService {
             .collect(Collectors.toList());
     list.forEach(VirtualStorageGroupProcessor::readLock);
 
-    // init QueryDataSource
-    QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
+    return new Pair<>(list, map);
+  }
 
-    return list;
+  /** unlock all merge lock of the storage group processor related to the query */
+  public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
+    list.forEach(VirtualStorageGroupProcessor::readUnlock);
   }
 
   /** @return virtual storage group name, like root.sg1/0 */

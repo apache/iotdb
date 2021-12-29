@@ -30,12 +30,14 @@ import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,16 +104,22 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
     alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
-    List<PartialPath> groupPathList =
+    List<PartialPath> groupedPathList =
         new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
-    groupPathList.addAll(pathToAggrIndexesMap.keySet());
-    groupPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(groupPathList, context, timeFilter);
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       // init GroupByExecutor for non-aligned series
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         MeasurementPath path = (MeasurementPath) entry.getKey();
@@ -159,7 +167,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         }
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 

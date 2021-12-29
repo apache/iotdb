@@ -40,10 +40,12 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
@@ -99,10 +101,19 @@ public class RawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, timeFilter);
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+
+      // init QueryDataSource cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
         TSDataType dataType = path.getSeriesType();
@@ -125,7 +136,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(reader);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }
@@ -164,10 +175,19 @@ public class RawDataQueryExecutor {
       QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(queryPlan.getDeduplicatedPaths(), context, null);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {
           readersOfSelectedSeries.add(null);
@@ -183,7 +203,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(seriesReaderByTimestamp);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }

@@ -57,6 +57,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -114,17 +115,24 @@ public class AggregationExecutor {
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
-    List<PartialPath> groupPathList =
+    List<PartialPath> groupedPathList =
         new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
-    groupPathList.addAll(pathToAggrIndexesMap.keySet());
-    groupPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
     // TODO-Cluster: group the paths by storage group to reduce communications
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(groupPathList, context, timeFilter);
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         PartialPath seriesPath = entry.getKey();
         aggregateOneSeries(
@@ -143,7 +151,7 @@ public class AggregationExecutor {
             timeFilter);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -613,10 +621,18 @@ public class AggregationExecutor {
     groupedPathList.addAll(pathToAggrIndexesMap.keySet());
     groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
 
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(groupedPathList, context, null);
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
       for (PartialPath path : pathToAggrIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
             getReaderByTime(path, queryPlan, path.getSeriesType(), context);
@@ -633,7 +649,7 @@ public class AggregationExecutor {
       }
       alignedPathToAggrIndexesMap = null;
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     for (int i = 0; i < selectedSeries.size(); i++) {

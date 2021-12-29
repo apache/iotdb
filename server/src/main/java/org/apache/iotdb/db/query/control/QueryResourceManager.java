@@ -105,7 +105,7 @@ public class QueryResourceManager {
    * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
    *     under the virtual storage group
    */
-  public void initQueryDataSource(
+  public void initQueryDataSourceCache(
       Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
       QueryContext context,
       Filter timeFilter)

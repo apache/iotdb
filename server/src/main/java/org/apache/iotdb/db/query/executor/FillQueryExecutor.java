@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import javax.activation.UnsupportedDataTypeException;
 
@@ -83,10 +84,18 @@ public class FillQueryExecutor {
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(selectedSeries, context, contructTimeFilter(context));
+    Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
       for (int i = 0; i < selectedSeries.size(); i++) {
         TSDataType dataType = dataTypes.get(i);
@@ -116,7 +125,7 @@ public class FillQueryExecutor {
         }
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
@@ -124,7 +133,7 @@ public class FillQueryExecutor {
     return dataSet;
   }
 
-  private Filter contructTimeFilter(QueryContext context)
+  private Filter initFillExecutorsAndContructTimeFilter(QueryContext context)
       throws UnsupportedDataTypeException, QueryProcessException, StorageEngineException {
     long lowerBound = Long.MAX_VALUE;
     long upperBound = Long.MIN_VALUE;

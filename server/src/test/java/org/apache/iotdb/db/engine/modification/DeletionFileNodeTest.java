@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 
@@ -52,10 +53,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
@@ -165,13 +163,20 @@ public class DeletionFileNodeTest {
             SchemaTestUtils.getMeasurementPath(
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(
-                Collections.singletonList((PartialPath) expression.getSeriesPath()),
-                TEST_QUERY_CONTEXT,
-                null);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
@@ -195,7 +200,7 @@ public class DeletionFileNodeTest {
       assertEquals(expectedCount, count);
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
@@ -307,14 +312,19 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(
-                Collections.singletonList((PartialPath) expression.getSeriesPath()),
-                TEST_QUERY_CONTEXT,
-                null);
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
@@ -337,7 +347,7 @@ public class DeletionFileNodeTest {
 
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
