@@ -1214,17 +1214,17 @@ public class DataGroupMemberTest extends BaseMember {
         new DataAsyncService(dataGroupMember).getGroupByExecutor(request, handler);
         executorId = resultRef.get();
         // TODO: This test is uncompleted because of shared QueryDataSource (IOTDB-2101)
-        //        assertEquals(-1L, (long) executorId);
+        assertEquals(-1L, (long) executorId);
 
         // fetch result
-        //        aggrResultRef = new AtomicReference<>();
-        //        aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
-        //        new DataAsyncService(dataGroupMember)
-        //            .getGroupByResult(
-        //                TestUtils.getRaftNode(30, raftId), executorId, 0, 20, aggrResultHandler);
-        //
-        //        byteBuffers = aggrResultRef.get();
-        //        assertNull(byteBuffers);
+        aggrResultRef = new AtomicReference<>();
+        aggrResultHandler = new GenericHandler<>(TestUtils.getNode(0), aggrResultRef);
+        new DataAsyncService(dataGroupMember)
+            .getGroupByResult(
+                TestUtils.getRaftNode(30, raftId), executorId, 0, 20, aggrResultHandler);
+
+        byteBuffers = aggrResultRef.get();
+        assertNull(byteBuffers);
       } finally {
         dataGroupMember.closeLogManager();
       }
