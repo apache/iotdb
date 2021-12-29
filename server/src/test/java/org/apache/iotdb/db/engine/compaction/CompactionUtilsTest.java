@@ -99,10 +99,6 @@ public class CompactionUtilsTest extends AbstractInnerSpaceCompactionTest {
   @Test
   public void testCrossSpaceCompaction()
       throws MetadataException, IOException, StorageEngineException {
-    TsFileManager tsFileManager =
-        new TsFileManager(COMPACTION_TEST_SG, "0", tempSGDir.getAbsolutePath());
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(
             deviceIds[0]
@@ -113,15 +109,21 @@ public class CompactionUtilsTest extends AbstractInnerSpaceCompactionTest {
             path,
             measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            tsFileManager.getTsFileList(true),
-            tsFileManager.getTsFileList(false),
+            seqResources,
+            unseqResources,
             null,
             null,
             true);
     int count = 0;
     while (tsFilesReader.hasNextBatch()) {
       BatchData batchData = tsFilesReader.nextBatch();
-      for (int i = 0; i < batchData.length(); i++) {
+      while (batchData.hasCurrent()) {
+        if (batchData.currentTime() < 100) {
+          assertEquals(batchData.currentTime() + 10000, (Double) batchData.currentValue(), 0.001);
+        } else {
+          assertEquals(batchData.currentTime(), (Double) batchData.currentValue(), 0.001);
+        }
+        batchData.next();
         count++;
       }
     }
@@ -134,10 +136,10 @@ public class CompactionUtilsTest extends AbstractInnerSpaceCompactionTest {
     CompactionUtils.compact(
         sourceSeqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
     CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
-    tsFileManager.removeAll(sourceSeqResources, true);
-    tsFileManager.removeAll(unseqResources, false);
+    seqResources.remove(0);
     tsFileManager.add(targetResources.get(0), true);
-    SeriesRawDataBatchReader tsFilesReader2 =
+    tsFileManager.addAll(seqResources, true);
+    tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
@@ -148,20 +150,18 @@ public class CompactionUtilsTest extends AbstractInnerSpaceCompactionTest {
             null,
             true);
     count = 0;
-    while (tsFilesReader2.hasNextBatch()) {
-      BatchData batchData = tsFilesReader2.nextBatch();
+    while (tsFilesReader.hasNextBatch()) {
+      BatchData batchData = tsFilesReader.nextBatch();
       for (int i = 0; i < batchData.length(); i++) {
-        System.out.println(batchData.getTimeByIndex(i) + "," + batchData.getDoubleByIndex(i));
-        //        if (i < 100) {
-        //          assertEquals(batchData.getTimeByIndex(i) + 10000, batchData.getDoubleByIndex(i),
-        // 0.001);
-        //        } else {
-        //          assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
-        //        }
+        if (batchData.getTimeByIndex(i) < 100) {
+          assertEquals(batchData.getTimeByIndex(i) + 10000, batchData.getDoubleByIndex(i), 0.001);
+        } else {
+          assertEquals(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), 0.001);
+        }
         count++;
       }
     }
-    tsFilesReader2.close();
+    tsFilesReader.close();
     assertEquals(500, count);
   }
 }
