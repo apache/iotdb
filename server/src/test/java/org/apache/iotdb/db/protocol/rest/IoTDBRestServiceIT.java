@@ -176,6 +176,92 @@ public class IoTDBRestServiceIT {
     }
   }
 
+  public void expression(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
+      String sql = "{\"expression\":[\"s4\",\"s5\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      Map map = mapper.readValue(message, Map.class);
+      String expressionsResult[] = {"root.sg25.s4","root.sg25.s5"};
+      Long timestamps[] = {1635232143960l,1635232153960l};
+      Object values1[] = {11,2};
+      Object values2[] = {1635000012345555l,1635000012345556l};
+      Assert.assertArrayEquals(expressionsResult,((List)map.get("expressions")).toArray(new String[]{}));
+      Assert.assertArrayEquals(timestamps,((List)map.get("timestamps")).toArray(new Long[]{}));
+      Assert.assertArrayEquals(values1,((List)((List)map.get("values")).get(0)).toArray(new Object[]{}));
+      Assert.assertArrayEquals(values2,((List)((List)map.get("values")).get(1)).toArray(new Object[]{}));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  public void variable(CloseableHttpClient httpClient) {
+    CloseableHttpResponse response = null;
+    try {
+      HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/variable");
+      String sql = "{\"sql\":\"show child paths root.sg25\"}";
+      httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
+      response = httpClient.execute(httpPost);
+      HttpEntity responseEntity = response.getEntity();
+      String message = EntityUtils.toString(responseEntity, "utf-8");
+      ObjectMapper mapper = new ObjectMapper();
+      List list = mapper.readValue(message, List.class);
+      String expectedResult[] = {"s3","s4","s5","s6","s7","s8"};
+      Assert.assertArrayEquals(expectedResult,list.toArray(new String[]{}));
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    } finally {
+      try {
+        if (response != null) {
+          response.close();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+  @Test
+  public void expressionTest(){
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    rightInsertTablet(httpClient);
+    expression(httpClient);
+    try {
+      httpClient.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+  @Test
+  public void variableTest(){
+    CloseableHttpClient httpClient = HttpClientBuilder.create().build();
+    rightInsertTablet(httpClient);
+    variable(httpClient);
+    try {
+      httpClient.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
   public void query(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
