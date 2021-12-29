@@ -35,7 +35,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -61,12 +65,8 @@ public abstract class QueryPlan extends PhysicalPlan {
   private boolean withoutAllNull;
 
   public QueryPlan() {
-    super(true);
-    setOperatorType(Operator.OperatorType.QUERY);
-  }
-
-  public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
+    super(Operator.OperatorType.QUERY);
+    setQuery(true);
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
