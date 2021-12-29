@@ -101,7 +101,7 @@ public abstract class IoTDBTest {
   protected void prepareData(int sgNum, int timeOffset, int size)
       throws QueryProcessException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setIdFormDevicePath(new PartialPath(TestUtils.getTestSg(sgNum)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(sgNum)));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);

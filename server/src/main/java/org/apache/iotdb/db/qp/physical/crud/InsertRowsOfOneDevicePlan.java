@@ -75,8 +75,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
       boolean isAligned)
       throws QueryProcessException {
     this();
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     rowPlans = new InsertRowPlan[insertTimes.length];
     rowPlanIndexList = new int[insertTimes.length];
     for (int i = 0; i < insertTimes.length; i++) {
@@ -109,8 +108,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   public InsertRowsOfOneDevicePlan(
       PartialPath prefixPath, InsertRowPlan[] rowPlans, int[] rowPlanIndexList) {
     this();
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     this.rowPlans = rowPlans;
     this.rowPlanIndexList = rowPlanIndexList;
   }
@@ -178,11 +176,11 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.idFormDevicePath = new PartialPath(readString(buffer));
+    this.devicePath = new PartialPath(readString(buffer));
     this.rowPlans = new InsertRowPlan[buffer.getInt()];
     for (int i = 0; i < rowPlans.length; i++) {
       rowPlans[i] = new InsertRowPlan();
-      rowPlans[i].setIdFormDevicePath(idFormDevicePath);
+      rowPlans[i].setDevicePath(devicePath);
       rowPlans[i].setTime(buffer.getLong());
       rowPlans[i].deserializeMeasurementsAndValues(buffer);
     }
@@ -203,7 +201,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public String toString() {
-    return "deviceId: " + idFormDevicePath + ", times: " + rowPlans.length;
+    return "deviceId: " + devicePath + ", times: " + rowPlans.length;
   }
 
   @Override
@@ -248,7 +246,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
 
   @Override
   public List<PartialPath> getPrefixPaths() {
-    return Collections.singletonList(this.idFormDevicePath);
+    return Collections.singletonList(this.devicePath);
   }
 
   @Override
@@ -279,7 +277,7 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlanIndexList, this.rowPlanIndexList)
         && Arrays.equals(((InsertRowsOfOneDevicePlan) o).rowPlans, this.rowPlans)
         && ((InsertRowsOfOneDevicePlan) o).results.equals(this.results)
-        && ((InsertRowsOfOneDevicePlan) o).getIdFormDevicePath().equals(this.getIdFormDevicePath());
+        && ((InsertRowsOfOneDevicePlan) o).getDevicePath().equals(this.getDevicePath());
   }
 
   @Override

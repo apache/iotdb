@@ -26,6 +26,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -82,7 +84,8 @@ public class IDTableRestartTest {
 
   @Test
   public void testRawDataQueryAfterRestart() throws Exception {
-    insertDataInMemory();
+    insertDataInMemoryWithTablet();
+    insertDataInMemoryWithRecord();
 
     // restart
     try {
@@ -102,12 +105,65 @@ public class IDTableRestartTest {
       count++;
     }
 
-    assertEquals(4, count);
+    assertEquals(5, count);
 
-    assertEquals(4, count);
+    // flush and test again
+    PhysicalPlan flushPlan = processor.parseSQLToPhysicalPlan("flush");
+    executor.processNonQuery(flushPlan);
+
+    try {
+      EnvironmentUtils.restartDaemon();
+    } catch (Exception e) {
+      Assert.fail();
+    }
+
+    executor = new PlanExecutor();
+    queryPlan = (QueryPlan) processor.parseSQLToPhysicalPlan("select * from root.isp.d1");
+    dataSet = executor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
+    Assert.assertEquals(6, dataSet.getPaths().size());
+    count = 0;
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      System.out.println(record);
+      count++;
+    }
+
+    assertEquals(5, count);
   }
 
-  private void insertDataInMemory() throws IllegalPathException, QueryProcessException {
+  private void insertDataInMemoryWithRecord() throws IllegalPathException, QueryProcessException {
+    long time = 100L;
+    TSDataType[] dataTypes =
+        new TSDataType[] {
+          TSDataType.DOUBLE,
+          TSDataType.FLOAT,
+          TSDataType.INT64,
+          TSDataType.INT32,
+          TSDataType.BOOLEAN,
+          TSDataType.TEXT
+        };
+
+    String[] columns = new String[6];
+    columns[0] = 1.0 + "";
+    columns[1] = 2 + "";
+    columns[2] = 10000 + "";
+    columns[3] = 100 + "";
+    columns[4] = false + "";
+    columns[5] = "hh" + 0;
+
+    InsertRowPlan insertRowPlan =
+        new InsertRowPlan(
+            new PartialPath("root.isp.d1"),
+            time,
+            new String[] {"s1", "s2", "s3", "s4", "s5", "s6"},
+            dataTypes,
+            columns);
+
+    PlanExecutor executor = new PlanExecutor();
+    executor.insert(insertRowPlan);
+  }
+
+  private void insertDataInMemoryWithTablet() throws IllegalPathException, QueryProcessException {
     long[] times = new long[] {110L, 111L, 112L, 113L};
     List<Integer> dataTypes = new ArrayList<>();
     dataTypes.add(TSDataType.DOUBLE.ordinal());

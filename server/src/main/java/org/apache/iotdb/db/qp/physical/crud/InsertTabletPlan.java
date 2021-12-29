@@ -82,24 +82,21 @@ public class InsertTabletPlan extends InsertPlan {
 
   public InsertTabletPlan(PartialPath prefixPath, List<String> measurements) {
     super(OperatorType.BATCH_INSERT);
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     this.measurements = measurements.toArray(new String[0]);
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements) {
     super(OperatorType.BATCH_INSERT);
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     this.measurements = measurements;
     this.canBeSplit = true;
   }
 
   public InsertTabletPlan(PartialPath prefixPath, String[] measurements, List<Integer> dataTypes) {
     super(OperatorType.BATCH_INSERT);
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;
@@ -108,8 +105,7 @@ public class InsertTabletPlan extends InsertPlan {
   public InsertTabletPlan(
       PartialPath prefixPath, String[] measurements, List<Integer> dataTypes, boolean isAligned) {
     super(OperatorType.BATCH_INSERT);
-    this.idFormDevicePath = prefixPath;
-    this.devicePath = idFormDevicePath;
+    this.devicePath = prefixPath;
     this.measurements = measurements;
     setDataTypes(dataTypes);
     this.canBeSplit = true;
@@ -149,7 +145,7 @@ public class InsertTabletPlan extends InsertPlan {
     }
     List<PartialPath> ret = new ArrayList<>();
     for (String m : measurements) {
-      PartialPath fullPath = idFormDevicePath.concatNode(m);
+      PartialPath fullPath = devicePath.concatNode(m);
       ret.add(fullPath);
     }
     paths = ret;
@@ -468,7 +464,7 @@ public class InsertTabletPlan extends InsertPlan {
 
   @Override
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    this.idFormDevicePath = new PartialPath(readString(buffer));
+    this.devicePath = new PartialPath(readString(buffer));
 
     int measurementSize = buffer.getInt();
     this.measurements = new String[measurementSize];
@@ -605,7 +601,7 @@ public class InsertTabletPlan extends InsertPlan {
   public String toString() {
     return "InsertTabletPlan {"
         + "prefixPath:"
-        + idFormDevicePath
+        + devicePath
         + ", timesRange["
         + times[0]
         + ","
@@ -651,7 +647,7 @@ public class InsertTabletPlan extends InsertPlan {
     InsertTabletPlan that = (InsertTabletPlan) o;
 
     return rowCount == that.rowCount
-        && Objects.equals(idFormDevicePath, that.idFormDevicePath)
+        && Objects.equals(devicePath, that.devicePath)
         && Arrays.equals(times, that.times)
         && Objects.equals(timeBuffer, that.timeBuffer)
         && Objects.equals(valueBuffer, that.valueBuffer)

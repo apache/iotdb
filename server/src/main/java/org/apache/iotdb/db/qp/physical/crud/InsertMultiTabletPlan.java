@@ -144,7 +144,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertTabletPlanList.size());
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-      prefixPaths.add(insertTabletPlan.getIdFormDevicePath());
+      prefixPaths.add(insertTabletPlan.getDevicePath());
     }
     return prefixPaths;
   }
@@ -203,7 +203,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getIdFormDevicePath();
+    return insertTabletPlanList.get(0).getDevicePath();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {
@@ -398,7 +398,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
       Set<String> insertPlanSGSet = new HashSet<>();
       int defaultStorageGroupLevel = new IoTDBConfig().getDefaultStorageGroupLevel();
       for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
-        String[] nodes = insertTabletPlan.getIdFormDevicePath().getNodes();
+        String[] nodes = insertTabletPlan.getDevicePath().getNodes();
         StringBuilder stringBuilder = new StringBuilder();
         for (int i = 0; i <= defaultStorageGroupLevel && i < nodes.length; i++) {
           stringBuilder.append(nodes[i]).append(".");

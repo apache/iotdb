@@ -85,7 +85,7 @@ public class LocalIoTDBHandler implements Handler<LocalIoTDBConfiguration, Local
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException {
     InsertRowPlan plan = new InsertRowPlan();
     plan.setNeedInferType(false);
-    plan.setIdFormDevicePath(device);
+    plan.setDevicePath(device);
     plan.setMeasurements(measurements);
     plan.setDataTypes(dataTypes);
     plan.setTime(event.getTimestamp());

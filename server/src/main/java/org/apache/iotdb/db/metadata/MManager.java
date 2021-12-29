@@ -1828,7 +1828,7 @@ public class MManager {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getIdFormDevicePath();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -1858,7 +1858,7 @@ public class MManager {
       throw new MetadataException(
           String.format(
               "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-              plan.getIdFormDevicePath()));
+              plan.getDevicePath()));
     }
 
     // 2. get schema of each measurement
@@ -1916,7 +1916,7 @@ public class MManager {
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
-    PartialPath devicePath = plan.getIdFormDevicePath();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);

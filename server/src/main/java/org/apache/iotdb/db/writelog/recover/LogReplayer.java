@@ -20,17 +20,20 @@
 package org.apache.iotdb.db.writelog.recover;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -93,7 +96,8 @@ public class LogReplayer {
    * finds the logNode of the TsFile given by insertFilePath and logNodePrefix, reads the WALs from
    * the logNode and redoes them into a given MemTable and ModificationFile.
    */
-  public void replayLogs(Supplier<ByteBuffer[]> supplier) {
+  public void replayLogs(
+      Supplier<ByteBuffer[]> supplier, StorageGroupProcessor storageGroupProcessor) {
     WriteLogNode logNode =
         MultiFileLogNodeManager.getInstance()
             .getNode(
@@ -106,7 +110,7 @@ public class LogReplayer {
         try {
           PhysicalPlan plan = logReader.next();
           if (plan instanceof InsertPlan) {
-            replayInsert((InsertPlan) plan);
+            replayInsert((InsertPlan) plan, storageGroupProcessor);
           } else if (plan instanceof DeletePlan) {
             replayDelete((DeletePlan) plan);
           }
@@ -156,7 +160,8 @@ public class LogReplayer {
   }
 
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
-  private void replayInsert(InsertPlan plan) throws WriteProcessException, QueryProcessException {
+  private void replayInsert(InsertPlan plan, StorageGroupProcessor storageGroupProcessor)
+      throws WriteProcessException, QueryProcessException {
     if (currentTsFileResource != null) {
       long minTime, maxTime;
       if (plan instanceof InsertRowPlan) {
@@ -168,8 +173,8 @@ public class LogReplayer {
       }
       String deviceId =
           plan.isAligned()
-              ? plan.getIdFormDevicePath().getDevicePath().getFullPath()
-              : plan.getIdFormDevicePath().getFullPath();
+              ? plan.getDevicePath().getDevicePath().getFullPath()
+              : plan.getDevicePath().getFullPath();
       // the last chunk group may contain the same data with the logs, ignore such logs in seq file
       long lastEndTime = currentTsFileResource.getEndTime(deviceId);
       if (lastEndTime != Long.MIN_VALUE && lastEndTime >= minTime && sequence) {
@@ -184,18 +189,21 @@ public class LogReplayer {
         tempEndTimeMap.put(deviceId, maxTime);
       }
     }
-    IMeasurementMNode[] mNodes;
+
     try {
-      mNodes =
-          IoTDB.metaManager.getMeasurementMNodes(
-              plan.getIdFormDevicePath(), plan.getMeasurements());
-    } catch (MetadataException e) {
-      throw new QueryProcessException(e);
+      if (IoTDBDescriptor.getInstance().getConfig().isEnableIDTable()) {
+        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
+        storageGroupProcessor.getIdTable().getSeriesSchemas(plan);
+      } else {
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(plan);
+        plan.setDeviceID(DeviceIDFactory.getInstance().getDeviceID(plan.getDevicePath()));
+      }
+    } catch (IOException | MetadataException e) {
+      throw new QueryProcessException("can't replay insert logs, ", e);
     }
-    // set measurementMNodes, WAL already serializes the real data type, so no need to infer type
-    plan.setMeasurementMNodes(mNodes);
+
     // mark failed plan manually
-    checkDataTypeAndMarkFailed(mNodes, plan);
+    checkDataTypeAndMarkFailed(plan.getMeasurementMNodes(), plan);
     if (plan instanceof InsertRowPlan) {
       if (plan.isAligned()) {
         recoverMemTable.insertAlignedRow((InsertRowPlan) plan);
@@ -219,7 +227,7 @@ public class LogReplayer {
         tPlan.markFailedMeasurementInsertion(
             i,
             new PathNotExistException(
-                tPlan.getIdFormDevicePath().getFullPath()
+                tPlan.getDevicePath().getFullPath()
                     + IoTDBConstant.PATH_SEPARATOR
                     + tPlan.getMeasurements()[i]));
       } else if (mNodes[i].getSchema().getType() != tPlan.getDataTypes()[i]) {

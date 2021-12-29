@@ -132,7 +132,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException if insert plan's aligned value is inconsistent with device
    */
   public synchronized IDeviceID getSeriesSchemas(InsertPlan plan) throws MetadataException {
-    PartialPath devicePath = plan.getIdFormDevicePath();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -182,10 +182,8 @@ public class IDTableHashmapImpl implements IDTable {
 
     // set reusable device id
     plan.setDeviceID(deviceEntry.getDeviceID());
-    // for last flushed time map
-    plan.setDevicePath(devicePath);
     // change device path to device id string for insertion
-    plan.setIdFormDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID()));
+    plan.setDevicePath(new PartialPath(deviceEntry.getDeviceID().toStringID()));
 
     return deviceEntry.getDeviceID();
   }
@@ -289,7 +287,7 @@ public class IDTableHashmapImpl implements IDTable {
   private IMeasurementMNode getOrCreateMeasurementIfNotExist(
       DeviceEntry deviceEntry, InsertPlan plan, int loc) throws MetadataException {
     String measurementName = plan.getMeasurements()[loc];
-    PartialPath seriesKey = new PartialPath(plan.getIdFormDevicePath().toString(), measurementName);
+    PartialPath seriesKey = new PartialPath(plan.getDevicePath().toString(), measurementName);
 
     SchemaEntry schemaEntry = deviceEntry.getSchemaEntry(measurementName);
 

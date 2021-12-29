@@ -142,7 +142,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // id for it
     if (insertRowPlan.getDeviceID() == null) {
       insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getIdFormDevicePath()));
+          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -179,7 +179,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertRowPlan.getDeviceID() == null) {
       insertRowPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getIdFormDevicePath()));
+          DeviceIDFactory.getInstance().getDeviceID(insertRowPlan.getDevicePath()));
     }
 
     updatePlanIndexes(insertRowPlan.getIndex());
@@ -287,7 +287,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getIdFormDevicePath()));
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();
@@ -314,7 +314,7 @@ public abstract class AbstractMemTable implements IMemTable {
     // if this insert plan isn't from storage engine, we should set a temp device id for it
     if (insertTabletPlan.getDeviceID() == null) {
       insertTabletPlan.setDeviceID(
-          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getIdFormDevicePath()));
+          DeviceIDFactory.getInstance().getDeviceID(insertTabletPlan.getDevicePath()));
     }
 
     List<IMeasurementSchema> schemaList = new ArrayList<>();

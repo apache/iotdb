@@ -348,7 +348,7 @@ public class TsFileProcessor {
     // get device id
     IDeviceID deviceID = null;
     try {
-      deviceID = getDeviceID(insertRowPlan.getIdFormDevicePath().getFullPath());
+      deviceID = getDeviceID(insertRowPlan.getDevicePath().getFullPath());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
     }
@@ -393,7 +393,7 @@ public class TsFileProcessor {
     // get device id
     IDeviceID deviceID = null;
     try {
-      deviceID = getDeviceID(insertRowPlan.getIdFormDevicePath().getFullPath());
+      deviceID = getDeviceID(insertRowPlan.getDevicePath().getFullPath());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
     }
@@ -447,7 +447,7 @@ public class TsFileProcessor {
     // get device id
     IDeviceID deviceID = null;
     try {
-      deviceID = getDeviceID(insertTabletPlan.getIdFormDevicePath().getFullPath());
+      deviceID = getDeviceID(insertTabletPlan.getDevicePath().getFullPath());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
     }
@@ -479,7 +479,7 @@ public class TsFileProcessor {
     // get device id
     IDeviceID deviceID = null;
     try {
-      deviceID = getDeviceID(insertTabletPlan.getIdFormDevicePath().getFullPath());
+      deviceID = getDeviceID(insertTabletPlan.getDevicePath().getFullPath());
     } catch (IllegalPathException e) {
       throw new WriteProcessException(e);
     }

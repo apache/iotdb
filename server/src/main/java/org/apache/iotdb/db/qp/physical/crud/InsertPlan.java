@@ -36,13 +36,6 @@ public abstract class InsertPlan extends PhysicalPlan {
   /**
    * if use id table, this filed is id form of device path <br>
    * if not, this filed is device path<br>
-   * used in flush time manager, last cache, tsfile processor
-   */
-  protected PartialPath idFormDevicePath;
-
-  /**
-   * tree-structured device path, used in wal <br>
-   * use this field in other place should test id table compatibility
    */
   protected PartialPath devicePath;
 
@@ -74,12 +67,12 @@ public abstract class InsertPlan extends PhysicalPlan {
    * if not, this filed is device path<br>
    * used in flush time manager, last cache, tsfile processor
    */
-  public PartialPath getIdFormDevicePath() {
-    return idFormDevicePath;
+  public PartialPath getDevicePath() {
+    return devicePath;
   }
 
-  public void setIdFormDevicePath(PartialPath idFormDevicePath) {
-    this.idFormDevicePath = idFormDevicePath;
+  public void setDevicePath(PartialPath devicePath) {
+    this.devicePath = devicePath;
   }
 
   public String[] getMeasurements() {
@@ -198,7 +191,7 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   @Override
   public void checkIntegrity() throws QueryProcessException {
-    if (idFormDevicePath == null) {
+    if (devicePath == null) {
       throw new QueryProcessException("DeviceId is null");
     }
     if (measurements == null) {
@@ -222,17 +215,5 @@ public abstract class InsertPlan extends PhysicalPlan {
 
   public void setDeviceID(IDeviceID deviceID) {
     this.deviceID = deviceID;
-  }
-
-  /**
-   * tree-structured device path, used in wal <br>
-   * use this field in other place should test id table compatibility
-   */
-  public PartialPath getDevicePath() {
-    return devicePath;
-  }
-
-  public void setDevicePath(PartialPath devicePath) {
-    this.devicePath = devicePath;
   }
 }

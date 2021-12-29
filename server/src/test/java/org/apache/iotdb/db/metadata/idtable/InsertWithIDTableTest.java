@@ -210,6 +210,7 @@ public class InsertWithIDTableTest {
 
     InsertRowPlan plan2 = new InsertRowPlan();
     plan2.deserialize(byteBuffer);
+    plan2.setDevicePath(new PartialPath("root.isp.d1.GPS"));
 
     executor.insert(plan2);
     assertEquals(plan1, plan2);
@@ -457,6 +458,7 @@ public class InsertWithIDTableTest {
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
+    plan2.setDevicePath(new PartialPath("root.isp.d1.vector"));
     executor.insertTablet(plan2);
 
     assertEquals(plan1, plan2);
@@ -485,6 +487,7 @@ public class InsertWithIDTableTest {
 
     InsertTabletPlan plan2 = new InsertTabletPlan();
     plan2.deserialize(byteBuffer);
+    plan2.setDevicePath(new PartialPath("root.isp.d1.vector"));
     executor.insertTablet(plan2);
 
     assertEquals(plan1, plan2);

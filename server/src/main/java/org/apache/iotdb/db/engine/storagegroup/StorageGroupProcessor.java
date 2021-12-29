@@ -778,7 +778,8 @@ public class StorageGroupProcessor {
                   + FILE_NAME_SEPARATOR,
               tsFileResource,
               isSeq,
-              i == tsFiles.size() - 1);
+              i == tsFiles.size() - 1,
+              this);
 
       RestorableTsFileIOWriter writer = null;
       try {
@@ -905,7 +906,7 @@ public class StorageGroupProcessor {
       boolean isSequence =
           insertRowPlan.getTime()
               > lastFlushTimeManager.getFlushedTime(
-                  timePartitionId, insertRowPlan.getIdFormDevicePath().getFullPath());
+                  timePartitionId, insertRowPlan.getDevicePath().getFullPath());
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -976,9 +977,7 @@ public class StorageGroupProcessor {
       // init map
       long lastFlushTime =
           lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
-              beforeTimePartition,
-              insertTabletPlan.getIdFormDevicePath().getFullPath(),
-              Long.MIN_VALUE);
+              beforeTimePartition, insertTabletPlan.getDevicePath().getFullPath(), Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -1000,7 +999,7 @@ public class StorageGroupProcessor {
           lastFlushTime =
               lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
                   beforeTimePartition,
-                  insertTabletPlan.getIdFormDevicePath().getFullPath(),
+                  insertTabletPlan.getDevicePath().getFullPath(),
                   Long.MIN_VALUE);
 
           isSequence = false;
@@ -1033,8 +1032,7 @@ public class StorageGroupProcessor {
                 && noFailure;
       }
       long globalLatestFlushedTime =
-          lastFlushTimeManager.getGlobalFlushedTime(
-              insertTabletPlan.getIdFormDevicePath().getFullPath());
+          lastFlushTimeManager.getGlobalFlushedTime(insertTabletPlan.getDevicePath().getFullPath());
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -1104,7 +1102,7 @@ public class StorageGroupProcessor {
     if (sequence) {
       lastFlushTimeManager.updateLastTime(
           timePartitionId,
-          insertTabletPlan.getIdFormDevicePath().getFullPath(),
+          insertTabletPlan.getDevicePath().getFullPath(),
           insertTabletPlan.getTimes()[end - 1]);
     }
 
@@ -1127,7 +1125,7 @@ public class StorageGroupProcessor {
       // Update cached last value with high priority
       if (mNodes[i] == null) {
         IoTDB.metaManager.updateLastCache(
-            plan.getIdFormDevicePath().concatNode(plan.getMeasurements()[i]),
+            plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
             latestFlushedTime);
@@ -1152,13 +1150,10 @@ public class StorageGroupProcessor {
 
     // try to update the latest time of the device of this tsRecord
     lastFlushTimeManager.updateLastTime(
-        timePartitionId,
-        insertRowPlan.getIdFormDevicePath().getFullPath(),
-        insertRowPlan.getTime());
+        timePartitionId, insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getTime());
 
     long globalLatestFlushTime =
-        lastFlushTimeManager.getGlobalFlushedTime(
-            insertRowPlan.getIdFormDevicePath().getFullPath());
+        lastFlushTimeManager.getGlobalFlushedTime(insertRowPlan.getDevicePath().getFullPath());
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1180,7 +1175,7 @@ public class StorageGroupProcessor {
       // Update cached last value with high priority
       if (mNodes[i] == null) {
         IoTDB.metaManager.updateLastCache(
-            plan.getIdFormDevicePath().concatNode(plan.getMeasurements()[i]),
+            plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
             latestFlushedTime);
@@ -3102,7 +3097,7 @@ public class StorageGroupProcessor {
           isSequence =
               plan.getTime()
                   > lastFlushTimeManager.getFlushedTime(
-                      timePartitionId, plan.getIdFormDevicePath().getFullPath());
+                      timePartitionId, plan.getDevicePath().getFullPath());
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence

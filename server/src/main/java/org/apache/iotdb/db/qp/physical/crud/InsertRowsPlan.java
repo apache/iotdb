@@ -99,7 +99,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
     }
     prefixPaths = new ArrayList<>(insertRowPlanList.size());
     for (InsertRowPlan insertRowPlan : insertRowPlanList) {
-      prefixPaths.add(insertRowPlan.getIdFormDevicePath());
+      prefixPaths.add(insertRowPlan.getDevicePath());
     }
     return prefixPaths;
   }
@@ -241,7 +241,7 @@ public class InsertRowsPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertRowPlanList.get(0).getIdFormDevicePath();
+    return insertRowPlanList.get(0).getDevicePath();
   }
 
   @Override
