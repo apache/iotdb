@@ -156,6 +156,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   private void metricManagerInit() {
+    logger.warn("into merticManager init");
     metricManager.init();
     //    if (metricManager instanceof MicrometerMetricManager) {
     //      if (metricConfig.getMetricReporterList().contains(ReporterType.iotdb)) {
