@@ -434,7 +434,6 @@ public class IoTDBRestartIT {
 
     try {
       CompactionTaskManager.getInstance().waitAllCompactionFinish();
-      Thread.sleep(10000);
       EnvironmentUtils.restartDaemon();
     } catch (Exception e) {
       Assert.fail();

@@ -61,6 +61,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
@@ -134,12 +135,15 @@ public class DataGroupMemberTest extends BaseMember {
   private boolean enableSyncLeader;
   private int prevReplicationNum;
   private int raftId = 0;
+  private boolean enableInflux;
 
   @Override
   @Before
   public void setUp() throws Exception {
     prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(3);
+    enableInflux = IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService();
+    IoTDBDescriptor.getInstance().getConfig().setEnableInfluxDBRpcService(false);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -158,6 +162,7 @@ public class DataGroupMemberTest extends BaseMember {
     dataGroupMember.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
+    IoTDBDescriptor.getInstance().getConfig().setEnableInfluxDBRpcService(enableInflux);
   }
 
   private PartitionedSnapshotLogManager getLogManager(
