@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.control;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -102,13 +102,13 @@ public class QueryResourceManager {
    *     under the virtual storage group
    */
   public void initQueryDataSource(
-      Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
+      Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
       QueryContext context,
       Filter timeFilter)
       throws QueryProcessException {
-    for (Map.Entry<StorageGroupProcessor, List<PartialPath>> entry :
+    for (Map.Entry<VirtualStorageGroupProcessor, List<PartialPath>> entry :
         processorToSeriesMap.entrySet()) {
-      StorageGroupProcessor processor = entry.getKey();
+      VirtualStorageGroupProcessor processor = entry.getKey();
       List<PartialPath> pathList = entry.getValue();
 
       long queryId = context.getQueryId();
@@ -141,7 +141,7 @@ public class QueryResourceManager {
       cachedQueryDataSource = cachedQueryDataSourcesMap.get(queryId).get(storageGroupPath);
     } else {
       // QueryDataSource is never cached in cluster mode
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
           processor.query(

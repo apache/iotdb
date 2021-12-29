@@ -27,13 +27,11 @@ import org.apache.iotdb.db.engine.flush.CloseFileListener;
 import org.apache.iotdb.db.engine.flush.FlushListener;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy;
 import org.apache.iotdb.db.engine.flush.TsFileFlushPolicy.DirectFlushPolicy;
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.VirtualStorageGroupManager;
 import org.apache.iotdb.db.exception.*;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -1029,18 +1027,18 @@ public class StorageEngine implements IService {
   /**
    * get all merge lock of the storage group processor related to the query and init QueryDataSource
    */
-  public List<VirtualStorageGroupManager> mergeLockAndInitQueryDataSource(
+  public List<VirtualStorageGroupProcessor> mergeLockAndInitQueryDataSource(
       List<PartialPath> pathList, QueryContext context, Filter timeFilter)
       throws StorageEngineException, QueryProcessException {
-    Map<VirtualStorageGroupManager, List<PartialPath>> map = new HashMap<>();
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
     for (PartialPath path : pathList) {
       map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
     }
-    List<VirtualStorageGroupManager> list =
+    List<VirtualStorageGroupProcessor> list =
         map.keySet().stream()
-            .sorted(Comparator.comparing(VirtualStorageGroupManager::getVirtualStorageGroupId))
+            .sorted(Comparator.comparing(VirtualStorageGroupProcessor::getVirtualStorageGroupId))
             .collect(Collectors.toList());
-    list.forEach(VirtualStorageGroupManager::readLock);
+    list.forEach(VirtualStorageGroupProcessor::readLock);
 
     // init QueryDataSource
     QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
@@ -1051,7 +1049,7 @@ public class StorageEngine implements IService {
   /** @return virtual storage group name, like root.sg1/0 */
   public String getStorageGroupPath(PartialPath path) throws StorageEngineException {
     PartialPath deviceId = path.getDevicePath();
-    VirtualStorageGroupManager storageGroupProcessor = getProcessor(deviceId);
+    VirtualStorageGroupProcessor storageGroupProcessor = getProcessor(deviceId);
     return storageGroupProcessor.getLogicalStorageGroupName()
         + File.separator
         + storageGroupProcessor.getVirtualStorageGroupId();
