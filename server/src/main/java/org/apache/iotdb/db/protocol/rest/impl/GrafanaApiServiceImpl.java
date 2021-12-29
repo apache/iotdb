@@ -135,7 +135,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
         sql += " and " + expressionRequest.getCondition();
       }
-      if(StringUtils.isNotEmpty(expressionRequest.getSpecial())){
+      if (StringUtils.isNotEmpty(expressionRequest.getSpecial())) {
         sql += " " + expressionRequest.getSpecial();
       }
 
