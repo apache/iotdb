@@ -52,7 +52,7 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
 
 
-Correspondence between data type and encoding
+### Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
