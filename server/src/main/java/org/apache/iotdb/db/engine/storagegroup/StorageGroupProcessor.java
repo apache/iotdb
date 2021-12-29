@@ -1572,6 +1572,16 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * build query data source by searching all tsfile which fit in query filter
+   *
+   * @param pathList data paths
+   * @param context query context
+   * @param timeFilter time filter
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
+   * @return query data source
+   */
   public QueryDataSource query(
       List<PartialPath> pathList,
       String singleDeviceId,

@@ -38,13 +38,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * QueryResourceManager manages resource (file streams) used by each query job, and assign Ids to
@@ -113,12 +110,9 @@ public class QueryResourceManager {
    *
    * @param processorToSeriesMap Key: processor of the virtual storage group. Value: selected series
    *     under the virtual storage group
-   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
-   *     the same device)
    */
   public void initQueryDataSource(
       Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap,
-      String singleDeviceId,
       QueryContext context,
       Filter timeFilter)
       throws QueryProcessException {
@@ -127,11 +121,21 @@ public class QueryResourceManager {
       StorageGroupProcessor processor = entry.getKey();
       List<PartialPath> pathList = entry.getValue();
 
+      // when all the selected series are under the same device, the QueryDataSource will be
+      // filtered according to timeIndex
+      Set<String> selectedDeviceIdSet =
+          pathList.stream().map(PartialPath::getDevice).collect(Collectors.toSet());
+
       long queryId = context.getQueryId();
       String storageGroupPath = processor.getStorageGroupPath();
 
       QueryDataSource cachedQueryDataSource =
-          processor.query(pathList, singleDeviceId, context, filePathsManager, timeFilter);
+          processor.query(
+              pathList,
+              selectedDeviceIdSet.size() == 1 ? selectedDeviceIdSet.iterator().next() : null,
+              context,
+              filePathsManager,
+              timeFilter);
       cachedQueryDataSourcesMap
           .computeIfAbsent(queryId, k -> new HashMap<>())
           .put(storageGroupPath, cachedQueryDataSource);
