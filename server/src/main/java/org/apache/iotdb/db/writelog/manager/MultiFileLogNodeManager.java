@@ -105,6 +105,12 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
           try {
             buffers = supplier.get();
           } catch (OutOfMemoryError e) {
+            // log error if this is the first time
+            if (sleepTimeInMs == 0) {
+              logger.error(
+                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
+                  e);
+            }
             // sleep awhile and then try again
             try {
               Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL);
@@ -112,17 +118,11 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
             } catch (InterruptedException interruptedException) {
               e.addSuppressed(interruptedException);
               nodeMap.remove(identifier);
-              logger.error(
-                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
-                  e);
               throw e;
             }
             // sleep too long, throw exception
             if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD) {
               nodeMap.remove(identifier);
-              logger.error(
-                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
-                  e);
               throw e;
             }
           }
