@@ -117,31 +117,19 @@ The version of gcc and boost installed by yum is too low, therefore you should c
 
 #### Build Thrift on Windows
 
+- building environment
+
 Make sure a complete Windows C++ building environment is prepared on your machine. 
 MSVC, MinGW... are supported.
 
 If you are using MS Visual Studio, remember to install Visual Studio C/C++ IDE and compiler(supporting CMake, Clang, MinGW).
 
-- Flex and Bison
-Windows Flex and Bison could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
+- CMake
 
-After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
+For CMake, please download from the official website: https://cmake.org/download/
 
-- Boost
-For Boost, please download from the official website: https://www.boost.org/users/download/
+CMake 需要根据不同编译平台使用不同的生成器。CMake 支持的生成器列表如下 (`cmake --help`的结果）：
 
-Then build Boost by executing bootstrap.bat and b2.exe.
-```powershell
-bootstrap.bat
-.\b2.exe
-```
-
-To help CMake find your Boost libraries on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
-to your mvn build command.
-
-
-
-#### Cmake generator on Windows
 
 There is a long list of supported Cmake generators on Windows environment. 
 
@@ -181,29 +169,55 @@ the list is available via command: `cmake --help`
 When building client-cpp project, use -Dcmake.generator="" option to specify a Cmake generator.
 E.g., `mvn package -Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
+- Flex and Bison
 
+Windows Flex and Bison could be downloaded from SourceForge: https://sourceforge.net/projects/winflexbison/
 
+After downloaded, please rename the executables to flex.exe and bison.exe and add them to "PATH" environment variables.
 
-#### Building C++ Client
+- Boost
 
+For Boost, please download from the official website: https://www.boost.org/users/download/
+
+Then build Boost by executing bootstrap.bat and b2.exe.
+```powershell
+bootstrap.bat
+.\b2.exe
+```
+
+To help CMake find your Boost libraries on windows, you should set `-Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}`
+to your mvn build command.
+
+- openssl
+
+For openssl , download Source code from the official website: https://www.openssl.org/source/
+
+download binary files from http://slproweb.com/products/Win32OpenSSL.html
+
+- Add Path
+
+Before compile，make sure cmake,flex,bison and openssl already add to "PATH" environment variables.
+
+#### Compile and Test
 
 To compile cpp client, add "-P compile-cpp" option to maven build command.
 
 The compiling requires the module "compile-tools" to be built first.
 
-
-
-#### Compile and Test
+- On Mac and Linux, the command to compile cpp-client is as follows：
 
 `mvn package -P compile-cpp  -pl example/client-cpp-example -am -DskipTest`
 
-To compile on Windows, please install Boost first and add following Maven settings:
+- On Windwos , Compile cpp-client
+
+please install Boost first and add following Maven settings before compile on Windows:
 ```shell
 -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder}` 
 ```
+Add generator for cmake: 
+`-Dcmake.generator="Visual Studio 15 2017 [arch]"`
 
-e.g.,
-
+The complete command:
 ```shell
 mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am 
 -D"boost.include.dir"="D:\boost_1_75_0" -D"boost.library.dir"="D:\boost_1_75_0\stage\lib" -DskipTests

@@ -199,7 +199,7 @@ Maven 命令中添加"-P client-cpp" 选项编译 client-cpp 模块。client-cpp
 mvn package -P compile-cpp -pl client-cpp,server,example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
 ```
 
-编译成功后，打包好的。zip 文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
+编译成功后，打包好的 zip 文件将位于："client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip"
 
 解压后的目录结构如下图所示 (Mac)：
 
