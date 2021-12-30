@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
@@ -56,11 +57,14 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class ClusterLastQueryExecutor extends LastQueryExecutor {
 
@@ -105,29 +109,39 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
       results.add(new Pair<>(true, new TimeValuePair(Long.MIN_VALUE, null)));
     }
 
-    List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
-    List<Future<List<Pair<Boolean, TimeValuePair>>>> groupFutures =
-        new ArrayList<>(globalGroups.size());
-    List<Integer> dataTypeOrdinals = new ArrayList<>(dataTypes.size());
-    for (TSDataType dataType : dataTypes) {
-      dataTypeOrdinals.add(dataType.ordinal());
+    Map<PartitionGroup, List<PartialPath>> groupToPaths = new HashMap<>();
+    Map<PartitionGroup, List<TSDataType>> groupToDataTypes = new HashMap<>();
+    try {
+      for (int i = 0; i < seriesPaths.size(); i++) {
+        PartialPath path = seriesPaths.get(i);
+        TSDataType dataType = dataTypes.get(i);
+        // TODO: doesn't work if time series is partitioned by time
+        PartitionGroup group = metaGroupMember.getPartitionTable().partitionByPathTime(path, 0);
+        groupToPaths.computeIfAbsent(group, g -> new ArrayList<>());
+        groupToPaths.get(group).add(path);
+        groupToDataTypes.computeIfAbsent(group, g -> new ArrayList<>());
+        groupToDataTypes.get(group).add(dataType);
+      }
+    } catch (MetadataException e) {
+      throw new QueryProcessException(e);
     }
-    for (PartitionGroup globalGroup : globalGroups) {
+
+    List<Future<List<Pair<Boolean, TimeValuePair>>>> futures = new ArrayList<>(groupToPaths.size());
+    for (PartitionGroup group : groupToPaths.keySet()) {
       GroupLastTask task =
           new GroupLastTask(
-              globalGroup,
-              seriesPaths,
-              dataTypes,
+              group,
+              groupToPaths.get(group),
+              groupToDataTypes.get(group),
               context,
               expression,
-              lastQueryPlan,
-              dataTypeOrdinals);
-      groupFutures.add(lastQueryPool.submit(task));
+              lastQueryPlan);
+      futures.add(lastQueryPool.submit(task));
     }
-    for (Future<List<Pair<Boolean, TimeValuePair>>> groupFuture : groupFutures) {
+    for (Future<List<Pair<Boolean, TimeValuePair>>> future : futures) {
       try {
         // merge results from each group
-        List<Pair<Boolean, TimeValuePair>> timeValuePairs = groupFuture.get();
+        List<Pair<Boolean, TimeValuePair>> timeValuePairs = future.get();
         for (int i = 0; i < timeValuePairs.size(); i++) {
           if (timeValuePairs.get(i) != null
               && timeValuePairs.get(i).right != null
@@ -137,7 +151,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.warn("Query last of {} interrupted", seriesPaths);
+        throw new QueryProcessException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
       } catch (ExecutionException e) {
         throw new QueryProcessException(e, TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
       }
@@ -150,7 +164,6 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private PartitionGroup group;
     private List<PartialPath> seriesPaths;
     private List<TSDataType> dataTypes;
-    private List<Integer> dataTypeOrdinals;
     private QueryContext queryContext;
     private RawDataQueryPlan queryPlan;
     private IExpression expression;
@@ -161,15 +174,13 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         List<TSDataType> dataTypes,
         QueryContext context,
         IExpression expression,
-        RawDataQueryPlan lastQueryPlan,
-        List<Integer> dataTypeOrdinals) {
+        RawDataQueryPlan lastQueryPlan) {
       this.group = group;
       this.seriesPaths = seriesPaths;
       this.dataTypes = dataTypes;
       this.queryContext = context;
       this.queryPlan = lastQueryPlan;
       this.expression = expression;
-      this.dataTypeOrdinals = dataTypeOrdinals;
     }
 
     @Override
@@ -179,7 +190,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
 
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLast(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
-        throws QueryProcessException, StorageEngineException, IOException {
+        throws QueryProcessException, StorageEngineException, IOException, TException,
+            InterruptedException {
       if (group.contains(metaGroupMember.getThisNode())) {
         return calculateSeriesLastLocally(group, seriesPaths, context);
       } else {
@@ -202,7 +214,8 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     }
 
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastRemotely(
-        PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context) {
+        PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
+        throws TException, IOException, InterruptedException {
       for (Node node : group) {
         try {
           ByteBuffer buffer;
@@ -227,11 +240,11 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           return results;
         } catch (IOException | TException e) {
           logger.warn("Query last of {} from {} errored", group, seriesPaths, e);
-          return Collections.emptyList();
+          throw e;
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Query last of {} from {} interrupted", group, seriesPaths, e);
-          return Collections.emptyList();
+          throw e;
         }
       }
       return Collections.emptyList();
@@ -252,7 +265,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
           SyncClientAdaptor.last(
               asyncDataClient,
               seriesPaths,
-              dataTypeOrdinals,
+              dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()),
               timeFilter,
               context,
               queryPlan.getDeviceToMeasurements(),
@@ -270,7 +283,7 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
         LastQueryRequest lastQueryRequest =
             new LastQueryRequest(
                 PartialPath.toStringList(seriesPaths),
-                dataTypeOrdinals,
+                dataTypes.stream().map(TSDataType::ordinal).collect(Collectors.toList()),
                 context.getQueryId(),
                 queryPlan.getDeviceToMeasurements(),
                 group.getHeader(),

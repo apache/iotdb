@@ -1021,14 +1021,21 @@ public class LocalQueryExecutor {
   @SuppressWarnings("java:S1135") // ignore todos
   public ByteBuffer last(LastQueryRequest request)
       throws CheckConsistencyException, QueryProcessException, IOException, StorageEngineException,
-          IllegalPathException {
+          MetadataException {
     dataGroupMember.syncLeaderWithConsistencyCheck(false);
 
     RemoteQueryContext queryContext =
         queryManager.getQueryContext(request.getRequestor(), request.getQueryId());
     List<PartialPath> partialPaths = new ArrayList<>();
-    for (String path : request.getPaths()) {
-      partialPaths.add(new MeasurementPath(path));
+    for (int i = 0; i < request.getPathsSize(); i++) {
+      MeasurementPath path =
+          getAssembledPathFromRequest(
+              request.getPaths().get(i), request.getDataTypeOrdinals().get(i).byteValue());
+      // The request is routed to this node since this node contains the data and
+      // metadata of the designated timeseries. Because of which, the following metadata access will
+      // not trigger an RPC.
+      path.setMeasurementSchema(IoTDB.metaManager.getSeriesSchema(path));
+      partialPaths.add(path);
     }
     List<TSDataType> dataTypes = new ArrayList<>(request.dataTypeOrdinals.size());
     for (Integer dataTypeOrdinal : request.dataTypeOrdinals) {
