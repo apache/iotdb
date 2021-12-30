@@ -128,11 +128,7 @@ If you are using MS Visual Studio, remember to install Visual Studio C/C++ IDE a
 
 For CMake, please download from the official website: https://cmake.org/download/
 
-CMake 需要根据不同编译平台使用不同的生成器。CMake 支持的生成器列表如下 (`cmake --help`的结果）：
-
-
 There is a long list of supported Cmake generators on Windows environment. 
-
 
 ```
   Visual Studio 16 2019        = Generates Visual Studio 2019 project files.
