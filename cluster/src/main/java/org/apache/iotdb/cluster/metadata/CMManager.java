@@ -920,7 +920,7 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
-    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
     Set<PartialPath> ret = getMatchedDevices(sgPathMap);
     logger.debug("The devices of path {} are {}", originPath, ret);
     return ret;
@@ -933,14 +933,14 @@ public class CMManager extends MManager {
    *     storage group added
    * @return a collection of all queried paths
    */
-  private List<MeasurementPath> getMatchedPaths(Map<String, String> sgPathMap, boolean withAlias)
-      throws MetadataException {
+  private List<MeasurementPath> getMatchedPaths(
+      Map<String, List<PartialPath>> sgPathMap, boolean withAlias) throws MetadataException {
     List<MeasurementPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> remoteGroupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+    for (Entry<String, List<PartialPath>> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
+      List<PartialPath> paths = sgPathEntry.getValue();
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().route(storageGroupName, 0);
@@ -954,7 +954,10 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        List<MeasurementPath> allTimeseriesName = getMatchedPathsLocally(pathUnderSG, withAlias);
+        List<MeasurementPath> allTimeseriesName = new ArrayList<>();
+        for (PartialPath path : paths) {
+          allTimeseriesName.addAll(getMatchedPathsLocally(path, withAlias));
+        }
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),
@@ -963,9 +966,11 @@ public class CMManager extends MManager {
         result.addAll(allTimeseriesName);
       } else {
         // batch the queries of the same group to reduce communication
-        remoteGroupPathMap
-            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
+        for (PartialPath path : paths) {
+          remoteGroupPathMap
+              .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
+              .add(path.getFullPath());
+        }
       }
     }
 
@@ -1078,14 +1083,14 @@ public class CMManager extends MManager {
    *     queried with storage group added
    * @return a collection of all queried devices
    */
-  private Set<PartialPath> getMatchedDevices(Map<String, String> sgPathMap)
+  private Set<PartialPath> getMatchedDevices(Map<String, List<PartialPath>> sgPathMap)
       throws MetadataException {
     Set<PartialPath> result = new HashSet<>();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, String> sgPathEntry : sgPathMap.entrySet()) {
+    for (Entry<String, List<PartialPath>> sgPathEntry : sgPathMap.entrySet()) {
       String storageGroupName = sgPathEntry.getKey();
-      PartialPath pathUnderSG = new PartialPath(sgPathEntry.getValue());
+      List<PartialPath> paths = sgPathEntry.getValue();
       // find the data group that should hold the timeseries schemas of the storage group
       PartitionGroup partitionGroup =
           metaGroupMember.getPartitionTable().route(storageGroupName, 0);
@@ -1099,7 +1104,10 @@ public class CMManager extends MManager {
         } catch (CheckConsistencyException e) {
           logger.warn("Failed to check consistency.", e);
         }
-        Set<PartialPath> allDevices = super.getMatchedDevices(pathUnderSG);
+        Set<PartialPath> allDevices = new HashSet<>();
+        for (PartialPath path : paths) {
+          allDevices.addAll(super.getMatchedDevices(path));
+        }
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
             metaGroupMember.getName(),
@@ -1108,9 +1116,11 @@ public class CMManager extends MManager {
         result.addAll(allDevices);
       } else {
         // batch the queries of the same group to reduce communication
-        groupPathMap
-            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(pathUnderSG.getFullPath());
+        for (PartialPath path : paths) {
+          groupPathMap
+              .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
+              .add(path.getFullPath());
+        }
       }
     }
 
@@ -1198,7 +1208,7 @@ public class CMManager extends MManager {
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    Map<String, String> sgPathMap = groupPathByStorageGroup(pathPattern);
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern);
     List<MeasurementPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
@@ -1229,7 +1239,7 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   public List<MeasurementPath> getMatchedPaths(PartialPath originPath) throws MetadataException {
-    Map<String, String> sgPathMap = groupPathByStorageGroup(originPath);
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
     List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;

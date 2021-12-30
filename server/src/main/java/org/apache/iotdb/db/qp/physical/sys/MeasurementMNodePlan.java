@@ -37,12 +37,12 @@ public class MeasurementMNodePlan extends MNodePlan {
   private long offset;
 
   public MeasurementMNodePlan() {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
   }
 
   public MeasurementMNodePlan(
       String name, String alias, long offset, int childSize, IMeasurementSchema schema) {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
     this.offset = offset;
