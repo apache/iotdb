@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Statistics for float type. */
 public class FloatStatistics extends Statistics<Float> {
@@ -252,6 +253,20 @@ public class FloatStatistics extends Statistics<Float> {
     this.firstValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readFloat(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    FloatStatistics that = (FloatStatistics) o;
+    return Float.compare(that.minValue, minValue) == 0 && Float.compare(that.maxValue, maxValue) == 0 && Float.compare(that.firstValue, firstValue) == 0 && Float.compare(that.lastValue, lastValue) == 0 && Double.compare(that.sumValue, sumValue) == 0;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

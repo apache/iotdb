@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -260,6 +261,20 @@ public class DoubleStatistics extends Statistics<Double> {
     this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    DoubleStatistics that = (DoubleStatistics) o;
+    return Double.compare(that.minValue, minValue) == 0 && Double.compare(that.maxValue, maxValue) == 0 && Double.compare(that.firstValue, firstValue) == 0 && Double.compare(that.lastValue, lastValue) == 0 && Double.compare(that.sumValue, sumValue) == 0;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

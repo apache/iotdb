@@ -36,7 +36,7 @@ public class TsFileSelfCheckToolTest {
           .concat(File.separator)
           .concat("0")
           .concat(File.separator)
-          .concat("1-0-0-0.tsfile");;
+          .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
   String device = "root.device_0";
 
@@ -106,8 +106,13 @@ public class TsFileSelfCheckToolTest {
   }
 
   @Test
-  public void tsFileTest() {
-    System.out.println(1);
+  public void tsFileSelfCheckToolTest() {
+    TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
+    try {
+      tool.check(path, false);
+    } catch (IOException e) {
+      Assert.fail(e.getMessage());
+    }
   }
 
   @After
