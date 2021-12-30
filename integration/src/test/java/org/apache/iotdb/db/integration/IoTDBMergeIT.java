@@ -246,87 +246,98 @@ public class IoTDBMergeIT {
   @Test
   public void testCrossPartition() throws SQLException {
     logger.info("testCrossPartition...");
-    try (Connection connection = EnvFactory.getEnv().getConnection();
-        Statement statement = connection.createStatement()) {
-      statement.execute("SET STORAGE GROUP TO root.mergeTest");
-      for (int i = 1; i <= 3; i++) {
-        try {
-          statement.execute(
-              "CREATE TIMESERIES root.mergeTest.s"
-                  + i
-                  + " WITH DATATYPE=INT64,"
-                  + "ENCODING=PLAIN");
-        } catch (SQLException e) {
-          // ignore
-        }
-      }
-
-      // file in partition
-      for (int k = 0; k < 7; k++) {
-        // partition num
-        for (int i = 0; i < 10; i++) {
-          // sequence files
-          for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
+    try {
+      /*
+       * disable unseq compaction because the new compaction
+       * utils for inner space is designed for seq space. Wait
+       * the new compaction utils for unseq space compaction then
+       * open it.
+       */
+      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+      try (Connection connection = EnvFactory.getEnv().getConnection();
+          Statement statement = connection.createStatement()) {
+        statement.execute("SET STORAGE GROUP TO root.mergeTest");
+        for (int i = 1; i <= 3; i++) {
+          try {
             statement.execute(
-                String.format(
-                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                    j, j + 1, j + 2, j + 3));
+                "CREATE TIMESERIES root.mergeTest.s"
+                    + i
+                    + " WITH DATATYPE=INT64,"
+                    + "ENCODING=PLAIN");
+          } catch (SQLException e) {
+            // ignore
           }
-          statement.execute("FLUSH");
-          // unsequence files
-          for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
-            statement.execute(
-                String.format(
-                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                    j, j + 10, j + 20, j + 30));
-          }
-          statement.execute("FLUSH");
         }
-      }
 
-      statement.execute("MERGE");
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
+        // file in partition
+        for (int k = 0; k < 7; k++) {
+          // partition num
+          for (int i = 0; i < 10; i++) {
+            // sequence files
+            for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
+              statement.execute(
+                  String.format(
+                      "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                      j, j + 1, j + 2, j + 3));
+            }
+            statement.execute("FLUSH");
+            // unsequence files
+            for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
+              statement.execute(
+                  String.format(
+                      "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                      j, j + 10, j + 20, j + 30));
+            }
+            statement.execute("FLUSH");
+          }
+        }
 
-      }
-
-      long totalTime = 0;
-      while (CompactionTaskManager.currentTaskNum.get() > 0) {
-        // wait
+        statement.execute("MERGE");
         try {
           Thread.sleep(1000);
-          totalTime += 1000;
-          if (totalTime > 240_000) {
-            fail();
-            break;
-          }
         } catch (InterruptedException e) {
 
         }
-      }
-      int cnt;
-      try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
-        cnt = 0;
-        while (resultSet.next()) {
-          long time = resultSet.getLong("Time");
-          long s1 = resultSet.getLong("root.mergeTest.s1");
-          long s2 = resultSet.getLong("root.mergeTest.s2");
-          long s3 = resultSet.getLong("root.mergeTest.s3");
-          assertEquals(cnt, time);
-          if (time % 1000 < 700) {
-            assertEquals(time + 10, s1);
-            assertEquals(time + 20, s2);
-            assertEquals(time + 30, s3);
-          } else {
-            assertEquals(time + 1, s1);
-            assertEquals(time + 2, s2);
-            assertEquals(time + 3, s3);
+
+        long totalTime = 0;
+        while (CompactionTaskManager.currentTaskNum.get() > 0) {
+          // wait
+          try {
+            Thread.sleep(1000);
+            totalTime += 1000;
+            if (totalTime > 240_000) {
+              fail();
+              break;
+            }
+          } catch (InterruptedException e) {
+
           }
-          cnt++;
         }
+        int cnt;
+        try (ResultSet resultSet = statement.executeQuery("SELECT * FROM root.mergeTest")) {
+          cnt = 0;
+          while (resultSet.next()) {
+            long time = resultSet.getLong("Time");
+            long s1 = resultSet.getLong("root.mergeTest.s1");
+            long s2 = resultSet.getLong("root.mergeTest.s2");
+            long s3 = resultSet.getLong("root.mergeTest.s3");
+            assertEquals(cnt, time);
+            if (time % 1000 < 700) {
+              assertEquals(time + 10, s1);
+              assertEquals(time + 20, s2);
+              assertEquals(time + 30, s3);
+            } else {
+              assertEquals(time + 1, s1);
+              assertEquals(time + 2, s2);
+              assertEquals(time + 3, s3);
+            }
+            cnt++;
+          }
+        }
+        assertEquals(10000, cnt);
       }
-      assertEquals(10000, cnt);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     }
   }
 }
