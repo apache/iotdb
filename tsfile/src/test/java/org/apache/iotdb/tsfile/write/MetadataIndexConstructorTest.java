@@ -59,6 +59,7 @@ import java.util.Map;
 
 import static org.apache.iotdb.tsfile.utils.FileGenerator.generateIndexString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -231,6 +232,7 @@ public class MetadataIndexConstructorTest {
           assertEquals(correctDevice, iterator.next().left);
         }
       }
+      assertFalse(iterator.hasNext());
 
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata();
