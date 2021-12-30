@@ -55,6 +55,16 @@
             <version>1.8.0</version>
         </dependency>
         <dependency>
+            <groupId>com.github.wendykierp</groupId>
+            <artifactId>JTransforms</artifactId>
+            <version>3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.collections</groupId>
+            <artifactId>eclipse-collections</artifactId>
+            <version>10.4.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
         </dependency>
@@ -62,8 +72,8 @@
     <build>
         <plugins>
             <!--
-        Generate an OSGI compatible MANIFEST file.
-      -->
+              Generate an OSGI compatible MANIFEST file.
+            -->
             <plugin>
                 <groupId>org.apache.felix</groupId>
                 <artifactId>maven-bundle-plugin</artifactId>
