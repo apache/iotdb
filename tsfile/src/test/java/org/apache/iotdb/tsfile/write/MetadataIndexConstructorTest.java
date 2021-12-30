@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
@@ -56,6 +57,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import static org.apache.iotdb.tsfile.utils.FileGenerator.generateIndexString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -223,6 +225,13 @@ public class MetadataIndexConstructorTest {
     }
     // 4.2 make sure timeseries in order
     try (TsFileSequenceReader reader = new TsFileSequenceReader(FILE_PATH)) {
+      Iterator<Pair<String, Boolean>> iterator = reader.getAllDevicesIteratorWithIsAligned();
+      while (iterator.hasNext()) {
+        for (String correctDevice : correctDevices) {
+          assertEquals(correctDevice, iterator.next().left);
+        }
+      }
+
       Map<String, List<TimeseriesMetadata>> allTimeseriesMetadata =
           reader.getAllTimeseriesMetadata();
       for (int j = 0; j < actualDevices.size(); j++) {
@@ -480,21 +489,5 @@ public class MetadataIndexConstructorTest {
       logger.error("meet error in TsFileWrite with tablet", e);
       fail(e.getMessage());
     }
-  }
-
-  /**
-   * generate curIndex string, use "0" on left to make sure align
-   *
-   * @param curIndex current index
-   * @param maxIndex max index
-   * @return curIndex's string
-   */
-  private String generateIndexString(int curIndex, int maxIndex) {
-    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
-    String target = String.valueOf(maxIndex);
-    while (res.length() < target.length()) {
-      res.insert(0, "0");
-    }
-    return res.toString();
   }
 }
