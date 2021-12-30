@@ -30,7 +30,7 @@ public class TracingPlan extends PhysicalPlan {
   private boolean isTracingOn;
 
   public TracingPlan(boolean isTracingOn) {
-    super(false, OperatorType.TRACING);
+    super(OperatorType.TRACING);
     this.isTracingOn = isTracingOn;
   }
 
