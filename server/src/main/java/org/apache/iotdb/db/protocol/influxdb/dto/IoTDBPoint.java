@@ -96,15 +96,15 @@ public class IoTDBPoint {
           time = (Long) reflectField.get(point);
           time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
-        // set current time
-        if (time == null) {
-          time = System.currentTimeMillis();
-        }
+
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());
       }
     }
-
+    // set current time
+    if (time == null) {
+      time = System.currentTimeMillis();
+    }
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
     String path = metaManager.generatePath(database, measurement, tags);
