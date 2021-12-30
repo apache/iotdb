@@ -23,9 +23,15 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.rescon.AbstractPoolManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class QueryTaskPoolManager extends AbstractPoolManager {
 
@@ -37,6 +43,28 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
             Runtime.getRuntime().availableProcessors(),
             IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.QUEUE.toString(),
+              pool,
+              p -> ((ThreadPoolExecutor) p).getActiveCount(),
+              Tag.NAME.toString(),
+              ThreadName.QUERY_SERVICE.getName(),
+              Tag.STATUS.toString(),
+              "running");
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.QUEUE.toString(),
+              pool,
+              p -> ((ThreadPoolExecutor) p).getQueue().size(),
+              Tag.NAME.toString(),
+              ThreadName.QUERY_SERVICE.getName(),
+              Tag.STATUS.toString(),
+              "waiting");
+    }
   }
 
   public static QueryTaskPoolManager getInstance() {

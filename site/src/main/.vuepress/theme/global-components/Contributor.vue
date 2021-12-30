@@ -331,10 +331,10 @@
           date: '2021/02/20'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'https://avatars.githubusercontent.com/u/30497621',
           name: 'Steve Yurong Su',
           role: 'Committer',
-          id: 'SteveYurongSu',
+          id: 'rong',
           date: '2021/05/12'
         },
         {

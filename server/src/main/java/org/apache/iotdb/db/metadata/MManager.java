@@ -81,15 +81,20 @@ import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
@@ -279,6 +284,61 @@ public class MManager {
           "Cannot recover all MTree from file, we try to recover as possible as we can", e);
     }
     initialized = true;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      startStatisticCounts();
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.MEM.toString(),
+              mtree,
+              RamUsageEstimator::sizeOf,
+              Tag.NAME.toString(),
+              "mtree");
+    }
+  }
+
+  private void startStatisticCounts() {
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            totalSeriesNumber,
+            AtomicLong::get,
+            Tag.NAME.toString(),
+            "timeSeries");
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            mtree,
+            tree -> {
+              try {
+                return tree.getDevicesNum(new PartialPath("root.**"));
+              } catch (MetadataException e) {
+                logger.error("get deviceNum error", e);
+              }
+              return 0;
+            },
+            Tag.NAME.toString(),
+            "device");
+
+    MetricsService.getInstance()
+        .getMetricManager()
+        .getOrCreateAutoGauge(
+            Metric.QUANTITY.toString(),
+            mtree,
+            tree -> {
+              try {
+                return tree.getStorageGroupNum(new PartialPath("root.**"));
+              } catch (MetadataException e) {
+                logger.error("get storageGroupNum error", e);
+              }
+              return 0;
+            },
+            Tag.NAME.toString(),
+            "storageGroup");
   }
 
   /** @return line number of the logFile */
@@ -1061,6 +1121,18 @@ public class MManager {
   }
 
   /**
+   * Get all device paths matching the path pattern by prefix.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @param isPrefixMatch whether to use prefix matching
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   */
+  public Set<PartialPath> getMatchedDeviceByPrefix(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevices(pathPattern, isPrefixMatch);
+  }
+
+  /**
    * Get all device paths and according storage group paths as ShowDevicesResult.
    *
    * @param plan ShowDevicesPlan which contains the path pattern and restriction params.
@@ -1136,6 +1208,9 @@ public class MManager {
                   measurementSchema.getType(),
                   measurementSchema.getEncodingType(),
                   measurementSchema.getCompressor(),
+                  leaf.getLastCacheContainer().getCachedLast() != null
+                      ? leaf.getLastCacheContainer().getCachedLast().getTimestamp()
+                      : 0,
                   tagAndAttributePair.left,
                   tagAndAttributePair.right));
           if (limit != 0) {
@@ -1180,6 +1255,7 @@ public class MManager {
                 TSDataType.valueOf(ansString.right[2]),
                 TSEncoding.valueOf(ansString.right[3]),
                 CompressionType.valueOf(ansString.right[4]),
+                ansString.right[6] != null ? Long.parseLong(ansString.right[6]) : 0,
                 tagAndAttributePair.left,
                 tagAndAttributePair.right));
       } catch (IOException e) {
@@ -1276,7 +1352,7 @@ public class MManager {
     return mtree.getAllStorageGroupNodes();
   }
 
-  IMNode getDeviceNode(PartialPath path) throws MetadataException {
+  public IMNode getDeviceNode(PartialPath path) throws MetadataException {
     IMNode node;
     try {
       node = mNodeCache.get(path);
