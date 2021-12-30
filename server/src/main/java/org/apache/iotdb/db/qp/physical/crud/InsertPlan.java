@@ -46,7 +46,7 @@ public abstract class InsertPlan extends PhysicalPlan {
   List<Integer> failedIndices;
 
   public InsertPlan(Operator.OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
     super.canBeSplit = false;
   }
 

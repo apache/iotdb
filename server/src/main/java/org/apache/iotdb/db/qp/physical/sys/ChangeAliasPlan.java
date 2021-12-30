@@ -36,11 +36,11 @@ public class ChangeAliasPlan extends PhysicalPlan {
   private String alias;
 
   public ChangeAliasPlan() {
-    super(false, Operator.OperatorType.CHANGE_ALIAS);
+    super(Operator.OperatorType.CHANGE_ALIAS);
   }
 
   public ChangeAliasPlan(PartialPath path, String alias) {
-    super(false, Operator.OperatorType.CHANGE_ALIAS);
+    super(Operator.OperatorType.CHANGE_ALIAS);
     this.path = path;
     this.alias = alias;
   }
