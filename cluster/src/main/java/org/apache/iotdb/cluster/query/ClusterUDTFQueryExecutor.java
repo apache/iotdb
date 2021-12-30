@@ -67,7 +67,7 @@ public class ClusterUDTFQueryExecutor extends ClusterDataQueryExecutor {
             new ArrayList<>(udtfPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, udtfPlan, cached);
+        initSeriesReaderByTimestamp(context, udtfPlan, cached, timestampGenerator.getTimeFilter());
     return new UDTFAlignByTimeDataSet(
         context,
         udtfPlan,
@@ -98,7 +98,7 @@ public class ClusterUDTFQueryExecutor extends ClusterDataQueryExecutor {
             new ArrayList<>(udtfPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, udtfPlan, cached);
+        initSeriesReaderByTimestamp(context, udtfPlan, cached, timestampGenerator.getTimeFilter());
     return new UDTFNonAlignDataSet(
         context,
         udtfPlan,

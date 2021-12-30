@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -56,6 +57,8 @@ public class ServerTimeGenerator extends TimeGenerator {
   protected QueryContext context;
   protected RawDataQueryPlan queryPlan;
 
+  private Filter timeFilter;
+
   public ServerTimeGenerator(QueryContext context) {
     this.context = context;
   }
@@ -75,7 +78,7 @@ public class ServerTimeGenerator extends TimeGenerator {
   public void serverConstructNode(IExpression expression)
       throws IOException, StorageEngineException, QueryProcessException {
     List<PartialPath> pathList = new ArrayList<>();
-    getPartialPathFromExpression(expression, pathList);
+    timeFilter = getPathListAndConstructTimeFilterFromExpression(expression, pathList);
 
     Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>>
         lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(pathList);
@@ -86,7 +89,7 @@ public class ServerTimeGenerator extends TimeGenerator {
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
 
       operatorNode = construct(expression);
     } finally {
@@ -94,12 +97,23 @@ public class ServerTimeGenerator extends TimeGenerator {
     }
   }
 
-  private void getPartialPathFromExpression(IExpression expression, List<PartialPath> pathList) {
+  private Filter getPathListAndConstructTimeFilterFromExpression(
+      IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
       pathList.add((PartialPath) ((SingleSeriesExpression) expression).getSeriesPath());
+      return ((SingleSeriesExpression) expression).getFilter();
     } else {
-      getPartialPathFromExpression(((IBinaryExpression) expression).getLeft(), pathList);
-      getPartialPathFromExpression(((IBinaryExpression) expression).getRight(), pathList);
+      Filter leftFilter =
+          getPathListAndConstructTimeFilterFromExpression(
+              ((IBinaryExpression) expression).getLeft(), pathList);
+      Filter rightFilter =
+          getPathListAndConstructTimeFilterFromExpression(
+              ((IBinaryExpression) expression).getRight(), pathList);
+      if (expression instanceof AndFilter) {
+        return FilterFactory.and(leftFilter, rightFilter);
+      } else {
+        return FilterFactory.or(leftFilter, rightFilter);
+      }
     }
   }
 
@@ -158,5 +172,9 @@ public class ServerTimeGenerator extends TimeGenerator {
   @Override
   protected boolean isAscending() {
     return queryPlan.isAscending();
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 }

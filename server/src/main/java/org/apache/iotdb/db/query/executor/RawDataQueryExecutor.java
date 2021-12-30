@@ -159,7 +159,7 @@ public class RawDataQueryExecutor {
             new ArrayList<>(queryPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, queryPlan, cached);
+        initSeriesReaderByTimestamp(context, queryPlan, cached, timestampGenerator.getTimeFilter());
     return new RawQueryDataSetWithValueFilter(
         queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(),
@@ -170,7 +170,7 @@ public class RawDataQueryExecutor {
   }
 
   protected List<IReaderByTimestamp> initSeriesReaderByTimestamp(
-      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
+      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached, Filter timeFilter)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
 
@@ -184,7 +184,7 @@ public class RawDataQueryExecutor {
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {
           readersOfSelectedSeries.add(null);
