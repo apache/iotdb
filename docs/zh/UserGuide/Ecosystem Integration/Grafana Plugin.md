@@ -191,7 +191,7 @@ Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
-在 SELECT 输入框、FROM 输入框、WHERE 输入框输入内容，其中 WHERE 输入框为非必填。
+在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE和CONTROL 输入框为非必填。
 
 如果一个查询涉及多个表达式，我们可以点击 SELECT 输入框右侧的 `+` 来添加 SELECT 子句中的表达式，也可以点击 FROM 输入框右侧的 `+` 来添加路径前缀，如下图所示：
 
