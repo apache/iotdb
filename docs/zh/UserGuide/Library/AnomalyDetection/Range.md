@@ -1,0 +1,84 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+# Range
+
+## 函数简介
+
+本函数用于查找时间序列的范围异常。将根据提供的上界与下界，判断输入数据是否越界，即异常，并输出所有异常点为新的时间序列。
+
+**函数名：** RANGE
+
+**输入序列：** 仅支持单个输入序列，类型为 INT32 / INT64 / FLOAT / DOUBLE
+
+**参数：** 
+
++ `lower_bound`:范围异常检测的下界。
++ `upper_bound`:范围异常检测的上界。
+
+**输出序列：** 输出单个序列，类型与输入序列相同。
+
+**提示：** 应满足`upper_bound`大于`lower_bound`，否则将不做输出。
+
+
+## 使用示例
+
+### 指定上界与下界
+
+输入序列：
+
+```
++-----------------------------+---------------+
+|                         Time|root.test.d1.s1|
++-----------------------------+---------------+
+|2020-01-01T00:00:02.000+08:00|          100.0|
+|2020-01-01T00:00:03.000+08:00|          101.0|
+|2020-01-01T00:00:04.000+08:00|          102.0|
+|2020-01-01T00:00:06.000+08:00|          104.0|
+|2020-01-01T00:00:08.000+08:00|          126.0|
+|2020-01-01T00:00:10.000+08:00|          108.0|
+|2020-01-01T00:00:14.000+08:00|          112.0|
+|2020-01-01T00:00:15.000+08:00|          113.0|
+|2020-01-01T00:00:16.000+08:00|          114.0|
+|2020-01-01T00:00:18.000+08:00|          116.0|
+|2020-01-01T00:00:20.000+08:00|          118.0|
+|2020-01-01T00:00:22.000+08:00|          120.0|
+|2020-01-01T00:00:26.000+08:00|          124.0|
+|2020-01-01T00:00:28.000+08:00|          126.0|
+|2020-01-01T00:00:30.000+08:00|            NaN|
++-----------------------------+---------------+
+```
+
+用于查询的SQL语句：
+
+```sql
+select range(s1,"lower_bound"="101.0","upper_bound"="125.0") from root.test.d1 where time <= 2020-01-01 00:00:30
+```
+
+输出序列：
+
+```
++-----------------------------+------------------------------------------------------------------+
+|Time                         |range(root.test.d1.s1,"lower_bound"="101.0","upper_bound"="125.0")|
++-----------------------------+------------------------------------------------------------------+
+|2020-01-01T00:00:02.000+08:00|                                                             100.0|
+|2020-01-01T00:00:28.000+08:00|                                                             126.0|
++-----------------------------+------------------------------------------------------------------+
+```

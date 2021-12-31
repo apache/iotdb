@@ -1,0 +1,107 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+# Integral
+
+## 函数简介
+
+本函数用于计算时间序列的数值积分，即以时间为横坐标、数值为纵坐标绘制的折线图中折线以下的面积。
+
+**函数名：** INTEGRAL
+
+**输入序列：** 仅支持单个输入序列，类型为 INT32 / INT64 / FLOAT / DOUBLE。
+
+**参数：** 
+
++ `unit`：积分求解所用的时间轴单位，取值为"1S", "1s", "1m", "1H", "1d"（区分大小写），分别表示以毫秒、秒、分钟、小时、天为单位计算积分。
+  缺省情况下取"1s"，以秒为单位。
+
+**输出序列：** 输出单个序列，类型为DOUBLE，序列仅包含一个时间戳为0、值为积分结果的数据点。
+
+**提示：**
+
++ 积分值等于折线图中每相邻两个数据点和时间轴形成的直角梯形的面积之和，不同时间单位下相当于横轴进行不同倍数放缩，得到的积分值可直接按放缩倍数转换。
+
++ 数据中`NaN`将会被忽略。折线将以临近两个有值数据点为准。
+
+## 使用示例
+
+### 参数缺省
+
+缺省情况下积分以1s为时间单位。
+
+输入序列：
+```
++-----------------------------+---------------+
+|                         Time|root.test.d1.s1|
++-----------------------------+---------------+
+|2020-01-01T00:00:01.000+08:00|              1|
+|2020-01-01T00:00:02.000+08:00|              2|
+|2020-01-01T00:00:03.000+08:00|              5|
+|2020-01-01T00:00:04.000+08:00|              6|
+|2020-01-01T00:00:05.000+08:00|              7|
+|2020-01-01T00:00:08.000+08:00|              8|
+|2020-01-01T00:00:09.000+08:00|            NaN|
+|2020-01-01T00:00:10.000+08:00|             10|
++-----------------------------+---------------+
+```
+
+
+用于查询的SQL语句：
+
+```sql
+select integral(s1) from root.test.d1 where time <= 2020-01-01 00:00:10
+```
+
+输出序列：
+```
++-----------------------------+-------------------------+
+|                         Time|integral(root.test.d1.s1)|
++-----------------------------+-------------------------+
+|1970-01-01T08:00:00.000+08:00|                     57.5|
++-----------------------------+-------------------------+
+```
+
+其计算公式为：
+$$\frac{1}{2}[(1+2)\times 1 + (2+5) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 57.5$$
+
+
+### 指定时间单位
+
+指定以分钟为时间单位。
+
+
+输入序列同上，用于查询的SQL语句如下：
+
+```sql
+select integral(s1, "unit"="1m") from root.test.d1 where time <= 2020-01-01 00:00:10
+```
+
+输出序列：
+```
++-----------------------------+-------------------------+
+|                         Time|integral(root.test.d1.s1)|
++-----------------------------+-------------------------+
+|1970-01-01T08:00:00.000+08:00|                    0.958|
++-----------------------------+-------------------------+
+```
+
+其计算公式为：
+$$\frac{1}{2\times 60}[(1+2) \times 1 + (2+3) \times 1 + (5+6) \times 1 + (6+7) \times 1 + (7+8) \times 3 + (8+10) \times 2] = 0.958$$

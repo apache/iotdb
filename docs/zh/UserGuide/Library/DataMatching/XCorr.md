@@ -1,0 +1,84 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+# XCorr
+
+## 函数简介
+
+本函数用于计算两条时间序列的互相关函数值，
+对离散序列而言，互相关函数可以表示为
+$$CR(n) = \frac{1}{N} \sum_{m=1}^N S_1[m]S_2[m+n]$$
+常用于表征两条序列在不同对齐条件下的相似度。
+
+**函数名：** XCORR
+
+**输入序列：** 仅支持两个输入序列，类型均为 INT32 / INT64 / FLOAT / DOUBLE。
+
+**输出序列：** 输出单个序列，类型为DOUBLE。序列中共包含$2N-1$个数据点，
+其中正中心的值为两条序列按照预先对齐的结果计算的互相关系数（即等于以上公式的$CR(0)$），
+前半部分的值表示将后一条输入序列向前平移时计算的互相关系数，
+直至两条序列没有重合的数据点（不包含完全分离时的结果$CR(-N)=0.0$），
+后半部分类似。
+用公式可表示为（所有序列的索引从1开始计数）：
+$$OS[i] = CR(-N+i) = \frac{1}{N} \sum_{m=1}^{i} S_1[m]S_2[N-i+m],\ if\ i <= N$$
+$$OS[i] = CR(i-N) = \frac{1}{N} \sum_{m=1}^{2N-i} S_1[i-N+m]S_2[m],\ if\ i > N$$
+
+**提示：**
+
++ 两条序列中的`null`和`NaN`值会被忽略，在计算中表现为0。
+
+## 使用示例
+
+输入序列：
+```
++-----------------------------+---------------+---------------+
+|                         Time|root.test.d1.s1|root.test.d1.s2|
++-----------------------------+---------------+---------------+
+|2020-01-01T00:00:01.000+08:00|           null|              6|
+|2020-01-01T00:00:02.000+08:00|              2|              7|
+|2020-01-01T00:00:03.000+08:00|              3|            NaN|
+|2020-01-01T00:00:04.000+08:00|              4|              9|
+|2020-01-01T00:00:05.000+08:00|              5|             10|
++-----------------------------+---------------+---------------+
+```
+
+
+用于查询的SQL语句：
+
+```sql
+select xcorr(s1, s2) from root.test.d1 where time <= 2020-01-01 00:00:05
+```
+
+输出序列：
+```
++-----------------------------+---------------------------------------+
+|                         Time|xcorr(root.test.d1.s1, root.test.d1.s2)|
++-----------------------------+---------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                    0.0|
+|1970-01-01T08:00:00.002+08:00|                                    4.0|
+|1970-01-01T08:00:00.003+08:00|                                    9.6|
+|1970-01-01T08:00:00.004+08:00|                                   13.4|
+|1970-01-01T08:00:00.005+08:00|                                   20.0|
+|1970-01-01T08:00:00.006+08:00|                                   15.6|
+|1970-01-01T08:00:00.007+08:00|                                    9.2|
+|1970-01-01T08:00:00.008+08:00|                                   11.8|
+|1970-01-01T08:00:00.009+08:00|                                    6.0|
++-----------------------------+---------------------------------------+
+```

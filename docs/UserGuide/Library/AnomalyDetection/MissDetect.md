@@ -1,0 +1,106 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+    
+        http://www.apache.org/licenses/LICENSE-2.0
+    
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+# MissDetect
+## Usage
+
+This function is used to detect missing anomalies. 
+In some datasets, missing values are filled by linear interpolation.
+Thus, there are several long perfect linear segments. 
+By discovering these perfect linear segments, 
+missing anomalies are detected.
+
+**Name:** MISSDETECT
+
+**Input Series:** Only support a single input series. The data type is INT32 / INT64 / FLOAT / DOUBLE.
+
+**Parameter:**
+
+`error`: The minimum length of the detected missing anomalies, which is an integer greater than or equal to 10. By default, it is 10.
+
+**Output Series:** Output a single series. The type is BOOLEAN. Each data point which is miss anomaly will be labeled as true.
+
+## Examples
+
+Input series:
+
+```
++-----------------------------+---------------+
+|                         Time|root.test.d2.s2|
++-----------------------------+---------------+
+|2021-07-01T12:00:00.000+08:00|            0.0|
+|2021-07-01T12:00:01.000+08:00|            1.0|
+|2021-07-01T12:00:02.000+08:00|            0.0|
+|2021-07-01T12:00:03.000+08:00|            1.0|
+|2021-07-01T12:00:04.000+08:00|            0.0|
+|2021-07-01T12:00:05.000+08:00|            0.0|
+|2021-07-01T12:00:06.000+08:00|            0.0|
+|2021-07-01T12:00:07.000+08:00|            0.0|
+|2021-07-01T12:00:08.000+08:00|            0.0|
+|2021-07-01T12:00:09.000+08:00|            0.0|
+|2021-07-01T12:00:10.000+08:00|            0.0|
+|2021-07-01T12:00:11.000+08:00|            0.0|
+|2021-07-01T12:00:12.000+08:00|            0.0|
+|2021-07-01T12:00:13.000+08:00|            0.0|
+|2021-07-01T12:00:14.000+08:00|            0.0|
+|2021-07-01T12:00:15.000+08:00|            0.0|
+|2021-07-01T12:00:16.000+08:00|            1.0|
+|2021-07-01T12:00:17.000+08:00|            0.0|
+|2021-07-01T12:00:18.000+08:00|            1.0|
+|2021-07-01T12:00:19.000+08:00|            0.0|
+|2021-07-01T12:00:20.000+08:00|            1.0|
++-----------------------------+---------------+
+```
+
+SQL for query:
+
+```sql
+select missdetect(s2,'minlen'='10') from root.test.d2
+```
+
+Output series:
+
+```
++-----------------------------+------------------------------------------+
+|                         Time|missdetect(root.test.d2.s2, "minlen"="10")|
++-----------------------------+------------------------------------------+
+|2021-07-01T12:00:00.000+08:00|                                     false|
+|2021-07-01T12:00:01.000+08:00|                                     false|
+|2021-07-01T12:00:02.000+08:00|                                     false|
+|2021-07-01T12:00:03.000+08:00|                                     false|
+|2021-07-01T12:00:04.000+08:00|                                      true|
+|2021-07-01T12:00:05.000+08:00|                                      true|
+|2021-07-01T12:00:06.000+08:00|                                      true|
+|2021-07-01T12:00:07.000+08:00|                                      true|
+|2021-07-01T12:00:08.000+08:00|                                      true|
+|2021-07-01T12:00:09.000+08:00|                                      true|
+|2021-07-01T12:00:10.000+08:00|                                      true|
+|2021-07-01T12:00:11.000+08:00|                                      true|
+|2021-07-01T12:00:12.000+08:00|                                      true|
+|2021-07-01T12:00:13.000+08:00|                                      true|
+|2021-07-01T12:00:14.000+08:00|                                      true|
+|2021-07-01T12:00:15.000+08:00|                                      true|
+|2021-07-01T12:00:16.000+08:00|                                     false|
+|2021-07-01T12:00:17.000+08:00|                                     false|
+|2021-07-01T12:00:18.000+08:00|                                     false|
+|2021-07-01T12:00:19.000+08:00|                                     false|
+|2021-07-01T12:00:20.000+08:00|                                     false|
++-----------------------------+------------------------------------------+
+```
