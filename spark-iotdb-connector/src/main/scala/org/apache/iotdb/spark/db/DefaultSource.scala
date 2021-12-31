@@ -50,7 +50,7 @@ private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegis
     }
     val iotdbOptions = new IoTDBOptions(parameters)
 
-    if (!data.columns.contains("device_name")) {
+    if (!data.columns.contains("Device")) {
       data.columns.foreach(column => if (!column.startsWith("root.") && column != "Time") sys.error("Invalidate column: " + column))
       val narrowDf = Transformer.toNarrowForm(sqlContext.sparkSession, data)
       DataFrameTools.insertDataFrame(iotdbOptions, narrowDf)
