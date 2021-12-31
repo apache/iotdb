@@ -58,7 +58,6 @@ public class SingleSeriesCompactor {
   private ChunkWriterImpl chunkWriter;
   private Chunk cachedChunk;
   private ChunkMetadata cachedChunkMetadata;
-  private boolean dataRemainsInChunkWriter = false;
   private RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
   // record the min time and max time to update the target resource
   private long minStartTimestamp = Long.MAX_VALUE;
@@ -67,8 +66,12 @@ public class SingleSeriesCompactor {
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private final long targetChunkPointNum =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
   private final long chunkSizeLowerBound =
       IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+  private final long chunkPointNumLowerBound =
+      IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactor(
       String storageGroup,
@@ -105,134 +108,19 @@ public class SingleSeriesCompactor {
 
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
-          LOGGER.debug(
-              "{} compacting {}.{}, chunk is modified, deserialize it",
-              storageGroup,
-              device,
-              timeSeries);
-          if (cachedChunk != null) {
-            // if there is a cached chunk, deserialize it and write it to ChunkWriter
-            LOGGER.debug(
-                "{} compacting {}.{}, deserialize the cached chunk",
-                storageGroup,
-                device,
-                timeSeries);
-            writeChunkIntoChunkWriter(cachedChunk);
-            cachedChunk = null;
-            cachedChunkMetadata = null;
-          }
-          // write this chunk to ChunkWriter
-          writeChunkIntoChunkWriter(currentChunk);
-          flushChunkWriterIfLargeEnough();
+          processModifiedChunk(currentChunk);
           continue;
         }
 
         long chunkSize = getChunkSize(currentChunk);
+        long chunkPointNum = currentChunk.getChunkStatistic().getCount();
         // we process this chunk in three different way according to the size of it
-        if (currentChunk.getChunkStatistic().getCount() >= targetChunkSize) {
-          if (dataRemainsInChunkWriter) {
-            // if there are points remaining in ChunkWriter
-            // deserialize current chunk and write to ChunkWriter, then flush the ChunkWriter
-            LOGGER.debug(
-                "{} compacting {}.{}, the size of the chunk is {}, large enough, but some"
-                    + " data remains in chunkWriter, deserialize current chunk",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            writeChunkIntoChunkWriter(currentChunk);
-            flushChunkWriterIfLargeEnough();
-          } else if (cachedChunk != null) {
-            // if there is a cached chunk, merge it with current chunk, then flush it
-            LOGGER.debug(
-                "{} compacting {}.{}, the size of the chunk is {}, large enough,"
-                    + " but there is a cached chunk, merge them together",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
-            cachedChunk.mergeChunk(cachedChunk);
-            flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
-            cachedChunk = null;
-            cachedChunkMetadata = null;
-          } else {
-            // there is no points remaining in ChunkWriter and no cached chunk
-            // flush it to file directly
-            LOGGER.debug(
-                "{} compacting {}.{}, the size of the chunk is {}, large enough, flush it directly",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            flushChunkToFileWriter(currentChunk, chunkMetadata);
-          }
-        } else if (currentChunk.getChunkStatistic().getCount() < chunkSizeLowerBound) {
-          // this chunk is too small
-          // to ensure the flushed chunk is large enough
-          // it should be deserialized and written to ChunkWriter
-          LOGGER.debug(
-              "{} compacting {}.{}, the size of the chunk is {}, too small, deserialize it",
-              storageGroup,
-              device,
-              timeSeries,
-              chunkSize);
-          if (cachedChunk != null) {
-            // if there is a cached chunk, write the cached chunk to ChunkWriter
-            LOGGER.debug(
-                "{} compacting {}.{}, there is a cached chunk, deserialize it",
-                storageGroup,
-                device,
-                timeSeries);
-            writeChunkIntoChunkWriter(cachedChunk);
-            cachedChunk = null;
-            cachedChunkMetadata = null;
-          }
-          writeChunkIntoChunkWriter(currentChunk);
-          flushChunkWriterIfLargeEnough();
+        if (chunkSize >= targetChunkSize || chunkPointNum >= targetChunkPointNum) {
+          processLargeChunk(currentChunk, chunkMetadata);
+        } else if (chunkSize < chunkSizeLowerBound && chunkPointNum < chunkPointNumLowerBound) {
+          processSmallChunk(currentChunk);
         } else {
-          // the chunk is not too large either too small
-          if (dataRemainsInChunkWriter) {
-            // if there are points remaining in ChunkWriter
-            // deserialize current chunk and write to ChunkWriter
-            LOGGER.debug(
-                "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
-                    + " there are some points remaining, deserialize current chunk",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            writeChunkIntoChunkWriter(currentChunk);
-            flushChunkWriterIfLargeEnough();
-          } else if (cachedChunk != null) {
-            // if there is a cached chunk, merge it with current chunk
-            LOGGER.debug(
-                "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
-                    + " there is a cached chunk, merge them together",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
-            cachedChunk.mergeChunk(currentChunk);
-            if (cachedChunk.getChunkStatistic().getCount() >= targetChunkSize) {
-              flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
-              cachedChunk = null;
-              cachedChunkMetadata = null;
-            }
-          } else {
-            // there is no points remaining in ChunkWriter and no cached chunk
-            // cached current chunk
-            LOGGER.debug(
-                "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
-                    + " cached current chunk",
-                storageGroup,
-                device,
-                timeSeries,
-                chunkSize);
-            cachedChunk = currentChunk;
-            cachedChunkMetadata = chunkMetadata;
-          }
+          processMiddleChunk(currentChunk, chunkMetadata);
         }
       }
     }
@@ -242,7 +130,7 @@ public class SingleSeriesCompactor {
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
-    } else if (dataRemainsInChunkWriter) {
+    } else if (pointCountInChunkWriter == 0L) {
       flushChunkWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
@@ -251,6 +139,133 @@ public class SingleSeriesCompactor {
 
   private long getChunkSize(Chunk chunk) {
     return chunk.getHeader().getSerializedSize() + chunk.getHeader().getDataSize();
+  }
+
+  private void processModifiedChunk(Chunk chunk) throws IOException {
+    LOGGER.debug(
+        "{} compacting {}.{}, chunk is modified, deserialize it", storageGroup, device, timeSeries);
+    if (cachedChunk != null) {
+      // if there is a cached chunk, deserialize it and write it to ChunkWriter
+      LOGGER.debug(
+          "{} compacting {}.{}, deserialize the cached chunk", storageGroup, device, timeSeries);
+      writeChunkIntoChunkWriter(cachedChunk);
+      cachedChunk = null;
+      cachedChunkMetadata = null;
+    }
+    // write this chunk to ChunkWriter
+    writeChunkIntoChunkWriter(chunk);
+    flushChunkWriterIfLargeEnough();
+  }
+
+  private void processLargeChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
+    if (pointCountInChunkWriter == 0L) {
+      // if there are points remaining in ChunkWriter
+      // deserialize current chunk and write to ChunkWriter, then flush the ChunkWriter
+      LOGGER.debug(
+          "{} compacting {}.{}, the size of the chunk is {}, large enough, but some"
+              + " data remains in chunkWriter, deserialize current chunk",
+          storageGroup,
+          device,
+          timeSeries,
+          getChunkSize(chunk));
+      writeChunkIntoChunkWriter(chunk);
+      flushChunkWriterIfLargeEnough();
+    } else if (cachedChunk != null) {
+      // if there is a cached chunk, merge it with current chunk, then flush it
+      LOGGER.debug(
+          "{} compacting {}.{}, the size of the chunk is {}, large enough,"
+              + " but there is a cached chunk, merge them together",
+          storageGroup,
+          device,
+          timeSeries,
+          getChunkSize(chunk));
+      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
+      cachedChunk.mergeChunk(cachedChunk);
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
+      cachedChunk = null;
+      cachedChunkMetadata = null;
+    } else {
+      // there is no points remaining in ChunkWriter and no cached chunk
+      // flush it to file directly
+      LOGGER.debug(
+          "{} compacting {}.{}, the size of the chunk is {}, large enough, flush it directly",
+          storageGroup,
+          device,
+          timeSeries,
+          getChunkSize(chunk));
+      flushChunkToFileWriter(chunk, chunkMetadata);
+    }
+  }
+
+  private void processMiddleChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
+    // the chunk is not too large either too small
+    long chunkSize = getChunkSize(chunk);
+    if (pointCountInChunkWriter == 0L) {
+      // if there are points remaining in ChunkWriter
+      // deserialize current chunk and write to ChunkWriter
+      LOGGER.debug(
+          "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
+              + " there are some points remaining, deserialize current chunk",
+          storageGroup,
+          device,
+          timeSeries,
+          chunkSize);
+      writeChunkIntoChunkWriter(chunk);
+      flushChunkWriterIfLargeEnough();
+    } else if (cachedChunk != null) {
+      // if there is a cached chunk, merge it with current chunk
+      LOGGER.debug(
+          "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
+              + " there is a cached chunk, merge them together",
+          storageGroup,
+          device,
+          timeSeries,
+          chunkSize);
+      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
+      cachedChunk.mergeChunk(chunk);
+      if (cachedChunk.getChunkStatistic().getCount() >= targetChunkSize) {
+        flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
+        cachedChunk = null;
+        cachedChunkMetadata = null;
+      }
+    } else {
+      // there is no points remaining in ChunkWriter and no cached chunk
+      // cached current chunk
+      LOGGER.debug(
+          "{} compacting {}.{}, the chunk size is {}, neither too large nor too small,"
+              + " cached current chunk",
+          storageGroup,
+          device,
+          timeSeries,
+          chunkSize);
+      cachedChunk = chunk;
+      cachedChunkMetadata = chunkMetadata;
+    }
+  }
+
+  private void processSmallChunk(Chunk chunk) throws IOException {
+    // this chunk is too small
+    // to ensure the flushed chunk is large enough
+    // it should be deserialized and written to ChunkWriter
+    LOGGER.debug(
+        "{} compacting {}.{}, the size of the chunk is {}, too small, deserialize it",
+        storageGroup,
+        device,
+        timeSeries,
+        getChunkSize(chunk));
+    if (cachedChunk != null) {
+      // if there is a cached chunk, write the cached chunk to ChunkWriter
+      LOGGER.debug(
+          "{} compacting {}.{}, there is a cached chunk, deserialize it",
+          storageGroup,
+          device,
+          timeSeries);
+      writeChunkIntoChunkWriter(cachedChunk);
+      cachedChunk = null;
+      cachedChunkMetadata = null;
+    }
+    writeChunkIntoChunkWriter(chunk);
+    flushChunkWriterIfLargeEnough();
   }
 
   /** Deserialize a chunk into points and write it to the chunkWriter */
@@ -270,7 +285,6 @@ public class SingleSeriesCompactor {
       }
     }
     pointCountInChunkWriter += chunk.getChunkStatistic().getCount();
-    dataRemainsInChunkWriter = true;
   }
 
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
@@ -310,7 +324,8 @@ public class SingleSeriesCompactor {
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
-    if (pointCountInChunkWriter >= targetChunkSize) {
+    if (pointCountInChunkWriter >= targetChunkPointNum
+        || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
       LOGGER.debug(
           "{} compacting {}.{}, the size of chunk writer is {}, large enough, flush it",
           storageGroup,
@@ -320,7 +335,6 @@ public class SingleSeriesCompactor {
       MergeManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
-      dataRemainsInChunkWriter = false;
       pointCountInChunkWriter = 0L;
     }
   }
@@ -335,7 +349,6 @@ public class SingleSeriesCompactor {
     MergeManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
-    dataRemainsInChunkWriter = false;
     pointCountInChunkWriter = 0;
   }
 }
