@@ -49,7 +49,7 @@ mvn clean scala:compile compile install
 #### spark-shell user guide
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.0.jar,iotdb-jdbc-0.12.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.12.4.jar,iotdb-jdbc-0.12.4-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -63,7 +63,7 @@ df.show()
 To partition rdd:
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.0.jar,iotdb-jdbc-0.12.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.12.4.jar,iotdb-jdbc-0.12.4-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
