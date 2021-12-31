@@ -1,0 +1,8 @@
+{
+"UDTFRegexMatch": ["select UDTFRegexMatch(s_9, 'regex'='\\d+.\\d+', 'group'='0') from root.test.g_0.d_0"],
+"UDTFRegexReplace": ["select UDTFRegexReplace(s_9, 'regex'='\\d+.\\d+', 'replace'='0.0') from root.test.g_0.d_0",
+	"select UDTFRegexReplace(s_9, 'regex'='\\d+.\\d+', 'replace'='0.0', 'offset'='10') from root.test.g_0.d_0"],
+"UDTFRegexSplit": ["select UDTFRegexSplit(s_9, 'regex'=',', 'index'='-1') from root.test.g_0.d_0"],
+"UDTFStrReplace": ["select UDTFStrReplace(s_9, 'target'=',', 'replace'='/', 'limit'='2') from root.test.g_0.d_0",
+	"select UDTFStrReplace(s_9, 'target'=',', 'replace'='/', 'limit'='1', 'offset'='1', 'reverse'='true') from root.test.g_0.d_0"]
+}

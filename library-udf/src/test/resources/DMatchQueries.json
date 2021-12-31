@@ -1,0 +1,8 @@
+{
+"UDAFCov": ["Select UDAFCov(s_7, s_8) from root.test.g_0.d_0"],
+"UDAFDtw": ["Select UDAFDtw(s_7, s_8) from root.test.g_0.d_0"],
+"UDAFPearson": ["Select UDAFPearson(s_7, s_8) from root.test.g_0.d_0"],
+"UDTFPtnSym": ["select UDTFPtnSym(s_7,'window'='100') from root.test.g_0.d_0",
+"select UDTFPtnSym(s_8,'window'='100','threshold'='5') from root.test.g_0.d_0"],
+"UDTFXCorr": ["select UDTFXcorr(s_7,s_8) from root.test.g_0.d_0"]
+}

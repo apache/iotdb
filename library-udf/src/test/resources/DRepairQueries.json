@@ -1,0 +1,15 @@
+{
+"UDTFTimestampRepair": ["select UDTFTimestampRepair(s_7, 'interval'='1000') from root.test.g_0.d_0",
+	"select UDTFTimestampRepair(s_7, 'method'='median') from root.test.g_0.d_0",
+	"select UDTFTimestampRepair(s_7, 'method'='mode') from root.test.g_0.d_0",
+	"select UDTFTimestampRepair(s_7, 'method'='cluster') from root.test.g_0.d_0"],
+"UDTFValueFill": ["select UDTFValueFill(s_7, 'method'='linear') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='mean') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='previous') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='likelihood') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='ar') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='ma') from root.test.g_0.d_0",
+	"select UDTFValueFill(s_7, 'method'='screen') from root.test.g_0.d_0"],
+"UDTFValueRepair": ["select UDTFValueRepair(s_7, 'method'='screen') from root.test.g_0.d_0",
+	"select UDTFValueRepair(s_7, 'method'='lsgreedy') from root.test.g_0.d_0"]
+}
