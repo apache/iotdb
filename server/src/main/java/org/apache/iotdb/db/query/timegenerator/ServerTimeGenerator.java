@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
@@ -56,6 +57,8 @@ public class ServerTimeGenerator extends TimeGenerator {
   protected QueryContext context;
   protected RawDataQueryPlan queryPlan;
 
+  private Filter timeFilter;
+
   public ServerTimeGenerator(QueryContext context) {
     this.context = context;
   }
@@ -75,7 +78,7 @@ public class ServerTimeGenerator extends TimeGenerator {
   public void serverConstructNode(IExpression expression)
       throws IOException, StorageEngineException, QueryProcessException {
     List<PartialPath> pathList = new ArrayList<>();
-    getAndTransformPartialPathFromExpression(expression, pathList);
+    timeFilter = getPathListAndConstructTimeFilterFromExpression(expression, pathList);
 
     Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
         lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(pathList);
@@ -86,7 +89,7 @@ public class ServerTimeGenerator extends TimeGenerator {
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
 
       operatorNode = construct(expression);
     } finally {
@@ -98,7 +101,7 @@ public class ServerTimeGenerator extends TimeGenerator {
    * collect PartialPath from Expression and transform MeasurementPath whose isUnderAlignedEntity is
    * true to AlignedPath
    */
-  private void getAndTransformPartialPathFromExpression(
+  private Filter getPathListAndConstructTimeFilterFromExpression(
       IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
       SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
@@ -107,11 +110,30 @@ public class ServerTimeGenerator extends TimeGenerator {
       // true
       seriesExpression.setSeriesPath(measurementPath.transformToExactPath());
       pathList.add((PartialPath) seriesExpression.getSeriesPath());
+      return getTimeFilter(((SingleSeriesExpression) expression).getFilter());
     } else {
-      getAndTransformPartialPathFromExpression(
-          ((IBinaryExpression) expression).getLeft(), pathList);
-      getAndTransformPartialPathFromExpression(
-          ((IBinaryExpression) expression).getRight(), pathList);
+      Filter leftTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getLeft(), pathList));
+      Filter rightTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getRight(), pathList));
+
+      if (expression instanceof AndFilter) {
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.and(leftTimeFilter, rightTimeFilter);
+        } else if (leftTimeFilter != null) {
+          return leftTimeFilter;
+        } else return rightTimeFilter;
+      } else {
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+        } else {
+          return null;
+        }
+      }
     }
   }
 
@@ -169,5 +191,10 @@ public class ServerTimeGenerator extends TimeGenerator {
   @Override
   protected boolean isAscending() {
     return queryPlan.isAscending();
+  }
+
+  @Override
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 }

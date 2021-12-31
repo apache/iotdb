@@ -631,7 +631,8 @@ public class AggregationExecutor {
     try {
       // init QueryDataSource Cache
       QueryResourceManager.getInstance()
-          .initQueryDataSourceCache(processorToSeriesMap, context, null);
+          .initQueryDataSourceCache(
+              processorToSeriesMap, context, timestampGenerator.getTimeFilter());
 
       for (PartialPath path : pathToAggrIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
