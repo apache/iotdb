@@ -626,6 +626,8 @@ public class PhysicalGenerator {
         throw new QueryProcessException("group by level does not support align by device now.");
       }
       alignByDevicePlan.setAggregationPlan((AggregationPlan) queryPlan);
+    } else if (queryPlan instanceof LastQueryPlan) {
+      throw new QueryProcessException("Last query does not support align by device.");
     }
 
     List<PartialPath> prefixPaths = queryOperator.getFromOperator().getPrefixPaths();
