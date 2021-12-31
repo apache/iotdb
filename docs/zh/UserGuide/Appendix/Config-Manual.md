@@ -1485,6 +1485,33 @@
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+* enable\_id\_table
+
+|名字| enable\_id\_table |
+|:---:|:---|
+|描述| 是否开启ID表，加速写入时元数据访问，注意：ID表与别名(alias)不兼容 |
+|类型| bool |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* device\_id\_transformation\_method
+
+|名字| device\_id\_transformation\_method |
+|:---:|:---|
+|描述| 设备路径id化的方式，可以选择Plain或SHA256 |
+|类型| string |
+|默认值| Plain |
+|改后生效方式|仅允许在第一次启动服务前修改|
+
+* enable\_id\_table\_log\_file
+
+|名字| enable\_id\_table\_log\_file |
+|:---:|:---|
+|描述| 是否开启ID表设备ID到设备名称记录文件，在使用SHA256映射时，若想保持tsfile的自解析能力，建议开启 |
+|类型| bool |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
 * concurrent\_writing\_time\_partition
 
 |名字| concurrent\_writing\_time\_partition |
@@ -1511,6 +1538,7 @@
 |类型| String |
 |默认值| root |
 |改后生效方式|仅允许在第一次启动服务前修改|
+
 
 ## 开启 GC 日志
 GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。

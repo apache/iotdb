@@ -197,7 +197,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, IllegalPathException {
+      throws StorageEngineException, IOException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -332,7 +332,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

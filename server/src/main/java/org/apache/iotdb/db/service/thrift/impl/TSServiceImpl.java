@@ -1197,7 +1197,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setDeviceId(new PartialPath(req.getPrefixPaths().get(i)));
+        plan.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1335,7 +1335,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(new PartialPath(req.getPrefixPath()));
+      plan.setDevicePath(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1802,7 +1802,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
       return resp;
     } catch (MetadataException e) {
-      e.printStackTrace();
+      LOGGER.error("fail to query schema template because: " + e);
     }
     return null;
   }

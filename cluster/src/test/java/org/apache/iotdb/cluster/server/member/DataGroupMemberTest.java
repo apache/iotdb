@@ -514,7 +514,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
 
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[] {"s0"});
     insertPlan.setNeedInferType(true);
@@ -722,7 +722,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -790,7 +790,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -858,7 +858,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -926,7 +926,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);

@@ -46,6 +46,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -576,7 +578,7 @@ public class StorageEngine implements IService {
    *
    * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
+  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -584,8 +586,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
+
     VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowPlan.getDeviceId());
+        getProcessor(insertRowPlan.getDevicePath());
+    getSeriesSchemas(insertRowPlan, virtualStorageGroupProcessor);
+    try {
+      insertRowPlan.transferType();
+    } catch (QueryProcessException e) {
+      throw new StorageEngineException(e);
+    }
 
     try {
       virtualStorageGroupProcessor.insert(insertRowPlan);
@@ -593,7 +602,7 @@ public class StorageEngine implements IService {
         try {
           updateMonitorStatistics(
               processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDeviceId())),
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath())),
               insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
@@ -605,7 +614,7 @@ public class StorageEngine implements IService {
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
-      throws StorageEngineException {
+      throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -613,8 +622,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
+
     VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+        getProcessor(insertRowsOfOneDevicePlan.getDevicePath());
+
+    for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+      plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
+      // check whether types are match
+      getSeriesSchemas(plan, virtualStorageGroupProcessor);
+    }
 
     // TODO monitor: update statistics
     try {
@@ -626,7 +642,7 @@ public class StorageEngine implements IService {
 
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchProcessException {
+      throws StorageEngineException, BatchProcessException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -638,21 +654,23 @@ public class StorageEngine implements IService {
     }
     VirtualStorageGroupProcessor virtualStorageGroupProcessor;
     try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getDevicePath()),
           e);
     }
 
+    getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
 
     if (config.isEnableStatMonitor()) {
       try {
         updateMonitorStatistics(
             processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDeviceId())),
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath())),
             insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
@@ -1043,6 +1061,21 @@ public class StorageEngine implements IService {
   /** unlock all merge lock of the storage group processor related to the query */
   public void mergeUnLock(List<VirtualStorageGroupProcessor> list) {
     list.forEach(VirtualStorageGroupProcessor::readUnlock);
+  }
+
+  protected void getSeriesSchemas(InsertPlan insertPlan, VirtualStorageGroupProcessor processor)
+      throws StorageEngineException, MetadataException {
+    try {
+      if (config.isEnableIDTable()) {
+        processor.getIdTable().getSeriesSchemas(insertPlan);
+      } else {
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        insertPlan.setDeviceID(
+            DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDevicePath()));
+      }
+    } catch (IOException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   static class InstanceHolder {
