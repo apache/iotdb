@@ -206,7 +206,7 @@ components:
             type: string
         condition:
           type: string
-        special:
+        control:
            type: string
         startTime:
           type: number

@@ -19,18 +19,18 @@ import { SegmentInput } from '@grafana/ui';
 import React from 'react';
 
 export interface Props {
-  special: string;
+  control: string;
   onChange: (controlStr: string) => void;
 }
 
-export const ControlValue: FunctionComponent<Props> = ({ special, onChange }) => (
+export const ControlValue: FunctionComponent<Props> = ({ control, onChange }) => (
   <>
     {
       <>
         <SegmentInput
           className="min-width-8"
           placeholder="(optional)"
-          value={special}
+          value={control}
           onChange={string => onChange(string.toString())}
         />
       </>

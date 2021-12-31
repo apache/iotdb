@@ -136,12 +136,12 @@ public class GrafanaApiServiceIT {
     }
   }
 
-  public void expressionWithSpecial(CloseableHttpClient httpClient) {
+  public void expressionWithControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"special\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -174,12 +174,12 @@ public class GrafanaApiServiceIT {
     }
   }
 
-  public void expressionWithConditionSpecial(CloseableHttpClient httpClient) {
+  public void expressionWithConditionControl(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
       HttpPost httpPost = getHttpPost("http://127.0.0.1:18080/grafana/v1/query/expression");
       String sql =
-          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"special\":\"group by([1635232133960,1635232163960),20s)\"}";
+          "{\"expression\":[\"sum(s4)\",\"avg(s5)\"],\"prefixPath\":[\"root.sg25\"],\"condition\":\"timestamp=1635232143960\",\"startTime\":1635232133960,\"endTime\":1635232163960,\"control\":\"group by([1635232133960,1635232163960),20s)\"}";
       httpPost.setEntity(new StringEntity(sql, Charset.defaultCharset()));
       response = httpClient.execute(httpPost);
       HttpEntity responseEntity = response.getEntity();
@@ -240,10 +240,10 @@ public class GrafanaApiServiceIT {
   }
 
   @Test
-  public void expressionWithConditionSpecialTest() {
+  public void expressionWithConditionControlTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
-    expressionWithConditionSpecial(httpClient);
+    expressionWithConditionControl(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {
@@ -266,10 +266,10 @@ public class GrafanaApiServiceIT {
   }
 
   @Test
-  public void expressionWithSpecialTest() {
+  public void expressionWithControlTest() {
     CloseableHttpClient httpClient = HttpClientBuilder.create().build();
     rightInsertTablet(httpClient);
-    expressionWithSpecial(httpClient);
+    expressionWithControl(httpClient);
     try {
       httpClient.close();
     } catch (IOException e) {

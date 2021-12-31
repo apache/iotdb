@@ -29,7 +29,7 @@ interface State {
   expression: string[];
   prefixPath: string[];
   condition: string;
-  special: string;
+  control: string;
 }
 
 const paths = [''];
@@ -41,7 +41,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     expression: expressions,
     prefixPath: paths,
     condition: '',
-    special: '',
+    control: '',
   };
 
   onSelectValueChange = (exp: string[]) => {
@@ -63,8 +63,8 @@ export class QueryEditor extends PureComponent<Props, State> {
   };
   onControlValueChange = (c: string) => {
     const { onChange, query } = this.props;
-    onChange({ ...query, special: c });
-    this.setState({ special: c });
+    onChange({ ...query, control: c });
+    this.setState({ control: c });
   };
 
   onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -74,7 +74,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition, special } = query;
+    const { expression, prefixPath, condition, control } = query;
 
     return (
       <>
@@ -103,7 +103,7 @@ export class QueryEditor extends PureComponent<Props, State> {
             </div>
             <div className="gf-form">
               <QueryInlineField label={'CONTROL'}>
-                <ControlValue special={special} onChange={this.onControlValueChange} />
+                <ControlValue control={control} onChange={this.onControlValueChange} />
               </QueryInlineField>
             </div>
           </>
