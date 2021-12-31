@@ -35,16 +35,6 @@ From background, we can infer that the parallelism of data ingestion of IoTDB is
 The concept of storage group usually is related to real world entity such as factory, location, country and so on.
 The number of storage groups may be small which makes the parallelism of data ingestion of IoTDB insufficient. We can't jump out of this dilemma even we start hundreds of client for ingestion.
 
- 
-# Analyze
-
-In IoTDB, every kinds of ingestion interface can only insert timeseries of on device.
-One idea by intuition is changing the granularity of synchronization from storage group level to device level.
-However, one lock for one device may occupy lots of resource that beyond our expectation. One lock means about 100 bytes of memory and one kernel object.
-Sometimes the number of devices may reach one million and we can't afford such lock resource.
-
-As the analysis progresses, we think we should trade off between granularity of synchronization and resource occupation.
-
 # Solution
 
 Our idea is to group devices into buckets and change the granularity of synchronization from storage group level to device buckets level.
@@ -62,4 +52,4 @@ virtual_storage_group_num
 
 Recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]
 
-For more information, you can refer to [this page](../../UserGuide/Appendix/Config-Manual.md).
+For more information, you can refer to [this page](../Appendix/Config-Manual.md).
