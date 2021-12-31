@@ -394,6 +394,12 @@ public class IoTDBConfig {
    */
   private long chunkPointNumLowerBoundInCompaction = 100;
 
+  /**
+   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
+   * will be abort.
+   */
+  private long compactionAcquireWriteLockTimeout = 60_000L;
+
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
   /**
@@ -2481,6 +2487,14 @@ public class IoTDBConfig {
 
   public void setChunkPointNumLowerBoundInCompaction(long chunkPointNumLowerBoundInCompaction) {
     this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
+  }
+
+  public long getCompactionAcquireWriteLockTimeout() {
+    return compactionAcquireWriteLockTimeout;
+  }
+
+  public void setCompactionAcquireWriteLockTimeout(long compactionAcquireWriteLockTimeout) {
+    this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
   }
 
   public long getCompactionScheduleInterval() {

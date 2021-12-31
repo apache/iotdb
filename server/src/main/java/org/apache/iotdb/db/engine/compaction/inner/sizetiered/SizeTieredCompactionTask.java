@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -50,6 +51,8 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   protected TsFileManager tsFileManager;
   protected boolean[] isHoldingReadLock;
   protected boolean[] isHoldingWriteLock;
+  private final long ACQUIRE_WRITE_LOCK_TIMEOUT =
+      IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
 
   public SizeTieredCompactionTask(
       String logicalStorageGroupName,
@@ -148,7 +151,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           fullStorageGroupName);
       // get write lock for TsFileResource list with timeout
       try {
-        tsFileManager.writeLockWithTimeout("size-tired compaction", 60_000);
+        tsFileManager.writeLockWithTimeout("size-tired compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
       } catch (WriteLockFailedException e) {
         // if current compaction thread couldn't get write lock
         // a WriteLockFailException will be thrown, then terminate the thread itself
