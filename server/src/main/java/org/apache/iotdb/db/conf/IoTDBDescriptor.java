@@ -455,6 +455,12 @@ public class IoTDBDescriptor {
         conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setRawQueryBlockingQueueCapacity(
+          Integer.parseInt(
+              properties.getProperty(
+                  "raw_query_blocking_queue_capacity",
+                  Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
+
       conf.setmManagerCacheSize(
           Integer.parseInt(
               properties

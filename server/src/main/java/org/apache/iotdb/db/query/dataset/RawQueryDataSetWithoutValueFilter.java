@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
@@ -174,7 +175,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
   private int bufferNum;
 
   // capacity for blocking queue
-  private static final int BLOCKING_QUEUE_CAPACITY = 5;
+  private static final int BLOCKING_QUEUE_CAPACITY =
+      IoTDBDescriptor.getInstance().getConfig().getRawQueryBlockingQueueCapacity();
 
   private final long queryId;
 
