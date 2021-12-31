@@ -27,7 +27,7 @@ Spark和Java所需的版本如下：
 
 | Spark Version | Scala Version | Java Version | TsFile   |
 | ------------- | ------------- | ------------ | -------- |
-| `2.4.3`       | `2.11`        | `1.8`        | `0.12.0` |
+| `2.4.5`       | `2.12`        | `1.8`        | `0.12.0` |
 
 ### 安装
 
@@ -39,14 +39,14 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.10.0</version>
+      <version>0.12.4</version>
     </dependency>
 ```
 
 #### Spark-shell用户指南
 
 ```
-spark-shell --jars spark-iotdb-connector-0.12.0.jar,iotdb-jdbc-0.12.0-jar-with-dependencies.jar
+spark-shell --jars spark-iotdb-connector-0.12.4.jar,iotdb-jdbc-0.12.4-jar-with-dependencies.jar
 
 import org.apache.iotdb.spark.db._
 
@@ -88,11 +88,11 @@ TsFile中的现有数据如下：
  * d1:root.ln.wf01.wt01
  * d2:root.ln.wf02.wt02
 
-time|d1.status|time|d1.temperature |time	| d2.hardware	|time|d2.status
----- | ---- | ---- | ---- | ---- | ----  | ---- | ---- | ---- 
-1|True	|1|2.2|2|"aaa"|1|True
-3|True	|2|2.2|4|"bbb"|2|False
-5|False|3	|2.1|6	|"ccc"|4|True
+| time | d1.status | time | d1.temperature | time | d2.hardware | time | d2.status |
+| ---- | --------- | ---- | -------------- | ---- | ----------- | ---- | --------- |
+| 1    | True      | 1    | 2.2            | 2    | "aaa"       | 1    | True      |
+| 3    | True      | 2    | 2.2            | 4    | "bbb"       | 2    | False     |
+| 5    | False     | 3    | 2.1            | 6    | "ccc"       | 4    | True      |
 
 
 宽（默认）表形式如下：
@@ -205,8 +205,10 @@ val dfWithColumn = df.withColumnRenamed("_1", "Time")
     .withColumnRenamed("_7", "root.test.d0.s5")
 dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+	.option("numPartition", "10")
     .save
 ```
 
 ### 注意
 1. 无论dataframe中存放的是窄表还是宽表，都可以直接将数据写到IoTDB中。
+2. numPartition参数是用来设置分区数，会在写入数据之前给dataframe进行重分区。每一个分区都会开启一个session进行数据的写入，来提高并发数。
