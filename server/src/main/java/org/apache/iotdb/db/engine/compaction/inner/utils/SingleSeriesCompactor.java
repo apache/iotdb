@@ -63,6 +63,7 @@ public class SingleSeriesCompactor {
   // record the min time and max time to update the target resource
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
+  private long pointCountInChunkWriter = 0;
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -128,7 +129,7 @@ public class SingleSeriesCompactor {
 
         long chunkSize = getChunkSize(currentChunk);
         // we process this chunk in three different way according to the size of it
-        if (chunkSize >= targetChunkSize) {
+        if (currentChunk.getChunkStatistic().getCount() >= targetChunkSize) {
           if (dataRemainsInChunkWriter) {
             // if there are points remaining in ChunkWriter
             // deserialize current chunk and write to ChunkWriter, then flush the ChunkWriter
@@ -166,7 +167,7 @@ public class SingleSeriesCompactor {
                 chunkSize);
             flushChunkToFileWriter(currentChunk, chunkMetadata);
           }
-        } else if (chunkSize < chunkSizeLowerBound) {
+        } else if (currentChunk.getChunkStatistic().getCount() < chunkSizeLowerBound) {
           // this chunk is too small
           // to ensure the flushed chunk is large enough
           // it should be deserialized and written to ChunkWriter
@@ -214,7 +215,7 @@ public class SingleSeriesCompactor {
                 chunkSize);
             cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
             cachedChunk.mergeChunk(currentChunk);
-            if (getChunkSize(cachedChunk) >= targetChunkSize) {
+            if (cachedChunk.getChunkStatistic().getCount() >= targetChunkSize) {
               flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
               cachedChunk = null;
               cachedChunkMetadata = null;
@@ -268,6 +269,7 @@ public class SingleSeriesCompactor {
         }
       }
     }
+    pointCountInChunkWriter += chunk.getChunkStatistic().getCount();
     dataRemainsInChunkWriter = true;
   }
 
@@ -308,7 +310,7 @@ public class SingleSeriesCompactor {
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
-    if (chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
+    if (pointCountInChunkWriter >= targetChunkSize) {
       LOGGER.debug(
           "{} compacting {}.{}, the size of chunk writer is {}, large enough, flush it",
           storageGroup,
@@ -319,6 +321,7 @@ public class SingleSeriesCompactor {
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       dataRemainsInChunkWriter = false;
+      pointCountInChunkWriter = 0L;
     }
   }
 
@@ -333,5 +336,6 @@ public class SingleSeriesCompactor {
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     dataRemainsInChunkWriter = false;
+    pointCountInChunkWriter = 0;
   }
 }

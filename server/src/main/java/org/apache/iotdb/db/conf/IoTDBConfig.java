@@ -373,17 +373,26 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
-  /** The target tsfile size in compaction. */
-  private long targetCompactionFileSize = 536870912L;
+  /** The target tsfile size in compaction, 1 GB by default */
+  private long targetCompactionFileSize = 1073741824L;
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
 
+  /** The target chunk point num in compaction. */
+  private long targetChunkPointNum = 50000L;
+
   /**
-   * If the chunk size is lower than this threshold, it will be deserialize into points, default is
-   * 16KB
+   * If the chunk size is lower than this threshold, it will be deserialized into points, default is
+   * 128 byte
    */
-  private long chunkSizeLowerBoundInCompaction = 16384L;
+  private long chunkSizeLowerBoundInCompaction = 128L;
+
+  /**
+   * If the chunk point num is lower than this threshold, it will be deserialized into points,
+   * default is 100
+   */
+  private long chunkPointNumLowerBoundInCompaction = 100;
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
@@ -2456,6 +2465,22 @@ public class IoTDBConfig {
 
   public void setChunkSizeLowerBoundInCompaction(long chunkSizeLowerBoundInCompaction) {
     this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
+  }
+
+  public long getTargetChunkPointNum() {
+    return targetChunkPointNum;
+  }
+
+  public void setTargetChunkPointNum(long targetChunkPointNum) {
+    this.targetChunkPointNum = targetChunkPointNum;
+  }
+
+  public long getChunkPointNumLowerBoundInCompaction() {
+    return chunkPointNumLowerBoundInCompaction;
+  }
+
+  public void setChunkPointNumLowerBoundInCompaction(long chunkPointNumLowerBoundInCompaction) {
+    this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
   }
 
   public long getCompactionScheduleInterval() {
