@@ -831,11 +831,11 @@ public class MManager {
         Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
             lockListAndProcessorToSeriesMapPair.right;
 
-        // init QueryDataSource Cache
-        QueryResourceManager.getInstance()
-            .initQueryDataSourceCache(processorToSeriesMap, context, null);
-
         try {
+          // init QueryDataSource Cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
           allMatchedNodes =
               allMatchedNodes.stream()
                   .sorted(
