@@ -970,12 +970,22 @@ public abstract class RaftMember {
     }
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
     PhysicalPlanLog log = new PhysicalPlanLog();
+    log.setPlan(plan);
+    // if a single log exceeds the threshold
+    // we need to return error code to the client as in server mode
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        & log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
     // assign term and index to the new log and append it
     synchronized (logManager) {
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
 
-      log.setPlan(plan);
       plan.setIndex(log.getCurrLogIndex());
       // appendLogInGroup will serialize log, and set log size, and we will use the size after it
       logManager.append(log);
@@ -1001,6 +1011,17 @@ public abstract class RaftMember {
     // assign term and index to the new log and append it
     SendLogRequest sendLogRequest;
 
+    log.setPlan(plan);
+    // just like processPlanLocally,we need to check the size of log
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        & log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
+      logger.error(
+          "Log cannot fit into buffer, please increase raft_log_buffer_size;"
+              + "or reduce the size of requests you send.");
+      return StatusUtils.INTERNAL_ERROR;
+    }
+
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
     synchronized (logManager) {
@@ -1009,7 +1030,7 @@ public abstract class RaftMember {
 
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-      log.setPlan(plan);
+
       plan.setIndex(log.getCurrLogIndex());
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
@@ -1020,12 +1041,12 @@ public abstract class RaftMember {
       startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
       sendLogRequest = buildSendLogRequest(log);
       Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
-
-      startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
-      log.setCreateTime(System.nanoTime());
-      getLogDispatcher().offer(sendLogRequest);
-      Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
     }
+
+    startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
+    log.setCreateTime(System.nanoTime());
+    getLogDispatcher().offer(sendLogRequest);
+    Statistic.RAFT_SENDER_OFFER_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
       AppendLogResult appendLogResult =
