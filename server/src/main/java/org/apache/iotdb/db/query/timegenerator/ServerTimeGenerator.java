@@ -101,18 +101,29 @@ public class ServerTimeGenerator extends TimeGenerator {
       IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
       pathList.add((PartialPath) ((SingleSeriesExpression) expression).getSeriesPath());
-      return ((SingleSeriesExpression) expression).getFilter();
+      return getTimeFilter(((SingleSeriesExpression) expression).getFilter());
     } else {
-      Filter leftFilter =
-          getPathListAndConstructTimeFilterFromExpression(
-              ((IBinaryExpression) expression).getLeft(), pathList);
-      Filter rightFilter =
-          getPathListAndConstructTimeFilterFromExpression(
-              ((IBinaryExpression) expression).getRight(), pathList);
+      Filter leftTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getLeft(), pathList));
+      Filter rightTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getRight(), pathList));
+
       if (expression instanceof AndFilter) {
-        return FilterFactory.and(leftFilter, rightFilter);
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.and(leftTimeFilter, rightTimeFilter);
+        } else if (leftTimeFilter != null) {
+          return leftTimeFilter;
+        } else return rightTimeFilter;
       } else {
-        return FilterFactory.or(leftFilter, rightFilter);
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+        } else {
+          return null;
+        }
       }
     }
   }
