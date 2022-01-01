@@ -228,7 +228,9 @@ public class BooleanStatistics extends Statistics<Boolean> {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     BooleanStatistics that = (BooleanStatistics) o;
-    return firstValue == that.firstValue && lastValue == that.lastValue && sumValue == that.sumValue;
+    return firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && sumValue == that.sumValue;
   }
 
   @Override

@@ -270,7 +270,11 @@ public class LongStatistics extends Statistics<Long> {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     LongStatistics that = (LongStatistics) o;
-    return minValue == that.minValue && maxValue == that.maxValue && firstValue == that.firstValue && lastValue == that.lastValue && Double.compare(that.sumValue, sumValue) == 0;
+    return minValue == that.minValue
+        && maxValue == that.maxValue
+        && firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && Double.compare(that.sumValue, sumValue) == 0;
   }
 
   @Override

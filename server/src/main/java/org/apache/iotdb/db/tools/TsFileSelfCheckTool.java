@@ -1,11 +1,10 @@
 package org.apache.iotdb.db.tools;
 
-import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
+import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -19,15 +18,17 @@ import java.util.TreeMap;
 
 public class TsFileSelfCheckTool {
 
-  public void check(String filename, boolean fastFinish) throws IOException {
+  public void check(String filename, boolean fastFinish)
+      throws IOException, TsFileStatisticsMistakesException {
     System.out.println("file path: " + filename);
 
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
-        reader.getAllTimeseriesMetadataWithOffset();
-
-
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    try {
+      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
     System.out.println(reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap));
   }
 
@@ -39,11 +40,11 @@ public class TsFileSelfCheckTool {
     /**
      * Traverse the metadata index from MetadataIndexEntry to get TimeseriesMetadatas
      *
-     * @param metadataIndex         MetadataIndexEntry
-     * @param buffer                byte buffer
-     * @param deviceId              String
+     * @param metadataIndex MetadataIndexEntry
+     * @param buffer byte buffer
+     * @param deviceId String
      * @param timeseriesMetadataMap map: deviceId -> timeseriesMetadata list
-     * @param needChunkMetadata     deserialize chunk metadata list or not
+     * @param needChunkMetadata deserialize chunk metadata list or not
      */
     private void generateMetadataIndexWithOffset(
         long startOffset,
@@ -121,5 +122,4 @@ public class TsFileSelfCheckTool {
       return timeseriesMetadataMap;
     }
   }
-
 }

@@ -260,8 +260,13 @@ public class FloatStatistics extends Statistics<Float> {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
+    double e = 0.00001;
     FloatStatistics that = (FloatStatistics) o;
-    return Float.compare(that.minValue, minValue) == 0 && Float.compare(that.maxValue, maxValue) == 0 && Float.compare(that.firstValue, firstValue) == 0 && Float.compare(that.lastValue, lastValue) == 0 && Double.compare(that.sumValue, sumValue) == 0;
+    return Math.abs(that.minValue - minValue) < e
+        && Math.abs(that.maxValue - maxValue) < e
+        && Math.abs(that.firstValue - firstValue) < e
+        && Math.abs(that.lastValue - lastValue) < e
+        && Math.abs(that.sumValue - sumValue) < e;
   }
 
   @Override

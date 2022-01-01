@@ -261,7 +261,11 @@ public class IntegerStatistics extends Statistics<Integer> {
     if (o == null || getClass() != o.getClass()) return false;
     if (!super.equals(o)) return false;
     IntegerStatistics that = (IntegerStatistics) o;
-    return minValue == that.minValue && maxValue == that.maxValue && firstValue == that.firstValue && lastValue == that.lastValue && sumValue == that.sumValue;
+    return minValue == that.minValue
+        && maxValue == that.maxValue
+        && firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && sumValue == that.sumValue;
   }
 
   @Override

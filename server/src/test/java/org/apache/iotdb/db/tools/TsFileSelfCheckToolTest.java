@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -110,7 +111,7 @@ public class TsFileSelfCheckToolTest {
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
       tool.check(path, false);
-    } catch (IOException e) {
+    } catch (IOException | TsFileStatisticsMistakesException e) {
       Assert.fail(e.getMessage());
     }
   }
