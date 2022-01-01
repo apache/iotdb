@@ -20,10 +20,10 @@
 -->
 # Overview
 
-## About IoTDB-Library-UDF
+## About UDF Library
 
 For applications based on time series data, data quality is vital.
-**IoTDB-Library-UDF** is IoTDB User Defined Functions (UDF) about data quality, including data profiling, data quality evalution and data repairing.
+**UDF Library** is IoTDB User Defined Functions (UDF) about data quality, including data profiling, data quality evalution and data repairing.
 It effectively meets the demand for data quality in the industrial field.
 
 ## Quick Start
