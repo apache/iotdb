@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class IoTDBPoint {
 
@@ -61,7 +62,19 @@ public class IoTDBPoint {
     Map<String, String> tags = new HashMap<>();
     Map<String, Object> fields = new HashMap<>();
     Long time = null;
-
+    TimeUnit precision = TimeUnit.NANOSECONDS;
+    // Get the precision of point in influxdb by reflection
+    for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
+      reflectField.setAccessible(true);
+      try {
+        if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
+            && reflectField.getName().equalsIgnoreCase("precision")) {
+          precision = (TimeUnit) reflectField.get(point);
+        }
+      } catch (IllegalAccessException e) {
+        throw new IllegalArgumentException(e.getMessage());
+      }
+    }
     // Get the property of point in influxdb by reflection
     for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
       reflectField.setAccessible(true);
@@ -81,16 +94,17 @@ public class IoTDBPoint {
         if (reflectField.getType().getName().equalsIgnoreCase("java.lang.Number")
             && reflectField.getName().equalsIgnoreCase("time")) {
           time = (Long) reflectField.get(point);
+          time = TimeUnit.MILLISECONDS.convert(time, precision);
         }
-        // set current time
-        if (time == null) {
-          time = System.currentTimeMillis();
-        }
+
       } catch (IllegalAccessException e) {
         throw new IllegalArgumentException(e.getMessage());
       }
     }
-
+    // set current time
+    if (time == null) {
+      time = System.currentTimeMillis();
+    }
     ParameterUtils.checkNonEmptyString(database, "database");
     ParameterUtils.checkNonEmptyString(measurement, "measurement name");
     String path = metaManager.generatePath(database, measurement, tags);
