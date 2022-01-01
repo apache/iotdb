@@ -721,6 +721,12 @@ var config = {
 						]
 					},
 					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-started', 'Get Started']
+					    ]
+					},
+					{
 						title: 'Communication Service Protocol',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -1519,6 +1525,12 @@ var config = {
 							['Advanced-Features/Triggers','触发器'],
 							['Advanced-Features/Alerting','告警机制'],
 						]
+					},
+					{
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-started', '快速上手']
+          				]
 					},
 					{
 						title: '通信服务协议',
