@@ -142,7 +142,7 @@
         <org.slf4j.version>1.7.32</org.slf4j.version>
         <guava.version>24.1.1</guava.version>
         <jline.version>3.21.0</jline.version>
-        <jetty.version>9.4.35.v20201120</jetty.version>
+        <jetty.version>9.4.41.v20210516</jetty.version>
         <metrics.version>4.2.4</metrics.version>
         <javax.xml.bind.version>2.4.0-b180830.0359</javax.xml.bind.version>
         <felix.version>5.1.1</felix.version>
@@ -556,7 +556,7 @@
             <dependency>
                 <groupId>org.eclipse.jetty</groupId>
                 <artifactId>jetty-server</artifactId>
-                <version>11.0.6</version>
+                <version>9.4.41.v20210516</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
