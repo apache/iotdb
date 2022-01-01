@@ -1527,10 +1527,10 @@ var config = {
 						]
 					},
 					{
-          						title: 'UDF Library',
-          						children: [
-          							['Library-UDF/Get-started', '快速上手']
-          						]
+          				title: 'UDF Library',
+          				children: [
+          					['Library-UDF/Get-started', '快速上手']
+          				]
           			},
           						{
 						title: '通信服务协议',
