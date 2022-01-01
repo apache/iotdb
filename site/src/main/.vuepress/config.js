@@ -1531,7 +1531,7 @@ var config = {
           						children: [
           							['Library-UDF/Get-started', '快速上手']
           						]
-          					},
+          			},
           						{
 						title: '通信服务协议',
 						children: [
