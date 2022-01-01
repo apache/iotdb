@@ -721,6 +721,12 @@ var config = {
 						]
 					},
 					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-started', 'Get Started']
+					    ]
+					},
+					{
 						title: 'Communication Service Protocol',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -768,12 +774,6 @@ var config = {
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
 						]
-					},
-					{
-					    title: 'UDF Library',
-					    children: [
-					        ['Library-UDF/Get-started', 'Get Started']
-					    ]
 					},
 					{
 						title: 'FAQ',
@@ -1527,6 +1527,12 @@ var config = {
 						]
 					},
 					{
+                        title: 'UDF资料库',
+                        children:[
+                            ['Library-UDF/Get-started', '快速上手']
+                        ]
+                    },
+                    {
 						title: '通信服务协议',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -1577,12 +1583,6 @@ var config = {
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
 						]
 					},
-					{
-                        title: 'UDF资料库',
-                        children:[
-                            ['Library-UDF/Get-started', '快速上手']
-                        ]
-                    },
 					{
 						title: '常见问题',
 						children: [
