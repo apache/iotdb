@@ -35,11 +35,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * 用于计算时间序列的一致性的UDTF
- *
- * @author Wang Haoyu
- */
+/** This function calculates consistency of input series. */
 public class UDTFConsistency implements UDTF {
 
   @Override

@@ -18,12 +18,12 @@
  */
 package org.apache.iotdb.library.util;
 
-/** @author Wang Haoyu throw when the value got is not numberic. */
+/** throw when the value got is not numeric. */
 public class NoNumberException extends Exception {
 
   @Override
   public String toString() {
     String s = "The value of the input time series is not numeric.\n";
-    return s + super.toString(); // To change body of generated methods, choose Tools | Templates.
+    return s + super.toString();
   }
 }

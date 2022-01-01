@@ -35,11 +35,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * 用于计算时间序列的有效性的UDTF
- *
- * @author Wang Haoyu
- */
+/** This function calculates validity of input series. */
 public class UDTFValidity implements UDTF {
   @Override
   public void beforeStart(UDFParameters udfp, UDTFConfigurations udtfc) throws Exception {

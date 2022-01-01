@@ -34,11 +34,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- * 用于计算时间序列的完整性的UDTF
- *
- * @author Wang Haoyu
- */
+/** This function calculates completeness of input series. */
 public class UDTFCompleteness implements UDTF {
   private boolean downtime;
 
