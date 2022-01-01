@@ -1527,7 +1527,7 @@ var config = {
 						]
 					},
 					{
-          				title: 'UDF Library',
+          				title: 'UDF 函数库',
           				children: [
           					['Library-UDF/Get-started', '快速上手']
           				]
