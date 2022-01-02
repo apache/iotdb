@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
@@ -123,13 +124,19 @@ public class GroupByFillDataSet extends QueryDataSet {
         FilterFactory.and(
             TimeFilter.gtEq(lowerBound), TimeFilter.ltEq(groupByEngineDataSet.getStartTime()));
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(
-                paths.stream().map(path -> (PartialPath) path).collect(Collectors.toList()),
-                context,
-                timeFilter);
+    Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(
+                    paths.stream().map(path -> (PartialPath) path).collect(Collectors.toList()));
+    List<StorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       for (int i = 0; i < paths.size(); i++) {
         PreviousFill fill = previousFillExecutors[i];
         firstNotNullTV[i] = fill.getFillResult();
@@ -142,7 +149,7 @@ public class GroupByFillDataSet extends QueryDataSet {
         }
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 

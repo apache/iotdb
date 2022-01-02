@@ -40,6 +40,7 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.*;
 import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.rescon.MemTableManager;
@@ -821,13 +822,20 @@ public class MManager {
     if (plan.isOrderByHeat()) {
       List<StorageGroupProcessor> list;
       try {
-        list =
-            StorageEngine.getInstance()
-                .mergeLockAndInitQueryDataSource(
-                    allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()),
-                    context,
-                    null);
+        Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>>
+            lockListAndProcessorToSeriesMapPair =
+                StorageEngine.getInstance()
+                    .mergeLock(
+                        allMatchedNodes.stream().map(MNode::getPartialPath).collect(toList()));
+        list = lockListAndProcessorToSeriesMapPair.left;
+        Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+            lockListAndProcessorToSeriesMapPair.right;
+
         try {
+          // init QueryDataSource Cache
+          QueryResourceManager.getInstance()
+              .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
           allMatchedNodes =
               allMatchedNodes.stream()
                   .sorted(

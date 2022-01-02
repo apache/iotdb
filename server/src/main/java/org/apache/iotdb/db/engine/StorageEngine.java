@@ -45,8 +45,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsOfOneDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -56,7 +54,6 @@ import org.apache.iotdb.db.utils.UpgradeUtils;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -71,7 +68,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -1041,26 +1037,8 @@ public class StorageEngine implements IService {
   }
 
   /** get all merge lock of the storage group processor related to the query */
-  public List<StorageGroupProcessor> mergeLock(List<PartialPath> pathList)
-      throws StorageEngineException {
-    Set<StorageGroupProcessor> set = new HashSet<>();
-    for (PartialPath path : pathList) {
-      set.add(getProcessor(path.getDevicePath()));
-    }
-    List<StorageGroupProcessor> list =
-        set.stream()
-            .sorted(Comparator.comparing(StorageGroupProcessor::getVirtualStorageGroupId))
-            .collect(Collectors.toList());
-    list.forEach(StorageGroupProcessor::readLock);
-    return list;
-  }
-
-  /**
-   * get all merge lock of the storage group processor related to the query and init QueryDataSource
-   */
-  public List<StorageGroupProcessor> mergeLockAndInitQueryDataSource(
-      List<PartialPath> pathList, QueryContext context, Filter timeFilter)
-      throws StorageEngineException, QueryProcessException {
+  public Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>> mergeLock(
+      List<PartialPath> pathList) throws StorageEngineException, QueryProcessException {
     Map<StorageGroupProcessor, List<PartialPath>> map = new HashMap<>();
     for (PartialPath path : pathList) {
       map.computeIfAbsent(getProcessor(path.getDevicePath()), key -> new ArrayList<>()).add(path);
@@ -1071,10 +1049,7 @@ public class StorageEngine implements IService {
             .collect(Collectors.toList());
     list.forEach(StorageGroupProcessor::readLock);
 
-    // init QueryDataSource
-    QueryResourceManager.getInstance().initQueryDataSource(map, context, timeFilter);
-
-    return list;
+    return new Pair<>(list, map);
   }
 
   /** unlock all merge lock of the storage group processor related to the query */

@@ -1157,12 +1157,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(),
-                timeFilter,
-                fileFilter,
-                true,
-                dataSource.getDataTTL(),
-                context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex--;
@@ -1176,12 +1171,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(),
-                timeFilter,
-                fileFilter,
-                false,
-                dataSource.getDataTTL(),
-                context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;
@@ -1290,12 +1280,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(),
-                timeFilter,
-                fileFilter,
-                true,
-                dataSource.getDataTTL(),
-                context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
           break;
         }
         curSeqFileIndex++;
@@ -1309,12 +1294,7 @@ public class SeriesReader {
         TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
         if (tsFileResource != null
             && tsFileResource.isSatisfied(
-                seriesPath.getDevice(),
-                timeFilter,
-                fileFilter,
-                false,
-                dataSource.getDataTTL(),
-                context.isDebug())) {
+                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
           break;
         }
         curUnseqFileIndex++;

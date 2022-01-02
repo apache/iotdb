@@ -27,6 +27,7 @@ import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -89,13 +90,18 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
       throw new QueryProcessException("TimeFilter cannot be null in GroupBy query.");
     }
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLockAndInitQueryDataSource(
-                paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()),
-                context,
-                timeFilter);
+    Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    List<StorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       // init resultIndexes, group result indexes by path
       for (int i = 0; i < paths.size(); i++) {
         PartialPath path = (PartialPath) paths.get(i);
@@ -120,7 +126,7 @@ public class GroupByWithoutValueFilterDataSet extends GroupByEngineDataSet {
         pathExecutors.get(path).addAggregateResult(aggrResult);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 

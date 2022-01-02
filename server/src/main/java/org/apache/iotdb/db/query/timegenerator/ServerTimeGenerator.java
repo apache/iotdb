@@ -36,14 +36,17 @@ import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterType;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A timestamp generator for query with filter. e.g. For query clause "select s1, s2 from root where
@@ -53,6 +56,8 @@ public class ServerTimeGenerator extends TimeGenerator {
 
   protected QueryContext context;
   protected RawDataQueryPlan queryPlan;
+
+  private Filter timeFilter;
 
   public ServerTimeGenerator(QueryContext context) {
     this.context = context;
@@ -73,22 +78,53 @@ public class ServerTimeGenerator extends TimeGenerator {
   public void serverConstructNode(IExpression expression)
       throws IOException, StorageEngineException, QueryProcessException {
     List<PartialPath> pathList = new ArrayList<>();
-    getPartialPathFromExpression(expression, pathList);
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLockAndInitQueryDataSource(pathList, context, null);
+    timeFilter = getPathListAndConstructTimeFilterFromExpression(expression, pathList);
+
+    Pair<List<StorageGroupProcessor>, Map<StorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(pathList);
+    List<StorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<StorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       operatorNode = construct(expression);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
-  private void getPartialPathFromExpression(IExpression expression, List<PartialPath> pathList) {
+  private Filter getPathListAndConstructTimeFilterFromExpression(
+      IExpression expression, List<PartialPath> pathList) {
     if (expression.getType() == ExpressionType.SERIES) {
       pathList.add((PartialPath) ((SingleSeriesExpression) expression).getSeriesPath());
+      return getTimeFilter(((SingleSeriesExpression) expression).getFilter());
     } else {
-      getPartialPathFromExpression(((IBinaryExpression) expression).getLeft(), pathList);
-      getPartialPathFromExpression(((IBinaryExpression) expression).getRight(), pathList);
+      Filter leftTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getLeft(), pathList));
+      Filter rightTimeFilter =
+          getTimeFilter(
+              getPathListAndConstructTimeFilterFromExpression(
+                  ((IBinaryExpression) expression).getRight(), pathList));
+
+      if (expression instanceof AndFilter) {
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.and(leftTimeFilter, rightTimeFilter);
+        } else if (leftTimeFilter != null) {
+          return leftTimeFilter;
+        } else return rightTimeFilter;
+      } else {
+        if (leftTimeFilter != null && rightTimeFilter != null) {
+          return FilterFactory.or(leftTimeFilter, rightTimeFilter);
+        } else {
+          return null;
+        }
+      }
     }
   }
 
@@ -147,5 +183,9 @@ public class ServerTimeGenerator extends TimeGenerator {
   @Override
   protected boolean isAscending() {
     return queryPlan.isAscending();
+  }
+
+  public Filter getTimeFilter() {
+    return timeFilter;
   }
 }

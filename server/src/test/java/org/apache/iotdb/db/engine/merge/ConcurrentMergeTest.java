@@ -117,6 +117,7 @@ public class ConcurrentMergeTest {
     QueryDataSource queryDataSource =
         processor.query(
             Collections.singletonList(new PartialPath(deviceId, measurementId)),
+            deviceId,
             context,
             null,
             null);

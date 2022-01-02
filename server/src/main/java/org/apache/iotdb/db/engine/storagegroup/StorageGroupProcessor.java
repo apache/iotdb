@@ -1572,8 +1572,19 @@ public class StorageGroupProcessor {
     }
   }
 
+  /**
+   * build query data source by searching all tsfile which fit in query filter
+   *
+   * @param pathList data paths
+   * @param context query context
+   * @param timeFilter time filter
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
+   * @return query data source
+   */
   public QueryDataSource query(
       List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       QueryFileManager filePathsManager,
       Filter timeFilter)
@@ -1585,6 +1596,7 @@ public class StorageGroupProcessor {
               tsFileManagement.getTsFileList(true),
               upgradeSeqFileList,
               pathList,
+              singleDeviceId,
               context,
               timeFilter,
               true);
@@ -1593,6 +1605,7 @@ public class StorageGroupProcessor {
               tsFileManagement.getTsFileList(false),
               upgradeUnseqFileList,
               pathList,
+              singleDeviceId,
               context,
               timeFilter,
               false);
@@ -1642,6 +1655,7 @@ public class StorageGroupProcessor {
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,
       List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
@@ -1664,7 +1678,8 @@ public class StorageGroupProcessor {
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1676,7 +1691,8 @@ public class StorageGroupProcessor {
     }
 
     for (TsFileResource tsFileResource : tsFileResources) {
-      if (!tsFileResource.isSatisfied(timeFilter, isSeq, dataTTL, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
