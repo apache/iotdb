@@ -35,7 +35,11 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import com.google.common.primitives.Bytes;
 import org.apache.thrift.TException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public abstract class QueryPlan extends PhysicalPlan {
 
@@ -61,16 +65,13 @@ public abstract class QueryPlan extends PhysicalPlan {
   private boolean withoutAllNull;
 
   public QueryPlan() {
-    super(true);
-    setOperatorType(Operator.OperatorType.QUERY);
-  }
-
-  public QueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
+    super(Operator.OperatorType.QUERY);
+    setQuery(true);
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
+  /** Construct the header of result set. Return TSExecuteStatementResp. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
       throws TException, MetadataException {
     List<String> respColumns = new ArrayList<>();
@@ -97,11 +98,12 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws TException, MetadataException {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); ++i) {
       if (isJdbcQuery) {
+        // Separate sgName from the name of resultColumn to reduce the network IO
         String sgName = IoTDB.metaManager.getBelongedStorageGroup(getPaths().get(i)).getFullPath();
         respSgColumns.add(sgName);
         if (resultColumns.get(i).getAlias() == null) {
@@ -126,14 +128,11 @@ public abstract class QueryPlan extends PhysicalPlan {
 
   @Override
   public void setPaths(List<PartialPath> paths) {
-    if (paths == null) this.paths = null; // align by device
-    else {
-      List<MeasurementPath> measurementPaths = new ArrayList<>();
-      for (PartialPath path : paths) {
-        measurementPaths.add((MeasurementPath) path);
-      }
-      this.paths = measurementPaths;
+    List<MeasurementPath> measurementPaths = new ArrayList<>();
+    for (PartialPath path : paths) {
+      measurementPaths.add((MeasurementPath) path);
     }
+    this.paths = measurementPaths;
   }
 
   public List<TSDataType> getDataTypes() {

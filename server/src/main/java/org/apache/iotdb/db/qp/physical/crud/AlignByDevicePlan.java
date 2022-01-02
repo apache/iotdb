@@ -29,7 +29,12 @@ import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class AlignByDevicePlan extends QueryPlan {
 
@@ -37,17 +42,21 @@ public class AlignByDevicePlan extends QueryPlan {
       "The paths of the SELECT clause can only be measurements or STAR.";
   public static final String ALIAS_ERROR_MESSAGE =
       "alias %s can only be matched with one time series";
+  public static final String DATATYPE_ERROR_MESSAGE =
+      "The data types of the same measurement column should be the same across devices.";
 
   // to record result measurement columns, e.g. temperature, status, speed
   private List<String> measurements;
-  private List<TSDataType> dataTypes;
   private Map<String, MeasurementInfo> measurementInfoMap;
+  private List<PartialPath> deduplicatePaths = new ArrayList<>();
+  private List<String> aggregations;
 
-  // to check data type consistency for the same name sensor of different devices
-  private List<PartialPath> devices;
+  // paths index of each device that need to execute
+  private Map<String, List<Integer>> deviceToPathIndex = new LinkedHashMap<>();
   private Map<String, IExpression> deviceToFilterMap;
 
   private GroupByTimePlan groupByTimePlan;
+  private GroupByTimeFillPlan groupByFillPlan;
   private FillQueryPlan fillQueryPlan;
   private AggregationPlan aggregationPlan;
 
@@ -57,61 +66,77 @@ public class AlignByDevicePlan extends QueryPlan {
 
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator) {
-    // do nothing
+    Set<String> pathWithAggregationSet = new LinkedHashSet<>();
+    List<String> deduplicatedAggregations = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      PartialPath path = paths.get(i);
+      String aggregation = aggregations != null ? aggregations.get(i) : null;
+      String pathStrWithAggregation = getPathStrWithAggregation(path, aggregation);
+      if (!pathWithAggregationSet.contains(pathStrWithAggregation)) {
+        pathWithAggregationSet.add(pathStrWithAggregation);
+        deduplicatePaths.add(path);
+        if (this.aggregations != null) {
+          deduplicatedAggregations.add(this.aggregations.get(i));
+        }
+        deviceToPathIndex
+            .computeIfAbsent(path.getDevice(), k -> new ArrayList<>())
+            .add(deduplicatePaths.size() - 1);
+      }
+    }
+    setAggregations(deduplicatedAggregations);
+    this.paths = null;
+  }
+
+  public List<PartialPath> getDeduplicatePaths() {
+    return deduplicatePaths;
+  }
+
+  public void removeDevice(String device) {
+    deviceToPathIndex.remove(device);
+  }
+
+  public void setMeasurementInfoMap(Map<String, MeasurementInfo> measurementInfoMap) {
+    this.measurementInfoMap = measurementInfoMap;
+  }
+
+  public Map<String, MeasurementInfo> getMeasurementInfoMap() {
+    return measurementInfoMap;
   }
 
   @Override
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery) {
-    List<String> respColumns = new ArrayList<>();
-    List<String> columnsTypes = new ArrayList<>();
-
     TSExecuteStatementResp resp = RpcUtils.getTSExecuteStatementResp(TSStatusCode.SUCCESS_STATUS);
 
-    // set columns in TSExecuteStatementResp.
-    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+    List<String> respColumns = new ArrayList<>();
+    List<String> columnTypes = new ArrayList<>();
 
-    // get column types and do deduplication
     // the DEVICE column of ALIGN_BY_DEVICE result
-    columnsTypes.add(TSDataType.TEXT.toString());
-    List<TSDataType> deduplicatedColumnsType = new ArrayList<>();
-    // the DEVICE column of ALIGN_BY_DEVICE result
-    deduplicatedColumnsType.add(TSDataType.TEXT);
+    respColumns.add(SQLConstant.ALIGNBY_DEVICE_COLUMN_NAME);
+    columnTypes.add(TSDataType.TEXT.toString());
 
     Set<String> deduplicatedMeasurements = new LinkedHashSet<>();
-    Map<String, MeasurementInfo> measurementInfoMap = getMeasurementInfoMap();
-
     // build column header with constant and non exist column and deduplication
-    List<String> measurements = getMeasurements();
     for (String measurement : measurements) {
       MeasurementInfo measurementInfo = measurementInfoMap.get(measurement);
       TSDataType type = TSDataType.TEXT;
-      switch (measurementInfo.getMeasurementType()) {
-        case Exist:
-          type = measurementInfo.getColumnDataType();
-          break;
-        case NonExist:
-        case Constant:
-          type = TSDataType.TEXT;
+      String measurementName = measurement;
+      if (measurementInfo != null) {
+        type = measurementInfo.getColumnDataType();
+        measurementName = measurementInfo.getMeasurementAlias();
       }
-      String measurementAlias = measurementInfo.getMeasurementAlias();
-      respColumns.add(measurementAlias != null ? measurementAlias : measurement);
-      columnsTypes.add(type.toString());
+      respColumns.add(measurementName != null ? measurementName : measurement);
+      columnTypes.add(type.toString());
 
-      if (!deduplicatedMeasurements.contains(measurement)) {
-        deduplicatedMeasurements.add(measurement);
-        deduplicatedColumnsType.add(type);
-      }
+      deduplicatedMeasurements.add(measurement);
     }
 
-    // save deduplicated measurementColumn names and types in QueryPlan for the next stage to use.
-    // i.e., used by AlignByDeviceDataSet constructor in `fetchResults` stage.
-    setMeasurements(new ArrayList<>(deduplicatedMeasurements));
-    setDataTypes(deduplicatedColumnsType);
-
-    // set these null since they are never used henceforth in ALIGN_BY_DEVICE query processing.
-    setPaths(null);
+    // save deduplicated measurements in AlignByDevicePlan for AlignByDeviceDataSet to use.
+    measurements = new ArrayList<>(deduplicatedMeasurements);
     resp.setColumns(respColumns);
-    resp.setDataTypeList(columnsTypes);
+    resp.setDataTypeList(columnTypes);
+    if (getOperatorType() == OperatorType.AGGREGATION) {
+      resp.setIgnoreTimeStamp(true);
+    }
     return resp;
   }
 
@@ -124,20 +149,20 @@ public class AlignByDevicePlan extends QueryPlan {
   }
 
   @Override
-  public List<TSDataType> getDataTypes() {
-    return dataTypes;
+  public List<String> getAggregations() {
+    return aggregations;
   }
 
-  public void setDataTypes(List<TSDataType> dataTypes) {
-    this.dataTypes = dataTypes;
+  public void setAggregations(List<String> aggregations) {
+    this.aggregations = aggregations.isEmpty() ? null : aggregations;
   }
 
-  public void setDevices(List<PartialPath> devices) {
-    this.devices = devices;
+  public Map<String, List<Integer>> getDeviceToPathIndex() {
+    return deviceToPathIndex;
   }
 
-  public List<PartialPath> getDevices() {
-    return devices;
+  public void setDeviceToPathIndex(Map<String, List<Integer>> deviceToPathIndex) {
+    this.deviceToPathIndex = deviceToPathIndex;
   }
 
   public Map<String, IExpression> getDeviceToFilterMap() {
@@ -155,6 +180,15 @@ public class AlignByDevicePlan extends QueryPlan {
   public void setGroupByTimePlan(GroupByTimePlan groupByTimePlan) {
     this.groupByTimePlan = groupByTimePlan;
     this.setOperatorType(OperatorType.GROUP_BY_TIME);
+  }
+
+  public GroupByTimeFillPlan getGroupByFillPlan() {
+    return groupByFillPlan;
+  }
+
+  public void setGroupByFillPlan(GroupByTimeFillPlan groupByFillPlan) {
+    this.groupByFillPlan = groupByFillPlan;
+    this.setOperatorType(OperatorType.GROUP_BY_FILL);
   }
 
   public FillQueryPlan getFillQueryPlan() {
@@ -175,23 +209,11 @@ public class AlignByDevicePlan extends QueryPlan {
     this.setOperatorType(Operator.OperatorType.AGGREGATION);
   }
 
-  public void setMeasurementInfoMap(Map<String, MeasurementInfo> measurementInfoMap) {
-    this.measurementInfoMap = measurementInfoMap;
-  }
-
-  public Map<String, MeasurementInfo> getMeasurementInfoMap() {
-    return measurementInfoMap;
-  }
-
-  /**
-   * Exist: the measurements which don't belong to NonExist and Constant. NonExist: the measurements
-   * that do not exist in any device, data type is considered as String. The value is considered as
-   * null. Constant: the measurements that have quotation mark. e.g. "abc",'11'. The data type is
-   * considered as String and the value is the measurement name.
-   */
-  public enum MeasurementType {
-    Exist,
-    NonExist,
-    Constant
+  private String getPathStrWithAggregation(PartialPath path, String aggregation) {
+    String initialPath = path.getFullPath();
+    if (aggregation != null) {
+      initialPath = aggregation + "(" + initialPath + ")";
+    }
+    return initialPath;
   }
 }

@@ -31,7 +31,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -84,7 +91,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList) {
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       respColumns.add(resultColumns.get(i).getResultColumnName());

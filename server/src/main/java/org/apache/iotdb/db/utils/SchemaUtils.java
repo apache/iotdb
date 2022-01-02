@@ -153,7 +153,7 @@ public class SchemaUtils {
   }
 
   public static List<TSDataType> getSeriesTypesByPaths(
-      List<MeasurementPath> paths, List<String> aggregations) throws MetadataException {
+      List<MeasurementPath> paths, List<String> aggregations) {
     List<TSDataType> tsDataTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       String aggrStr = aggregations != null ? aggregations.get(i) : null;
@@ -166,6 +166,15 @@ public class SchemaUtils {
       }
     }
     return tsDataTypes;
+  }
+
+  public static TSDataType getSeriesTypeByPath(MeasurementPath path, String aggregation) {
+    TSDataType dataType = getAggregationType(aggregation);
+    if (dataType != null) {
+      return dataType;
+    } else {
+      return path.getSeriesType();
+    }
   }
 
   /**

@@ -81,7 +81,7 @@ public class TTLTest {
   private String sg1 = "root.TTL_SG1";
   private String sg2 = "root.TTL_SG2";
   private long ttl = 12345;
-  private StorageGroupProcessor storageGroupProcessor;
+  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
   private String s1 = "s1";
   private String g1s1 = sg1 + IoTDBConstant.PATH_SEPARATOR + s1;
   private long prevPartitionInterval;
@@ -96,7 +96,7 @@ public class TTLTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
   }
@@ -104,8 +104,8 @@ public class TTLTest {
   private void createSchemas() throws MetadataException, StorageGroupProcessorException {
     IoTDB.metaManager.setStorageGroup(new PartialPath(sg1));
     IoTDB.metaManager.setStorageGroup(new PartialPath(sg2));
-    storageGroupProcessor =
-        new StorageGroupProcessor(
+    virtualStorageGroupProcessor =
+        new VirtualStorageGroupProcessor(
             IoTDBDescriptor.getInstance().getConfig().getSystemDir(),
             sg1,
             new DirectFlushPolicy(),
@@ -146,7 +146,7 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
@@ -162,27 +162,27 @@ public class TTLTest {
     plan.transferType();
 
     // ok without ttl
-    storageGroupProcessor.insert(plan);
+    virtualStorageGroupProcessor.insert(plan);
 
-    storageGroupProcessor.setDataTTL(1000);
+    virtualStorageGroupProcessor.setDataTTL(1000);
     // with ttl
     plan.setTime(System.currentTimeMillis() - 1001);
     boolean caught = false;
     try {
-      storageGroupProcessor.insert(plan);
+      virtualStorageGroupProcessor.insert(plan);
     } catch (OutOfTTLException e) {
       caught = true;
     }
     assertTrue(caught);
     plan.setTime(System.currentTimeMillis() - 900);
-    storageGroupProcessor.insert(plan);
+    virtualStorageGroupProcessor.insert(plan);
   }
 
   private void prepareData()
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     InsertRowPlan plan = new InsertRowPlan();
-    plan.setDeviceId(new PartialPath(sg1));
+    plan.setDevicePath(new PartialPath(sg1));
     plan.setTime(System.currentTimeMillis());
     plan.setMeasurements(new String[] {"s1"});
     plan.setDataTypes(new TSDataType[] {TSDataType.INT64});
@@ -201,17 +201,17 @@ public class TTLTest {
     // sequence data
     for (int i = 1000; i < 2000; i++) {
       plan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(plan);
+      virtualStorageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
     // unsequence data
     for (int i = 0; i < 1000; i++) {
       plan.setTime(initTime - 2000 + i);
-      storageGroupProcessor.insert(plan);
+      virtualStorageGroupProcessor.insert(plan);
       if ((i + 1) % 300 == 0) {
-        storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+        virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
       }
     }
   }
@@ -224,7 +224,7 @@ public class TTLTest {
 
     // files before ttl
     QueryDataSource dataSource =
-        storageGroupProcessor.query(
+        virtualStorageGroupProcessor.query(
             SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
@@ -234,11 +234,11 @@ public class TTLTest {
     assertEquals(4, seqResource.size());
     assertEquals(4, unseqResource.size());
 
-    storageGroupProcessor.setDataTTL(500);
+    virtualStorageGroupProcessor.setDataTTL(500);
 
     // files after ttl
     dataSource =
-        storageGroupProcessor.query(
+        virtualStorageGroupProcessor.query(
             new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
@@ -272,9 +272,9 @@ public class TTLTest {
     // we cannot offer the exact number since when exactly ttl will be checked is unknown
     assertTrue(cnt <= 1000);
 
-    storageGroupProcessor.setDataTTL(0);
+    virtualStorageGroupProcessor.setDataTTL(0);
     dataSource =
-        storageGroupProcessor.query(
+        virtualStorageGroupProcessor.query(
             new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
@@ -288,7 +288,7 @@ public class TTLTest {
           IllegalPathException {
     prepareData();
 
-    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
     // files before ttl
     File seqDir = new File(DirectoryManager.getInstance().getNextFolderForSequenceFile(), sg1);
@@ -332,8 +332,8 @@ public class TTLTest {
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
-    storageGroupProcessor.setDataTTL(500);
-    storageGroupProcessor.checkFilesTTL();
+    virtualStorageGroupProcessor.setDataTTL(500);
+    virtualStorageGroupProcessor.checkFilesTTL();
 
     // files after ttl
     seqFiles = new ArrayList<>();
@@ -428,13 +428,13 @@ public class TTLTest {
       throws WriteProcessException, QueryProcessException, IllegalPathException,
           TriggerExecutionException {
     prepareData();
-    storageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
+    virtualStorageGroupProcessor.syncCloseAllWorkingTsFileProcessors();
 
-    assertEquals(4, storageGroupProcessor.getSequenceFileTreeSet().size());
-    assertEquals(4, storageGroupProcessor.getUnSequenceFileList().size());
+    assertEquals(4, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
-    storageGroupProcessor.setDataTTL(0);
-    assertEquals(0, storageGroupProcessor.getSequenceFileTreeSet().size());
-    assertEquals(0, storageGroupProcessor.getUnSequenceFileList().size());
+    virtualStorageGroupProcessor.setDataTTL(0);
+    assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
+    assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }
 }

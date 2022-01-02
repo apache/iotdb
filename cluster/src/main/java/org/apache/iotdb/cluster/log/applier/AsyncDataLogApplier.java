@@ -159,7 +159,7 @@ public class AsyncDataLogApplier implements LogApplier {
       PartialPath path = ((InsertRowsPlan) plan).getFirstDeviceId();
       sgPath = IoTDB.metaManager.getBelongedStorageGroup(path);
     } else if (plan instanceof InsertPlan) {
-      PartialPath deviceId = ((InsertPlan) plan).getDeviceId();
+      PartialPath deviceId = ((InsertPlan) plan).getDevicePath();
       sgPath = IoTDB.metaManager.getBelongedStorageGroup(deviceId);
     } else if (plan instanceof CreateTimeSeriesPlan) {
       PartialPath path = ((CreateTimeSeriesPlan) plan).getPath();

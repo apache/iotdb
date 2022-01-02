@@ -65,7 +65,7 @@ public class CreateMultiTimeSeriesPlan extends PhysicalPlan implements BatchPlan
   private List<Integer> indexes;
 
   public CreateMultiTimeSeriesPlan() {
-    super(false, Operator.OperatorType.CREATE_MULTI_TIMESERIES);
+    super(Operator.OperatorType.CREATE_MULTI_TIMESERIES);
   }
 
   @Override

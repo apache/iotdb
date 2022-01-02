@@ -126,18 +126,20 @@ public class IoTDBMergeIT {
       for (int i = 0; i < 10; i++) {
         logger.info("Running the {} round merge", i);
         for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
-          statement.execute(
+          statement.addBatch(
               String.format(
                   "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                   j, j + 1, j + 2, j + 3));
         }
+        statement.executeBatch();
         statement.execute("FLUSH");
         for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
-          statement.execute(
+          statement.addBatch(
               String.format(
                   "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                   j, j + 10, j + 20, j + 30));
         }
+        statement.executeBatch();
         statement.execute("FLUSH");
         try {
           Thread.sleep(1000);
@@ -185,33 +187,37 @@ public class IoTDBMergeIT {
       }
 
       for (int j = 10; j < 20; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 1, j + 2, j + 3));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
       for (int j = 20; j < 30; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 1, j + 2, j + 3));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
 
       for (int j = 20; j < 30; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 10, j + 20, j + 30));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
       for (int j = 10; j < 20; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 10, j + 20, j + 30));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
 
       statement.execute("MERGE");
@@ -246,52 +252,44 @@ public class IoTDBMergeIT {
   @Test
   public void testCrossPartition() throws SQLException {
     logger.info("testCrossPartition...");
-    try {
-      /*
-       * disable unseq compaction because the new compaction
-       * utils for inner space is designed for seq space. Wait
-       * the new compaction utils for unseq space compaction then
-       * open it.
-       */
-      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
-      try (Connection connection = EnvFactory.getEnv().getConnection();
-          Statement statement = connection.createStatement()) {
-        statement.execute("SET STORAGE GROUP TO root.mergeTest");
-        for (int i = 1; i <= 3; i++) {
-          try {
-            statement.execute(
-                "CREATE TIMESERIES root.mergeTest.s"
-                    + i
-                    + " WITH DATATYPE=INT64,"
-                    + "ENCODING=PLAIN");
-          } catch (SQLException e) {
-            // ignore
-          }
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("SET STORAGE GROUP TO root.mergeTest");
+      for (int i = 1; i <= 3; i++) {
+        try {
+          statement.execute(
+              "CREATE TIMESERIES root.mergeTest.s"
+                  + i
+                  + " WITH DATATYPE=INT64,"
+                  + "ENCODING=PLAIN");
+        } catch (SQLException e) {
+          // ignore
         }
+      }
 
-        // file in partition
-        for (int k = 0; k < 7; k++) {
-          // partition num
-          for (int i = 0; i < 10; i++) {
-            // sequence files
-            for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
-              statement.execute(
-                  String.format(
-                      "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      j, j + 1, j + 2, j + 3));
-            }
-            statement.execute("FLUSH");
-            // unsequence files
-            for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
-              statement.execute(
-                  String.format(
-                      "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
-                      j, j + 10, j + 20, j + 30));
-            }
-            statement.execute("FLUSH");
+      // file in partition
+      for (int k = 0; k < 7; k++) {
+        // partition num
+        for (int i = 0; i < 10; i++) {
+          // sequence files
+          for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
+            statement.addBatch(
+                String.format(
+                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                    j, j + 1, j + 2, j + 3));
           }
+          statement.executeBatch();
+          statement.execute("FLUSH");
+          // unsequence files
+          for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
+            statement.addBatch(
+                String.format(
+                    "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
+                    j, j + 10, j + 20, j + 30));
+          }
+          statement.executeBatch();
+          statement.execute("FLUSH");
         }
-
         statement.execute("MERGE");
         try {
           Thread.sleep(1000);
