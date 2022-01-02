@@ -18,15 +18,21 @@
  */
 package org.apache.iotdb.tsfile.read.query.dataset;
 
+import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.BatchDataFactory;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 import org.apache.iotdb.tsfile.read.reader.series.FileSeriesReaderByTimestamp;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * query processing: (1) generate time by series that has filter (2) get value of series that does
@@ -34,6 +40,7 @@ import java.util.List;
  */
 public class DataSetWithTimeGenerator extends QueryDataSet {
 
+  private final List<Function<Object, Field>> providers;
   private TimeGenerator timeGenerator;
   private List<FileSeriesReaderByTimestamp> readers;
   private List<Boolean> cached;
@@ -57,6 +64,33 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
     this.cached = cached;
     this.timeGenerator = timeGenerator;
     this.readers = readers;
+
+    providers = dataTypes.stream().map(dataType -> {
+
+      switch (dataType) {
+        case INT32:
+          return new Function<Object, Field>() {
+            @Override
+            public Field apply(Object o) {
+              Field field = new Field(dataType);
+              field.setIntV((Integer) o);
+              return field;
+            }
+          };
+        case FLOAT:
+          return new Function<Object, Field>() {
+            @Override
+            public Field apply(Object o) {
+              Field field = new Field(dataType);
+              field.setFloatV((Float) o);
+              return field;
+            }
+          };
+        default:
+          throw new IllegalStateException();
+      }
+
+    }).collect(Collectors.toList());
   }
 
   @Override
@@ -90,7 +124,11 @@ public class DataSetWithTimeGenerator extends QueryDataSet {
         TsPrimitiveType v = ((TsPrimitiveType[]) value)[0];
         rowRecord.addField(v.getValue(), v.getDataType());
       } else {
-        rowRecord.addField(value, dataTypes.get(i));
+        if (BatchDataFactory.optimize.get()) {
+          rowRecord.addField(providers.get(i).apply(value));
+        } else {
+          rowRecord.addField(value, dataTypes.get(i));
+        }
       }
     }
 
