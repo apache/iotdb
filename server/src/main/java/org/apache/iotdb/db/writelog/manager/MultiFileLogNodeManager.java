@@ -46,16 +46,17 @@ import java.util.function.Supplier;
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   // if OOM occurs when registering bytebuffer, getNode method will sleep awhile and then try again
-  private static final int REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS = 20;
-  // if total sleep time exceeds this, getNode method will reject this write and throw original
-  // exception.
-  private static final int REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS = 1_000;
+  private static final long REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS =
+      config.getRegisterBufferSleepIntervalInMs();
+  // if total sleep time exceeds this, getNode method will reject this write
+  private static final long REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS =
+      config.getRegisterBufferRejectThresholdInMs();
 
   private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
   private boolean firstReadOnly = true;
 
   private void forceTask() {
