@@ -223,7 +223,7 @@ public class SingleSeriesCompactor {
           chunkSize);
       cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
       cachedChunk.mergeChunk(chunk);
-      if (cachedChunk.getChunkStatistic().getCount() >= targetChunkSize
+      if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
           || getChunkSize(cachedChunk) >= targetChunkSize) {
         flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
         cachedChunk = null;
