@@ -1311,27 +1311,34 @@ public class TsFileSequenceReader implements AutoCloseable {
     if (fileSize < headerLength) {
       return TsFileCheckStatus.INCOMPATIBLE_FILE;
     }
-    if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic())
-        || (TSFileConfig.VERSION_NUMBER != readVersionNumber())) {
-      return TsFileCheckStatus.INCOMPATIBLE_FILE;
-    }
-
-    tsFileInput.position(headerLength);
-    if (isComplete()) {
-      loadMetadataSize();
-      if (fastFinish) {
-        return TsFileCheckStatus.COMPLETE_FILE;
+    try {
+      if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic())
+          || (TSFileConfig.VERSION_NUMBER != readVersionNumber())) {
+        return TsFileCheckStatus.INCOMPATIBLE_FILE;
       }
+      tsFileInput.position(headerLength);
+      if (isComplete()) {
+        loadMetadataSize();
+        if (fastFinish) {
+          return TsFileCheckStatus.COMPLETE_FILE;
+        }
+      }
+    } catch (IOException e) {
+      e.printStackTrace();
     }
-
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
       TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
       TSDataType dataType = timeseriesMetadata.getTSDataType();
       Statistics<? extends Serializable> timeseriesMetadataSta = timeseriesMetadata.getStatistics();
       Statistics<? extends Serializable> chunkMetadatasSta = Statistics.getStatsByType(dataType);
       for (IChunkMetadata chunkMetadata : getChunkMetadataList(entry.getValue().left)) {
-        if (checkChunkAndPagesStatistics(chunkMetadata) == TsFileCheckStatus.FILE_EXISTS_MISTAKES) {
-          // TODO can not find the position of chunkMetadata
+        long tscheckStatus = TsFileCheckStatus.COMPLETE_FILE;
+        try {
+          tscheckStatus = checkChunkAndPagesStatistics(chunkMetadata);
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+        if (tscheckStatus == TsFileCheckStatus.FILE_EXISTS_MISTAKES) {
           throw new TsFileStatisticsMistakesException(
               "Chunk" + message + chunkMetadata.getOffsetOfChunkHeader());
         }
