@@ -252,7 +252,7 @@ public class StorageGroupProcessor {
 
   private final Deque<ByteBuffer> walByteBufferPool = new LinkedList<>();
 
-  private AtomicInteger currentWalPoolSize = new AtomicInteger(0);
+  private int currentWalPoolSize = 0;
 
   // this field is used to avoid when one writer release bytebuffer back to pool,
   // and the next writer has already arrived, but the check thread get the lock first, it find the
@@ -268,7 +268,10 @@ public class StorageGroupProcessor {
 
   private volatile boolean compacting = false;
 
-  /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
+   * fails
+   */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
@@ -276,7 +279,7 @@ public class StorageGroupProcessor {
       int MAX_WAL_BYTEBUFFER_NUM =
           config.getConcurrentWritingTimePartition()
               * config.getMaxWalBytebufferNumForEachPartition();
-      while (walByteBufferPool.isEmpty() && currentWalPoolSize.get() + 2 > MAX_WAL_BYTEBUFFER_NUM) {
+      while (walByteBufferPool.isEmpty() && currentWalPoolSize + 2 > MAX_WAL_BYTEBUFFER_NUM) {
         try {
           walByteBufferPool.wait();
         } catch (InterruptedException e) {
@@ -299,19 +302,19 @@ public class StorageGroupProcessor {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
         try {
-          currentWalPoolSize.getAndAdd(2);
+          currentWalPoolSize += 2;
           res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
           res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
         } catch (OutOfMemoryError e) {
           if (res[0] != null) {
             MmapUtil.clean((MappedByteBuffer) res[0]);
-            currentWalPoolSize.getAndDecrement();
+            currentWalPoolSize -= 1;
           }
           if (res[1] != null) {
             MmapUtil.clean((MappedByteBuffer) res[1]);
-            currentWalPoolSize.getAndDecrement();
+            currentWalPoolSize -= 1;
           }
-          throw e;
+          return null;
         }
       }
       // if the pool is empty, set the time back to MAX_VALUE
@@ -349,12 +352,12 @@ public class StorageGroupProcessor {
       // and the pool is not empty and the time interval since the pool is not empty is larger than
       // 10s
       // we will trim the size to expectedSize until the pool is empty
-      while (expectedSize < currentWalPoolSize.get()
+      while (expectedSize < currentWalPoolSize
           && !walByteBufferPool.isEmpty()
           && poolNotEmptyIntervalInMS >= config.getWalPoolTrimIntervalInMS()) {
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeLast());
-        currentWalPoolSize.getAndAdd(-2);
+        currentWalPoolSize -= 2;
       }
     }
   }
@@ -1318,7 +1321,7 @@ public class StorageGroupProcessor {
     synchronized (walByteBufferPool) {
       while (!walByteBufferPool.isEmpty()) {
         MmapUtil.clean((MappedByteBuffer) walByteBufferPool.removeFirst());
-        currentWalPoolSize.getAndDecrement();
+        currentWalPoolSize -= 1;
       }
     }
   }

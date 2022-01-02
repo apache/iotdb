@@ -47,10 +47,10 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
   // if OOM occurs when registering bytebuffer, getNode method will sleep awhile and then try again
-  private static final int REGISTER_BUFFER_SLEEP_INTERVAL = 20;
+  private static final int REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS = 20;
   // if total sleep time exceeds this, getNode method will reject this write and throw original
   // exception.
-  private static final int REGISTER_BUFFER_REJECT_THRESHOLD = 1_000;
+  private static final int REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS = 1_000;
 
   private final Map<String, WriteLogNode> nodeMap;
 
@@ -98,34 +98,29 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       if (oldNode != null) {
         node = oldNode;
       } else {
-        ByteBuffer[] buffers = null;
+        ByteBuffer[] buffers = supplier.get();
         int sleepTimeInMs = 0;
-        // try to get bytebuffer repeatedly
         while (buffers == null) {
-          try {
-            buffers = supplier.get();
-          } catch (OutOfMemoryError e) {
-            // log error if this is the first time
-            if (sleepTimeInMs == 0) {
-              logger.error(
-                  "OOM occurs when allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number",
-                  e);
-            }
-            // sleep awhile and then try again
-            try {
-              Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL);
-              sleepTimeInMs += REGISTER_BUFFER_SLEEP_INTERVAL;
-            } catch (InterruptedException interruptedException) {
-              e.addSuppressed(interruptedException);
-              nodeMap.remove(identifier);
-              throw e;
-            }
-            // sleep too long, throw exception
-            if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD) {
-              nodeMap.remove(identifier);
-              throw e;
-            }
+          // log error if this is the first time
+          if (sleepTimeInMs == 0) {
+            logger.error(
+                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
           }
+          // sleep awhile and then try again
+          try {
+            Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS);
+            sleepTimeInMs += REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS;
+          } catch (InterruptedException e) {
+            nodeMap.remove(identifier);
+          }
+          // sleep too long, throw exception
+          if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS) {
+            nodeMap.remove(identifier);
+            throw new RuntimeException(
+                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
+          }
+          // try to get bytebuffer repeatedly
+          buffers = supplier.get();
         }
         // initialize node with bytebuffers
         node.initBuffer(buffers);
