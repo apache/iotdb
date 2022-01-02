@@ -277,7 +277,10 @@ public class VirtualStorageGroupProcessor {
 
   private IDTable idTable;
 
-  /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
+   * fails
+   */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
@@ -320,7 +323,7 @@ public class VirtualStorageGroupProcessor {
             MmapUtil.clean((MappedByteBuffer) res[1]);
             currentWalPoolSize -= 1;
           }
-          throw e;
+          return null;
         }
       }
       // if the pool is empty, set the time back to MAX_VALUE
