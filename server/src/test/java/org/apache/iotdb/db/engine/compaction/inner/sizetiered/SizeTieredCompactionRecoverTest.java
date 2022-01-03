@@ -138,7 +138,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -268,7 +268,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -388,7 +388,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -475,7 +475,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(targetResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -558,7 +558,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     compactionLogger.logFileInfo(
         SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(targetResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     for (int i = 0; i < seqResources.size(); i++) {
       Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
@@ -676,7 +676,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -782,7 +782,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,
@@ -892,7 +892,7 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
     compactionLogger.logSequence(true);
     deleteFileIfExists(targetTsFileResource.getTsFile());
     compactionLogger.logFileInfo(TARGET_INFO, targetTsFileResource.getTsFile());
-    InnerSpaceCompactionUtils.compactV2(
+    InnerSpaceCompactionUtils.compact(
         targetTsFileResource,
         new ArrayList<>(seqResources.subList(0, 3)),
         COMPACTION_TEST_SG,

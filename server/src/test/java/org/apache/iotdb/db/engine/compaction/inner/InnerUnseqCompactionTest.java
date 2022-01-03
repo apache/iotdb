@@ -350,7 +350,7 @@ public class InnerUnseqCompactionTest {
               }
               SizeTieredCompactionLogger sizeTieredCompactionLogger =
                   new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.compactV2(
+              InnerSpaceCompactionUtils.compact(
                   targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, false);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(

@@ -228,7 +228,7 @@ public class InnerSeqCompactionTest {
               }
               SizeTieredCompactionLogger sizeTieredCompactionLogger =
                   new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.compactV2(
+              InnerSpaceCompactionUtils.compact(
                   targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
@@ -460,7 +460,7 @@ public class InnerSeqCompactionTest {
             }
             SizeTieredCompactionLogger sizeTieredCompactionLogger =
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-            InnerSpaceCompactionUtils.compactV2(
+            InnerSpaceCompactionUtils.compact(
                 targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.combineModsInCompaction(
@@ -745,7 +745,7 @@ public class InnerSeqCompactionTest {
               }
               SizeTieredCompactionLogger sizeTieredCompactionLogger =
                   new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.compactV2(
+              InnerSpaceCompactionUtils.compact(
                   targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(

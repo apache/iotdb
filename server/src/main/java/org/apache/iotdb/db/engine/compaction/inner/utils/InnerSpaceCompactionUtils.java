@@ -61,7 +61,7 @@ public class InnerSpaceCompactionUtils {
     throw new IllegalStateException("Utility class");
   }
 
-  public static void compactV2(
+  public static void compact(
       TsFileResource targetResource,
       List<TsFileResource> tsFileResources,
       String storageGroup,
