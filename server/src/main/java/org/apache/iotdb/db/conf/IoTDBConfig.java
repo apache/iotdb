@@ -246,6 +246,9 @@ public class IoTDBConfig {
    */
   private int concurrentSubRawQueryThread = 8;
 
+  /** Blocking queue size for read task in raw data query. */
+  private int rawQueryBlockingQueueCapacity = 5;
+
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
 
@@ -1106,6 +1109,14 @@ public class IoTDBConfig {
 
   void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
     this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  }
+
+  public int getRawQueryBlockingQueueCapacity() {
+    return rawQueryBlockingQueueCapacity;
+  }
+
+  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
+    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public long getSeqTsFileSize() {
