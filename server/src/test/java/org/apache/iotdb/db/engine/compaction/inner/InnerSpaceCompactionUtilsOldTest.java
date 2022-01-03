@@ -46,7 +46,12 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
+/**
+ * This test is used for old version of inner space compact. We leave it as it still validates the
+ * current compaction. However, due to this test's strong coupling with an older version of
+ * compaction, we may remove it in the future.
+ */
+public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
 
   File tempSGDir;
 
