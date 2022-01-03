@@ -117,7 +117,7 @@ public class SingleSeriesCompactor {
         // we process this chunk in three different way according to the size of it
         if (chunkSize >= targetChunkSize || chunkPointNum >= targetChunkPointNum) {
           processLargeChunk(currentChunk, chunkMetadata);
-        } else if (chunkSize < chunkSizeLowerBound && chunkPointNum < chunkPointNumLowerBound) {
+        } else if (chunkSize <= chunkSizeLowerBound && chunkPointNum <= chunkPointNumLowerBound) {
           processSmallChunk(currentChunk);
         } else {
           processMiddleChunk(currentChunk, chunkMetadata);
@@ -130,7 +130,7 @@ public class SingleSeriesCompactor {
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
-    } else if (pointCountInChunkWriter == 0L) {
+    } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
@@ -148,6 +148,7 @@ public class SingleSeriesCompactor {
       //       if there is a cached chunk, deserialize it and write it to ChunkWriter
       LOGGER.debug(
           "{} compacting {}.{}, deserialize the cached chunk", storageGroup, device, timeSeries);
+      cachedChunk.getData().flip();
       writeChunkIntoChunkWriter(cachedChunk);
       cachedChunk = null;
       cachedChunkMetadata = null;
@@ -221,8 +222,11 @@ public class SingleSeriesCompactor {
           device,
           timeSeries,
           chunkSize);
-      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
+      // Notice!!!
+      // We must execute mergeChunk before mergeChunkMetadata
+      // otherwise the statistic of data may be wrong.
       cachedChunk.mergeChunk(chunk);
+      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
       if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
           || getChunkSize(cachedChunk) >= targetChunkSize) {
         flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
@@ -261,6 +265,7 @@ public class SingleSeriesCompactor {
           storageGroup,
           device,
           timeSeries);
+      cachedChunk.getData().flip();
       writeChunkIntoChunkWriter(cachedChunk);
       cachedChunk = null;
       cachedChunkMetadata = null;

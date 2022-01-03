@@ -111,7 +111,7 @@ public class InnerSeqCompactionTest {
   }
 
   @Test
-  public void testDeserializePage() throws IllegalPathException, IOException {
+  public void testDeserializePage() throws MetadataException, IOException {
     int prevMergePagePointNumberThreshold =
         IoTDBDescriptor.getInstance().getConfig().getMergePagePointNumberThreshold();
     IoTDBDescriptor.getInstance().getConfig().setMergePagePointNumberThreshold(100000);
@@ -223,8 +223,8 @@ public class InnerSeqCompactionTest {
             }
             SizeTieredCompactionLogger sizeTieredCompactionLogger =
                 new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-            InnerSpaceCompactionUtils.compact(
-                targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
+            InnerSpaceCompactionUtils.compactV2(
+                targetTsFileResource, sourceResources, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.combineModsInCompaction(
                 sourceResources, targetTsFileResource);

@@ -384,9 +384,9 @@ public class IoTDBConfig {
 
   /**
    * If the chunk size is lower than this threshold, it will be deserialized into points, default is
-   * 128 byte
+   * 1 KB
    */
-  private long chunkSizeLowerBoundInCompaction = 128L;
+  private long chunkSizeLowerBoundInCompaction = 1024L;
 
   /**
    * If the chunk point num is lower than this threshold, it will be deserialized into points,
