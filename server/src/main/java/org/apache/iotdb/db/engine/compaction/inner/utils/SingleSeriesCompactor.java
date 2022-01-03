@@ -43,8 +43,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
-/** This class is used to compact one series during sequence space inner compaction. */
+/** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactor {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private String storageGroup;
@@ -64,6 +66,7 @@ public class SingleSeriesCompactor {
   private long minStartTimestamp = Long.MAX_VALUE;
   private long maxEndTimestamp = Long.MIN_VALUE;
   private long pointCountInChunkWriter = 0;
+  private Map<Long, TimeValuePair> timeValuePairMapForUnseqMerge = new TreeMap<>();
 
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
@@ -111,7 +114,7 @@ public class SingleSeriesCompactor {
 
         if (!sequence) {
           // if it is not sequence, deserialize it into point
-          writeChunkIntoChunkWriter(currentChunk);
+          flushChunkToMap(currentChunk);
           continue;
         }
 
@@ -141,6 +144,8 @@ public class SingleSeriesCompactor {
       cachedChunkMetadata = null;
     } else if (pointCountInChunkWriter != 0L) {
       flushChunkWriter();
+    } else if (timeValuePairMapForUnseqMerge.size() > 0) {
+      flushMapToFileWriter();
     }
     targetResource.updateStartTime(device, minStartTimestamp);
     targetResource.updateEndTime(device, maxEndTimestamp);
@@ -365,5 +370,29 @@ public class SingleSeriesCompactor {
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
+  }
+
+  private void flushChunkToMap(Chunk chunk) throws IOException {
+    IChunkReader chunkReader = new ChunkReaderByTimestamp(chunk);
+    while (chunkReader.hasNextSatisfiedPage()) {
+      IPointReader batchIterator = chunkReader.nextPageData().getBatchDataIterator();
+      while (batchIterator.hasNextTimeValuePair()) {
+        TimeValuePair timeValuePair = batchIterator.nextTimeValuePair();
+        timeValuePairMapForUnseqMerge.put(timeValuePair.getTimestamp(), timeValuePair);
+        if (timeValuePair.getTimestamp() > maxEndTimestamp) {
+          maxEndTimestamp = timeValuePair.getTimestamp();
+        }
+        if (timeValuePair.getTimestamp() < minStartTimestamp) {
+          minStartTimestamp = timeValuePair.getTimestamp();
+        }
+      }
+    }
+  }
+
+  private void flushMapToFileWriter() throws IOException {
+    for (TimeValuePair timeValuePair : timeValuePairMapForUnseqMerge.values()) {
+      writeTimeAndValueToChunkWriter(timeValuePair);
+    }
+    flushChunkWriter();
   }
 }
