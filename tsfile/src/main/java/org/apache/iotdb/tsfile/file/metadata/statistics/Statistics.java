@@ -44,7 +44,7 @@ import java.util.Objects;
  * For the statistics in the Unseq file TimeSeriesMetadata, only firstValue, lastValue, startTime
  * and endTime can be used.</br>
  */
-public abstract class Statistics<T extends Serializable> implements Serializable {
+public abstract class Statistics<T extends Serializable> {
 
   private static final Logger LOG = LoggerFactory.getLogger(Statistics.class);
   /**

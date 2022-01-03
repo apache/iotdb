@@ -26,11 +26,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class LongStatistics extends Statistics<Long> implements Serializable {
+public class LongStatistics extends Statistics<Long> {
 
   private long minValue;
   private long maxValue;

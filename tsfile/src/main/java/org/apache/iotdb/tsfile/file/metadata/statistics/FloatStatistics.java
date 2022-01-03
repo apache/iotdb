@@ -26,12 +26,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Statistics for float type. */
-public class FloatStatistics extends Statistics<Float> implements Serializable {
+public class FloatStatistics extends Statistics<Float> {
 
   private float minValue;
   private float maxValue;

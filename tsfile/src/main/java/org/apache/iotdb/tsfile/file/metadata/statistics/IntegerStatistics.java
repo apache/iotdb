@@ -26,12 +26,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
 /** Statistics for int type. */
-public class IntegerStatistics extends Statistics<Integer> implements Serializable {
+public class IntegerStatistics extends Statistics<Integer> {
 
   private int minValue;
   private int maxValue;

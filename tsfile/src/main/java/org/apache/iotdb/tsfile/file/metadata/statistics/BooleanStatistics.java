@@ -26,11 +26,10 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class BooleanStatistics extends Statistics<Boolean> implements Serializable {
+public class BooleanStatistics extends Statistics<Boolean> {
 
   private boolean firstValue;
   private boolean lastValue;

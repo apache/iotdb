@@ -36,7 +36,7 @@ import java.util.TreeMap;
 
 public class TsFileSelfCheckTool {
 
-  public void check(String filename, boolean fastFinish)
+  public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException {
     System.out.println("file path: " + filename);
 
@@ -47,7 +47,7 @@ public class TsFileSelfCheckTool {
     } catch (IOException e) {
       e.printStackTrace();
     }
-    System.out.println(reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap));
+    return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
   }
 
   public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMap(String filename)

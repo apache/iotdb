@@ -1289,10 +1289,9 @@ public class TsFileSequenceReader implements AutoCloseable {
    * Self Check the file and return whether the file is safe.
    *
    * @param filename the path of file
-   * @param fastFinish if true and the file is complete, then newSchema and chunkGroupMetadataList
-   *     parameter will be not modified.
-   * @return the position of the file that is fine. All data after the position in the file should
-   *     be truncated.
+   * @param fastFinish if true, the method will only check the format of head (Magic String TsFile,
+   *     Version Number) and tail (Magic String TsFile) of TsFile.
+   * @return the status of TsFile
    */
   public long selfCheckWithInfo(
       String filename,

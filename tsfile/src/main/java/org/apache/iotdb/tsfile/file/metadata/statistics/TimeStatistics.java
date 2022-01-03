@@ -24,10 +24,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class TimeStatistics extends Statistics<Long> implements Serializable {
+public class TimeStatistics extends Statistics<Long> {
 
   static final int TIME_STATISTICS_FIXED_RAM_SIZE = 40;
 
