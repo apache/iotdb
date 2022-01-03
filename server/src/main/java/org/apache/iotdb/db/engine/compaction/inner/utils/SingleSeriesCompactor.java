@@ -53,6 +53,7 @@ public class SingleSeriesCompactor {
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
+  private boolean sequence;
 
   private IMeasurementSchema schema;
   private ChunkWriterImpl chunkWriter;
@@ -79,7 +80,8 @@ public class SingleSeriesCompactor {
       String timeSeries,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
       TsFileIOWriter fileWriter,
-      TsFileResource targetResource)
+      TsFileResource targetResource,
+      boolean sequence)
       throws MetadataException {
     this.storageGroup = storageGroup;
     this.device = device;
@@ -91,6 +93,7 @@ public class SingleSeriesCompactor {
     this.cachedChunk = null;
     this.cachedChunkMetadata = null;
     this.targetResource = targetResource;
+    this.sequence = sequence;
   }
 
   /**
@@ -106,6 +109,12 @@ public class SingleSeriesCompactor {
       for (ChunkMetadata chunkMetadata : chunkMetadataList) {
         Chunk currentChunk = reader.readMemChunk(chunkMetadata);
 
+        if (!sequence) {
+          // if it is not sequence, deserialize it into point
+          writeChunkIntoChunkWriter(currentChunk);
+          continue;
+        }
+
         // if this chunk is modified, deserialize it into points
         if (chunkMetadata.getDeleteIntervalList() != null) {
           processModifiedChunk(currentChunk);
@@ -117,7 +126,7 @@ public class SingleSeriesCompactor {
         // we process this chunk in three different way according to the size of it
         if (chunkSize >= targetChunkSize || chunkPointNum >= targetChunkPointNum) {
           processLargeChunk(currentChunk, chunkMetadata);
-        } else if (chunkSize <= chunkSizeLowerBound && chunkPointNum <= chunkPointNumLowerBound) {
+        } else if (chunkSize < chunkSizeLowerBound && chunkPointNum < chunkPointNumLowerBound) {
           processSmallChunk(currentChunk);
         } else {
           processMiddleChunk(currentChunk, chunkMetadata);

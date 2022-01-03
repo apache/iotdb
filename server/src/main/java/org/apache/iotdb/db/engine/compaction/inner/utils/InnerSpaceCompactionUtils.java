@@ -422,7 +422,10 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compactV2(
-      TsFileResource targetResource, List<TsFileResource> tsFileResources, String storageGroup)
+      TsFileResource targetResource,
+      List<TsFileResource> tsFileResources,
+      String storageGroup,
+      boolean sequence)
       throws IOException, MetadataException {
     TsFileIOWriter writer = null;
     try {
@@ -445,7 +448,8 @@ public class InnerSpaceCompactionUtils {
                   currentSeries,
                   readerAndChunkMetadataList,
                   writer,
-                  targetResource);
+                  targetResource,
+                  sequence);
           compactorOfCurrentTimeSeries.execute();
         }
         writer.endChunkGroup();
