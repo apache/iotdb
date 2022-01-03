@@ -426,6 +426,16 @@ public class IoTDBDescriptor {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setConcurrentSubRawQueryThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_sub_rawQuery_thread",
+                  Integer.toString(conf.getConcurrentSubRawQueryThread()))));
+
+      if (conf.getConcurrentSubRawQueryThread() <= 0) {
+        conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
+      }
+
       conf.setmManagerCacheSize(
           Integer.parseInt(
               properties

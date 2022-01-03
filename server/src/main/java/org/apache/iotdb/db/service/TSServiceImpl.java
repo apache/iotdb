@@ -80,6 +80,7 @@ import org.apache.iotdb.db.query.control.TracingManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
+import org.apache.iotdb.db.query.pool.QueryTaskManager;
 import org.apache.iotdb.db.tools.watermark.GroupedLSBWatermarkEncoder;
 import org.apache.iotdb.db.tools.watermark.WatermarkEncoder;
 import org.apache.iotdb.db.utils.QueryDataSetUtils;
@@ -145,6 +146,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -209,6 +212,151 @@ public class TSServiceImpl implements TSIService.Iface {
         config.getFrequencyIntervalInMinute(),
         config.getFrequencyIntervalInMinute(),
         TimeUnit.MINUTES);
+  }
+
+  /**
+   * Execute query statement, return TSExecuteStatementResp with dataset.
+   *
+   * @param plan must be a plan for Query: QueryPlan, ShowPlan, and some AuthorPlan
+   */
+  protected class QueryTask implements Callable<TSExecuteStatementResp> {
+
+    private PhysicalPlan plan;
+    private final String username;
+    private final String statement;
+    private final long statementId;
+    private final long timeout;
+    private final int fetchSize;
+    private final boolean enableRedirectQuery;
+
+    public QueryTask(
+        PhysicalPlan plan,
+        String username,
+        String statement,
+        long statementId,
+        long timeout,
+        int fetchSize,
+        boolean enableRedirectQuery) {
+      this.plan = plan;
+      this.username = username;
+      this.statement = statement;
+      this.statementId = statementId;
+      this.timeout = timeout;
+      this.fetchSize = fetchSize;
+      this.enableRedirectQuery = enableRedirectQuery;
+    }
+
+    @Override
+    public TSExecuteStatementResp call() throws Exception {
+      queryCount.incrementAndGet();
+      AUDIT_LOGGER.debug(
+          "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
+      long startTime = System.currentTimeMillis();
+      // generate the queryId for the operation
+      long queryId = sessionManager.requestQueryId(statementId, true);
+      try {
+        // register query info to queryTimeManager
+        if (!(plan instanceof ShowQueryProcesslistPlan)) {
+          queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
+        }
+        if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
+          TracingManager tracingManager = TracingManager.getInstance();
+          if (!(plan instanceof AlignByDevicePlan)) {
+            tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
+          } else {
+            tracingManager.writeQueryInfo(queryId, statement, startTime);
+          }
+        }
+
+        if (plan instanceof AuthorPlan) {
+          plan.setLoginUserName(username);
+        }
+
+        TSExecuteStatementResp resp = null;
+        // execute it before createDataSet since it may change the content of query plan
+        if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
+          resp = getQueryColumnHeaders(plan, username);
+        }
+        if (plan instanceof QueryPlan) {
+          ((QueryPlan) plan).setEnableRedirect(enableRedirectQuery);
+        }
+        // create and cache dataset
+        QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
+
+        if (newDataSet.getEndPoint() != null && enableRedirectQuery) {
+          LOGGER.debug(
+              "need to redirect {} {} to node {}", statement, queryId, newDataSet.getEndPoint());
+          QueryDataSet.EndPoint endPoint = newDataSet.getEndPoint();
+          return redirectQueryToAnotherNode(resp, queryId, endPoint.getIp(), endPoint.getPort());
+        }
+
+        if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
+          resp = getListDataSetHeaders(newDataSet);
+        } else if (plan instanceof UDFPlan) {
+          resp = getQueryColumnHeaders(plan, username);
+        }
+
+        resp.setOperationType(plan.getOperatorType().toString());
+        if (plan.getOperatorType() == OperatorType.AGGREGATION) {
+          resp.setIgnoreTimeStamp(true);
+        } else if (plan instanceof ShowQueryProcesslistPlan) {
+          resp.setIgnoreTimeStamp(false);
+        }
+
+        if (newDataSet instanceof DirectNonAlignDataSet) {
+          resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
+        } else {
+          try {
+            TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
+            resp.setQueryDataSet(tsQueryDataSet);
+          } catch (RedirectException e) {
+            LOGGER.debug("need to redirect {} {} to {}", statement, queryId, e.getEndPoint());
+            if (enableRedirectQuery) {
+              EndPoint endPoint = e.getEndPoint();
+              redirectQueryToAnotherNode(resp, queryId, endPoint.ip, endPoint.port);
+            } else {
+              LOGGER.error(
+                  "execute {} error, if session does not support redirect,"
+                      + " should not throw redirection exception.",
+                  statement,
+                  e);
+            }
+          }
+        }
+        resp.setQueryId(queryId);
+
+        if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
+          TracingManager.getInstance()
+              .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
+        }
+
+        if (enableMetric) {
+          long endTime = System.currentTimeMillis();
+          SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
+          synchronized (sqlArgumentList) {
+            sqlArgumentList.add(sqlArgument);
+            if (sqlArgumentList.size() >= MAX_SIZE) {
+              sqlArgumentList.subList(0, DELETE_SIZE).clear();
+            }
+          }
+        }
+
+        // remove query info in QueryTimeManager
+        if (!(plan instanceof ShowQueryProcesslistPlan)) {
+          queryTimeManager.unRegisterQuery(queryId);
+        }
+        return resp;
+      } catch (Exception e) {
+        releaseQueryResourceNoExceptions(queryId);
+        throw e;
+      } finally {
+        Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
+        long costTime = System.currentTimeMillis() - startTime;
+        if (costTime >= config.getSlowQueryThreshold()) {
+          SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
+        }
+      }
+    }
   }
 
   public static List<SqlArgument> getSqlArgumentList() {
@@ -603,16 +751,22 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.getSessionId()), req.fetchSize);
 
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              req.timeout,
-              sessionManager.getUsername(req.getSessionId()),
-              req.isEnableRedirectQuery())
-          : executeUpdateStatement(physicalPlan, req.getSessionId());
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        sessionManager.getUsername(req.sessionId),
+                        req.statement,
+                        req.statementId,
+                        req.timeout,
+                        req.fetchSize,
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return executeUpdateStatement(physicalPlan, req.getSessionId());
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -636,17 +790,23 @@ public class TSServiceImpl implements TSIService.Iface {
           processor.parseSQLToPhysicalPlan(
               statement, sessionManager.getZoneId(req.sessionId), req.fetchSize);
 
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              req.timeout,
-              sessionManager.getUsername(req.getSessionId()),
-              req.isEnableRedirectQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        sessionManager.getUsername(req.sessionId),
+                        req.statement,
+                        req.statementId,
+                        req.timeout,
+                        req.fetchSize,
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -667,17 +827,23 @@ public class TSServiceImpl implements TSIService.Iface {
 
       PhysicalPlan physicalPlan =
           processor.rawDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              "",
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              config.getQueryTimeoutThreshold(),
-              sessionManager.getUsername(req.sessionId),
-              req.isEnableRedirectQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        sessionManager.getUsername(req.sessionId),
+                        "",
+                        req.statementId,
+                        config.getQueryTimeoutThreshold(),
+                        req.fetchSize,
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -686,133 +852,6 @@ public class TSServiceImpl implements TSIService.Iface {
     } catch (Exception e) {
       return RpcUtils.getTSExecuteStatementResp(
           onQueryException(e, "executing executeRawDataQuery"));
-    }
-  }
-
-  /**
-   * @param plan must be a plan for Query: FillQueryPlan, AggregationPlan, GroupByTimePlan, UDFPlan,
-   *     some AuthorPlan
-   */
-  @SuppressWarnings({"squid:S3776", "squid:S1141"}) // Suppress high Cognitive Complexity warning
-  private TSExecuteStatementResp internalExecuteQueryStatement(
-      String statement,
-      long statementId,
-      PhysicalPlan plan,
-      int fetchSize,
-      long timeout,
-      String username,
-      boolean enableRedirect)
-      throws QueryProcessException, SQLException, StorageEngineException,
-          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-          TException, AuthException {
-    queryCount.incrementAndGet();
-    AUDIT_LOGGER.debug(
-        "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
-    long startTime = System.currentTimeMillis();
-    long queryId = -1;
-    try {
-      // generate the queryId for the operation
-      queryId = sessionManager.requestQueryId(statementId, true);
-      // register query info to queryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.registerQuery(queryId, startTime, statement, timeout);
-      }
-      if (plan instanceof QueryPlan && config.isEnablePerformanceTracing()) {
-        TracingManager tracingManager = TracingManager.getInstance();
-        if (!(plan instanceof AlignByDevicePlan)) {
-          tracingManager.writeQueryInfo(queryId, statement, startTime, plan.getPaths().size());
-        } else {
-          tracingManager.writeQueryInfo(queryId, statement, startTime);
-        }
-      }
-
-      if (plan instanceof AuthorPlan) {
-        plan.setLoginUserName(username);
-      }
-
-      TSExecuteStatementResp resp = null;
-      // execute it before createDataSet since it may change the content of query plan
-      if (plan instanceof QueryPlan && !(plan instanceof UDFPlan)) {
-        resp = getQueryColumnHeaders(plan, username);
-      }
-      if (plan instanceof QueryPlan) {
-        ((QueryPlan) plan).setEnableRedirect(enableRedirect);
-      }
-      // create and cache dataset
-      QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
-
-      if (newDataSet.getEndPoint() != null && enableRedirect) {
-        LOGGER.debug(
-            "need to redirect {} {} to node {}", statement, queryId, newDataSet.getEndPoint());
-        QueryDataSet.EndPoint endPoint = newDataSet.getEndPoint();
-        return redirectQueryToAnotherNode(resp, queryId, endPoint.getIp(), endPoint.getPort());
-      }
-
-      if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
-        resp = getListDataSetHeaders(newDataSet);
-      } else if (plan instanceof UDFPlan) {
-        resp = getQueryColumnHeaders(plan, username);
-      }
-
-      resp.setOperationType(plan.getOperatorType().toString());
-      if (plan.getOperatorType() == OperatorType.AGGREGATION) {
-        resp.setIgnoreTimeStamp(true);
-      } else if (plan instanceof ShowQueryProcesslistPlan) {
-        resp.setIgnoreTimeStamp(false);
-      }
-
-      if (newDataSet instanceof DirectNonAlignDataSet) {
-        resp.setNonAlignQueryDataSet(fillRpcNonAlignReturnData(fetchSize, newDataSet, username));
-      } else {
-        try {
-          TSQueryDataSet tsQueryDataSet = fillRpcReturnData(fetchSize, newDataSet, username);
-          resp.setQueryDataSet(tsQueryDataSet);
-        } catch (RedirectException e) {
-          LOGGER.debug("need to redirect {} {} to {}", statement, queryId, e.getEndPoint());
-          if (enableRedirect) {
-            EndPoint endPoint = e.getEndPoint();
-            redirectQueryToAnotherNode(resp, queryId, endPoint.ip, endPoint.port);
-          } else {
-            LOGGER.error(
-                "execute {} error, if session does not support redirect,"
-                    + " should not throw redirection exception.",
-                statement,
-                e);
-          }
-        }
-      }
-      resp.setQueryId(queryId);
-
-      if (plan instanceof AlignByDevicePlan && config.isEnablePerformanceTracing()) {
-        TracingManager.getInstance()
-            .writePathsNum(queryId, ((AlignByDeviceDataSet) newDataSet).getPathsNum());
-      }
-
-      if (enableMetric) {
-        long endTime = System.currentTimeMillis();
-        SqlArgument sqlArgument = new SqlArgument(resp, plan, statement, startTime, endTime);
-        synchronized (sqlArgumentList) {
-          sqlArgumentList.add(sqlArgument);
-          if (sqlArgumentList.size() >= MAX_SIZE) {
-            sqlArgumentList.subList(0, DELETE_SIZE).clear();
-          }
-        }
-      }
-
-      // remove query info in QueryTimeManager
-      if (!(plan instanceof ShowQueryProcesslistPlan)) {
-        queryTimeManager.unRegisterQuery(queryId);
-      }
-      return resp;
-    } catch (Exception e) {
-      releaseQueryResourceNoExceptions(queryId);
-      throw e;
-    } finally {
-      Measurement.INSTANCE.addOperationLatency(Operation.EXECUTE_QUERY, startTime);
-      long costTime = System.currentTimeMillis() - startTime;
-      if (costTime >= config.getSlowQueryThreshold()) {
-        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
-      }
     }
   }
 
