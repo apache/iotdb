@@ -28,7 +28,11 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.cost.statistic.Measurement;
 import org.apache.iotdb.db.cost.statistic.Operation;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.QueryInBatchStatementException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupNotReadyException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -738,16 +742,10 @@ public class TSServiceImpl implements TSIService.Iface {
       QueryDataSet newDataSet = createQueryDataSet(queryId, plan, fetchSize);
 
       if (newDataSet.getEndPoint() != null && enableRedirect) {
-        // redirect query
         LOGGER.debug(
             "need to redirect {} {} to node {}", statement, queryId, newDataSet.getEndPoint());
-        TSStatus status = new TSStatus();
-        status.setRedirectNode(
-            new EndPoint(newDataSet.getEndPoint().getIp(), newDataSet.getEndPoint().getPort()));
-        status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-        resp.setStatus(status);
-        resp.setQueryId(queryId);
-        return resp;
+        QueryDataSet.EndPoint endPoint = newDataSet.getEndPoint();
+        return redirectQueryToAnotherNode(resp, queryId, endPoint.getIp(), endPoint.getPort());
       }
 
       if (plan instanceof ShowPlan || plan instanceof AuthorPlan) {
@@ -772,13 +770,8 @@ public class TSServiceImpl implements TSIService.Iface {
         } catch (RedirectException e) {
           LOGGER.debug("need to redirect {} {} to {}", statement, queryId, e.getEndPoint());
           if (enableRedirect) {
-            // redirect query
-            TSStatus status = new TSStatus();
-            status.setRedirectNode(e.getEndPoint());
-            status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
-            resp.setStatus(status);
-            resp.setQueryId(queryId);
-            return resp;
+            EndPoint endPoint = e.getEndPoint();
+            redirectQueryToAnotherNode(resp, queryId, endPoint.ip, endPoint.port);
           } else {
             LOGGER.error(
                 "execute {} error, if session does not support redirect,"
@@ -821,6 +814,17 @@ public class TSServiceImpl implements TSIService.Iface {
         SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
       }
     }
+  }
+
+  /** Redirect query */
+  private TSExecuteStatementResp redirectQueryToAnotherNode(
+      TSExecuteStatementResp resp, long queryId, String ip, int port) {
+    TSStatus status = new TSStatus();
+    status.setRedirectNode(new EndPoint(ip, port));
+    status.setCode(TSStatusCode.NEED_REDIRECTION.getStatusCode());
+    resp.setStatus(status);
+    resp.setQueryId(queryId);
+    return resp;
   }
 
   private TSExecuteStatementResp getListDataSetHeaders(QueryDataSet dataSet) {
