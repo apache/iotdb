@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -68,7 +68,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, IllegalPathException {
+  public void testCompact() throws IOException, MetadataException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(
@@ -104,7 +104,8 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
       sizeTieredCompactionLogger.logFileInfo(SOURCE_INFO, resource.getTsFile());
     }
     sizeTieredCompactionLogger.logSequence(true);
-    InnerSpaceCompactionUtils.compact(targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compactV2(
+        targetTsFileResource, seqResources, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
     sizeTieredCompactionLogger.close();
     Path path = new Path(deviceIds[0], measurementSchemas[0].getMeasurementId());

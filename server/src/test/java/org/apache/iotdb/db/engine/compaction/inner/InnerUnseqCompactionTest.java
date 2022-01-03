@@ -30,7 +30,6 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionOverlapType;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -119,7 +118,7 @@ public class InnerUnseqCompactionTest {
 
   // unseq space only do deserialize page
   @Test
-  public void test() throws IllegalPathException, IOException {
+  public void test() throws MetadataException, IOException {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
@@ -351,7 +350,7 @@ public class InnerUnseqCompactionTest {
               }
               SizeTieredCompactionLogger sizeTieredCompactionLogger =
                   new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
-              InnerSpaceCompactionUtils.compact(
+              InnerSpaceCompactionUtils.compactV2(
                   targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, false);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(

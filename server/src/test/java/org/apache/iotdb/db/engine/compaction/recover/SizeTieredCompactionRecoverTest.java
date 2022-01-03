@@ -31,7 +31,13 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -100,9 +106,12 @@ public class SizeTieredCompactionRecoverTest {
   static String[] originDataDirs = null;
   static String[] testDataDirs = new String[] {TestConstant.BASE_OUTPUT_PATH + "data"};
   static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  static MManager originMManager = null;
 
   @Before
   public void setUp() throws Exception {
+    originMManager = IoTDB.metaManager;
+    IoTDB.metaManager = new TestMetaManager();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
@@ -115,6 +124,7 @@ public class SizeTieredCompactionRecoverTest {
 
   @After
   public void tearDown() throws Exception {
+    IoTDB.metaManager = originMManager;
     setDataDirs(originDataDirs);
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
@@ -192,7 +202,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
@@ -246,7 +256,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
@@ -305,7 +315,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
@@ -359,7 +369,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
@@ -421,7 +431,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
@@ -517,7 +527,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();
@@ -614,7 +624,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
@@ -710,7 +720,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compactV2(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();
@@ -759,6 +769,12 @@ public class SizeTieredCompactionRecoverTest {
               .exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
+    }
+  }
+
+  public static class TestMetaManager extends MManager {
+    public IMeasurementSchema getSeriesSchema(PartialPath path) {
+      return new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.INT64);
     }
   }
 }
