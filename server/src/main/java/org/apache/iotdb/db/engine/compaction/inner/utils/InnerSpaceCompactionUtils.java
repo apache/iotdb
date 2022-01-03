@@ -55,7 +55,6 @@ import java.util.Set;
 public class InnerSpaceCompactionUtils {
 
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
-  public static final String COMPACTION_LOG_SUFFIX = ".compaction_log";
 
   private InnerSpaceCompactionUtils() {
     throw new IllegalStateException("Utility class");
