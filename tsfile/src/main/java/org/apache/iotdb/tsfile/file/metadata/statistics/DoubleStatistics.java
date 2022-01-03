@@ -26,10 +26,11 @@ import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
-public class DoubleStatistics extends Statistics<Double> {
+public class DoubleStatistics extends Statistics<Double> implements Serializable {
 
   private double minValue;
   private double maxValue;

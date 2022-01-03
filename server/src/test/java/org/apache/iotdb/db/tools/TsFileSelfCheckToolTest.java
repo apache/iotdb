@@ -19,10 +19,15 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.LongStatistics;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.ReadWriteForEncodingUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -31,14 +36,16 @@ import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
+import static org.junit.Assert.*;
 
 public class TsFileSelfCheckToolTest {
 
@@ -125,12 +132,71 @@ public class TsFileSelfCheckToolTest {
   }
 
   @Test
-  public void tsFileSelfCheckToolTest() {
+  public void tsFileSelfCheckToolCompleteTest() {
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
       tool.check(path, false);
     } catch (IOException | TsFileStatisticsMistakesException e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void tsFileSelfCheckToolWithStatisticsModifiedTest() throws IOException {
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
+        new TsFileSelfCheckTool().getTimeseriesMetadataMap(path);
+    for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
+      TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
+      Long pos = entry.getKey();
+      LongStatistics statistics = (LongStatistics) timeseriesMetadata.getStatistics();
+      statistics.initializeStats(666, 1999999, 1000000, 1999999, 0);
+
+      RandomAccessFile raf = new RandomAccessFile(path, "rw");
+      ByteArrayOutputStream bo = new ByteArrayOutputStream();
+      int serialLength = ReadWriteIOUtils.write(timeseriesMetadata.getTimeSeriesMetadataType(), bo);
+      serialLength += ReadWriteIOUtils.writeVar(timeseriesMetadata.getMeasurementId(), bo);
+      serialLength += ReadWriteIOUtils.write(timeseriesMetadata.getTSDataType(), bo);
+      serialLength +=
+          ReadWriteForEncodingUtils.writeUnsignedVarInt(
+              timeseriesMetadata.getDataSizeOfChunkMetaDataList(), bo);
+      serialLength += statistics.serialize(bo);
+      System.out.println("serialLength: " + serialLength);
+      byte[] serialArr = bo.toByteArray();
+      raf.seek(pos);
+      raf.write(serialArr, 0, serialArr.length);
+      raf.close();
+
+      break;
+    }
+
+    TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
+    try {
+      tool.check(path, false);
+      fail("No exception thrown.");
+    } catch (TsFileStatisticsMistakesException e) {
+      assertEquals("Chunk exists statistics mistakes at position 22", e.getMessage());
+    }
+  }
+
+  @Test
+  public void tsFileSelfCheckToolWithRandomModifiedTest() throws IOException {
+
+    RandomAccessFile raf = new RandomAccessFile(path, "rw");
+    ByteArrayOutputStream bo = new ByteArrayOutputStream();
+    ReadWriteIOUtils.write(100, bo);
+    byte[] serialArr = bo.toByteArray();
+    // timeseriesMetadata begins at 878364
+    // randomly modify timeseriesMetadata region
+    raf.seek(878375);
+    raf.write(serialArr, 0, serialArr.length);
+    raf.close();
+
+    TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
+    try {
+      tool.check(path, false);
+      fail("No exception thrown.");
+    } catch (BufferUnderflowException e) {
+      assertNull(e.getMessage());
     }
   }
 
@@ -139,7 +205,7 @@ public class TsFileSelfCheckToolTest {
     try {
       FileUtils.forceDelete(new File(path));
     } catch (IOException e) {
-      Assert.fail(e.getMessage());
+      fail(e.getMessage());
     }
   }
 }

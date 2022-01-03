@@ -50,6 +50,18 @@ public class TsFileSelfCheckTool {
     System.out.println(reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap));
   }
 
+  public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMap(String filename)
+      throws IOException {
+    TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    try {
+      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    return timeseriesMetadataMap;
+  }
+
   private class TsFileSelfCheckToolReader extends TsFileSequenceReader {
     public TsFileSelfCheckToolReader(String file) throws IOException {
       super(file);
