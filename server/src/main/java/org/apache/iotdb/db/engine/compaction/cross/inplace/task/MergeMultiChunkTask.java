@@ -45,7 +45,6 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -515,7 +514,7 @@ public class MergeMultiChunkTask {
       mergedChunkNum.incrementAndGet();
     }
 
-    // update points written statistics
+    //   points written statistics
     mergeContext.incTotalPointWritten((long) unclosedChunkPoint - lastUnclosedChunkPoint);
     if (minChunkPointNum > 0 && unclosedChunkPoint >= minChunkPointNum
         || unclosedChunkPoint > 0 && minChunkPointNum < 0) {

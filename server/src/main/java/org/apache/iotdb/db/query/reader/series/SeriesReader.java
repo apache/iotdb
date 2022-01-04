@@ -194,7 +194,7 @@ public class SeriesReader {
       boolean ascending) {
     this.seriesPath = seriesPath;
     this.allSensors = allSensors;
-    this.allSensors.add(seriesPath.getMeasurement());
+    // this.allSensors.add(seriesPath.getMeasurement());
     this.dataType = dataType;
     this.context = context;
     this.timeFilter = timeFilter;

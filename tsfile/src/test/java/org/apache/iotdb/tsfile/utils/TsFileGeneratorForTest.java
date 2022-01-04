@@ -31,13 +31,8 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
-import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Ignore;
 
@@ -49,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 @Ignore
 public class TsFileGeneratorForTest {
@@ -278,12 +272,7 @@ public class TsFileGeneratorForTest {
             logicalStorageGroupName,
             VirtualStorageGroupId,
             TimePartitionId);
-    String fileName =
-        System.currentTimeMillis()
-            + FilePathUtils.FILE_NAME_SEPARATOR
-            + tsFileVersion
-            + "-0-0.tsfile";
-    return filePath.concat(fileName);
+    return TsFileGeneratorUtils.getTsFilePath(filePath, tsFileVersion);
   }
 
   // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
@@ -316,8 +305,10 @@ public class TsFileGeneratorForTest {
       measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
 
-      writeWithTsRecord(tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
-      writeWithTsRecord(tsFileWriter, "d2", measurementSchemas, rowCount, 0, 0, false);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
+      TsFileGeneratorUtils.writeWithTsRecord(
+          tsFileWriter, "d2", measurementSchemas, rowCount, 0, 0, false);
 
     } catch (IOException | WriteProcessException e) {
       e.printStackTrace();
@@ -328,75 +319,6 @@ public class TsFileGeneratorForTest {
     File file = fsFactory.getFile(alignedOutputDataFile);
     if (file.exists()) {
       Assert.assertTrue(file.delete());
-    }
-  }
-
-  public static void writeWithTsRecord(
-      TsFileWriter tsFileWriter,
-      String deviceId,
-      List<UnaryMeasurementSchema> schemas,
-      long rowSize,
-      long startTime,
-      long startValue,
-      boolean isAligned)
-      throws IOException, WriteProcessException {
-    for (long time = startTime; time < rowSize + startTime; time++) {
-      // construct TsRecord
-      TSRecord tsRecord = new TSRecord(time, deviceId);
-      for (IMeasurementSchema schema : schemas) {
-        DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue++);
-        tsRecord.addTuple(dPoint);
-      }
-      // write
-      if (isAligned) {
-        tsFileWriter.writeAligned(tsRecord);
-      } else {
-        tsFileWriter.write(tsRecord);
-      }
-    }
-  }
-
-  public static void writeWithTablet(
-      TsFileWriter tsFileWriter,
-      String deviceId,
-      List<UnaryMeasurementSchema> schemas,
-      long rowNum,
-      long startTime,
-      long startValue,
-      boolean isAligned)
-      throws IOException, WriteProcessException {
-    List<IMeasurementSchema> measurementSchemas =
-        schemas.stream().map(schema -> (IMeasurementSchema) schema).collect(Collectors.toList());
-    Tablet tablet = new Tablet(deviceId, measurementSchemas);
-    long[] timestamps = tablet.timestamps;
-    Object[] values = tablet.values;
-    long sensorNum = schemas.size();
-
-    for (long r = 0; r < rowNum; r++, startValue++) {
-      int row = tablet.rowSize++;
-      timestamps[row] = startTime++;
-      for (int i = 0; i < sensorNum; i++) {
-        long[] sensor = (long[]) values[i];
-        sensor[row] = startValue;
-      }
-      // write
-      if (tablet.rowSize == tablet.getMaxRowNumber()) {
-        if (isAligned) {
-          tsFileWriter.writeAligned(tablet);
-        } else {
-          tsFileWriter.write(tablet);
-        }
-        tablet.reset();
-      }
-    }
-    // write
-    if (tablet.rowSize != 0) {
-      if (isAligned) {
-        tsFileWriter.writeAligned(tablet);
-      } else {
-        tsFileWriter.write(tablet);
-      }
-      tablet.reset();
     }
   }
 }

@@ -201,7 +201,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
       tsFileResource.setClosed(true);
       tsFileResource.updatePlanIndexes(i + seqFileNum);
       unseqResources.add(tsFileResource);
-      prepareFile(tsFileResource, i * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
+      prepareFile(tsFileResource, i * 2 * ptNum, ptNum * (i + 1) / unseqFileNum, 10000);
     }
   }
 

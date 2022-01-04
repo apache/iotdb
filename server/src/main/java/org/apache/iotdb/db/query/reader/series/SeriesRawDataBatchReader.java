@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -81,7 +82,14 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       Filter valueFilter,
       boolean ascending) {
     Set<String> allSensors = new HashSet<>();
-    allSensors.add(seriesPath.getMeasurement());
+    if (seriesPath instanceof AlignedPath) {
+      allSensors.addAll(((AlignedPath) seriesPath).getMeasurementList());
+      //      String[] devicePath=seriesPath.getDevice().split(PATH_SEPARATOR);
+      //      allSensors.add(devicePath[devicePath.length-1]);
+    } else {
+      allSensors.add(seriesPath.getMeasurement());
+    }
+
     this.seriesReader =
         seriesPath.createSeriesReader(
             allSensors,

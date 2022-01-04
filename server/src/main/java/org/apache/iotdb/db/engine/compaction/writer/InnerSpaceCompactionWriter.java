@@ -78,33 +78,37 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
           throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
       }
     } else {
-      // Todo:应该有While才可以写入每个子分量
-      value = ((TsPrimitiveType[]) value)[0].getValue();
-      TSDataType tsDataType = ((TsPrimitiveType[]) value)[0].getDataType();
-      boolean isNull = value == null;
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
-      switch (tsDataType) {
-        case TEXT:
-          chunkWriter.write(timestamp, (Binary) value, isNull);
-          break;
-        case DOUBLE:
-          chunkWriter.write(timestamp, (Double) value, isNull);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(timestamp, (Boolean) value, isNull);
-          break;
-        case INT64:
-          chunkWriter.write(timestamp, (Long) value, isNull);
-          break;
-        case INT32:
-          chunkWriter.write(timestamp, (Integer) value, isNull);
-          break;
-        case FLOAT:
-          chunkWriter.write(timestamp, (Float) value, isNull);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
+        Object v = val.getValue();
+        TSDataType tsDataType = val.getDataType();
+        boolean isNull = v == null;
+        switch (tsDataType) {
+          case TEXT:
+            chunkWriter.write(timestamp, (Binary) v, isNull);
+            break;
+          case DOUBLE:
+            chunkWriter.write(timestamp, (Double) v, isNull);
+            break;
+          case BOOLEAN:
+            chunkWriter.write(timestamp, (Boolean) v, isNull);
+            break;
+          case INT64:
+            chunkWriter.write(timestamp, (Long) v, isNull);
+            break;
+          case INT32:
+            chunkWriter.write(timestamp, (Integer) v, isNull);
+            break;
+          case FLOAT:
+            chunkWriter.write(timestamp, (Float) v, isNull);
+            break;
+          default:
+            throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+        }
       }
+      chunkWriter.write(timestamp);
+      //      value = ((TsPrimitiveType[]) value)[0].getValue();
+      //      TSDataType tsDataType = ((TsPrimitiveType[]) value)[0].getDataType();
     }
     if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());

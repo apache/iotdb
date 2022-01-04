@@ -73,6 +73,7 @@ public class CompactionUtils {
         PartialPath seriesPath;
         if (isAligned) {
           //  aligned
+          deviceMeasurementsMap.remove("");
           List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
           deviceMeasurementsMap.forEach(
               (measurementId, timeseriesMetadata) -> {

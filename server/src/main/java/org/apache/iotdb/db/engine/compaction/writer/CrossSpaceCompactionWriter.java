@@ -48,7 +48,9 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
       if (resource.isDeviceIdExist(deviceId)) {
         fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
       }
+      seqFileIndex++;
     }
+    seqFileIndex = 0;
   }
 
   @Override
@@ -57,7 +59,9 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
       if (resource.isDeviceIdExist(deviceId)) {
         fileWriterList.get(seqFileIndex).endChunkGroup();
       }
+      seqFileIndex++;
     }
+    seqFileIndex = 0;
     deviceId = null;
   }
 
@@ -111,34 +115,37 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
           throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
       }
     } else {
-      value = ((TsPrimitiveType[]) value)[0].getValue();
-      TSDataType tsDataType = ((TsPrimitiveType[]) value)[0].getDataType();
-      boolean isNull = value == null;
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
-      switch (tsDataType) {
-        case TEXT:
-          chunkWriter.write(timestamp, (Binary) value, isNull);
-          break;
-        case DOUBLE:
-          chunkWriter.write(timestamp, (Double) value, isNull);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(timestamp, (Boolean) value, isNull);
-          break;
-        case INT64:
-          chunkWriter.write(timestamp, (Long) value, isNull);
-          break;
-        case INT32:
-          chunkWriter.write(timestamp, (Integer) value, isNull);
-          break;
-        case FLOAT:
-          chunkWriter.write(timestamp, (Float) value, isNull);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+      for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
+        Object v = val.getValue();
+        TSDataType tsDataType = val.getDataType();
+        boolean isNull = v == null;
+        switch (tsDataType) {
+          case TEXT:
+            chunkWriter.write(timestamp, (Binary) v, isNull);
+            break;
+          case DOUBLE:
+            chunkWriter.write(timestamp, (Double) v, isNull);
+            break;
+          case BOOLEAN:
+            chunkWriter.write(timestamp, (Boolean) v, isNull);
+            break;
+          case INT64:
+            chunkWriter.write(timestamp, (Long) v, isNull);
+            break;
+          case INT32:
+            chunkWriter.write(timestamp, (Integer) v, isNull);
+            break;
+          case FLOAT:
+            chunkWriter.write(timestamp, (Float) v, isNull);
+            break;
+          default:
+            throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+        }
       }
+      chunkWriter.write(timestamp);
     }
-    if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024 * 1024) { // Todo:
+    if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
     }
