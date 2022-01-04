@@ -172,21 +172,19 @@ public class AlignedTVList extends TVList {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (validIndexesForTimeDuplicatedRows == null
-          && (columnValues == null
-              || bitMaps != null
-                  && bitMaps.get(columnIndex) != null
-                  && isValueMarked(valueIndex, columnIndex))) {
-        continue;
-      }
+      int validValueIndex;
       if (validIndexesForTimeDuplicatedRows != null) {
-        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
-        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
+        validValueIndex = validIndexesForTimeDuplicatedRows[columnIndex];
+      } else {
+        validValueIndex = valueIndex;
+      }
+      int arrayIndex = validValueIndex / ARRAY_SIZE;
+      int elementIndex = validValueIndex % ARRAY_SIZE;
+      if (columnValues == null || isValueMarked(validValueIndex, columnIndex)) {
+        continue;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
