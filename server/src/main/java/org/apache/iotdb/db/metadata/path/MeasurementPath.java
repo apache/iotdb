@@ -40,6 +40,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -216,9 +217,9 @@ public class MeasurementPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -226,7 +227,7 @@ public class MeasurementPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private TimeseriesMetadata generateTimeSeriesMetadata(
+  public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();

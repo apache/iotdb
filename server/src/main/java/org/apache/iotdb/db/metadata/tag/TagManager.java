@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
@@ -31,6 +32,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.utils.Pair;
 
@@ -143,9 +145,23 @@ public class TagManager {
     if (plan.isOrderByHeat()) {
       List<VirtualStorageGroupProcessor> list;
       try {
-        list =
-            StorageEngine.getInstance()
-                .mergeLock(allMatchedNodes.stream().map(IMNode::getPartialPath).collect(toList()));
+        Pair<
+                List<VirtualStorageGroupProcessor>,
+                Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+            lockListAndProcessorToSeriesMapPair =
+                StorageEngine.getInstance()
+                    .mergeLock(
+                        allMatchedNodes.stream()
+                            .map(IMeasurementMNode::getMeasurementPath)
+                            .collect(toList()));
+        list = lockListAndProcessorToSeriesMapPair.left;
+        Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+            lockListAndProcessorToSeriesMapPair.right;
+
+        // init QueryDataSource cache
+        QueryResourceManager.getInstance()
+            .initQueryDataSourceCache(processorToSeriesMap, context, null);
+
         try {
           allMatchedNodes =
               allMatchedNodes.stream()
@@ -159,7 +175,7 @@ public class TagManager {
         } finally {
           StorageEngine.getInstance().mergeUnLock(list);
         }
-      } catch (StorageEngineException e) {
+      } catch (StorageEngineException | QueryProcessException e) {
         throw new MetadataException(e);
       }
     } else {
