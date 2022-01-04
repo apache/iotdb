@@ -32,8 +32,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <compile.version>1.8</compile.version>
-        <scala.library.version>2.11</scala.library.version>
-        <scala.version>2.11.12</scala.version>
+        <scala.library.version>2.12</scala.library.version>
+        <scala.version>2.12.10</scala.version>
     </properties>
     <dependencies>
         <dependency>
@@ -73,13 +73,13 @@
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.11</artifactId>
+            <artifactId>spark-core_2.12</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-sql_2.11</artifactId>
+            <artifactId>spark-sql_2.12</artifactId>
             <version>${spark.version}</version>
             <scope>provided</scope>
         </dependency>

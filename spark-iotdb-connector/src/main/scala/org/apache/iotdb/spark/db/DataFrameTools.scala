@@ -22,7 +22,7 @@ package org.apache.iotdb.spark.db
 import org.apache.iotdb.session.Session
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.{BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Row}
 
 import java.util
 import java.lang
@@ -35,7 +35,7 @@ object DataFrameTools {
     dataframe
       .repartition(options.numPartition.toInt)
       .sortWithinPartitions(dataframe.col("Device"))
-      .foreachPartition { partition =>
+      .foreachPartition { (partition: Iterator[Row]) =>
         val hostPort = options.url.split("//")(1).replace("/", "").split(":")
         val session = new Session(
           hostPort(0),

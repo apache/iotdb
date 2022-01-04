@@ -20,11 +20,11 @@
 package org.apache.iotdb.spark.db
 
 import java.sql.{Connection, DriverManager, ResultSet, Statement}
-
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
+import org.apache.spark.util.TaskCompletionListener
 import org.apache.spark.{Partition, SparkContext, TaskContext}
 
 
@@ -61,7 +61,12 @@ class IoTDBRDD private[iotdb](
 
     var taskInfo: String = _
     Option(TaskContext.get()).foreach { taskContext =>
-      taskContext.addTaskCompletionListener { _ => conn.close() }
+      taskContext.addTaskCompletionListener(
+        new TaskCompletionListener {
+          override def onTaskCompletion(context: TaskContext): Unit = {
+            conn.close()
+          }
+        })
       taskInfo = "task Id: " + taskContext.taskAttemptId() + " partition Id: " + taskContext.partitionId()
     }
 
