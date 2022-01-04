@@ -28,12 +28,14 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.netty.channel.ChannelOption;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
+import java.time.Duration;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,7 +45,7 @@ public class MicrometerPrometheusReporter implements Reporter {
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
   private MetricManager metricManager;
-  private Thread runThread;
+  private DisposableServer httpServer;
 
   @Override
   public boolean start() {
@@ -57,8 +59,10 @@ public class MicrometerPrometheusReporter implements Reporter {
     }
     PrometheusMeterRegistry prometheusMeterRegistry =
         (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
-    DisposableServer server =
+    httpServer =
         HttpServer.create()
+            .idleTimeout(Duration.ofMillis(30_000L))
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 2000)
             .port(
                 Integer.parseInt(
                     metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort()))
@@ -69,22 +73,21 @@ public class MicrometerPrometheusReporter implements Reporter {
                         (request, response) ->
                             response.sendString(Mono.just(prometheusMeterRegistry.scrape()))))
             .bindNow();
-    runThread = new Thread(server::onDispose);
-    runThread.start();
+    LOGGER.info(
+        "http server for metrics stated, listen on {}",
+        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort());
     return true;
   }
 
   @Override
   public boolean stop() {
-    try {
-      // stop prometheus reporter
-      if (runThread != null) {
-        runThread.join();
+    if (httpServer != null) {
+      try {
+        httpServer.disposeNow();
+      } catch (Exception e) {
+        LOGGER.error("failed to stop server", e);
+        return false;
       }
-    } catch (InterruptedException e) {
-      LOGGER.warn("Failed to stop micrometer prometheus reporter", e);
-      Thread.currentThread().interrupt();
-      return false;
     }
     return true;
   }

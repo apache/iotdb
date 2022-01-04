@@ -721,6 +721,14 @@ var config = {
 						]
 					},
 					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-Started', 'Get Started'],
+					        ['Library-UDF/Data-Quality', 'Data Quality'],
+					        ['Library-UDF/Data-Repair', 'Data Repairing']
+					    ]
+					},
+					{
 						title: 'Communication Service Protocol',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -750,7 +758,7 @@ var config = {
 					{
 						title: 'Ecosystem Integration',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/MapReduce TsFile','MapReduce TsFile'],
@@ -1521,6 +1529,14 @@ var config = {
 						]
 					},
 					{
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-Started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量'],
+          					['Library-UDF/Data-Repair', '数据修复']
+          				]
+					},
+					{
 						title: '通信服务协议',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -1551,7 +1567,8 @@ var config = {
 					{
 						title: '系统集成',
 						children: [
-							['Ecosystem Integration/Grafana','Grafana-IoTDB'],
+							['Ecosystem Integration/Grafana Plugin','Grafana Plugin'],
+							['Ecosystem Integration/Grafana Connector','Grafana Connector（不推荐）'],
 							['Ecosystem Integration/Zeppelin-IoTDB','Zeppelin-IoTDB'],
 							['Ecosystem Integration/DBeaver','DBeaver-IoTDB'],
 							['Ecosystem Integration/Spark TsFile','Spark TsFile'],

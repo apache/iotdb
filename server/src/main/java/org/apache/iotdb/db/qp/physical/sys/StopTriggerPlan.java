@@ -35,12 +35,12 @@ public class StopTriggerPlan extends PhysicalPlan {
   private String triggerName;
 
   public StopTriggerPlan() {
-    super(false, OperatorType.STOP_TRIGGER);
+    super(OperatorType.STOP_TRIGGER);
     canBeSplit = false;
   }
 
   public StopTriggerPlan(String triggerName) {
-    super(false, OperatorType.STOP_TRIGGER);
+    super(OperatorType.STOP_TRIGGER);
     this.triggerName = triggerName;
     canBeSplit = false;
   }

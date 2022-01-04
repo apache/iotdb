@@ -60,7 +60,7 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         timePartition,
         null,
         null,
-        null,
+        new ArrayList<>(),
         sequence,
         currentTaskNum);
     this.compactionLogFile = compactionLogFile;

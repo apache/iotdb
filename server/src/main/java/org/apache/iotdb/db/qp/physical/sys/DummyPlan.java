@@ -36,7 +36,7 @@ public class DummyPlan extends PhysicalPlan {
   private boolean needForward;
 
   public DummyPlan() {
-    super(false, OperatorType.EMPTY);
+    super(OperatorType.EMPTY);
   }
 
   @Override

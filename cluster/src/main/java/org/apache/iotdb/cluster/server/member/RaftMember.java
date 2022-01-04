@@ -1104,6 +1104,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     long startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG.getOperationStartTime();
 
     Log log;
+
     if (plan instanceof LogPlan) {
       try {
         log = LogParser.getINSTANCE().parse(((LogPlan) plan).getLog());
@@ -1114,13 +1115,13 @@ public abstract class RaftMember implements RaftMemberMBean {
     } else {
       log = new PhysicalPlanLog();
       ((PhysicalPlanLog) log).setPlan(plan);
-      plan.setIndex(logManager.getLastLogIndex() + 1);
     }
+
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
-    if (config.isEnableRaftLogPersistence()
-        && (log.serialize().capacity() + Integer.BYTES
-            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize())) {
+    if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
+        & log.serialize().capacity() + Integer.BYTES
+            >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
               + "or reduce the size of requests you send.");
@@ -1130,6 +1131,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     // assign term and index to the new log and append it
     VotingLog votingLog;
     synchronized (logManager) {
+      if (!(plan instanceof LogPlan)) {
+        plan.setIndex(logManager.getLastLogIndex() + 1);
+      }
       log.setCurrLogTerm(getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
       logManager.append(log);

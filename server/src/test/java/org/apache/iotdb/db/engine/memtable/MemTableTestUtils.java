@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.memtable;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -56,13 +57,14 @@ public class MemTableTestUtils {
       long endTime,
       String deviceId,
       String measurementId,
-      TSDataType dataType) {
+      TSDataType dataType)
+      throws IllegalPathException {
     if (startTime > endTime) {
       throw new RuntimeException(String.format("start time %d > end time %d", startTime, endTime));
     }
     for (long l = startTime; l <= endTime; l++) {
       iMemTable.write(
-          deviceId,
+          DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
           Collections.singletonList(
               new UnaryMeasurementSchema(measurementId, dataType, TSEncoding.PLAIN)),
           l,

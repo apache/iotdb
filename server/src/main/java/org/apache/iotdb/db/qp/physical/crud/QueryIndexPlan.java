@@ -20,7 +20,12 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.thrift.TException;
+
+import java.util.BitSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -32,6 +37,13 @@ public class QueryIndexPlan extends RawDataQueryPlan {
   public QueryIndexPlan() {
     super();
     setOperatorType(OperatorType.QUERY_INDEX);
+  }
+
+  @Override
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
+      throws TException {
+    throw new TException("unsupported query type: " + getOperatorType());
   }
 
   public IndexType getIndexType() {

@@ -22,6 +22,7 @@ package org.apache.iotdb.cluster.log.sequencing;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.LogDispatcher.SendLogRequest;
 import org.apache.iotdb.cluster.log.VotingLog;
+import org.apache.iotdb.cluster.log.logtypes.PhysicalPlanLog;
 import org.apache.iotdb.cluster.log.manage.RaftLogManager;
 import org.apache.iotdb.cluster.rpc.thrift.AppendEntryRequest;
 import org.apache.iotdb.cluster.server.member.RaftMember;
@@ -30,6 +31,8 @@ import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller
@@ -57,6 +60,11 @@ public class SynchronousSequencer implements LogSequencer {
 
       log.setCurrLogTerm(member.getTerm().get());
       log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+
+      if (log instanceof PhysicalPlanLog) {
+        PhysicalPlanLog physicalPlanLog = (PhysicalPlanLog) log;
+        physicalPlanLog.getPlan().setIndex(log.getCurrLogIndex());
+      }
 
       startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
 
