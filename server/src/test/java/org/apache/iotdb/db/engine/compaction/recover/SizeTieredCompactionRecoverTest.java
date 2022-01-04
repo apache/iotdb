@@ -31,11 +31,15 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
@@ -52,6 +56,7 @@ import java.lang.reflect.Field;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -101,17 +106,16 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG + ".device1.sensor3",
         COMPACTION_TEST_SG + ".device1.sensor4",
       };
+  static final UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[fullPaths.length];
   static String logFilePath =
       TestConstant.BASE_OUTPUT_PATH + File.separator + "test-compaction.compaction.log";
   static String[] originDataDirs = null;
   static String[] testDataDirs = new String[] {TestConstant.BASE_OUTPUT_PATH + "data"};
   static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
-  static MManager originMManager = null;
 
   @Before
   public void setUp() throws Exception {
-    originMManager = IoTDB.metaManager;
-    IoTDB.metaManager = new TestMetaManager();
+    IoTDB.metaManager.init();
     originDataDirs = config.getDataDirs();
     setDataDirs(testDataDirs);
     if (!new File(SEQ_FILE_DIR).exists()) {
@@ -120,12 +124,13 @@ public class SizeTieredCompactionRecoverTest {
     if (!new File(UNSEQ_FILE_DIR).exists()) {
       Assert.assertTrue(new File(UNSEQ_FILE_DIR).mkdirs());
     }
+    createTimeSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    IoTDB.metaManager = originMManager;
     setDataDirs(originDataDirs);
+    IoTDB.metaManager.clear();
     File dataDir = new File(testDataDirs[0]);
     if (dataDir.exists()) {
       FileUtils.forceDelete(dataDir);
@@ -133,6 +138,31 @@ public class SizeTieredCompactionRecoverTest {
     File logFile = new File(logFilePath);
     if (logFile.exists()) {
       Assert.assertTrue(logFile.delete());
+    }
+    EnvironmentUtils.cleanEnv();
+  }
+
+  private void createTimeSeries() throws MetadataException {
+    PartialPath[] deviceIds = new PartialPath[fullPaths.length];
+    for (int i = 0; i < fullPaths.length; ++i) {
+      schemas[i] =
+          new UnaryMeasurementSchema(
+              fullPaths[i].split("\\.")[3],
+              TSDataType.INT64,
+              TSEncoding.RLE,
+              CompressionType.UNCOMPRESSED);
+      deviceIds[i] = new PartialPath(fullPaths[i].substring(0, 27));
+    }
+    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    for (int i = 0; i < fullPaths.length; ++i) {
+      UnaryMeasurementSchema schema = schemas[i];
+      PartialPath deviceId = deviceIds[i];
+      IoTDB.metaManager.createTimeseries(
+          deviceId.concatNode(schema.getMeasurementId()),
+          schema.getType(),
+          schema.getEncodingType(),
+          schema.getCompressor(),
+          Collections.emptyMap());
     }
   }
 
