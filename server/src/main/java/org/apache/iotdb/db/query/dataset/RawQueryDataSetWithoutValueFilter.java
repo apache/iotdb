@@ -94,12 +94,21 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
             }
             blockingQueue.put(batchData);
 
+            // has limit clause
             if (batchDataLengthList != null) {
               batchDataLengthList[seriesIndex] += batchData.length();
               if (batchDataLengthList[seriesIndex] >= fetchLimit) {
-                break;
+                // the queue has enough space to hold SignalBatchData, just break the while loop
+                if (blockingQueue.remainingCapacity() > 0) {
+                  break;
+                } else { // otherwise, exit without putting SignalBatchData, main thread will submit
+                  // a new task again, then it will put SignalBatchData successfully
+                  reader.setManagedByQueryManager(false);
+                  return;
+                }
               }
             }
+
             // if the queue also has free space, just submit another itself
             if (blockingQueue.remainingCapacity() > 0) {
               TASK_POOL_MANAGER.submit(this);
@@ -171,6 +180,9 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
 
   private final long queryId;
 
+  // this field record the original value of offset clause, won't change during the query execution
+  protected final int originalRowOffset;
+
   private static final RawQueryReadTaskPoolManager TASK_POOL_MANAGER =
       RawQueryReadTaskPoolManager.getInstance();
 
@@ -190,6 +202,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         queryPlan.getDeduplicatedDataTypes(),
         queryPlan.isAscending());
     this.rowLimit = queryPlan.getRowLimit();
+    this.originalRowOffset = queryPlan.getRowOffset();
     this.rowOffset = queryPlan.getRowOffset();
     this.withoutAnyNull = queryPlan.isWithoutAnyNull();
     this.withoutAllNull = queryPlan.isWithoutAllNull();
@@ -215,6 +228,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
    */
   public RawQueryDataSetWithoutValueFilter(long queryId) {
     this.queryId = queryId;
+    this.originalRowOffset = 0;
     blockingQueueArray = new BlockingQueue[0];
     timeHeap = new TimeSelector(0, ascending);
   }
@@ -246,7 +260,7 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
         paths.get(seriesIndex).getFullPath(),
         batchDataLengthList,
         seriesIndex,
-        rowLimit + rowOffset);
+        rowLimit + originalRowOffset);
   }
 
   /**
