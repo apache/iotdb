@@ -27,11 +27,17 @@ import org.apache.iotdb.db.engine.flush.pool.AbstractPoolManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class QueryTaskPoolManager extends AbstractPoolManager {
+/**
+ * This pool is used to execute all query task send from client, and return TSExecuteStatementResp.
+ * Thread named by Query.
+ *
+ * <p>Execute QueryTask() in TSServiceImpl
+ */
+public class QueryTaskManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(QueryTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(QueryTaskManager.class);
 
-  private QueryTaskPoolManager() {
+  private QueryTaskManager() {
     int threadCnt =
         Math.min(
             Runtime.getRuntime().availableProcessors(),
@@ -39,8 +45,8 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
     pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
   }
 
-  public static QueryTaskPoolManager getInstance() {
-    return QueryTaskPoolManager.InstanceHolder.instance;
+  public static QueryTaskManager getInstance() {
+    return QueryTaskManager.InstanceHolder.instance;
   }
 
   @Override
@@ -79,6 +85,6 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
       // allowed to do nothing
     }
 
-    private static QueryTaskPoolManager instance = new QueryTaskPoolManager();
+    private static QueryTaskManager instance = new QueryTaskManager();
   }
 }
