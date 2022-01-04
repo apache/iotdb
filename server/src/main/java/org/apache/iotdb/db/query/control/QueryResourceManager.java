@@ -156,10 +156,11 @@ public class QueryResourceManager {
       // QueryDataSource is never cached in cluster mode
       VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
+      PartialPath translatedPath = IDTable.translateQueryPath(selectedPath);
       cachedQueryDataSource =
           processor.query(
-              Collections.singletonList(IDTable.translateQueryPath(selectedPath)),
-              selectedPath.getDevice(),
+              Collections.singletonList(translatedPath),
+              translatedPath.getDevice(),
               context,
               filePathsManager,
               timeFilter);
