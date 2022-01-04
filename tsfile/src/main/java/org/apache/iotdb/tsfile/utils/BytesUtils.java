@@ -88,8 +88,8 @@ public class BytesUtils {
     if (width < 32) {
       srcNum = srcNum & ~(-1 << width);
     }
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     try {
       while (width > 0) {
         int m = width + cnt >= 8 ? 8 - cnt : width;
@@ -203,8 +203,8 @@ public class BytesUtils {
    */
   public static int bytesToInt(byte[] result, int pos, int width) {
     int ret = 0;
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     while (width > 0) {
       int m = width + cnt >= 8 ? 8 - cnt : width;
       width -= m;
@@ -521,8 +521,8 @@ public class BytesUtils {
     if (width < 64) {
       srcNum = srcNum & ~(-1L << width);
     }
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     try {
       while (width > 0) {
         int m = width + cnt >= 8 ? 8 - cnt : width;
@@ -590,8 +590,8 @@ public class BytesUtils {
    */
   public static long bytesToLong(byte[] result, int pos, int width) {
     long ret = 0;
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     while (width > 0) {
       int m = width + cnt >= 8 ? 8 - cnt : width;
       width -= m;
