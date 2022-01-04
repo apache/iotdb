@@ -101,7 +101,8 @@ public class RawQueryDataSetWithoutValueFilter extends QueryDataSet
                 // the queue has enough space to hold SignalBatchData, just break the while loop
                 if (blockingQueue.remainingCapacity() > 0) {
                   break;
-                } else { // otherwise, exit without putting SignalBatchData, main thread will submit a new task again, then it will put SignalBatchData successfully
+                } else { // otherwise, exit without putting SignalBatchData, main thread will submit
+                  // a new task again, then it will put SignalBatchData successfully
                   reader.setManagedByQueryManager(false);
                   return;
                 }
