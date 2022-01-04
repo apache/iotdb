@@ -1834,7 +1834,29 @@ public class MManagerBasicTest {
           Arrays.asList(
               TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
           Arrays.asList(compressionType, compressionType, compressionType));
+    } catch (Exception e) {
+      fail();
+    }
 
+    try {
+      manager.createTimeseries(
+          new CreateTimeSeriesPlan(
+              new PartialPath("root.laptop.d1.aligned_device.s4"),
+              TSDataType.valueOf("FLOAT"),
+              TSEncoding.valueOf("RLE"),
+              compressionType,
+              null,
+              null,
+              null,
+              null));
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity. (Path: root.laptop.d1.aligned_device)",
+          e.getMessage());
+    }
+
+    try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
       TSDataType[] dataTypes =
@@ -1858,8 +1880,8 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      fail();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.assertEquals(
           "Timeseries under path [root.laptop.d1.aligned_device] is aligned , please set InsertPlan.isAligned() = true",
           e.getMessage());
@@ -1920,7 +1942,29 @@ public class MManagerBasicTest {
           TSEncoding.valueOf("RLE"),
           compressionType,
           Collections.emptyMap());
+    } catch (Exception e) {
+      fail();
+    }
 
+    try {
+      manager.createAlignedTimeSeries(
+          new PartialPath("root.laptop.d1.aligned_device"),
+          Arrays.asList("s3", "s4", "s5"),
+          Arrays.asList(
+              TSDataType.valueOf("FLOAT"),
+              TSDataType.valueOf("INT64"),
+              TSDataType.valueOf("INT32")),
+          Arrays.asList(
+              TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE"), TSEncoding.valueOf("RLE")),
+          Arrays.asList(compressionType, compressionType, compressionType));
+      fail();
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "Timeseries under this entity is not aligned, please use createTimeseries or change entity. (Path: root.laptop.d1.aligned_device)",
+          e.getMessage());
+    }
+
+    try {
       // construct an insertRowPlan with mismatched data type
       long time = 1L;
       TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT64};
@@ -1942,8 +1986,8 @@ public class MManagerBasicTest {
 
       // call getSeriesSchemasAndReadLockDevice
       manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      fail();
     } catch (Exception e) {
-      e.printStackTrace();
       Assert.assertEquals(
           "Timeseries under path [root.laptop.d1.aligned_device] is not aligned , please set InsertPlan.isAligned() = false",
           e.getMessage());
