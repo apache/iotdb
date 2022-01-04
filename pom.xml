@@ -109,6 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>library-udf</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -392,7 +393,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.0</version>
+                <version>3.0.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -732,6 +733,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>

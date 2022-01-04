@@ -721,6 +721,14 @@ var config = {
 						]
 					},
 					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-Started', 'Get Started'],
+					        ['Library-UDF/Data-Quality', 'Data Quality'],
+					        ['Library-UDF/Data-Repair', 'Data Repairing']
+					    ]
+					},
+					{
 						title: 'Communication Service Protocol',
 						children: [
 							['Communication-Service-Protocol/Programming-Thrift','Thrift'],
@@ -1519,6 +1527,14 @@ var config = {
 							['Advanced-Features/Triggers','触发器'],
 							['Advanced-Features/Alerting','告警机制'],
 						]
+					},
+					{
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-Started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量'],
+          					['Library-UDF/Data-Repair', '数据修复']
+          				]
 					},
 					{
 						title: '通信服务协议',

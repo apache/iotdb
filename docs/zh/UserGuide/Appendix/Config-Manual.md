@@ -1485,6 +1485,15 @@
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+* virtual\_storage\_group\_num
+
+|名字| virtual\_storage\_group\_num |
+|:---:|:---|
+|描述| 每一个用户定义存储组下虚拟存储组的数量, 虚拟存储组是内存中写入的并行单位，每一个虚拟存储组内的写入请求是串行的，推荐值为： [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
+|类型| INT32 |
+|默认值| 1 |
+|改后生效方式|仅允许在第一次启动服务前修改|
+
 * enable\_id\_table
 
 |名字| enable\_id\_table |
