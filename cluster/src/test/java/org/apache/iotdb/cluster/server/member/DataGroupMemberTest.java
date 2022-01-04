@@ -61,6 +61,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.PullSnapshotHandler;
 import org.apache.iotdb.cluster.server.handlers.caller.PullTimeseriesSchemaHandler;
 import org.apache.iotdb.cluster.server.service.DataAsyncService;
 import org.apache.iotdb.cluster.utils.Constants;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -134,12 +135,15 @@ public class DataGroupMemberTest extends BaseMember {
   private boolean enableSyncLeader;
   private int prevReplicationNum;
   private int raftId = 0;
+  private boolean enableInflux;
 
   @Override
   @Before
   public void setUp() throws Exception {
     prevReplicationNum = ClusterDescriptor.getInstance().getConfig().getReplicationNum();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(3);
+    enableInflux = IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService();
+    IoTDBDescriptor.getInstance().getConfig().setEnableInfluxDBRpcService(false);
     super.setUp();
     dataGroupMember = getDataGroupMember(TestUtils.getNode(0));
     snapshotMap = new HashMap<>();
@@ -158,6 +162,7 @@ public class DataGroupMemberTest extends BaseMember {
     dataGroupMember.stop();
     super.tearDown();
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
+    IoTDBDescriptor.getInstance().getConfig().setEnableInfluxDBRpcService(enableInflux);
   }
 
   private PartitionedSnapshotLogManager getLogManager(
@@ -509,7 +514,7 @@ public class DataGroupMemberTest extends BaseMember {
     }
 
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setTime(0);
     insertPlan.setMeasurements(new String[] {"s0"});
     insertPlan.setNeedInferType(true);
@@ -717,7 +722,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeries()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -785,7 +790,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -853,7 +858,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestamp()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -921,7 +926,7 @@ public class DataGroupMemberTest extends BaseMember {
           IllegalPathException {
     System.out.println("Start testQuerySingleSeriesByTimestampWithValueFilter()");
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(0)));
     insertPlan.setNeedInferType(true);
     insertPlan.setMeasurements(new String[] {getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);

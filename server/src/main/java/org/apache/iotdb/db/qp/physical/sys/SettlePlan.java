@@ -31,13 +31,13 @@ public class SettlePlan extends PhysicalPlan {
   boolean isSgPath;
 
   public SettlePlan(PartialPath sgPath) {
-    super(false, OperatorType.SETTLE);
+    super(OperatorType.SETTLE);
     this.sgPath = sgPath;
     setIsSgPath(true);
   }
 
   public SettlePlan(String tsFilePath) {
-    super(false, OperatorType.SETTLE);
+    super(OperatorType.SETTLE);
     this.tsFilePath = tsFilePath;
     setIsSgPath(false);
   }

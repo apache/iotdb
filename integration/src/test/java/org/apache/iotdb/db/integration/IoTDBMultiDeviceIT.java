@@ -111,69 +111,72 @@ public class IoTDBMultiDeviceIT {
 
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d2(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d3(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d2(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
 
       // insert large amount of data time range : 13700 ~ 24000
       for (int time = 13700; time < 24000; time++) {
 
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d2(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d3(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d2(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
 
       // insert large amount of data time range : 3000 ~ 13600
       for (int time = 3000; time < 13600; time++) {
         // System.out.println("===" + time);
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d2(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d3(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d2(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
 
       statement.execute("flush");
       statement.execute("merge");
@@ -183,46 +186,48 @@ public class IoTDBMultiDeviceIT {
 
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d2(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d3(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d2(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
 
       // sequential data, memory data
       for (int time = 200000; time < 201000; time++) {
 
         String sql =
             String.format("insert into root.fans.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d2(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql =
             String.format("insert into root.fans.d3(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d0(timestamp,s0) values(%s,%s)", time, time % 70);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d1(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
         sql = String.format("insert into root.car.d2(timestamp,s0) values(%s,%s)", time, time % 40);
-        statement.execute(sql);
+        statement.addBatch(sql);
       }
+      statement.executeBatch();
 
     } catch (Exception e) {
       e.printStackTrace();

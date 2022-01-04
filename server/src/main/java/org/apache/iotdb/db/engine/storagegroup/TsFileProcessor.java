@@ -38,8 +38,11 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.Upda
 import org.apache.iotdb.db.exception.TsFileProcessorException;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.WriteProcessRejectException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
@@ -49,6 +52,7 @@ import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.MemUtils;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.AlignedTVList;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.db.writelog.WALFlushListener;
@@ -243,12 +247,12 @@ public class TsFileProcessor {
 
     // update start time of this memtable
     tsFileResource.updateStartTime(
-        insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+        insertRowPlan.getDeviceID().toStringID(), insertRowPlan.getTime());
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
+          insertRowPlan.getDeviceID().toStringID(), insertRowPlan.getTime());
     }
     tsFileResource.updatePlanIndexes(insertRowPlan.getIndex());
   }
@@ -325,13 +329,13 @@ public class TsFileProcessor {
       results[i] = RpcUtils.SUCCESS_STATUS;
     }
     tsFileResource.updateStartTime(
-        insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[start]);
+        insertTabletPlan.getDeviceID().toStringID(), insertTabletPlan.getTimes()[start]);
 
     // for sequence tsfile, we update the endTime only when the file is prepared to be closed.
     // for unsequence tsfile, we have to update the endTime for each insertion.
     if (!sequence) {
       tsFileResource.updateEndTime(
-          insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+          insertTabletPlan.getDeviceID().toStringID(), insertTabletPlan.getTimes()[end - 1]);
     }
     tsFileResource.updatePlanIndexes(insertTabletPlan.getIndex());
   }
@@ -343,13 +347,20 @@ public class TsFileProcessor {
     long memTableIncrement = 0L;
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
-    String deviceId = insertRowPlan.getDeviceId().getFullPath();
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertRowPlan.getDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
+
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
       // skip failed Measurements
       if (insertRowPlan.getDataTypes()[i] == null || insertRowPlan.getMeasurements()[i] == null) {
         continue;
       }
-      if (workMemTable.checkIfChunkDoesNotExist(deviceId, insertRowPlan.getMeasurements()[i])) {
+      if (workMemTable.checkIfChunkDoesNotExist(deviceID, insertRowPlan.getMeasurements()[i])) {
         // ChunkMetadataIncrement
         chunkMetadataIncrement +=
             ChunkMetadata.calculateRamSize(
@@ -358,7 +369,7 @@ public class TsFileProcessor {
       } else {
         // here currentChunkPointNum >= 1
         long currentChunkPointNum =
-            workMemTable.getCurrentChunkPointNum(deviceId, insertRowPlan.getMeasurements()[i]);
+            workMemTable.getCurrentChunkPointNum(deviceID, insertRowPlan.getMeasurements()[i]);
         memTableIncrement +=
             (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
                 ? TVList.tvListArrayMemCost(insertRowPlan.getDataTypes()[i])
@@ -381,8 +392,15 @@ public class TsFileProcessor {
     long textDataIncrement = 0L;
     long chunkMetadataIncrement = 0L;
     AlignedWritableMemChunk alignedMemChunk = null;
-    String deviceId = insertRowPlan.getDeviceId().getFullPath();
-    if (workMemTable.checkIfChunkDoesNotExist(deviceId, AlignedPath.VECTOR_PLACEHOLDER)) {
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertRowPlan.getDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
+
+    if (workMemTable.checkIfChunkDoesNotExist(deviceID, AlignedPath.VECTOR_PLACEHOLDER)) {
       // ChunkMetadataIncrement
       chunkMetadataIncrement +=
           ChunkMetadata.calculateRamSize(AlignedPath.VECTOR_PLACEHOLDER, TSDataType.VECTOR)
@@ -391,13 +409,13 @@ public class TsFileProcessor {
     } else {
       // here currentChunkPointNum >= 1
       long currentChunkPointNum =
-          workMemTable.getCurrentChunkPointNum(deviceId, AlignedPath.VECTOR_PLACEHOLDER);
+          workMemTable.getCurrentChunkPointNum(deviceID, AlignedPath.VECTOR_PLACEHOLDER);
       memTableIncrement +=
           (currentChunkPointNum % PrimitiveArrayManager.ARRAY_SIZE) == 0
               ? AlignedTVList.alignedTvListArrayMemCost(insertRowPlan.getDataTypes())
               : 0;
       alignedMemChunk =
-          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceId))
+          ((AlignedWritableMemChunkGroup) workMemTable.getMemTableMap().get(deviceID))
               .getAlignedMemChunk();
     }
     for (int i = 0; i < insertRowPlan.getDataTypes().length; i++) {
@@ -428,7 +446,13 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertTabletPlan.getDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     for (int i = 0; i < insertTabletPlan.getDataTypes().length; i++) {
       // skip failed Measurements
@@ -438,7 +462,7 @@ public class TsFileProcessor {
       if (dataType == null || column == null || measurement == null) {
         continue;
       }
-      updateMemCost(dataType, measurement, deviceId, start, end, memIncrements, column);
+      updateMemCost(dataType, measurement, deviceID, start, end, memIncrements, column);
     }
     long memTableIncrement = memIncrements[0];
     long textDataIncrement = memIncrements[1];
@@ -454,11 +478,17 @@ public class TsFileProcessor {
     }
     long[] memIncrements = new long[3]; // memTable, text, chunk metadata
 
-    String deviceId = insertTabletPlan.getDeviceId().getFullPath();
+    // get device id
+    IDeviceID deviceID = null;
+    try {
+      deviceID = getDeviceID(insertTabletPlan.getDevicePath().getFullPath());
+    } catch (IllegalPathException e) {
+      throw new WriteProcessException(e);
+    }
 
     updateAlignedMemCost(
         insertTabletPlan.getDataTypes(),
-        deviceId,
+        deviceID,
         insertTabletPlan.getMeasurements(),
         start,
         end,
@@ -474,7 +504,7 @@ public class TsFileProcessor {
   private void updateMemCost(
       TSDataType dataType,
       String measurement,
-      String deviceId,
+      IDeviceID deviceId,
       int start,
       int end,
       long[] memIncrements,
@@ -510,7 +540,7 @@ public class TsFileProcessor {
 
   private void updateAlignedMemCost(
       TSDataType[] dataTypes,
-      String deviceId,
+      IDeviceID deviceId,
       String[] measurementIds,
       int start,
       int end,
@@ -1369,5 +1399,19 @@ public class TsFileProcessor {
 
   public boolean alreadyMarkedClosing() {
     return shouldClose;
+  }
+
+  private IDeviceID getDeviceID(String deviceId) throws IllegalPathException {
+    try {
+      return DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId));
+    } catch (IllegalPathException e) {
+      logger.error("device id is illegal");
+      throw e;
+    }
+  }
+
+  @TestOnly
+  public IMemTable getWorkMemTable() {
+    return workMemTable;
   }
 }

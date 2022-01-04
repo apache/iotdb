@@ -32,11 +32,20 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.virtualSg.StorageGroupManager;
-import org.apache.iotdb.db.exception.*;
+import org.apache.iotdb.db.exception.BatchProcessException;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.ShutdownException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.StorageGroupProcessorException;
+import org.apache.iotdb.db.exception.TsFileProcessorException;
+import org.apache.iotdb.db.exception.WriteProcessException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.runtime.StorageEngineFailureException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.monitor.StatMonitor;
@@ -563,7 +572,7 @@ public class StorageEngine implements IService {
    *
    * @param insertRowPlan physical plan of insertion
    */
-  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException {
+  public void insert(InsertRowPlan insertRowPlan) throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -571,8 +580,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
+
     VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowPlan.getDeviceId());
+        getProcessor(insertRowPlan.getDevicePath());
+    getSeriesSchemas(insertRowPlan, virtualStorageGroupProcessor);
+    try {
+      insertRowPlan.transferType();
+    } catch (QueryProcessException e) {
+      throw new StorageEngineException(e);
+    }
 
     try {
       virtualStorageGroupProcessor.insert(insertRowPlan);
@@ -580,7 +596,7 @@ public class StorageEngine implements IService {
         try {
           updateMonitorStatistics(
               processorMap.get(
-                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDeviceId())),
+                  IoTDB.metaManager.getBelongedStorageGroup(insertRowPlan.getDevicePath())),
               insertRowPlan);
         } catch (MetadataException e) {
           logger.error("failed to record status", e);
@@ -592,7 +608,7 @@ public class StorageEngine implements IService {
   }
 
   public void insert(InsertRowsOfOneDevicePlan insertRowsOfOneDevicePlan)
-      throws StorageEngineException {
+      throws StorageEngineException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -600,8 +616,15 @@ public class StorageEngine implements IService {
         throw new StorageEngineException(e);
       }
     }
+
     VirtualStorageGroupProcessor virtualStorageGroupProcessor =
-        getProcessor(insertRowsOfOneDevicePlan.getDeviceId());
+        getProcessor(insertRowsOfOneDevicePlan.getDevicePath());
+
+    for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
+      plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
+      // check whether types are match
+      getSeriesSchemas(plan, virtualStorageGroupProcessor);
+    }
 
     // TODO monitor: update statistics
     try {
@@ -613,7 +636,7 @@ public class StorageEngine implements IService {
 
   /** insert a InsertTabletPlan to a storage group */
   public void insertTablet(InsertTabletPlan insertTabletPlan)
-      throws StorageEngineException, BatchProcessException {
+      throws StorageEngineException, BatchProcessException, MetadataException {
     if (enableMemControl) {
       try {
         blockInsertionIfReject(null);
@@ -625,21 +648,23 @@ public class StorageEngine implements IService {
     }
     VirtualStorageGroupProcessor virtualStorageGroupProcessor;
     try {
-      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDeviceId());
+      virtualStorageGroupProcessor = getProcessor(insertTabletPlan.getDevicePath());
     } catch (StorageEngineException e) {
       throw new StorageEngineException(
           String.format(
-              "Get StorageGroupProcessor of device %s " + "failed", insertTabletPlan.getDeviceId()),
+              "Get StorageGroupProcessor of device %s " + "failed",
+              insertTabletPlan.getDevicePath()),
           e);
     }
 
+    getSeriesSchemas(insertTabletPlan, virtualStorageGroupProcessor);
     virtualStorageGroupProcessor.insertTablet(insertTabletPlan);
 
     if (config.isEnableStatMonitor()) {
       try {
         updateMonitorStatistics(
             processorMap.get(
-                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDeviceId())),
+                IoTDB.metaManager.getBelongedStorageGroup(insertTabletPlan.getDevicePath())),
             insertTabletPlan);
       } catch (MetadataException e) {
         logger.error("failed to record status", e);
@@ -716,10 +741,12 @@ public class StorageEngine implements IService {
           continue;
         }
 
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap
-            .get(storageGroupPath)
-            .delete(newPath, startTime, endTime, planIndex, timePartitionFilter);
+        List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
+        for (PartialPath possiblePath : possiblePaths) {
+          processorMap
+              .get(storageGroupPath)
+              .delete(possiblePath, startTime, endTime, planIndex, timePartitionFilter);
+        }
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -738,10 +765,12 @@ public class StorageEngine implements IService {
           continue;
         }
 
-        PartialPath newPath = path.alterPrefixPath(storageGroupPath);
-        processorMap
-            .get(storageGroupPath)
-            .delete(newPath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
+        List<PartialPath> possiblePaths = path.alterPrefixPath(storageGroupPath);
+        for (PartialPath possiblePath : possiblePaths) {
+          processorMap
+              .get(storageGroupPath)
+              .delete(possiblePath, Long.MIN_VALUE, Long.MAX_VALUE, planIndex, timePartitionFilter);
+        }
       }
     } catch (IOException | MetadataException e) {
       throw new StorageEngineException(e.getMessage());
@@ -1028,6 +1057,21 @@ public class StorageEngine implements IService {
     return storageGroupProcessor.getLogicalStorageGroupName()
         + File.separator
         + storageGroupProcessor.getVirtualStorageGroupId();
+  }
+
+  protected void getSeriesSchemas(InsertPlan insertPlan, VirtualStorageGroupProcessor processor)
+      throws StorageEngineException, MetadataException {
+    try {
+      if (config.isEnableIDTable()) {
+        processor.getIdTable().getSeriesSchemas(insertPlan);
+      } else {
+        IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
+        insertPlan.setDeviceID(
+            DeviceIDFactory.getInstance().getDeviceID(insertPlan.getDevicePath()));
+      }
+    } catch (IOException e) {
+      throw new StorageEngineException(e);
+    }
   }
 
   static class InstanceHolder {

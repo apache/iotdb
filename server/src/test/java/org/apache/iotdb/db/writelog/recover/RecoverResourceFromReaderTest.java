@@ -199,7 +199,7 @@ public class RecoverResourceFromReaderTest {
     }
 
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, false);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
     RestorableTsFileIOWriter writer =
         performer.recover(
             true,

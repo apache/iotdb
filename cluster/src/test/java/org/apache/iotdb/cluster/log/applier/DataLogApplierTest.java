@@ -304,7 +304,8 @@ public class DataLogApplierTest extends IoTDBTest {
     log.setPlan(insertPlan);
 
     // this series is already created
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(1)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(1)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(1)));
     insertPlan.setTime(1);
     insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});
     insertPlan.setDataTypes(new TSDataType[insertPlan.getMeasurements().length]);
@@ -322,7 +323,8 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series is not created but can be fetched
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(4)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(4)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(4)));
     applier.apply(log);
     dataSet = query(Collections.singletonList(TestUtils.getTestSeries(4, 0)), null);
     assertTrue(dataSet.hasNext());
@@ -333,17 +335,19 @@ public class DataLogApplierTest extends IoTDBTest {
     assertFalse(dataSet.hasNext());
 
     // this series does not exists any where
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(5)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(5)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(5)));
     applier.apply(log);
     assertEquals(
         "org.apache.iotdb.db.exception.metadata.PathNotExistException: Path [root.test5.s0] does not exist",
         log.getException().getMessage());
 
     // this storage group is not even set
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(16)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(16)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(16)));
     applier.apply(log);
     assertEquals(
-        "org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
+        "org.apache.iotdb.db.exception.StorageEngineException: org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException: Storage group is not set for current seriesPath: [root.test16]",
         log.getException().getMessage());
   }
 
@@ -357,7 +361,7 @@ public class DataLogApplierTest extends IoTDBTest {
 
     for (int i = 1; i <= 4; i++) {
       InsertRowPlan insertPlan = new InsertRowPlan();
-      insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(i)));
+      insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(i)));
       insertPlan.setTime(1);
       insertPlan.setNeedInferType(true);
       insertPlan.setMeasurements(new String[] {TestUtils.getTestMeasurement(0)});

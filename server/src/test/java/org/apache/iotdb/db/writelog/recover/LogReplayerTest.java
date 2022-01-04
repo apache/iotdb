@@ -161,7 +161,8 @@ public class LogReplayerTest {
                 ByteBuffer.allocateDirect(
                     IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
             return byteBuffers;
-          });
+          },
+          null);
 
       for (int i = 0; i < 5; i++) {
         MeasurementPath fullPath =

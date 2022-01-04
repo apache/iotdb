@@ -102,6 +102,14 @@ public interface BaseConfig {
     return this;
   }
 
+  default BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    return this;
+  }
+
+  default BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    return this;
+  }
+
   default BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     return this;
   }

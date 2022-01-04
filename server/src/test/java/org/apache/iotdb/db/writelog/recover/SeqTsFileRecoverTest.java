@@ -395,7 +395,7 @@ public class SeqTsFileRecoverTest {
       throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
     prepareData();
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, false);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
     RestorableTsFileIOWriter writer =
         performer.recover(
             true,
@@ -463,7 +463,7 @@ public class SeqTsFileRecoverTest {
       throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
     prepareData();
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, true);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);
     RestorableTsFileIOWriter writer =
         performer.recover(
             true,
@@ -532,7 +532,7 @@ public class SeqTsFileRecoverTest {
       throws StorageGroupProcessorException, IOException, MetadataException, WriteProcessException {
     prepareDataWithDeletion();
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, true);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, true, null);
     RestorableTsFileIOWriter writer =
         performer.recover(
             true,

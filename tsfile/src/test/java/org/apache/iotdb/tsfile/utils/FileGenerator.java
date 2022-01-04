@@ -223,7 +223,15 @@ public class FileGenerator {
     long startTime = 1480562618000L;
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
-        String d = "d" + i + "," + startTime + ",s" + j + "," + 1;
+        String d =
+            "d"
+                + generateIndexString(i, deviceNum)
+                + ","
+                + startTime
+                + ",s"
+                + generateIndexString(j, measurementNum)
+                + ","
+                + 1;
         fw.write(d + "\r\n");
       }
     }
@@ -294,9 +302,11 @@ public class FileGenerator {
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
         schema.registerTimeseries(
-            new Path("d" + i),
+            new Path("d" + generateIndexString(i, deviceNum)),
             new UnaryMeasurementSchema(
-                "s" + j, TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
+                "s" + generateIndexString(j, measurementNum),
+                TSDataType.INT32,
+                TSEncoding.valueOf(config.getValueEncoder())));
       }
     }
   }
@@ -330,5 +340,21 @@ public class FileGenerator {
       e.printStackTrace();
       return null;
     }
+  }
+
+  /**
+   * generate curIndex string, use "0" on left to make sure align
+   *
+   * @param curIndex current index
+   * @param maxIndex max index
+   * @return curIndex's string
+   */
+  public static String generateIndexString(int curIndex, int maxIndex) {
+    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
+    String target = String.valueOf(maxIndex);
+    while (res.length() < target.length()) {
+      res.insert(0, "0");
+    }
+    return res.toString();
   }
 }
