@@ -225,7 +225,9 @@ public class TTLTest {
     // files before ttl
     QueryDataSource dataSource =
         virtualStorageGroupProcessor.query(
-            SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1),
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
             null,
             null);
@@ -239,7 +241,12 @@ public class TTLTest {
     // files after ttl
     dataSource =
         virtualStorageGroupProcessor.query(
-            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
+            null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertTrue(seqResource.size() < 4);
@@ -251,11 +258,10 @@ public class TTLTest {
     IBatchReader reader =
         new SeriesRawDataBatchReader(
             path,
-            allSensors,
             TSDataType.INT64,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            dataSource,
-            null,
+            seqResource,
+            unseqResource,
             null,
             null,
             true);
@@ -275,7 +281,12 @@ public class TTLTest {
     virtualStorageGroupProcessor.setDataTTL(0);
     dataSource =
         virtualStorageGroupProcessor.query(
-            new PartialPath(sg1, s1), EnvironmentUtils.TEST_QUERY_CONTEXT, null, null);
+            Collections.singletonList(
+                SchemaTestUtils.getMeasurementPath(sg1 + TsFileConstant.PATH_SEPARATOR + s1)),
+            sg1,
+            EnvironmentUtils.TEST_QUERY_CONTEXT,
+            null,
+            null);
     seqResource = dataSource.getSeqResources();
     unseqResource = dataSource.getUnseqResources();
     assertEquals(0, seqResource.size());

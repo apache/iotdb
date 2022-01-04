@@ -393,8 +393,15 @@ public class MTree implements Serializable {
       }
 
       if (upperTemplate != null
-          && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
+          && (upperTemplate.getDirectNode(leafName) != null
+              || upperTemplate.getDirectNode(alias) != null)) {
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
+      }
+
+      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+            cur.getFullPath());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
@@ -448,21 +455,20 @@ public class MTree implements Serializable {
       if (upperTemplate != null) {
         for (String measurement : measurements) {
           if (upperTemplate.getDirectNode(measurement) != null) {
-            throw new PathAlreadyExistException(
-                devicePath.concatNode(measurement).getFullPath()
-                    + " ( which is incompatible with template )");
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
           }
         }
       }
 
-      if (cur.isEntity()
-          && !cur.getAsEntityMNode().isAligned()
-          && (!cur.getChildren().isEmpty() || cur.isUseTemplate())) {
+      if (cur.isEntity() && !cur.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      entityMNode.setAligned(true);
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
@@ -474,7 +480,6 @@ public class MTree implements Serializable {
                 null);
         entityMNode.addChild(measurements.get(i), measurementMNode);
       }
-      entityMNode.setAligned(true);
     }
   }
 
