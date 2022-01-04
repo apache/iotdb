@@ -208,7 +208,7 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
 
     // insert data
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(100)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(100)));
     insertPlan.setMeasurements(measurements);
     insertPlan.setMeasurementMNodes(schemas);
     insertPlan.setDataTypes(dataTypes);

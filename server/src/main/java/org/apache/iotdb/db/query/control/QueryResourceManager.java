@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.externalsort.serialize.IExternalSortFileDeserializer;
@@ -110,7 +111,8 @@ public class QueryResourceManager {
     for (Map.Entry<VirtualStorageGroupProcessor, List<PartialPath>> entry :
         processorToSeriesMap.entrySet()) {
       VirtualStorageGroupProcessor processor = entry.getKey();
-      List<PartialPath> pathList = entry.getValue();
+      List<PartialPath> pathList =
+          entry.getValue().stream().map(IDTable::translateQueryPath).collect(Collectors.toList());
 
       // when all the selected series are under the same device, the QueryDataSource will be
       // filtered according to timeIndex
@@ -156,7 +158,7 @@ public class QueryResourceManager {
           StorageEngine.getInstance().getProcessor(selectedPath.getDevicePath());
       cachedQueryDataSource =
           processor.query(
-              Collections.singletonList(selectedPath),
+              Collections.singletonList(IDTable.translateQueryPath(selectedPath)),
               selectedPath.getDevice(),
               context,
               filePathsManager,
