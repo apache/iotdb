@@ -196,6 +196,7 @@ public class MeasurementPath extends PartialPath {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    allSensors.add(this.getMeasurement());
     return new SeriesReader(
         this,
         allSensors,
