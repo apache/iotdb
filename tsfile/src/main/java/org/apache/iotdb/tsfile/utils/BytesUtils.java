@@ -79,15 +79,12 @@ public class BytesUtils {
    * convert an integer to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input integer variable
+   * @param srcNum input integer variable. All but the lowest {@code width} bits are 0. 
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
-    if (width < 32) {
-      srcNum = srcNum & ~(-1 << width);
-    }
     int cnt = pos & 0x07;
     int index = pos >> 3;
     try {
@@ -509,18 +506,15 @@ public class BytesUtils {
   }
 
   /**
-   * convert an long to a byte array which length is width, then copy this array to the parameter
+   * convert a long to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input long variable
+   * @param srcNum input long variable. All but the lowest {@code width} bits are 0. 
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
-    if (width < 64) {
-      srcNum = srcNum & ~(-1L << width);
-    }
     int cnt = pos & 0x07;
     int index = pos >> 3;
     try {
