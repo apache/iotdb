@@ -30,6 +30,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -194,6 +196,7 @@ public class MeasurementPath extends PartialPath {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    allSensors.add(this.getMeasurement());
     return new SeriesReader(
         this,
         allSensors,
@@ -252,14 +255,14 @@ public class MeasurementPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(getDevicePath());
     // check If Memtable Contains this path
-    if (!memTableMap.containsKey(getDevice())
-        || !memTableMap.get(getDevice()).contains(getMeasurement())) {
+    if (!memTableMap.containsKey(deviceID)
+        || !memTableMap.get(deviceID).contains(getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk =
-        memTableMap.get(getDevice()).getMemChunkMap().get(getMeasurement());
+    IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();

@@ -33,7 +33,7 @@ import java.util.List;
 public class CreateSnapshotPlan extends PhysicalPlan {
 
   public CreateSnapshotPlan() {
-    super(false, OperatorType.CREATE_SCHEMA_SNAPSHOT);
+    super(OperatorType.CREATE_SCHEMA_SNAPSHOT);
   }
 
   @Override

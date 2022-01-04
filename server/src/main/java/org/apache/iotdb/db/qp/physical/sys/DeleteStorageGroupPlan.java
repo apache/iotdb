@@ -34,12 +34,12 @@ public class DeleteStorageGroupPlan extends PhysicalPlan {
   private List<PartialPath> deletePathList;
 
   public DeleteStorageGroupPlan(List<PartialPath> deletePathList) {
-    super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
+    super(Operator.OperatorType.DELETE_STORAGE_GROUP);
     this.deletePathList = deletePathList;
   }
 
   public DeleteStorageGroupPlan() {
-    super(false, Operator.OperatorType.DELETE_STORAGE_GROUP);
+    super(Operator.OperatorType.DELETE_STORAGE_GROUP);
   }
 
   @Override

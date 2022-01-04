@@ -34,17 +34,13 @@ public class LogPlan extends PhysicalPlan {
 
   private ByteBuffer log;
 
-  public LogPlan() {
-    super(false);
-  }
+  public LogPlan() {}
 
   public LogPlan(ByteBuffer log) {
-    super(false);
     this.log = log;
   }
 
   public LogPlan(LogPlan plan) {
-    super(false);
     this.log = IOUtils.clone(plan.log);
   }
 

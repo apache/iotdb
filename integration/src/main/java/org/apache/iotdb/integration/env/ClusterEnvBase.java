@@ -183,7 +183,6 @@ public abstract class ClusterEnvBase implements BaseEnv {
       }
       ConfigFactory.getConfig().clearAllProperties();
     } catch (Exception e) {
-      e.printStackTrace();
       fail(e.getMessage());
     }
   }

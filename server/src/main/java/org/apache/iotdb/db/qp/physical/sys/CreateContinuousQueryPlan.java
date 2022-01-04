@@ -28,7 +28,8 @@ import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 
 public class CreateContinuousQueryPlan extends PhysicalPlan {
 
@@ -41,7 +42,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   private long creationTimestamp;
 
   public CreateContinuousQueryPlan() {
-    super(false, Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
+    super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
   }
 
   public CreateContinuousQueryPlan(
@@ -51,7 +52,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       long everyInterval,
       long forInterval,
       QueryOperator queryOperator) {
-    super(false, Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
+    super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     this.querySql = querySql;
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
