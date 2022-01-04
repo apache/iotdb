@@ -468,7 +468,7 @@ public class CompactionCheckerUtils {
         List<List<Long>> sourceChunkPages = chunkPagePointsNumEntry.getValue();
         List<List<Long>> mergedChunkPages = mergedChunkPagePointsNum.get(fullPath);
         for (int i = 0; i < sourceChunkPages.size(); i++) {
-          for (int j = 0; j < sourceChunkPages.get(0).size(); j++) {
+          for (int j = 0; j < sourceChunkPages.get(i).size(); j++) {
             assertEquals(sourceChunkPages.get(i).get(j), mergedChunkPages.get(i).get(j));
           }
         }
