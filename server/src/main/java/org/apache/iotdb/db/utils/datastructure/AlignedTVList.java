@@ -857,14 +857,20 @@ public class AlignedTVList extends TVList {
    */
   public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
+    // value array mem size
+    for (TSDataType type : types) {
+      if (type != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      }
+    }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
     // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value array mem size
-    for (TSDataType type : types) {
-      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    }
     // array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList
