@@ -23,38 +23,36 @@ import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
-/**
- * This class is only used for generating aligned or nonAligned tsfiles in test.
- */
+/** This class is only used for generating aligned or nonAligned tsfiles in test. */
 public class TsFileGeneratorUtils {
   private static final FSFactory fsFactory = FSFactoryProducer.getFSFactory();
-  public static final String testStorageGroup="root.testsg";
-  private static int alignDeviceOffset=10000;
+  public static final String testStorageGroup = "root.testsg";
+  private static int alignDeviceOffset = 10000;
 
-    public static void writeWithTsRecord(
-        TsFileWriter tsFileWriter,
-        String deviceId,
-        List<UnaryMeasurementSchema> schemas,
-        long rowSize,
-        long startTime,
-        long startValue,
-        boolean isAligned)
-        throws IOException, WriteProcessException {
-      for (long time = startTime; time < rowSize + startTime; time++,startValue++) {
-        // construct TsRecord
-        TSRecord tsRecord = new TSRecord(time, deviceId);
-        for (IMeasurementSchema schema : schemas) {
-          DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue);
-          tsRecord.addTuple(dPoint);
-        }
-        // write
-        if (isAligned) {
-          tsFileWriter.writeAligned(tsRecord);
-        } else {
-          tsFileWriter.write(tsRecord);
-        }
+  public static void writeWithTsRecord(
+      TsFileWriter tsFileWriter,
+      String deviceId,
+      List<UnaryMeasurementSchema> schemas,
+      long rowSize,
+      long startTime,
+      long startValue,
+      boolean isAligned)
+      throws IOException, WriteProcessException {
+    for (long time = startTime; time < rowSize + startTime; time++, startValue++) {
+      // construct TsRecord
+      TSRecord tsRecord = new TSRecord(time, deviceId);
+      for (IMeasurementSchema schema : schemas) {
+        DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue);
+        tsRecord.addTuple(dPoint);
+      }
+      // write
+      if (isAligned) {
+        tsFileWriter.writeAligned(tsRecord);
+      } else {
+        tsFileWriter.write(tsRecord);
       }
     }
+  }
 
   public static void writeWithTablet(
       TsFileWriter tsFileWriter,
@@ -102,14 +100,24 @@ public class TsFileGeneratorUtils {
 
   // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
   // "d2.s1","d2.s2","d2.s3"
-  public static File generateMixTsFile(String filePath,int alignDeviceNum,int NonAlignDeviceNum,int measurementNum,int pointNum,int startTime,int startValue, int chunkGroupSize, int pageSize) throws IOException, WriteProcessException {
+  public static File generateMixTsFile(
+      String filePath,
+      int alignDeviceNum,
+      int NonAlignDeviceNum,
+      int measurementNum,
+      int pointNum,
+      int startTime,
+      int startValue,
+      int chunkGroupSize,
+      int pageSize)
+      throws IOException, WriteProcessException {
     File file = fsFactory.getFile(filePath);
     if (file.exists()) {
       file.delete();
     }
-    if(chunkGroupSize>0)
+    if (chunkGroupSize > 0)
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
-    if(pageSize>0)
+    if (pageSize > 0)
       TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
@@ -139,93 +147,119 @@ public class TsFileGeneratorUtils {
     }
   }
 
-  public static File generateAlignedTsFile(String filePath,int deviceNum,int measurementNum,int pointNum,int startTime,int startValue, int chunkGroupSize, int pageSize) throws IOException, WriteProcessException {
+  public static File generateAlignedTsFile(
+      String filePath,
+      int deviceNum,
+      int measurementNum,
+      int pointNum,
+      int startTime,
+      int startValue,
+      int chunkGroupSize,
+      int pageSize)
+      throws IOException, WriteProcessException {
     File file = fsFactory.getFile(filePath);
     if (file.exists()) {
       file.delete();
     }
-    if(chunkGroupSize>0)
-    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
-    if(pageSize>0)
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
+    if (chunkGroupSize > 0)
+      TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
+    if (pageSize > 0)
+      TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
       List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-      for(int i=0;i<measurementNum;i++){
+      for (int i = 0; i < measurementNum; i++) {
         alignedMeasurementSchemas.add(
-                new UnaryMeasurementSchema("s"+i, TSDataType.INT64, TSEncoding.PLAIN));
+            new UnaryMeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
-      for(int i=alignDeviceOffset;i<alignDeviceOffset+deviceNum;i++){
-        tsFileWriter.registerAlignedTimeseries(new Path(testStorageGroup+PATH_SEPARATOR +"d"+i), alignedMeasurementSchemas);
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
+        tsFileWriter.registerAlignedTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), alignedMeasurementSchemas);
       }
 
       // write with record
-      for(int i=alignDeviceOffset;i<alignDeviceOffset+deviceNum;i++){
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
         writeWithTsRecord(
-                tsFileWriter, testStorageGroup+PATH_SEPARATOR+"d"+i, alignedMeasurementSchemas, pointNum, startTime, startValue, true);
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            alignedMeasurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            true);
       }
     }
     return file;
   }
 
-  public static File generateNonAlignedTsFile(String filePath,int deviceNum,int measurementNum,int pointNum,int startTime,int startValue, int chunkGroupSize, int pageSize) throws IOException, WriteProcessException {
+  public static File generateNonAlignedTsFile(
+      String filePath,
+      int deviceNum,
+      int measurementNum,
+      int pointNum,
+      int startTime,
+      int startValue,
+      int chunkGroupSize,
+      int pageSize)
+      throws IOException, WriteProcessException {
     File file = fsFactory.getFile(filePath);
     if (file.exists()) {
       file.delete();
     }
-    if(chunkGroupSize>0)
+    if (chunkGroupSize > 0)
       TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(chunkGroupSize);
-    if(pageSize>0)
+    if (pageSize > 0)
       TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register nonAlign timeseries
       List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      for(int i=0;i<measurementNum;i++){
+      for (int i = 0; i < measurementNum; i++) {
         measurementSchemas.add(
-                new UnaryMeasurementSchema("s"+i, TSDataType.INT64, TSEncoding.PLAIN));
+            new UnaryMeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
-      for(int i=0;i<deviceNum;i++){
-        tsFileWriter.registerTimeseries(new Path(testStorageGroup+PATH_SEPARATOR +"d"+i), measurementSchemas);
+      for (int i = 0; i < deviceNum; i++) {
+        tsFileWriter.registerTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), measurementSchemas);
       }
 
       // write with record
-      for(int i=0;i<deviceNum;i++){
+      for (int i = 0; i < deviceNum; i++) {
         writeWithTsRecord(
-                tsFileWriter, testStorageGroup+PATH_SEPARATOR+"d"+i, measurementSchemas, pointNum, startTime, startValue, false);
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            measurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            false);
       }
       return file;
     }
   }
 
   public static String getTsFilePath(
-          String systemDir,
-          String logicalStorageGroupName,
-          long VirtualStorageGroupId,
-          long TimePartitionId,
-          long tsFileVersion) {
+      String systemDir,
+      String logicalStorageGroupName,
+      long VirtualStorageGroupId,
+      long TimePartitionId,
+      long tsFileVersion) {
     String filePath =
-            String.format(
-                    systemDir,
-                    logicalStorageGroupName,
-                    VirtualStorageGroupId,
-                    TimePartitionId);
+        String.format(systemDir, logicalStorageGroupName, VirtualStorageGroupId, TimePartitionId);
     String fileName =
-            System.currentTimeMillis()
-                    + FilePathUtils.FILE_NAME_SEPARATOR
-                    + tsFileVersion
-                    + "-0-0.tsfile";
-    return (filePath+File.separator).concat(fileName);
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + tsFileVersion
+            + "-0-0.tsfile";
+    return (filePath + File.separator).concat(fileName);
   }
 
-  public static String getTsFilePath(
-          String fileParentPath,
-          long tsFileVersion) {
+  public static String getTsFilePath(String fileParentPath, long tsFileVersion) {
     String fileName =
-            System.currentTimeMillis()
-                    + FilePathUtils.FILE_NAME_SEPARATOR
-                    + tsFileVersion
-                    + "-0-0.tsfile";
-    return (fileParentPath+File.separator).concat(fileName);
+        System.currentTimeMillis()
+            + FilePathUtils.FILE_NAME_SEPARATOR
+            + tsFileVersion
+            + "-0-0.tsfile";
+    return (fileParentPath + File.separator).concat(fileName);
   }
 
   public static int getAlignDeviceOffset() {

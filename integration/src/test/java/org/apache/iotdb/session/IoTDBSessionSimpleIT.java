@@ -731,7 +731,7 @@ public class IoTDBSessionSimpleIT {
     session.close();
   }
 
-  @Test(expected = BatchExecutionException.class)
+  @Test
   public void testInsertOneDeviceRecordsWithIncorrectOrder()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -1255,8 +1255,8 @@ public class IoTDBSessionSimpleIT {
     values.add("1.0");
     values.add("2.0");
 
-    session.insertRecord("root.sg.loc.area", 1L, measurements, values);
-    session.insertRecord("root.sg.loc", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc.area", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc", 1L, measurements, values);
 
     dataSet = session.executeQueryStatement("show timeseries");
 

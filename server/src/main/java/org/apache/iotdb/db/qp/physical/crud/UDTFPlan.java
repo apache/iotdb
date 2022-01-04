@@ -27,10 +27,12 @@ import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.FunctionExpression;
 import org.apache.iotdb.db.query.udf.core.executor.UDTFExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -85,6 +87,17 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
+  }
+
+  @Override
+  public List<TSDataType> getWideQueryHeaders(
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
+    List<TSDataType> seriesTypes = new ArrayList<>();
+    for (int i = 0; i < paths.size(); i++) {
+      respColumns.add(resultColumns.get(i).getResultColumnName());
+      seriesTypes.add(resultColumns.get(i).getDataType());
+    }
+    return seriesTypes;
   }
 
   protected void setDatasetOutputIndexToResultColumnIndex(

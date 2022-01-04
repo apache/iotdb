@@ -37,6 +37,8 @@ import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.metadata.TemplateIsInUseException;
 import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.lastCache.LastCacheManager;
 import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
@@ -578,6 +580,12 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e);
     }
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPath().getDevicePath());
+      idTable.createTimeseries(plan);
+    }
   }
 
   /**
@@ -666,6 +674,12 @@ public class MManager {
       }
     } catch (IOException e) {
       throw new MetadataException(e);
+    }
+
+    // update id table
+    if (config.isEnableIDTable()) {
+      IDTable idTable = IDTableManager.getInstance().getIDTable(plan.getPrefixPath());
+      idTable.createAlignedTimeseries(plan);
     }
   }
 
@@ -1344,6 +1358,7 @@ public class MManager {
 
   /** Get storage group node by path. the give path don't need to be storage group path. */
   public IStorageGroupMNode getStorageGroupNodeByPath(PartialPath path) throws MetadataException {
+    ensureStorageGroup(path);
     return mtree.getStorageGroupNodeByPath(path);
   }
 
@@ -1642,8 +1657,9 @@ public class MManager {
    * @return StorageGroupName-FullPath pairs
    * @apiNote :for cluster
    */
-  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> sgPathMap = mtree.groupPathByStorageGroup(path);
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+      throws MetadataException {
+    Map<String, List<PartialPath>> sgPathMap = mtree.groupPathByStorageGroup(path);
     if (logger.isDebugEnabled()) {
       logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
     }
@@ -1813,7 +1829,7 @@ public class MManager {
   public IMNode getSeriesSchemasAndReadLockDevice(InsertPlan plan)
       throws MetadataException, IOException {
     // devicePath is a logical path which is parent of measurement, whether in template or not
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
@@ -1839,11 +1855,22 @@ public class MManager {
     IMNode deviceMNode = getDeviceNodeWithAutoCreate(devicePath);
 
     // check insert non-aligned InsertPlan for aligned timeseries
-    if (plan.isAligned() && deviceMNode.isEntity() && !deviceMNode.getAsEntityMNode().isAligned()) {
-      throw new MetadataException(
-          String.format(
-              "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
-              plan.getDeviceId()));
+    if (deviceMNode.isEntity()) {
+      if (plan.isAligned()) {
+        if (!deviceMNode.getAsEntityMNode().isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Timeseries under path [%s] is not aligned , please set InsertPlan.isAligned() = false",
+                  plan.getDevicePath()));
+        }
+      } else {
+        if (deviceMNode.getAsEntityMNode().isAligned()) {
+          throw new MetadataException(
+              String.format(
+                  "Timeseries under path [%s] is aligned , please set InsertPlan.isAligned() = true",
+                  plan.getDevicePath()));
+        }
+      }
     }
 
     // 2. get schema of each measurement
@@ -1901,7 +1928,7 @@ public class MManager {
 
   private Pair<IMNode, IMeasurementMNode> getMeasurementMNodeForInsertPlan(
       InsertPlan plan, int loc, IMNode deviceMNode) throws MetadataException {
-    PartialPath devicePath = plan.getDeviceId();
+    PartialPath devicePath = plan.getDevicePath();
     String[] measurementList = plan.getMeasurements();
     String measurement = measurementList[loc];
     IMeasurementMNode measurementMNode = getMeasurementMNode(deviceMNode, measurement);

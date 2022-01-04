@@ -17,32 +17,25 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.thrift.TException;
-
 import javax.ws.rs.core.Response;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class QueryDataSetHandler {
+
+  private QueryDataSetHandler() {}
 
   public static Response fillDateSet(QueryDataSet dataSet, QueryPlan queryPlan) {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
@@ -83,13 +76,20 @@ public class QueryDataSetHandler {
     return Response.ok().entity(queryDataSet).build();
   }
 
-  public static QueryDataSet constructQueryDataSet(
-      IPlanExecutor executor, PhysicalPlan physicalPlan)
-      throws TException, StorageEngineException, QueryFilterOptimizationException,
-          MetadataException, IOException, InterruptedException, SQLException,
-          QueryProcessException {
-    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
-    QueryContext context = new QueryContext(queryId);
-    return executor.processQuery(physicalPlan, context);
+  public static Response fillVariablesResult(QueryDataSet dataSet, PhysicalPlan physicalPlan)
+      throws IOException {
+    List<String> results = new ArrayList<>();
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      List<Field> fields = rowRecord.getFields();
+      String nodePaths = fields.get(0).getObjectValue(fields.get(0).getDataType()).toString();
+      if (physicalPlan instanceof ShowChildPathsPlan) {
+        String[] nodeSubPath = nodePaths.split("\\.");
+        results.add(nodeSubPath[nodeSubPath.length - 1]);
+      } else {
+        results.add(nodePaths);
+      }
+    }
+    return Response.ok().entity(results).build();
   }
 }

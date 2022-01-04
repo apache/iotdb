@@ -95,6 +95,42 @@ paths:
               schema:
                 $ref: '#/components/schemas/QueryDataSet'
 
+  /grafana/v1/query/expression:
+    post:
+      summary: expression
+      description: expression
+      operationId: expression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionRequest'
+      responses:
+        "200":
+          description: QueryDataSet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryDataSet'
+
+  /grafana/v1/variable:
+    post:
+      summary: variables
+      description: variables
+      operationId: variables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQL'
+      responses:
+        "200":
+          description: VariablesResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariablesResult'
+
 components:
   schemas:
     SQL:
@@ -156,6 +192,31 @@ components:
             type: array
             items:
               type: object
+
+    ExpressionRequest:
+      type: object
+      properties:
+        expression:
+          type: array
+          items:
+            type: string
+        prefixPath:
+          type: array
+          items:
+            type: string
+        condition:
+          type: string
+        control:
+           type: string
+        startTime:
+          type: number
+        endTime:
+          type: number
+
+    VariablesResult:
+      type: array
+      items:
+        type: object
 
   securitySchemes:
     basic:

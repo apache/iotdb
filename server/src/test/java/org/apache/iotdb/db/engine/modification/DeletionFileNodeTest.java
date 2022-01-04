@@ -25,8 +25,8 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -165,7 +165,7 @@ public class DeletionFileNodeTest {
             SchemaTestUtils.getMeasurementPath(
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
             null);
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
     try {
@@ -197,7 +197,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, IllegalPathException {
+      throws StorageEngineException, IOException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -303,7 +303,7 @@ public class DeletionFileNodeTest {
                 processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
             null);
 
-    List<StorageGroupProcessor> list =
+    List<VirtualStorageGroupProcessor> list =
         StorageEngine.getInstance()
             .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
 
@@ -332,7 +332,7 @@ public class DeletionFileNodeTest {
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);

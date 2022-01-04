@@ -36,8 +36,8 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -291,7 +291,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
     for (TimeseriesSchema timeseriesSchema : timeseriesSchemas) {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(timeseriesSchema.getFullPath())));
     }
-    StorageGroupProcessor processor =
+    VirtualStorageGroupProcessor processor =
         StorageEngine.getInstance().getProcessor(new PartialPath(TestUtils.getTestSg(0)));
     assertEquals(9, processor.getPartitionMaxFileVersions(0));
     List<TsFileResource> loadedFiles = processor.getSequenceFileTreeSet();
