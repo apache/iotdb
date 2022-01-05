@@ -48,7 +48,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /** id table belongs to a storage group and mapping timeseries path to it's schema */
@@ -88,7 +90,7 @@ public class IDTableHashmapImpl implements IDTable {
    */
   public synchronized void createAlignedTimeseries(CreateAlignedTimeSeriesPlan plan)
       throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntry(plan.getPrefixPath(), true);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPrefixPath(), true);
 
     for (int i = 0; i < plan.getMeasurements().size(); i++) {
       PartialPath fullPath =
@@ -112,7 +114,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @throws MetadataException if the device is aligned, throw it
    */
   public synchronized void createTimeseries(CreateTimeSeriesPlan plan) throws MetadataException {
-    DeviceEntry deviceEntry = getDeviceEntry(plan.getPath().getDevicePath(), false);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(plan.getPath().getDevicePath(), false);
     SchemaEntry schemaEntry =
         new SchemaEntry(
             plan.getDataType(),
@@ -137,7 +139,7 @@ public class IDTableHashmapImpl implements IDTable {
     IMeasurementMNode[] measurementMNodes = plan.getMeasurementMNodes();
 
     // 1. get device entry and check align
-    DeviceEntry deviceEntry = getDeviceEntry(devicePath, plan.isAligned());
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(devicePath, plan.isAligned());
 
     // 2. get schema of each measurement
     for (int i = 0; i < measurementList.length; i++) {
@@ -222,7 +224,7 @@ public class IDTableHashmapImpl implements IDTable {
   public synchronized void registerTrigger(PartialPath fullPath, IMeasurementMNode measurementMNode)
       throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntry(fullPath.getDevicePath(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevicePath(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUsingTrigger();
   }
@@ -237,7 +239,7 @@ public class IDTableHashmapImpl implements IDTable {
   public synchronized void deregisterTrigger(
       PartialPath fullPath, IMeasurementMNode measurementMNode) throws MetadataException {
     boolean isAligned = measurementMNode.getParent().isAligned();
-    DeviceEntry deviceEntry = getDeviceEntry(fullPath.getDevicePath(), isAligned);
+    DeviceEntry deviceEntry = getDeviceEntryWithAlignedCheck(fullPath.getDevicePath(), isAligned);
 
     deviceEntry.getSchemaEntry(fullPath.getMeasurement()).setUnUsingTrigger();
   }
@@ -276,6 +278,31 @@ public class IDTableHashmapImpl implements IDTable {
     if (IDiskSchemaManager != null) {
       IDiskSchemaManager.close();
     }
+  }
+
+  /**
+   * get device entry from device path
+   *
+   * @param deviceName device name of the time series
+   * @return device entry of the timeseries
+   */
+  @Override
+  public DeviceEntry getDeviceEntry(String deviceName) {
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
+    int slot = calculateSlot(deviceID);
+
+    // reuse device entry in map
+    return idTables[slot].get(deviceID);
+  }
+
+  @Override
+  public List<DeviceEntry> getAllDeviceEntry() {
+    List<DeviceEntry> res = new ArrayList<>();
+    for (int i = 0; i < NUM_OF_SLOTS; i++) {
+      res.addAll(idTables[i].values());
+    }
+
+    return res;
   }
 
   /**
@@ -345,7 +372,7 @@ public class IDTableHashmapImpl implements IDTable {
    * @param isAligned whether the insert plan is aligned
    * @return device entry of the timeseries
    */
-  private DeviceEntry getDeviceEntry(PartialPath deviceName, boolean isAligned)
+  private DeviceEntry getDeviceEntryWithAlignedCheck(PartialPath deviceName, boolean isAligned)
       throws MetadataException {
     IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(deviceName);
     int slot = calculateSlot(deviceID);

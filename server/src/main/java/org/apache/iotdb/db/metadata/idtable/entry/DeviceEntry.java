@@ -32,9 +32,18 @@ public class DeviceEntry {
 
   boolean isAligned;
 
+  // for manages flush time
+  Map<Long, Long> lastTimeMap;
+
+  Map<Long, Long> flushTimeMap;
+
+  long globalFlushTime = Long.MIN_VALUE;
+
   public DeviceEntry(IDeviceID deviceID) {
     this.deviceID = deviceID;
     measurementMap = new HashMap<>();
+    lastTimeMap = new HashMap<>();
+    flushTimeMap = new HashMap<>();
   }
 
   /**
@@ -78,4 +87,60 @@ public class DeviceEntry {
   public IDeviceID getDeviceID() {
     return deviceID;
   }
+
+  // region support flush time
+  public void putLastTimeMap(long timePartition, long lastTime) {
+    lastTimeMap.put(timePartition, lastTime);
+  }
+
+  public void putFlushTimeMap(long timePartition, long flushTime) {
+    flushTimeMap.put(timePartition, flushTime);
+  }
+
+  public long updateLastTimeMap(long timePartition, long lastTime) {
+    return lastTimeMap.compute(
+        timePartition, (k, v) -> v == null ? lastTime : Math.max(v, lastTime));
+  }
+
+  public long updateFlushTimeMap(long timePartition, long flushTime) {
+    return flushTimeMap.compute(
+        timePartition, (k, v) -> v == null ? flushTime : Math.max(v, flushTime));
+  }
+
+  public void updateGlobalFlushTime(long flushTime) {
+    globalFlushTime = Math.max(globalFlushTime, flushTime);
+  }
+
+  public void setGlobalFlushTime(long globalFlushTime) {
+    this.globalFlushTime = globalFlushTime;
+  }
+
+  public Long getLastTime(long timePartition) {
+    return lastTimeMap.get(timePartition);
+  }
+
+  public Long getFlushTime(long timePartition) {
+    return flushTimeMap.get(timePartition);
+  }
+
+  public Long getLastTimeWithDefaultValue(long timePartition) {
+    return lastTimeMap.getOrDefault(timePartition, Long.MIN_VALUE);
+  }
+
+  public Long getFLushTimeWithDefaultValue(long timePartition) {
+    return flushTimeMap.getOrDefault(timePartition, Long.MIN_VALUE);
+  }
+
+  public long getGlobalFlushTime() {
+    return globalFlushTime;
+  }
+
+  public void clearLastTime() {
+    lastTimeMap.clear();
+  }
+
+  public void clearFlushTime() {
+    flushTimeMap.clear();
+  }
+  // endregion
 }
