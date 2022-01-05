@@ -115,10 +115,6 @@ public class CompactionFileGeneratorUtils {
         TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(Integer.MAX_VALUE);
 
-    logger.error(
-        "{} {}",
-        newTsFileResource.getTsFile().getParentFile(),
-        newTsFileResource.getTsFile().getParentFile().exists() ? "exists" : "not exists");
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {
