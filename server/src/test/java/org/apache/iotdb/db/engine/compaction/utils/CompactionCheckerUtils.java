@@ -28,8 +28,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -506,13 +506,12 @@ public class CompactionCheckerUtils {
       ChunkCache.getInstance().clear();
 
       PartialPath path = new MeasurementPath(fullPaths.get(i));
-      QueryContext context = new QueryContext();
       List<TimeValuePair> dataList = new LinkedList<>();
       IBatchReader reader =
           new SeriesRawDataBatchReader(
               path,
               schemas.get(i).getType(),
-              context,
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
               sequenceResources,
               unsequenceResources,
               null,

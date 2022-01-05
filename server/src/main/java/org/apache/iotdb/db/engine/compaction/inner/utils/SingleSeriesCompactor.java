@@ -194,8 +194,11 @@ public class SingleSeriesCompactor {
           device,
           timeSeries,
           getChunkSize(chunk));
+      // Notice!!!
+      // We must execute mergeChunk before mergeChunkMetadata
+      // otherwise the statistic of data may be wrong.
+      cachedChunk.mergeChunk(chunk);
       cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
-      cachedChunk.mergeChunk(cachedChunk);
       flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
       cachedChunk = null;
       cachedChunkMetadata = null;
