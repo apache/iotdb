@@ -54,6 +54,7 @@ public class QueryContext {
 
   private boolean debug;
   private boolean enableTracing = false;
+  private boolean ascending;
 
   /**
    * To reduce the cost of memory, we only keep the a certain size statement. For statement whose
@@ -198,5 +199,13 @@ public class QueryContext {
 
   public boolean isInterrupted() {
     return isInterrupted;
+  }
+
+  public boolean isAscending() {
+    return ascending;
+  }
+
+  public void setAscending(boolean ascending) {
+    this.ascending = ascending;
   }
 }
