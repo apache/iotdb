@@ -428,6 +428,8 @@ public class LogDispatcher {
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {
+          logRequest.getVotingLog().getFailedNodeIds().remove(receiver.nodeIdentifier);
+          logRequest.getVotingLog().getStronglyAcceptedNodeIds().remove(Integer.MAX_VALUE);
           AppendEntryResult result = syncClient.appendEntry(logRequest.appendEntryRequest);
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);

@@ -50,6 +50,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class MetaAsyncService extends BaseAsyncService implements TSMetaService.AsyncIface {
+
   private static final String ERROR_MSG_META_NOT_READY = "The metadata not is not ready.";
   private static final Logger logger = LoggerFactory.getLogger(MetaAsyncService.class);
 
@@ -61,7 +62,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback resultHandler) {
+  public void appendEntry(AppendEntryRequest request,
+      AsyncMethodCallback<AppendEntryResult> resultHandler) {
     // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
     // locally, but the partition table is not verified), we do not handle the RPC requests.
     if (!metaGroupMember.isReady() && metaGroupMember.getPartitionTable() == null) {
@@ -71,7 +73,8 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
       // ready.
       // this node lacks information of the cluster and refuse to work
       logger.debug("This node is blind to the cluster and cannot accept logs");
-      resultHandler.onComplete(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE);
+      resultHandler.onComplete(
+          new AppendEntryResult().setStatus(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE));
       return;
     }
 
@@ -214,7 +217,7 @@ public class MetaAsyncService extends BaseAsyncService implements TSMetaService.
   /**
    * Forward a node removal request to the leader.
    *
-   * @param node the node to be removed
+   * @param node          the node to be removed
    * @param resultHandler
    * @return true if the request is successfully forwarded, false otherwise
    */

@@ -93,6 +93,13 @@ public interface PartitionTable {
    */
   PartitionGroup getPartitionGroup(RaftNode headerNode);
 
+  /**
+   * find replicationNum groups that a node is in
+   * @param node
+   * @return
+   */
+  List<PartitionGroup> getPartitionGroups(Node node);
+
   ByteBuffer serialize();
 
   /**

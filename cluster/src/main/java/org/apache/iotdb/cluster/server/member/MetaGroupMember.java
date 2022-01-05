@@ -740,7 +740,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     logger.info("Starting sub-servers...");
     synchronized (partitionTable) {
       try {
-        getDataGroupEngine().buildDataGroupMembers(partitionTable);
+        getDataGroupEngine().buildDataGroupMembers(thisNode, partitionTable);
         sendHandshake();
       } catch (Exception e) {
         logger.error("Build partition table failed: ", e);
@@ -1701,7 +1701,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       // update DataGroupMembers, as the node is removed, the members of some groups are
       // changed and there will also be one less group
       NodeRemovalResult result = partitionTable.getNodeRemovalResult();
-      getDataGroupEngine().removeNode(oldNode, result);
+      getDataGroupEngine().removeNode(oldNode, thisNode, result);
 
       // the leader is removed, start the next election ASAP
       if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {

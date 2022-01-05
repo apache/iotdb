@@ -19,6 +19,9 @@
 
 package org.apache.iotdb.cluster.server.member;
 
+import static org.apache.iotdb.cluster.server.member.MetaGroupMember.NODE_IDENTIFIER_FILE_NAME;
+import static org.apache.iotdb.cluster.server.member.MetaGroupMember.PARTITION_FILE_NAME;
+
 import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
@@ -203,8 +206,8 @@ public class BaseMember {
     RegisterManager.setDeregisterTimeOut(100);
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
-    new File(MetaGroupMember.PARTITION_FILE_NAME).delete();
-    new File(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME).delete();
+    new File(PARTITION_FILE_NAME).delete();
+    new File(NODE_IDENTIFIER_FILE_NAME).delete();
     RaftMember.setWaitLeaderTimeMs(prevLeaderWait);
     testThreadPool.shutdownNow();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
@@ -215,6 +218,9 @@ public class BaseMember {
     ClusterConstant.setSyncLeaderMaxWaitMs(syncLeaderMaxWait);
     ClusterConstant.setHeartbeatIntervalMs(heartBeatInterval);
     ClusterConstant.setElectionTimeoutMs(electionTimeout);
+
+    new File(PARTITION_FILE_NAME).delete();
+    new File(NODE_IDENTIFIER_FILE_NAME).delete();
   }
 
   DataGroupMember getDataGroupMember(Node node) {

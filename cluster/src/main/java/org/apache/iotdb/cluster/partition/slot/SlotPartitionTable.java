@@ -189,7 +189,7 @@ public class SlotPartitionTable implements PartitionTable {
   }
 
   // find replicationNum groups that a node is in
-  private List<PartitionGroup> getPartitionGroups(Node node) {
+  public List<PartitionGroup> getPartitionGroups(Node node) {
     List<PartitionGroup> ret = new ArrayList<>();
 
     int nodeIndex = findNodeIndex(node, nodeRing);

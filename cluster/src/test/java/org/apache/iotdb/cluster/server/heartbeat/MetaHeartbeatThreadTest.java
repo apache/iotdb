@@ -101,6 +101,11 @@ public class MetaHeartbeatThreadTest extends HeartbeatThreadTest {
         }
 
         @Override
+        public List<PartitionGroup> getPartitionGroups(Node node) {
+          return null;
+        }
+
+        @Override
         public boolean deserialize(ByteBuffer buffer) {
           return true;
         }

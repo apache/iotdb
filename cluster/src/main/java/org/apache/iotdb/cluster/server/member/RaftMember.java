@@ -2005,6 +2005,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     AtomicLong newLeaderTerm = new AtomicLong(term.get());
 
     AppendEntryRequest request = buildAppendEntryRequest(log.getLog(), true);
+    log.getFailedNodeIds().clear();
+    log.getStronglyAcceptedNodeIds().remove(Integer.MAX_VALUE);
 
     try {
       if (allNodes.size() > 2) {

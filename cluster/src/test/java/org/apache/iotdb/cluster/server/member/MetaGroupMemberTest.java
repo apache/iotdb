@@ -144,6 +144,7 @@ import static org.apache.iotdb.cluster.server.NodeCharacter.LEADER;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -189,7 +190,7 @@ public class MetaGroupMemberTest extends BaseMember {
             new DataGroupMember.Factory(new Factory(), testMetaMember) {
               @Override
               public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
-                return getDataGroupMember(partitionGroup, TestUtils.getNode(0));
+                return getDataGroupMember(partitionGroup, thisNode);
               }
             },
             testMetaMember);
@@ -1026,7 +1027,7 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testProcessValidHeartbeatReq() throws QueryProcessException {
+  public void testProcessValidHeartbeatReq() {
     System.out.println("Start testProcessValidHeartbeatReq()");
     MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
     partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
@@ -1041,9 +1042,23 @@ public class MetaGroupMemberTest extends BaseMember {
       request.setRegenerateIdentifier(true);
       testMetaMember.setPartitionTable(null);
       testMetaMember.processValidHeartbeatReq(request, response);
-      assertTrue(response.getFollowerIdentifier() != 10);
+      assertNotEquals(10, response.getFollowerIdentifier());
       assertTrue(response.isRequirePartitionTable());
+    } finally {
+      testMetaMember.stop();
+    }
+  }
 
+  @Test
+  public void testProcessValidHeartbeatReq2() {
+    System.out.println("Start testProcessValidHeartbeatReq()");
+    MetaGroupMember testMetaMember = getMetaGroupMember(TestUtils.getNode(10));
+    partitionTable = new SlotPartitionTable(allNodes, TestUtils.getNode(0));
+    testMetaMember.setCoordinator(new Coordinator());
+    try {
+      HeartBeatRequest request = new HeartBeatRequest();
+      HeartBeatResponse response = new HeartBeatResponse();
+      request.setRegenerateIdentifier(false);
       request.setPartitionTableBytes(partitionTable.serialize());
       testMetaMember.processValidHeartbeatReq(request, response);
       assertEquals(partitionTable, testMetaMember.getPartitionTable());
@@ -1055,7 +1070,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testProcessValidHeartbeatResp() throws QueryProcessException {
     System.out.println("Start testProcessValidHeartbeatResp()");
-    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(9));
+    MetaGroupMember metaGroupMember = getMetaGroupMember(TestUtils.getNode(10));
     metaGroupMember.start();
     metaGroupMember.onElectionWins();
     try {
@@ -1088,20 +1103,21 @@ public class MetaGroupMemberTest extends BaseMember {
     request.setLeaderCommit(0);
     request.setPrevLogIndex(-1);
     request.setPrevLogTerm(-1);
+    request.setIsFromLeader(true);
     request.setLeader(new Node("127.0.0.1", 30000, 0, 40000, Constants.RPC_PORT, "127.0.0.1"));
-    AtomicReference<Long> result = new AtomicReference<>();
-    GenericHandler<Long> handler = new GenericHandler<>(TestUtils.getNode(0), result);
+    AtomicReference<AppendEntryResult> result = new AtomicReference<>();
+    GenericHandler<AppendEntryResult> handler = new GenericHandler<>(TestUtils.getNode(0), result);
     testMetaMember.setPartitionTable(null);
     testMetaMember.setReady(false);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);
-    assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, (long) result.get());
+    assertEquals(Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE, result.get().status);
     System.out.println("Term after first append: " + testMetaMember.getTerm().get());
 
     testMetaMember.setPartitionTable(partitionTable);
     testMetaMember.setReady(true);
     new MetaAsyncService(testMetaMember).appendEntry(request, handler);
     System.out.println("Term after second append: " + testMetaMember.getTerm().get());
-    assertEquals(Response.RESPONSE_AGREE, (long) result.get());
+    assertEquals(Response.RESPONSE_STRONG_ACCEPT,  result.get().status);
   }
 
   @Test
@@ -1249,10 +1265,11 @@ public class MetaGroupMemberTest extends BaseMember {
     System.out.println("Start testLoadIdentifier()");
     try (RandomAccessFile raf =
         new RandomAccessFile(MetaGroupMember.NODE_IDENTIFIER_FILE_NAME, "rw")) {
-      raf.writeBytes("100");
+      raf.writeBytes("50");
     }
-    MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
-    assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
+    MetaGroupMember metaGroupMember =
+        getMetaGroupMember(TestUtils.getNode(50).setNodeIdentifier(0));
+    assertEquals(50, metaGroupMember.getThisNode().getNodeIdentifier());
     metaGroupMember.stop();
   }
 

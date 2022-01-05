@@ -71,7 +71,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   private PartitionTable partitionTable;
   private DataGroupMember.Factory dataMemberFactory;
   private static MetaGroupMember metaGroupMember;
-  private final Node thisNode = ClusterIoTDB.getInstance().getThisNode();
+  private Node thisNode = ClusterIoTDB.getInstance().getThisNode();
   private static TProtocolFactory protocolFactory;
 
   private DataGroupEngine() {
@@ -368,7 +368,8 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
    * group which the local node is in) and start them.
    */
   @SuppressWarnings("java:S1135")
-  public void buildDataGroupMembers(PartitionTable partitionTable) {
+  public void buildDataGroupMembers(Node thisNode,
+      PartitionTable partitionTable) {
     setPartitionTable(partitionTable);
     // TODO-Cluster: if there are unchanged members, do not stop and restart them
     // clear previous members if the partition table is reloaded
@@ -380,7 +381,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       value.setUnchanged(false);
     }
 
-    List<PartitionGroup> partitionGroups = partitionTable.getLocalGroups();
+    List<PartitionGroup> partitionGroups = partitionTable.getPartitionGroups(thisNode);
     for (PartitionGroup partitionGroup : partitionGroups) {
       RaftNode header = partitionGroup.getHeader();
       DataGroupMember prevMember = headerGroupMap.get(header);
@@ -426,17 +427,18 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
    * group, set the member to read only so that it can still provide data for other nodes that has
    * not yet pulled its data. Otherwise, just change the node list of the member and pull new data.
    * And create a new DataGroupMember if this node should join a new group because of this removal.
-   *
-   * @param node
+   *  @param node
+   * @param thisNode
    * @param removalResult cluster changes due to the node removal
    */
-  public void removeNode(Node node, NodeRemovalResult removalResult) {
+  public void removeNode(Node node, Node thisNode,
+      NodeRemovalResult removalResult) {
     Iterator<Entry<RaftNode, DataGroupMember>> entryIterator = headerGroupMap.entrySet().iterator();
     synchronized (headerGroupMap) {
       while (entryIterator.hasNext()) {
         Entry<RaftNode, DataGroupMember> entry = entryIterator.next();
         DataGroupMember dataGroupMember = entry.getValue();
-        if (dataGroupMember.getHeader().getNode().equals(node) || node.equals(thisNode)) {
+        if (dataGroupMember.getHeader().getNode().equals(node) || node.equals(this.thisNode)) {
           entryIterator.remove();
           removeMember(
               entry.getKey(), dataGroupMember, dataGroupMember.getHeader().getNode().equals(node));
