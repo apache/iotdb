@@ -192,7 +192,7 @@ public class SlotPartitionTable implements PartitionTable {
   private List<PartitionGroup> getPartitionGroups(Node node) {
     List<PartitionGroup> ret = new ArrayList<>();
 
-    int nodeIndex = findNodeIndex(node);
+    int nodeIndex = findNodeIndex(node, nodeRing);
     if (nodeIndex == -1) {
       logger.info("PartitionGroups is empty due to this node has been removed from the cluster!");
       return ret;
@@ -217,7 +217,7 @@ public class SlotPartitionTable implements PartitionTable {
     PartitionGroup ret = new PartitionGroup(header.getRaftId());
 
     // assuming the nodes are [1,2,3,4,5]
-    int nodeIndex = findNodeIndex(header.getNode());
+    int nodeIndex = findNodeIndex(header.getNode(), nodeRing);
     if (nodeIndex == -1) {
       logger.warn("Node {} is not in the cluster", header.getNode());
       return null;
@@ -531,7 +531,7 @@ public class SlotPartitionTable implements PartitionTable {
         localGroups.remove(removedGroupIdx);
         // each node exactly joins replicationNum groups, so when a group is removed, the node
         // should join a new one
-        int thisNodeIdx = findNodeIndex(thisNode);
+        int thisNodeIdx = findNodeIndex(thisNode, nodeRing);
 
         // check if this node is to be removed
         if (thisNodeIdx == -1) {
@@ -609,7 +609,7 @@ public class SlotPartitionTable implements PartitionTable {
     return slotNodes;
   }
 
-  private int findNodeIndex(Node node) {
+  private int findNodeIndex(Node node, List<Node> nodeRing) {
     for (int i = 0; i < nodeRing.size(); i++) {
       if (nodeRing.get(i).getInternalIp().equals(node.getInternalIp())
           && nodeRing.get(i).getMetaPort() == node.getMetaPort()) {
