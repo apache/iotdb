@@ -79,11 +79,15 @@ public class SeriesReader {
    */
   protected final Filter timeFilter;
   protected final Filter valueFilter;
+  protected final TsFileFilter fileFilter;
+
+  protected final QueryDataSource dataSource;
+
   /*
-   * file cache
+   * file index
    */
-  protected final List<TsFileResource> seqFileResource;
-  protected final List<TsFileResource> unseqFileResource;
+  protected int curSeqFileIndex;
+  protected int curUnseqFileIndex;
 
   /*
    * TimeSeriesMetadata cache
@@ -136,19 +140,22 @@ public class SeriesReader {
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
-    QueryUtils.filterQueryDataSource(dataSource, fileFilter);
+    this.dataSource = dataSource;
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
+    this.fileFilter = fileFilter;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
+      this.curSeqFileIndex = 0;
+      this.curUnseqFileIndex = 0;
     } else {
       this.orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
+      this.curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
+      this.curUnseqFileIndex = 0;
     }
 
-    this.seqFileResource = new LinkedList<>(dataSource.getSeqResources());
-    this.unseqFileResource = sortUnSeqFileResources(dataSource.getUnseqResources());
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
@@ -179,18 +186,23 @@ public class SeriesReader {
     this.allSensors = allSensors;
     this.dataType = dataType;
     this.context = context;
+    this.dataSource = new QueryDataSource(seqFileResource, unseqFileResource);
+    QueryUtils.fillOrderIndexes(dataSource, seriesPath.getDevice(), ascending);
     this.timeFilter = timeFilter;
     this.valueFilter = valueFilter;
+    this.fileFilter = null;
     if (ascending) {
       this.orderUtils = new AscTimeOrderUtils();
       mergeReader = getPriorityMergeReader();
+      this.curSeqFileIndex = 0;
+      this.curUnseqFileIndex = 0;
     } else {
       this.orderUtils = new DescTimeOrderUtils();
       mergeReader = getDescPriorityMergeReader();
+      this.curSeqFileIndex = dataSource.getSeqResourcesSize() - 1;
+      this.curUnseqFileIndex = 0;
     }
 
-    this.seqFileResource = new LinkedList<>(seqFileResource);
-    this.unseqFileResource = sortUnSeqFileResources(unseqFileResource);
     unSeqTimeSeriesMetadata =
         new PriorityQueue<>(
             orderUtils.comparingLong(
@@ -243,8 +255,8 @@ public class SeriesReader {
     }
 
     while (firstTimeSeriesMetadata == null
-        && (!seqFileResource.isEmpty()
-            || !unseqFileResource.isEmpty()
+        && (orderUtils.hasNextSeqResource()
+            || orderUtils.hasNextUnseqResource()
             || !seqTimeSeriesMetadata.isEmpty()
             || !unSeqTimeSeriesMetadata.isEmpty())) {
       // init first time series metadata whose startTime is minimum
@@ -977,14 +989,14 @@ public class SeriesReader {
     /*
      * Fill sequence TimeSeriesMetadata List until it is not empty
      */
-    while (seqTimeSeriesMetadata.isEmpty() && !seqFileResource.isEmpty()) {
+    while (seqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextSeqResource()) {
       unpackSeqTsFileResource();
     }
 
     /*
      * Fill unSequence TimeSeriesMetadata Priority Queue until it is not empty
      */
-    while (unSeqTimeSeriesMetadata.isEmpty() && !unseqFileResource.isEmpty()) {
+    while (unSeqTimeSeriesMetadata.isEmpty() && orderUtils.hasNextUnseqResource()) {
       unpackUnseqTsFileResource();
     }
 
@@ -1042,13 +1054,12 @@ public class SeriesReader {
 
   protected void unpackAllOverlappedTsFilesToTimeSeriesMetadata(long endpointTime)
       throws IOException {
-    while (!unseqFileResource.isEmpty()
-        && orderUtils.isOverlapped(endpointTime, unseqFileResource.get(0))) {
+    while (orderUtils.hasNextUnseqResource()
+        && orderUtils.isOverlapped(endpointTime, orderUtils.getNextUnseqFileResource(false))) {
       unpackUnseqTsFileResource();
     }
-    while (!seqFileResource.isEmpty()
-        && orderUtils.isOverlapped(
-            endpointTime, orderUtils.getNextSeqFileResource(seqFileResource, false))) {
+    while (orderUtils.hasNextSeqResource()
+        && orderUtils.isOverlapped(endpointTime, orderUtils.getNextSeqFileResource(false))) {
       unpackSeqTsFileResource();
     }
   }
@@ -1056,7 +1067,7 @@ public class SeriesReader {
   protected void unpackSeqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(
-            orderUtils.getNextSeqFileResource(seqFileResource, true),
+            orderUtils.getNextSeqFileResource(true),
             seriesPath,
             context,
             getAnyFilter(),
@@ -1070,7 +1081,11 @@ public class SeriesReader {
   protected void unpackUnseqTsFileResource() throws IOException {
     ITimeSeriesMetadata timeseriesMetadata =
         loadTimeSeriesMetadata(
-            unseqFileResource.remove(0), seriesPath, context, getAnyFilter(), allSensors);
+            orderUtils.getNextUnseqFileResource(true),
+            seriesPath,
+            context,
+            getAnyFilter(),
+            allSensors);
     if (timeseriesMetadata != null) {
       timeseriesMetadata.setModified(true);
       timeseriesMetadata.setSeq(false);
@@ -1167,8 +1182,6 @@ public class SeriesReader {
 
     boolean isOverlapped(long time, TsFileResource right);
 
-    TsFileResource getNextSeqFileResource(List<TsFileResource> seqResources, boolean isDelete);
-
     <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor);
 
     long getCurrentEndPoint(long time, Statistics<? extends Object> statistics);
@@ -1183,6 +1196,14 @@ public class SeriesReader {
         Statistics<? extends Object> seqStatistics, Statistics<? extends Object> unseqStatistics);
 
     boolean getAscending();
+
+    boolean hasNextSeqResource();
+
+    boolean hasNextUnseqResource();
+
+    TsFileResource getNextSeqFileResource(boolean isDelete);
+
+    TsFileResource getNextUnseqFileResource(boolean isDelete);
   }
 
   class DescTimeOrderUtils implements TimeOrderUtils {
@@ -1218,15 +1239,6 @@ public class SeriesReader {
     }
 
     @Override
-    public TsFileResource getNextSeqFileResource(
-        List<TsFileResource> seqResources, boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(seqResources.size() - 1);
-      }
-      return seqResources.get(seqResources.size() - 1);
-    }
-
-    @Override
     public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
       Objects.requireNonNull(keyExtractor);
       return (Comparator<T> & Serializable)
@@ -1258,6 +1270,58 @@ public class SeriesReader {
     @Override
     public boolean getAscending() {
       return false;
+    }
+
+    @Override
+    public boolean hasNextSeqResource() {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
+        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+          break;
+        }
+        curSeqFileIndex--;
+      }
+      return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
+    }
+
+    @Override
+    public boolean hasNextUnseqResource() {
+      while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
+        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+          break;
+        }
+        curUnseqFileIndex++;
+      }
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex);
+    }
+
+    @Override
+    public TsFileResource getNextSeqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+      if (isDelete) {
+        curSeqFileIndex--;
+        if (context.isEnableTracing()) {
+          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, true);
+        }
+      }
+      return tsFileResource;
+    }
+
+    @Override
+    public TsFileResource getNextUnseqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
+      if (isDelete) {
+        curUnseqFileIndex++;
+        if (context.isEnableTracing()) {
+          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, false);
+        }
+      }
+      return tsFileResource;
     }
   }
 
@@ -1294,15 +1358,6 @@ public class SeriesReader {
     }
 
     @Override
-    public TsFileResource getNextSeqFileResource(
-        List<TsFileResource> seqResources, boolean isDelete) {
-      if (isDelete) {
-        return seqResources.remove(0);
-      }
-      return seqResources.get(0);
-    }
-
-    @Override
     public <T> Comparator<T> comparingLong(ToLongFunction<? super T> keyExtractor) {
       Objects.requireNonNull(keyExtractor);
       return (Comparator<T> & Serializable)
@@ -1334,6 +1389,58 @@ public class SeriesReader {
     @Override
     public boolean getAscending() {
       return true;
+    }
+
+    @Override
+    public boolean hasNextSeqResource() {
+      while (dataSource.hasNextSeqResource(curSeqFileIndex, getAscending())) {
+        TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(), timeFilter, fileFilter, true, context.isDebug())) {
+          break;
+        }
+        curSeqFileIndex++;
+      }
+      return dataSource.hasNextSeqResource(curSeqFileIndex, getAscending());
+    }
+
+    @Override
+    public boolean hasNextUnseqResource() {
+      while (dataSource.hasNextUnseqResource(curUnseqFileIndex)) {
+        TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
+        if (tsFileResource != null
+            && tsFileResource.isSatisfied(
+                seriesPath.getDevice(), timeFilter, fileFilter, false, context.isDebug())) {
+          break;
+        }
+        curUnseqFileIndex++;
+      }
+      return dataSource.hasNextUnseqResource(curUnseqFileIndex);
+    }
+
+    @Override
+    public TsFileResource getNextSeqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getSeqResourceByIndex(curSeqFileIndex);
+      if (isDelete) {
+        curSeqFileIndex++;
+        if (context.isEnableTracing()) {
+          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, true);
+        }
+      }
+      return tsFileResource;
+    }
+
+    @Override
+    public TsFileResource getNextUnseqFileResource(boolean isDelete) {
+      TsFileResource tsFileResource = dataSource.getUnseqResourceByIndex(curUnseqFileIndex);
+      if (isDelete) {
+        curUnseqFileIndex++;
+        if (context.isEnableTracing()) {
+          TracingManager.getInstance().addTsFile(context.getQueryId(), tsFileResource, false);
+        }
+      }
+      return tsFileResource;
     }
   }
 

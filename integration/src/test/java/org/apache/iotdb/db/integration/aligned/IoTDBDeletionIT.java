@@ -420,6 +420,37 @@ public class IoTDBDeletionIT {
     }
   }
 
+  @Test
+  public void testInsertDuplicatedTimeThenDel() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)");
+      statement.execute(
+          "insert into root.lz.dev.GPS(time, latitude, longitude) aligned values(9,3.2,9.8)");
+      statement.execute("insert into root.lz.dev.GPS(time, latitude) aligned values(11,4.5)");
+      statement.execute("insert into root.lz.dev.GPS(time, longitude) aligned values(11,6.7)");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      statement.execute("delete from root.lz.dev.GPS.latitude");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+    }
+  }
+
   private static void prepareSeries() {
     String sq = null;
     try (Connection connection = EnvFactory.getEnv().getConnection();
