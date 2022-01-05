@@ -324,8 +324,6 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
   @Override
   @After
   public void tearDown() throws Exception {
-    sourceMember.closeLogManager();
-    targetMember.closeLogManager();
     sourceMember.stop();
     targetMember.stop();
     super.tearDown();

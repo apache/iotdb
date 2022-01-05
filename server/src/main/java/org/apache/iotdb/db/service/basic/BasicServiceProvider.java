@@ -83,7 +83,8 @@ public class BasicServiceProvider {
   protected IPlanExecutor executor;
 
   public BasicServiceProvider() throws QueryProcessException {
-    queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
+    queryFrequencyRecorder = QueryFrequencyRecorder.getInstance();
+    queryFrequencyRecorder.reset();
     processor = new Planner();
     executor = new PlanExecutor();
   }

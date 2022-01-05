@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -46,6 +47,12 @@ import java.util.Map;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterFillExecutorTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void testPreviousFill()

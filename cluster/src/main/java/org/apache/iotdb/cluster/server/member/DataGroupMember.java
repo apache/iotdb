@@ -170,7 +170,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
   private LastAppliedPatitionTableVersion lastAppliedPartitionTableVersion;
 
   @TestOnly
-  public DataGroupMember(PartitionGroup nodes) {
+  public DataGroupMember(Node thisNode, PartitionGroup nodes) {
     // constructor for test
     this.name =
         "Data-"
@@ -180,6 +180,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             + "-raftId-"
             + nodes.getRaftId()
             + "";
+    setThisNode(thisNode);
     setAllNodes(nodes);
     mbeanName =
         String.format(
@@ -195,6 +196,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         ClusterDescriptor.getInstance().getConfig().isUseFollowerSlidingWindow()
             ? new SlidingWindowLogAppender.Factory()
             : new BlockingLogAppender.Factory();
+    logSequencer = SEQUENCER_FACTORY.create(this, logManager);
   }
 
   DataGroupMember(Node thisNode, PartitionGroup nodes, MetaGroupMember metaGroupMember) {

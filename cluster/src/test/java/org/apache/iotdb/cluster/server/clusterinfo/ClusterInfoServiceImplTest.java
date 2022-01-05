@@ -24,8 +24,6 @@ import org.apache.iotdb.cluster.rpc.thrift.DataPartitionEntry;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMemberTest;
-import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
@@ -35,17 +33,17 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
 public class ClusterInfoServiceImplTest {
 
   ClusterInfoServiceImpl impl;
+  MetaGroupMemberTest metaGroupMemberTest;
 
   @Before
   public void setUp() throws Exception {
-    MetaGroupMemberTest metaGroupMemberTest = new MetaGroupMemberTest();
+    metaGroupMemberTest = new MetaGroupMemberTest();
     // will create a cluster with 10 nodes, ip: 0,10,20,...100
     metaGroupMemberTest.setUp();
     MetaGroupMember metaGroupMember = metaGroupMemberTest.getTestMetaGroupMember();
@@ -61,11 +59,12 @@ public class ClusterInfoServiceImplTest {
   }
 
   @After
-  public void tearDown() throws MetadataException, IOException, StorageEngineException {
+  public void tearDown() throws Exception {
     ClusterIoTDB.getInstance()
         .getIotdb()
         .metaManager
         .deleteStorageGroups(Collections.singletonList(new PartialPath("root", "sg")));
+    metaGroupMemberTest.tearDown();
     ClusterIoTDB.getInstance().getMetaGroupMember().stop();
     EnvironmentUtils.cleanEnv();
   }

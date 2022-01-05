@@ -209,12 +209,13 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   @TestOnly
   public MetaGroupMember() {}
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) {
+  public MetaGroupMember(Node thisNode, Coordinator coordinator) {
     super(
         "Meta",
         new ClientManager(
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.MetaGroupClient));
+    setThisNode(thisNode);
     setAllNodes(new PartitionGroup());
     initPeerMap();
 
@@ -225,7 +226,6 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     term.set(logManager.getHardState().getCurrentTerm());
     voteFor = logManager.getHardState().getVoteFor();
 
-    setThisNode(thisNode);
     // load the identifier from the disk or generate a new one
     loadIdentifier();
     allNodes.add(thisNode);

@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.GroupByFilter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -44,6 +45,12 @@ import java.util.List;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterGroupByNoVFilterDataSetTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void test()

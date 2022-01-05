@@ -36,6 +36,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -44,6 +45,12 @@ import java.util.List;
 import java.util.Set;
 
 public class MergeGroupByExecutorTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void testNoTimeFilter()

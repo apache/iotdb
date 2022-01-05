@@ -44,9 +44,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class AsynchronousSequencer implements LogSequencer {
 
   private static final Logger logger = LoggerFactory.getLogger(AsynchronousSequencer.class);
-  private static final ExecutorService SEQUENCER_POOL =
-      IoTDBThreadPoolFactory.newCachedThreadPool("SequencerPool");
   private static final int SEQUENCER_PARALLELISM = 4;
+
+  private ExecutorService sequencerPool =
+      IoTDBThreadPoolFactory.newFixedThreadPool(SEQUENCER_PARALLELISM, "SequencerPool");
 
   private RaftMember member;
   private RaftLogManager logManager;
@@ -58,7 +59,7 @@ public class AsynchronousSequencer implements LogSequencer {
     this.logManager = logManager;
     unsequencedLogQueue = new ArrayBlockingQueue<>(4096);
     for (int i = 0; i < SEQUENCER_PARALLELISM; i++) {
-      SEQUENCER_POOL.submit(this::sequenceTask);
+      sequencerPool.submit(this::sequenceTask);
     }
   }
 
@@ -144,5 +145,10 @@ public class AsynchronousSequencer implements LogSequencer {
     public LogSequencer create(RaftMember member, RaftLogManager logManager) {
       return new AsynchronousSequencer(member, logManager);
     }
+  }
+
+  @Override
+  public void close() {
+    sequencerPool.shutdownNow();
   }
 }

@@ -41,8 +41,9 @@ public class TestMetaGroupMember extends MetaGroupMember {
     }
     setAllNodes(group);
 
-    this.clientManager = new ClientManager(
-        ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
-        ClientManager.Type.MetaGroupClient);
+    this.clientManager =
+        new ClientManager(
+            ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
+            ClientManager.Type.MetaGroupClient);
   }
 }

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.cluster.log;
 
-import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.client.ClientManager.Type;
 import org.apache.iotdb.cluster.common.TestAsyncClient;
@@ -114,8 +113,9 @@ public class LogDispatcherTest {
             return new TestAsyncClient() {
 
               @Override
-              public void appendEntry(AppendEntryRequest request,
-                  AsyncMethodCallback<AppendEntryResult> resultHandler) throws TException {
+              public void appendEntry(
+                  AppendEntryRequest request, AsyncMethodCallback<AppendEntryResult> resultHandler)
+                  throws TException {
                 try {
                   if (!downNode.contains(node)) {
                     resultHandler.onComplete(mockedAppendEntry(request));
@@ -127,8 +127,10 @@ public class LogDispatcherTest {
               }
 
               @Override
-              public void appendEntries(AppendEntriesRequest request,
-                  AsyncMethodCallback<AppendEntryResult> resultHandler) throws TException {
+              public void appendEntries(
+                  AppendEntriesRequest request,
+                  AsyncMethodCallback<AppendEntryResult> resultHandler)
+                  throws TException {
                 try {
                   if (!downNode.contains(node)) {
                     resultHandler.onComplete(mockedAppendEntries(request));
@@ -305,7 +307,6 @@ public class LogDispatcherTest {
   @After
   public void tearDown() throws Exception {
     raftMember.stop();
-    raftMember.closeLogManager();
     EnvironmentUtils.cleanAllDir();
   }
 }

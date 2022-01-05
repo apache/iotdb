@@ -94,6 +94,7 @@ public class AssignPathManagedMergeReaderTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
@@ -182,6 +183,9 @@ public class AssignPathManagedMergeReaderTest {
                   }
                 };
               }
+
+              @Override
+              public void close() {}
 
               @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {

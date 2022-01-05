@@ -53,7 +53,6 @@ public class LogCatchUpHandlerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    member.closeLogManager();
     member.stop();
     EnvironmentUtils.cleanAllDir();
   }

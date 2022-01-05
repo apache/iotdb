@@ -44,4 +44,7 @@ public abstract class MockClientManager implements IClientManager {
   public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
     return null;
   }
+
+  @Override
+  public void close() {}
 }

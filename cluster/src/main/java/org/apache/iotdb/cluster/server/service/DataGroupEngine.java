@@ -108,6 +108,8 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     for (DataGroupMember member : headerGroupMap.values()) {
       member.stop();
     }
+    stoppedMemberManager.stop();
+    headerGroupMap.clear();
   }
 
   @Override

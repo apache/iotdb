@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -47,6 +48,12 @@ import java.util.List;
 import static org.junit.Assert.assertFalse;
 
 public class ClusterGroupByVFilterDataSetTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void test()

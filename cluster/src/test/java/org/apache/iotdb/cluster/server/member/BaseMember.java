@@ -23,6 +23,7 @@ import org.apache.iotdb.cluster.ClusterIoTDB;
 import org.apache.iotdb.cluster.client.ClientCategory;
 import org.apache.iotdb.cluster.client.ClientManager;
 import org.apache.iotdb.cluster.client.ClientManager.Type;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.common.TestAsyncDataClient;
 import org.apache.iotdb.cluster.common.TestAsyncMetaClient;
 import org.apache.iotdb.cluster.common.TestDataGroupMember;
@@ -100,6 +101,8 @@ public class BaseMember {
   private int syncLeaderMaxWait;
   private long heartBeatInterval;
   private long electionTimeout;
+
+  private IClientManager prevClientManager;
 
   @Before
   public void setUp() throws Exception, QueryProcessException {
@@ -181,16 +184,22 @@ public class BaseMember {
   public void tearDown() throws Exception {
     testMetaMember.stop();
     metaLogManager.close();
+
     for (DataGroupMember member : dataGroupMemberMap.values()) {
       member.stop();
-      member.closeLogManager();
     }
     dataGroupMemberMap.clear();
     for (MetaGroupMember member : metaGroupMemberMap.values()) {
       member.stop();
-      member.closeLogManager();
     }
     metaGroupMemberMap.clear();
+
+    if (prevClientManager != null) {
+      ClusterIoTDB.getInstance().getClientManager().close();
+      ClusterIoTDB.getInstance().setClientManager(prevClientManager);
+      prevClientManager = null;
+    }
+
     RegisterManager.setDeregisterTimeOut(100);
     EnvironmentUtils.cleanEnv();
     ClusterDescriptor.getInstance().getConfig().setSeedNodeUrls(prevUrls);
@@ -313,7 +322,8 @@ public class BaseMember {
     ret.setLeader(node);
     ret.setCharacter(NodeCharacter.LEADER);
     ret.setAppendLogThreadPool(testThreadPool);
-    // TODO fixme : restore normal provider
+
+    prevClientManager = ClusterIoTDB.getInstance().getClientManager();
     ClusterIoTDB.getInstance()
         .setClientManager(
             new ClientManager(true, Type.RequestForwardClient) {

@@ -123,6 +123,9 @@ public class RemoteSimpleSeriesReaderTest {
               }
 
               @Override
+              public void close() {}
+
+              @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
                 return null;
               }
@@ -139,6 +142,7 @@ public class RemoteSimpleSeriesReaderTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 

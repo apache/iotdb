@@ -110,6 +110,7 @@ public class RemoteMultSeriesReaderTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
@@ -252,6 +253,9 @@ public class RemoteMultSeriesReaderTest {
               }
 
               @Override
+              public void close() {}
+
+              @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
                 return null;
               }
@@ -275,6 +279,9 @@ public class RemoteMultSeriesReaderTest {
                   throws IOException {
                 return null;
               }
+
+              @Override
+              public void close() {}
 
               @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category)

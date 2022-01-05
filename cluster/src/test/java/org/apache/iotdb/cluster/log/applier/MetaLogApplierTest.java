@@ -76,7 +76,6 @@ public class MetaLogApplierTest extends IoTDBTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     testMetaGroupMember.stop();
-    testMetaGroupMember.closeLogManager();
     super.tearDown();
   }
 

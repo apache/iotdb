@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -63,7 +62,6 @@ public class SeriesReaderByTimestampTest {
 
   @Test
   public void test() throws IOException, MetadataException {
-    QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
@@ -74,8 +72,8 @@ public class SeriesReaderByTimestampTest {
             allSensors,
             TSDataType.INT32,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            dataSource,
-            null,
+            seqResources,
+            unseqResources,
             true);
 
     long timestamps[] = new long[500];

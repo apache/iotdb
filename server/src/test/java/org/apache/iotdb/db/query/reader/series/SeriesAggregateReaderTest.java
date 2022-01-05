@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -77,15 +76,14 @@ public class SeriesAggregateReaderTest {
           SchemaTestUtils.getMeasurementPath(SERIES_READER_TEST_SG + ".device0.sensor0");
       Set<String> allSensors = new HashSet<>();
       allSensors.add("sensor0");
-      QueryDataSource queryDataSource = new QueryDataSource(seqResources, unseqResources);
       SeriesAggregateReader seriesReader =
           new SeriesAggregateReader(
               path,
               allSensors,
               TSDataType.INT32,
               EnvironmentUtils.TEST_QUERY_CONTEXT,
-              queryDataSource,
-              null,
+              seqResources,
+              unseqResources,
               null,
               null,
               true);

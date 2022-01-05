@@ -65,7 +65,6 @@ public class HeartbeatHandlerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    metaGroupMember.closeLogManager();
     metaGroupMember.stop();
     EnvironmentUtils.cleanAllDir();
   }

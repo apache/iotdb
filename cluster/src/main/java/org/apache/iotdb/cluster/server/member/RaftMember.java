@@ -356,10 +356,16 @@ public abstract class RaftMember implements RaftMemberMBean {
   public void stop() {
     setSkipElection(true);
     closeLogManager();
+    if (clientManager != null) {
+      clientManager.close();
+    }
+    if (logSequencer != null) {
+      logSequencer.close();
+    }
+
     if (heartBeatService == null) {
       return;
     }
-    clientManager.s
 
     heartBeatService.shutdownNow();
     catchUpService.shutdownNow();
@@ -395,6 +401,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
+
     leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
     heartBeatService = null;
@@ -772,6 +779,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public void setAllNodes(PartitionGroup allNodes) {
     this.allNodes = allNodes;
+    if (allNodes.isEmpty()) {
+      return;
+    }
+
     this.votingLogList = new VotingLogList(allNodes.size() / 2);
 
     // update the reference of thisNode to keep consistency
@@ -1674,14 +1685,13 @@ public abstract class RaftMember implements RaftMemberMBean {
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (
-          log.getLog().getCurrLogIndex() == -1 ||
-          stronglyAcceptedNodeNum < quorumSize
-          && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
-              || (totalAccepted < quorumSize)
-              || votingLogList.size() > config.getMaxNumOfLogsInMem())
-          && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
-          && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
+      while (log.getLog().getCurrLogIndex() == -1
+          || stronglyAcceptedNodeNum < quorumSize
+              && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
+                  || (totalAccepted < quorumSize)
+                  || votingLogList.size() > config.getMaxNumOfLogsInMem())
+              && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
+              && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {
           log.wait(1);
         } catch (InterruptedException e) {

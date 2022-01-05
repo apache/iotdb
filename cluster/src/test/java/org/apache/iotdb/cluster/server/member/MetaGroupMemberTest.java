@@ -217,6 +217,9 @@ public class MetaGroupMemberTest extends BaseMember {
               @Override
               public void returnSyncClient(
                   RaftService.Client client, Node node, ClientCategory category) {}
+
+              @Override
+              public void close() {}
             });
     testMetaMember.getThisNode().setNodeIdentifier(0);
     testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()));
@@ -348,9 +351,9 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Override
-  protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
+  protected MetaGroupMember getMetaGroupMember(Node node) {
     MetaGroupMember metaGroupMember =
-        new MetaGroupMember(new Factory(), node, new Coordinator()) {
+        new MetaGroupMember(node, new Coordinator()) {
 
           @Override
           public void applyAddNode(AddNodeLog addNodeLog) {
@@ -653,7 +656,7 @@ public class MetaGroupMemberTest extends BaseMember {
     } catch (Exception e) {
       assertTrue(e instanceof StartUpCheckFailureException);
     } finally {
-      newMember.closeLogManager();
+      newMember.stop();
       ClusterConstant.setHeartbeatIntervalMs(prevInterval);
     }
   }
@@ -809,7 +812,7 @@ public class MetaGroupMemberTest extends BaseMember {
     System.out.println("Start testProcessNonQuery()");
     mockDataClusterServer = true;
 
-    MetaGroupMember testMetaMember2 = getMetaGroupMember(TestUtils.getNode(2));
+    MetaGroupMember testMetaMember2 = getMetaGroupMember(TestUtils.getNode(20));
     testMetaMember2.setCharacter(LEADER);
 
     // as a follower
@@ -857,6 +860,9 @@ public class MetaGroupMemberTest extends BaseMember {
                 @Override
                 public void returnSyncClient(
                     RaftService.Client client, Node node, ClientCategory category) {}
+
+                @Override
+                public void close() {}
               });
       status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
       if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -866,6 +872,8 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }
     testThreadPool.shutdownNow();
+
+    testMetaMember2.stop();
   }
 
   @Test
@@ -1245,7 +1253,7 @@ public class MetaGroupMemberTest extends BaseMember {
     }
     MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
     assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
-    metaGroupMember.closeLogManager();
+    metaGroupMember.stop();
   }
 
   @Test

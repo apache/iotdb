@@ -32,4 +32,6 @@ public interface IClientManager {
   void returnAsyncClient(RaftService.AsyncClient client, Node node, ClientCategory category);
 
   void returnSyncClient(RaftService.Client client, Node node, ClientCategory category);
+
+  void close();
 }

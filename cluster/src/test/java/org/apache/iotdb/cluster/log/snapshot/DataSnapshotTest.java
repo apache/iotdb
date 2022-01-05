@@ -187,8 +187,6 @@ public abstract class DataSnapshotTest {
   @After
   public void tearDown() throws Exception {
     config.setUseAsyncServer(isAsyncServer);
-    metaGroupMember.closeLogManager();
-    dataGroupMember.closeLogManager();
     metaGroupMember.stop();
     dataGroupMember.stop();
     EnvironmentUtils.cleanEnv();

@@ -66,6 +66,12 @@ public class StoppedMemberManager {
     recover();
   }
 
+  public void stop() {
+    for (DataGroupMember value : removedMemberMap.values()) {
+      value.stop();
+    }
+  }
+
   /**
    * When a DataGroupMember is removed, add it here and record this removal, so in next start-up we
    * can recover it as a data source for data transfers.

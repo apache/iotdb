@@ -94,7 +94,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -342,9 +341,9 @@ public class DataGroupMemberTest extends BaseMember {
       assertFalse(firstMember.addNode(newNodeAfterGroup, result));
       assertFalse(midMember.addNode(newNodeAfterGroup, result));
     } finally {
-      firstMember.closeLogManager();
-      midMember.closeLogManager();
-      lastMember.closeLogManager();
+      firstMember.stop();
+      midMember.stop();
+      lastMember.stop();
     }
   }
 
@@ -627,7 +626,6 @@ public class DataGroupMemberTest extends BaseMember {
             Collections.emptyMap(),
             Collections.emptyMap(),
             null);
-    testMetaMember = super.getMetaGroupMember(TestUtils.getNode(0));
     testMetaMember.setPartitionTable(partitionTable);
     dataGroupMember.setLogManager(
         getLogManager(
@@ -1206,7 +1204,7 @@ public class DataGroupMemberTest extends BaseMember {
         answers = new Object[] {15.0, 12.0, 180.0, 5.0, 19.0, 19.0, 5.0, 19.0, 5.0, 19.0};
         checkAggregates(answers, aggregateResults);
       } finally {
-        dataGroupMember.closeLogManager();
+        dataGroupMember.stop();
       }
 
       // get an executor from a node not holding this timeseries
@@ -1230,7 +1228,7 @@ public class DataGroupMemberTest extends BaseMember {
         byteBuffers = aggrResultRef.get();
         assertNull(byteBuffers);
       } finally {
-        dataGroupMember.closeLogManager();
+        dataGroupMember.stop();
       }
     } finally {
       QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());

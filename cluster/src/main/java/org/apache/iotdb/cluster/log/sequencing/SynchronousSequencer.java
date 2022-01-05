@@ -112,4 +112,9 @@ public class SynchronousSequencer implements LogSequencer {
       return new SynchronousSequencer(member, logManager);
     }
   }
+
+  @Override
+  public void close() {
+
+  }
 }

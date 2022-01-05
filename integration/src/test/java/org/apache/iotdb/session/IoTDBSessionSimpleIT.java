@@ -1255,8 +1255,8 @@ public class IoTDBSessionSimpleIT {
     values.add("1.0");
     values.add("2.0");
 
-    session.insertRecord("root.sg.loc.area", 1L, measurements, values);
-    session.insertRecord("root.sg.loc", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc.area", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc", 1L, measurements, values);
 
     dataSet = session.executeQueryStatement("show timeseries");
 

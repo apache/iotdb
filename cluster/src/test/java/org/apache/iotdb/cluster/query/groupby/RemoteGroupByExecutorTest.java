@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -49,6 +50,12 @@ import java.util.Set;
 import static org.junit.Assert.assertTrue;
 
 public class RemoteGroupByExecutorTest extends BaseQueryTest {
+
+  @Override
+  @Before
+  public void setUp() throws Exception {
+    super.setUp();
+  }
 
   @Test
   public void testNoTimeFilter()

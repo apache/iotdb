@@ -39,4 +39,6 @@ public interface LogSequencer {
   SendLogRequest sequence(Log log);
 
   void setLogManager(RaftLogManager logManager);
+
+  void close();
 }

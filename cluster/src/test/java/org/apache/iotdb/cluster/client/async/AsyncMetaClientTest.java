@@ -47,6 +47,7 @@ public class AsyncMetaClientTest extends BaseClientTest {
             + "dataPort:40010, clientPort:0, clientIp:localhost),port=9003}",
         metaClient.toString());
     assertCheck(metaClient);
+    factory.close();
   }
 
   @Test
@@ -61,6 +62,7 @@ public class AsyncMetaClientTest extends BaseClientTest {
             + "dataPort:40010, clientPort:0, clientIp:localhost),port=9004}",
         metaClient.toString());
     assertCheck(metaClient);
+    factory.close();
   }
 
   private void assertCheck(AsyncMetaClient dataClient) {

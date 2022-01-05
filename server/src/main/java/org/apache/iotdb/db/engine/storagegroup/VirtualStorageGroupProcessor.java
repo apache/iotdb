@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -271,11 +272,13 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask =
-      Executors.newSingleThreadScheduledExecutor();
+      Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("CompactionSchedule"));
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  private ScheduledExecutorService trimWalService;
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
@@ -386,8 +389,9 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    executorService.scheduleWithFixedDelay(
+    trimWalService =
+        Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("TrimWalBuffer"));
+    trimWalService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -1705,31 +1709,32 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  // TODO need a read lock, please consider the concurrency with flush manager threads.
-
   /**
    * build query data source by searching all tsfile which fit in query filter
    *
-   * @param fullPath data path
+   * @param pathList data paths
    * @param context query context
    * @param timeFilter time filter
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
    * @return query data source
    */
   public QueryDataSource query(
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       QueryFileManager filePathsManager,
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
-    fullPath = IDTable.translateQueryPath(fullPath);
 
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(true),
               upgradeSeqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               true);
@@ -1737,7 +1742,8 @@ public class VirtualStorageGroupProcessor {
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(false),
               upgradeUnseqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               false);
@@ -1790,31 +1796,32 @@ public class VirtualStorageGroupProcessor {
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
       throws MetadataException {
-    String deviceId = fullPath.getDevice();
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info(
-          "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
-          deviceId,
-          fullPath.getMeasurement(),
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          pathList,
           tsFileResources,
           isSeq,
           (timeFilter == null ? "null" : timeFilter));
     }
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    long ttlLowerBound =
+
+    long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(ttlLowerBound);
+    context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1827,7 +1834,7 @@ public class VirtualStorageGroupProcessor {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1835,9 +1842,7 @@ public class VirtualStorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource
-              .getUnsealedFileProcessor()
-              .query(fullPath, context, tsfileResourcesForQuery);
+          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2018,7 +2023,7 @@ public class VirtualStorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
@@ -2940,6 +2945,11 @@ public class VirtualStorageGroupProcessor {
     return virtualStorageGroupId;
   }
 
+  /** @return virtual storage group path, like root.sg1/0 */
+  public String getStorageGroupPath() {
+    return logicalStorageGroupName + File.separator + virtualStorageGroupId;
+  }
+
   public StorageGroupInfo getStorageGroupInfo() {
     return storageGroupInfo;
   }
@@ -3206,6 +3216,7 @@ public class VirtualStorageGroupProcessor {
 
   @FunctionalInterface
   public interface CompactionRecoverCallBack {
+
     void call();
   }
 
@@ -3232,5 +3243,9 @@ public class VirtualStorageGroupProcessor {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  public void stopWalTrim() {
+    trimWalService.shutdownNow();
   }
 }
