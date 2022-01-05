@@ -438,7 +438,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       resultHandler.onError(e);
     }
   }

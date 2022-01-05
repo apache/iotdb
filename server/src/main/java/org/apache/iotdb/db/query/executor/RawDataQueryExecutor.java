@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
@@ -104,9 +106,19 @@ public class RawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+
+      // init QueryDataSource cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
         TSDataType dataType = path.getSeriesType();
@@ -132,7 +144,7 @@ public class RawDataQueryExecutor {
       logger.error("Meet error when init series reader ", e);
       throw new QueryProcessException("Meet error when init series reader.", e);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }
@@ -157,7 +169,7 @@ public class RawDataQueryExecutor {
             new ArrayList<>(queryPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, queryPlan, cached);
+        initSeriesReaderByTimestamp(context, queryPlan, cached, timestampGenerator.getTimeFilter());
     return new RawQueryDataSetWithValueFilter(
         queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(),
@@ -168,12 +180,22 @@ public class RawDataQueryExecutor {
   }
 
   protected List<IReaderByTimestamp> initSeriesReaderByTimestamp(
-      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
+      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached, Filter timeFilter)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {
           readersOfSelectedSeries.add(null);
@@ -189,7 +211,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(seriesReaderByTimestamp);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }
