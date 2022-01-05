@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,7 +52,7 @@ public class SeriesAggregateReaderTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();

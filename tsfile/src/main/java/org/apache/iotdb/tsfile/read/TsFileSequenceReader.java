@@ -52,7 +52,7 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1285,7 +1285,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             ChunkHeader chunkHeader = this.readChunkHeader(marker);
             measurementID = chunkHeader.getMeasurementID();
             IMeasurementSchema measurementSchema =
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     measurementID,
                     chunkHeader.getDataType(),
                     chunkHeader.getEncodingType(),

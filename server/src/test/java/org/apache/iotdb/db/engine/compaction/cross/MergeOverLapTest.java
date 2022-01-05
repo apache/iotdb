@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -116,7 +116,7 @@ public class MergeOverLapTest extends MergeTest {
     TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
     fileWriter.setIsUnseq(true);
     for (String deviceId : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
       }
     }
