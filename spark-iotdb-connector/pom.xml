@@ -32,7 +32,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <compile.version>1.8</compile.version>
-        <scala.library.version>2.12</scala.library.version>
+        <scala.library.version>2.12.10</scala.library.version>
         <scala.version>2.12.10</scala.version>
     </properties>
     <dependencies>
@@ -59,19 +59,6 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>[${guava.version},)</version>
-            <exclusions>
-                <!-- iotdb-server depends on com.github.ben-manes.caffeine:caffeine:2.9.1,
-                which depends on checker-qual 3.10.0 -->
-                <exclusion>
-                    <groupId>org.checkerframework</groupId>
-                    <artifactId>checker-qual</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.12</artifactId>
             <version>${spark.version}</version>
@@ -92,6 +79,11 @@
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_2.11</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.6.7</version>
         </dependency>
     </dependencies>
     <build>
