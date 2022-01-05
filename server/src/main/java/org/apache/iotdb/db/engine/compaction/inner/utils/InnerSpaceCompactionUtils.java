@@ -71,12 +71,12 @@ public class InnerSpaceCompactionUtils {
       writer = new TsFileIOWriter(targetResource.getTsFile());
       CompactionDeviceVisitor visitor = new CompactionDeviceVisitor(tsFileResources);
       Set<String> devices = visitor.getDevices();
-
       for (String device : devices) {
         writer.startChunkGroup(device);
         // TODO: compact a aligned device
         CompactionDeviceVisitor.CompactionSeriesIterator seriesIterator = visitor.visit(device);
         while (seriesIterator.hasNextSeries()) {
+          // TODO: we can provide a configuration item to enable concurrent between each series
           String currentSeries = seriesIterator.nextSeries();
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
               seriesIterator.getMetadataListForCurrentSeries();

@@ -354,4 +354,80 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
           .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
     }
   }
+
+  /**
+   * Generate some chunks are less than the target size and greater than the lower bound, and some
+   * chunks that are less than the lower bound. So the chunk will be merged first, and the cached
+   * chunk will be deserialized into points later.
+   *
+   * @throws Exception
+   */
+  @Test
+  public void testDeserializeCachedChunk() throws Exception {
+    long testTargetChunkPointNum = 1500L;
+    long testChunkSizeLowerBound = 1024L;
+    long testChunkPointNumLowerBound = 100L;
+    long originTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+    long originTargetChunkPointNum =
+        IoTDBDescriptor.getInstance().getConfig().getTargetChunkPointNum();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(10240);
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(testTargetChunkPointNum);
+    long originChunkSizeLowerBound =
+        IoTDBDescriptor.getInstance().getConfig().getChunkSizeLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkSizeLowerBoundInCompaction(testChunkSizeLowerBound);
+    long originChunkPointNumLowerBound =
+        IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setChunkPointNumLowerBoundInCompaction(testChunkPointNumLowerBound);
+    try {
+      List<TsFileResource> sourceFiles = new ArrayList();
+      int fileNum = 6;
+      long pointStep = 50L;
+      // 300 250 200 150 100 50
+      for (int i = 0; i < fileNum; ++i) {
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add((fileNum - i) * pointStep);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource resource =
+            new TsFileResource(new File(SEQ_DIRS, String.format("%d-%d-0-0.tsfile", i + 1, i + 1)));
+        sourceFiles.add(resource);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPathSet, chunkPagePointsNum, i * 1500L, resource);
+      }
+      TsFileNameGenerator.TsFileName tsFileName =
+          TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
+      TsFileResource targetResource =
+          new TsFileResource(
+              new File(
+                  SEQ_DIRS,
+                  String.format(
+                      "%d-%d-%d-%d.tsfile",
+                      tsFileName.getTime(),
+                      tsFileName.getVersion(),
+                      tsFileName.getInnerCompactionCnt() + 1,
+                      tsFileName.getCrossCompactionCnt())));
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, storageGroup, true);
+      Map<String, List<List<Long>>> chunkPagePointsNumMerged = new HashMap<>();
+      // outer list is a chunk, inner list is point num in each page
+      List<List<Long>> chunkPointsArray = new ArrayList<>();
+      for (String path : fullPathSet) {
+        CompactionCheckerUtils.putOnePageChunk(
+            chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
+      }
+      CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+    } finally {
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
+      IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setChunkSizeLowerBoundInCompaction(originChunkSizeLowerBound);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setChunkPointNumLowerBoundInCompaction(originChunkPointNumLowerBound);
+    }
+  }
 }
