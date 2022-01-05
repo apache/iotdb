@@ -246,7 +246,8 @@ public class LogDispatcher {
     private BlockingQueue<SendLogRequest> logBlockingDeque;
     private List<SendLogRequest> currBatch = new ArrayList<>();
     private Peer peer;
-    Client client;
+    Client syncClient;
+    AsyncClient asyncClient;
 
     DispatcherThread(Node receiver, BlockingQueue<SendLogRequest> logBlockingDeque) {
       this.receiver = receiver;
@@ -255,7 +256,9 @@ public class LogDispatcher {
           member
               .getPeerMap()
               .computeIfAbsent(receiver, r -> new Peer(member.getLogManager().getLastLogIndex()));
-      client = member.getSyncClient(receiver);
+      if (!clusterConfig.isUseAsyncServer()) {
+        syncClient = member.getSyncClient(receiver);
+      }
     }
 
     @Override
@@ -320,19 +323,19 @@ public class LogDispatcher {
       }
       Timer.Statistic.RAFT_SENDER_WAIT_FOR_PREV_LOG.calOperationCostTimeFromStart(startTime);
 
-      if (client == null) {
-        client = member.getSyncClient(receiver);
+      if (syncClient == null) {
+        syncClient = member.getSyncClient(receiver);
       }
       AsyncMethodCallback<AppendEntryResult> handler = new AppendEntriesHandler(currBatch);
       startTime = Timer.Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
       try {
-        AppendEntryResult result = client.appendEntries(request);
+        AppendEntryResult result = syncClient.appendEntries(request);
         Timer.Statistic.RAFT_SENDER_SEND_LOG.calOperationCostTimeFromStart(startTime);
         handler.onComplete(result);
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        ClientUtils.putBackSyncClient(client);
-        client = member.getSyncClient(receiver);
+        syncClient.getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(syncClient);
+        syncClient = member.getSyncClient(receiver);
         logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
         handler.onError(e);
       }
@@ -411,7 +414,7 @@ public class LogDispatcher {
       }
     }
 
-    void sendLog(SendLogRequest logRequest) {
+    void sendLogSync(SendLogRequest logRequest) {
       AppendNodeEntryHandler handler =
           member.getAppendNodeEntryHandler(
               logRequest.getVotingLog(),
@@ -420,12 +423,12 @@ public class LogDispatcher {
               logRequest.newLeaderTerm,
               peer,
               logRequest.quorumSize);
-      // TODO add async interface
+
       int retries = 5;
       try {
         long operationStartTime = Statistic.RAFT_SENDER_SEND_LOG.getOperationStartTime();
         for (int i = 0; i < retries; i++) {
-          AppendEntryResult result = client.appendEntry(logRequest.appendEntryRequest);
+          AppendEntryResult result = syncClient.appendEntry(logRequest.appendEntryRequest);
           if (result.status == Response.RESPONSE_OUT_OF_WINDOW) {
             Thread.sleep(100);
           } else {
@@ -435,12 +438,40 @@ public class LogDispatcher {
           }
         }
       } catch (TException e) {
-        client.getInputProtocol().getTransport().close();
-        ClientUtils.putBackSyncClient(client);
-        client = member.getSyncClient(receiver);
+        syncClient.getInputProtocol().getTransport().close();
+        ClientUtils.putBackSyncClient(syncClient);
+        syncClient = member.getSyncClient(receiver);
         handler.onError(e);
       } catch (Exception e) {
         handler.onError(e);
+      }
+    }
+
+    private void sendLogAsync(SendLogRequest logRequest) {
+      AppendNodeEntryHandler handler =
+          member.getAppendNodeEntryHandler(
+              logRequest.getVotingLog(),
+              receiver,
+              logRequest.leaderShipStale,
+              logRequest.newLeaderTerm,
+              peer,
+              logRequest.quorumSize);
+
+      AsyncClient client = member.getAsyncClient(receiver);
+      if (client != null) {
+        try {
+          client.appendEntry(logRequest.appendEntryRequest, handler);
+        } catch (TException e) {
+          handler.onError(e);
+        }
+      }
+    }
+
+    void sendLog(SendLogRequest logRequest) {
+      if (clusterConfig.isUseAsyncServer()) {
+        sendLogAsync(logRequest);
+      } else {
+        sendLogSync(logRequest);
       }
     }
 

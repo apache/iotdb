@@ -76,7 +76,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
   private DataGroupEngine() {
     dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
-    stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
+    stoppedMemberManager = new StoppedMemberManager(dataMemberFactory, thisNode);
   }
 
   public static DataGroupEngine getInstance() {
@@ -96,7 +96,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       DataGroupMember.Factory dataMemberFactory, MetaGroupMember metaGroupMember) {
     DataGroupEngine.metaGroupMember = metaGroupMember;
     this.dataMemberFactory = dataMemberFactory;
-    this.stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
+    this.stoppedMemberManager = new StoppedMemberManager(dataMemberFactory, thisNode);
   }
 
   @Override
@@ -242,7 +242,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       }
       if (partitionGroup != null && partitionGroup.contains(thisNode)) {
         // the two nodes are in the same group, create a new data member
-        member = dataMemberFactory.create(partitionGroup);
+        member = dataMemberFactory.create(thisNode, partitionGroup);
         headerGroupMap.put(header, member);
         stoppedMemberManager.remove(header);
         logger.info("Created a member for header {}, group is {}", header, partitionGroup);
@@ -310,7 +310,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
         if (newGroup.contains(thisNode)) {
           RaftNode header = newGroup.getHeader();
           logger.info("Adding this node into a new group {}", newGroup);
-          DataGroupMember dataGroupMember = dataMemberFactory.create(newGroup);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(thisNode, newGroup);
           dataGroupMember = addDataGroupMember(dataGroupMember, header);
           dataGroupMember.pullNodeAdditionSnapshots(
               ((SlotPartitionTable) partitionTable).getNodeSlots(header), node);
@@ -385,7 +385,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       if (prevMember == null || !prevMember.getAllNodes().equals(partitionGroup)) {
         logger.info("Building member of data group: {}", partitionGroup);
         // no previous member or member changed
-        DataGroupMember dataGroupMember = dataMemberFactory.create(partitionGroup);
+        DataGroupMember dataGroupMember = dataMemberFactory.create(thisNode, partitionGroup);
         // the previous member will be replaced here
         addDataGroupMember(dataGroupMember, header);
         dataGroupMember.setUnchanged(true);
@@ -455,7 +455,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
         RaftNode header = group.getHeader();
         if (!headerGroupMap.containsKey(header)) {
           logger.info("{} should join a new group {}", thisNode, group);
-          DataGroupMember dataGroupMember = dataMemberFactory.create(group);
+          DataGroupMember dataGroupMember = dataMemberFactory.create(thisNode, group);
           addDataGroupMember(dataGroupMember, header);
         }
         // pull new slots from the removed node

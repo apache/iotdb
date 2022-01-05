@@ -236,7 +236,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    * client manager that provides reusable Thrift clients to connect to other RaftMembers and
    * execute RPC requests. It will be initialized according to the implementation of the subclasses
    */
-  private ClientManager clientManager;
+  protected ClientManager clientManager;
   /**
    * when the commit progress is updated by a heartbeat, this object is notified so that we may know
    * if this node is up-to-date with the leader, and whether the given consistency is reached
@@ -359,6 +359,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     if (heartBeatService == null) {
       return;
     }
+    clientManager.s
 
     heartBeatService.shutdownNow();
     catchUpService.shutdownNow();
@@ -1196,7 +1197,6 @@ public abstract class RaftMember implements RaftMemberMBean {
       long startTime;
       switch (appendLogResult) {
         case WEAK_ACCEPT:
-          // TODO: change to weak
           Statistic.RAFT_WEAK_ACCEPT.add(1);
           Statistic.LOG_DISPATCHER_FROM_CREATE_TO_OK.calOperationCostTimeFromStart(
               log.getCreateTime());
@@ -1674,14 +1674,16 @@ public abstract class RaftMember implements RaftMemberMBean {
     synchronized (log) {
       long waitStart = System.currentTimeMillis();
       long alreadyWait = 0;
-      while (stronglyAcceptedNodeNum < quorumSize
+      while (
+          log.getLog().getCurrLogIndex() == -1 ||
+          stronglyAcceptedNodeNum < quorumSize
           && (!(ENABLE_WEAK_ACCEPTANCE && canBeWeaklyAccepted(log.getLog()))
               || (totalAccepted < quorumSize)
               || votingLogList.size() > config.getMaxNumOfLogsInMem())
           && alreadyWait < ClusterConstant.getWriteOperationTimeoutMS()
           && !log.getStronglyAcceptedNodeIds().contains(Integer.MAX_VALUE)) {
         try {
-          log.wait(0);
+          log.wait(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           logger.warn("Unexpected interruption when sending a log", e);
@@ -1762,7 +1764,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       while (!log.isApplied()) {
         // wait until the log is applied
         try {
-          log.wait(0);
+          log.wait(1);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
           throw new LogExecutionException(e);
@@ -2288,5 +2290,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public String getRaftGroupFullId() {
     return (getHeader() != null ? getHeader().node.nodeIdentifier : 0) + "#" + getRaftGroupId();
+  }
+
+  @TestOnly
+  public void setClientManager(ClientManager clientManager) {
+    this.clientManager = clientManager;
   }
 }

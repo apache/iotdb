@@ -26,11 +26,13 @@ public class VotingLog {
   protected Log log;
   protected Set<Integer> stronglyAcceptedNodeIds;
   protected Set<Integer> weaklyAcceptedNodeIds;
+  protected Set<Integer> failedNodeIds;
 
   public VotingLog(Log log, int groupSize) {
     this.log = log;
     stronglyAcceptedNodeIds = new HashSet<>(groupSize);
     weaklyAcceptedNodeIds = new HashSet<>(groupSize);
+    failedNodeIds = new HashSet<>(groupSize);
   }
 
   public Log getLog() {
@@ -60,5 +62,9 @@ public class VotingLog {
   @Override
   public String toString() {
     return log.toString();
+  }
+
+  public Set<Integer> getFailedNodeIds() {
+    return failedNodeIds;
   }
 }

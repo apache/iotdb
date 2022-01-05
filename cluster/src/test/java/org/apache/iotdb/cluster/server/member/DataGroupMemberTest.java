@@ -196,7 +196,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(new Factory(), nodes, testMetaMember) {
+        new DataGroupMember(node, nodes, testMetaMember) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
@@ -290,7 +290,6 @@ public class DataGroupMemberTest extends BaseMember {
           }
         };
     PartitionedSnapshotLogManager logManager = getLogManager(nodes, dataGroupMember);
-    dataGroupMember.setThisNode(node);
     dataGroupMember.setLogManager(logManager);
     dataGroupMember.setLeader(node);
     dataGroupMember.setCharacter(NodeCharacter.LEADER);

@@ -85,7 +85,6 @@ import org.apache.iotdb.db.auth.authorizer.LocalFileAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -189,7 +188,7 @@ public class MetaGroupMemberTest extends BaseMember {
         new DataGroupEngine(
             new DataGroupMember.Factory(new Factory(), testMetaMember) {
               @Override
-              public DataGroupMember create(PartitionGroup partitionGroup) {
+              public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
                 return getDataGroupMember(partitionGroup, TestUtils.getNode(0));
               }
             },
@@ -228,7 +227,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(new Factory(), group, testMetaMember) {
+        new DataGroupMember(node, group, testMetaMember) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;

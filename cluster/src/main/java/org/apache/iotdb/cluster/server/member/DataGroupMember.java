@@ -197,7 +197,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             : new BlockingLogAppender.Factory();
   }
 
-  DataGroupMember(TProtocolFactory factory, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
+  DataGroupMember(Node thisNode, PartitionGroup nodes, MetaGroupMember metaGroupMember) {
     // The name is used in JMX, so we have to avoid to use "(" "," "=" ")"
     super(
         "Data-"
@@ -211,6 +211,7 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             ClusterDescriptor.getInstance().getConfig().isUseAsyncServer(),
             ClientManager.Type.DataGroupClient));
     this.metaGroupMember = metaGroupMember;
+    setThisNode(thisNode);
     setAllNodes(nodes);
     mbeanName =
         String.format(
@@ -335,8 +336,8 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
       this.metaGroupMember = metaGroupMember;
     }
 
-    public DataGroupMember create(PartitionGroup partitionGroup) {
-      return new DataGroupMember(protocolFactory, partitionGroup, metaGroupMember);
+    public DataGroupMember create(Node thisNode, PartitionGroup partitionGroup) {
+      return new DataGroupMember(thisNode, partitionGroup, metaGroupMember);
     }
   }
 

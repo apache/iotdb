@@ -31,8 +31,6 @@ import org.apache.iotdb.cluster.server.monitor.Timer.Statistic;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.LogPlan;
 
 /**
  * SynchronizedSequencer performs sequencing by taking the monitor of a LogManager within the caller

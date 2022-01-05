@@ -58,9 +58,11 @@ public class StoppedMemberManager {
 
   private Map<RaftNode, DataGroupMember> removedMemberMap = new HashMap<>();
   private DataGroupMember.Factory memberFactory;
+  private Node thisNode;
 
-  public StoppedMemberManager(Factory memberFactory) {
+  public StoppedMemberManager(Factory memberFactory, Node thisNode) {
     this.memberFactory = memberFactory;
+    this.thisNode = thisNode;
     recover();
   }
 
@@ -147,7 +149,7 @@ public class StoppedMemberManager {
       Node node = ClusterUtils.stringToNode(split[i]);
       partitionGroup.add(node);
     }
-    DataGroupMember member = memberFactory.create(partitionGroup);
+    DataGroupMember member = memberFactory.create(thisNode, partitionGroup);
     member.setReadOnly();
     removedMemberMap.put(partitionGroup.getHeader(), member);
   }

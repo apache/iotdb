@@ -46,7 +46,7 @@ import java.util.NoSuchElementException;
 public class ClientPoolFactoryTest {
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
 
-  private long mockMaxWaitTimeoutMs = 10 * 1000L;
+  private long mockMaxWaitTimeoutMs = 1000L;
   private int mockMaxClientPerMember = 10;
 
   private int maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
