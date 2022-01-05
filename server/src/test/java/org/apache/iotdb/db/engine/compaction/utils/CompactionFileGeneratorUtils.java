@@ -119,12 +119,6 @@ public class CompactionFileGeneratorUtils {
         "{} {}",
         newTsFileResource.getTsFile().getParentFile(),
         newTsFileResource.getTsFile().getParentFile().exists() ? "exists" : "not exists");
-    logger.error(
-        "{} {}",
-        newTsFileResource.getTsFile().getParentFile().getParentFile(),
-        newTsFileResource.getTsFile().getParentFile().getParentFile().exists()
-            ? "exists"
-            : "not exists");
     RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(newTsFileResource.getTsFile());
     Map<String, List<String>> deviceMeasurementMap = new HashMap<>();
     for (String fullPath : fullPaths) {

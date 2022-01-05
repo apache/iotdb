@@ -72,6 +72,12 @@ public class CompactionDeviceVisitor {
     return new CompactionSeriesIterator(readerMap, device);
   }
 
+  public void close() throws IOException {
+    for (TsFileSequenceReader reader : readerMap.values()) {
+      reader.close();
+    }
+  }
+
   public class CompactionSeriesIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;

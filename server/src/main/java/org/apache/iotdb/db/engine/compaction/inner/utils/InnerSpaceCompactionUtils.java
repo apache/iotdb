@@ -67,9 +67,10 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     TsFileIOWriter writer = null;
+    CompactionDeviceVisitor visitor = null;
     try {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-      CompactionDeviceVisitor visitor = new CompactionDeviceVisitor(tsFileResources);
+      visitor = new CompactionDeviceVisitor(tsFileResources);
       Set<String> devices = visitor.getDevices();
       for (String device : devices) {
         writer.startChunkGroup(device);
@@ -102,6 +103,9 @@ public class InnerSpaceCompactionUtils {
     } finally {
       if (writer != null && writer.canWrite()) {
         writer.close();
+      }
+      if (visitor != null) {
+        visitor.close();
       }
     }
   }
