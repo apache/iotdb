@@ -1323,7 +1323,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         }
       }
     } catch (IOException e) {
-      e.printStackTrace();
+      logger.error("Error occurred while fast checking TsFile.");
+      throw e;
     }
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
       TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
@@ -1335,7 +1336,8 @@ public class TsFileSequenceReader implements AutoCloseable {
         try {
           tscheckStatus = checkChunkAndPagesStatistics(chunkMetadata);
         } catch (IOException e) {
-          e.printStackTrace();
+          logger.error("Error occurred while checking the statistics of chunk and its pages");
+          throw e;
         }
         if (tscheckStatus == TsFileCheckStatus.FILE_EXISTS_MISTAKES) {
           throw new TsFileStatisticsMistakesException(

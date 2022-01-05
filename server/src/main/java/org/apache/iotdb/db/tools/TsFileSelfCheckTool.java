@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexEntry;
 import org.apache.iotdb.tsfile.file.metadata.MetadataIndexNode;
@@ -26,6 +27,9 @@ import org.apache.iotdb.tsfile.file.metadata.enums.MetadataIndexNodeType;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.BufferOverflowException;
@@ -36,28 +40,32 @@ import java.util.TreeMap;
 
 public class TsFileSelfCheckTool {
 
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
+
   public long check(String filename, boolean fastFinish)
-      throws IOException, TsFileStatisticsMistakesException {
+      throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
     System.out.println("file path: " + filename);
 
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     try {
       timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
-    } catch (IOException e) {
-      e.printStackTrace();
+    } catch (Exception e) {
+      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      throw new TsFileTimeseriesMetadataException(e.getMessage());
     }
     return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
   }
 
   public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMap(String filename)
-      throws IOException {
+      throws IOException, TsFileTimeseriesMetadataException {
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     try {
       timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
-    } catch (IOException e) {
-      e.printStackTrace();
+    } catch (Exception e) {
+      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      throw new TsFileTimeseriesMetadataException(e.getMessage());
     }
     return timeseriesMetadataMap;
   }

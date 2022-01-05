@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.exception.TsFileTimeseriesMetadataException;
 import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,7 +41,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.io.*;
-import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -136,13 +136,16 @@ public class TsFileSelfCheckToolTest {
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
       tool.check(path, false);
-    } catch (IOException | TsFileStatisticsMistakesException e) {
+    } catch (IOException
+        | TsFileStatisticsMistakesException
+        | TsFileTimeseriesMetadataException e) {
       fail(e.getMessage());
     }
   }
 
   @Test
-  public void tsFileSelfCheckToolWithStatisticsModifiedTest() throws IOException {
+  public void tsFileSelfCheckToolWithStatisticsModifiedTest()
+      throws IOException, TsFileTimeseriesMetadataException {
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
         new TsFileSelfCheckTool().getTimeseriesMetadataMap(path);
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
@@ -166,6 +169,8 @@ public class TsFileSelfCheckToolTest {
       raf.write(serialArr, 0, serialArr.length);
       raf.close();
 
+      // We only modify one statistics of TimeseriesMetadata in TsFile to test the check method, so
+      // we break here
       break;
     }
 
@@ -174,6 +179,17 @@ public class TsFileSelfCheckToolTest {
       tool.check(path, false);
       fail("No exception thrown.");
     } catch (TsFileStatisticsMistakesException e) {
+      // In fact, what we are modifying is the Statistics of TimeseriesMetadata. It should be
+      // reported that
+      // TimeseriesMetadata is inconsistent with the Statistics of the subsequent ChunkMetadata
+      // aggregation statistics.
+      // But because the self check method first checks the aggregate statistics of ChunkMetadata
+      // and the page behind
+      // the chunk at its index position and TsFile is initialized to TimeseriesMetadata and
+      // followed by a
+      // ChunkMetadata, the Statistics of ChunkMetadata here uses the Statistics of
+      // TimeseriesMetadata.
+      // Therefore, Chunk's Statistics error will be reported.
       assertEquals("Chunk exists statistics mistakes at position 22", e.getMessage());
     }
   }
@@ -195,7 +211,7 @@ public class TsFileSelfCheckToolTest {
     try {
       tool.check(path, false);
       fail("No exception thrown.");
-    } catch (BufferUnderflowException e) {
+    } catch (TsFileTimeseriesMetadataException e) {
       assertNull(e.getMessage());
     }
   }
