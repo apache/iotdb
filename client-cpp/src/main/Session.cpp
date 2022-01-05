@@ -817,7 +817,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         bufferList.push_back(buffer);
     }
     request.__set_valuesList(bufferList);
-    request.__set_isAligned(true);
+    request.__set_isAligned(false);
 
     try {
         TSStatus respStatus;
