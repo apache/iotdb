@@ -89,6 +89,7 @@ public class DatasourceInfoTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterIoTDB.getInstance().setClientManager(clientManager);
   }
 

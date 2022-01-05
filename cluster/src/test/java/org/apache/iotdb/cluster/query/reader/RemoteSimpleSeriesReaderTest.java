@@ -142,6 +142,7 @@ public class RemoteSimpleSeriesReaderTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 

@@ -94,6 +94,7 @@ public class AssignPathManagedMergeReaderTest {
 
   @After
   public void tearDown() {
+    metaGroupMember.stop();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }
 
