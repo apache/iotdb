@@ -398,7 +398,7 @@ public:
      * @param maxRowNumber the maximum number of rows for this tablet
      */
     Tablet(const std::string &deviceId, const std::vector <std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber) : deviceId(deviceId), schemas(schemas), maxRowNumber(maxRowNumber){
+           int maxRowNumber, bool isAligned_ = false) : deviceId(deviceId), schemas(schemas), maxRowNumber(maxRowNumber), isAligned(isAligned_){
         // create timestamp column
         timestamps.resize(maxRowNumber);
         // create value columns
@@ -542,9 +542,9 @@ public:
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
             this->valueBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[i])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
             this->bitmapBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
         }
         this->tsQueryDataSet = queryDataSet;
     }

@@ -912,6 +912,7 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
     request.__set_timestamps(SessionUtils::getTime(tablet));
     request.__set_values(SessionUtils::getValue(tablet));
     request.__set_size(tablet.rowSize);
+    request.__set_isAligned(tablet.isAligned);
 
     try {
         TSStatus respStatus;
@@ -951,8 +952,15 @@ void Session::insertTablets(map<string, Tablet *> &tablets) {
 void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
     TSInsertTabletsReq request;
     request.__set_sessionId(sessionId);
-
+    if (tablets.empty()) {
+        throw BatchExecutionException("No tablet is inserting!");
+    }
+    auto beginIter = tablets.begin();
+    bool isFirstTabletAligned = ((*beginIter).second)->isAligned;
     for (const auto &item: tablets) {
+        if (isFirstTabletAligned != item.second->isAligned) {
+            throw BatchExecutionException("The tablets should be all aligned or non-aligned!");
+        }
         if (sorted) {
             if (!checkSorted(*(item.second))) {
                 throw BatchExecutionException("Times in Tablet are not in ascending order");
@@ -960,7 +968,6 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
         } else {
             sortTablet(*(item.second));
         }
-
         request.prefixPaths.push_back(item.second->deviceId);
         vector <string> measurements;
         vector<int> dataTypes;
@@ -973,15 +980,15 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
         request.timestampsList.push_back(SessionUtils::getTime(*(item.second)));
         request.valuesList.push_back(SessionUtils::getValue(*(item.second)));
         request.sizeList.push_back(item.second->rowSize);
-
-        try {
-            TSStatus respStatus;
-            client->insertTablets(respStatus, request);
-            RpcUtils::verifySuccess(respStatus);
-        }
-        catch (const exception &e) {
-            throw IoTDBConnectionException(e.what());
-        }
+    }
+    request.__set_isAligned(isFirstTabletAligned);
+    try {
+        TSStatus respStatus;
+        client->insertTablets(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    }
+    catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
     }
 }
 
@@ -1038,7 +1045,7 @@ void Session::testInsertTablet(const Tablet &tablet) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
-        throw new IoTDBConnectionException(e.what());
+        throw IoTDBConnectionException(e.what());
     }
 }
 
