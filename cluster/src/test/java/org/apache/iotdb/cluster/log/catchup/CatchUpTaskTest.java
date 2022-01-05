@@ -199,7 +199,6 @@ public class CatchUpTaskTest {
   public void tearDown() throws Exception {
     IoTDB.metaManager.clear();
     sender.stop();
-    sender.closeLogManager();
     EnvironmentUtils.cleanAllDir();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(prevUseAsyncServer);
   }

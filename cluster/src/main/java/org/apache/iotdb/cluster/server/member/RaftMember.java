@@ -304,6 +304,10 @@ public abstract class RaftMember implements RaftMemberMBean {
   public void stop() {
     setSkipElection(true);
     closeLogManager();
+    if (clientManager != null) {
+      clientManager.close();
+    }
+
     if (heartBeatService == null) {
       return;
     }
@@ -342,6 +346,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.error("Unexpected interruption when waiting for commitLogPool to end", e);
       }
     }
+
     leader.set(ClusterConstant.EMPTY_NODE);
     catchUpService = null;
     heartBeatService = null;

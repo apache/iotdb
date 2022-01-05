@@ -46,7 +46,7 @@ import java.util.NoSuchElementException;
 public class ClientPoolFactoryTest {
   private ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
 
-  private long mockMaxWaitTimeoutMs = 10 * 1000L;
+  private long mockMaxWaitTimeoutMs = 1000L;
   private int mockMaxClientPerMember = 10;
 
   private int maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
@@ -102,6 +102,7 @@ public class ClientPoolFactoryTest {
       Assert.assertTrue(e instanceof NoSuchElementException);
     } finally {
       Assert.assertTrue(System.currentTimeMillis() - timeStart + 10 > mockMaxWaitTimeoutMs);
+      ((BaseFactory) pool.getFactory()).close();
     }
   }
 
@@ -127,6 +128,7 @@ public class ClientPoolFactoryTest {
       Assert.assertNotNull(client);
       Assert.assertTrue(clientList.contains(client));
     }
+    ((BaseFactory) pool.getFactory()).close();
   }
 
   @Test
@@ -144,6 +146,7 @@ public class ClientPoolFactoryTest {
     asyncClient = pool.borrowObject(node);
     Assert.assertNotNull(asyncClient);
     Assert.assertTrue(asyncClient instanceof AsyncDataClient);
+    ((BaseFactory) pool.getFactory()).close();
   }
 
   @Test
@@ -161,6 +164,7 @@ public class ClientPoolFactoryTest {
     mockClientManager.setAsyncClient(asyncClient);
     Assert.assertNotNull(asyncClient);
     Assert.assertTrue(asyncClient instanceof AsyncMetaClient);
+    ((BaseFactory) pool.getFactory()).close();
   }
 
   @Test

@@ -60,7 +60,6 @@ public class AppendGroupEntryHandlerTest {
   public void tearDown() throws IOException, StorageEngineException {
     ClusterDescriptor.getInstance().getConfig().setReplicationNum(prevReplicationNum);
     member.stop();
-    member.closeLogManager();
     EnvironmentUtils.cleanAllDir();
   }
 

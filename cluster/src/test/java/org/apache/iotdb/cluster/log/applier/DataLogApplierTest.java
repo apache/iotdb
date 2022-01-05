@@ -186,6 +186,9 @@ public class DataLogApplierTest extends IoTDBTest {
         .setClientManager(
             new IClientManager() {
               @Override
+              public void close() {}
+
+              @Override
               public AsyncClient borrowAsyncClient(Node node, ClientCategory category) {
                 try {
                   AsyncDataClient dataClient =
@@ -285,9 +288,7 @@ public class DataLogApplierTest extends IoTDBTest {
   @After
   public void tearDown() throws IOException, StorageEngineException {
     testDataGroupMember.stop();
-    testDataGroupMember.closeLogManager();
     testMetaGroupMember.stop();
-    testMetaGroupMember.closeLogManager();
     super.tearDown();
     ClusterIoTDB.getInstance().setClientManager(clientManager);
     NodeStatusManager.getINSTANCE().setMetaGroupMember(null);

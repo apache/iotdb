@@ -169,7 +169,6 @@ public class HeartbeatThreadTest {
   @After
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     logManager.close();
-    member.closeLogManager();
     member.stop();
     logManager = null;
     member = null;

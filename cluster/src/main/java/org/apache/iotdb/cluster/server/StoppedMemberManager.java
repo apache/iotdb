@@ -27,6 +27,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember.Factory;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
+import org.apache.iotdb.db.utils.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +63,12 @@ public class StoppedMemberManager {
   public StoppedMemberManager(Factory memberFactory) {
     this.memberFactory = memberFactory;
     recover();
+  }
+
+  public void stop() {
+    for (DataGroupMember value : removedMemberMap.values()) {
+      value.stop();
+    }
   }
 
   /**

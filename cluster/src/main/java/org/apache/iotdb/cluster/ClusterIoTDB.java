@@ -577,6 +577,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     logger.info("ClusterIoTDB is deactivated.");
     // stop the iotdb kernel
     iotdb.stop();
+    if (clientManager != null) {
+      clientManager.close();
+    }
   }
 
   private void stopThreadPools() {
@@ -598,6 +601,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   @TestOnly
   public void setClientManager(IClientManager clientManager) {
+    if (this.clientManager != null) {
+      this.clientManager.close();
+    }
     this.clientManager = clientManager;
   }
 
@@ -608,6 +614,9 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   @TestOnly
   public void setDataGroupEngine(DataGroupEngine dataGroupEngine) {
+    if (this.dataGroupEngine != null) {
+      this.dataGroupEngine.stop();
+    }
     this.dataGroupEngine = dataGroupEngine;
   }
 

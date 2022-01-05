@@ -47,6 +47,7 @@ public class AsyncDataClientTest extends BaseClientTest {
             + "dataPort:40010, clientPort:0, clientIp:localhost),port=40010}",
         dataClient.toString());
     assertCheck(dataClient);
+    factory.close();
   }
 
   @Test
@@ -62,6 +63,7 @@ public class AsyncDataClientTest extends BaseClientTest {
             + "dataPort:40010, clientPort:0, clientIp:localhost),port=40011}",
         dataClient.toString());
     assertCheck(dataClient);
+    factory.close();
   }
 
   private void assertCheck(AsyncDataClient dataClient) {

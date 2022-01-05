@@ -263,7 +263,6 @@ public class LogDispatcherTest {
   @After
   public void tearDown() throws Exception {
     raftMember.stop();
-    raftMember.closeLogManager();
     EnvironmentUtils.cleanAllDir();
   }
 }

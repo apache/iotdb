@@ -143,7 +143,7 @@ public class DataHeartbeatThreadTest extends HeartbeatThreadTest {
   public void tearDown() throws InterruptedException, IOException, StorageEngineException {
     dataLogManager.close();
     dataLogManager = null;
-    metaGroupMember.closeLogManager();
+    metaGroupMember.stop();
     metaGroupMember = null;
     File dir = new File(SyncLogDequeSerializer.getLogDir(2));
     for (File file : dir.listFiles()) {

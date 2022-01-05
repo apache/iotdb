@@ -21,9 +21,12 @@ package org.apache.iotdb.cluster.client;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftService;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.AsyncClient;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService.Client;
 
 import com.google.common.collect.Maps;
 import org.apache.commons.pool2.KeyedObjectPool;
+import org.apache.commons.pool2.impl.GenericKeyedObjectPool;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,9 +45,12 @@ public class ClientManager implements IClientManager {
 
   private static final Logger logger = LoggerFactory.getLogger(ClientManager.class);
 
-  private Map<ClientCategory, KeyedObjectPool<Node, RaftService.AsyncClient>> asyncClientPoolMap;
-  private Map<ClientCategory, KeyedObjectPool<Node, RaftService.Client>> syncClientPoolMap;
-  private final ClientPoolFactory clientPoolFactory;
+  private Map<ClientCategory, GenericKeyedObjectPool<Node, RaftService.AsyncClient>>
+      asyncClientPoolMap;
+  private Map<ClientCategory, GenericKeyedObjectPool<Node, Client>> syncClientPoolMap;
+  private ClientPoolFactory clientPoolFactory;
+
+  private Exception createStack;
 
   /**
    * {@link ClientManager.Type#RequestForwardClient} represents the clients used to forward external
@@ -72,6 +78,8 @@ public class ClientManager implements IClientManager {
       syncClientPoolMap = Maps.newHashMap();
       constructSyncClientMap(type);
     }
+
+    this.createStack = new Exception();
   }
 
   private void constructAsyncClientMap(Type type) {
@@ -219,5 +227,28 @@ public class ClientManager implements IClientManager {
         logger.error("SyncClient return error: {}", client, e);
       }
     }
+  }
+
+  @Override
+  public void close() {
+    if (false) {
+      return;
+    }
+    if (asyncClientPoolMap != null) {
+      for (GenericKeyedObjectPool<Node, AsyncClient> value : asyncClientPoolMap.values()) {
+        value.close();
+        ((BaseFactory) value.getFactory()).close();
+      }
+      asyncClientPoolMap.clear();
+    }
+
+    if (syncClientPoolMap != null) {
+      for (GenericKeyedObjectPool<Node, Client> value : syncClientPoolMap.values()) {
+        value.close();
+        ((BaseFactory) value.getFactory()).close();
+      }
+      syncClientPoolMap.clear();
+    }
+    clientPoolFactory = null;
   }
 }

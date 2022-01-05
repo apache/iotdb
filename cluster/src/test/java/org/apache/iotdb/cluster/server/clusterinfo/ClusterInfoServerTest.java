@@ -50,7 +50,7 @@ public class ClusterInfoServerTest {
   }
 
   @After
-  public void tearDown() throws MetadataException, IOException, StorageEngineException {
+  public void tearDown() throws Exception {
     test.tearDown();
     service.stop();
   }

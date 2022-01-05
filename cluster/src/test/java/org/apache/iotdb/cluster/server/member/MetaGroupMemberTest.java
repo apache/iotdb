@@ -220,6 +220,9 @@ public class MetaGroupMemberTest extends BaseMember {
               @Override
               public void returnSyncClient(
                   RaftService.Client client, Node node, ClientCategory category) {}
+
+              @Override
+              public void close() {}
             });
     testMetaMember.getThisNode().setNodeIdentifier(0);
     testMetaMember.setRouter(new ClusterPlanRouter(testMetaMember.getPartitionTable()));
@@ -724,7 +727,7 @@ public class MetaGroupMemberTest extends BaseMember {
     } catch (Exception e) {
       assertTrue(e instanceof StartUpCheckFailureException);
     } finally {
-      newMember.closeLogManager();
+      newMember.stop();
       ClusterConstant.setHeartbeatIntervalMs(prevInterval);
     }
   }
@@ -928,6 +931,9 @@ public class MetaGroupMemberTest extends BaseMember {
                 @Override
                 public void returnSyncClient(
                     RaftService.Client client, Node node, ClientCategory category) {}
+
+                @Override
+                public void close() {}
               });
       status = coordinator.executeNonQueryPlan(createTimeSeriesPlan);
       if (status.getCode() == TSStatusCode.NEED_REDIRECTION.getStatusCode()) {
@@ -937,6 +943,8 @@ public class MetaGroupMemberTest extends BaseMember {
       assertTrue(IoTDB.metaManager.isPathExist(new PartialPath(TestUtils.getTestSeries(i, 0))));
     }
     testThreadPool.shutdownNow();
+
+    testMetaMember2.stop();
   }
 
   @Test
@@ -1316,7 +1324,7 @@ public class MetaGroupMemberTest extends BaseMember {
     }
     MetaGroupMember metaGroupMember = getMetaGroupMember(new Node());
     assertEquals(100, metaGroupMember.getThisNode().getNodeIdentifier());
-    metaGroupMember.closeLogManager();
+    metaGroupMember.stop();
   }
 
   @Test

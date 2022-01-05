@@ -184,6 +184,9 @@ public class AssignPathManagedMergeReaderTest {
               }
 
               @Override
+              public void close() {}
+
+              @Override
               public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
                 return null;
               }

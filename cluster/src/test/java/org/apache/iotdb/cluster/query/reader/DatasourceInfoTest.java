@@ -57,6 +57,9 @@ public class DatasourceInfoTest {
         .setClientManager(
             new IClientManager() {
               @Override
+              public void close() {}
+
+              @Override
               public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
                   throws IOException {
                 return new AsyncDataClient(null, null, TestUtils.getNode(0), null) {
