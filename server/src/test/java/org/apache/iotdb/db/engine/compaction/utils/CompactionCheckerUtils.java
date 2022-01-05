@@ -26,6 +26,7 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
@@ -504,7 +505,7 @@ public class CompactionCheckerUtils {
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
 
-      PartialPath path = new PartialPath(fullPaths.get(i));
+      PartialPath path = new MeasurementPath(fullPaths.get(i));
       QueryContext context = new QueryContext();
       List<TimeValuePair> dataList = new LinkedList<>();
       IBatchReader reader =

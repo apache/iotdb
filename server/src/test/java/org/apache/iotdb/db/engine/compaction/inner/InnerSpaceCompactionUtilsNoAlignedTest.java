@@ -35,6 +35,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
@@ -57,12 +59,14 @@ import java.util.Set;
  * timeseries.
  */
 public class InnerSpaceCompactionUtilsNoAlignedTest {
-  private static final String storageGroup = "root.compactionTest";
-  private static final String[] devices = new String[] {"device0", "device1", "device2", "device3"};
-  private static PartialPath[] devicePath = new PartialPath[devices.length];
-  private static final String[] measurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
-  private static Set<String> fullPathSet = new HashSet<>();
-  private static UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[measurements.length];
+  private final String storageGroup = "root.compactionTest";
+  private final String[] devices = new String[] {"device0", "device1", "device2", "device3"};
+  private PartialPath[] devicePath = new PartialPath[devices.length];
+  private final String[] measurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
+  private Set<String> fullPathSet = new HashSet<>();
+  private UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[measurements.length];
+  private List<String> paths = new ArrayList<>();
+  private List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static File tempSGDir;
   private static String SEQ_DIRS =
@@ -142,6 +146,8 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             schema.getCompressor(),
             Collections.emptyMap());
         fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementId());
+        paths.add(device.getFullPath() + "." + schema.getMeasurementId());
+        schemaList.add(schema);
       }
     }
   }
@@ -174,6 +180,8 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
+      Map<String, List<TimeValuePair>> originData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -196,6 +204,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunks(chunkPagePointsNumMerged, path, points);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      Map<String, List<TimeValuePair>> compactedData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(
+          paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -237,6 +249,8 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
+      Map<String, List<TimeValuePair>> originData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -271,6 +285,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      Map<String, List<TimeValuePair>> compactedData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(
+          paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -322,6 +340,8 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
+      Map<String, List<TimeValuePair>> originData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -343,6 +363,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      Map<String, List<TimeValuePair>> compactedData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(
+          paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
@@ -398,6 +422,8 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
+      Map<String, List<TimeValuePair>> originData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
       TsFileResource targetResource =
@@ -419,6 +445,10 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
+      Map<String, List<TimeValuePair>> compactedData = new HashMap<>();
+      CompactionCheckerUtils.getDataByQuery(
+          paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
+      CompactionCheckerUtils.validDataByValueList(originData, compactedData);
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(originTargetChunkSize);
       IoTDBDescriptor.getInstance().getConfig().setTargetChunkPointNum(originTargetChunkPointNum);
