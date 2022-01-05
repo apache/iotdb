@@ -791,8 +791,7 @@ public:
                                  const std::vector <std::string> &measurements,
                                  const std::vector <TSDataType::TSDataType> &dataTypes,
                                  const std::vector <TSEncoding::TSEncoding> &encodings,
-                                 const std::vector <CompressionType::CompressionType> &compressors,
-                                 std::vector <std::string> *measurementAliasList);
+                                 const std::vector <CompressionType::CompressionType> &compressors);
 
     bool checkTimeseriesExists(const std::string &path);
 

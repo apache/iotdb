@@ -1243,8 +1243,7 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
                              const std::vector <std::string> &measurements,
                              const std::vector <TSDataType::TSDataType> &dataTypes,
                              const std::vector <TSEncoding::TSEncoding> &encodings,
-                             const std::vector <CompressionType::CompressionType> &compressors,
-                             std::vector <std::string> *measurementAliasList) {
+                             const std::vector <CompressionType::CompressionType> &compressors) {
     shared_ptr <TSCreateAlignedTimeseriesReq> request(new TSCreateAlignedTimeseriesReq());
     request->__set_sessionId(sessionId);
     request->__set_prefixPath(deviceId);
@@ -1267,10 +1266,6 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
         compressorsOrdinal.push_back(compressor);
     }
     request->__set_compressors(compressorsOrdinal);
-
-    if (measurementAliasList != NULL) {
-        request->__set_measurementAlias(*measurementAliasList);
-    }
 
     try {
         shared_ptr <TSStatus> resp(new TSStatus());
