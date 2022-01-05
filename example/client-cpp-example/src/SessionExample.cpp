@@ -156,8 +156,8 @@ void insertTablets() {
 
         for (int i = 0; i < 3; i++) {
             tablet1.values[i][row1] = to_string(i);
-            tablet2.values[i][row1] = to_string(i);
-            tablet3.values[i][row1] = to_string(i);
+            tablet2.values[i][row2] = to_string(i);
+            tablet3.values[i][row3] = to_string(i);
         }
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertTablets(tabletMap, true);
