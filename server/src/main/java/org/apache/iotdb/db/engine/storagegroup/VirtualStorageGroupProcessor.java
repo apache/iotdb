@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -271,11 +272,13 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask =
-      Executors.newSingleThreadScheduledExecutor();
+      Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("CompactionSchedule"));
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+
+  private ScheduledExecutorService trimWalService;
 
   /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
   public ByteBuffer[] getWalDirectByteBuffer() {
@@ -386,8 +389,9 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
-    executorService.scheduleWithFixedDelay(
+    trimWalService =
+        Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("TrimWalBuffer"));
+    trimWalService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
@@ -3212,6 +3216,7 @@ public class VirtualStorageGroupProcessor {
 
   @FunctionalInterface
   public interface CompactionRecoverCallBack {
+
     void call();
   }
 
@@ -3238,5 +3243,9 @@ public class VirtualStorageGroupProcessor {
 
   public IDTable getIdTable() {
     return idTable;
+  }
+
+  public void stopWalTrim() {
+    trimWalService.shutdownNow();
   }
 }

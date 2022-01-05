@@ -489,6 +489,15 @@ public class StorageGroupManager {
     }
   }
 
+  public void stopWalTrimPool() {
+    for (VirtualStorageGroupProcessor virtualStorageGroupProcessor :
+        this.virtualStorageGroupProcessor) {
+      if (virtualStorageGroupProcessor != null) {
+        virtualStorageGroupProcessor.stopWalTrim();
+      }
+    }
+  }
+
   public void setSettling(boolean settling) {
     isSettling.set(settling);
   }

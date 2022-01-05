@@ -20,6 +20,7 @@ package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +34,19 @@ public class QueryFrequencyRecorder {
   private static final Logger QUERY_FREQUENCY_LOGGER = LoggerFactory.getLogger("QUERY_FREQUENCY");
   private static final AtomicInteger QUERY_COUNT = new AtomicInteger(0);
 
-  public QueryFrequencyRecorder(IoTDBConfig config) {
+  public static QueryFrequencyRecorder getInstance() {
+    return QueryFrequencyRecorder.InstanceHolder.instance;
+  }
+
+  private static class InstanceHolder {
+
+    private InstanceHolder() {}
+
+    private static QueryFrequencyRecorder instance =
+        new QueryFrequencyRecorder(IoTDBDescriptor.getInstance().getConfig());
+  }
+
+  private QueryFrequencyRecorder(IoTDBConfig config) {
     ScheduledExecutorService timedQuerySqlCountThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("timedQuerySqlCount");
     timedQuerySqlCountThread.scheduleAtFixedRate(
@@ -50,5 +63,9 @@ public class QueryFrequencyRecorder {
 
   public void incrementAndGet() {
     QUERY_COUNT.incrementAndGet();
+  }
+
+  public void reset() {
+    QUERY_COUNT.set(0);
   }
 }

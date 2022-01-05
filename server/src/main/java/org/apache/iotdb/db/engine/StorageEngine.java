@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.ServerConfigConsistent;
@@ -94,6 +95,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class StorageEngine implements IService {
+
   private static final Logger logger = LoggerFactory.getLogger(StorageEngine.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
@@ -273,7 +275,7 @@ public class StorageEngine implements IService {
 
     recover();
 
-    ttlCheckThread = Executors.newSingleThreadScheduledExecutor();
+    ttlCheckThread = Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("CheckTTL"));
     ttlCheckThread.scheduleAtFixedRate(
         this::checkTTL, TTL_CHECK_INTERVAL, TTL_CHECK_INTERVAL, TimeUnit.MILLISECONDS);
     logger.info("start ttl check thread successfully.");
@@ -296,7 +298,8 @@ public class StorageEngine implements IService {
   private void startTimedService() {
     // timed flush sequence memtable
     if (config.isEnableTimedFlushSeqMemtable()) {
-      seqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      seqMemtableTimedFlushCheckThread =
+          Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("FlushSeqMemTable"));
       seqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushSeqMemTable,
           config.getSeqMemtableFlushCheckInterval(),
@@ -306,7 +309,8 @@ public class StorageEngine implements IService {
     }
     // timed flush unsequence memtable
     if (config.isEnableTimedFlushUnseqMemtable()) {
-      unseqMemtableTimedFlushCheckThread = Executors.newSingleThreadScheduledExecutor();
+      unseqMemtableTimedFlushCheckThread =
+          Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("FlushUnseqMemTable"));
       unseqMemtableTimedFlushCheckThread.scheduleAtFixedRate(
           this::timedFlushUnseqMemTable,
           config.getUnseqMemtableFlushCheckInterval(),
@@ -316,7 +320,8 @@ public class StorageEngine implements IService {
     }
     // timed close tsfile
     if (config.isEnableTimedCloseTsFile()) {
-      tsFileTimedCloseCheckThread = Executors.newSingleThreadScheduledExecutor();
+      tsFileTimedCloseCheckThread =
+          Executors.newSingleThreadScheduledExecutor(new IoTThreadFactory("CloseTsFile"));
       tsFileTimedCloseCheckThread.scheduleAtFixedRate(
           this::timedCloseTsFileProcessor,
           config.getCloseTsFileCheckInterval(),
@@ -360,6 +365,7 @@ public class StorageEngine implements IService {
   public void stop() {
     for (StorageGroupManager storageGroupManager : processorMap.values()) {
       storageGroupManager.stopCompactionSchedulerPool();
+      storageGroupManager.stopWalTrimPool();
     }
     syncCloseAllProcessor();
     stopTimedService(ttlCheckThread, "TTlCheckThread");
