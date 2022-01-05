@@ -671,7 +671,6 @@ var config = {
 							['Data-Concept/Data-Type','Data Type'],
 							['Data-Concept/Encoding','Encoding'],
 							['Data-Concept/Compression','Compression'],
-							['Data-Concept/SDT','SDT'],
 							['Data-Concept/Auto-Create-MetaData','Auto Create Metadata'],
 							['Data-Concept/Time-Partition','Time Partition']
 						]
@@ -714,11 +713,19 @@ var config = {
 						title: 'Advanced Features',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','UDF (User Defined Function)'],
-              ['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
-              ['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
+							['Advanced-Features/Select-Into','Query Write-back (SELECT INTO)'],
+							['Advanced-Features/Continuous-Query','CQ (Continuous Query)'],
 							['Advanced-Features/Triggers','Triggers'],
 							['Advanced-Features/Alerting','Alerting'],
 						]
+					},
+					{
+					    title: 'UDF Library',
+					    children: [
+					        ['Library-UDF/Get-Started', 'Get Started'],
+					        ['Library-UDF/Data-Quality', 'Data Quality'],
+					        ['Library-UDF/Data-Repair', 'Data Repairing']
+					    ]
 					},
 					{
 						title: 'Communication Service Protocol',
@@ -1469,7 +1476,6 @@ var config = {
 							['Data-Concept/Data-Type','数据类型'],
 							['Data-Concept/Encoding','编码方式'],
 							['Data-Concept/Compression','压缩方式'],
-							['Data-Concept/SDT','旋转门压缩'],
 							['Data-Concept/Auto-Create-MetaData','自动创建元数据'],
 							['Data-Concept/Time-Partition','时间分区']
 						]
@@ -1514,11 +1520,19 @@ var config = {
 						title: '高级功能',
 						children: [
 							['Advanced-Features/UDF-User-Defined-Function','用户定义函数(UDF)'],
-              ['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
-              ['Advanced-Features/Continuous-Query','连续查询(CQ)'],
+							['Advanced-Features/Select-Into','查询写回(SELECT INTO)'],
+							['Advanced-Features/Continuous-Query','连续查询(CQ)'],
 							['Advanced-Features/Triggers','触发器'],
 							['Advanced-Features/Alerting','告警机制'],
 						]
+					},
+					{
+          				title: 'UDF 函数库',
+          				children: [
+          					['Library-UDF/Get-Started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量'],
+          					['Library-UDF/Data-Repair', '数据修复']
+          				]
 					},
 					{
 						title: '通信服务协议',

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.query.executor.fill;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -70,7 +71,7 @@ public class LastPointReader {
       QueryDataSource dataSource,
       long queryTime,
       Filter timeFilter) {
-    this.seriesPath = seriesPath;
+    this.seriesPath = IDTable.translateQueryPath(seriesPath);
     this.dataType = dataType;
     this.dataSource = dataSource;
     this.context = context;

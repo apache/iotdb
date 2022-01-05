@@ -142,6 +142,16 @@ public class ClusterEnvConfig implements BaseConfig {
     return this;
   }
 
+  public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    engineProperties.setProperty("enable_id_table", String.valueOf(isEnableIDTable));
+    return this;
+  }
+
+  public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    engineProperties.setProperty("device_id_transformation_method", deviceIDTransformationMethod);
+    return this;
+  }
+
   public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     clusterProperties.setProperty(
         "enable_auto_create_schema", String.valueOf(enableAutoCreateSchema));

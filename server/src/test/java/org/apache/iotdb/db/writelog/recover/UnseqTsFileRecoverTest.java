@@ -223,7 +223,7 @@ public class UnseqTsFileRecoverTest {
   @Test
   public void test() throws StorageGroupProcessorException, IOException {
     TsFileRecoverPerformer performer =
-        new TsFileRecoverPerformer(logNodePrefix, resource, false, false);
+        new TsFileRecoverPerformer(logNodePrefix, resource, false, false, null);
     performer
         .recover(
             true,
