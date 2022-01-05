@@ -152,6 +152,10 @@ int Tablet::getValueByteSize() {
     return valueOccupation;
 }
 
+void Tablet::setAligned(bool isAligned) {
+    this->isAligned = isAligned;
+}
+
 string SessionUtils::getTime(const Tablet &tablet) {
     MyStringBuffer timeBuffer;
     for (int i = 0; i < tablet.rowSize; i++) {
@@ -574,6 +578,7 @@ void Session::insertRecord(const string &deviceId, int64_t time,
     req.__set_timestamp(time);
     req.__set_measurements(measurements);
     req.__set_values(values);
+    req.__set_isAligned(false);
     TSStatus respStatus;
     try {
         client->insertStringRecord(respStatus, req);
@@ -596,6 +601,49 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
     string buffer;
     putValuesIntoBuffer(types, values, buffer);
     req.__set_values(buffer);
+    req.__set_isAligned(false);
+    TSStatus respStatus;
+    try {
+        client->insertRecord(respStatus, req);
+        RpcUtils::verifySuccess(respStatus);
+    } catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertAlignedRecord(const string &deviceId, int64_t time,
+                           const vector <string> &measurements,
+                           const vector <string> &values) {
+    TSInsertStringRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(deviceId);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    req.__set_values(values);
+    req.__set_isAligned(true);
+    TSStatus respStatus;
+    try {
+        client->insertStringRecord(respStatus, req);
+        RpcUtils::verifySuccess(respStatus);
+    }
+    catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertAlignedRecord(const string &prefixPath, int64_t time,
+                           const vector <string> &measurements,
+                           const vector <TSDataType::TSDataType> &types,
+                           const vector<char *> &values) {
+    TSInsertRecordReq req;
+    req.__set_sessionId(sessionId);
+    req.__set_prefixPath(prefixPath);
+    req.__set_timestamp(time);
+    req.__set_measurements(measurements);
+    string buffer;
+    putValuesIntoBuffer(types, values, buffer);
+    req.__set_values(buffer);
+    req.__set_isAligned(true);
     TSStatus respStatus;
     try {
         client->insertRecord(respStatus, req);
@@ -620,6 +668,7 @@ void Session::insertRecords(const vector <string> &deviceIds,
     request.__set_timestamps(times);
     request.__set_measurementsList(measurementsList);
     request.__set_valuesList(valuesList);
+    request.__set_isAligned(false);
 
     try {
         TSStatus respStatus;
@@ -653,6 +702,67 @@ void Session::insertRecords(const vector <string> &deviceIds,
         bufferList.push_back(buffer);
     }
     request.__set_valuesList(bufferList);
+    request.__set_isAligned(false);
+
+    try {
+        TSStatus respStatus;
+        client->insertRecords(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    } catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertAlignedRecords(const vector <string> &deviceIds,
+                            const vector <int64_t> &times,
+                            const vector <vector<string>> &measurementsList,
+                            const vector <vector<string>> &valuesList) {
+    size_t len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+        logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
+        throw exception(e);
+    }
+    TSInsertStringRecordsReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_prefixPaths(deviceIds);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
+    request.__set_valuesList(valuesList);
+    request.__set_isAligned(true);
+
+    try {
+        TSStatus respStatus;
+        client->insertStringRecords(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    }
+    catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertAlignedRecords(const vector <string> &deviceIds,
+                            const vector <int64_t> &times,
+                            const vector <vector<string>> &measurementsList,
+                            const vector <vector<TSDataType::TSDataType>> &typesList,
+                            const vector <vector<char *>> &valuesList) {
+    size_t len = deviceIds.size();
+    if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
+        logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
+        throw exception(e);
+    }
+    TSInsertRecordsReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_prefixPaths(deviceIds);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
+    vector <string> bufferList;
+    for (size_t i = 0; i < valuesList.size(); i++) {
+        string buffer;
+        putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+        bufferList.push_back(buffer);
+    }
+    request.__set_valuesList(bufferList);
+    request.__set_isAligned(true);
 
     try {
         TSStatus respStatus;
@@ -707,6 +817,62 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         bufferList.push_back(buffer);
     }
     request.__set_valuesList(bufferList);
+    request.__set_isAligned(true);
+
+    try {
+        TSStatus respStatus;
+        client->insertRecordsOfOneDevice(respStatus, request);
+        RpcUtils::verifySuccess(respStatus);
+    } catch (const exception &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
+                                       vector <int64_t> &times,
+                                       vector <vector<string>> &measurementsList,
+                                       vector <vector<TSDataType::TSDataType>> &typesList,
+                                       vector <vector<char *>> &valuesList) {
+    insertAlignedRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
+}
+
+void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
+                                       vector <int64_t> &times,
+                                       vector <vector<string>> &measurementsList,
+                                       vector <vector<TSDataType::TSDataType>> &typesList,
+                                       vector <vector<char *>> &valuesList,
+                                       bool sorted) {
+
+    if (sorted) {
+        if (!checkSorted(times)) {
+            throw BatchExecutionException("Times in InsertOneDeviceRecords are not in ascending order");
+        }
+    } else {
+        int *index = new int[times.size()];
+        for (size_t i = 0; i < times.size(); i++) {
+            index[i] = i;
+        }
+
+        this->sortIndexByTimestamp(index, times, times.size());
+        times = sortList(times, index, times.size());
+        measurementsList = sortList(measurementsList, index, times.size());
+        typesList = sortList(typesList, index, times.size());
+        valuesList = sortList(valuesList, index, times.size());
+        delete[] index;
+    }
+    TSInsertRecordsOfOneDeviceReq request;
+    request.__set_sessionId(sessionId);
+    request.__set_prefixPath(deviceId);
+    request.__set_timestamps(times);
+    request.__set_measurementsList(measurementsList);
+    vector <string> bufferList;
+    for (size_t i = 0; i < valuesList.size(); i++) {
+        string buffer;
+        putValuesIntoBuffer(typesList[i], valuesList[i], buffer);
+        bufferList.push_back(buffer);
+    }
+    request.__set_valuesList(bufferList);
+    request.__set_isAligned(true);
 
     try {
         TSStatus respStatus;
@@ -757,6 +923,21 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
     }
 }
 
+void Session::insertAlignedTablet(Tablet &tablet) {
+    insertAlignedTablet(tablet, false);
+}
+
+void Session::insertAlignedTablet(Tablet &tablet, bool sorted) {
+    tablet.setAligned(true);
+    try {
+        insertTablet(tablet, sorted);
+    }
+    catch (const exception &e) {
+        logic_error error(e.what());
+        throw exception(error);
+    }
+}
+
 void Session::insertTablets(map<string, Tablet *> &tablets) {
     try {
         insertTablets(tablets, false);
@@ -801,6 +982,23 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
         catch (const exception &e) {
             throw IoTDBConnectionException(e.what());
         }
+    }
+}
+
+void Session::insertAlignedTablets(map<string, Tablet *> &tablets) {
+    insertAlignedTablets(tablets, false);
+}
+
+void Session::insertAlignedTablets(map<string, Tablet *> &tablets, bool sorted) {
+    for(map<string, Tablet *>::iterator iter = tablets.begin(); iter != tablets.end(); iter++) {
+        iter->second->setAligned(true);
+    }
+    try {
+        insertTablets(tablets, sorted);
+    }
+    catch (const exception &e) {
+        logic_error error(e.what());
+        throw exception(error);
     }
 }
 
@@ -1034,6 +1232,49 @@ void Session::createMultiTimeseries(const vector <string> &paths,
     try {
         shared_ptr <TSStatus> resp(new TSStatus());
         client->createMultiTimeseries(*resp, *request);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::createAlignedTimeseries(const std::string &deviceId,
+                             const std::vector <std::string> &measurements,
+                             const std::vector <TSDataType::TSDataType> &dataTypes,
+                             const std::vector <TSEncoding::TSEncoding> &encodings,
+                             const std::vector <CompressionType::CompressionType> &compressors,
+                             std::vector <std::string> *measurementAliasList) {
+    shared_ptr <TSCreateAlignedTimeseriesReq> request(new TSCreateAlignedTimeseriesReq());
+    request->__set_sessionId(sessionId);
+    request->__set_prefixPath(deviceId);
+    request->__set_measurements(measurements);
+
+    vector<int> dataTypesOrdinal;
+    for (TSDataType::TSDataType dataType: dataTypes) {
+        dataTypesOrdinal.push_back(dataType);
+    }
+    request->__set_dataTypes(dataTypesOrdinal);
+
+    vector<int> encodingsOrdinal;
+    for (TSEncoding::TSEncoding encoding: encodings) {
+        encodingsOrdinal.push_back(encoding);
+    }
+    request->__set_encodings(encodingsOrdinal);
+
+    vector<int> compressorsOrdinal;
+    for (CompressionType::CompressionType compressor: compressors) {
+        compressorsOrdinal.push_back(compressor);
+    }
+    request->__set_compressors(compressorsOrdinal);
+
+    if (measurementAliasList != NULL) {
+        request->__set_measurementAlias(*measurementAliasList);
+    }
+
+    try {
+        shared_ptr <TSStatus> resp(new TSStatus());
+        client->createAlignedTimeseries(*resp, *request);
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
