@@ -117,9 +117,11 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
 
   @After
   public void tearDown() throws Exception {
-    File dataDir = new File(TestConstant.BASE_OUTPUT_PATH + "data");
-    if (dataDir.exists()) {
-      FileUtils.forceDelete(dataDir);
+    if (new File(SEQ_DIRS).exists()) {
+      FileUtils.forceDelete(new File(SEQ_DIRS));
+    }
+    if (new File(UNSEQ_DIRS).exists()) {
+      FileUtils.forceDelete(new File(UNSEQ_DIRS));
     }
     IoTDB.metaManager.clear();
     ChunkCache.getInstance().clear();
