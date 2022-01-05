@@ -23,15 +23,14 @@ using namespace std;
 
 Session *session;
 
-static string alignedDeviceId = "root.sg1.d1";
-static vector<string> measurements = {"s1", "s2", "s3"};
-static vector<string> alignedTimeseries = {"root.sg1.d1.s1","root.sg1.d1.s2","root.sg1.d1.s3"};
-static vector<TSDataType::TSDataType> dataTypes = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::BOOLEAN};
-static vector<TSEncoding::TSEncoding> encodings = {TSEncoding::PLAIN, TSEncoding::RLE, TSEncoding::GORILLA};
-static vector<CompressionType::CompressionType> compressors = {
-        CompressionType::SNAPPY, CompressionType::UNCOMPRESSED, CompressionType::SNAPPY};
-
 void createAlignedTimeseries() {
+    string alignedDeviceId = "root.sg1.d1";
+    vector<string> measurements = {"s1", "s2", "s3"};
+    vector<string> alignedTimeseries = {"root.sg1.d1.s1","root.sg1.d1.s2","root.sg1.d1.s3"};
+    vector<TSDataType::TSDataType> dataTypes = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::BOOLEAN};
+    vector<TSEncoding::TSEncoding> encodings = {TSEncoding::PLAIN, TSEncoding::GORILLA, TSEncoding::RLE};
+    vector<CompressionType::CompressionType> compressors = {
+        CompressionType::SNAPPY, CompressionType::UNCOMPRESSED, CompressionType::SNAPPY};
     for (string timeseries : alignedTimeseries) {
         if (session->checkTimeseriesExists(timeseries)) {
             session->deleteTimeseries(timeseries);
@@ -41,32 +40,44 @@ void createAlignedTimeseries() {
 }
 
 void insertAlignedRecord() {
+    string deviceId = "root.sg1.d1";
+    vector<string> measurements;
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
+
     for (int64_t time = 0; time < 100; time++) {
         vector<string> values;
-        values.push_back(1);
-        values.push_back(1.0);
-        values.push_back(true);
-        session->insertAlignedRecord(alignedDeviceId, time, measurements, values);
+        values.push_back("1");
+        values.push_back("1.0");
+        values.push_back("true");
+        session->insertAlignedRecord(deviceId, time, measurements, values);
     }
 }
 
 void insertAlignedRecords() {
+    string deviceId = "root.sg1.d1";
+    vector<string> measurements;
+    measurements.push_back("s1");
+    measurements.push_back("s2");
+    measurements.push_back("s3");
+
     vector<string> deviceIds;
     vector<vector<string>> measurementsList;
     vector<vector<string>> valuesList;
     vector<int64_t> timestamps;
 
-    for (int64_t time = 0; time < 500; time++) {
+    for (int64_t time = 100; time < 200; time++) {
         vector<string> values;
-        values.push_back(1);
-        values.push_back(1.0);
-        values.push_back(true);
+        values.push_back("1");
+        values.push_back("1.0");
+        values.push_back("true");
 
-        deviceIds.push_back(alignedDeviceId);
+        deviceIds.push_back(deviceId);
         measurementsList.push_back(measurements);
         valuesList.push_back(values);
         timestamps.push_back(time);
-        if (time != 0 && time % 100 == 0) {
+        if (time != 100 && time % 100 == 0) {
             session->insertAlignedRecords(deviceIds, timestamps, measurementsList, valuesList);
             deviceIds.clear();
             measurementsList.clear();
@@ -88,21 +99,22 @@ void insertAlignedTablet() {
     schemas.push_back(pairC);
 
     Tablet tablet("root.sg1.d1", schemas, 100);
+    tablet.setAligned(true);
 
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 200; time < 300; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
-        tablet.values[0][row] = 1;
-        tablet.values[1][row] = 1.0;
-        tablet.values[2][row] = true;
+        tablet.values[0][row] = "1";
+        tablet.values[1][row] = "1.0";
+        tablet.values[2][row] = "true";
         if (tablet.rowSize == tablet.maxRowNumber) {
-            session->insertAlignedTablet(tablet, true);
+            session->insertTablet(tablet, true);
             tablet.reset();
         }
     }
 
     if (tablet.rowSize != 0) {
-        session->insertAlignedTablet(tablet);
+        session->insertTablet(tablet);
         tablet.reset();
     }
 }
@@ -125,7 +137,7 @@ void insertAlignedTablets() {
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 300; time < 400; time++) {
         int row1 = tablet1.rowSize++;
         int row2 = tablet2.rowSize++;
         int row3 = tablet3.rowSize++;
@@ -133,17 +145,17 @@ void insertAlignedTablets() {
         tablet2.timestamps[row2] = time;
         tablet3.timestamps[row3] = time;
 
-        tablet1.values[0][row1] = 1;
-        tablet2.values[0][row2] = 2;
-        tablet3.values[0][row3] = 3;
+        tablet1.values[0][row1] = "1";
+        tablet2.values[0][row2] = "2";
+        tablet3.values[0][row3] = "3";
 
-        tablet1.values[1][row1] = 1.0;
-        tablet2.values[1][row2] = 2.0;
-        tablet3.values[1][row3] = 3.0;
+        tablet1.values[1][row1] = "1.0";
+        tablet2.values[1][row2] = "2.0";
+        tablet3.values[1][row3] = "3.0";
 
-        tablet1.values[2][row1] = true;
-        tablet2.values[2][row2] = false;
-        tablet3.values[2][row3] = true;
+        tablet1.values[2][row1] = "true";
+        tablet2.values[2][row2] = "false";
+        tablet3.values[2][row3] = "true";
 
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertAlignedTablets(tabletMap, true);
@@ -162,71 +174,44 @@ void insertAlignedTablets() {
     }
 }
 
-void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
-    cout << "timestamp" << "  ";
-    for (string name : dataSet->getColumnNames()) {
-        cout << name << "  ";
-    }
-    cout << endl;
-    dataSet->setBatchSize(1024);
-    while (dataSet->hasNext()) {
-        cout << dataSet->next()->toString();
-    }
-
-    dataSet->closeOperationHandle();
-}
-
-void deleteData() {
-    string path = "root.sg1.d1.s1";
-    int64_t deleteTime = 99;
-    session->deleteData(path, deleteTime);
-}
-
-void deleteTimeseries() {
-    vector<string> paths;
-    for (string timeseries : alignedTimeseries) {
-        if (session->checkTimeseriesExists(timeseries)) {
-            paths.push_back(timeseries);
-        }
-    }
-    session->deleteTimeseries(paths);
-}
-
 int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
+
+    cout << "session open\n" << endl;
     session->open(false);
 
-    cout << "setStorageGroup\n";
+    cout << "setStorageGroup\n" << endl;
     try {
         session->setStorageGroup("root.sg1");
     }
     catch (IoTDBConnectionException e){
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+            cout << errorMessage << endl;
             throw e;
         }
     }
 
+    cout << "createAlignedTimeseries\n" << endl;
     createAlignedTimeseries();
 
+    cout << "insertAlignedRecord\n" << endl;
     insertAlignedRecord();
 
+    cout << "insertAlignedRecords\n" << endl;
     insertAlignedRecords();
 
+    cout << "insertAlignedTablet\n" << endl;
     insertAlignedTablet();
 
+    cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
 
-    query();
-
-    deleteData();
-
-    deleteTimeseries();
-
+    cout << "session close\n" << endl;
     session->close();
 
     delete session;
 
+    cout << "finished\n" << endl;
     return 0;
 }
