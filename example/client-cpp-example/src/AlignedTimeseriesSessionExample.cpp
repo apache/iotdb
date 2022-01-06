@@ -39,6 +39,22 @@ void createAlignedTimeseries() {
     session->createAlignedTimeseries(alignedDeviceId, measurements, dataTypes, encodings, compressors);
 }
 
+void showTimeseries() {
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+
+    dataSet->setBatchSize(1024);
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+
+    dataSet->closeOperationHandle();
+}
+
 void insertAlignedRecord() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
@@ -46,7 +62,7 @@ void insertAlignedRecord() {
     measurements.emplace_back("s2");
     measurements.emplace_back("s3");
 
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 0; time < 10; time++) {
         vector<string> values;
         values.emplace_back("1");
         values.emplace_back("1.0");
@@ -67,7 +83,7 @@ void insertAlignedRecords() {
     vector<vector<string>> valuesList;
     vector<int64_t> timestamps;
 
-    for (int64_t time = 100; time < 200; time++) {
+    for (int64_t time = 10; time < 20; time++) {
         vector<string> values;
         values.emplace_back("1");
         values.emplace_back("1.0");
@@ -77,7 +93,7 @@ void insertAlignedRecords() {
         measurementsList.push_back(measurements);
         valuesList.push_back(values);
         timestamps.push_back(time);
-        if (time != 100 && time % 100 == 0) {
+        if (time != 10 && time % 10 == 0) {
             session->insertAlignedRecords(deviceIds, timestamps, measurementsList, valuesList);
             deviceIds.clear();
             measurementsList.clear();
@@ -98,10 +114,10 @@ void insertAlignedTablet() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 100);
+    Tablet tablet("root.sg1.d1", schemas, 10);
     tablet.setAligned(true);
 
-    for (int64_t time = 200; time < 300; time++) {
+    for (int64_t time = 20; time < 30; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         tablet.values[0][row] = "1";
@@ -128,16 +144,16 @@ void insertAlignedTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d1", schemas, 100);
-    Tablet tablet2("root.sg1.d2", schemas, 100);
-    Tablet tablet3("root.sg1.d3", schemas, 100);
+    Tablet tablet1("root.sg1.d1", schemas, 10);
+    Tablet tablet2("root.sg1.d2", schemas, 10);
+    Tablet tablet3("root.sg1.d3", schemas, 10);
 
     map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 300; time < 400; time++) {
+    for (int64_t time = 30; time < 40; time++) {
         int row1 = tablet1.rowSize++;
         int row2 = tablet2.rowSize++;
         int row3 = tablet3.rowSize++;
@@ -174,9 +190,26 @@ void insertAlignedTablets() {
     }
 }
 
+void query() {
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    cout << "timestamp" << "  ";
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+
+    dataSet->setBatchSize(1024);
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+
+    dataSet->closeOperationHandle();
+}
+
 void deleteData() {
     string path = "root.sg1.d1.s1";
-    int64_t deleteTime = 99;
+    int64_t deleteTime = 39;
     session->deleteData(path, deleteTime);
 }
 
@@ -212,6 +245,9 @@ int main() {
     cout << "createAlignedTimeseries\n" << endl;
     createAlignedTimeseries();
 
+    cout << "showTimeseries\n" << endl;
+    showTimeseries();
+
     cout << "insertAlignedRecord\n" << endl;
     insertAlignedRecord();
 
@@ -223,6 +259,9 @@ int main() {
 
     cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
+
+    cout << "query\n" << endl;
+    query();
 
     cout << "deleteData\n" << endl;
     deleteData();
