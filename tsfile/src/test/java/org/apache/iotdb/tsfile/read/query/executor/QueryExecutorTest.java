@@ -42,19 +42,31 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
 
 import java.io.IOException;
 
+@State(Scope.Benchmark)
 public class QueryExecutorTest {
 
   private static final String FILE_PATH = TsFileGeneratorForTest.outputDataFile;
   private TsFileSequenceReader fileReader;
   private MetadataQuerierByFileImpl metadataQuerierByFile;
   private IChunkLoader chunkLoader;
-  private int rowCount = 10000;
+  private int rowCount = 1000000;
   private TsFileExecutor queryExecutorWithQueryFilter;
 
+  @Param({"false", "true"})
+  public boolean newApproach;
+
   @Before
+  @Setup
   public void before() throws IOException {
     TSFileDescriptor.getInstance().getConfig().setTimeEncoder("TS_2DIFF");
     TsFileGeneratorForTest.generateFile(rowCount, 16 * 1024 * 1024, 10000);
@@ -70,8 +82,14 @@ public class QueryExecutorTest {
     TsFileGeneratorForTest.after();
   }
 
+  @Benchmark
+//  @Fork(2)
+//  @Warmup(iterations = 3)
   @Test
   public void query1() throws IOException {
+//    TsFileExecutor.newApproach.set(newApproach);
+    TsFileExecutor.newApproach.set(true);
+
     Filter filter = TimeFilter.lt(1480562618100L);
     Filter filter2 = ValueFilter.gt(new Binary("dog"));
 

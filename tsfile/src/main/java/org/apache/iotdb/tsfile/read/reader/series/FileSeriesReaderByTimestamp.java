@@ -24,6 +24,7 @@ import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.controller.IChunkLoader;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
@@ -89,6 +90,50 @@ public class FileSeriesReaderByTimestamp {
       if (data.hasCurrent()) {
         if (data.currentTime() == timestamp) {
           Object value = data.currentValue();
+          data.next();
+          return value;
+        }
+        return null;
+      } else {
+        if (chunkReader.hasNextSatisfiedPage()) {
+          data = chunkReader.nextPageData();
+        } else if (!constructNextSatisfiedChunkReader()) {
+          return null;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  public Field getFieldInTimestamp(long timestamp) throws IOException {
+    this.currentTimestamp = timestamp;
+
+    // first initialization, only invoked in the first time
+    if (chunkReader == null) {
+      if (!constructNextSatisfiedChunkReader()) {
+        return null;
+      }
+
+      if (chunkReader.hasNextSatisfiedPage()) {
+        data = chunkReader.nextPageData();
+      } else {
+        return null;
+      }
+    }
+
+    while (data != null) {
+      while (data.hasCurrent()) {
+        if (data.currentTime() < timestamp) {
+          data.next();
+        } else {
+          break;
+        }
+      }
+
+      if (data.hasCurrent()) {
+        if (data.currentTime() == timestamp) {
+          Field value = data.currentField();
           data.next();
           return value;
         }

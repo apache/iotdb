@@ -121,6 +121,30 @@ public class BatchData {
     return this.timeRet.get(readCurListIndex)[readCurArrayIndex];
   }
 
+  public Field currentField() {
+    Field field = new Field(dataType);
+    switch (dataType) {
+      case INT32:
+        field.setIntV(getInt());
+        break;
+//      case INT64:
+//        return getLong();
+      case FLOAT:
+        field.setFloatV(getFloat());
+        break;
+//      case DOUBLE:
+//        return getDouble();
+//      case BOOLEAN:
+//        return getBoolean();
+//      case TEXT:
+//        return getBinary();
+//      case VECTOR:
+//        return getVector();
+      default:
+        return null;
+    }
+    return field;
+  }
   /**
    * get current value.
    *

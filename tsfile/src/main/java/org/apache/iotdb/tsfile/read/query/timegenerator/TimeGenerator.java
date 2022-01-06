@@ -19,13 +19,14 @@
 package org.apache.iotdb.tsfile.read.query.timegenerator;
 
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
+import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
-import org.apache.iotdb.tsfile.read.query.timegenerator.node.LeafNode;
+import org.apache.iotdb.tsfile.read.query.iterator.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.OrNode;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
@@ -45,6 +46,7 @@ public abstract class TimeGenerator {
 
   private HashMap<Path, List<LeafNode>> leafNodeCache = new HashMap<>();
   private HashMap<Path, List<Object>> leafValuesCache;
+  private HashMap<Path, List<Field>> leafFieldsCache;
   protected Node operatorNode;
   private boolean hasOrNode;
 
@@ -56,12 +58,18 @@ public abstract class TimeGenerator {
     if (!hasOrNode) {
       if (leafValuesCache == null) {
         leafValuesCache = new HashMap<>();
+        leafFieldsCache = new HashMap<>();
       }
       leafNodeCache.forEach(
-          (path, nodes) ->
-              leafValuesCache
-                  .computeIfAbsent(path, k -> new ArrayList<>())
-                  .add(nodes.get(0).currentValue()));
+          (path, nodes) -> {
+            leafValuesCache
+                .computeIfAbsent(path, k -> new ArrayList<>())
+                .add(nodes.get(0).currentValue());
+            leafFieldsCache
+                .computeIfAbsent(path, k -> new ArrayList<>())
+                .add(nodes.get(0).currentField());
+          }
+      );
     }
     return operatorNode.next();
   }
@@ -90,6 +98,18 @@ public abstract class TimeGenerator {
           "getValue() method should not be invoked by non-existent path in where clause");
     }
     return leafValuesCache.get(path).remove(0);
+  }
+
+  public Field getField(Path path) throws IOException {
+    if (hasOrNode) {
+      throw new IOException(
+          "getValue() method should not be invoked when there is OR operator in where clause");
+    }
+    if (leafFieldsCache.get(path) == null) {
+      throw new IOException(
+          "getValue() method should not be invoked by non-existent path in where clause");
+    }
+    return leafFieldsCache.get(path).remove(0);
   }
 
   public void constructNode(IExpression expression) throws IOException {

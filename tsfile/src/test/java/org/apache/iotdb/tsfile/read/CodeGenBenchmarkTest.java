@@ -37,6 +37,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.DataSetWithTimeGenerator;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorForTest;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
@@ -127,7 +128,8 @@ public class CodeGenBenchmarkTest {
 //    Generator.active.set(this.optimize);
 //    Generator.active.set(false);
 //    DataSetWithTimeGenerator.generate.set(this.optimize);
-    BatchDataFactory.optimize.set(optimize);
+    // ExecutorWithTimeGenerator.optimize.set(optimize);
+    BatchDataFactory.optimize.set(false);
     runTests(filters, blackhole);
   }
 
@@ -371,7 +373,7 @@ public class CodeGenBenchmarkTest {
         .warmupIterations(3)
         .mode(Mode.AverageTime)
         .timeUnit(TimeUnit.MILLISECONDS)
-        .param("datapoints", "1000000")
+        .param("datapoints", "1000")
         .param("optimize", "false", "true")
         .param("filter", "standard")
     //        .param("runs", "1")

@@ -39,7 +39,7 @@ public abstract class BinaryExpression implements IBinaryExpression, Serializabl
   @Override
   public abstract IExpression clone();
 
-  protected static class AndExpression extends BinaryExpression {
+  public static class AndExpression extends BinaryExpression {
 
     public IExpression left;
     public IExpression right;

@@ -80,11 +80,44 @@ public class TimeGeneratorTest {
 
     TsFileTimeGenerator timestampGenerator =
         new TsFileTimeGenerator(IExpression, chunkLoader, metadataQuerierByFile);
+    int loops = 0;
     while (timestampGenerator.hasNext()) {
       // System.out.println(timestampGenerator.next());
       Assert.assertEquals(startTimestamp, timestampGenerator.next());
       startTimestamp += 1;
+      loops++;
     }
     Assert.assertEquals(1480562618101L, startTimestamp);
+
+    System.out.println(loops);
+  }
+
+  @Test
+  public void testTimeGenerator2() throws IOException {
+    long startTimestamp = 1480562618000L;
+    Filter filter = TimeFilter.lt(1480562618100L);
+    Filter filter2 = ValueFilter.gt(new Binary("dog"));
+    Filter filter3 =
+        FilterFactory.and(TimeFilter.gtEq(1480562618000L), TimeFilter.ltEq(1480562618100L));
+
+    IExpression IExpression =
+        BinaryExpression.or(
+            BinaryExpression.and(
+                new SingleSeriesExpression(new Path("d1", "s1"), filter),
+                new SingleSeriesExpression(new Path("d1", "s4"), filter2)),
+            new SingleSeriesExpression(new Path("d1", "s1"), filter3));
+
+    TsFileTimeGenerator timestampGenerator =
+        new TsFileTimeGenerator(IExpression, chunkLoader, metadataQuerierByFile);
+    int loops = 0;
+    while (timestampGenerator.hasNext()) {
+//       System.out.println(timestampGenerator.next());
+      Assert.assertEquals(startTimestamp, timestampGenerator.next());
+      startTimestamp += 1;
+      loops++;
+    }
+    Assert.assertEquals(1480562618101L, startTimestamp);
+
+    System.out.println(loops);
   }
 }

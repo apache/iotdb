@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class BatchDataFactory {
 
-  public static AtomicBoolean optimize = new AtomicBoolean(true);
+  public static AtomicBoolean optimize = new AtomicBoolean(false);
 
   private BatchDataFactory() {
     throw new IllegalStateException("Factory class");

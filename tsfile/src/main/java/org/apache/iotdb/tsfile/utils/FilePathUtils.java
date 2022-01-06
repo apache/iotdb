@@ -148,6 +148,9 @@ public class FilePathUtils {
       String tsFileAbsolutePath) {
     String[] pathSegments = splitTsFilePath(tsFileAbsolutePath);
     int pathLength = pathSegments.length;
+    if (pathLength < 4) {
+      return new Pair<String, long[]>("",new long[]{0, 0});
+    }
     return new Pair<>(
         pathSegments[pathLength - 4]
             + File.separator
