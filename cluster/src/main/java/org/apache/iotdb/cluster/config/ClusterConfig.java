@@ -124,7 +124,7 @@ public class ClusterConfig {
    * give up and just use current data it has cached before; Weak consistency do not synchronize
    * with the leader and simply use the local data
    */
-  private ConsistencyLevel consistencyLevel = ConsistencyLevel.MID_CONSISTENCY;
+  private ConsistencyLevel consistencyLevel = ConsistencyLevel.STRONG_CONSISTENCY;
 
   private long joinClusterTimeOutMs = TimeUnit.SECONDS.toMillis(5);
 

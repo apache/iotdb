@@ -76,6 +76,8 @@ public class ClusterSessionSimpleIT {
     stringList.add("localhost:" + service2Port);
     stringList.add("localhost:" + service3Port);
     session = new Session(stringList, "root", "root");
+    // cannot cache leader in e2e tests, the client is not in the same LAN as the servers
+    session.setEnableCacheLeader(false);
     session.open();
     session.setStorageGroup("root.sg1");
     session.createTimeseries(

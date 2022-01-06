@@ -63,6 +63,7 @@ import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.ConnectException;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,18 +103,38 @@ public class SessionConnection {
     initClusterConn();
   }
 
+  private void createTransport(EndPoint endPoint) throws IoTDBConnectionException {
+    int retry = 5;
+    for (int i = 0; i < retry; i++) {
+      try {
+        transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                // as there is a try-catch already, we do not need to use TSocket.wrap
+                endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
+        transport.open();
+        return;
+      } catch (TTransportException e) {
+        if (!(e.getCause() instanceof ConnectException
+            && e.getCause().getMessage().contains("timed out"))) {
+          throw new IoTDBConnectionException(e);
+        }
+
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+          throw new IoTDBConnectionException(interruptedException);
+        }
+      }
+    }
+    throw new IoTDBConnectionException("Unable to connect to " + endPoint);
+  }
+
   private void init(EndPoint endPoint) throws IoTDBConnectionException {
     RpcTransportFactory.setDefaultBufferCapacity(session.thriftDefaultBufferSize);
     RpcTransportFactory.setThriftMaxFrameSize(session.thriftMaxFrameSize);
-    try {
-      transport =
-          RpcTransportFactory.INSTANCE.getTransport(
-              // as there is a try-catch already, we do not need to use TSocket.wrap
-              endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
-      transport.open();
-    } catch (TTransportException e) {
-      throw new IoTDBConnectionException(e);
-    }
+
+    createTransport(endPoint);
 
     if (session.enableRPCCompression) {
       client = new TSIService.Client(new TCompactProtocol(transport));

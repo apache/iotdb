@@ -175,8 +175,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
               () -> {
                 if (partitionGroup.contains(metaGroupMember.getThisNode())) {
                   // this node is a member of the group, perform a local query after synchronizing
-                  // with the
-                  // leader
+                  // with the leader
                   metaGroupMember
                       .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
                       .syncLeaderWithConsistencyCheck(false);
