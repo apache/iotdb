@@ -53,9 +53,16 @@ public class CompactionDeviceVisitor {
 
   public CompactionDeviceVisitor(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
-    for (TsFileResource tsFileResource : this.tsFileResources) {
-      TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
-      readerMap.put(tsFileResource, reader);
+    try {
+      for (TsFileResource tsFileResource : this.tsFileResources) {
+        TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
+        readerMap.put(tsFileResource, reader);
+      }
+    } catch (Throwable throwable) {
+      for (TsFileSequenceReader reader : readerMap.values()) {
+        reader.close();
+      }
+      throw throwable;
     }
   }
 
