@@ -313,7 +313,12 @@ void SessionDataSet::constructOneRow() {
         outFields.push_back(field);
     }
 
-    rowRecord = RowRecord(tsQueryDataSetTimeBuffer.getLong(), outFields);
+    if(!this->isIgnoreTimeStamp) {
+        rowRecord = RowRecord(tsQueryDataSetTimeBuffer.getLong(), outFields);
+    } else {
+        tsQueryDataSetTimeBuffer.getLong();
+        rowRecord = RowRecord(outFields);
+    }
     rowsIndex++;
 }
 
@@ -1291,7 +1296,8 @@ bool Session::checkTimeseriesExists(const string &path) {
         dataset->closeOperationHandle();
         return isExisted;
     }
-    catch (exception e) {
+    catch (exception &e) {
+        std::cout << e.what() << std::endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1342,7 +1348,7 @@ unique_ptr <SessionDataSet> Session::executeQueryStatement(const string &sql) {
     }
     shared_ptr <TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
     return unique_ptr<SessionDataSet>(new SessionDataSet(
-            sql, resp->columns, resp->dataTypeList, resp->queryId, statementId, client, sessionId, queryDataSet));
+            sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->ignoreTimeStamp, resp->queryId, statementId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(const string &sql) {
