@@ -141,7 +141,9 @@ public class HeartbeatThread implements Runnable {
     logger.info("{}: End elections", memberName);
   }
 
-  /** Send each node (except the local node) in the group of the member a heartbeat. */
+  /**
+   * Send each node (except the local node) in the group of the member a heartbeat.
+   */
   protected void sendHeartbeats() {
     synchronized (localMember.getTerm()) {
       request.setTerm(localMember.getTerm().get());
@@ -153,7 +155,9 @@ public class HeartbeatThread implements Runnable {
     }
   }
 
-  /** Send each node (except the local node) in list a heartbeat. */
+  /**
+   * Send each node (except the local node) in list a heartbeat.
+   */
   @SuppressWarnings("java:S2445")
   private void sendHeartbeats(Collection<Node> nodes) {
     if (logger.isDebugEnabled()) {
@@ -361,7 +365,7 @@ public class HeartbeatThread implements Runnable {
    *
    * @param nodes
    * @param request
-   * @param nextTerm the term of the election
+   * @param nextTerm           the term of the election
    * @param quorum
    * @param electionTerminated
    * @param electionValid
@@ -442,6 +446,7 @@ public class HeartbeatThread implements Runnable {
   }
 
   private long getElectionRandomWaitMs() {
-    return Math.abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
+    return ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs() + Math
+        .abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
   }
 }
