@@ -170,7 +170,7 @@ public class Template {
     for (String path : alignedPaths) {
       // check aligned whether legal, and records measurements name
       if (getPathNodeInTemplate(path) != null) {
-        throw new IllegalPathException("Path duplicated: " + prefix);
+        throw new IllegalPathException("Path duplicated: " + path);
       }
       pathNodes = MetaUtils.splitPathToDetachedPath(path);
 
@@ -512,8 +512,9 @@ public class Template {
       // If prefix exists and aligned, it will throw exception
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
-      if (parNode != null && parNode.getAsEntityMNode().isAligned()) {
-        throw new IllegalPathException(prefix, "path already exists and aligned");
+      if ((parNode != null && parNode.getAsEntityMNode().isAligned())
+      || prefix.equals("") && this.isDirectAligned()){
+        throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 
       IMeasurementSchema schema =

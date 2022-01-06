@@ -42,6 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -1916,6 +1917,34 @@ public class Session {
     req.setSerializedTemplate(baos.toByteArray());
     baos.close();
     defaultSessionConnection.createSchemaTemplate(req);
+  }
+
+
+  /**
+   * Create a template with flat measurements, not tree structured.
+   * Need to specify datatype, encoding and compressor of each measurement, and alignment of these measurements at once.
+   */
+  public void createSchemaTemplate(String templateName,
+                                   List<String> measurements,
+                                   List<TSDataType> dataTypes,
+                                   List<TSEncoding> encodings,
+                                   List<CompressionType> compressors,
+                                   boolean isAligned)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    Template temp = new Template(templateName, isAligned);
+    int len = measurements.size();
+    if (len != dataTypes.size() || len != encodings.size() || len!= compressors.size()) {
+      throw new StatementExecutionException("Different length of measurements, datatypes, encodings " +
+          "or compressors when create schema tempalte.");
+    }
+    for (int idx = 0; idx < measurements.size(); idx++) {
+      MeasurementNode mNode = new MeasurementNode(measurements.get(idx),
+          dataTypes.get(idx),
+          encodings.get(idx),
+          compressors.get(idx));
+      temp.addToTemplate(mNode);
+    }
+    createSchemaTemplate(temp);
   }
 
   /**

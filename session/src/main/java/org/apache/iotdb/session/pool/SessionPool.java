@@ -1380,6 +1380,34 @@ public class SessionPool {
     }
   }
 
+  /**
+   * Create a template with flat measurements, not tree structured.
+   * Need to specify datatype, encoding and compressor of each measurement, and alignment of these measurements at once.
+   */
+  public void createSchemaTemplate(String templateName,
+                                   List<String> measurements,
+                                   List<TSDataType> dataTypes,
+                                   List<TSEncoding> encodings,
+                                   List<CompressionType> compressors,
+                                   boolean isAligned)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createSchemaTemplate(templateName, measurements, dataTypes, encodings, compressors, isAligned);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createSchemaTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,

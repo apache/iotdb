@@ -266,6 +266,51 @@ public class SessionTest {
   }
 
   @Test
+  public void createSchemaTemplateWithFlatMeasurement()
+      throws IoTDBConnectionException, StatementExecutionException, IOException{
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+    String tempName = "flatTemplate";
+    List<String> measurements = Arrays.asList("x", "y", "speed");
+    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
+    List<CompressionType> compressors = Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
+
+    session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
+    assertEquals(
+        "[x, y, speed]",
+        session.showMeasurementsInTemplate("flatTemplate").toString());
+
+    try {
+      session.addAlignedMeasurementsInTemplate(
+          "flatTemplate", Arrays.asList("temp", "x", "humidity"), dataTypes, encodings, compressors);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "315: Path duplicated: x is not a legal path",
+          e.getMessage());
+    }
+    try {
+      session.addUnalignedMeasurementsInTemplate(
+          "flatTemplate", Arrays.asList("temp", "velocity", "heartbeat"), dataTypes, encodings, compressors);
+      fail();
+    } catch (Exception e) {
+      assertEquals("315: temp is not a legal path, because path already exists and aligned",
+          e.getMessage());
+    }
+
+    session.addAlignedMeasurementsInTemplate(
+        "flatTemplate", Arrays.asList("turbine.temp", "turbine.rounds", "turbine.velocity"), dataTypes, encodings, compressors);
+    assertEquals(6, session.countMeasurementsInTemplate("flatTemplate"));
+    assertEquals(false, session.isMeasurementInTemplate("flatTemplate", "turbine"));
+    assertEquals(true, session.isMeasurementInTemplate("flatTemplate", "speed"));
+    assertEquals(true, session.isPathExistInTemplate("flatTemplate", "turbine"));
+
+    session.deleteNodeInTemplate("flatTemplate", "turbine");
+    assertEquals(3, session.countMeasurementsInTemplate("flatTemplate"));
+  }
+
+  @Test
   public void treeStructuredSchemaTemplateTest()
       throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
@@ -308,6 +353,7 @@ public class SessionTest {
     try {
       session.addAlignedMeasurementsInTemplate(
           "treeTemplate", measurementPaths, dataTypes, encodings, compressionTypeList);
+      fail();
     } catch (Exception e) {
       assertEquals(
           "315: GPS is not a legal path, because path already exists but not aligned",
@@ -320,6 +366,7 @@ public class SessionTest {
     try {
       session.addUnalignedMeasurementInTemplate(
           "treeTemplate", "GPS.X", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      fail();
     } catch (Exception e) {
       assertEquals("315: Path duplicated: GPS.X is not a legal path", e.getMessage());
     }
