@@ -85,17 +85,33 @@ void createMultiTimeseries() {
     }
 }
 
+void showTimeseries() {
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+
+    dataSet->setBatchSize(1024);
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+
+    dataSet->closeOperationHandle();
+}
+
 void insertRecord() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
     measurements.emplace_back("s1");
     measurements.emplace_back("s2");
     measurements.emplace_back("s3");
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 0; time < 10; time++) {
         vector<string> values;
-        values.emplace_back("11");
-        values.emplace_back("22");
-        values.emplace_back("33");
+        values.emplace_back("1");
+        values.emplace_back("2");
+        values.emplace_back("3");
         session->insertRecord(deviceId, time, measurements, values);
     }
 }
@@ -109,9 +125,9 @@ void insertTablet() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet("root.sg1.d1", schemas, 100);
+    Tablet tablet("root.sg1.d1", schemas, 10);
 
-    for (int64_t time = 100; time < 200; time++) {
+    for (int64_t time = 10; time < 20; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
@@ -129,6 +145,40 @@ void insertTablet() {
     }
 }
 
+void insertRecords() {
+    string deviceId = "root.sg1.d1";
+    vector<string> measurements;
+    measurements.emplace_back("s1");
+    measurements.emplace_back("s2");
+    measurements.emplace_back("s3");
+
+    vector<string> deviceIds;
+    vector<vector<string>> measurementsList;
+    vector<vector<string>> valuesList;
+    vector<int64_t> timestamps;
+
+    for (int64_t time = 20; time < 30; time++) {
+        vector<string> values;
+        values.emplace_back("1");
+        values.emplace_back("2");
+        values.emplace_back("3");
+
+        deviceIds.push_back(deviceId);
+        measurementsList.push_back(measurements);
+        valuesList.push_back(values);
+        timestamps.push_back(time);
+        if (time != 20 && time % 10 == 0) {
+            session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+            deviceIds.clear();
+            measurementsList.clear();
+            valuesList.clear();
+            timestamps.clear();
+        }
+    }
+
+    session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
+}
+
 void insertTablets() {
     pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT64);
     pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
@@ -138,16 +188,16 @@ void insertTablets() {
     schemas.push_back(pairB);
     schemas.push_back(pairC);
 
-    Tablet tablet1("root.sg1.d1", schemas, 100);
-    Tablet tablet2("root.sg1.d2", schemas, 100);
-    Tablet tablet3("root.sg1.d3", schemas, 100);
+    Tablet tablet1("root.sg1.d1", schemas, 10);
+    Tablet tablet2("root.sg1.d2", schemas, 10);
+    Tablet tablet3("root.sg1.d3", schemas, 10);
 
     map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 200; time < 300; time++) {
+    for (int64_t time = 30; time < 40; time++) {
         int row1 = tablet1.rowSize++;
         int row2 = tablet2.rowSize++;
         int row3 = tablet3.rowSize++;
@@ -177,42 +227,8 @@ void insertTablets() {
     }
 }
 
-void insertRecords() {
-    string deviceId = "root.sg1.d1";
-    vector<string> measurements;
-    measurements.emplace_back("s1");
-    measurements.emplace_back("s2");
-    measurements.emplace_back("s3");
-
-    vector<string> deviceIds;
-    vector<vector<string>> measurementsList;
-    vector<vector<string>> valuesList;
-    vector<int64_t> timestamps;
-
-    for (int64_t time = 300; time < 400; time++) {
-        vector<string> values;
-        values.emplace_back("1");
-        values.emplace_back("2");
-        values.emplace_back("3");
-
-        deviceIds.push_back(deviceId);
-        measurementsList.push_back(measurements);
-        valuesList.push_back(values);
-        timestamps.push_back(time);
-        if (time != 300 && time % 100 == 0) {
-            session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
-            deviceIds.clear();
-            measurementsList.clear();
-            valuesList.clear();
-            timestamps.clear();
-        }
-    }
-
-    session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
-}
-
 void nonQuery() {
-    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(200, 1);");
+    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(50, 1);");
 }
 
 void query() {
@@ -222,10 +238,12 @@ void query() {
         cout << name << "  ";
     }
     cout << endl;
+
     dataSet->setBatchSize(1024);
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
+    cout << endl;
 
     dataSet->closeOperationHandle();
 }
@@ -290,11 +308,11 @@ int main() {
     cout << "createMultiTimeseries\n" << endl;
     createMultiTimeseries();
 
+    cout << "showTimeseries\n" << endl;
+    showTimeseries();
+
     cout << "insertRecord\n" << endl;
     insertRecord();
-
-    cout << "queryLast\n" << endl;
-    queryLast();
 
     cout << "insertTablet\n" << endl;
     insertTablet();
@@ -307,6 +325,9 @@ int main() {
 
     cout << "nonQuery\n" << endl;
     nonQuery();
+
+    cout << "queryLast\n" << endl;
+    queryLast();
 
     cout << "query\n" << endl;
     query();
