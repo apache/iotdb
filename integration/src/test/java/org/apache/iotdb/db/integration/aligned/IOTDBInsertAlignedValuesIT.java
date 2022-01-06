@@ -317,7 +317,7 @@ public class IOTDBInsertAlignedValuesIT {
       ResultSet rs1 = st2.executeQuery("select S3 from root.lz.dev.GPS");
       int rowCount = 0;
       while (rs1.next()) {
-        Assert.assertEquals(rowCount, rs1.getInt(2));
+        Assert.assertEquals(rowCount + 49, rs1.getInt(2));
         rowCount++;
       }
       Assert.assertEquals(51, rowCount);

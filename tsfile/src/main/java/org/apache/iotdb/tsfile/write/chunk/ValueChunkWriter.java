@@ -156,8 +156,9 @@ public class ValueChunkWriter {
 
   public void writePageToPageBuffer() {
     try {
-      if (numOfPages == 0) { // record the firstPageStatistics
-        if (pageWriter.getStatistics().getCount() != 0) { // empty page
+      if (numOfPages == 0) {
+        if (pageWriter.getStatistics().getCount() != 0) {
+          // record the firstPageStatistics if it is not empty page
           this.firstPageStatistics = pageWriter.getStatistics();
         }
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
