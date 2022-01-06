@@ -110,7 +110,7 @@ void insertTablet() {
 
     Tablet tablet("root.sg1.d1", schemas, 100);
 
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 100; time < 200; time++) {
         int row = tablet.rowSize++;
         tablet.timestamps[row] = time;
         for (int i = 0; i < 3; i++) {
@@ -146,7 +146,7 @@ void insertTablets() {
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
 
-    for (int64_t time = 0; time < 100; time++) {
+    for (int64_t time = 200; time < 300; time++) {
         int row1 = tablet1.rowSize++;
         int row2 = tablet2.rowSize++;
         int row3 = tablet3.rowSize++;
@@ -156,8 +156,8 @@ void insertTablets() {
 
         for (int i = 0; i < 3; i++) {
             tablet1.values[i][row1] = to_string(i);
-            tablet2.values[i][row1] = to_string(i);
-            tablet3.values[i][row1] = to_string(i);
+            tablet2.values[i][row2] = to_string(i);
+            tablet3.values[i][row3] = to_string(i);
         }
         if (tablet1.rowSize == tablet1.maxRowNumber) {
             session->insertTablets(tabletMap, true);
@@ -188,7 +188,7 @@ void insertRecords() {
     vector<vector<string>> valuesList;
     vector<int64_t> timestamps;
 
-    for (int64_t time = 0; time < 500; time++) {
+    for (int64_t time = 300; time < 400; time++) {
         vector<string> values;
         values.push_back("1");
         values.push_back("2");
@@ -198,7 +198,7 @@ void insertRecords() {
         measurementsList.push_back(measurements);
         valuesList.push_back(values);
         timestamps.push_back(time);
-        if (time != 0 && time % 100 == 0) {
+        if (time != 300 && time % 100 == 0) {
             session->insertRecords(deviceIds, timestamps, measurementsList, valuesList);
             deviceIds.clear();
             measurementsList.clear();
@@ -261,7 +261,7 @@ void queryLast() {
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
-
+    cout << endl;
     dataSet->closeOperationHandle();
 }
 
@@ -269,42 +269,56 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setStorageGroup\n";
+    cout << "setStorageGroup\n" << endl;
     try {
       session->setStorageGroup("root.sg1");
     }
     catch (IoTDBConnectionException e){
       string errorMessage(e.what());
       if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+        cout << errorMessage << endl;
         throw e;
       }
     }
 
+    cout << "createTimeseries\n" << endl;
     createTimeseries();
 
+    cout << "createMultiTimeseries\n" << endl;
     createMultiTimeseries();
 
+    cout << "insertRecord\n" << endl;
     insertRecord();
 
+    cout << "queryLast\n" << endl;
     queryLast();
 
+    cout << "insertTablet\n" << endl;
     insertTablet();
 
+    cout << "insertRecords\n" << endl;
     insertRecords();
 
+    cout << "insertTablets\n" << endl;
     insertTablets();
 
+    cout << "nonQuery\n" << endl;
     nonQuery();
 
+    cout << "query\n" << endl;
     query();
 
+    cout << "deleteData\n" << endl;
     deleteData();
 
+    cout << "deleteTimeseries\n" << endl;
     deleteTimeseries();
 
+    cout << "session close\n" << endl;
     session->close();
 
     delete session;
 
+    cout << "finished!\n" << endl;
     return 0;
 }

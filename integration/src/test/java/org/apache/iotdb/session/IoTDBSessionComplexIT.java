@@ -34,8 +34,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -220,10 +219,10 @@ public class IoTDBSessionComplexIT {
 
     createTimeseries();
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList, 100);
 
@@ -493,10 +492,10 @@ public class IoTDBSessionComplexIT {
       session.insertRecord(deviceId, time, measurements, types, values);
     }
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 200);
     long[] timestamps = tablet.timestamps;
@@ -633,10 +632,10 @@ public class IoTDBSessionComplexIT {
   private void insertTablet(String deviceId)
       throws IoTDBConnectionException, StatementExecutionException {
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
 
