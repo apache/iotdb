@@ -19,34 +19,33 @@
 
 -->
 
-# System Integration
+# 系统集成
 
 
 
-## Grafana Plugin
+## Grafana 插件
 
-Grafana is an open source tool for monitoring metrics and visualization, which could be applied to display time series and analyze the operation of application programms. 
+Grafana 是开源的指标量监测和可视化工具，可用于展示时序数据和应用程序运行分析。
 
-In the IoTDB project, we developed the Grafana Plugin to display time series through the IoTDB REST service, and it has provided many visualization methods for time series. Compared to IoTDB-Grafana-Connector, the Grafana Plugin works more efficiently and supports more types of queries. As long as it's possible in your deployment environment, *we highly recommand applying the Grafana Plugin rather than IoTDB-Grafana-Connector. 
-
-
-
-
-### Deployment of the Grafana Plugin
-
-#### Install Grafana 
-
-* Download Grafana: https://grafana.com/grafana/download
-* Version >= 7.0.0
+在 IoTDB 项目中，我们开发了 Grafana 插件，该插件通过调用 IoTDB REST 服务来展现 IoTDB 中时序数据 ，提供了众多时序数据的可视化方法。Grafana 插件相较于 IoTDB-Grafana-Connector 连接器执行效率更高、支持的查询种类更多。只要在您部署环境允许的情况下，*我们都推荐直接使用 Grafana 插件而不使用 IoTDB-Grafana-Connector 连接器*。
 
 
 
-#### Download Grafana-plugin
+### 部署 Grafana 插件
 
-* Plugin Name: grafana-plugin
-* Downloads: https://github.com/apache/iotdb.git
+#### 安装 Grafana 
 
-Execute the command below:
+* Grafana 组件下载地址：https://grafana.com/grafana/download
+* 版本 >= 7.0.0
+
+
+
+#### grafana-plugin 下载
+
+* 插件名称: grafana-plugin
+* 下载地址: https://github.com/apache/iotdb.git
+
+执行下面的命令：
 
 ```shell
 git clone https://github.com/apache/iotdb.git
@@ -54,90 +53,89 @@ git clone https://github.com/apache/iotdb.git
 
 
 
-#### Compile grafana-plugin
+#### grafana-plugin 编译
 
-##### Option 1
+##### 方案一
 
-We need to compile the front-end engineering under the `grafana-plugin` directory in IoTDB repository and generate the target directory `dist`. Below is the execution flow in detail:
+我们需要编译 IoTDB 仓库 `grafana-plugin` 目录下的前端工程并生成 `dist` 目标目录，具体执行流程如下。
 
-You can use either of the following compilation methods:
+您可以采取下面任意一种编译方式：
 
-* Compile with maven, execute the command under `grafana-plugin`：
+* 使用 maven 编译，在 `grafana-plugin` 目录下执行：
 
 ```shell
 mvn install package
 ```
 
-* Or compile with yarn, execute the command under `grafana-plugin`：
+* 或使用 yarn 编译，在 `grafana-plugin` 目录下执行：
 
 ```shell
 yarn install
 yarn build
 ```
 
-If sucessed, we could find the generated target directory `dist`, which contains the compiled front-end Grafana Plugin:
+如果编译成功，我们将看到生成的目标文件夹 `dist`，它包含了编译好的 Grafana 前端插件：
 
 <img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana-plugin-build.png?raw=true">
 
-##### Option 2
+##### 方案二
 
-We could also obtain the front-end engineering of `grafana-plugin ` and other supporting IoTDB executables by executing the **packaging command** of the IoTDB project.
+我们也可以通过执行 IoTDB 项目的**打包指令**获取 `grafana-plugin ` 的前端工程和其他配套的 IoTDB 可执行文件。
 
-Execute the command under the root directory of IoTDB:
+在 IoTDB 仓库的根目录下执行：
 
 ```shell
  mvn clean package -pl distribution -am -DskipTests 
 ```
 
-If sucessed, we could find the generated target directory `distribution/target`, which consists the compiled front-end Grafana Plugin:
+如果编译成功，我们将看到 `distribution/target` 路径下包含了编译好的 Grafana 前端插件：
 
 <img style="width:100%; max-width:333px; max-height:545px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/distribution.png?raw=true">
 
 
 
-#### Install grafana-plugin
+#### grafana-plugin 插件安装
 
-* Copy the generated front-end engineering target folder to the Grafana plugin directory `${Grafana File Directory}\data\plugins\`
-  * In Windows, the `data\plugins` directory will be automatically generated after Grafana booted
-  * In Linux, the plugins directory `/var/lib/grafana/plugins` needs to be manually created 
-  * In MacOS，the plugins directory is `/usr/local/var/lib/grafana/plugins` (Check the CMD output after installing Grafana with 'brew install' for details of the path)
+* 拷贝上述生成的前端工程目标文件夹到 Grafana 的插件目录中 `${Grafana文件目录}\data\plugins\`
+  * Windows 系统，启动 Grafana 后会自动创建 `data\plugins` 目录
+  * Linux 系统，plugins 目录需要手动创建 `/var/lib/grafana/plugins` 
+  * MacOS，plugins 目录在`/usr/local/var/lib/grafana/plugins`（具体位置参看使用 `brew install`安装 Grafana 后的命令行输出提示）
 
-* Modify the profile of Grafana: find the profile (`${Grafana File Directory}\conf\defaults.ini`), and make the following modification:
+* 修改Grafana的配置文件：找到配置文件（`${Grafana文件目录}\conf\defaults.ini`），并进行如下的修改：
 
   ```ini
   allow_loading_unsigned_plugins = iotdb
   ```
 
-* If the Grafana service is already started, it needs to be rebooted.
+* 如果 Grafana 服务已启动，则需要重启服务。
 
 
 
-#### Boot Grafana
+#### 启动 Grafana
 
-Go to the Grafana installation directory and start Grafana with the following command:
-
-* Windows:
+进入 Grafana 的安装目录，使用以下命令启动 Grafana：
+* Windows 系统：
 
 ```shell
 bin\grafana-server.exe
 ```
-* Linux:
+* Linux 系统：
 
 ```shell
 sudo service grafana-server start
 ```
-* MacOS:
+* MacOS 系统：
 
 ```shell
 brew services start grafana
 ```
-Click [Here] for more details (https://grafana.com/docs/grafana/latest/installation/)
+更多详情，请点 [这里](https://grafana.com/docs/grafana/latest/installation/)
 
 
 
-#### Configure the IoTDB REST Service
+#### 配置 IoTDB REST 服务
 
-Go to `{iotdb Directory}/conf`, open `iotdb-rest.properties` and make the following modifications:
+进入 `{iotdb 目录}/conf`，打开 `iotdb-rest.properties` 文件，并作如下修改：
 
 ```properties
 # Is the REST service enabled
@@ -147,72 +145,72 @@ enable_rest_service=false
 rest_service_port=18080
 ```
 
-Start(reboot) IoTDB to bring the configuration into effect, now the IoTDB Rest service is in operation.
+启动（重启）IoTDB 使配置生效，此时 IoTDB REST 服务处于运行状态。
 
 
 
-### Apply the Grafana Plugin
+### 使用 Grafana 插件
 
-#### Visit Grafana Dashboard
+#### 访问 Grafana dashboard
 
-Grafana displays the data for you in web dashbboards. Please visit `http://<ip>:<port>` while using Grafana.
+Grafana 以网页的 dashboard 形式为您展示数据，在使用时请您打开浏览器，访问 `http://<ip>:<port>`。
 
-Note：<ip> is the IP address of the server on which your Grafana resides, and <port> is the running port of Grafana (Default: 3000).
+注：IP 为您的 Grafana 所在的服务器 IP，Port 为 Grafana 的运行端口（默认 3000）。
 
-On a local trial, the default address for the Grafana Dashboard is `http://localhost:3000/`.
+在本地试用时，Grafana  dashboard 的默认地址为 `http://localhost:3000/`。
 
-The default username and password are both `admin`.
+默认登录的用户名和密码都是 `admin`。
 
 
 
-#### Add IoTDB Data Source
+#### 添加 IoTDB 数据源
 
-Click the 'Settings' icon on the left, select the `Data Source` option, then click `Add data source`.
+点击左侧的 “设置” 图标，选择 `Data Source` 选项，然后再点击 `Add data source`。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_1.png?raw=true">
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_2.png?raw=true">
 
-Select the data source `Apache IoTDB`, fill the `URL` with `http://<ip>:<port>`.
+选择 `Apache IoTDB` 数据源，`URL` 一栏填写  `http://<ip>:<port>`。
 
-<ip> is the host IP address where your IoTDB server resides, and <port> is the running port of the REST service  (Default: 18080).
+Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运行端口（默认 18080）。
 
-Enter the username and password of the IoTDB server, then click `Save & Test`, the configuration is successed when `Success` was output.
+输入 IoTDB 服务器的 username 和 password，点击 `Save & Test`，出现 `Success` 则提示配置成功。
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/datasource_3.png?raw=true">
 
 
 
-#### Create a new Panel
+#### 创建一个新的 Panel
 
-Click the `Dashboards` icon on the left, select the `Manage` option as shown below:
+点击左侧的 `Dashboards` 图标，选择 `Manage`，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/manage.png?raw=true">
 
-Click the `New Dashboard` icon on the upper-right and select `Add an empty panel` as shown below:
+点击右上方的 `New Dashboard`  图标，选择 `Add an empty panel`，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
-Enter the content in the SELECT, FROM, WHERE, and CONTROL fields. The WHERE and CONTROL fields are optional.
+在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE 和 CONTROL 输入框为非必填。
 
-If a query involves more than one expression, we could add the expression in the SELECT clause by clicking on the `+` to the right of the SELECT input box, or add the path prefix by clicking on the `+` to the right of the FROM input box, as shown below:
+如果一个查询涉及多个表达式，我们可以点击 SELECT 输入框右侧的 `+` 来添加 SELECT 子句中的表达式，也可以点击 FROM 输入框右侧的 `+` 来添加路径前缀，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/grafana_input.png?raw=true">
 
-The contents of the SELECT input box can be suffixes of time series, functions or user-defined functions, arithmetic expressions, or nested expressions of them. You could also use the AS clause to rename the result sequence name that you want to display.
+SELECT 输入框中的内容可以是时间序列的后缀，可以是函数或自定义函数，可以是算数表达式，也可以是它们的嵌套表达式。您还可以使用 as 子句来重命名需要显示的结果序列名字。
 
-Here are some examples of valid inputs in the SELECT input box:
+下面是 SELECT 输入框中一些合法的输入举例：
 
 *  `s1`
 *  `top_k(s1, 'k'='1') as top`
 *  `sin(s1) + cos(s1 + s2)` 
-*  `udf(s1) as "Alias"`
+*  `udf(s1) as "中文别名"`
 
-The contents of the FROM input box must be the prefix path of the time series, for example `root.sg.d`。
+FROM 输入框中的内容必须是时间序列的前缀路径，比如 `root.sg.d`。
 
-The WHERE input box is optional. The content should be the filtering criteria for the query, for example `time > 0` or `s1 < 1024 and s2 > 1024`。
+WHERE 输入框为非必须填写项目，填写内容应当是查询的过滤条件，比如 `time > 0`  或者 `s1 < 1024 and s2 > 1024`。
 
-The CONTROL input field is optional and should contain special clauses to control the query type and output format. Here are some examples of valid inputs to the CONTROL input field:
+CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类型、输出格式的特殊子句，下面是 CONTROL 输入框中一些合法的输入举例：
 
 *  `group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00), 1d)`
 *  `group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)`
@@ -224,29 +222,29 @@ The CONTROL input field is optional and should contain special clauses to contro
 
 
 
-#### Support for Variables and Templates
+#### 变量与模板功能的支持
 
-This plugin supports the variables and templates of Grafana (https://grafana.com/docs/grafana/v7.0/variables/).
+本插件支持 Grafana 的变量与模板（ https://grafana.com/docs/grafana/v7.0/variables/）功能。
 
-After creating a new Panel, click the "Settings" button on the upper-right, as shown below:
+创建一个新的 Panel 后，点击右上角的设置按钮，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/setconf.png?raw=true">
 
-Select `Variables`, click `Add variable`, as shown below:
+选择 `Variables`，点击 `Add variable` ，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/addvaribles.png?raw=true">
 
-Enter Name, Label and Query, click the `Update` button, as shown below:
+输入 Name，Label，和 Query 点击 Update 按钮，如下图所示：
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/variblesinput.png?raw=true">
 
-Apply Variables, enter the variables in `grafana  panel` and click `save`, as shown below:
+应用 Variables，在 `grafana  panel` 中输入变量点击 `save` 按钮，如下图所示
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/applyvariables.png?raw=true">
 
 
 
-### More Informations
+### 更多
 
-More details about how Grafana works can be found in the official documentation of Grafana: http://docs.grafana.org/guides/getting_started/
+更多关于 Grafana 操作详情可参看 Grafana 官方文档：http://docs.grafana.org/guides/getting_started/。
 
