@@ -42,8 +42,8 @@ public class TsFileSelfCheckTool {
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
 
-  private Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithReader(TsFileSelfCheckToolReader reader)
-      throws TsFileTimeseriesMetadataException {
+  private Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithReader(
+      TsFileSelfCheckToolReader reader) throws TsFileTimeseriesMetadataException {
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     try {
       timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
@@ -65,7 +65,8 @@ public class TsFileSelfCheckTool {
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
     System.out.println("file path: " + filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
+        getTimeseriesMetadataMapWithReader(reader);
     return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
   }
 
