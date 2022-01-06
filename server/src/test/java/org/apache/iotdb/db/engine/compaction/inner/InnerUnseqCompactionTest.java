@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.inner;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
@@ -348,8 +347,6 @@ public class InnerUnseqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              SizeTieredCompactionLogger sizeTieredCompactionLogger =
-                  new SizeTieredCompactionLogger("target", COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.compact(
                   targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, false);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
