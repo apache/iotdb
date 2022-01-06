@@ -26,12 +26,12 @@ Session *session;
 void createAlignedTimeseries() {
     string alignedDeviceId = "root.sg1.d1";
     vector<string> measurements = {"s1", "s2", "s3"};
-    vector<string> alignedTimeseries = {"root.sg1.d1.s1","root.sg1.d1.s2","root.sg1.d1.s3"};
+    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
     vector<TSDataType::TSDataType> dataTypes = {TSDataType::INT32, TSDataType::DOUBLE, TSDataType::BOOLEAN};
     vector<TSEncoding::TSEncoding> encodings = {TSEncoding::PLAIN, TSEncoding::GORILLA, TSEncoding::RLE};
     vector<CompressionType::CompressionType> compressors = {
-        CompressionType::SNAPPY, CompressionType::UNCOMPRESSED, CompressionType::SNAPPY};
-    for (string timeseries : alignedTimeseries) {
+            CompressionType::SNAPPY, CompressionType::UNCOMPRESSED, CompressionType::SNAPPY};
+    for (const string &timeseries: alignedTimeseries) {
         if (session->checkTimeseriesExists(timeseries)) {
             session->deleteTimeseries(timeseries);
         }
@@ -42,15 +42,15 @@ void createAlignedTimeseries() {
 void insertAlignedRecord() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
-    measurements.push_back("s1");
-    measurements.push_back("s2");
-    measurements.push_back("s3");
+    measurements.emplace_back("s1");
+    measurements.emplace_back("s2");
+    measurements.emplace_back("s3");
 
     for (int64_t time = 0; time < 100; time++) {
         vector<string> values;
-        values.push_back("1");
-        values.push_back("1.0");
-        values.push_back("true");
+        values.emplace_back("1");
+        values.emplace_back("1.0");
+        values.emplace_back("true");
         session->insertAlignedRecord(deviceId, time, measurements, values);
     }
 }
@@ -58,9 +58,9 @@ void insertAlignedRecord() {
 void insertAlignedRecords() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
-    measurements.push_back("s1");
-    measurements.push_back("s2");
-    measurements.push_back("s3");
+    measurements.emplace_back("s1");
+    measurements.emplace_back("s2");
+    measurements.emplace_back("s3");
 
     vector<string> deviceIds;
     vector<vector<string>> measurementsList;
@@ -69,9 +69,9 @@ void insertAlignedRecords() {
 
     for (int64_t time = 100; time < 200; time++) {
         vector<string> values;
-        values.push_back("1");
-        values.push_back("1.0");
-        values.push_back("true");
+        values.emplace_back("1");
+        values.emplace_back("1.0");
+        values.emplace_back("true");
 
         deviceIds.push_back(deviceId);
         measurementsList.push_back(measurements);
@@ -132,7 +132,7 @@ void insertAlignedTablets() {
     Tablet tablet2("root.sg1.d2", schemas, 100);
     Tablet tablet3("root.sg1.d3", schemas, 100);
 
-    map<string, Tablet*> tabletMap;
+    map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
@@ -174,6 +174,23 @@ void insertAlignedTablets() {
     }
 }
 
+void deleteData() {
+    string path = "root.sg1.d1.s1";
+    int64_t deleteTime = 99;
+    session->deleteData(path, deleteTime);
+}
+
+void deleteTimeseries() {
+    vector<string> paths;
+    vector<string> alignedTimeseries = {"root.sg1.d1.s1", "root.sg1.d1.s2", "root.sg1.d1.s3"};
+    for (const string &timeseries: alignedTimeseries) {
+        if (session->checkTimeseriesExists(timeseries)) {
+            paths.push_back(timeseries);
+        }
+    }
+    session->deleteTimeseries(paths);
+}
+
 int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
 
@@ -184,7 +201,7 @@ int main() {
     try {
         session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException e){
+    catch (IoTDBConnectionException &e) {
         string errorMessage(e.what());
         if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
             cout << errorMessage << endl;
@@ -206,6 +223,12 @@ int main() {
 
     cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
+
+    cout << "deleteData\n" << endl;
+    deleteData();
+
+    cout << "deleteTimeseries\n" << endl;
+    deleteTimeseries();
 
     cout << "session close\n" << endl;
     session->close();

@@ -26,15 +26,15 @@ Session *session;
 void createTimeseries() {
     if (!session->checkTimeseriesExists("root.sg1.d1.s1")) {
         session->createTimeseries("root.sg1.d1.s1", TSDataType::INT64, TSEncoding::RLE,
-        CompressionType::SNAPPY);
+                                  CompressionType::SNAPPY);
     }
     if (!session->checkTimeseriesExists("root.sg1.d1.s2")) {
         session->createTimeseries("root.sg1.d1.s2", TSDataType::INT64, TSEncoding::RLE,
-        CompressionType::SNAPPY);
+                                  CompressionType::SNAPPY);
     }
     if (!session->checkTimeseriesExists("root.sg1.d1.s3")) {
         session->createTimeseries("root.sg1.d1.s3", TSDataType::INT64, TSEncoding::RLE,
-        CompressionType::SNAPPY);
+                                  CompressionType::SNAPPY);
     }
 
     // create timeseries with tags and attributes
@@ -44,15 +44,15 @@ void createTimeseries() {
         map<string, string> attributes;
         attributes["description"] = "v1";
         session->createTimeseries("root.sg1.d1.s4", TSDataType::INT64, TSEncoding::RLE,
-            CompressionType::SNAPPY, NULL, &tags, &attributes, "temperature");
+                                  CompressionType::SNAPPY, nullptr, &tags, &attributes, "temperature");
     }
 }
 
 void createMultiTimeseries() {
     if (!session->checkTimeseriesExists("root.sg1.d2.s1") && !session->checkTimeseriesExists("root.sg1.d2.s1")) {
         vector<string> paths;
-        paths.push_back("root.sg1.d2.s1");
-        paths.push_back("root.sg1.d2.s2");
+        paths.emplace_back("root.sg1.d2.s1");
+        paths.emplace_back("root.sg1.d2.s2");
         vector<TSDataType::TSDataType> tsDataTypes;
         tsDataTypes.push_back(TSDataType::INT64);
         tsDataTypes.push_back(TSDataType::INT64);
@@ -63,38 +63,39 @@ void createMultiTimeseries() {
         compressionTypes.push_back(CompressionType::SNAPPY);
         compressionTypes.push_back(CompressionType::SNAPPY);
 
-        vector<map<string,string>> tagsList;
-        map<string,string> tags;
+        vector<map<string, string>> tagsList;
+        map<string, string> tags;
         tags["unit"] = "kg";
         tagsList.push_back(tags);
         tagsList.push_back(tags);
 
-        vector<map<string,string>> attributesList;
-        map<string,string> attributes;
+        vector<map<string, string>> attributesList;
+        map<string, string> attributes;
         attributes["minValue"] = "1";
         attributes["maxValue"] = "100";
         attributesList.push_back(attributes);
         attributesList.push_back(attributes);
 
         vector<string> alias;
-        alias.push_back("weight1");
-        alias.push_back("weight2");
+        alias.emplace_back("weight1");
+        alias.emplace_back("weight2");
 
-        session->createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, NULL, &tagsList, &attributesList, &alias);
+        session->createMultiTimeseries(paths, tsDataTypes, tsEncodings, compressionTypes, nullptr, &tagsList,
+                                       &attributesList, &alias);
     }
 }
 
 void insertRecord() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
-    measurements.push_back("s1");
-    measurements.push_back("s2");
-    measurements.push_back("s3");
+    measurements.emplace_back("s1");
+    measurements.emplace_back("s2");
+    measurements.emplace_back("s3");
     for (int64_t time = 0; time < 100; time++) {
         vector<string> values;
-        values.push_back("11");
-        values.push_back("22");
-        values.push_back("33");
+        values.emplace_back("11");
+        values.emplace_back("22");
+        values.emplace_back("33");
         session->insertRecord(deviceId, time, measurements, values);
     }
 }
@@ -141,7 +142,7 @@ void insertTablets() {
     Tablet tablet2("root.sg1.d2", schemas, 100);
     Tablet tablet3("root.sg1.d3", schemas, 100);
 
-    map<string, Tablet*> tabletMap;
+    map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;
@@ -179,9 +180,9 @@ void insertTablets() {
 void insertRecords() {
     string deviceId = "root.sg1.d1";
     vector<string> measurements;
-    measurements.push_back("s1");
-    measurements.push_back("s2");
-    measurements.push_back("s3");
+    measurements.emplace_back("s1");
+    measurements.emplace_back("s2");
+    measurements.emplace_back("s3");
 
     vector<string> deviceIds;
     vector<vector<string>> measurementsList;
@@ -190,9 +191,9 @@ void insertRecords() {
 
     for (int64_t time = 300; time < 400; time++) {
         vector<string> values;
-        values.push_back("1");
-        values.push_back("2");
-        values.push_back("3");
+        values.emplace_back("1");
+        values.emplace_back("2");
+        values.emplace_back("3");
 
         deviceIds.push_back(deviceId);
         measurementsList.push_back(measurements);
@@ -217,13 +218,13 @@ void nonQuery() {
 void query() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
     cout << "timestamp" << "  ";
-    for (string name : dataSet->getColumnNames()) {
-      cout << name << "  ";
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
     }
     cout << endl;
     dataSet->setBatchSize(1024);
     while (dataSet->hasNext()) {
-      cout << dataSet->next()->toString();
+        cout << dataSet->next()->toString();
     }
 
     dataSet->closeOperationHandle();
@@ -238,30 +239,32 @@ void deleteData() {
 void deleteTimeseries() {
     vector<string> paths;
     if (session->checkTimeseriesExists("root.sg1.d1.s1")) {
-      paths.push_back("root.sg1.d1.s1");
+        paths.emplace_back("root.sg1.d1.s1");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s2")) {
-      paths.push_back("root.sg1.d1.s2");
+        paths.emplace_back("root.sg1.d1.s2");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s3")) {
-      paths.push_back("root.sg1.d1.s3");
+        paths.emplace_back("root.sg1.d1.s3");
     }
     if (session->checkTimeseriesExists("root.sg1.d1.s4")) {
-      paths.push_back("root.sg1.d1.s4");
+        paths.emplace_back("root.sg1.d1.s4");
     }
     session->deleteTimeseries(paths);
 }
 
 void queryLast() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select last s1,s2,s3 from root.sg1.d1");
-    for (string name: dataSet->getColumnNames()) {
+    for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
     }
     cout << endl;
+
     while (dataSet->hasNext()) {
         cout << dataSet->next()->toString();
     }
     cout << endl;
+
     dataSet->closeOperationHandle();
 }
 
@@ -271,14 +274,14 @@ int main() {
 
     cout << "setStorageGroup\n" << endl;
     try {
-      session->setStorageGroup("root.sg1");
+        session->setStorageGroup("root.sg1");
     }
-    catch (IoTDBConnectionException e){
-      string errorMessage(e.what());
-      if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
-        cout << errorMessage << endl;
+    catch (IoTDBConnectionException &e) {
+        string errorMessage(e.what());
+        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+            cout << errorMessage << endl;
+        }
         throw e;
-      }
     }
 
     cout << "createTimeseries\n" << endl;
