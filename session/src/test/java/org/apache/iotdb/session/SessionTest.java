@@ -267,40 +267,50 @@ public class SessionTest {
 
   @Test
   public void createSchemaTemplateWithFlatMeasurement()
-      throws IoTDBConnectionException, StatementExecutionException, IOException{
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
     session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
     session.open();
     String tempName = "flatTemplate";
     List<String> measurements = Arrays.asList("x", "y", "speed");
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
     List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
-    List<CompressionType> compressors = Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
 
     session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
-    assertEquals(
-        "[x, y, speed]",
-        session.showMeasurementsInTemplate("flatTemplate").toString());
+    assertEquals("[x, y, speed]", session.showMeasurementsInTemplate("flatTemplate").toString());
 
     try {
       session.addAlignedMeasurementsInTemplate(
-          "flatTemplate", Arrays.asList("temp", "x", "humidity"), dataTypes, encodings, compressors);
+          "flatTemplate",
+          Arrays.asList("temp", "x", "humidity"),
+          dataTypes,
+          encodings,
+          compressors);
       fail();
     } catch (Exception e) {
-      assertEquals(
-          "315: Path duplicated: x is not a legal path",
-          e.getMessage());
+      assertEquals("315: Path duplicated: x is not a legal path", e.getMessage());
     }
     try {
       session.addUnalignedMeasurementsInTemplate(
-          "flatTemplate", Arrays.asList("temp", "velocity", "heartbeat"), dataTypes, encodings, compressors);
+          "flatTemplate",
+          Arrays.asList("temp", "velocity", "heartbeat"),
+          dataTypes,
+          encodings,
+          compressors);
       fail();
     } catch (Exception e) {
-      assertEquals("315: temp is not a legal path, because path already exists and aligned",
-          e.getMessage());
+      assertEquals(
+          "315: temp is not a legal path, because path already exists and aligned", e.getMessage());
     }
 
     session.addAlignedMeasurementsInTemplate(
-        "flatTemplate", Arrays.asList("turbine.temp", "turbine.rounds", "turbine.velocity"), dataTypes, encodings, compressors);
+        "flatTemplate",
+        Arrays.asList("turbine.temp", "turbine.rounds", "turbine.velocity"),
+        dataTypes,
+        encodings,
+        compressors);
     assertEquals(6, session.countMeasurementsInTemplate("flatTemplate"));
     assertEquals(false, session.isMeasurementInTemplate("flatTemplate", "turbine"));
     assertEquals(true, session.isMeasurementInTemplate("flatTemplate", "speed"));

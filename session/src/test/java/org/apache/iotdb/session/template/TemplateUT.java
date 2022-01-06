@@ -64,12 +64,14 @@ public class TemplateUT {
 
   @Test
   public void testCreateFlatTemplate()
-      throws IOException, StatementExecutionException, IoTDBConnectionException{
+      throws IOException, StatementExecutionException, IoTDBConnectionException {
     String tempName = "flatTemplate";
     List<String> measurements = Arrays.asList("x", "y", "speed");
-    List<TSDataType> dataTypes = Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
     List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
-    List<CompressionType> compressors = Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
 
     session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
     session.setSchemaTemplate("flatTemplate", "root.sg.d0");

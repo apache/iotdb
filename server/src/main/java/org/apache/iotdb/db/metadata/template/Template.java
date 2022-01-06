@@ -513,7 +513,7 @@ public class Template {
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
       if ((parNode != null && parNode.getAsEntityMNode().isAligned())
-      || prefix.equals("") && this.isDirectAligned()){
+          || prefix.equals("") && this.isDirectAligned()) {
         throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 
