@@ -404,6 +404,7 @@ public class MManager {
         // offset != -1 means the timeseries has already been created and now system is recovering
         tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
       } else if (plan.getTags() != null) {
+        // the tags only in plan means creating timeseries
         tagMap = plan.getTags();
       }
       if (tagMap != null) {
