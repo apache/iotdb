@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
@@ -38,11 +39,13 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -91,6 +94,10 @@ public class CompactionSchedulerTest {
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
+    }
+    File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
+    if (!basicOutputDir.exists()) {
+      Assert.assertTrue(basicOutputDir.mkdirs());
     }
     MergeManager.getINSTANCE().start();
     CompactionTaskManager.getInstance().start();

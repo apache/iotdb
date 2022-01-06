@@ -35,6 +35,9 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 public class CompactionFileGeneratorUtils {
+  private static final Logger logger = LoggerFactory.getLogger(CompactionFileGeneratorUtils.class);
 
   public static TsFileResource getTargetTsFileResourceFromSourceResource(
       TsFileResource sourceResource) throws IOException {
