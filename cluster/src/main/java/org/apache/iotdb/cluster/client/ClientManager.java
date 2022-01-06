@@ -231,9 +231,6 @@ public class ClientManager implements IClientManager {
 
   @Override
   public void close() {
-    if (false) {
-      return;
-    }
     if (asyncClientPoolMap != null) {
       for (GenericKeyedObjectPool<Node, AsyncClient> value : asyncClientPoolMap.values()) {
         value.close();
