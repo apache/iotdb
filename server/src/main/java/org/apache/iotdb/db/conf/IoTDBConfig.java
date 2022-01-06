@@ -388,7 +388,7 @@ public class IoTDBConfig {
   private long targetChunkSize = 1048576L;
 
   /** The target chunk point num in compaction. */
-  private long targetChunkPointNum = 50000L;
+  private long targetChunkPointNum = 100000L;
 
   /**
    * If the chunk size is lower than this threshold, it will be deserialized into points, default is

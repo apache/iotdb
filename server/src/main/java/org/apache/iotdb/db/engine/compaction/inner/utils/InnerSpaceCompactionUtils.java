@@ -67,22 +67,23 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     TsFileIOWriter writer = null;
-    CompactionDeviceVisitor visitor = null;
+    CompactionDeviceIterator deviceIterator = null;
     try {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-      visitor = new CompactionDeviceVisitor(tsFileResources);
-      Set<String> devices = visitor.getDevices();
+      deviceIterator = new CompactionDeviceIterator(tsFileResources);
+      Set<String> devices = deviceIterator.getDevices();
       for (String device : devices) {
         writer.startChunkGroup(device);
         // TODO: compact a aligned device
-        CompactionDeviceVisitor.CompactionSeriesIterator seriesIterator = visitor.visit(device);
+        CompactionDeviceIterator.CompactionSeriesIterator seriesIterator =
+            deviceIterator.iterateOneSeries(device);
         while (seriesIterator.hasNextSeries()) {
           // TODO: we can provide a configuration item to enable concurrent between each series
           String currentSeries = seriesIterator.nextSeries();
           LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
               seriesIterator.getMetadataListForCurrentSeries();
-          SingleSeriesCompactor compactorOfCurrentTimeSeries =
-              new SingleSeriesCompactor(
+          SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
+              new SingleSeriesCompactionExecutor(
                   storageGroup,
                   device,
                   currentSeries,
@@ -90,7 +91,7 @@ public class InnerSpaceCompactionUtils {
                   writer,
                   targetResource,
                   sequence);
-          compactorOfCurrentTimeSeries.execute();
+          compactionExecutorOfCurrentTimeSeries.execute();
         }
         writer.endChunkGroup();
       }
@@ -104,8 +105,8 @@ public class InnerSpaceCompactionUtils {
       if (writer != null && writer.canWrite()) {
         writer.close();
       }
-      if (visitor != null) {
-        visitor.close();
+      if (deviceIterator != null) {
+        deviceIterator.close();
       }
     }
   }

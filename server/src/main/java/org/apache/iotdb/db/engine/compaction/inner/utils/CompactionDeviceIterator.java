@@ -44,14 +44,14 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-public class CompactionDeviceVisitor {
+public class CompactionDeviceIterator {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private List<TsFileResource> tsFileResources;
   private Map<TsFileResource, TsFileSequenceReader> readerMap =
       new TreeMap<>((o1, o2) -> TsFileResource.compareFileName(o1.getTsFile(), o2.getTsFile()));
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
 
-  public CompactionDeviceVisitor(List<TsFileResource> tsFileResources) throws IOException {
+  public CompactionDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
@@ -59,6 +59,8 @@ public class CompactionDeviceVisitor {
         readerMap.put(tsFileResource, reader);
       }
     } catch (Throwable throwable) {
+      // if there is any exception occurs
+      // existing readers should be closed
       for (TsFileSequenceReader reader : readerMap.values()) {
         reader.close();
       }
@@ -75,7 +77,7 @@ public class CompactionDeviceVisitor {
     return deviceSet;
   }
 
-  public CompactionSeriesIterator visit(String device) throws IOException {
+  public CompactionSeriesIterator iterateOneSeries(String device) throws IOException {
     return new CompactionSeriesIterator(readerMap, device);
   }
 

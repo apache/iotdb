@@ -89,7 +89,7 @@ public class CompactionSchedulerTest {
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     } catch (Exception e) {
-
+      logger.error("exception occurs", e);
     }
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
@@ -1976,6 +1976,7 @@ public class CompactionSchedulerTest {
       assertEquals(100, tsFileManager.getTsFileList(true).size());
       tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        logger.warn("waiting");
         try {
           Thread.sleep(10);
         } catch (Exception e) {

@@ -361,12 +361,8 @@ public class CompactionCheckerUtils {
     for (int i = 0; i < expectedData.size(); i++) {
       TimeValuePair expectedTimeValuePair = expectedData.get(i);
       TimeValuePair targetTimeValuePair = targetData.get(i);
-      try {
-        assertEquals(expectedTimeValuePair.getTimestamp(), targetTimeValuePair.getTimestamp());
-        assertEquals(expectedTimeValuePair.getValue(), targetTimeValuePair.getValue());
-      } catch (Throwable e) {
-        e.printStackTrace();
-      }
+      assertEquals(expectedTimeValuePair.getTimestamp(), targetTimeValuePair.getTimestamp());
+      assertEquals(expectedTimeValuePair.getValue(), targetTimeValuePair.getValue());
     }
   }
 
