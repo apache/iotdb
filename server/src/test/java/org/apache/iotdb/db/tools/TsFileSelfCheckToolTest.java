@@ -147,7 +147,7 @@ public class TsFileSelfCheckToolTest {
   public void tsFileSelfCheckToolWithStatisticsModifiedTest()
       throws IOException, TsFileTimeseriesMetadataException {
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
-        new TsFileSelfCheckTool().getTimeseriesMetadataMap(path);
+        new TsFileSelfCheckTool().getTimeseriesMetadataMapWithPath(path);
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
       TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
       Long pos = entry.getKey();
