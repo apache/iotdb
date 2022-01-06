@@ -82,9 +82,15 @@ public class CompactionSchedulerTest {
       };
 
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, IOException {
+    CompactionClearUtils.clearAllCompactionFiles();
+    EnvironmentUtils.cleanAllDir();
     IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    } catch (Exception e) {
+
+    }
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
       IoTDB.metaManager.createTimeseries(
@@ -111,11 +117,11 @@ public class CompactionSchedulerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     MergeManager.getINSTANCE().stop();
     IoTDB.metaManager.clear();
+    CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     try {
       Thread.sleep(10_000);
@@ -255,6 +261,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -394,6 +401,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -527,6 +535,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(1, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -633,6 +642,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -797,6 +807,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -930,6 +941,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1060,6 +1072,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1167,6 +1180,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1289,6 +1303,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertTrue(tsFileManager.getTsFileList(true).size() <= 25);
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1424,6 +1439,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1558,6 +1574,7 @@ public class CompactionSchedulerTest {
           e.printStackTrace();
         }
       }
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1692,6 +1709,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1824,6 +1842,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(false).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -1955,7 +1974,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
-
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -2088,6 +2107,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(false).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);
@@ -2221,6 +2241,7 @@ public class CompactionSchedulerTest {
         }
       }
       assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
       while (CompactionTaskManager.currentTaskNum.get() > 0) {
         try {
           Thread.sleep(10);

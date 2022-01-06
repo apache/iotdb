@@ -31,8 +31,12 @@ public class TsFileUtils {
    * @throws IOException the io operations on file fails
    */
   public static boolean isTsFileComplete(File file) throws IOException {
-    try (TsFileSequenceReader reader = new TsFileSequenceReader(file.getAbsolutePath(), false)) {
+    TsFileSequenceReader reader = null;
+    try {
+      reader = new TsFileSequenceReader(file.getAbsolutePath(), false);
       return reader.isComplete();
+    } finally {
+      reader.close();
     }
   }
 }
