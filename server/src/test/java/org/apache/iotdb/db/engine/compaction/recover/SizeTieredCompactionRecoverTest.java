@@ -41,7 +41,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -106,7 +106,7 @@ public class SizeTieredCompactionRecoverTest {
         COMPACTION_TEST_SG + ".device1.sensor3",
         COMPACTION_TEST_SG + ".device1.sensor4",
       };
-  static final UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[fullPaths.length];
+  static final MeasurementSchema[] schemas = new MeasurementSchema[fullPaths.length];
   static String logFilePath =
       TestConstant.BASE_OUTPUT_PATH + File.separator + "test-compaction.compaction.log";
   static String[] originDataDirs = null;
@@ -146,7 +146,7 @@ public class SizeTieredCompactionRecoverTest {
     PartialPath[] deviceIds = new PartialPath[fullPaths.length];
     for (int i = 0; i < fullPaths.length; ++i) {
       schemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               fullPaths[i].split("\\.")[3],
               TSDataType.INT64,
               TSEncoding.RLE,
@@ -155,7 +155,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (int i = 0; i < fullPaths.length; ++i) {
-      UnaryMeasurementSchema schema = schemas[i];
+      MeasurementSchema schema = schemas[i];
       PartialPath deviceId = deviceIds[i];
       IoTDB.metaManager.createTimeseries(
           deviceId.concatNode(schema.getMeasurementId()),
@@ -804,7 +804,7 @@ public class SizeTieredCompactionRecoverTest {
 
   public static class TestMetaManager extends MManager {
     public IMeasurementSchema getSeriesSchema(PartialPath path) {
-      return new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.INT64);
+      return new MeasurementSchema(path.getMeasurement(), TSDataType.INT64);
     }
   }
 }

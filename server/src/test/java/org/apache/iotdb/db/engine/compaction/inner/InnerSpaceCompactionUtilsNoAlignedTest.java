@@ -37,7 +37,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -64,7 +64,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
   private PartialPath[] devicePath = new PartialPath[devices.length];
   private final String[] measurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
   private Set<String> fullPathSet = new HashSet<>();
-  private UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[measurements.length];
+  private MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
   private List<String> paths = new ArrayList<>();
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
 
@@ -132,7 +132,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
   private void createTimeseries() throws MetadataException {
     for (int i = 0; i < measurements.length; ++i) {
       schemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               measurements[i], TSDataType.INT64, TSEncoding.PLAIN, CompressionType.SNAPPY);
     }
     for (int i = 0; i < devices.length; ++i) {
@@ -140,7 +140,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(storageGroup));
     for (PartialPath device : devicePath) {
-      for (UnaryMeasurementSchema schema : schemas) {
+      for (MeasurementSchema schema : schemas) {
         IoTDB.metaManager.createTimeseries(
             device.concatNode(schema.getMeasurementId()),
             schema.getType(),
