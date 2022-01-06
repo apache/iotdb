@@ -67,15 +67,19 @@ public abstract class AbstractFiveNodeClusterIT extends ClusterIT {
       new NoProjectNameDockerComposeContainer(
               "5nodes", new File("src/test/resources/5nodes/docker-compose.yaml"))
           .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger))
+          .withLogConsumer("iotdb-server_1", new Slf4jLogConsumer(node1Logger).withPrefix("iotdb-server_1"))
           .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger))
+          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger).withPrefix("iotdb"
+              + "-server_2"))
           .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger))
+          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger).withPrefix("iotdb"
+              + "-server_3"))
           .withExposedService("iotdb-server_4", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_4", new Slf4jLogConsumer(node4Logger))
+          .withLogConsumer("iotdb-server_4", new Slf4jLogConsumer(node4Logger).withPrefix("iotdb"
+              + "-server_4"))
           .withExposedService("iotdb-server_5", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_5", new Slf4jLogConsumer(node5Logger))
+          .withLogConsumer("iotdb-server_5", new Slf4jLogConsumer(node5Logger).withPrefix("iotdb"
+              + "-server_5"))
           .withLocalCompose(true);
 
   @Override
