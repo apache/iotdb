@@ -475,6 +475,7 @@ public abstract class Cases {
       ResultSet resultSet = null;
       try {
         resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
+        fail("Exception expected for \"The key tag3 is not a tag\"");
       } catch (Exception e) {
         Assert.assertTrue(e.getMessage().contains("The key tag3 is not a tag"));
       } finally {
@@ -945,10 +946,10 @@ public abstract class Cases {
             readStatement.executeQuery(String.format("SELECT * from root.sg%d.d1.v1", sg));
         for (long t = 1; t <= 3; t++) {
           Assert.assertTrue(resultSet.next());
-          Assert.assertEquals(resultSet.getLong(1), t);
-          Assert.assertEquals(resultSet.getString(2), "1");
-          Assert.assertEquals(resultSet.getString(3), "2");
-          Assert.assertEquals(resultSet.getString(4), "3.0");
+          Assert.assertEquals(t, resultSet.getLong(1));
+          Assert.assertEquals("1", resultSet.getString("root.sg" + sg + ".d1.v1.s1"));
+          Assert.assertEquals("2", resultSet.getString("root.sg" + sg + ".d1.v1.s2"));
+          Assert.assertEquals("3.0", resultSet.getString("root.sg" + sg + ".d1.v1.s3"));
         }
       }
     }

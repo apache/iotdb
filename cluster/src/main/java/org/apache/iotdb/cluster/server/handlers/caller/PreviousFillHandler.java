@@ -73,10 +73,17 @@ public class PreviousFillHandler implements AsyncMethodCallback<ByteBuffer> {
 
   public TimeValuePair getResult() throws QueryProcessException {
     if (!exceptions.isEmpty()) {
-      QueryProcessException e =
-          new QueryProcessException(
-              "Exception happened when performing previous fill. "
-                  + "See the suppressed exceptions for causes.");
+      StringBuilder errMsg = new StringBuilder("Exception happened when getting the result: [");
+      for (Exception exception : exceptions) {
+        errMsg
+            .append("<")
+            .append(exception.getClass().getName())
+            .append(":")
+            .append(exception.getMessage())
+            .append("> ");
+      }
+      errMsg.append("]");
+      QueryProcessException e = new QueryProcessException(errMsg.toString());
       for (Exception exception : exceptions) {
         e.addSuppressed(exception);
       }

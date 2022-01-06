@@ -139,63 +139,27 @@ public class ClusterPlanExecutor extends PlanExecutor {
       throw new PathNotExistException(path.getFullPath());
     }
     logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret;
-    try {
-      ret = getDeviceCount(sgPathMap, path);
-    } catch (CheckConsistencyException e) {
-      throw new MetadataException(e);
-    }
+    int ret = getDeviceCount(sgPathMap);
     logger.debug("The number of devices satisfying {} is {}", path, ret);
     return ret;
   }
 
-  private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap, PartialPath queryPath)
-      throws CheckConsistencyException, MetadataException {
+  private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap) throws MetadataException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (String storageGroupName : sgPathMap.keySet()) {
-      PartialPath pathUnderSG = new PartialPath(storageGroupName);
-      // find the data group that should hold the device schemas of the storage group
-      PartitionGroup partitionGroup =
-          metaGroupMember.getPartitionTable().route(storageGroupName, 0);
-      PartialPath targetPath;
-      // If storage group node length is larger than the one of queryPath, we query the device count
-      // of the storage group directly
-      if (pathUnderSG.getNodeLength() >= queryPath.getNodeLength()) {
-        targetPath = pathUnderSG;
-      } else {
-        // Or we replace the prefix of queryPath with the storage group as the target queryPath
-        String[] targetNodes = new String[queryPath.getNodeLength()];
-        for (int i = 0; i < queryPath.getNodeLength(); i++) {
-          if (i < pathUnderSG.getNodeLength()) {
-            targetNodes[i] = pathUnderSG.getNodes()[i];
-          } else {
-            targetNodes[i] = queryPath.getNodes()[i];
-          }
-        }
-        targetPath = new PartialPath(targetNodes);
-      }
-      if (partitionGroup.contains(metaGroupMember.getThisNode())) {
-        // this node is a member of the group, perform a local query after synchronizing with the
-        // leader
-        metaGroupMember
-            .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
-            .syncLeaderWithConsistencyCheck(false);
-        int localResult = getLocalDeviceCount(targetPath);
-        logger.debug(
-            "{}: get device count of {} locally, result {}",
-            metaGroupMember.getName(),
-            partitionGroup,
-            localResult);
-        result.addAndGet(localResult);
-      } else {
-        // batch the queries of the same group to reduce communication
-        groupPathMap
-            .computeIfAbsent(partitionGroup, p -> new ArrayList<>())
-            .add(targetPath.getFullPath());
-      }
+    for (Entry<String, List<PartialPath>> entry : sgPathMap.entrySet()) {
+      String sg = entry.getKey();
+      List<PartialPath> pathUnderSg = entry.getValue();
+
+      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(sg, 0);
+      pathUnderSg.forEach(
+          p ->
+              groupPathMap
+                  .computeIfAbsent(partitionGroup, key -> new ArrayList<>())
+                  .add(p.getFullPath()));
     }
+
     if (groupPathMap.isEmpty()) {
       return result.get();
     }
@@ -209,15 +173,35 @@ public class ClusterPlanExecutor extends PlanExecutor {
       remoteFutures.add(
           remoteQueryThreadPool.submit(
               () -> {
-                try {
-                  result.addAndGet(getRemoteDeviceCount(partitionGroup, pathsToQuery));
-                } catch (MetadataException e) {
-                  logger.warn(
-                      "Cannot get remote device count of {} from {}",
-                      pathsToQuery,
-                      partitionGroup,
-                      e);
+                if (partitionGroup.contains(metaGroupMember.getThisNode())) {
+                  // this node is a member of the group, perform a local query after synchronizing
+                  // with the
+                  // leader
+                  metaGroupMember
+                      .getLocalDataMember(partitionGroup.getHeader(), partitionGroup.getRaftId())
+                      .syncLeaderWithConsistencyCheck(false);
+                  for (String s : pathsToQuery) {
+                    int localResult = getLocalDeviceCount(new PartialPath(s));
+                    logger.debug(
+                        "{}: get device count of {} from {} locally, result {}",
+                        s,
+                        metaGroupMember.getName(),
+                        partitionGroup,
+                        localResult);
+                    result.addAndGet(localResult);
+                  }
+                } else {
+                  try {
+                    result.addAndGet(getRemoteDeviceCount(partitionGroup, pathsToQuery));
+                  } catch (MetadataException e) {
+                    logger.warn(
+                        "Cannot get remote device count of {} from {}",
+                        pathsToQuery,
+                        partitionGroup,
+                        e);
+                  }
                 }
+
                 return null;
               }));
     }

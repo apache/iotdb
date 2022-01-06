@@ -79,10 +79,17 @@ public class ShowTimeSeriesHandler implements AsyncMethodCallback<List<ShowTimeS
 
   public List<ShowTimeSeriesResult> getResult() throws MetadataException {
     if (!exceptions.isEmpty()) {
-      MetadataException e =
-          new MetadataException(
-              "Exception happened when getting the result."
-                  + " See the suppressed exceptions for causes.");
+      StringBuilder errMsg = new StringBuilder("Exception happened when getting the result: [");
+      for (Exception exception : exceptions) {
+        errMsg
+            .append("<")
+            .append(exception.getClass().getName())
+            .append(":")
+            .append(exception.getMessage())
+            .append("> ");
+      }
+      errMsg.append("]");
+      MetadataException e = new MetadataException(errMsg.toString());
       for (Exception exception : exceptions) {
         e.addSuppressed(exception);
       }
