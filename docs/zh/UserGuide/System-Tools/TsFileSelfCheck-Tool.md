@@ -19,24 +19,24 @@
 
 -->
 
-# TsFile自检工具
-IoTDB Server提供了TsFile自检工具，目前该工具可以检查TsFile文件中的基本格式、TimeseriesMetadata的正确性以及TsFile中各部分存储的Statistics的正确性和一致性。
+# TsFile 自检工具
+IoTDB Server 提供了 TsFile 自检工具，目前该工具可以检查 TsFile 文件中的基本格式、TimeseriesMetadata 的正确性以及 TsFile 中各部分存储的 Statistics 的正确性和一致性。
 
 ## 使用
-第一步：创建一个TsFileSelfCheckTool类的对象。
+第一步：创建一个 TsFileSelfCheckTool 类的对象。
 
 ``` java
 TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
 ```
 
-第二步：调用自检工具的check方法。第一个参数path是要检测的TsFile的路径。第二个参数是是否只检测TsFile开头和结尾的Magic String和Version Number。
+第二步：调用自检工具的 check 方法。第一个参数 path 是要检测的 TsFile 的路径。第二个参数是是否只检测 TsFile 开头和结尾的 Magic String 和 Version Number。
 
 ``` java
 tool.check(path, false);
 ```
 
-* check方法的返回值有四种。
-* 返回值为-1表示TsFile自检无错。
-* 返回值为-2表示TsFile存在Statistics不一致问题。具体会有两种异常，一种是TimeSeriesMetadata的Statistics与其后面的ChunkMetadata的聚合统计的Statistics不一致。另一种是ChunkMetadata的Statistics与其索引的Chunk中的Page聚合统计的Statistics不一致。
-* 返回值为-3表示TsFile版本不兼容。
-* 返回值为-4表示给定路径不存在TsFile文件。
+* check 方法的返回值有四种。
+* 返回值为 -1 表示 TsFile 自检无错。
+* 返回值为 -2 表示 TsFile 存在 Statistics 不一致问题。具体会有两种异常，一种是 TimeSeriesMetadata 的 Statistics 与其后面的 ChunkMetadata 的聚合统计的 Statistics 不一致。另一种是 ChunkMetadata 的 Statistics 与其索引的 Chunk 中的 Page 聚合统计的 Statistics 不一致。
+* 返回值为 -3 表示 TsFile 版本不兼容。
+* 返回值为 -4 表示给定路径不存在 TsFile 文件。
