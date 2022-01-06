@@ -43,10 +43,18 @@ public class TsFileSelfCheckTool {
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckTool.class);
 
   private Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithReader(
-      TsFileSelfCheckToolReader reader) throws TsFileTimeseriesMetadataException {
+      TsFileSelfCheckToolReader reader) throws Exception {
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
+    return timeseriesMetadataMap;
+  }
+
+  public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithPath(String filename)
+      throws IOException, TsFileTimeseriesMetadataException {
+    TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     try {
-      timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
+      timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
     } catch (Exception e) {
       logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
       throw new TsFileTimeseriesMetadataException(
@@ -55,18 +63,18 @@ public class TsFileSelfCheckTool {
     return timeseriesMetadataMap;
   }
 
-  public Map<Long, Pair<Path, TimeseriesMetadata>> getTimeseriesMetadataMapWithPath(String filename)
-      throws IOException, TsFileTimeseriesMetadataException {
-    TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    return getTimeseriesMetadataMapWithReader(reader);
-  }
-
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
     System.out.println("file path: " + filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
-    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
-        getTimeseriesMetadataMapWithReader(reader);
+    Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    try {
+      timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
+    } catch (Exception e) {
+      logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+      throw new TsFileTimeseriesMetadataException(
+          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+    }
     return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
   }
 
