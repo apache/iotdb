@@ -134,9 +134,7 @@ public class CompactionCheckerUtils {
                 batchDataIterator.next();
               }
             }
-            System.out.println();
           }
-          System.out.println();
         }
       }
     }

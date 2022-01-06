@@ -82,6 +82,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
   @Override
   protected void doCompaction() throws Exception {
     long startTime = System.currentTimeMillis();
+    boolean getWriteLockOfManager = false;
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     // Here is tmpTargetFile, which is xxx.target
@@ -152,6 +153,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       // get write lock for TsFileResource list with timeout
       try {
         tsFileManager.writeLockWithTimeout("size-tired compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
+        getWriteLockOfManager = true;
       } catch (WriteLockFailedException e) {
         // if current compaction thread couldn't get write lock
         // a WriteLockFailException will be thrown, then terminate the thread itself
@@ -210,7 +212,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           tsFileResourceList);
     } finally {
       releaseFileLocksAndResetMergingStatus(true);
-      tsFileManager.writeUnlock();
+      if (getWriteLockOfManager) {
+        tsFileManager.writeUnlock();
+      }
     }
   }
 
