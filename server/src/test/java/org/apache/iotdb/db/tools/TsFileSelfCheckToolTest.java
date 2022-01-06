@@ -212,7 +212,9 @@ public class TsFileSelfCheckToolTest {
       tool.check(path, false);
       fail("No exception thrown.");
     } catch (TsFileTimeseriesMetadataException e) {
-      assertNull(e.getMessage());
+      assertEquals(
+          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.",
+          e.getMessage());
     }
   }
 

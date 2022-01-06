@@ -52,7 +52,8 @@ public class TsFileSelfCheckTool {
       timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
     } catch (Exception e) {
       logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
-      throw new TsFileTimeseriesMetadataException(e.getMessage());
+      throw new TsFileTimeseriesMetadataException(
+          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
     }
     return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
   }
@@ -65,7 +66,8 @@ public class TsFileSelfCheckTool {
       timeseriesMetadataMap = reader.getAllTimeseriesMetadataWithOffset();
     } catch (Exception e) {
       logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
-      throw new TsFileTimeseriesMetadataException(e.getMessage());
+      throw new TsFileTimeseriesMetadataException(
+          "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
     }
     return timeseriesMetadataMap;
   }
