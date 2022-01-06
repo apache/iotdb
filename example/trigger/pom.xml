@@ -97,7 +97,7 @@
         <profile>
             <id>spotless</id>
             <activation>
-                <jdk>[1.8,21)</jdk>
+                <jdk>[1.8,16)</jdk>
                 <!-- activeByDefault does not take effect-->
                 <file>
                     <exists>.</exists>
