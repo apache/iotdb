@@ -53,7 +53,7 @@ public class TsFileSketchToolTest {
           .concat(File.separator)
           .concat("0")
           .concat(File.separator)
-          .concat("1-0-0-0.tsfile");;
+          .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
   String device = "root.device_0";
 
