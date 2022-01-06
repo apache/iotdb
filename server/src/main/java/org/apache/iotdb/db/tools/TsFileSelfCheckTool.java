@@ -65,7 +65,8 @@ public class TsFileSelfCheckTool {
 
   /**
    * @param filename The path of TsFile.
-   * @param fastFinish Only check MAGIC_STRING in header and footer.
+   * @param fastFinish If true, the method will only check the format of head (Magic String TsFile,
+   *     Version Number) and tail (Magic String TsFile) of TsFile.
    * @return There are four return values of the check method. The return value is -1, which means
    *     that the TsFile self check is error-free. The return value is -2, which means that TsFile
    *     has inconsistencies in Statistics. There will be two specific exceptions, one is that the
