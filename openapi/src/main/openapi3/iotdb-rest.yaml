@@ -208,6 +208,10 @@ components:
           type: string
         control:
            type: string
+        groupBy:
+          type: string
+        fill:
+          type: string
         startTime:
           type: number
         endTime:

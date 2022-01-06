@@ -24,12 +24,16 @@ import { SelectValue } from 'componments/SelectValue';
 import { FromValue } from 'componments/FromValue';
 import { WhereValue } from 'componments/WhereValue';
 import { ControlValue } from 'componments/ControlValue';
+import { GroupByValue } from 'componments/GroupByValue';
+import { FillValue } from 'componments/FillValue';
 
 interface State {
   expression: string[];
   prefixPath: string[];
   condition: string;
   control: string;
+  groupBy: string;
+  fill: string;
 }
 
 const paths = [''];
@@ -42,6 +46,8 @@ export class QueryEditor extends PureComponent<Props, State> {
     prefixPath: paths,
     condition: '',
     control: '',
+    groupBy: '',
+    fill: '',
   };
 
   onSelectValueChange = (exp: string[]) => {
@@ -61,6 +67,16 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query, condition: c });
     this.setState({ condition: c });
   };
+  onGroupByValueChange = (c: string) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, groupBy: c });
+    this.setState({ groupBy: c });
+  };
+  onFillValueChange = (c: string) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, fill: c });
+    this.setState({ fill: c });
+  };
   onControlValueChange = (c: string) => {
     const { onChange, query } = this.props;
     onChange({ ...query, control: c });
@@ -74,7 +90,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition, control } = query;
+    const { expression, prefixPath, condition, control, groupBy, fill } = query;
 
     return (
       <>
@@ -99,6 +115,16 @@ export class QueryEditor extends PureComponent<Props, State> {
             <div className="gf-form">
               <QueryInlineField label={'WHERE'}>
                 <WhereValue condition={condition} onChange={this.onWhereValueChange} />
+              </QueryInlineField>
+            </div>
+            <div className="gf-form">
+              <QueryInlineField label={'GROUP BY'}>
+                <GroupByValue groupBy={groupBy} onChange={this.onGroupByValueChange} />
+              </QueryInlineField>
+            </div>
+            <div className="gf-form">
+              <QueryInlineField label={'FILL'}>
+                <FillValue fill={fill} onChange={this.onFillValueChange} />
               </QueryInlineField>
             </div>
             <div className="gf-form">

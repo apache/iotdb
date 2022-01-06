@@ -14,33 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { DataQuery, DataSourceJsonData } from '@grafana/data';
+import { FunctionComponent } from 'react';
+import { SegmentInput } from '@grafana/ui';
+import React from 'react';
 
-export interface IoTDBQuery extends DataQuery {
-  startTime: number;
-  endTime: number;
-  expression: string[];
-  prefixPath: string[];
-  condition: string;
-  queryText?: string;
-  constant: number;
-  control: string;
+export interface Props {
   groupBy: string;
-  fill: string;
+  onChange: (groupByStr: string) => void;
 }
 
-/**
- * These are options configured for each DataSource instance
- */
-export interface IoTDBOptions extends DataSourceJsonData {
-  url: string;
-  password: string;
-  username: string;
-}
-
-/**
- * Value that is used in the backend, but never sent over HTTP to the frontend
- */
-export interface IoTDBSecureJsonData {
-  apiKey?: string;
-}
+export const GroupByValue: FunctionComponent<Props> = ({ groupBy, onChange }) => (
+  <>
+    {
+      <>
+        <SegmentInput
+          className="min-width-8"
+          placeholder="(optional)"
+          value={groupBy}
+          onChange={string => onChange(string.toString())}
+        />
+      </>
+    }
+  </>
+);
