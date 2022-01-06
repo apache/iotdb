@@ -53,7 +53,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1445,7 +1444,7 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   // This method is only used for TsFile
   public List<IChunkMetadata> getIChunkMetadataList(Path path) throws IOException {
-    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, false);
+    ITimeSeriesMetadata timeseriesMetaData = readITimeseriesMetadata(path, true);
     if (timeseriesMetaData == null) {
       return Collections.emptyList();
     }

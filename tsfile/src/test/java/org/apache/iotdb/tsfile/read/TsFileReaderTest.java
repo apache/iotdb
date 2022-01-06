@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
-
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -412,9 +411,9 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      paths.add(new Path("d1", "s1"));
+      // paths.add(new Path("d1", "s1"));
       paths.add(new Path("d1", "s9"));
-      paths.add(new Path("d2", "s1"));
+      // paths.add(new Path("d2", "s1"));
       paths.add(new Path("d2", "s8"));
       paths.add(new Path("d9", "s8"));
 
@@ -428,7 +427,7 @@ public class TsFileReaderTest {
               new GlobalTimeExpression(TimeFilter.gtEq(1799L)),
               new GlobalTimeExpression(TimeFilter.ltEq(1900L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
-      long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
+      long rowCount = queryAndPrint(paths, tsFileReader, null);
       Assert.assertNotEquals(0, rowCount);
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
@@ -468,7 +467,7 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      // System.out.println(queryDataSet.next());
+      System.out.println(queryDataSet.next());
       queryDataSet.next();
       rowCount++;
     }

@@ -32,7 +32,6 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.page.ValuePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -269,9 +268,9 @@ public class ValueChunkWriter {
    * @throws IOException exception in IO
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
-    if (statistics.getCount() == 0) {
-      return;
-    }
+    //    if (statistics.getCount() == 0) {
+    //      return;
+    //    }
 
     // start to write this column chunk
     writer.startFlushChunk(

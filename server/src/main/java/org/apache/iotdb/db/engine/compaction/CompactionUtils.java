@@ -26,18 +26,17 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
+import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CompactionUtils {
   private static final Logger logger = LoggerFactory.getLogger("CompactionUtils");
@@ -152,7 +151,7 @@ public class CompactionUtils {
 
   private static Set<String> getTsFileDevicesSet(
       List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
-    Set<String> deviceSet = new HashSet<>();
+    Set<String> deviceSet = new ConcurrentHashSet<>();
     for (TsFileResource seqResource : seqResources) {
       deviceSet.addAll(
           FileReaderManager.getInstance().get(seqResource.getTsFilePath(), true).getAllDevices());
@@ -169,7 +168,6 @@ public class CompactionUtils {
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
       throws IOException {
-    String dataDirectory = seqFileResources.get(0).getTsFile().getParent();
     if (!seqFileResources.isEmpty() && !unseqFileResources.isEmpty()) {
       // cross space
       return new CrossSpaceCompactionWriter(targetFileResources, seqFileResources);
@@ -182,7 +180,7 @@ public class CompactionUtils {
   private static Map<String, TimeseriesMetadata> getDeviceMeasurementsMap(
       String device, List<TsFileResource> seqFileResources, List<TsFileResource> unseqFileResources)
       throws IOException {
-    Map<String, TimeseriesMetadata> deviceMeasurementsMap = new HashMap<>();
+    Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
     for (TsFileResource seqResource : seqFileResources) {
       deviceMeasurementsMap.putAll(
           FileReaderManager.getInstance()

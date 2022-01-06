@@ -19,6 +19,7 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
   private TsFileIOWriter fileWriter;
   private IChunkWriter chunkWriter;
   private boolean isAlign;
+  private String deviceId;
 
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
     fileWriter = new RestorableTsFileIOWriter(targetFileResource.getTsFile());
@@ -28,6 +29,7 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
   public void startChunkGroup(String deviceId, boolean isAlign) throws IOException {
     fileWriter.startChunkGroup(deviceId);
     this.isAlign = isAlign;
+    this.deviceId = deviceId;
   }
 
   @Override
@@ -80,8 +82,9 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
     } else {
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
       for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
-        Object v = val.getValue();
-        TSDataType tsDataType = val.getDataType();
+        Object v = val == null ? null : val.getValue();
+        // if val is null, then give it a random type
+        TSDataType tsDataType = val == null ? TSDataType.TEXT : val.getDataType();
         boolean isNull = v == null;
         switch (tsDataType) {
           case TEXT:
@@ -107,12 +110,12 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
         }
       }
       chunkWriter.write(timestamp);
-      //      value = ((TsPrimitiveType[]) value)[0].getValue();
-      //      TSDataType tsDataType = ((TsPrimitiveType[]) value)[0].getDataType();
     }
     if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.endChunkGroup();
+      fileWriter.startChunkGroup(deviceId);
     }
   }
 

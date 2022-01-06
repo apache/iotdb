@@ -84,7 +84,7 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
 
   @Override
   public void write(long timestamp, Object value) throws IOException {
-    // if timestamp is later than current source seq tsfile, than flush chunk writer
+    // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > seqTsFileResources.get(seqFileIndex).getEndTime(deviceId)) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
@@ -148,6 +148,8 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
     if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+      fileWriterList.get(seqFileIndex).endChunkGroup();
+      fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
     }
   }
 
