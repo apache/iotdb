@@ -1446,7 +1446,7 @@ public class TsFileSequenceReader implements AutoCloseable {
       return TsFileCheckStatus.FILE_NOT_FOUND;
     }
     long fileSize = checkFile.length();
-    System.out.println("file length: " + fileSize);
+    logger.info("file length: " + fileSize);
 
     int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
     if (fileSize < headerLength) {

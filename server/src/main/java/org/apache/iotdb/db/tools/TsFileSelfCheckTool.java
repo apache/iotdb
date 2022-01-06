@@ -78,7 +78,7 @@ public class TsFileSelfCheckTool {
    */
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
-    System.out.println("file path: " + filename);
+    logger.info("file path: " + filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
     try {

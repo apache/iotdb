@@ -38,6 +38,8 @@ import org.apache.commons.io.FileUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -64,6 +66,8 @@ public class TsFileSelfCheckToolTest {
           .concat("1-0-0-0.tsfile");
   String sketchOut = "sketch.out";
   String device = "root.device_0";
+
+  private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckToolTest.class);
 
   @Before
   public void setUp() throws Exception {
@@ -160,7 +164,7 @@ public class TsFileSelfCheckToolTest {
           ReadWriteForEncodingUtils.writeUnsignedVarInt(
               timeseriesMetadata.getDataSizeOfChunkMetaDataList(), bo);
       serialLength += statistics.serialize(bo);
-      System.out.println("serialLength: " + serialLength);
+      logger.info("serialLength: " + serialLength);
       byte[] serialArr = bo.toByteArray();
       raf.seek(pos);
       raf.write(serialArr, 0, serialArr.length);
