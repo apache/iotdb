@@ -45,6 +45,7 @@ import java.io.InputStreamReader;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -557,7 +558,7 @@ public class ImportCsv extends AbstractCsvTool {
       }
       String[] split = headerName.split("\\.");
       String measurementName = split[split.length - 1];
-      String deviceName = headerName.replace("." + measurementName, "");
+      String deviceName = StringUtils.join(Arrays.copyOfRange(split, 0, split.length - 1), '.');
       if (deviceAndMeasurementNames != null) {
         if (!deviceAndMeasurementNames.containsKey(deviceName)) {
           deviceAndMeasurementNames.put(deviceName, new ArrayList<>());
@@ -612,7 +613,6 @@ public class ImportCsv extends AbstractCsvTool {
       SimpleDateFormat format = new SimpleDateFormat(timeFormat);
       try {
         format.parse(time).getTime();
-        System.out.println(timeFormat);
         return format;
       } catch (java.text.ParseException ignored) {
         // do nothing
@@ -654,11 +654,9 @@ public class ImportCsv extends AbstractCsvTool {
    * @return
    */
   private static TSDataType typeInfer(String value) {
-    if (value.contains("\"")) {
-      return TEXT;
-    } else if ("true".equals(value) || "false".equals(value)) {
-      return BOOLEAN;
-    } else if (!value.contains(".")) {
+    if (value.contains("\"")) return TEXT;
+    else if (value.equals("true") || value.equals("false")) return BOOLEAN;
+    else if (!value.contains(".")) {
       try {
         Integer.valueOf(value);
         return INT32;
@@ -671,11 +669,9 @@ public class ImportCsv extends AbstractCsvTool {
         }
       }
     } else {
-      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length()) {
+      if (Float.valueOf(value).toString().length() == Double.valueOf(value).toString().length())
         return FLOAT;
-      } else {
-        return DOUBLE;
-      }
+      else return DOUBLE;
     }
   }
 

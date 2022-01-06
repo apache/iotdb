@@ -59,6 +59,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.RegisterManager;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaUtils;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -111,6 +112,7 @@ public class BaseMember {
     prevLeaderWait = RaftMember.getWaitLeaderTimeMs();
     prevEnableWAL = IoTDBDescriptor.getInstance().getConfig().isEnableWal();
     IoTDBDescriptor.getInstance().getConfig().setEnableWal(false);
+    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     RaftMember.setWaitLeaderTimeMs(10);
 
     syncLeaderMaxWait = ClusterConstant.getSyncLeaderMaxWaitMs();

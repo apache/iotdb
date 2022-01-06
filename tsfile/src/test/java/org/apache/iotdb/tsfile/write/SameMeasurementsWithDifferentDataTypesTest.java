@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -107,16 +107,16 @@ public class SameMeasurementsWithDifferentDataTypesTest {
 
     Schema schema = new Schema();
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+        TEMPLATE_1, new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_1, new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        TEMPLATE_1, new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
+        TEMPLATE_1, new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.TS_2DIFF));
 
     schema.extendTemplate(
-        TEMPLATE_2, new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        TEMPLATE_2, new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.extendTemplate(
-        TEMPLATE_2, new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+        TEMPLATE_2, new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
 
     schema.registerDevice("d1", TEMPLATE_1);
     schema.registerDevice("d2", TEMPLATE_2);

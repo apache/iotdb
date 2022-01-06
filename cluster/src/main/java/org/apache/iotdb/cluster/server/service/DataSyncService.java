@@ -415,7 +415,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       throw new TException(e);
     }
   }

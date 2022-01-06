@@ -20,7 +20,7 @@ package org.apache.iotdb.tsfile.write.writer;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Test;
 
@@ -35,23 +35,23 @@ public class MeasurementSchemaSerializeTest {
 
   @Test
   public void deserializeFromByteBufferTest() throws IOException {
-    UnaryMeasurementSchema standard =
-        new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
+    MeasurementSchema standard =
+        new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     standard.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
-    UnaryMeasurementSchema measurementSchema = UnaryMeasurementSchema.deserializeFrom(byteBuffer);
+    MeasurementSchema measurementSchema = MeasurementSchema.deserializeFrom(byteBuffer);
     assertEquals(standard, measurementSchema);
   }
 
   @Test
   public void deserializeFromInputStreamTest() throws IOException {
-    UnaryMeasurementSchema standard =
-        new UnaryMeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
+    MeasurementSchema standard =
+        new MeasurementSchema("sensor_1", TSDataType.FLOAT, TSEncoding.RLE);
     ByteBuffer byteBuffer = ByteBuffer.allocate(1024);
     standard.serializeTo(byteBuffer);
     ByteArrayInputStream inputStream = new ByteArrayInputStream(byteBuffer.array());
-    UnaryMeasurementSchema measurementSchema = UnaryMeasurementSchema.deserializeFrom(inputStream);
+    MeasurementSchema measurementSchema = MeasurementSchema.deserializeFrom(inputStream);
     assertEquals(standard, measurementSchema);
   }
 }

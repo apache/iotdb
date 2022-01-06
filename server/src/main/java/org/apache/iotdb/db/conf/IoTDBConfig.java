@@ -251,8 +251,16 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 8;
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
+  private int concurrentQueryThread = 16;
+
+  /**
+   * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
+   */
+  private int concurrentSubRawQueryThread = 8;
+
+  /** Blocking queue size for read task in raw data query. */
+  private int rawQueryBlockingQueueCapacity = 5;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
@@ -377,7 +385,7 @@ public class IoTDBConfig {
   private long targetCompactionFileSize = 2147483648L;
 
   /** The max candidate file num in compaction */
-  private int maxCompactionCandidateFileNum = 10;
+  private int maxCompactionCandidateFileNum = 30;
   /**
    * When merge point number reaches this, merge the files to the last level. During a merge, if a
    * chunk with less number of chunks than this parameter, the chunk will be merged with its
@@ -402,7 +410,7 @@ public class IoTDBConfig {
    * num # This parameters have to be much smaller than the permitted max open file num of each
    * process controlled by operator system(65535 in most system).
    */
-  private int maxOpenFileNumInCrossSpaceCompaction = 2000;
+  private int maxOpenFileNumInCrossSpaceCompaction = 100;
 
   /** whether to cache meta data(ChunkMetaData and TsFileMetaData) or not. */
   private boolean metaDataCacheEnable = true;
@@ -744,6 +752,9 @@ public class IoTDBConfig {
 
   private float udfCollectorMemoryBudgetInMB = (float) (1.0 / 3 * udfMemoryBudgetInMB);
 
+  /** The cached record size (in MB) of each series in group by fill query */
+  private float groupByFillCacheSizeInMB = (float) 1.0;
+
   // time in nanosecond precision when starting up
   private long startUpNanosecond = System.nanoTime();
 
@@ -780,6 +791,17 @@ public class IoTDBConfig {
 
   private String adminPassword = "root";
 
+  /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
+  private String deviceIDTransformationMethod = "Plain";
+
+  /** whether to use id table. ATTENTION: id table is not compatible with alias */
+  private boolean enableIDTable = false;
+
+  /**
+   * whether create mapping file of id table. This file can map device id in tsfile to device path
+   */
+  private boolean enableIDTableLogFile = false;
+
   public IoTDBConfig() {
     // empty constructor
   }
@@ -790,6 +812,14 @@ public class IoTDBConfig {
 
   public void setUdfMemoryBudgetInMB(float udfMemoryBudgetInMB) {
     this.udfMemoryBudgetInMB = udfMemoryBudgetInMB;
+  }
+
+  public float getGroupByFillCacheSizeInMB() {
+    return groupByFillCacheSizeInMB;
+  }
+
+  public void setGroupByFillCacheSizeInMB(float groupByFillCacheSizeInMB) {
+    this.groupByFillCacheSizeInMB = groupByFillCacheSizeInMB;
   }
 
   public float getUdfReaderMemoryBudgetInMB() {
@@ -1165,8 +1195,24 @@ public class IoTDBConfig {
     return concurrentQueryThread;
   }
 
-  void setConcurrentQueryThread(int concurrentQueryThread) {
+  public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentSubRawQueryThread() {
+    return concurrentSubRawQueryThread;
+  }
+
+  void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
+    this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  }
+
+  public int getRawQueryBlockingQueueCapacity() {
+    return rawQueryBlockingQueueCapacity;
+  }
+
+  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
+    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public int getConcurrentWindowEvaluationThread() {
@@ -2444,5 +2490,29 @@ public class IoTDBConfig {
 
   public void setCompactionSubmissionInterval(long interval) {
     compactionSubmissionInterval = interval;
+  }
+
+  public String getDeviceIDTransformationMethod() {
+    return deviceIDTransformationMethod;
+  }
+
+  public void setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    this.deviceIDTransformationMethod = deviceIDTransformationMethod;
+  }
+
+  public boolean isEnableIDTable() {
+    return enableIDTable;
+  }
+
+  public void setEnableIDTable(boolean enableIDTable) {
+    this.enableIDTable = enableIDTable;
+  }
+
+  public boolean isEnableIDTableLogFile() {
+    return enableIDTableLogFile;
+  }
+
+  public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
+    this.enableIDTableLogFile = enableIDTableLogFile;
   }
 }

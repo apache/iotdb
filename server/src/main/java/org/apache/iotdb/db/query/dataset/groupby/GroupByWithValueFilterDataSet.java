@@ -21,7 +21,7 @@ package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -41,7 +41,11 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
+import org.apache.iotdb.tsfile.read.filter.TimeFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -51,7 +55,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
 
@@ -88,6 +91,11 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     this.readerToAggrIndexesMap = new HashMap<>();
     this.groupByTimePlan = groupByTimePlan;
 
+    Filter timeFilter =
+        FilterFactory.and(
+            TimeFilter.gtEq(groupByTimePlan.getStartTime()),
+            TimeFilter.lt(groupByTimePlan.getEndTime()));
+
     List<PartialPath> selectedSeries = new ArrayList<>();
     groupByTimePlan
         .getDeduplicatedPaths()
@@ -98,10 +106,22 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(paths.stream().map(p -> (PartialPath) p).collect(Collectors.toList()));
+    List<PartialPath> groupedPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       // init non-aligned series reader
       for (PartialPath path : pathToAggrIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
@@ -117,7 +137,7 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
             seriesReaderByTimestamp, alignedPathToAggrIndexesMap.get(alignedPath));
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
 
       // assign null to be friendly for GC
       pathToAggrIndexesMap = null;

@@ -49,6 +49,10 @@ public class TracingManager {
     getTracingInfo(queryId).addTsFileSet(seqResources, unseqResources);
   }
 
+  public void addTsFile(long queryId, TsFileResource tsFileResource, boolean isSeq) {
+    getTracingInfo(queryId).addTsFile(tsFileResource, isSeq);
+  }
+
   public void addChunkInfo(long queryId, int chunkNum, long pointsNum, boolean seq) {
     getTracingInfo(queryId).addChunkInfo(chunkNum, pointsNum, seq);
   }
@@ -61,8 +65,10 @@ public class TracingManager {
     getTracingInfo(queryId).addOverlappedPageNum();
   }
 
-  public void setStartTime(long queryId, long startTime) {
+  public void setStartTime(long queryId, long startTime, String statement) {
     getTracingInfo(queryId).setStartTime(startTime);
+    registerActivity(
+        queryId, String.format(TracingConstant.ACTIVITY_START_EXECUTE, statement), startTime);
   }
 
   public void registerActivity(long queryId, String activity, long startTime) {

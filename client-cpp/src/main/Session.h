@@ -372,6 +372,7 @@ public:
     std::vector <std::vector<std::string>> values;
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
+    bool isAligned;   // whether this tablet store data of aligned timeseries or not
 
     Tablet() {}
 
@@ -397,7 +398,7 @@ public:
      * @param maxRowNumber the maximum number of rows for this tablet
      */
     Tablet(const std::string &deviceId, const std::vector <std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber) : deviceId(deviceId), schemas(schemas), maxRowNumber(maxRowNumber){
+           int maxRowNumber, bool isAligned_ = false) : deviceId(deviceId), schemas(schemas), maxRowNumber(maxRowNumber), isAligned(isAligned_){
         // create timestamp column
         timestamps.resize(maxRowNumber);
         // create value columns
@@ -415,6 +416,8 @@ public:
     int getTimeBytesSize();
 
     int getValueByteSize(); // total byte size that values occupies
+
+    void setAligned(bool isAligned);
 };
 
 class SessionUtils {
@@ -539,9 +542,9 @@ public:
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
             this->valueBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[i])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
             this->bitmapBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[i])));
+                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
         }
         this->tsQueryDataSet = queryDataSet;
     }
@@ -671,12 +674,29 @@ public:
     void insertRecord(const std::string &deviceId, int64_t time, const std::vector <std::string> &measurements,
                       const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values);
 
+    void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector <std::string> &measurements,
+                      const std::vector <std::string> &values);
+
+    void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector <std::string> &measurements,
+                      const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values);
+
     void insertRecords(const std::vector <std::string> &deviceIds,
                        const std::vector <int64_t> &times,
                        const std::vector <std::vector<std::string>> &measurementsList,
                        const std::vector <std::vector<std::string>> &valuesList);
 
     void insertRecords(const std::vector <std::string> &deviceIds,
+                       const std::vector <int64_t> &times,
+                       const std::vector <std::vector<std::string>> &measurementsList,
+                       const std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                       const std::vector <std::vector<char *>> &valuesList);
+
+    void insertAlignedRecords(const std::vector <std::string> &deviceIds,
+                       const std::vector <int64_t> &times,
+                       const std::vector <std::vector<std::string>> &measurementsList,
+                       const std::vector <std::vector<std::string>> &valuesList);
+
+    void insertAlignedRecords(const std::vector <std::string> &deviceIds,
                        const std::vector <int64_t> &times,
                        const std::vector <std::vector<std::string>> &measurementsList,
                        const std::vector <std::vector<TSDataType::TSDataType>> &typesList,
@@ -695,13 +715,34 @@ public:
                                   std::vector <std::vector<char *>> &valuesList,
                                   bool sorted);
 
+    void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
+                                  std::vector <int64_t> &times,
+                                  std::vector <std::vector<std::string>> &measurementsList,
+                                  std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                                  std::vector <std::vector<char *>> &valuesList);
+
+    void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
+                                  std::vector <int64_t> &times,
+                                  std::vector <std::vector<std::string>> &measurementsList,
+                                  std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                                  std::vector <std::vector<char *>> &valuesList,
+                                  bool sorted);
+
     void insertTablet(Tablet &tablet);
 
     void insertTablet(Tablet &tablet, bool sorted);
 
+    void insertAlignedTablet(Tablet &tablet);
+
+    void insertAlignedTablet(Tablet &tablet, bool sorted);
+
     void insertTablets(std::map<std::string, Tablet *> &tablets);
 
     void insertTablets(std::map<std::string, Tablet *> &tablets, bool sorted);
+
+    void insertAlignedTablets(std::map<std::string, Tablet *> &tablets);
+
+    void insertAlignedTablets(std::map<std::string, Tablet *> &tablets, bool sorted);
 
     void testInsertRecord(const std::string &deviceId, int64_t time,
                           const std::vector <std::string> &measurements,
@@ -745,6 +786,12 @@ public:
                                std::vector <std::map<std::string, std::string>> *tagsList,
                                std::vector <std::map<std::string, std::string>> *attributesList,
                                std::vector <std::string> *measurementAliasList);
+
+    void createAlignedTimeseries(const std::string &deviceId,
+                                 const std::vector <std::string> &measurements,
+                                 const std::vector <TSDataType::TSDataType> &dataTypes,
+                                 const std::vector <TSEncoding::TSEncoding> &encodings,
+                                 const std::vector <CompressionType::CompressionType> &compressors);
 
     bool checkTimeseriesExists(const std::string &path);
 

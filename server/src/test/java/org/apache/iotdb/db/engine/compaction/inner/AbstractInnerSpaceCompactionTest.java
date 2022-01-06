@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -99,7 +99,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
           + "0";
 
   protected String[] deviceIds;
-  protected UnaryMeasurementSchema[] measurementSchemas;
+  protected MeasurementSchema[] measurementSchemas;
 
   protected List<TsFileResource> seqResources = new ArrayList<>();
   protected List<TsFileResource> unseqResources = new ArrayList<>();
@@ -141,10 +141,10 @@ public abstract class AbstractInnerSpaceCompactionTest {
   }
 
   void prepareSeries() throws MetadataException {
-    measurementSchemas = new UnaryMeasurementSchema[measurementNum];
+    measurementSchemas = new MeasurementSchema[measurementNum];
     for (int i = 0; i < measurementNum; i++) {
       measurementSchemas[i] =
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "sensor" + i, TSDataType.DOUBLE, encoding, CompressionType.UNCOMPRESSED);
     }
     deviceIds = new String[deviceNum];
@@ -153,7 +153,7 @@ public abstract class AbstractInnerSpaceCompactionTest {
     }
     IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
     for (String device : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
+      for (MeasurementSchema measurementSchema : measurementSchemas) {
         PartialPath devicePath = new PartialPath(device);
         IoTDB.metaManager.createTimeseries(
             devicePath.concatNode(measurementSchema.getMeasurementId()),
@@ -226,31 +226,31 @@ public abstract class AbstractInnerSpaceCompactionTest {
 
   void prepareFile(TsFileResource tsFileResource, long timeOffset, long ptNum, long valueOffset)
       throws IOException, WriteProcessException {
-    TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile());
-    for (String deviceId : deviceIds) {
-      for (UnaryMeasurementSchema measurementSchema : measurementSchemas) {
-        fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
-      }
-    }
-    for (long i = timeOffset; i < timeOffset + ptNum; i++) {
-      for (int j = 0; j < deviceNum; j++) {
-        TSRecord record = new TSRecord(i, deviceIds[j]);
-        for (int k = 0; k < measurementNum; k++) {
-          record.addTuple(
-              DataPoint.getDataPoint(
-                  measurementSchemas[k].getType(),
-                  measurementSchemas[k].getMeasurementId(),
-                  String.valueOf(i + valueOffset)));
+    try (TsFileWriter fileWriter = new TsFileWriter(tsFileResource.getTsFile()); ) {
+      for (String deviceId : deviceIds) {
+        for (MeasurementSchema measurementSchema : measurementSchemas) {
+          fileWriter.registerTimeseries(new Path(deviceId), measurementSchema);
         }
-        fileWriter.write(record);
-        tsFileResource.updateStartTime(deviceIds[j], i);
-        tsFileResource.updateEndTime(deviceIds[j], i);
       }
-      if ((i + 1) % flushInterval == 0) {
-        fileWriter.flushAllChunkGroups();
+      for (long i = timeOffset; i < timeOffset + ptNum; i++) {
+        for (int j = 0; j < deviceNum; j++) {
+          TSRecord record = new TSRecord(i, deviceIds[j]);
+          for (int k = 0; k < measurementNum; k++) {
+            record.addTuple(
+                DataPoint.getDataPoint(
+                    measurementSchemas[k].getType(),
+                    measurementSchemas[k].getMeasurementId(),
+                    String.valueOf(i + valueOffset)));
+          }
+          fileWriter.write(record);
+          tsFileResource.updateStartTime(deviceIds[j], i);
+          tsFileResource.updateEndTime(deviceIds[j], i);
+        }
+        if ((i + 1) % flushInterval == 0) {
+          fileWriter.flushAllChunkGroups();
+        }
       }
     }
-    fileWriter.close();
   }
 
   @After

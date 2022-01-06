@@ -32,7 +32,7 @@ import java.io.InputStream;
 /** The utils class to load configure. Read from yaml file. */
 public class MetricConfigDescriptor {
   private static final Logger logger = LoggerFactory.getLogger(MetricConfigDescriptor.class);
-  private MetricConfig metricConfig = new MetricConfig();
+  private MetricConfig metricConfig;
 
   public MetricConfig getMetricConfig() {
     return metricConfig;
@@ -51,7 +51,7 @@ public class MetricConfigDescriptor {
    *
    * @return the file path
    */
-  public String getPropsUrl() {
+  private String getPropsUrl() {
     String url = System.getProperty(MetricConstant.IOTDB_CONF, null);
     if (url == null) {
       logger.warn(
@@ -67,19 +67,21 @@ public class MetricConfigDescriptor {
 
   /** Load an property file and set MetricConfig variables. If not found file, use default value. */
   private void loadProps() {
-
     String url = getPropsUrl();
-
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
       try (InputStream inputStream = new FileInputStream(new File(url))) {
         logger.info("Start to read config file {}", url);
         metricConfig = (MetricConfig) yaml.load(inputStream);
+        return;
       } catch (IOException e) {
-        logger.warn("Fail to find config file {}", url, e);
+        logger.warn("Fail to find config file : {}, use default", url, e);
       }
+    } else {
+      logger.warn("Fail to find config file, use default");
     }
+    metricConfig = new MetricConfig();
   }
 
   private static class MetricConfigDescriptorHolder {
