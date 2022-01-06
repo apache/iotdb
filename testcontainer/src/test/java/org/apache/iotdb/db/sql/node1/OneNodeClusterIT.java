@@ -43,10 +43,10 @@ public class OneNodeClusterIT extends ClusterIT {
   @Rule
   public DockerComposeContainer environment =
       new NoProjectNameDockerComposeContainer(
-          "1node", new File("src/test/resources/1node/docker-compose.yaml"))
+              "1node", new File("src/test/resources/1node/docker-compose.yaml"))
           .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1",
-              new Slf4jLogConsumer(node1Logger).withPrefix("iotdb-server_1"))
+          .withLogConsumer(
+              "iotdb-server_1", new Slf4jLogConsumer(node1Logger).withPrefix("iotdb-server_1"))
           .withLocalCompose(true);
 
   @Override

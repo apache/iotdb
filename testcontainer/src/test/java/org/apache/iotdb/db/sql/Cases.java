@@ -40,6 +40,7 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
@@ -823,6 +824,7 @@ public abstract class Cases {
     }
   }
 
+  @Ignore("Aligned timeseries not supported yet")
   @Test
   public void testAutoCreateSchemaForAlignedTimeseries()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {

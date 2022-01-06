@@ -45,16 +45,16 @@ public abstract class AbstractThreeNodeClusterIT extends ClusterIT {
   @Rule
   public DockerComposeContainer environment =
       new NoProjectNameDockerComposeContainer(
-          "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
+              "3nodes", new File("src/test/resources/3nodes/docker-compose.yaml"))
           .withExposedService("iotdb-server_1", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_1",
-              new Slf4jLogConsumer(node1Logger).withPrefix("iotdb-server_1"))
+          .withLogConsumer(
+              "iotdb-server_1", new Slf4jLogConsumer(node1Logger).withPrefix("iotdb-server_1"))
           .withExposedService("iotdb-server_2", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_2", new Slf4jLogConsumer(node2Logger).withPrefix("iotdb"
-              + "-server_2"))
+          .withLogConsumer(
+              "iotdb-server_2", new Slf4jLogConsumer(node2Logger).withPrefix("iotdb" + "-server_2"))
           .withExposedService("iotdb-server_3", 6667, Wait.forListeningPort())
-          .withLogConsumer("iotdb-server_3", new Slf4jLogConsumer(node3Logger).withPrefix("iotdb"
-              + "-server_3"))
+          .withLogConsumer(
+              "iotdb-server_3", new Slf4jLogConsumer(node3Logger).withPrefix("iotdb" + "-server_3"))
           .withLocalCompose(true);
 
   @Override
