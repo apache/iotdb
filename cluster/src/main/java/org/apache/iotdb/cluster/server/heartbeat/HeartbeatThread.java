@@ -291,6 +291,10 @@ public class HeartbeatThread implements Runnable {
       return;
     }
     synchronized (localMember.getTerm()) {
+      if (localMember.getCharacter() != NodeCharacter.ELECTOR) {
+        return;
+      }
+
       long nextTerm = localMember.getTerm().incrementAndGet();
       localMember.setVoteFor(localMember.getThisNode());
       localMember.updateHardState(nextTerm, this.localMember.getVoteFor());

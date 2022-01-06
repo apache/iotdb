@@ -624,19 +624,21 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public void setLeader(Node leader) {
     if (!Objects.equals(leader, this.leader.get())) {
-      if (ClusterConstant.EMPTY_NODE.equals(leader) || leader == null) {
-        logger.info("{} has been set to null in term {}", getName(), term.get());
-      } else if (!Objects.equals(leader, this.thisNode)) {
-        logger.info("{} has become a follower of {} in term {}", getName(), leader, term.get());
-      }
-      synchronized (waitLeaderCondition) {
-        if (leader == null) {
-          this.leader.set(ClusterConstant.EMPTY_NODE);
-        } else {
-          this.leader.set(leader);
+      synchronized (term) {
+        if (ClusterConstant.EMPTY_NODE.equals(leader) || leader == null) {
+          logger.info("{} has been set to null in term {}", getName(), term.get());
+        } else if (!Objects.equals(leader, this.thisNode)) {
+          logger.info("{} has become a follower of {} in term {}", getName(), leader, term.get());
         }
-        if (!ClusterConstant.EMPTY_NODE.equals(this.leader.get())) {
-          waitLeaderCondition.notifyAll();
+        synchronized (waitLeaderCondition) {
+          if (leader == null) {
+            this.leader.set(ClusterConstant.EMPTY_NODE);
+          } else {
+            this.leader.set(leader);
+          }
+          if (!ClusterConstant.EMPTY_NODE.equals(this.leader.get())) {
+            waitLeaderCondition.notifyAll();
+          }
         }
       }
     }
