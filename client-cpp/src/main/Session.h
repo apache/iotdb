@@ -519,8 +519,11 @@ private:
 public:
     SessionDataSet() {}
 
-    SessionDataSet(const std::string &sql, const std::vector <std::string> &columnNameList,
-                   const std::vector <std::string> &columnTypeList, int64_t queryId, int64_t statementId,
+    SessionDataSet(const std::string &sql,
+                   const std::vector<std::string> &columnNameList,
+                   const std::vector<std::string> &columnTypeList,
+                   std::map<std::string, int> &columnNameIndexMap,
+                   int64_t queryId, int64_t statementId,
                    std::shared_ptr <TSIServiceIf> client, int64_t sessionId,
                    std::shared_ptr <TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
         this->sessionId = sessionId;
@@ -541,10 +544,17 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
-            this->valueBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
-            this->bitmapBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+            if(!columnNameIndexMap.empty()) {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
+            } else {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+            }
         }
         this->tsQueryDataSet = queryDataSet;
     }

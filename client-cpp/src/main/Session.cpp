@@ -1291,7 +1291,8 @@ bool Session::checkTimeseriesExists(const string &path) {
         dataset->closeOperationHandle();
         return isExisted;
     }
-    catch (exception e) {
+    catch (exception &e) {
+        std::cout << e.what() << std::endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1342,7 +1343,7 @@ unique_ptr <SessionDataSet> Session::executeQueryStatement(const string &sql) {
     }
     shared_ptr <TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
     return unique_ptr<SessionDataSet>(new SessionDataSet(
-            sql, resp->columns, resp->dataTypeList, resp->queryId, statementId, client, sessionId, queryDataSet));
+            sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->queryId, statementId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(const string &sql) {
