@@ -56,7 +56,6 @@ public class TimeGeneratorReadEmptyTest {
 
   private final String TEMPLATE_NAME = "template";
   private final String tsfilePath = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
-  ;
 
   @Before
   public void before() throws IOException, WriteProcessException {

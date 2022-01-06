@@ -74,7 +74,6 @@ public class ResourceManagerTest {
 
   private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
   private TsFileResourceManager tsFileResourceManager = TsFileResourceManager.getInstance();
-  ;
   private double prevTimeIndexMemoryProportion;
   private double prevTimeIndexMemoryThreshold;
   private TimeIndexLevel timeIndexLevel;
