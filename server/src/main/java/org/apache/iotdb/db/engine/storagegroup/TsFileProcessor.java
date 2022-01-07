@@ -1055,6 +1055,7 @@ public class TsFileProcessor {
     }
 
     try {
+      flushQueryLock.writeLock().lock();
       Iterator<Pair<Modification, IMemTable>> iterator = modsToMemtable.iterator();
       while (iterator.hasNext()) {
         Pair<Modification, IMemTable> entry = iterator.next();
@@ -1075,6 +1076,8 @@ public class TsFileProcessor {
           "Meet error when writing into ModificationFile file of {} ",
           tsFileResource.getTsFile().getName(),
           e);
+    } finally {
+      flushQueryLock.writeLock().unlock();
     }
 
     if (logger.isDebugEnabled()) {
