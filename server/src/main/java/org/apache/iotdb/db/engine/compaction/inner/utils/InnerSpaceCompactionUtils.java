@@ -67,15 +67,14 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     TsFileIOWriter writer = null;
-    CompactionDeviceIterator deviceIterator = null;
-    try {
+    try (MultiTsFileDeviceIterator deviceIterator =
+        new MultiTsFileDeviceIterator(tsFileResources)) {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-      deviceIterator = new CompactionDeviceIterator(tsFileResources);
       Set<String> devices = deviceIterator.getDevices();
       for (String device : devices) {
         writer.startChunkGroup(device);
         // TODO: compact a aligned device
-        CompactionDeviceIterator.CompactionSeriesIterator seriesIterator =
+        MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
             deviceIterator.iterateOneSeries(device);
         while (seriesIterator.hasNextSeries()) {
           // TODO: we can provide a configuration item to enable concurrent between each series
@@ -84,7 +83,6 @@ public class InnerSpaceCompactionUtils {
               seriesIterator.getMetadataListForCurrentSeries();
           SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
               new SingleSeriesCompactionExecutor(
-                  storageGroup,
                   device,
                   currentSeries,
                   readerAndChunkMetadataList,
@@ -104,9 +102,6 @@ public class InnerSpaceCompactionUtils {
     } finally {
       if (writer != null && writer.canWrite()) {
         writer.close();
-      }
-      if (deviceIterator != null) {
-        deviceIterator.close();
       }
     }
   }

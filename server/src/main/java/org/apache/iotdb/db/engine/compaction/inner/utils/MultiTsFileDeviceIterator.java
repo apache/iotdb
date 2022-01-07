@@ -44,14 +44,14 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-public class CompactionDeviceIterator {
+public class MultiTsFileDeviceIterator implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private List<TsFileResource> tsFileResources;
   private Map<TsFileResource, TsFileSequenceReader> readerMap =
       new TreeMap<>((o1, o2) -> TsFileResource.compareFileName(o1.getTsFile(), o2.getTsFile()));
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
 
-  public CompactionDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
+  public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
@@ -77,17 +77,18 @@ public class CompactionDeviceIterator {
     return deviceSet;
   }
 
-  public CompactionSeriesIterator iterateOneSeries(String device) throws IOException {
-    return new CompactionSeriesIterator(readerMap, device);
+  public MeasurementIterator iterateOneSeries(String device) throws IOException {
+    return new MeasurementIterator(readerMap, device);
   }
 
+  @Override
   public void close() throws IOException {
     for (TsFileSequenceReader reader : readerMap.values()) {
       reader.close();
     }
   }
 
-  public class CompactionSeriesIterator {
+  public class MeasurementIterator {
     private Map<TsFileResource, TsFileSequenceReader> readerMap;
     private String device;
     private String currentCompactingSeries = null;
@@ -101,8 +102,8 @@ public class CompactionDeviceIterator {
         chunkMetadataIteratorMap =
             new TreeMap<>(new InnerSpaceCompactionUtils.TsFileNameComparator());
 
-    private CompactionSeriesIterator(
-        Map<TsFileResource, TsFileSequenceReader> readerMap, String device) throws IOException {
+    private MeasurementIterator(Map<TsFileResource, TsFileSequenceReader> readerMap, String device)
+        throws IOException {
       this.readerMap = readerMap;
       this.device = device;
       for (TsFileSequenceReader reader : readerMap.values()) {

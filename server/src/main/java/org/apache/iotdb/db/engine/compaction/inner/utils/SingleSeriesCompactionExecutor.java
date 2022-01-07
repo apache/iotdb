@@ -37,8 +37,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import com.google.common.util.concurrent.RateLimiter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -48,10 +46,7 @@ import java.util.TreeMap;
 
 /** This class is used to compact one series during inner space compaction. */
 public class SingleSeriesCompactionExecutor {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
-  private String storageGroup;
   private String device;
-  private String timeSeries;
   private LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList;
   private TsFileIOWriter fileWriter;
   private TsFileResource targetResource;
@@ -78,7 +73,6 @@ public class SingleSeriesCompactionExecutor {
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
 
   public SingleSeriesCompactionExecutor(
-      String storageGroup,
       String device,
       String timeSeries,
       LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList,
@@ -86,9 +80,7 @@ public class SingleSeriesCompactionExecutor {
       TsFileResource targetResource,
       boolean sequence)
       throws MetadataException {
-    this.storageGroup = storageGroup;
     this.device = device;
-    this.timeSeries = timeSeries;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.fileWriter = fileWriter;
     this.schema = IoTDB.metaManager.getSeriesSchema(new PartialPath(device, timeSeries));
@@ -158,10 +150,7 @@ public class SingleSeriesCompactionExecutor {
   private void processModifiedChunk(Chunk chunk) throws IOException {
     if (cachedChunk != null) {
       // if there is a cached chunk, deserialize it and write it to ChunkWriter
-      cachedChunk.getData().flip();
-      writeChunkIntoChunkWriter(cachedChunk);
-      cachedChunk = null;
-      cachedChunkMetadata = null;
+      writeCachedChunkIntoChunkWriter();
     }
     // write this chunk to ChunkWriter
     writeChunkIntoChunkWriter(chunk);
@@ -176,14 +165,8 @@ public class SingleSeriesCompactionExecutor {
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
       // if there is a cached chunk, merge it with current chunk, then flush it
-      // Notice!!!
-      // We must execute mergeChunk before mergeChunkMetadata
-      // otherwise the statistic of data may be wrong.
-      cachedChunk.mergeChunk(chunk);
-      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
-      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
-      cachedChunk = null;
-      cachedChunkMetadata = null;
+      mergeWithCachedChunk(chunk, chunkMetadata);
+      flushCachedChunkIfLargeEnough();
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // flush it to file directly
@@ -193,7 +176,6 @@ public class SingleSeriesCompactionExecutor {
 
   private void processMiddleChunk(Chunk chunk, ChunkMetadata chunkMetadata) throws IOException {
     // the chunk is not too large either too small
-    long chunkSize = getChunkSize(chunk);
     if (pointCountInChunkWriter != 0L) {
       // if there are points remaining in ChunkWriter
       // deserialize current chunk and write to ChunkWriter
@@ -201,17 +183,8 @@ public class SingleSeriesCompactionExecutor {
       flushChunkWriterIfLargeEnough();
     } else if (cachedChunk != null) {
       // if there is a cached chunk, merge it with current chunk
-      // Notice!!!
-      // We must execute mergeChunk before mergeChunkMetadata
-      // otherwise the statistic of data may be wrong.
-      cachedChunk.mergeChunk(chunk);
-      cachedChunkMetadata.mergeChunkMetadata(chunkMetadata);
-      if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
-          || getChunkSize(cachedChunk) >= targetChunkSize) {
-        flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
-        cachedChunk = null;
-        cachedChunkMetadata = null;
-      }
+      mergeWithCachedChunk(chunk, chunkMetadata);
+      flushCachedChunkIfLargeEnough();
     } else {
       // there is no points remaining in ChunkWriter and no cached chunk
       // cached current chunk
@@ -226,10 +199,7 @@ public class SingleSeriesCompactionExecutor {
     // it should be deserialized and written to ChunkWriter
     if (cachedChunk != null) {
       // if there is a cached chunk, write the cached chunk to ChunkWriter
-      cachedChunk.getData().flip();
-      writeChunkIntoChunkWriter(cachedChunk);
-      cachedChunk = null;
-      cachedChunkMetadata = null;
+      writeCachedChunkIntoChunkWriter();
     }
     writeChunkIntoChunkWriter(chunk);
     flushChunkWriterIfLargeEnough();
@@ -252,6 +222,22 @@ public class SingleSeriesCompactionExecutor {
       }
     }
     pointCountInChunkWriter += chunk.getChunkStatistic().getCount();
+  }
+
+  private void writeCachedChunkIntoChunkWriter() throws IOException {
+    cachedChunk.getData().flip();
+    writeChunkIntoChunkWriter(cachedChunk);
+    cachedChunk = null;
+    cachedChunkMetadata = null;
+  }
+
+  private void mergeWithCachedChunk(Chunk currentChunk, ChunkMetadata currentChunkMetadata)
+      throws IOException {
+    // Notice!!!
+    // We must execute mergeChunkByAppendPage before mergeChunkMetadata
+    // otherwise the statistic of data may be wrong.
+    cachedChunk.mergeChunkByAppendPage(currentChunk);
+    cachedChunkMetadata.mergeChunkMetadata(currentChunkMetadata);
   }
 
   private void writeTimeAndValueToChunkWriter(TimeValuePair timeValuePair) {
@@ -297,6 +283,15 @@ public class SingleSeriesCompactionExecutor {
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
+    }
+  }
+
+  private void flushCachedChunkIfLargeEnough() throws IOException {
+    if (cachedChunk.getChunkStatistic().getCount() >= targetChunkPointNum
+        || getChunkSize(cachedChunk) >= targetChunkSize) {
+      flushChunkToFileWriter(cachedChunk, cachedChunkMetadata);
+      cachedChunk = null;
+      cachedChunkMetadata = null;
     }
   }
 
