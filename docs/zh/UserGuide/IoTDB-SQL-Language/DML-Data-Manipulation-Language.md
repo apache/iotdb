@@ -59,7 +59,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 插入数据后我们可以使用 SELECT 语句简单查询已插入的数据。
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
