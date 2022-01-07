@@ -208,13 +208,9 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
         if (fileNameOfO1.getInnerCompactionCnt() != fileNameOfO2.getInnerCompactionCnt()) {
           return fileNameOfO2.getInnerCompactionCnt() - fileNameOfO1.getInnerCompactionCnt();
         }
+        return (int) (fileNameOfO2.getVersion() - fileNameOfO1.getVersion());
       } catch (IOException e) {
         return 0;
-      }
-      if (o1.left.size() != o2.left.size()) {
-        return o1.left.size() - o2.left.size();
-      } else {
-        return ((int) (o2.right - o1.right));
       }
     }
   }
