@@ -47,9 +47,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     if (level == groupByLevel) {
       path = node.getPartialPath();
-      if (!result.containsKey(path)) {
-        result.put(path, 0);
-      }
+      result.putIfAbsent(path, 0);
     }
     return false;
   }
@@ -59,9 +57,7 @@ public class MeasurementGroupByLevelCounter extends Traverser {
       throws MetadataException {
     if (level == groupByLevel) {
       path = node.getPartialPath();
-      if (!result.containsKey(path)) {
-        result.put(path, 0);
-      }
+      result.putIfAbsent(path, 0);
     }
     if (!node.isMeasurement()) {
       return false;
