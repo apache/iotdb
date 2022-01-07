@@ -91,6 +91,11 @@ public abstract class Cases {
         if (!(e.getCause().getMessage().contains("closed by peer"))) {
           throw e;
         }
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException interruptedException) {
+          Thread.currentThread().interrupt();
+        }
       }
     }
     throw new SQLException("Cannot connect to " + hostname + ":" + port);
