@@ -232,7 +232,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
@@ -286,7 +286,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
@@ -345,7 +345,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     SizeTieredCompactionRecoverTask recoverTask =
         new SizeTieredCompactionRecoverTask(
@@ -399,7 +399,7 @@ public class SizeTieredCompactionRecoverTest {
     }
     logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
     logger.close();
-    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+    InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
     InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
     FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
     FileChannel channel = targetStream.getChannel();
@@ -461,7 +461,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
@@ -557,7 +557,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFileInfo(SizeTieredCompactionLogger.TARGET_INFO, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();
@@ -654,7 +654,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       long sizeOfTargetFile = targetResource.getTsFileSize();
       FileUtils.moveDirectory(
@@ -750,7 +750,7 @@ public class SizeTieredCompactionRecoverTest {
       }
       logger.logFile(SizeTieredCompactionLogger.TARGET_NAME, targetResource.getTsFile());
       logger.close();
-      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, COMPACTION_TEST_SG, true);
+      InnerSpaceCompactionUtils.compact(targetResource, sourceFiles, true);
       InnerSpaceCompactionUtils.moveTargetFile(targetResource, COMPACTION_TEST_SG);
       FileOutputStream targetStream = new FileOutputStream(targetResource.getTsFile(), true);
       FileChannel channel = targetStream.getChannel();

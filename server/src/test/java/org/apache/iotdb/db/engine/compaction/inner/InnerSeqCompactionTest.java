@@ -225,8 +225,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(
-                  targetTsFileResource, sourceResources, COMPACTION_TEST_SG, true);
+              InnerSpaceCompactionUtils.compact(targetTsFileResource, sourceResources, true);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   sourceResources, targetTsFileResource);
@@ -455,8 +454,7 @@ public class InnerSeqCompactionTest {
                   timeValuePair ->
                       timeValuePair.getTimestamp() >= 250L && timeValuePair.getTimestamp() <= 300L);
             }
-            InnerSpaceCompactionUtils.compact(
-                targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
+            InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, true);
             InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
             InnerSpaceCompactionUtils.combineModsInCompaction(
                 toMergeResources, targetTsFileResource);
@@ -738,8 +736,7 @@ public class InnerSeqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(
-                  targetTsFileResource, toMergeResources, COMPACTION_TEST_SG, true);
+              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, true);
               InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);

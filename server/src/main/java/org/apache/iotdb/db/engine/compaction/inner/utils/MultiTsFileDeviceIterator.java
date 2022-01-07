@@ -25,11 +25,9 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,11 +43,13 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 public class MultiTsFileDeviceIterator implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private List<TsFileResource> tsFileResources;
   private Map<TsFileResource, TsFileSequenceReader> readerMap =
       new TreeMap<>((o1, o2) -> TsFileResource.compareFileName(o1.getTsFile(), o2.getTsFile()));
+  private Map<TsFileResource, TsFileDeviceIterator> deviceIteratorMap =
+      new TreeMap<>((o1, o2) -> TsFileResource.compareFileName(o1.getTsFile(), o2.getTsFile()));
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
+  private Pair<String, Boolean> currentDevice = null;
 
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
@@ -57,6 +57,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       for (TsFileResource tsFileResource : this.tsFileResources) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
         readerMap.put(tsFileResource, reader);
+        deviceIteratorMap.put(tsFileResource, reader.getAllDevicesIteratorWithIsAligned());
       }
     } catch (Throwable throwable) {
       // if there is any exception occurs
@@ -75,6 +76,40 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       deviceSet.addAll(reader.getAllDevices());
     }
     return deviceSet;
+  }
+
+  public boolean hasNextDevice() {
+    boolean hasNext = false;
+    for (TsFileDeviceIterator iterator : deviceIteratorMap.values()) {
+      hasNext = hasNext | iterator.hasNext();
+    }
+    return hasNext;
+  }
+
+  public Pair<String, Boolean> nextDevice() {
+    List<TsFileResource> toBeRemovedResources = new LinkedList<>();
+    Pair<String, Boolean> minDevice = null;
+    for (TsFileResource resource : deviceIteratorMap.keySet()) {
+      TsFileDeviceIterator deviceIterator = deviceIteratorMap.get(resource);
+      if (deviceIterator.current() == null || deviceIterator.current().equals(currentDevice)) {
+        if (deviceIterator.hasNext()) {
+          deviceIterator.next();
+        } else {
+          // this iterator does not have next device
+          // remove them after the loop
+          toBeRemovedResources.add(resource);
+          continue;
+        }
+      }
+      if (minDevice == null || minDevice.left.compareTo(deviceIterator.current().left) > 0) {
+        minDevice = deviceIterator.current();
+      }
+    }
+    currentDevice = minDevice;
+    for (TsFileResource resource : toBeRemovedResources) {
+      deviceIteratorMap.remove(resource);
+    }
+    return currentDevice;
   }
 
   public MeasurementIterator iterateOneSeries(String device) throws IOException {

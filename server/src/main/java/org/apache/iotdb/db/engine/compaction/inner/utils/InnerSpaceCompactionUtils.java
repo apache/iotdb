@@ -50,7 +50,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 public class InnerSpaceCompactionUtils {
 
@@ -61,35 +60,36 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compact(
-      TsFileResource targetResource,
-      List<TsFileResource> tsFileResources,
-      String storageGroup,
-      boolean sequence)
+      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
       throws IOException, MetadataException {
     TsFileIOWriter writer = null;
     try (MultiTsFileDeviceIterator deviceIterator =
         new MultiTsFileDeviceIterator(tsFileResources)) {
       writer = new TsFileIOWriter(targetResource.getTsFile());
-      Set<String> devices = deviceIterator.getDevices();
-      for (String device : devices) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
+        String device = deviceInfo.left;
+        boolean aligned = deviceInfo.right;
         writer.startChunkGroup(device);
-        // TODO: compact a aligned device
-        MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-            deviceIterator.iterateOneSeries(device);
-        while (seriesIterator.hasNextSeries()) {
-          // TODO: we can provide a configuration item to enable concurrent between each series
-          String currentSeries = seriesIterator.nextSeries();
-          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
-              seriesIterator.getMetadataListForCurrentSeries();
-          SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-              new SingleSeriesCompactionExecutor(
-                  device,
-                  currentSeries,
-                  readerAndChunkMetadataList,
-                  writer,
-                  targetResource,
-                  sequence);
-          compactionExecutorOfCurrentTimeSeries.execute();
+        if (aligned) {
+        } else {
+          MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
+              deviceIterator.iterateOneSeries(device);
+          while (seriesIterator.hasNextSeries()) {
+            // TODO: we can provide a configuration item to enable concurrent between each series
+            String currentSeries = seriesIterator.nextSeries();
+            LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
+                seriesIterator.getMetadataListForCurrentSeries();
+            SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
+                new SingleSeriesCompactionExecutor(
+                    device,
+                    currentSeries,
+                    readerAndChunkMetadataList,
+                    writer,
+                    targetResource,
+                    sequence);
+            compactionExecutorOfCurrentTimeSeries.execute();
+          }
         }
         writer.endChunkGroup();
       }
