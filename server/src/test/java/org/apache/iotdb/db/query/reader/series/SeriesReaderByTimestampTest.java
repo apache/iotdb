@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.query.reader.series;
 
-import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -27,7 +26,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +43,7 @@ public class SeriesReaderByTimestampTest {
 
   private static final String SERIES_READER_TEST_SG = "root.seriesReaderTest";
   private List<String> deviceIds = new ArrayList<>();
-  private List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+  private List<MeasurementSchema> measurementSchemas = new ArrayList<>();
 
   private List<TsFileResource> seqResources = new ArrayList<>();
   private List<TsFileResource> unseqResources = new ArrayList<>();
@@ -63,7 +62,6 @@ public class SeriesReaderByTimestampTest {
 
   @Test
   public void test() throws IOException, MetadataException {
-    QueryDataSource dataSource = new QueryDataSource(seqResources, unseqResources);
 
     Set<String> allSensors = new HashSet<>();
     allSensors.add("sensor0");
@@ -74,8 +72,8 @@ public class SeriesReaderByTimestampTest {
             allSensors,
             TSDataType.INT32,
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            dataSource,
-            null,
+            seqResources,
+            unseqResources,
             true);
 
     long timestamps[] = new long[500];

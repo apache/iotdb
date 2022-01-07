@@ -32,7 +32,7 @@ import java.util.List;
 public class ClearCachePlan extends PhysicalPlan {
 
   public ClearCachePlan() {
-    super(false, OperatorType.CLEAR_CACHE);
+    super(OperatorType.CLEAR_CACHE);
   }
 
   @Override

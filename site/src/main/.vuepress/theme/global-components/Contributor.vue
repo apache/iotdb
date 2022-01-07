@@ -303,9 +303,9 @@
           date: '2020/09/04'
         },
         {
-          avatar:'/img/contributor-avatar/user.svg',
+          avatar:'/img/contributor-avatar/qhl.jpg',
           name: 'Houliang Qi',
-          role: 'Committer',
+          role: 'PMC, Committer',
           id: 'neuyilan',
           date: '2020/12/18'
         },

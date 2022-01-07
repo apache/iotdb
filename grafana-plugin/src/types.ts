@@ -24,6 +24,7 @@ export interface IoTDBQuery extends DataQuery {
   condition: string;
   queryText?: string;
   constant: number;
+  control: string;
 }
 
 /**

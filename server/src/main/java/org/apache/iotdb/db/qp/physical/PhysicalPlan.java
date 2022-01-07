@@ -90,7 +90,7 @@ public abstract class PhysicalPlan {
 
   private static final String SERIALIZATION_UNIMPLEMENTED = "serialization unimplemented";
 
-  private boolean isQuery;
+  private boolean isQuery = false;
   private Operator.OperatorType operatorType;
   private static final int NULL_VALUE_LEN = -1;
 
@@ -110,17 +110,10 @@ public abstract class PhysicalPlan {
     return canBeSplit;
   }
 
-  protected PhysicalPlan(boolean isQuery) {
-    this.isQuery = isQuery;
-  }
+  protected PhysicalPlan() {}
 
-  protected PhysicalPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    this.isQuery = isQuery;
+  protected PhysicalPlan(Operator.OperatorType operatorType) {
     this.operatorType = operatorType;
-  }
-
-  public String printQueryPlan() {
-    return "abstract plan";
   }
 
   public abstract List<? extends PartialPath> getPaths();

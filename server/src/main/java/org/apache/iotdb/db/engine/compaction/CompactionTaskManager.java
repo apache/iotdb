@@ -135,11 +135,21 @@ public class CompactionTaskManager implements IService {
 
   @TestOnly
   public void waitAllCompactionFinish() {
+    long sleepingStartTime = 0;
+    long MAX_WAITING_TIME = 120_000L;
     if (taskExecutionPool != null) {
       while (taskExecutionPool.getActiveCount() > 0 || taskExecutionPool.getQueue().size() > 0) {
         // wait
         try {
           Thread.sleep(200);
+          sleepingStartTime += 200;
+          if (sleepingStartTime % 10000 == 0) {
+            logger.warn(
+                "Has waiting {} seconds for all compaction task finish", sleepingStartTime / 1000);
+          }
+          if (sleepingStartTime >= MAX_WAITING_TIME) {
+            return;
+          }
         } catch (InterruptedException e) {
           logger.error("thread interrupted while waiting for compaction to end", e);
           return;

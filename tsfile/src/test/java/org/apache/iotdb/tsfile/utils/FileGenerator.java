@@ -26,8 +26,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -223,7 +223,15 @@ public class FileGenerator {
     long startTime = 1480562618000L;
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
-        String d = "d" + i + "," + startTime + ",s" + j + "," + 1;
+        String d =
+            "d"
+                + generateIndexString(i, deviceNum)
+                + ","
+                + startTime
+                + ",s"
+                + generateIndexString(j, measurementNum)
+                + ","
+                + 1;
         fw.write(d + "\r\n");
       }
     }
@@ -257,34 +265,34 @@ public class FileGenerator {
 
   private static void generateTestSchema() {
     schema = new Schema();
-    List<UnaryMeasurementSchema> schemaList = new ArrayList<>();
+    List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
-    schemaList.add(new UnaryMeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema("s6", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.RLE));
     MeasurementGroup measurementGroup = new MeasurementGroup(false, schemaList);
     schema.registerMeasurementGroup(new Path("d1"), measurementGroup);
 
     schemaList.clear();
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s1", TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s2", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
     schemaList.add(
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s3", TSDataType.INT64, TSEncoding.valueOf(config.getValueEncoder())));
-    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     measurementGroup = new MeasurementGroup(false, schemaList);
     schema.registerMeasurementGroup(new Path("d2"), measurementGroup);
   }
@@ -294,9 +302,11 @@ public class FileGenerator {
     for (int i = 0; i < deviceNum; i++) {
       for (int j = 0; j < measurementNum; j++) {
         schema.registerTimeseries(
-            new Path("d" + i),
-            new UnaryMeasurementSchema(
-                "s" + j, TSDataType.INT32, TSEncoding.valueOf(config.getValueEncoder())));
+            new Path("d" + generateIndexString(i, deviceNum)),
+            new MeasurementSchema(
+                "s" + generateIndexString(j, measurementNum),
+                TSDataType.INT32,
+                TSEncoding.valueOf(config.getValueEncoder())));
       }
     }
   }
@@ -330,5 +340,21 @@ public class FileGenerator {
       e.printStackTrace();
       return null;
     }
+  }
+
+  /**
+   * generate curIndex string, use "0" on left to make sure align
+   *
+   * @param curIndex current index
+   * @param maxIndex max index
+   * @return curIndex's string
+   */
+  public static String generateIndexString(int curIndex, int maxIndex) {
+    StringBuilder res = new StringBuilder(String.valueOf(curIndex));
+    String target = String.valueOf(maxIndex);
+    while (res.length() < target.length()) {
+      res.insert(0, "0");
+    }
+    return res.toString();
   }
 }

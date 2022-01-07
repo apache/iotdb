@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -101,7 +101,7 @@ public abstract class IoTDBTest {
   protected void prepareData(int sgNum, int timeOffset, int size)
       throws QueryProcessException, IllegalPathException {
     InsertRowPlan insertPlan = new InsertRowPlan();
-    insertPlan.setDeviceId(new PartialPath(TestUtils.getTestSg(sgNum)));
+    insertPlan.setDevicePath(new PartialPath(TestUtils.getTestSg(sgNum)));
     String[] measurements = new String[10];
     for (int i = 0; i < measurements.length; i++) {
       measurements[i] = TestUtils.getTestMeasurement(i);
@@ -165,8 +165,7 @@ public abstract class IoTDBTest {
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
       MeasurementPath path = new MeasurementPath(pathStr);
-      path.setMeasurementSchema(
-          new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
+      path.setMeasurementSchema(new MeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
       paths.add(path);
     }
     queryPlan.setDeduplicatedPathsAndUpdate(paths);

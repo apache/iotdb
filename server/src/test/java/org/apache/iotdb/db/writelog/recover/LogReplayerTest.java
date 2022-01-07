@@ -51,7 +51,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -161,14 +161,15 @@ public class LogReplayerTest {
                 ByteBuffer.allocateDirect(
                     IoTDBDescriptor.getInstance().getConfig().getWalBufferSize() / 2);
             return byteBuffers;
-          });
+          },
+          null);
 
       for (int i = 0; i < 5; i++) {
         MeasurementPath fullPath =
             new MeasurementPath(
                 "root.sg.device" + i,
                 "sensor" + i,
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.RLE,
@@ -204,7 +205,7 @@ public class LogReplayerTest {
             new MeasurementPath(
                 "root.sg.device5",
                 "sensor" + i,
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "sensor" + i,
                     TSDataType.INT64,
                     TSEncoding.PLAIN,

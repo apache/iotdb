@@ -33,7 +33,7 @@ public class DeletePartitionPlan extends PhysicalPlan {
   private Set<Long> partitionId;
 
   public DeletePartitionPlan(PartialPath storageGroupName, Set<Long> partitionId) {
-    super(false, OperatorType.DELETE_PARTITION);
+    super(OperatorType.DELETE_PARTITION);
     this.storageGroupName = storageGroupName;
     this.partitionId = partitionId;
   }

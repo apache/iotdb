@@ -33,16 +33,23 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ThreadPoolExecutor;
 
-public class QueryTaskPoolManager extends AbstractPoolManager {
+/**
+ * This thread pool is used to read data for raw data query. Thread named by Sub_Raw_Query.
+ *
+ * <p>Execute ReadTask() in RawQueryReadTaskPoolManager
+ */
+public class RawQueryReadTaskPoolManager extends AbstractPoolManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(QueryTaskPoolManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RawQueryReadTaskPoolManager.class);
 
-  private QueryTaskPoolManager() {
+  private RawQueryReadTaskPoolManager() {
     int threadCnt =
         Math.min(
             Runtime.getRuntime().availableProcessors(),
-            IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
-    pool = IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
+            IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
+    pool =
+        IoTDBThreadPoolFactory.newFixedThreadPool(
+            threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
@@ -51,7 +58,7 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
               pool,
               p -> ((ThreadPoolExecutor) p).getActiveCount(),
               Tag.NAME.toString(),
-              ThreadName.QUERY_SERVICE.getName(),
+              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
               Tag.STATUS.toString(),
               "running");
       MetricsService.getInstance()
@@ -61,14 +68,14 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
               pool,
               p -> ((ThreadPoolExecutor) p).getQueue().size(),
               Tag.NAME.toString(),
-              ThreadName.QUERY_SERVICE.getName(),
+              ThreadName.SUB_RAW_QUERY_SERVICE.getName(),
               Tag.STATUS.toString(),
               "waiting");
     }
   }
 
-  public static QueryTaskPoolManager getInstance() {
-    return QueryTaskPoolManager.InstanceHolder.instance;
+  public static RawQueryReadTaskPoolManager getInstance() {
+    return RawQueryReadTaskPoolManager.InstanceHolder.instance;
   }
 
   @Override
@@ -78,7 +85,7 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
 
   @Override
   public String getName() {
-    return "query task";
+    return "raw query read task";
   }
 
   @Override
@@ -87,9 +94,10 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
       int threadCnt =
           Math.min(
               Runtime.getRuntime().availableProcessors(),
-              IoTDBDescriptor.getInstance().getConfig().getConcurrentQueryThread());
+              IoTDBDescriptor.getInstance().getConfig().getConcurrentSubRawQueryThread());
       pool =
-          IoTDBThreadPoolFactory.newFixedThreadPool(threadCnt, ThreadName.QUERY_SERVICE.getName());
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              threadCnt, ThreadName.SUB_RAW_QUERY_SERVICE.getName());
     }
   }
 
@@ -107,6 +115,6 @@ public class QueryTaskPoolManager extends AbstractPoolManager {
       // allowed to do nothing
     }
 
-    private static QueryTaskPoolManager instance = new QueryTaskPoolManager();
+    private static RawQueryReadTaskPoolManager instance = new RawQueryReadTaskPoolManager();
   }
 }
