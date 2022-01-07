@@ -67,7 +67,7 @@ public class UDTFSpline implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     double v = Util.getValueAsDouble(row);
-    if (Double.isFinite(v)){
+    if (Double.isFinite(v)) {
       Long t = row.getTime();
       if (minimumTimestamp < 0) {
         minimumTimestamp = t;

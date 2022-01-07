@@ -32,7 +32,6 @@ import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.math3.util.Pair;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 
@@ -61,10 +60,9 @@ public class UDAFPeriod implements UDTF {
     while (iterator.hasNextRow()) {
       Row row = iterator.next();
       double v = Util.getValueAsDouble(row);
-      if (Double.isFinite(v)){
+      if (Double.isFinite(v)) {
         value.add(v);
-      }
-      else{
+      } else {
         value.add(value.getLast());
       }
     }
@@ -121,9 +119,7 @@ public class UDAFPeriod implements UDTF {
     return corr;
   }
 
-  /**
-   * auto correlation (pearson of subseries)
-   */
+  /** auto correlation (pearson of subseries) */
   private double pearson(double[] x, int subLength) {
     double sum_x = 0;
     double sum_y = 0;

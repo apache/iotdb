@@ -25,8 +25,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.library.dprofile.util.YuleWalker;
+import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.math3.linear.*;
@@ -64,10 +64,9 @@ public class UDTFPACF implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     double v = Util.getValueAsDouble(row);
-    if(Double.isFinite(v)){
+    if (Double.isFinite(v)) {
       value.add(v);
-    }
-    else{
+    } else {
       value.add(0d);
     }
     timestamp.add(row.getTime());

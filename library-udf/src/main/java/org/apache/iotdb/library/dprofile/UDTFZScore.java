@@ -83,7 +83,7 @@ public class UDTFZScore implements UDTF {
       collector.putDouble(row.getTime(), (Util.getValueAsDouble(row) - avg) / sd);
     } else if (compute.equalsIgnoreCase("batch")) {
       double v = Util.getValueAsDouble(row);
-      if(Double.isFinite(v)){
+      if (Double.isFinite(v)) {
         value.add(v);
         timestamp.add(row.getTime());
         sum += v;

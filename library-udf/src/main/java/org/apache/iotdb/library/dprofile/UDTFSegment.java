@@ -84,7 +84,7 @@ public class UDTFSegment implements UDTF {
   @Override
   public void transform(Row row, PointCollector collector) throws Exception {
     double v = Util.getValueAsDouble(row);
-    if (Double.isFinite(v)){
+    if (Double.isFinite(v)) {
       timestamp.add(row.getTime());
       value.add(Util.getValueAsDouble(row));
     }

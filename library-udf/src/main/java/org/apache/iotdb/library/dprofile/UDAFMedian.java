@@ -31,9 +31,7 @@ import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * calculate the exact or approximate median
- */
+/** calculate the exact or approximate median */
 public class UDAFMedian implements UDTF {
 
   private ExactOrderStatistics statistics;

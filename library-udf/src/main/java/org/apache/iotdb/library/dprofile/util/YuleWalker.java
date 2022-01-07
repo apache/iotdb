@@ -1,6 +1,5 @@
 package org.apache.iotdb.library.dprofile.util;
 
-import java.util.Arrays;
 import org.apache.commons.math3.linear.Array2DRowRealMatrix;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.linear.DecompositionSolver;
@@ -9,9 +8,9 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.linear.SingularMatrixException;
 
-/**
- * Describe class here.
- */
+import java.util.Arrays;
+
+/** Describe class here. */
 public class YuleWalker {
   public double yuleWalker(double[] x, int order, String method, int n) {
     double adj_needed = method.equalsIgnoreCase("adjusted") ? 1 : 0;

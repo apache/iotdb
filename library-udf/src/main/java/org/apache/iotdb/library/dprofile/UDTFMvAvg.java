@@ -67,7 +67,7 @@ public class UDTFMvAvg implements UDTF {
       windowSum -= v.pop();
     }
     double value = Util.getValueAsDouble(row);
-    if(Double.isFinite(value)){
+    if (Double.isFinite(value)) {
       v.push(value);
       windowSum += value;
       if (v.isFull()) {

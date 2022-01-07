@@ -24,9 +24,7 @@ import org.eclipse.collections.api.list.MutableList;
 import java.io.Serializable;
 import java.util.Comparator;
 
-/**
- * Util for UDAFPercentile
- */
+/** Util for UDAFPercentile */
 public class GKArray {
 
   private final double rankAccuracy;

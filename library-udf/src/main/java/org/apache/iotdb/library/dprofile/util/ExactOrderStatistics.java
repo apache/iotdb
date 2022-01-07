@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
-import java.io.IOException;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.exception.UDFInputSeriesDataTypeNotValidException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -28,11 +27,10 @@ import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
+import java.io.IOException;
 import java.util.NoSuchElementException;
 
-/**
- * Util for computing median, MAD, percentile
- */
+/** Util for computing median, MAD, percentile */
 public class ExactOrderStatistics {
 
   private TSDataType dataType;

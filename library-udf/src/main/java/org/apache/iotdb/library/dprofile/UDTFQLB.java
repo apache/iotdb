@@ -29,7 +29,6 @@ import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.math3.distribution.ChiSquaredDistribution;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 
 /** This function calculates acf, and then calculates p-value of corresponding Q_LB statistics. */
@@ -67,10 +66,9 @@ public class UDTFQLB implements UDTF {
       valueArrayList.add(Double.NaN);
     } else {
       double v = Util.getValueAsDouble(row);
-      if(Double.isFinite(v)){
+      if (Double.isFinite(v)) {
         valueArrayList.add(v);
-      }
-      else{
+      } else {
         valueArrayList.add(0d);
       }
     }

@@ -18,9 +18,7 @@
  */
 package org.apache.iotdb.library.dprofile.util;
 
-/**
- * Interface for getting MAD with error.
- */
+/** Interface for getting MAD with error. */
 public class Mad {
   public final double result;
   public final double error_bound;

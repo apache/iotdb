@@ -30,12 +30,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.Scanner;
 
-/**
- * util for UDTFResample.
- */
+/** util for UDTFResample. */
 public class Resampler {
 
   private final LongArrayList timeWindow = new LongArrayList(); // timestamps in the window
@@ -109,9 +106,7 @@ public class Resampler {
     upSample();
   }
 
-  /**
-   * Upsampling. Interpolate at NaN points.
-   */
+  /** Upsampling. Interpolate at NaN points. */
   private void upSample() {
     if (source.getSize() > 2 || (outer && source.getSize() == 2)) {
       if (source.getSize() > 2) {
@@ -133,9 +128,7 @@ public class Resampler {
     }
   }
 
-  /**
-   * Downsampling. aggregate data in the window, and prepare for upsampling.
-   */
+  /** Downsampling. aggregate data in the window, and prepare for upsampling. */
   private void downSample() {
     if (timeWindow.size() >= 2) {
       // aggregate，add result and timestamp to source
@@ -150,9 +143,7 @@ public class Resampler {
     waitList.push(currentTime);
   }
 
-  /**
-   * Aggregate data in the window to one value according to given method.
-   */
+  /** Aggregate data in the window to one value according to given method. */
   private double aggregate() {
     double ret;
     switch (aggregator) {

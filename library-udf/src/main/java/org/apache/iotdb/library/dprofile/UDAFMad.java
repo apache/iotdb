@@ -31,9 +31,7 @@ import org.apache.iotdb.library.dprofile.util.MADSketch;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * calculate the exact or approximate median absolute deviation (mad)
- */
+/** calculate the exact or approximate median absolute deviation (mad) */
 public class UDAFMad implements UDTF {
 
   private ExactOrderStatistics statistics;

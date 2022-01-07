@@ -31,9 +31,7 @@ import org.apache.iotdb.library.dprofile.util.GKArray;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-/**
- * calculate the approximate percentile
- */
+/** calculate the approximate percentile */
 public class UDAFPercentile implements UDTF {
   private ExactOrderStatistics statistics;
   private GKArray sketch;
