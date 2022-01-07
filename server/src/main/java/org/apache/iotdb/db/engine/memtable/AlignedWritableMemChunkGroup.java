@@ -72,7 +72,7 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
     if (memChunk.count() == 0) {
-      return Collections.EMPTY_MAP;
+      return Collections.emptyMap();
     }
     return Collections.singletonMap("", memChunk);
   }

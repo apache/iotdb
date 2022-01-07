@@ -478,6 +478,7 @@ public class IoTDBDeletionIT {
         }
         Assert.assertEquals(0, cnt);
       }
+      statement.execute("flush");
     }
   }
 
