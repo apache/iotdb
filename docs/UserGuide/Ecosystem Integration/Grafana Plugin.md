@@ -27,7 +27,7 @@
 
 Grafana is an open source tool for monitoring metrics and visualization, which could be applied to display time series and analyze the operation of application programms.
 
-In the IoTDB project, we developed the Grafana Plugin to display time series through the IoTDB REST service, and it has provided many visualization methods for time series. Compared to IoTDB-Grafana-Connector, the Grafana Plugin works more efficiently and supports more types of queries. As long as it's possible in your deployment environment, *we highly recommand applying the Grafana Plugin rather than IoTDB-Grafana-Connector.
+In the IoTDB project, we developed the Grafana Plugin to display time series through the IoTDB REST service, and it has provided many visualization methods for time series. Compared to IoTDB-Grafana-Connector, the Grafana Plugin works more efficiently and supports more types of queries. As long as it's possible in your deployment environment, *we highly recommand applying the Grafana Plugin rather than IoTDB-Grafana-Connector.*
 
 
 
