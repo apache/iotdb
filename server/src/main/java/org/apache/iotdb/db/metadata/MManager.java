@@ -976,11 +976,6 @@ public class MManager {
     return mtree.getNodesCountInGivenLevel(pathPattern, level);
   }
 
-  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level) throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(pathPattern, level);
-  }
-
   // endregion
 
   // region Interfaces for level Node info Query
