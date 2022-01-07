@@ -723,8 +723,12 @@ var config = {
 					    title: 'UDF Library',
 					    children: [
 					        ['Library-UDF/Get-Started', 'Get Started'],
+<<<<<<< HEAD
 					        ['Library-UDF/Data-Quality', 'Data Quality'],
 					        ['Library-UDF/Data-Repair', 'Data Repairing']
+=======
+					        ['Library-UDF/Data-Quality', 'Data Quality']
+>>>>>>> library-dquality
 					    ]
 					},
 					{
@@ -1529,9 +1533,14 @@ var config = {
 					{
           				title: 'UDF 函数库',
           				children: [
+<<<<<<< HEAD
           					['Library-UDF/Get-Started', '快速上手'],
           					['Library-UDF/Data-Quality', '数据质量'],
           					['Library-UDF/Data-Repair', '数据修复']
+=======
+          					['Library-UDF/Get-started', '快速上手'],
+          					['Library-UDF/Data-Quality', '数据质量']
+>>>>>>> library-dquality
           				]
 					},
 					{
