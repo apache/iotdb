@@ -18,9 +18,12 @@
     under the License.
 
 -->
-# Completeness
 
-## Usage
+# Data Quality
+
+## Completeness
+
+### Usage
 This function is used to calculate the completeness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the completeness of each window will be output.
 
 **Name:** COMPLETENESS
@@ -38,9 +41,9 @@ This function is used to calculate the completeness of time series. The input se
 
 
 
-## Examples
+### Examples
 
-### Default Parameters
+#### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -84,7 +87,7 @@ Output series:
 +-----------------------------+-----------------------------+
 ```
 
-### Specific Window Size
+#### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -144,9 +147,9 @@ Output series:
 +-----------------------------+--------------------------------------------+
 ```
 
-# Consistency
+## Consistency
 
-## Usage
+### Usage
 This function is used to calculate the consistency of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the consistency of each window will be output.
 
 **Name:** CONSISTENCY
@@ -163,9 +166,9 @@ This function is used to calculate the consistency of time series. The input ser
 
 
 
-## Examples
+### Examples
 
-### Default Parameters
+#### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -209,7 +212,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-### Specific Window Size
+#### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -269,9 +272,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-# Timeliness
+## Timeliness
 
-## Usage
+### Usage
 This function is used to calculate the timeliness of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the timeliness of each window will be output.
 
 **Name:** TIMELINESS
@@ -288,9 +291,9 @@ This function is used to calculate the timeliness of time series. The input seri
 
 
 
-## Examples
+### Examples
 
-### Default Parameters
+#### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -334,7 +337,7 @@ Output series:
 +-----------------------------+---------------------------+
 ```
 
-### Specific Window Size
+#### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
@@ -394,9 +397,9 @@ Output series:
 +-----------------------------+------------------------------------------+
 ```
 
-# Validity
+## Validity
 
-## Usage
+### Usage
 This function is used to calculate the Validity of time series. The input series are divided into several continuous and non overlapping windows. The timestamp of the first data point and the Validity of each window will be output.
 
 **Name:** VALIDITY
@@ -413,9 +416,9 @@ This function is used to calculate the Validity of time series. The input series
 
 
 
-## Examples
+### Examples
 
-### Default Parameters
+#### Default Parameters
 
 With default parameters, this function will regard all input data as the same window.
 
@@ -459,7 +462,7 @@ Output series:
 +-----------------------------+-------------------------+
 ```
 
-### Specific Window Size
+#### Specific Window Size
 
 When the window size is given, this function will divide the input data as multiple windows.
 
