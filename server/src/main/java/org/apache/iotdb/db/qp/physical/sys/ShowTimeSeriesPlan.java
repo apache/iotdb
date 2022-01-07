@@ -120,4 +120,18 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     orderByHeat = buffer.get() == 1;
     this.index = buffer.getLong();
   }
+
+  public ShowTimeSeriesPlan copy() {
+    ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan();
+    showTimeSeriesPlan.isContains = this.isContains;
+    showTimeSeriesPlan.key = this.key;
+    showTimeSeriesPlan.orderByHeat = this.orderByHeat;
+    showTimeSeriesPlan.value = this.value;
+    showTimeSeriesPlan.limit = this.limit;
+    showTimeSeriesPlan.offset = this.offset;
+    showTimeSeriesPlan.path = this.path;
+    showTimeSeriesPlan.canBeSplit = this.canBeSplit;
+    showTimeSeriesPlan.index = this.index;
+    return showTimeSeriesPlan;
+  }
 }

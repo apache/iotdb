@@ -29,7 +29,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.DockerComposeContainer;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.Statement;
 import java.util.concurrent.TimeUnit;
 
@@ -68,9 +67,7 @@ public abstract class ClusterIT extends Cases {
     startCluster();
 
     Class.forName(Config.JDBC_DRIVER_NAME);
-    writeConnection =
-        DriverManager.getConnection(
-            "jdbc:iotdb://" + getWriteRpcIp() + ":" + getWriteRpcPort(), "root", "root");
+    writeConnection = openConnection(getWriteRpcIp(), getWriteRpcPort());
     writeStatement = writeConnection.createStatement();
 
     int[] readPorts = getReadRpcPorts();
@@ -78,9 +75,7 @@ public abstract class ClusterIT extends Cases {
     readConnections = new Connection[readPorts.length];
     readStatements = new Statement[readPorts.length];
     for (int i = 0; i < readPorts.length; i++) {
-      readConnections[i] =
-          DriverManager.getConnection(
-              "jdbc:iotdb://" + readIps[i] + ":" + readPorts[i], "root", "root");
+      readConnections[i] = openConnection(readIps[i], readPorts[i]);
       readStatements[i] = readConnections[i].createStatement();
     }
     session =

@@ -44,6 +44,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -80,6 +81,19 @@ public abstract class Cases {
       connection.close();
     }
     session.close();
+  }
+
+  protected Connection openConnection(String hostname, int port) throws SQLException {
+    for (int i = 0; i < 5; i++) {
+      try {
+        return DriverManager.getConnection("jdbc:iotdb://" + hostname + ":" + port, "root", "root");
+      } catch (SQLException e) {
+        if (!(e.getCause().getMessage().contains("closed by peer"))) {
+          throw e;
+        }
+      }
+    }
+    throw new SQLException("Cannot connect to " + hostname + ":" + port);
   }
 
   // if we seperate the test into multiply test() methods, then the docker container have to be

@@ -109,6 +109,7 @@ public class TagManager {
 
   public List<IMeasurementMNode> getMatchedTimeseriesInIndex(
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
+    logger.debug("Searching for key {} in tag index", plan.getKey());
     if (!tagIndex.containsKey(plan.getKey())) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
     }
@@ -116,6 +117,7 @@ public class TagManager {
     if (value2Node.isEmpty()) {
       throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
     }
+    logger.debug("Key {} found in tag index", plan.getKey());
 
     List<IMeasurementMNode> allMatchedNodes = new ArrayList<>();
     if (plan.isContains()) {

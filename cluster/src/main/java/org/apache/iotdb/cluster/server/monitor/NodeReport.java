@@ -25,6 +25,9 @@ import org.apache.iotdb.cluster.server.NodeCharacter;
 import org.apache.iotdb.rpc.RpcStat;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +37,8 @@ import java.util.List;
  */
 @SuppressWarnings("java:S107") // reports need enough parameters
 public class NodeReport {
+
+  private static final Logger logger = LoggerFactory.getLogger(NodeReport.class);
 
   private Node thisNode;
   private MetaMemberReport metaMemberReport;
@@ -160,34 +165,37 @@ public class NodeReport {
                 + writeCompressionRatio
                 + ")";
       }
-      return "MetaMemberReport {\n"
-          + "character="
-          + character
-          + ", Leader="
-          + leader
-          + ", term="
-          + term
-          + ", lastLogTerm="
-          + lastLogTerm
-          + ", lastLogIndex="
-          + lastLogIndex
-          + ", commitIndex="
-          + commitIndex
-          + ", commitTerm="
-          + commitTerm
-          + ", appliedLogIndex="
-          + maxAppliedLogIndex
-          + ", readOnly="
-          + isReadOnly
-          + ", lastHeartbeat="
-          + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
-          + "ms ago"
-          + ", logIncrement="
-          + (lastLogIndex - prevLastLogIndex)
-          + transportCompressionReport
-          + ", \n timer: "
-          + Timer.getReport()
-          + '}';
+      String report =
+          "MetaMemberReport {\n"
+              + "character="
+              + character
+              + ", Leader="
+              + leader
+              + ", term="
+              + term
+              + ", lastLogTerm="
+              + lastLogTerm
+              + ", lastLogIndex="
+              + lastLogIndex
+              + ", commitIndex="
+              + commitIndex
+              + ", commitTerm="
+              + commitTerm
+              + ", appliedLogIndex="
+              + maxAppliedLogIndex
+              + ", readOnly="
+              + isReadOnly
+              + ", lastHeartbeat="
+              + (System.currentTimeMillis() - lastHeartbeatReceivedTime)
+              + "ms ago"
+              + ", logIncrement="
+              + (lastLogIndex - prevLastLogIndex)
+              + transportCompressionReport
+              + ", \n";
+      if (logger.isDebugEnabled()) {
+        report += "timer: " + Timer.getReport() + '}';
+      }
+      return report;
     }
   }
 

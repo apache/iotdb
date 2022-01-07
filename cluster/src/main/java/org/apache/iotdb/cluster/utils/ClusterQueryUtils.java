@@ -20,6 +20,8 @@
 package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.metadata.MetaPuller;
+import org.apache.iotdb.cluster.partition.PartitionGroup;
+import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -33,7 +35,12 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 public class ClusterQueryUtils {
 
@@ -80,5 +87,22 @@ public class ClusterQueryUtils {
       logger.error("Failed to create partial path, fullPath is {}.", pathString, e);
       return null;
     }
+  }
+
+  public static Map<PartitionGroup, List<String>> groupPathByPartitionGroup(
+      Map<String, List<PartialPath>> sgPathMap, PartitionTable partitionTable) {
+    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
+    for (Entry<String, List<PartialPath>> entry : sgPathMap.entrySet()) {
+      String sg = entry.getKey();
+      List<PartialPath> pathUnderSg = entry.getValue();
+
+      PartitionGroup partitionGroup = partitionTable.route(sg, 0);
+      pathUnderSg.forEach(
+          p ->
+              groupPathMap
+                  .computeIfAbsent(partitionGroup, key -> new ArrayList<>())
+                  .add(p.getFullPath()));
+    }
+    return groupPathMap;
   }
 }

@@ -34,6 +34,7 @@ import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
@@ -147,18 +148,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   private int getDeviceCount(Map<String, List<PartialPath>> sgPathMap) throws MetadataException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
-    Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
-    for (Entry<String, List<PartialPath>> entry : sgPathMap.entrySet()) {
-      String sg = entry.getKey();
-      List<PartialPath> pathUnderSg = entry.getValue();
-
-      PartitionGroup partitionGroup = metaGroupMember.getPartitionTable().route(sg, 0);
-      pathUnderSg.forEach(
-          p ->
-              groupPathMap
-                  .computeIfAbsent(partitionGroup, key -> new ArrayList<>())
-                  .add(p.getFullPath()));
-    }
+    Map<PartitionGroup, List<String>> groupPathMap =
+        ClusterQueryUtils.groupPathByPartitionGroup(sgPathMap, metaGroupMember.getPartitionTable());
 
     if (groupPathMap.isEmpty()) {
       return result.get();

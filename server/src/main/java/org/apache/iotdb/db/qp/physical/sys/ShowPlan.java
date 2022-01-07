@@ -119,4 +119,8 @@ public class ShowPlan extends PhysicalPlan {
     LOCK_INFO,
     CONTINUOUS_QUERY
   }
+
+  public void setPath(PartialPath path) {
+    this.path = path;
+  }
 }

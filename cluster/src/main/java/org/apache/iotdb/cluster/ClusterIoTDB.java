@@ -206,12 +206,12 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
    * node. This will help to see if the node is in a consistent and right state during debugging.
    */
   private void generateNodeReport() {
-    if (logger.isDebugEnabled() && allowReport) {
+    if (logger.isInfoEnabled() && allowReport) {
       try {
         NodeReport report = new NodeReport(thisNode);
         report.setMetaMemberReport(metaGroupMember.genMemberReport());
         report.setDataMemberReportList(dataGroupEngine.genMemberReports());
-        logger.debug(report.toString());
+        logger.info(report.toString());
       } catch (Exception e) {
         logger.error("exception occurred when generating node report", e);
       }

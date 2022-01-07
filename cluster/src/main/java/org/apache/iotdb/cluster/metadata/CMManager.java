@@ -1417,15 +1417,15 @@ public class CMManager extends MManager {
         new ThreadPoolExecutor(
             THREAD_POOL_SIZE, THREAD_POOL_SIZE, 0, TimeUnit.SECONDS, new LinkedBlockingDeque<>());
 
-    List<PartitionGroup> groups = new ArrayList<>();
-    try {
-      PartitionGroup partitionGroup =
-          metaGroupMember.getPartitionTable().partitionByPathTime(plan.getPath(), 0);
-      groups.add(partitionGroup);
-    } catch (MetadataException e) {
-      // if the path location is not find, obtain the path location from all groups.
-      groups = metaGroupMember.getPartitionTable().getGlobalGroups();
+    Map<String, List<PartialPath>> sgPartitionGroupMap =
+        IoTDB.metaManager.groupPathByStorageGroup(plan.getPath());
+    if (sgPartitionGroupMap.isEmpty()) {
+      return Collections.emptyList();
     }
+
+    Map<PartitionGroup, List<String>> groupPathMap =
+        ClusterQueryUtils.groupPathByPartitionGroup(
+            sgPartitionGroupMap, metaGroupMember.getPartitionTable());
 
     int limit = plan.getLimit() == 0 ? Integer.MAX_VALUE : plan.getLimit();
     int offset = plan.getOffset();
@@ -1441,16 +1441,17 @@ public class CMManager extends MManager {
     }
 
     if (logger.isDebugEnabled()) {
-      logger.debug("Fetch timeseries schemas of {} from {} groups", plan.getPath(), groups.size());
+      logger.debug(
+          "Fetch timeseries schemas of {} from {} groups", plan.getPath(), groupPathMap.size());
     }
 
-    ShowTimeSeriesHandler handler = new ShowTimeSeriesHandler(groups.size(), plan.getPath());
+    ShowTimeSeriesHandler handler = new ShowTimeSeriesHandler(groupPathMap.size(), plan.getPath());
     List<Future<Void>> futureList = new ArrayList<>();
-    for (PartitionGroup group : groups) {
+    for (Entry<PartitionGroup, List<String>> entry : groupPathMap.entrySet()) {
       futureList.add(
           pool.submit(
               () -> {
-                showTimeseries(group, plan, context, handler);
+                showTimeseries(entry.getKey(), entry.getValue(), plan, context, handler);
                 return null;
               }));
     }
@@ -1497,14 +1498,34 @@ public class CMManager extends MManager {
 
   private void showTimeseries(
       PartitionGroup group,
+      List<String> paths,
       ShowTimeSeriesPlan plan,
       QueryContext context,
       ShowTimeSeriesHandler handler) {
+    List<ShowTimeSeriesResult> results = new ArrayList<>();
     if (group.contains(metaGroupMember.getThisNode())) {
-      showLocalTimeseries(group, plan, context, handler);
+      // TODO-Cluster: batch paths in a single plan
+      for (String path : paths) {
+        ShowTimeSeriesPlan subPlan = plan.copy();
+        try {
+          subPlan.setPath(new PartialPath(path));
+          results.addAll(showLocalTimeseries(group, subPlan, context));
+        } catch (CheckConsistencyException | MetadataException e) {
+          handler.onError(e);
+        }
+      }
     } else {
-      showRemoteTimeseries(group, plan, handler);
+      for (String path : paths) {
+        ShowTimeSeriesPlan subPlan = plan.copy();
+        try {
+          subPlan.setPath(new PartialPath(path));
+          results.addAll(showRemoteTimeseries(group, plan));
+        } catch (MetadataException e) {
+          handler.onError(e);
+        }
+      }
     }
+    handler.onComplete(results);
   }
 
   private void getDevices(
@@ -1533,24 +1554,17 @@ public class CMManager extends MManager {
     }
   }
 
-  private void showLocalTimeseries(
-      PartitionGroup group,
-      ShowTimeSeriesPlan plan,
-      QueryContext context,
-      ShowTimeSeriesHandler handler) {
-    try {
-      DataGroupMember localDataMember =
-          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
-      localDataMember.syncLeaderWithConsistencyCheck(false);
-      List<ShowTimeSeriesResult> localResult = super.showTimeseries(plan, context);
-      handler.onComplete(localResult);
-    } catch (MetadataException | CheckConsistencyException e) {
-      handler.onError(e);
-    }
+  private List<ShowTimeSeriesResult> showLocalTimeseries(
+      PartitionGroup group, ShowTimeSeriesPlan plan, QueryContext context)
+      throws CheckConsistencyException, MetadataException {
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+    localDataMember.syncLeaderWithConsistencyCheck(false);
+    return super.showTimeseries(plan, context);
   }
 
-  private void showRemoteTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, ShowTimeSeriesHandler handler) {
+  private List<ShowTimeSeriesResult> showRemoteTimeseries(
+      PartitionGroup group, ShowTimeSeriesPlan plan) throws MetadataException {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
@@ -1574,11 +1588,11 @@ public class CMManager extends MManager {
       for (int i = 0; i < size; i++) {
         results.add(ShowTimeSeriesResult.deserialize(resultBinary));
       }
-      handler.onComplete(results);
+      return results;
     } else {
       String errMsg =
           String.format("Failed to get timeseries in path %s from group %s", plan.getPath(), group);
-      handler.onError(new MetadataException(errMsg));
+      throw new MetadataException(errMsg);
     }
   }
 
