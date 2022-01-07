@@ -1383,6 +1383,13 @@ public class SessionPool {
   /**
    * Create a template with flat measurements, not tree structured. Need to specify datatype,
    * encoding and compressor of each measurement, and alignment of these measurements at once.
+   *
+   * @oaram templateName name of template to create
+   * @param measurements flat measurements of the template, cannot contain character dot
+   * @param dataTypes datatype of each measurement in the template
+   * @param encodings encodings of each measurement in the template
+   * @param compressors compression type of each measurement in the template
+   * @param isAligned specify whether these flat measurements are aligned
    */
   public void createSchemaTemplate(
       String templateName,
