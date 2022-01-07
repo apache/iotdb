@@ -48,8 +48,10 @@ import org.junit.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -1354,5 +1356,64 @@ public class MManagerBasicTest {
           "some children of root.a have already been set to storage group", e.getMessage());
       Assert.assertFalse(manager.isPathExist(new PartialPath("root.a.d")));
     }
+  }
+
+  @Test
+  public void testTagIndexRecovery() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    PartialPath path = new PartialPath("root.sg.d.s");
+    Map<String, String> tags = new HashMap<>();
+    tags.put("description", "oldValue");
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            tags,
+            null,
+            null));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    List<ShowTimeSeriesResult> results =
+        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    Map<String, String> resultTag = results.get(0).getTag();
+    assertEquals("oldValue", resultTag.get("description"));
+
+    tags.put("description", "newValue");
+    manager.upsertTagsAndAttributes(null, tags, null, path);
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
+
+    manager.clear();
+    manager.init();
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(0, results.size());
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
   }
 }

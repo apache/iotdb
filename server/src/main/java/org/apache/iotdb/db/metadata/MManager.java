@@ -399,9 +399,17 @@ public class MManager {
               plan.getAlias());
 
       // update tag index
-      if (plan.getTags() != null) {
+      Map<String, String> tagMap = null;
+      if (offset != -1) {
+        // offset != -1 means the timeseries has already been created and now system is recovering
+        tagMap = tagLogFile.readTag(config.getTagAttributeTotalSize(), offset);
+      } else if (plan.getTags() != null) {
+        // the tags only in plan means creating timeseries
+        tagMap = plan.getTags();
+      }
+      if (tagMap != null) {
         // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
+        for (Entry<String, String> entry : tagMap.entrySet()) {
           if (entry.getKey() == null || entry.getValue() == null) {
             continue;
           }
