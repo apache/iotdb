@@ -700,7 +700,8 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           SQLException, IOException, InterruptedException, QueryFilterOptimizationException,
           AuthException {
     // check permissions
-    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
+    if (!plan.getAuthPaths().isEmpty()
+        && !checkAuthorization(plan.getAuthPaths(), plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
