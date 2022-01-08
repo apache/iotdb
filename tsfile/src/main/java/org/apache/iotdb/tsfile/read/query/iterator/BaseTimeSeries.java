@@ -4,7 +4,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.List;
 
-abstract class BaseTimeSeries implements TimeSeries {
+public abstract class BaseTimeSeries implements TimeSeries {
 
   private final TSDataType[] dataTypes;
 

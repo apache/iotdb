@@ -35,6 +35,9 @@ public class TimeSeriesQueryDataSet extends QueryDataSet {
   @Override
   public RowRecord next() throws IOException {
     Object[] next = this.timeSeries.next();
+    if (next == null) {
+      return null;
+    }
     RowRecord record = new RowRecord((Long) next[0]);
     for (int i = 0; i < this.timeSeries.getSpecification().length; i++) {
       TSDataType dataType = this.timeSeries.getSpecification()[i];

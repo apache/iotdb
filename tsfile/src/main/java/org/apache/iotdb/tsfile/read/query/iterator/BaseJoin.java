@@ -30,6 +30,7 @@ public abstract class BaseJoin extends BaseTimeSeries {
   @Override
   public boolean hasNext() {
     if (this.end) {
+      this.nextElement = null;
       return false;
     }
     return setNextIfPossible();

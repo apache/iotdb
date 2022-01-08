@@ -28,8 +28,8 @@ import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.NonAlignEngineDataSet;
-import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
+import org.apache.iotdb.db.query.iterator.ServerSeriesIterator;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
@@ -37,19 +37,24 @@ import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
+import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.read.query.iterator.CalcTimeSeries;
+import org.apache.iotdb.tsfile.read.query.iterator.EqualJoin;
+import org.apache.iotdb.tsfile.read.query.iterator.ProjectTimeSeries;
+import org.apache.iotdb.tsfile.read.query.iterator.RelInput;
+import org.apache.iotdb.tsfile.read.query.iterator.TimeSeries;
+import org.apache.iotdb.tsfile.read.query.iterator.TimeSeriesQueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-
-import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
 
 /** IoTDB query executor. */
 public class RawDataQueryExecutor {
@@ -145,26 +150,35 @@ public class RawDataQueryExecutor {
    */
   public final QueryDataSet executeWithValueFilter(QueryContext context)
       throws StorageEngineException, QueryProcessException {
-    QueryDataSet dataSet = needRedirect(context, true);
-    if (dataSet != null) {
-      return dataSet;
+    if (!(queryPlan.getExpression() instanceof SingleSeriesExpression)) {
+      throw new UnsupportedOperationException("Currently not supported");
     }
 
-    TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
-    List<Boolean> cached =
-        markFilterdPaths(
-            queryPlan.getExpression(),
-            new ArrayList<>(queryPlan.getDeduplicatedPaths()),
-            timestampGenerator.hasOrNode());
-    List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, queryPlan, cached);
-    return new RawQueryDataSetWithValueFilter(
-        queryPlan.getDeduplicatedPaths(),
-        queryPlan.getDeduplicatedDataTypes(),
-        timestampGenerator,
-        readersOfSelectedSeries,
-        cached,
-        queryPlan.isAscending());
+    // How do we now upfront where each entry will be placed
+    // If we e.g. get
+    // 2*s1, s1 where s2 == xxx
+    //  ^    ^        ^
+    //  2    1        0
+    // Or in this more complex case
+    // 2*abs(s1), s1 where s2 == xxx
+    // ^    ^     ^        ^
+    // 3    2     1        0
+    // Where we would need two Calc stages with the current implementation
+    SingleSeriesExpression expression = (SingleSeriesExpression) queryPlan.getExpression();
+    EqualJoin iterator = new EqualJoin(
+        new ServerSeriesIterator(context, queryPlan, queryPlan.getPaths().get(0).transformToExactPath(), null),
+        new ServerSeriesIterator(context, queryPlan, ((PartialPath) expression.getSeriesPath()), expression.getFilter()),
+        queryPlan.isAscending()
+    );
+    TimeSeries calc = new CalcTimeSeries(iterator, Arrays.asList(
+        new CalcTimeSeries.NoopExpression(new RelInput.RelInputImpl(0, TSDataType.TEXT)),
+        new CalcTimeSeries.DoubleExpression(new RelInput.RelInputImpl(0, TSDataType.INT32))
+    ));
+    TimeSeries calc2 = new CalcTimeSeries(calc, Arrays.asList(
+        new CalcTimeSeries.DoubleExpression(new RelInput.RelInputImpl(2, TSDataType.INT32))
+    ));
+    ProjectTimeSeries projection = new ProjectTimeSeries(calc2, new int[]{0});
+    return new TimeSeriesQueryDataSet(projection);
   }
 
   protected List<IReaderByTimestamp> initSeriesReaderByTimestamp(
