@@ -41,7 +41,7 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
   protected AlignByDevicePlan generateAlignByDevicePlan(PhysicalGenerator generator)
       throws QueryProcessException {
     AlignByDevicePlan alignByDevicePlan = super.generateAlignByDevicePlan(generator);
-    alignByDevicePlan.setGroupByTimePlan(initGroupByTimeFillPlan(new GroupByTimeFillPlan()));
+    alignByDevicePlan.setGroupByFillPlan(initGroupByTimeFillPlan(new GroupByTimeFillPlan()));
 
     return alignByDevicePlan;
   }
@@ -52,6 +52,8 @@ public class GroupByFillQueryOperator extends GroupByQueryOperator {
         (GroupByTimeFillPlan) super.initGroupByTimePlan(queryPlan);
     GroupByFillClauseComponent groupByFillClauseComponent =
         (GroupByFillClauseComponent) specialClauseComponent;
+    groupByTimeFillPlan.setSingleFill(groupByFillClauseComponent.getSingleFill());
+    // old type fill logic
     groupByTimeFillPlan.setFillType(groupByFillClauseComponent.getFillTypes());
 
     return groupByTimeFillPlan;

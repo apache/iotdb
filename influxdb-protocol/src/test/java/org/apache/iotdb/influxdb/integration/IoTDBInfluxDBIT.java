@@ -19,12 +19,7 @@
 package org.apache.iotdb.influxdb.integration;
 
 import org.apache.iotdb.influxdb.IoTDBInfluxDBFactory;
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.rpc.StatementExecutionException;
 import org.apache.iotdb.session.Session;
-import org.apache.iotdb.session.SessionDataSet;
-import org.apache.iotdb.tsfile.read.common.Field;
-import org.apache.iotdb.tsfile.read.common.RowRecord;
 
 import org.influxdb.InfluxDB;
 import org.influxdb.InfluxDBException;
@@ -34,9 +29,9 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -49,24 +44,21 @@ public class IoTDBInfluxDBIT {
   private String username;
   private String password;
   private InfluxDB influxDB;
-  private Session session;
 
   @Rule
   public GenericContainer<?> iotdb =
-      new GenericContainer<>("apache/iotdb:latest").withExposedPorts(6667);
+      new GenericContainer(DockerImageName.parse("apache/iotdb:maven-development"))
+          .withExposedPorts(8086);
 
   @Before
-  public void setUp() throws IoTDBConnectionException {
+  public void setUp() {
     host = iotdb.getContainerIpAddress();
-    port = iotdb.getMappedPort(6667);
+    port = iotdb.getMappedPort(8086);
     username = "root";
     password = "root";
     influxDB = IoTDBInfluxDBFactory.connect(host, port, username, password);
     influxDB.createDatabase("monitor");
     influxDB.setDatabase("monitor");
-
-    session = new Session(host, port, username, password);
-    session.open(false);
 
     insertData();
   }
@@ -168,80 +160,6 @@ public class IoTDBInfluxDBIT {
 
   @Test(expected = InfluxDBException.class)
   public void testConnectAuthFailed() {
-    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "1", "1");
-  }
-
-  @Test
-  public void testVersion() {
-    String version = influxDB.version();
-    assertNotNull(version);
-    assertTrue(version.length() > 0);
-  }
-
-  @Test
-  public void testPing() {
-    assertTrue(influxDB.ping().getResponseTime() > 0);
-  }
-
-  @Test
-  public void testInsert1() {
-    String[] expected = {"china, 99, null, 110, ", "null, null, 97, null, "};
-    int expectLength = 2;
-    try {
-      SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select * from root.monitor.student.A.B.C", 0);
-      while (sessionDataSet.hasNext()) {
-        for (int i = 0; i < expectLength; i++) {
-          RowRecord record = sessionDataSet.next();
-          List<Field> fields = record.getFields();
-          StringBuilder actual = new StringBuilder();
-          for (Field field : fields) {
-            actual.append(field.toString()).append(", ");
-          }
-          assertEquals(expected[i], actual.toString());
-        }
-      }
-      sessionDataSet.closeOperationHandle();
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testInsert2() {
-    String[] expected = {"98"};
-    try {
-      SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select * from root.monitor.student.PH.PH.PH.D", 0);
-      while (sessionDataSet.hasNext()) {
-        RowRecord record = sessionDataSet.next();
-        List<Field> fields = record.getFields();
-        for (int i = 0; i < fields.size(); ++i) {
-          assertEquals(expected[i], fields.get(i).toString());
-        }
-      }
-      sessionDataSet.closeOperationHandle();
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
-  }
-
-  @Test
-  public void testInsert3() {
-    String[] expected = {"97"};
-    try {
-      SessionDataSet sessionDataSet =
-          session.executeQueryStatement("select * from root.monitor.student.A.B.C.D", 0);
-      while (sessionDataSet.hasNext()) {
-        RowRecord record = sessionDataSet.next();
-        List<Field> fields = record.getFields();
-        for (int i = 0; i < fields.size(); ++i) {
-          assertEquals(expected[i], fields.get(i).toString());
-        }
-      }
-      sessionDataSet.closeOperationHandle();
-    } catch (StatementExecutionException | IoTDBConnectionException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+    InfluxDB influxDB = IoTDBInfluxDBFactory.connect(host, port, "error", "error");
   }
 }

@@ -39,16 +39,12 @@ public class AutoCreateDeviceMNodePlan extends PhysicalPlan {
   protected PartialPath path;
 
   public AutoCreateDeviceMNodePlan() {
-    super(false, Operator.OperatorType.AUTO_CREATE_DEVICE_MNODE);
+    super(Operator.OperatorType.AUTO_CREATE_DEVICE_MNODE);
   }
 
   public AutoCreateDeviceMNodePlan(PartialPath path) {
-    super(false, Operator.OperatorType.AUTO_CREATE_DEVICE_MNODE);
+    super(Operator.OperatorType.AUTO_CREATE_DEVICE_MNODE);
     this.path = path;
-  }
-
-  public AutoCreateDeviceMNodePlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override

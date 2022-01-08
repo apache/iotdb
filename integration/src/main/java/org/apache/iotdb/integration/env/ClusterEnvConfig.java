@@ -23,112 +23,138 @@ import org.apache.iotdb.itbase.env.BaseConfig;
 import java.util.Properties;
 
 public class ClusterEnvConfig implements BaseConfig {
-  private final Properties properties;
+  private final Properties engineProperties;
+  private final Properties clusterProperties;
 
   public ClusterEnvConfig() {
-    properties = new Properties();
+    engineProperties = new Properties();
+    clusterProperties = new Properties();
   }
 
-  public void clearProperties() {
-    properties.clear();
+  public void clearAllProperties() {
+    engineProperties.clear();
+    clusterProperties.clear();
   }
 
-  public Properties getProperties() {
-    return this.properties;
+  public Properties getEngineProperties() {
+    return this.engineProperties;
+  }
+
+  public Properties getClusterProperties() {
+    return this.clusterProperties;
   }
 
   public BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
-    properties.setProperty("max_number_of_points_in_page", String.valueOf(maxNumberOfPointsInPage));
+    engineProperties.setProperty(
+        "max_number_of_points_in_page", String.valueOf(maxNumberOfPointsInPage));
     return this;
   }
 
   public BaseConfig setPageSizeInByte(int pageSizeInByte) {
-    properties.setProperty("page_size_in_byte", String.valueOf(pageSizeInByte));
+    engineProperties.setProperty("page_size_in_byte", String.valueOf(pageSizeInByte));
     return this;
   }
 
   public BaseConfig setGroupSizeInByte(int groupSizeInByte) {
-    properties.setProperty("group_size_in_byte", String.valueOf(groupSizeInByte));
+    engineProperties.setProperty("group_size_in_byte", String.valueOf(groupSizeInByte));
     return this;
   }
 
   public BaseConfig setMemtableSizeThreshold(long memtableSizeThreshold) {
-    properties.setProperty("memtable_size_threshold", String.valueOf(memtableSizeThreshold));
+    engineProperties.setProperty("memtable_size_threshold", String.valueOf(memtableSizeThreshold));
     return this;
   }
 
   public BaseConfig setVirtualStorageGroupNum(int virtualStorageGroupNum) {
-    properties.setProperty("virtual_storage_group_num", String.valueOf(virtualStorageGroupNum));
+    engineProperties.setProperty(
+        "virtual_storage_group_num", String.valueOf(virtualStorageGroupNum));
     return this;
   }
 
   public BaseConfig setPartitionInterval(long partitionInterval) {
-    properties.setProperty("partition_interval", String.valueOf(partitionInterval));
+    engineProperties.setProperty("partition_interval", String.valueOf(partitionInterval));
     return this;
   }
 
   public BaseConfig setCompressor(String compressor) {
-    properties.setProperty("compressor", compressor);
+    engineProperties.setProperty("compressor", compressor);
     return this;
   }
 
   public BaseConfig setMaxQueryDeduplicatedPathNum(int maxQueryDeduplicatedPathNum) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "max_deduplicated_path_num", String.valueOf(maxQueryDeduplicatedPathNum));
     return this;
   }
 
   public BaseConfig setRpcThriftCompressionEnable(boolean rpcThriftCompressionEnable) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "rpc_thrift_compression_enable", String.valueOf(rpcThriftCompressionEnable));
     return this;
   }
 
   public BaseConfig setRpcAdvancedCompressionEnable(boolean rpcAdvancedCompressionEnable) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "rpc_advanced_compression_enable", String.valueOf(rpcAdvancedCompressionEnable));
     return this;
   }
 
   public BaseConfig setEnablePartition(boolean enablePartition) {
-    properties.setProperty("enable_partition", String.valueOf(enablePartition));
+    engineProperties.setProperty("enable_partition", String.valueOf(enablePartition));
     return this;
   }
 
   public BaseConfig setUdfCollectorMemoryBudgetInMB(float udfCollectorMemoryBudgetInMB) {
     // udf_memory_budget_in_mb
     // udf_reader_transformer_collector_memory_proportion
-    properties.setProperty(
+    engineProperties.setProperty(
         "udf_memory_budget_in_mb", String.valueOf(udfCollectorMemoryBudgetInMB * 3));
     return this;
   }
 
   public BaseConfig setUdfTransformerMemoryBudgetInMB(float udfTransformerMemoryBudgetInMB) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "udf_memory_budget_in_mb", String.valueOf(udfTransformerMemoryBudgetInMB * 3));
     return this;
   }
 
   public BaseConfig setUdfReaderMemoryBudgetInMB(float udfReaderMemoryBudgetInMB) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "udf_memory_budget_in_mb", String.valueOf(udfReaderMemoryBudgetInMB * 3));
     return this;
   }
 
   public BaseConfig setEnableSeqSpaceCompaction(boolean enableSeqSpaceCompaction) {
-    properties.setProperty("enable_seq_space_compaction", String.valueOf(enableSeqSpaceCompaction));
+    engineProperties.setProperty(
+        "enable_seq_space_compaction", String.valueOf(enableSeqSpaceCompaction));
     return this;
   }
 
   public BaseConfig setEnableUnseqSpaceCompaction(boolean enableUnseqSpaceCompaction) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "enable_unseq_space_compaction", String.valueOf(enableUnseqSpaceCompaction));
     return this;
   }
 
   public BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
-    properties.setProperty(
+    engineProperties.setProperty(
         "enable_cross_space_compaction", String.valueOf(enableCrossSpaceCompaction));
+    return this;
+  }
+
+  public BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    engineProperties.setProperty("enable_id_table", String.valueOf(isEnableIDTable));
+    return this;
+  }
+
+  public BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    engineProperties.setProperty("device_id_transformation_method", deviceIDTransformationMethod);
+    return this;
+  }
+
+  public BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
+    clusterProperties.setProperty(
+        "enable_auto_create_schema", String.valueOf(enableAutoCreateSchema));
     return this;
   }
 }

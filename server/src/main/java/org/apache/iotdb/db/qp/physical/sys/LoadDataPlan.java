@@ -33,7 +33,7 @@ public class LoadDataPlan extends PhysicalPlan {
 
   /** Constructor of LoadDataPlan. */
   public LoadDataPlan(String inputFilePath, String measureType) {
-    super(false, Operator.OperatorType.LOAD_DATA);
+    super(Operator.OperatorType.LOAD_DATA);
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
   }

@@ -64,7 +64,8 @@ public class MemTableFlushTaskTest {
   }
 
   @Test
-  public void testFlushMemTable() throws ExecutionException, InterruptedException {
+  public void testFlushMemTable()
+      throws ExecutionException, InterruptedException, IllegalPathException {
     MemTableTestUtils.produceData(
         memTable,
         startTime,

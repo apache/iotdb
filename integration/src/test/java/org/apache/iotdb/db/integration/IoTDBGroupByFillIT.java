@@ -21,17 +21,17 @@ package org.apache.iotdb.db.integration;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.qp.logical.crud.AggregationQueryOperator;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 
@@ -72,29 +72,26 @@ public class IoTDBGroupByFillIT {
         "flush"
       };
 
-  @Before
-  public void setUp() throws Exception {
-    EnvironmentUtils.closeStatMonitor();
-    EnvironmentUtils.envSetUp();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
-    Class.forName(Config.JDBC_DRIVER_NAME);
+  @BeforeClass
+  public static void setUp() throws Exception {
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeClass();
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(86400);
     EnvironmentUtils.cleanEnv();
   }
 
   @Test
-  public void previousLastValueTest() {
+  public void oldTypePreviousLastValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,24", "42,24", "47,30", "52,30"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(temperature) from "
@@ -144,15 +141,14 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,30"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature > 25 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -173,7 +169,7 @@ public class IoTDBGroupByFillIT {
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature > 25 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -194,15 +190,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousFirstValueTest() {
+  public void oldTypePreviousFirstValueTest() {
     String[] retArray =
         new String[] {
           "17,null", "22,34.9", "27,34.9", "32,44.6", "37,44.6", "42,44.6", "47,54.6", "52,54.6"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select first_value(hardware) from "
@@ -255,14 +250,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,33.3", "27,33.3", "32,44.7", "37,44.7", "42,44.7", "47,55.2", "52,55.2"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -282,7 +276,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -303,15 +297,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousAvgWithValueFilterTest() {
+  public void oldTypePreviousAvgWithValueFilterTest() {
     String[] retArray =
         new String[] {
           "17,null", "22,null", "27,null", "32,44.7", "37,44.7", "42,44.7", "47,55.2", "52,55.2"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(hardware) from "
@@ -363,14 +356,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,0", "22,2", "27,0", "32,2", "37,0", "42,0", "47,2", "52,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -390,7 +382,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -415,15 +407,14 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,0", "22,1", "27,0", "32,1", "37,0", "42,0", "47,1", "52,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE status = true "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -444,7 +435,7 @@ public class IoTDBGroupByFillIT {
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE status = true "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -469,14 +460,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,25", "27,25", "32,36", "37,36", "42,36", "47,50", "52,50"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -496,7 +486,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -517,13 +507,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousMaxValueTest() {
+  public void oldTypePreviousMaxValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,30"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_value(temperature) from "
@@ -573,14 +562,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,33", "37,33", "42,33", "47,48", "52,48"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -600,7 +588,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -621,13 +609,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousMinValueTest() {
+  public void oldTypePreviousMinValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,24", "42,24", "47,28", "52,28"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
@@ -679,14 +666,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,66.6", "27,66.6", "32,89.4", "37,89.4", "42,89.4", "47,110.4", "52,110.4"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -706,7 +692,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previous]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previous) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -727,15 +713,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousUntilLastLastValueTest() {
+  public void oldTypePreviousUntilLastLastValueTest() {
     String[] retArray =
         new String[] {
           "17,null", "22,false", "27,false", "32,true", "37,true", "42,true", "47,true", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(status) from "
@@ -783,15 +768,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousUntilLastFirstValueTest() {
+  public void oldTypePreviousUntilLastFirstValueTest() {
     String[] retArray =
         new String[] {
           "17,null", "22,34.9", "27,34.9", "32,44.6", "37,44.6", "42,44.6", "47,54.6", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select first_value(hardware) from "
@@ -844,15 +828,14 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,null", "27,null", "32,44.6", "37,44.6", "42,44.6", "47,54.6", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select first_value(hardware) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE hardware > 35.0 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -874,7 +857,7 @@ public class IoTDBGroupByFillIT {
               "select first_value(hardware) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE hardware > 35.0 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -901,14 +884,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,33.3", "27,33.3", "32,44.7", "37,44.7", "42,44.7", "47,55.2", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -928,7 +910,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -949,13 +931,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousUntilLastCountTest() {
+  public void oldTypePreviousUntilLastCountTest() {
     String[] retArray =
         new String[] {"17,0", "22,2", "27,0", "32,2", "37,0", "42,0", "47,2", "52,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select count(hardware) from "
@@ -1001,13 +982,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousUntilLastMaxTimeTest() {
+  public void oldTypePreviousUntilLastMaxTimeTest() {
     String[] retArray =
         new String[] {"17,null", "22,25", "27,25", "32,36", "37,36", "42,36", "47,50", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_time(hardware) from "
@@ -1053,13 +1033,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void previousUntilLastMaxValueTest() {
+  public void oldTypePreviousUntilLastMaxValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_value(temperature) from "
@@ -1111,15 +1090,14 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,23", "27,23", "32,24", "37,null", "42,null", "47,null", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature <= 25"
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1140,7 +1118,7 @@ public class IoTDBGroupByFillIT {
               "select max_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature <= 25"
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1165,14 +1143,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,33", "37,33", "42,33", "47,48", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1192,7 +1169,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1217,14 +1194,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,24", "42,24", "47,28", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1244,7 +1220,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1271,14 +1247,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,66.6", "27,66.6", "32,89.4", "37,89.4", "42,89.4", "47,110.4", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1298,7 +1273,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[previousUntilLast]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(previousUntilLast) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1323,9 +1298,8 @@ public class IoTDBGroupByFillIT {
 
     String[] retArray = new String[] {"27,23", "32,24", "37,24", "42,24", "47,30"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(temperature) from "
@@ -1359,14 +1333,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,100", "22,23", "27,100", "32,24", "37,100", "42,100", "47,30", "52,100"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[100])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(100)");
 
       assertTrue(hasResultSet);
       int cnt;
@@ -1387,7 +1360,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select last_value(temperature) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[100]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(100) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1408,15 +1381,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void valueFirstValueTest() {
+  public void oldTypeValueFirstValueTest() {
     String[] retArray =
         new String[] {
           "17,2.33", "22,34.9", "27,2.33", "32,44.6", "37,2.33", "42,2.33", "47,54.6", "52,2.33"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select first_value(hardware) from "
@@ -1463,15 +1435,14 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void valueAvgTest() {
+  public void oldTypeValueAvgTest() {
     String[] retArray =
         new String[] {
           "17,66.6", "22,33.3", "27,66.6", "32,44.7", "37,66.6", "42,66.6", "47,55.2", "52,66.6"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(hardware) from "
@@ -1521,14 +1492,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,0", "22,2", "27,0", "32,2", "37,0", "42,0", "47,2", "52,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[10])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(10)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1548,7 +1518,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[10]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(10) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1573,14 +1543,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,888", "22,25", "27,888", "32,36", "37,888", "42,888", "47,50", "52,888"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[888])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(888)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1600,7 +1569,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[888]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(888) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1621,13 +1590,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void valueMaxValueTest() {
+  public void oldTypeValueMaxValueTest() {
     String[] retArray =
         new String[] {"17,100", "22,28", "27,100", "32,29", "37,100", "42,100", "47,30", "52,100"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_value(temperature) from "
@@ -1673,13 +1641,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void valueMinTimeTest() {
+  public void oldTypeValueMinTimeTest() {
     String[] retArray =
         new String[] {"17,1", "22,23", "27,1", "32,33", "37,1", "42,1", "47,48", "52,1"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_time(hardware) from "
@@ -1725,13 +1692,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void valueMinValueTest() {
+  public void oldTypeValueMinValueTest() {
     String[] retArray =
         new String[] {"17,10", "22,23", "27,10", "32,24", "37,10", "42,10", "47,28", "52,10"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
@@ -1781,9 +1747,61 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,10", "22,28", "27,10", "32,29", "37,10", "42,10", "47,28", "52,10"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
+      boolean hasResultSet =
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "WHERE temperature > 25 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(10)");
+      assertTrue(hasResultSet);
+      int cnt;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+
+      hasResultSet =
+          statement.execute(
+              "select min_value(temperature) from "
+                  + "root.ln.wf01.wt01 "
+                  + "WHERE temperature > 25 "
+                  + "GROUP BY ([17, 55), 5ms) FILL(10) order by time desc");
+      assertTrue(hasResultSet);
+      try (ResultSet resultSet = statement.getResultSet()) {
+        cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(minValue("root.ln.wf01.wt01.temperature"));
+          assertEquals(retArray[retArray.length - cnt - 1], ans);
+          cnt++;
+        }
+        assertEquals(retArray.length, cnt);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void oldTypeValueMinValueWithValueFilterTest() {
+    String[] retArray =
+        new String[] {"17,10", "22,28", "27,10", "32,29", "37,10", "42,10", "47,28", "52,10"};
+
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
@@ -1844,14 +1862,13 @@ public class IoTDBGroupByFillIT {
           "52,233.0"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[233.0])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(233.0)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -1871,7 +1888,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[233.0]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(233.0) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -1892,13 +1909,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearLastValueTest() {
+  public void oldTypeLinearLastValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,26", "42,28", "47,30", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(temperature) from "
@@ -1945,7 +1961,7 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearFirstValueTest() {
+  public void oldTypeLinearFirstValueTest() {
     String[] retArray =
         new String[] {
           "17,null",
@@ -1958,9 +1974,8 @@ public class IoTDBGroupByFillIT {
           "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select first_value(hardware) from "
@@ -2013,14 +2028,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,33.3", "27,39.0", "32,44.7", "37,48.2", "42,51.7", "47,55.2", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2040,7 +2054,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select avg(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2065,14 +2079,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,0", "22,2", "27,0", "32,2", "37,0", "42,0", "47,2", "52,0"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2092,7 +2105,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select count(status) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2117,14 +2130,13 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,25", "27,30", "32,36", "37,40", "42,45", "47,50", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2144,7 +2156,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select max_time(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(int64[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2165,13 +2177,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearMaxValueTest() {
+  public void oldTypeLinearMaxValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,30", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select max_value(temperature) from "
@@ -2217,13 +2228,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearMinTimeTest() {
+  public void oldTypeLinearMinTimeTest() {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,28", "32,33", "37,38", "42,43", "47,48", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_time(hardware) from "
@@ -2269,13 +2279,12 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearMinValueTest() {
+  public void oldTypeLinearMinValueTest() {
     String[] retArray =
         new String[] {"17,null", "22,23", "27,23", "32,24", "37,25", "42,26", "47,28", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
@@ -2325,15 +2334,14 @@ public class IoTDBGroupByFillIT {
     String[] retArray =
         new String[] {"17,null", "22,28", "27,28", "32,29", "37,29", "42,29", "47,28", "52,null"};
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature > 25"
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2354,7 +2362,7 @@ public class IoTDBGroupByFillIT {
               "select min_value(temperature) from "
                   + "root.ln.wf01.wt01 "
                   + "WHERE temperature > 25"
-                  + "GROUP BY ([17, 55), 5ms) FILL(int32[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2381,14 +2389,13 @@ public class IoTDBGroupByFillIT {
           "17,null", "22,66.6", "27,78.0", "32,89.4", "37,96.4", "42,103.4", "47,110.4", "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear])");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear)");
       assertTrue(hasResultSet);
       int cnt;
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -2408,7 +2415,7 @@ public class IoTDBGroupByFillIT {
           statement.execute(
               "select sum(hardware) from "
                   + "root.ln.wf01.wt01 "
-                  + "GROUP BY ([17, 55), 5ms) FILL(double[linear]) order by time desc");
+                  + "GROUP BY ([17, 55), 5ms) FILL(linear) order by time desc");
       assertTrue(hasResultSet);
       try (ResultSet resultSet = statement.getResultSet()) {
         cnt = 0;
@@ -2429,7 +2436,7 @@ public class IoTDBGroupByFillIT {
   }
 
   @Test
-  public void linearSumWithValueFilterTest() {
+  public void oldTypelinearSumWithValueFilterTest() {
     String[] retArray =
         new String[] {
           "17,null",
@@ -2442,9 +2449,8 @@ public class IoTDBGroupByFillIT {
           "52,null"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select sum(hardware) from "
@@ -2498,9 +2504,8 @@ public class IoTDBGroupByFillIT {
           "10,21.0", "15,24.0", "20,24.0", "25,25.5", "30,25.5", "35,29.0", "40,24.0",
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select avg(temperature) from root.ln.wf01.wt01 "
@@ -2559,9 +2564,8 @@ public class IoTDBGroupByFillIT {
           "52,true,55.2"
         };
 
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
       boolean hasResultSet =
           statement.execute(
               "select last_value(status), avg(hardware) from root.ln.wf01.wt01 "
@@ -2616,9 +2620,8 @@ public class IoTDBGroupByFillIT {
    */
   @Test
   public void TestGroupByFillWithoutAggregationFunc() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       statement.execute(
           "select temperature from root.ln.wf01.wt01 "
@@ -2630,11 +2633,9 @@ public class IoTDBGroupByFillIT {
     }
   }
 
-  private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+  private static void prepareData() {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       for (String sql : dataSet1) {
         statement.execute(sql);

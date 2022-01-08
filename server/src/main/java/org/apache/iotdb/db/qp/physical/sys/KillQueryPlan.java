@@ -30,7 +30,7 @@ public class KillQueryPlan extends PhysicalPlan {
   private long queryId = -1;
 
   public KillQueryPlan(long queryId) {
-    super(false, OperatorType.KILL);
+    super(OperatorType.KILL);
     this.queryId = queryId;
   }
 

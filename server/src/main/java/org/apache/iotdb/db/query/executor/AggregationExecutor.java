@@ -23,7 +23,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
@@ -45,7 +45,6 @@ import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
-import org.apache.iotdb.db.utils.AlignedValueIterator;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,7 +57,7 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -112,14 +111,28 @@ public class AggregationExecutor {
     // TODO use multi-thread
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         MetaUtils.groupAggregationsBySeries(selectedSeries);
-    // TODO-Cluster: group the paths by storage group to reduce communications
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(new ArrayList<>(pathToAggrIndexesMap.keySet()));
-
     // Attention: this method will REMOVE aligned path from pathToAggrIndexesMap
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
+
+    List<PartialPath> groupedPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
+    // TODO-Cluster: group the paths by storage group to reduce communications
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       for (Map.Entry<PartialPath, List<Integer>> entry : pathToAggrIndexesMap.entrySet()) {
         PartialPath seriesPath = entry.getKey();
         aggregateOneSeries(
@@ -138,7 +151,7 @@ public class AggregationExecutor {
             timeFilter);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     return constructDataSet(Arrays.asList(aggregateResultList), aggregationPlan);
@@ -594,15 +607,33 @@ public class AggregationExecutor {
     optimizeLastElementFunc(queryPlan);
 
     TimeGenerator timestampGenerator = getTimeGenerator(context, queryPlan);
+
+    Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap = new HashMap<>();
+
     // group by path name
     Map<PartialPath, List<Integer>> pathToAggrIndexesMap =
         MetaUtils.groupAggregationsBySeries(selectedSeries);
     Map<AlignedPath, List<List<Integer>>> alignedPathToAggrIndexesMap =
         MetaUtils.groupAlignedSeriesWithAggregations(pathToAggrIndexesMap);
-    Map<IReaderByTimestamp, List<List<Integer>>> readerToAggrIndexesMap = new HashMap<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+
+    List<PartialPath> groupedPathList =
+        new ArrayList<>(pathToAggrIndexesMap.size() + alignedPathToAggrIndexesMap.size());
+    groupedPathList.addAll(pathToAggrIndexesMap.keySet());
+    groupedPathList.addAll(alignedPathToAggrIndexesMap.keySet());
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(groupedPathList);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(
+              processorToSeriesMap, context, timestampGenerator.getTimeFilter());
+
       for (PartialPath path : pathToAggrIndexesMap.keySet()) {
         IReaderByTimestamp seriesReaderByTimestamp =
             getReaderByTime(path, queryPlan, path.getSeriesType(), context);
@@ -619,7 +650,7 @@ public class AggregationExecutor {
       }
       alignedPathToAggrIndexesMap = null;
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     for (int i = 0; i < selectedSeries.size(); i++) {
@@ -696,13 +727,15 @@ public class AggregationExecutor {
           // if cached in timeGenerator
           if (cached.get(pathId)) {
             Object[] values = timestampGenerator.getValues(selectedSeries.get(pathId));
-            ValueIterator valueIterator = generateValueIterator(values);
-            for (Integer index : subIndexes) {
-              aggregateResultList[index].updateResultUsingValues(
-                  timeArray, timeArrayLength, valueIterator);
-              valueIterator.reset();
+            ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
+            if (valueIterator != null) {
+              for (Integer index : subIndexes) {
+                aggregateResultList[index].updateResultUsingValues(
+                    timeArray, timeArrayLength, valueIterator);
+                valueIterator.reset();
+              }
+              cachedOrNot[i] = true;
             }
-            cachedOrNot[i] = true;
           }
         }
 
@@ -710,8 +743,8 @@ public class AggregationExecutor {
           // TODO: if we only need to get firstValue/minTime that's not need to traverse all values,
           //  it's enough to get the exact number of values for these specific aggregate func
           Object[] values = entry.getKey().getValuesInTimestamps(timeArray, timeArrayLength);
-          if (values != null) {
-            ValueIterator valueIterator = generateValueIterator(values);
+          ValueIterator valueIterator = QueryUtils.generateValueIterator(values);
+          if (valueIterator != null) {
             for (int i = 0; i < entry.getValue().size(); i++) {
               if (!cachedOrNot[i]) {
                 valueIterator.setSubMeasurementIndex(i);
@@ -725,14 +758,6 @@ public class AggregationExecutor {
           }
         }
       }
-    }
-  }
-
-  private ValueIterator generateValueIterator(Object[] values) {
-    if (values[0] instanceof TsPrimitiveType[]) {
-      return new AlignedValueIterator(values);
-    } else {
-      return new ValueIterator(values);
     }
   }
 

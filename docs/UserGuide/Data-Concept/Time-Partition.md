@@ -19,9 +19,9 @@
 
 -->
 
-## Time partition
+# Time partition
 
-### Features
+## Features
 
 Time partition divides data according to time, and a time partition is used to save all data within a certain time range. The time partition number is represented by a natural number. Number 0 means January 1, 1970, it will increase by one every partition_interval seconds. Time partition number's calculation formula is timestamp / partition_interval. The main configuration items are as follows:
 
@@ -43,7 +43,7 @@ Time partition divides data according to time, and a time partition is used to s
 |Default| 604800 |
 |Effective|Only allowed to be modified in first start up|
 
-### Configuration example
+## Configuration example
 
 Enable time partition and set partition_interval to 86400 (one day), then the data distribution is shown as the following figure:
 
@@ -53,7 +53,7 @@ Enable time partition and set partition_interval to 86400 (one day), then the da
 
 * Insert one datapoint with timestamp 1609459200010, calculate 1609459200010/86400 = 18628, then this datapoint will be stored in TsFile under folder 18628
 
-### Suggestions
+## Suggestions
 
 When enabling time partition, it is better to enable timed flush memtable and timed close tsfile, configuration params are detailed in [Config manual for timed flush and timed close](../Appendix/Config-Manual.md).
 

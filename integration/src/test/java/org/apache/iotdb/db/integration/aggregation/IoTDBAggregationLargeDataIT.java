@@ -26,9 +26,9 @@ import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -114,43 +114,23 @@ public class IoTDBAggregationLargeDataIT {
         "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
       };
 
-  private long prevPartitionInterval;
+  private static long prevPartitionInterval;
 
-  @Before
-  public void setUp() throws Exception {
-
+  @BeforeClass
+  public static void setUp() throws Exception {
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    EnvFactory.getEnv().initBeforeTest();
+    EnvFactory.getEnv().initBeforeClass();
+    insertSQL();
   }
 
-  @After
-  public void tearDown() throws Exception {
-    EnvFactory.getEnv().cleanAfterTest();
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
     ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   @Test
-  public void test() throws ClassNotFoundException {
-    insertSQL();
-
-    lastValueAggreWithSingleFilterTest();
-    avgAggreWithSingleFilterTest();
-    sumAggreWithSingleFilterTest();
-    firstAggreWithSingleFilterTest();
-    countAggreWithSingleFilterTest();
-    minTimeAggreWithSingleFilterTest();
-    minValueAggreWithSingleFilterTest();
-    maxValueAggreWithSingleFilterTest();
-    extremeAggreWithSingleFilterTest();
-
-    countAggreWithMultiFilterTest();
-    maxTimeAggreWithMultiFilterTest();
-    avgAggreWithMultiFilterTest();
-    sumAggreWithMultiFilterTest();
-    firstAggreWithMultiFilterTest();
-  }
-
-  private void lastValueAggreWithSingleFilterTest() {
+  public void lastValueAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,9,39,63.0,E,true"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -212,7 +192,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void sumAggreWithSingleFilterTest() {
+  @Test
+  public void sumAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,55061.0,156752.0,20254"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -266,7 +247,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void firstAggreWithSingleFilterTest() {
+  @Test
+  public void firstAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,90,1101,2.22,ddddd,true"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -330,7 +312,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void avgAggreWithSingleFilterTest() {
+  @Test
+  public void avgAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,75,212,28"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -381,7 +364,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void countAggreWithSingleFilterTest() {
+  @Test
+  public void countAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,733,740,734"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -434,7 +418,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minTimeAggreWithSingleFilterTest() {
+  @Test
+  public void minTimeAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,104,1,2,101,100"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -499,7 +484,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void minValueAggreWithSingleFilterTest() {
+  @Test
+  public void minValueAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,0,0,0.0,B,true"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -567,7 +553,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void maxValueAggreWithSingleFilterTest() {
+  @Test
+  public void maxValueAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,99,40000,122.0,fffff,true"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -636,7 +623,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void extremeAggreWithSingleFilterTest() {
+  @Test
+  public void extremeAggreWithSingleFilterTest() {
     String[] retArray = new String[] {"0,99,40000,122.0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -697,7 +685,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void avgAggreWithMultiFilterTest() {
+  @Test
+  public void avgAggreWithMultiFilterTest() {
     String[] retArray = new String[] {"0,55061.0,733,75,212,28"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -734,7 +723,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void sumAggreWithMultiFilterTest() {
+  @Test
+  public void sumAggreWithMultiFilterTest() {
     String[] retArray = new String[] {"0,55061.0,156752.0,20262"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -788,7 +778,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void firstAggreWithMultiFilterTest() {
+  @Test
+  public void firstAggreWithMultiFilterTest() {
     String[] retArray = new String[] {"0,90,1101,2.22,ddddd,true"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -852,7 +843,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void countAggreWithMultiFilterTest() {
+  @Test
+  public void countAggreWithMultiFilterTest() {
     String[] retArray = new String[] {"0,733,740,736,482,1"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -889,7 +881,8 @@ public class IoTDBAggregationLargeDataIT {
     }
   }
 
-  private void maxTimeAggreWithMultiFilterTest() throws ClassNotFoundException {
+  @Test
+  public void maxTimeAggreWithMultiFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,3999,3999,3999,3599,100"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);

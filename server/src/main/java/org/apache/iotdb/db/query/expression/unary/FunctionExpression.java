@@ -37,6 +37,7 @@ import org.apache.iotdb.db.query.udf.core.layer.RawQueryInputLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnMultiReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.layer.SingleInputColumnSingleReferenceIntermediateLayer;
 import org.apache.iotdb.db.query.udf.core.transformer.Transformer;
+import org.apache.iotdb.db.query.udf.core.transformer.TransparentTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryRowWindowTransformer;
 import org.apache.iotdb.db.query.udf.core.transformer.UDFQueryTransformer;
@@ -59,7 +60,9 @@ public class FunctionExpression extends Expression {
    * true: aggregation function<br>
    * false: time series generating function
    */
-  private final boolean isAggregationFunctionExpression;
+  private final boolean isPlainAggregationFunctionExpression;
+
+  private boolean isUserDefinedAggregationFunctionExpression;
 
   private final String functionName;
   private final Map<String, String> functionAttributes;
@@ -71,8 +74,6 @@ public class FunctionExpression extends Expression {
    */
   private List<Expression> expressions;
 
-  private List<TSDataType> inputExpressionTypes;
-
   private List<PartialPath> paths;
 
   private String parametersString;
@@ -81,7 +82,7 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     functionAttributes = new LinkedHashMap<>();
     expressions = new ArrayList<>();
-    isAggregationFunctionExpression =
+    isPlainAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = true;
   }
@@ -91,14 +92,20 @@ public class FunctionExpression extends Expression {
     this.functionName = functionName;
     this.functionAttributes = functionAttributes;
     this.expressions = expressions;
-    isAggregationFunctionExpression =
+    isPlainAggregationFunctionExpression =
         SQLConstant.getNativeFunctionNames().contains(functionName.toLowerCase());
     isConstantOperandCache = expressions.stream().anyMatch(Expression::isConstantOperand);
+    isUserDefinedAggregationFunctionExpression =
+        expressions.stream()
+            .anyMatch(
+                v ->
+                    v.isUserDefinedAggregationFunctionExpression()
+                        || v.isPlainAggregationFunctionExpression());
   }
 
   @Override
-  public boolean isAggregationFunctionExpression() {
-    return isAggregationFunctionExpression;
+  public boolean isPlainAggregationFunctionExpression() {
+    return isPlainAggregationFunctionExpression;
   }
 
   @Override
@@ -108,12 +115,18 @@ public class FunctionExpression extends Expression {
 
   @Override
   public boolean isTimeSeriesGeneratingFunctionExpression() {
-    return !isAggregationFunctionExpression;
+    return !isPlainAggregationFunctionExpression() && !isUserDefinedAggregationFunctionExpression();
+  }
+
+  @Override
+  public boolean isUserDefinedAggregationFunctionExpression() {
+    return isUserDefinedAggregationFunctionExpression;
   }
 
   public boolean isCountStar() {
     return getPaths().size() == 1
-        && paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+        && (paths.get(0).getTailNode().equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)
+            || paths.get(0).getTailNode().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
         && functionName.equals(IoTDBConstant.COLUMN_COUNT);
   }
 
@@ -123,6 +136,10 @@ public class FunctionExpression extends Expression {
 
   public void addExpression(Expression expression) {
     isConstantOperandCache = isConstantOperandCache && expression.isConstantOperand();
+    isUserDefinedAggregationFunctionExpression =
+        isUserDefinedAggregationFunctionExpression
+            || expression.isUserDefinedAggregationFunctionExpression()
+            || expression.isPlainAggregationFunctionExpression();
     expressions.add(expression);
   }
 
@@ -138,6 +155,7 @@ public class FunctionExpression extends Expression {
     return functionAttributes;
   }
 
+  @Override
   public List<Expression> getExpressions() {
     return expressions;
   }
@@ -210,20 +228,30 @@ public class FunctionExpression extends Expression {
       throws QueryProcessException, IOException {
     if (!expressionIntermediateLayerMap.containsKey(this)) {
       float memoryBudgetInMB = memoryAssigner.assign();
-
-      IntermediateLayer udfInputIntermediateLayer =
-          constructUdfInputIntermediateLayer(
-              queryId,
-              udtfPlan,
-              rawTimeSeriesInputLayer,
-              expressionIntermediateLayerMap,
-              expressionDataTypeMap,
-              memoryAssigner);
-      Transformer transformer =
-          constructUdfTransformer(
-              queryId, udtfPlan, expressionDataTypeMap, memoryAssigner, udfInputIntermediateLayer);
+      Transformer transformer;
+      if (isPlainAggregationFunctionExpression) {
+        transformer =
+            new TransparentTransformer(
+                rawTimeSeriesInputLayer.constructPointReader(
+                    udtfPlan.getReaderIndexByExpressionName(toString())));
+      } else {
+        IntermediateLayer udfInputIntermediateLayer =
+            constructUdfInputIntermediateLayer(
+                queryId,
+                udtfPlan,
+                rawTimeSeriesInputLayer,
+                expressionIntermediateLayerMap,
+                expressionDataTypeMap,
+                memoryAssigner);
+        transformer =
+            constructUdfTransformer(
+                queryId,
+                udtfPlan,
+                expressionDataTypeMap,
+                memoryAssigner,
+                udfInputIntermediateLayer);
+      }
       expressionDataTypeMap.put(this, transformer.getDataType());
-
       expressionIntermediateLayerMap.put(
           this,
           memoryAssigner.getReference(this) == 1

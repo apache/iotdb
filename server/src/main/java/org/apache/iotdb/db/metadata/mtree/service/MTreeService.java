@@ -65,8 +65,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,8 +197,15 @@ public class MTreeService implements Serializable {
       }
 
       if (upperTemplate != null
-          && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
+          && (upperTemplate.getDirectNode(leafName) != null
+              || upperTemplate.getDirectNode(alias) != null)) {
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
+      }
+
+      if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+                device.getFullPath());
       }
 
       IEntityMNode entityMNode;
@@ -213,7 +220,7 @@ public class MTreeService implements Serializable {
           MeasurementMNode.getMeasurementMNode(
               entityMNode,
               leafName,
-              new UnaryMeasurementSchema(leafName, dataType, encoding, compressor, props),
+              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
       store.addChild(entityMNode, leafName, measurementMNode);
       // link alias to LeafMNode
@@ -258,16 +265,16 @@ public class MTreeService implements Serializable {
       if (upperTemplate != null) {
         for (String measurement : measurements) {
           if (upperTemplate.getDirectNode(measurement) != null) {
-            throw new PathAlreadyExistException(
-                devicePath.concatNode(measurement).getFullPath()
-                    + " ( which is incompatible with template )");
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
           }
         }
       }
 
       if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
       }
 
       IEntityMNode entityMNode;
@@ -275,6 +282,7 @@ public class MTreeService implements Serializable {
         entityMNode = device.getAsEntityMNode();
       } else {
         entityMNode = MNodeUtils.setToEntity(device);
+        entityMNode.setAligned(true);
         store.updateMNode(entityMNode);
       }
 
@@ -283,12 +291,11 @@ public class MTreeService implements Serializable {
             MeasurementMNode.getMeasurementMNode(
                 entityMNode,
                 measurements.get(i),
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
                 null);
         store.addChild(entityMNode, measurements.get(i), measurementMNode);
       }
-      entityMNode.setAligned(true);
     }
   }
 
@@ -689,14 +696,15 @@ public class MTreeService implements Serializable {
    * storage group using the children of a mNode. If one child is a storage group node, put a
    * storageGroupName-fullPath pair into paths.
    */
-  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> result = new HashMap<>();
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+      throws MetadataException {
+    Map<String, List<PartialPath>> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
         new StorageGroupCollector<Map<String, String>>(root, path, store) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
-            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath).getFullPath());
+            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath));
           }
         };
     collector.setCollectInternal(true);

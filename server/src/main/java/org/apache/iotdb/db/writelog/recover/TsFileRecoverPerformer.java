@@ -27,6 +27,7 @@ import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageGroupProcessorException;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -67,17 +68,20 @@ public class TsFileRecoverPerformer {
   private final String logNodePrefix;
   private final TsFileResource tsFileResource;
   private final boolean sequence;
+  private VirtualStorageGroupProcessor virtualStorageGroupProcessor;
 
   /** @param isLastFile whether this TsFile is the last file of its partition */
   public TsFileRecoverPerformer(
       String logNodePrefix,
       TsFileResource currentTsFileResource,
       boolean sequence,
-      boolean isLastFile) {
+      boolean isLastFile,
+      VirtualStorageGroupProcessor storageGroupProcessor) {
     this.filePath = currentTsFileResource.getTsFilePath();
     this.logNodePrefix = logNodePrefix;
     this.tsFileResource = currentTsFileResource;
     this.sequence = sequence;
+    this.virtualStorageGroupProcessor = storageGroupProcessor;
   }
 
   /**
@@ -91,11 +95,18 @@ public class TsFileRecoverPerformer {
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public RestorableTsFileIOWriter recover(
       boolean needRedoWal, Supplier<ByteBuffer[]> supplier, Consumer<ByteBuffer[]> consumer)
-      throws StorageGroupProcessorException {
+      throws StorageGroupProcessorException, IOException {
 
     File file = FSFactoryProducer.getFSFactory().getFile(filePath);
     if (!file.exists()) {
       logger.error("TsFile {} is missing, will skip its recovery.", filePath);
+      return null;
+    }
+
+    if (tsFileResource.resourceFileExists()) {
+      // .resource file exists, deserialize it
+      recoverResourceFromFile();
+      // return null here for skipping check TsFile
       return null;
     }
 
@@ -144,18 +155,13 @@ public class TsFileRecoverPerformer {
   }
 
   private void recoverResource() throws IOException {
-    if (tsFileResource.resourceFileExists()) {
-      // .resource file exists, deserialize it
-      recoverResourceFromFile();
-    } else {
-      // .resource file does not exist, read file metadata and recover tsfile resource
-      try (TsFileSequenceReader reader =
-          new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
-        FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
-      }
-      // write .resource file
-      tsFileResource.serialize();
+    // .resource file does not exist, read file metadata and recover tsfile resource
+    try (TsFileSequenceReader reader =
+        new TsFileSequenceReader(tsFileResource.getTsFile().getAbsolutePath())) {
+      FileLoaderUtils.updateTsFileResource(reader, tsFileResource);
     }
+    // write .resource file
+    tsFileResource.serialize();
   }
 
   private void recoverResourceFromFile() throws IOException {
@@ -281,7 +287,7 @@ public class TsFileRecoverPerformer {
             tsFileResource,
             recoverMemTable,
             sequence);
-    logReplayer.replayLogs(supplier);
+    logReplayer.replayLogs(supplier, virtualStorageGroupProcessor);
     try {
       if (!recoverMemTable.isEmpty()) {
         // flush logs

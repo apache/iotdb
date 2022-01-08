@@ -23,6 +23,7 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.exception.WriteProcessException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -43,13 +44,19 @@ import java.util.Map;
  */
 public interface IMemTable {
 
-  Map<String, IWritableMemChunkGroup> getMemTableMap();
+  Map<IDeviceID, IWritableMemChunkGroup> getMemTableMap();
 
   void write(
-      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
 
   void writeAlignedRow(
-      String deviceId, List<IMeasurementSchema> schemaList, long insertTime, Object[] objectValue);
+      IDeviceID deviceId,
+      List<IMeasurementSchema> schemaList,
+      long insertTime,
+      Object[] objectValue);
   /**
    * write data in the range [start, end). Null value in each column values will be replaced by the
    * subsequent non-null value, e.g., {1, null, 3, null, 5} will be {1, 3, 5, null, 5}
@@ -145,10 +152,10 @@ public interface IMemTable {
   void release();
 
   /** must guarantee the device exists in the work memtable only used when mem control enabled */
-  boolean checkIfChunkDoesNotExist(String deviceId, String measurement);
+  boolean checkIfChunkDoesNotExist(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
-  long getCurrentChunkPointNum(String deviceId, String measurement);
+  long getCurrentChunkPointNum(IDeviceID deviceId, String measurement);
 
   /** only used when mem control enabled */
   void addTextDataSize(long textDataIncrement);

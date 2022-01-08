@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -46,12 +46,12 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   private TimePartitionFilter partitionFilter;
 
   public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
     this.deletePathList = deletePathList;
   }
 
   public DeleteTimeSeriesPlan() {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
   }
 
   @Override

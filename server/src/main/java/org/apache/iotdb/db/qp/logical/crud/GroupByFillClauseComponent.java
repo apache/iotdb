@@ -27,11 +27,20 @@ import java.util.Map;
 public class GroupByFillClauseComponent extends GroupByClauseComponent {
 
   private Map<TSDataType, IFill> fillTypes;
+  private IFill singleFill;
 
   public GroupByFillClauseComponent() {}
 
+  public IFill getSingleFill() {
+    return singleFill;
+  }
+
   public Map<TSDataType, IFill> getFillTypes() {
     return fillTypes;
+  }
+
+  public void setSingleFill(IFill singleFill) {
+    this.singleFill = singleFill;
   }
 
   public void setFillTypes(Map<TSDataType, IFill> fillTypes) {

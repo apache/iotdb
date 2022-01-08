@@ -43,6 +43,8 @@ import java.sql.Types;
 import java.util.HashMap;
 import java.util.Map;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
@@ -78,8 +80,11 @@ public class MQTTSinkTest {
 
     mqttHandler.close();
 
-    Thread.sleep(1000);
+    await().atMost(1, MINUTES).until(() -> 10000 == checkSingleSensorHandlerResult());
+  }
 
+  private int checkSingleSensorHandlerResult() throws ClassNotFoundException {
+    int count = 0;
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -97,19 +102,18 @@ public class MQTTSinkTest {
               Types.TIMESTAMP, Types.FLOAT,
             });
 
-        int count = 0;
         while (resultSet.next()) {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             assertEquals(count, Double.parseDouble(resultSet.getString(i)), 0.0);
           }
           count++;
         }
-        Assert.assertEquals(10000, count);
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    return count;
   }
 
   @Test
@@ -141,8 +145,11 @@ public class MQTTSinkTest {
 
     mqttHandler.close();
 
-    Thread.sleep(1000);
+    await().atMost(1, MINUTES).until(() -> 10000 == checkMultiSensorsHandlerResult());
+  }
 
+  private int checkMultiSensorsHandlerResult() throws ClassNotFoundException {
+    int count = 0;
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
             DriverManager.getConnection(
@@ -167,7 +174,6 @@ public class MQTTSinkTest {
               Types.FLOAT,
             });
 
-        int count = 0;
         while (resultSet.next()) {
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             try {
@@ -178,12 +184,12 @@ public class MQTTSinkTest {
           }
           count++;
         }
-        Assert.assertEquals(10000, count);
       }
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
+    return count;
   }
 
   private void checkHeader(
