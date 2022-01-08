@@ -205,7 +205,7 @@ public class MTreeService implements Serializable {
       if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
             "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
-                device.getFullPath());
+            device.getFullPath());
       }
 
       IEntityMNode entityMNode;
