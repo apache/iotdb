@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.query.executor;
 
+import org.apache.calcite.rel.RelNode;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -41,6 +42,7 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.BinaryExpression;
@@ -71,7 +73,40 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet rawDataQuery(RawDataQueryPlan queryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException {
+
+
+    // Just do some Query Stuff
+
     IExpression expression = queryPlan.getExpression();
+
+    CalciteExecutor executor = new CalciteExecutor();
+
+    RelNode relNode = executor.toRelNode(queryPlan);
+
+    QueryDataSet myQuerySet = executor.execute(context, relNode);
+
+    // In theory, we could return this set now !!!!!
+
+
+    System.out.println("!!!!!!!!!!!!!!!!");
+    System.out.println("!!!!!!!!!!!!!!!!");
+
+    try {
+      while (myQuerySet.hasNext()) {
+        RowRecord next = myQuerySet.next();
+
+        System.out.println(" -> " + next);
+      }
+    } catch (IOException e) {
+      // do nothing...
+    }
+
+    System.out.println("!!!!!!!!!!!!!!!!");
+    System.out.println("!!!!!!!!!!!!!!!!");
+
+    // Visit
+
+
     List<PartialPath> deduplicatedPaths = queryPlan.getDeduplicatedPaths();
 
     IExpression optimizedExpression;

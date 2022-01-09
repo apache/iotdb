@@ -140,7 +140,7 @@ public class LastPointReader {
       Set<String> allSensors)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, seriesPath, context, filter, allSensors);
+        resource, seriesPath, context, filter);
   }
 
   /** find the last TimeeriesMetadata in unseq files and unpack all overlapped unseq files */

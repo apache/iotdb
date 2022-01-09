@@ -432,7 +432,7 @@ public class TsFileSequenceReader implements AutoCloseable {
   }
 
   /* Find the leaf node that contains path, return all the sensors in that leaf node which are also in allSensors set */
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
+  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path)
       throws IOException {
     Pair<MetadataIndexEntry, Long> metadataIndexPair = getLeafMetadataIndexPair(path);
     if (metadataIndexPair == null) {
@@ -450,9 +450,7 @@ public class TsFileSequenceReader implements AutoCloseable {
             "Something error happened while deserializing TimeseriesMetadata of file {}", file);
         throw e;
       }
-      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
-        timeseriesMetadataList.add(timeseriesMetadata);
-      }
+      timeseriesMetadataList.add(timeseriesMetadata);
     }
     return timeseriesMetadataList;
   }

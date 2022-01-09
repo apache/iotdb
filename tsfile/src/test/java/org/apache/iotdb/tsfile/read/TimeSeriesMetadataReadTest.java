@@ -72,7 +72,7 @@ public class TimeSeriesMetadataReadTest {
     // the Max Degree Of Index Node is set to be 3, so the leaf node should only contains 3 sensors
     // s4 should not be returned as result
     set.add("s4");
-    List<TimeseriesMetadata> timeseriesMetadataList = reader.readTimeseriesMetadata(path, set);
+    List<TimeseriesMetadata> timeseriesMetadataList = reader.readTimeseriesMetadata(path);
     Assert.assertEquals(3, timeseriesMetadataList.size());
     for (int i = 1; i <= timeseriesMetadataList.size(); i++) {
       Assert.assertEquals("s" + i, timeseriesMetadataList.get(i - 1).getMeasurementId());
@@ -85,7 +85,7 @@ public class TimeSeriesMetadataReadTest {
     // this is a fake one, this file doesn't contain this measurement
     // so the result is not supposed to contain this measurement's timeseries metadata
     set.add("s8");
-    timeseriesMetadataList = reader.readTimeseriesMetadata(path, set);
+    timeseriesMetadataList = reader.readTimeseriesMetadata(path);
     Assert.assertEquals(2, timeseriesMetadataList.size());
     for (int i = 5; i < 7; i++) {
       Assert.assertEquals("s" + i, timeseriesMetadataList.get(i - 5).getMeasurementId());
