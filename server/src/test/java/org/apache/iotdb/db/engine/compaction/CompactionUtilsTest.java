@@ -9,6 +9,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -491,13 +492,131 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /*
-  Total 6 files, each file has different aligned timeseries.
+  Total 6 files, each file has different aligned timeseries, which may cause empty value page.
   First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
   Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
   Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
   */
   @Test
-  public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseries()
+  public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyPage()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(50);
+    registerTimeseriesInMManger(5, 5, true);
+    createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
+    createFiles(2, 3, 5, 50, 250, 250, 50, 50, true, true);
+    createFiles(2, 5, 7, 50, 600, 800, 50, 50, true, true);
+
+    for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
+        i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
+        i++) {
+      for (int j = 0; j < 7; j++) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        AlignedPath path =
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                schemas);
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (batchData.currentTime() >= 600) {
+              assertEquals(
+                  batchData.currentTime() + 200,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else {
+              assertEquals(
+                  batchData.currentTime(),
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2 && j < 3) {
+          assertEquals(400, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 5) {
+          assertEquals(200, count);
+        } else {
+          assertEquals(100, count);
+        }
+      }
+    }
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+
+    for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
+        i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
+        i++) {
+      for (int j = 0; j < 7; j++) {
+        List<IMeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        AlignedPath path =
+            new AlignedPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                Collections.singletonList("s" + j),
+                schemas);
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.VECTOR,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (batchData.currentTime() >= 600) {
+              assertEquals(
+                  batchData.currentTime() + 200,
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            } else {
+              assertEquals(
+                  batchData.currentTime(),
+                  ((TsPrimitiveType[]) (batchData.currentValue()))[0].getValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2 && j < 3) {
+          assertEquals(400, count);
+        } else if (i < TsFileGeneratorUtils.getAlignDeviceOffset() + 3 && j < 5) {
+          assertEquals(200, count);
+        } else {
+          assertEquals(100, count);
+        }
+      }
+    }
+  }
+
+  /*
+  Total 6 files, each file has different aligned timeseries, which may cause empty value chunk.
+  First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99 and 150 ~ 249, value range is  0 ~ 99 and 150 ~ 249.
+  Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 250 ~ 299 and 350 ~ 399, value range is 250 ~ 299 and 350 ~ 399.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 600 ~ 649 and 700 ~ 749, value range is 800 ~ 849 and 900 ~ 949.
+  */
+  @Test
+  public void testAlignedSeqInnerSpaceCompactionWithDifferentTimeseriesAndEmptyChunk()
       throws IOException, WriteProcessException, MetadataException, StorageEngineException {
     registerTimeseriesInMManger(5, 5, true);
     createFiles(2, 2, 3, 100, 0, 0, 50, 50, true, true);
@@ -561,7 +680,6 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
         i++) {
       for (int j = 0; j < 7; j++) {
-        System.out.println("------------------------------" + "d" + i + PATH_SEPARATOR + "s" + j);
         List<IMeasurementSchema> schemas = new ArrayList<>();
         schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
@@ -578,12 +696,11 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
                 new ArrayList<>(),
                 null,
                 null,
-                true);
+                false);
         int count = 0;
         while (tsFilesReader.hasNextBatch()) {
           BatchData batchData = tsFilesReader.nextBatch();
           while (batchData.hasCurrent()) {
-            System.out.println(batchData.currentTime() + "," + batchData.currentValue());
             if (batchData.currentTime() >= 600) {
               assertEquals(
                   batchData.currentTime() + 200,

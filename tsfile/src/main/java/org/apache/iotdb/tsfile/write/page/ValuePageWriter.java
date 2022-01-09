@@ -227,6 +227,9 @@ public class ValuePageWriter {
       throws IOException {
     if (size == 0) {
       return 0;
+    } else if (statistics.getCount() == 0) {
+      // this page is full of null point data
+      return writeEmptyPageIntoBuff(pageBuffer);
     }
 
     ByteBuffer pageData = getUncompressedBytes();

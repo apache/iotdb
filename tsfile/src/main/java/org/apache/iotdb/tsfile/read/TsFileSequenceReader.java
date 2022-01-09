@@ -1277,6 +1277,7 @@ public class TsFileSequenceReader implements AutoCloseable {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x80):
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | 0x40):
+          case (byte) (MetaMarker.EMPTY_CHUNK_HEADER | 0x40):
             fileOffsetOfChunk = this.position() - 1;
             // if there is something wrong with a chunk, we will drop the whole ChunkGroup
             // as different chunks may be created by the same insertions(sqls), and partial
@@ -1295,6 +1296,7 @@ public class TsFileSequenceReader implements AutoCloseable {
                 Statistics.getStatsByType(dataType);
             int dataSize = chunkHeader.getDataSize();
             if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
+              // more than one page
               while (dataSize > 0) {
                 // a new Page
                 PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
@@ -1303,7 +1305,8 @@ public class TsFileSequenceReader implements AutoCloseable {
                 dataSize -= pageHeader.getSerializedPageSize();
                 chunkHeader.increasePageNums(1);
               }
-            } else {
+            } else if (((byte) (chunkHeader.getChunkType() & 0x3F))
+                == MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER) {
               // only one page without statistic, we need to iterate each point to generate
               // statistic
               PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
@@ -1351,6 +1354,8 @@ public class TsFileSequenceReader implements AutoCloseable {
                 batchData.next();
               }
               chunkHeader.increasePageNums(1);
+            } else {
+              // Todo
             }
             currentChunk =
                 new ChunkMetadata(measurementID, dataType, fileOffsetOfChunk, chunkStatistics);

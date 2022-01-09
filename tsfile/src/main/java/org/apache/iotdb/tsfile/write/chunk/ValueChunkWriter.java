@@ -155,8 +155,11 @@ public class ValueChunkWriter {
 
   public void writePageToPageBuffer() {
     try {
-      if (numOfPages == 0) { // record the firstPageStatistics
-        this.firstPageStatistics = pageWriter.getStatistics();
+      if (numOfPages == 0) {
+        if (pageWriter.getStatistics().getCount() != 0) {
+          // record the firstPageStatistics if it is not empty page
+          this.firstPageStatistics = pageWriter.getStatistics();
+        }
         this.sizeWithoutStatistic = pageWriter.writePageHeaderAndDataIntoBuff(pageBuffer, true);
       } else if (numOfPages == 1) { // put the firstPageStatistics into pageBuffer
         if (firstPageStatistics != null) { // Consider previous page is an empty page
@@ -268,9 +271,22 @@ public class ValueChunkWriter {
    * @throws IOException exception in IO
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
-    //    if (statistics.getCount() == 0) {
-    //      return;
-    //    }
+    if (statistics.getCount() == 0) {
+      // In order to ensure that different chunkgroups in a tsfile have the same chunks during
+      // compaction, it is possible to have an empty valueChunk in a chunkGroup. To save the disk
+      // space, we only serialize chunkHeader for the empty valueChunk, whose chunkType is 6.
+      writer.startFlushChunk(
+          measurementId,
+          compressionType,
+          dataType,
+          encodingType,
+          statistics,
+          0,
+          0,
+          TsFileConstant.VALUE_COLUMN_MASK);
+      writer.endCurrentChunk();
+      return;
+    }
 
     // start to write this column chunk
     writer.startFlushChunk(

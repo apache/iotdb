@@ -8,6 +8,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -55,6 +56,12 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
 
   @Override
   public void write(long timestamp, Object value) throws IOException {
+    if (checkChunkSizeAndMayOpenANewChunk()) {
+      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+      chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.endChunkGroup();
+      fileWriter.startChunkGroup(deviceId);
+    }
     if (!isAlign) {
       ChunkWriterImpl chunkWriter = (ChunkWriterImpl) this.chunkWriter;
       switch (chunkWriter.getDataType()) {
@@ -111,12 +118,6 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
       }
       chunkWriter.write(timestamp);
     }
-    if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriter);
-      fileWriter.endChunkGroup();
-      fileWriter.startChunkGroup(deviceId);
-    }
   }
 
   @Override
@@ -143,5 +144,23 @@ public class InnerSpaceCompactionWriter implements ICompactionWriter {
 
   public TsFileIOWriter getFileWriter() {
     return this.fileWriter;
+  }
+
+  private boolean checkChunkSizeAndMayOpenANewChunk() { // Todo:
+    if (chunkWriter instanceof AlignedChunkWriterImpl) {
+      if (((AlignedChunkWriterImpl) chunkWriter).getTimeChunkWriter().estimateMaxSeriesMemSize()
+          > 2 * 1024) {
+        return true;
+      }
+      for (ValueChunkWriter valueChunkWriter :
+          ((AlignedChunkWriterImpl) chunkWriter).getValueChunkWriterList()) {
+        if (valueChunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) {
+          return true;
+        }
+      }
+      return false;
+    } else {
+      return chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024;
+    }
   }
 }

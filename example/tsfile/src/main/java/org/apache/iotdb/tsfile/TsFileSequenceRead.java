@@ -53,8 +53,7 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename =
-        "C:\\IOTDB\\projects\\choubenson\\iotdb\\server\\target\\data\\sequence\\root.compactionTest\\0\\0\\1641449490627-0-1-0.tsfile";
+    String filename = "C:\\Users\\BensonChou\\Desktop\\1641712244286-0-1-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -82,11 +81,17 @@ public class TsFileSequenceRead {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
+          case (byte) (MetaMarker.EMPTY_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
             System.out.println("\t[Chunk]");
             System.out.println("\tchunk type: " + marker);
             System.out.println("\tposition: " + reader.position());
             ChunkHeader header = reader.readChunkHeader(marker);
             System.out.println("\tMeasurement: " + header.getMeasurementID());
+            if (header.getDataSize() == 0) {
+              // empty value chunk
+              System.out.println("\t-- Empty Chunk ");
+              break;
+            }
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),

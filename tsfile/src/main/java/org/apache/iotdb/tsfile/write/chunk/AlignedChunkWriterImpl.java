@@ -186,4 +186,12 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
       valueChunkWriter.clearPageWriter();
     }
   }
+
+  public TimeChunkWriter getTimeChunkWriter() {
+    return timeChunkWriter;
+  }
+
+  public List<ValueChunkWriter> getValueChunkWriterList() {
+    return valueChunkWriterList;
+  }
 }
