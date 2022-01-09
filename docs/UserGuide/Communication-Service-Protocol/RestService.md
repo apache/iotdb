@@ -19,7 +19,7 @@
 
 -->
 
-## RESTful Service
+## RESTful Service  
 IoTDB's RESTful services can be used for query, write, and management operations, using the OpenAPI standard to define interfaces and generate frameworks.
 
 
