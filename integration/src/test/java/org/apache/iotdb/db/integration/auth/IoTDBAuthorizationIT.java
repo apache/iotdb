@@ -100,13 +100,8 @@ public class IoTDBAuthorizationIT {
         }
         assertTrue(caught);
 
-        caught = false;
-        try {
-          userStmt.execute("SELECT * from root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // empty result timeseries set doesn't need authority check
+        userStmt.execute("SELECT * from root.a");
 
         caught = false;
         try {
@@ -154,11 +149,15 @@ public class IoTDBAuthorizationIT {
 
         caught = false;
         try {
-          userStmt.execute("SELECT * from root.b");
+          userStmt.execute("SELECT * from root.a");
         } catch (SQLException e) {
+          // user has no authority on root.a
           caught = true;
         }
         assertTrue(caught);
+
+        // empty result timeseries set doesn't need authority check
+        userStmt.execute("SELECT * from root.b");
 
         caught = false;
         try {
