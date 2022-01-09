@@ -82,6 +82,16 @@
             <version>1.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.apache.calcite</groupId>
+            <artifactId>calcite-core</artifactId>
+            <version>1.29.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.calcite</groupId>
+            <artifactId>calcite-linq4j</artifactId>
+            <version>1.29.0</version>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

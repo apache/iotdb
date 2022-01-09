@@ -106,7 +106,7 @@ public class CodeGenBenchmarkTest {
   String fileName = TsFileGeneratorForTest.getTestTsFilePath("root.sg1", 0, 0, 1);
   boolean closed = false;
 
-  static String getFilename() {
+  public static String getFilename() {
     String filePath =
         String.format(
             "/tmp/root.sg1/0/0/",
