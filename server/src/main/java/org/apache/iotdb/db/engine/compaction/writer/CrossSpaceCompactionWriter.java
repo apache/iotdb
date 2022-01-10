@@ -1,14 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.Binary;
-import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
-import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -16,19 +8,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class CrossSpaceCompactionWriter implements ICompactionWriter {
-  // target file path -> file writer
+public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
+  // target fileIOWriter
   private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
   // old source tsfile
   private List<TsFileResource> seqTsFileResources;
 
-  private IChunkWriter chunkWriter;
-
   private int seqFileIndex;
-
-  private String deviceId;
-
-  private boolean isAlign;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
@@ -44,6 +30,7 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
   public void startChunkGroup(String deviceId, boolean isAlign) throws IOException {
     this.deviceId = deviceId;
     this.isAlign = isAlign;
+    // Todo:若某个文件里的该设备的数据都被删光了，则可能出现空ChunkGroup
     for (TsFileResource resource : seqTsFileResources) {
       if (resource.isDeviceIdExist(deviceId)) {
         fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
@@ -66,15 +53,6 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
   }
 
   @Override
-  public void startMeasurement(List<IMeasurementSchema> measurementSchemaList) {
-    if (isAlign) {
-      chunkWriter = new AlignedChunkWriterImpl(measurementSchemaList);
-    } else {
-      chunkWriter = new ChunkWriterImpl(measurementSchemaList.get(0), true);
-    }
-  }
-
-  @Override
   public void endMeasurement() throws IOException {
     writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
@@ -87,70 +65,15 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > seqTsFileResources.get(seqFileIndex).getEndTime(deviceId)) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
-      seqFileIndex++;
+      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
     }
-    if (!isAlign) {
-      ChunkWriterImpl chunkWriter = (ChunkWriterImpl) this.chunkWriter;
-      switch (chunkWriter.getDataType()) {
-        case TEXT:
-          chunkWriter.write(timestamp, (Binary) value);
-          break;
-        case DOUBLE:
-          chunkWriter.write(timestamp, (Double) value);
-          break;
-        case BOOLEAN:
-          chunkWriter.write(timestamp, (Boolean) value);
-          break;
-        case INT64:
-          chunkWriter.write(timestamp, (Long) value);
-          break;
-        case INT32:
-          chunkWriter.write(timestamp, (Integer) value);
-          break;
-        case FLOAT:
-          chunkWriter.write(timestamp, (Float) value);
-          break;
-        default:
-          throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-      }
-    } else {
-      AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
-      for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
-        Object v = val.getValue();
-        TSDataType tsDataType = val.getDataType();
-        boolean isNull = v == null;
-        switch (tsDataType) {
-          case TEXT:
-            chunkWriter.write(timestamp, (Binary) v, isNull);
-            break;
-          case DOUBLE:
-            chunkWriter.write(timestamp, (Double) v, isNull);
-            break;
-          case BOOLEAN:
-            chunkWriter.write(timestamp, (Boolean) v, isNull);
-            break;
-          case INT64:
-            chunkWriter.write(timestamp, (Long) v, isNull);
-            break;
-          case INT32:
-            chunkWriter.write(timestamp, (Integer) v, isNull);
-            break;
-          case FLOAT:
-            chunkWriter.write(timestamp, (Float) v, isNull);
-            break;
-          default:
-            throw new UnsupportedOperationException("Unknown data type " + tsDataType);
-        }
-      }
-      chunkWriter.write(timestamp);
-    }
-    if (chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) { // Todo:
+    if (checkChunkSizeAndMayOpenANewChunk()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
       fileWriterList.get(seqFileIndex).endChunkGroup();
       fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
     }
+    writeDataPoint(timestamp, value);
   }
 
   @Override
@@ -173,11 +96,6 @@ public class CrossSpaceCompactionWriter implements ICompactionWriter {
     fileWriterList = null;
     seqTsFileResources = null;
     chunkWriter = null;
-  }
-
-  private static void writeRateLimit(long bytesLength) {
-    MergeManager.mergeRateLimiterAcquire(
-        MergeManager.getINSTANCE().getMergeWriteRateLimiter(), bytesLength);
   }
 
   public List<TsFileIOWriter> getFileWriters() {

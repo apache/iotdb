@@ -1,8 +1,8 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
-import org.apache.iotdb.db.engine.compaction.writer.ICompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -56,7 +56,7 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    ICompactionWriter compactionWriter = null;
+    AbstractCompactionWriter compactionWriter = null;
     try {
       compactionWriter =
           getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
@@ -163,7 +163,7 @@ public class CompactionUtils {
     return deviceSet;
   }
 
-  private static ICompactionWriter getCompactionWriter(
+  private static AbstractCompactionWriter getCompactionWriter(
       List<TsFileResource> seqFileResources,
       List<TsFileResource> unseqFileResources,
       List<TsFileResource> targetFileResources)
@@ -197,7 +197,7 @@ public class CompactionUtils {
   }
 
   private static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, ICompactionWriter compactionWriter) {
+      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
     List<TsFileIOWriter> fileIOWriterList = new ArrayList<>();
     if (compactionWriter instanceof InnerSpaceCompactionWriter) {
       fileIOWriterList.add(((InnerSpaceCompactionWriter) compactionWriter).getFileWriter());
