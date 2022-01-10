@@ -159,12 +159,12 @@ public class InsertMeasurementMNode implements IMeasurementMNode {
   }
 
   @Override
-  public IMNodeContainer<IMNode> getChildren() {
+  public IMNodeContainer getChildren() {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     throw new UnsupportedOperationException("insert measurement mnode doesn't support this method");
   }
 

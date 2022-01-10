@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk;
+package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Map;
+import java.util.List;
 
-public interface ISegment {
+public interface ICacheStrategy {
 
-  long getSegmentAddress();
+  void updateCacheStatusAfterRead(IMNode node);
 
-  void setSegmentAddress(long segmentAddress);
+  void updateCacheStatusAfterAppend(IMNode node);
 
-  boolean isVolatile();
+  void updateCacheStatusAfterUpdate(IMNode node);
 
-  boolean isFull();
+  void remove(IMNode node);
 
-  boolean isExpelled();
+  List<IMNode> evict();
 
-  Map<String, IMNode> getChildCache();
+  void pinMNode(IMNode node);
 
-  Map<String, IMNode> getNewChildBuffer();
-
-  Map<String, IMNode> getUpdatedChildBuffer();
-
-  void loadChildrenFromDisk(Map<String, IMNode> children);
+  void unPinMNode(IMNode node);
 }

@@ -54,9 +54,9 @@ public interface IMNode extends Serializable {
 
   void replaceChild(String oldChildName, IMNode newChildNode);
 
-  IMNodeContainer<IMNode> getChildren();
+  IMNodeContainer getChildren();
 
-  void setChildren(IMNodeContainer<IMNode> children);
+  void setChildren(IMNodeContainer children);
 
   boolean isUseTemplate();
 

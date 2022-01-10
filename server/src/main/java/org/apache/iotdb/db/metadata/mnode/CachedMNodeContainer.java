@@ -35,19 +35,19 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E>, ISegment {
+public class CachedMNodeContainer implements IMNodeContainer, ISegment {
 
   private long segmentAddress = -1;
-  Map<String, E> childCache = null;
-  Map<String, E> newChildBuffer = null;
-  Map<String, E> updatedChildBuffer = null;
+  Map<String, IMNode> childCache = null;
+  Map<String, IMNode> newChildBuffer = null;
+  Map<String, IMNode> updatedChildBuffer = null;
 
   @Override
   public int size() {
     return getSize(childCache) + getSize(newChildBuffer) + getSize(updatedChildBuffer);
   }
 
-  private int getSize(Map<String, E> map) {
+  private int getSize(Map<String, IMNode> map) {
     return map == null ? 0 : map.size();
   }
 
@@ -56,7 +56,7 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
     return isEmpty(childCache) && isEmpty(newChildBuffer) && isEmpty(updatedChildBuffer);
   }
 
-  private boolean isEmpty(Map<String, E> map) {
+  private boolean isEmpty(Map<String, IMNode> map) {
     return map == null || map.isEmpty();
   }
 
@@ -67,7 +67,7 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
         || containsKey(updatedChildBuffer, key);
   }
 
-  private boolean containsKey(Map<String, E> map, Object key) {
+  private boolean containsKey(Map<String, IMNode> map, Object key) {
     return map != null && map.containsKey(key);
   }
 
@@ -78,13 +78,13 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
         || containsValue(updatedChildBuffer, value);
   }
 
-  private boolean containsValue(Map<String, E> map, Object value) {
+  private boolean containsValue(Map<String, IMNode> map, Object value) {
     return map != null && map.containsValue(value);
   }
 
   @Override
-  public E get(Object key) {
-    E result = get(childCache, key);
+  public IMNode get(Object key) {
+    IMNode result = get(childCache, key);
     if (result != null) {
       return result;
     }
@@ -95,13 +95,13 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
     return get(updatedChildBuffer);
   }
 
-  private E get(Map<String, E> map, Object key) {
+  private IMNode get(Map<String, IMNode> map, Object key) {
     return map == null ? null : map.get(key);
   }
 
   @Nullable
   @Override
-  public E put(String key, E value) {
+  public IMNode put(String key, IMNode value) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -109,8 +109,8 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
   }
 
   @Override
-  public E remove(Object key) {
-    E result = remove(childCache, key);
+  public IMNode remove(Object key) {
+    IMNode result = remove(childCache, key);
     if (result != null) {
       return result;
     }
@@ -121,12 +121,12 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
     return remove(updatedChildBuffer, key);
   }
 
-  private E remove(Map<String, E> map, Object key) {
+  private IMNode remove(Map<String, IMNode> map, Object key) {
     return map == null ? null : map.remove(key);
   }
 
   @Override
-  public void putAll(@NotNull Map<? extends String, ? extends E> m) {
+  public void putAll(@NotNull Map<? extends String, ? extends IMNode> m) {
     if (newChildBuffer == null) {
       newChildBuffer = new ConcurrentHashMap<>();
     }
@@ -150,56 +150,56 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
     return result;
   }
 
-  private Set<String> keySet(Map<String, E> map) {
+  private Set<String> keySet(Map<String, IMNode> map) {
     return map == null ? Collections.emptySet() : map.keySet();
   }
 
   @NotNull
   @Override
-  public Collection<E> values() {
-    Collection<E> result = new ArrayList<>();
+  public Collection<IMNode> values() {
+    Collection<IMNode> result = new ArrayList<>();
     result.addAll(getValues(childCache));
     result.addAll(getValues(newChildBuffer));
     result.addAll(getValues(updatedChildBuffer));
     return result;
   }
 
-  private Collection<E> getValues(Map<String, E> map) {
+  private Collection<IMNode> getValues(Map<String, IMNode> map) {
     return map == null ? Collections.emptyList() : map.values();
   }
 
   @NotNull
   @Override
-  public Set<Entry<String, E>> entrySet() {
-    Set<Entry<String, E>> result = new HashSet<>();
+  public Set<Entry<String, IMNode>> entrySet() {
+    Set<Entry<String, IMNode>> result = new HashSet<>();
     result.addAll(entrySet(childCache));
     result.addAll(entrySet(newChildBuffer));
     result.addAll(entrySet(updatedChildBuffer));
     return result;
   }
 
-  private Set<Entry<String, E>> entrySet(Map<String, E> map) {
+  private Set<Entry<String, IMNode>> entrySet(Map<String, IMNode> map) {
     return map == null ? Collections.emptySet() : map.entrySet();
   }
 
   @Override
-  public E getOrDefault(Object key, E defaultValue) {
+  public IMNode getOrDefault(Object key, IMNode defaultValue) {
     return IMNodeContainer.super.getOrDefault(key, defaultValue);
   }
 
   @Override
-  public void forEach(BiConsumer<? super String, ? super E> action) {
+  public void forEach(BiConsumer<? super String, ? super IMNode> action) {
     IMNodeContainer.super.forEach(action);
   }
 
   @Override
-  public void replaceAll(BiFunction<? super String, ? super E, ? extends E> function) {
+  public void replaceAll(BiFunction<? super String, ? super IMNode, ? extends IMNode> function) {
     IMNodeContainer.super.replaceAll(function);
   }
 
   @Nullable
   @Override
-  public E putIfAbsent(String key, E value) {
+  public IMNode putIfAbsent(String key, IMNode value) {
     return IMNodeContainer.super.putIfAbsent(key, value);
   }
 
@@ -209,39 +209,41 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
   }
 
   @Override
-  public boolean replace(String key, E oldValue, E newValue) {
+  public boolean replace(String key, IMNode oldValue, IMNode newValue) {
     return IMNodeContainer.super.replace(key, oldValue, newValue);
   }
 
   @Nullable
   @Override
-  public E replace(String key, E value) {
+  public IMNode replace(String key, IMNode value) {
     return IMNodeContainer.super.replace(key, value);
   }
 
   @Override
-  public E computeIfAbsent(
-      String key, @NotNull Function<? super String, ? extends E> mappingFunction) {
+  public IMNode computeIfAbsent(
+      String key, @NotNull Function<? super String, ? extends IMNode> mappingFunction) {
     return IMNodeContainer.super.computeIfAbsent(key, mappingFunction);
   }
 
   @Override
-  public E computeIfPresent(
-      String key, @NotNull BiFunction<? super String, ? super E, ? extends E> remappingFunction) {
+  public IMNode computeIfPresent(
+      String key,
+      @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
     return IMNodeContainer.super.computeIfPresent(key, remappingFunction);
   }
 
   @Override
-  public E compute(
-      String key, @NotNull BiFunction<? super String, ? super E, ? extends E> remappingFunction) {
+  public IMNode compute(
+      String key,
+      @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
     return IMNodeContainer.super.compute(key, remappingFunction);
   }
 
   @Override
-  public E merge(
+  public IMNode merge(
       String key,
-      @NotNull E value,
-      @NotNull BiFunction<? super E, ? super E, ? extends E> remappingFunction) {
+      @NotNull IMNode value,
+      @NotNull BiFunction<? super IMNode, ? super IMNode, ? extends IMNode> remappingFunction) {
     return IMNodeContainer.super.merge(key, value, remappingFunction);
   }
 
@@ -267,21 +269,37 @@ public class CachedMNodeContainer<E extends IMNode> implements IMNodeContainer<E
 
   @Override
   public boolean isExpelled() {
-    return childCache == null && newChildBuffer == null && updatedChildBuffer == null;
+    return !isVolatile()
+        && isEmpty(childCache)
+        && isEmpty(newChildBuffer)
+        && isEmpty(updatedChildBuffer);
   }
 
   @Override
-  public Map<String, ? extends IMNode> getChildCache() {
+  public Map<String, IMNode> getChildCache() {
     return childCache == null ? Collections.emptyMap() : childCache;
   }
 
   @Override
-  public Map<String, ? extends IMNode> getNewChildBuffer() {
+  public Map<String, IMNode> getNewChildBuffer() {
     return newChildBuffer == null ? Collections.emptyMap() : newChildBuffer;
   }
 
   @Override
-  public Map<String, ? extends IMNode> getUpdatedChildBuffer() {
+  public Map<String, IMNode> getUpdatedChildBuffer() {
     return updatedChildBuffer == null ? Collections.emptyMap() : updatedChildBuffer;
+  }
+
+  @Override
+  public void loadChildrenFromDisk(Map<String, IMNode> children) {
+    if (childCache == null) {
+      childCache = new ConcurrentHashMap<>();
+    }
+    childCache.putAll(children);
+  }
+
+  @Override
+  public ISegment getSegment() {
+    return this;
   }
 }

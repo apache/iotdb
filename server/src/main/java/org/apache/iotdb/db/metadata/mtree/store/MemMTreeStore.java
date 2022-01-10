@@ -203,7 +203,7 @@ public class MemMTreeStore implements IMTreeStore {
         }
 
         if (childrenSize != 0) {
-          IMNodeContainer<IMNode> childrenMap = new MNodeContainerMapImpl<>();
+          IMNodeContainer childrenMap = new MNodeContainerMapImpl();
           for (int i = 0; i < childrenSize; i++) {
             IMNode child = nodeStack.removeFirst();
             childrenMap.put(child.getName(), child);

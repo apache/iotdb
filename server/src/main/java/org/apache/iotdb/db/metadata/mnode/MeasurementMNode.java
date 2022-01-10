@@ -203,12 +203,12 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void replaceChild(String oldChildName, IMNode newChildNode) {}
 
   @Override
-  public IMNodeContainer<IMNode> getChildren() {
+  public IMNodeContainer getChildren() {
     return MNodeContainers.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     // Do nothing
   }
 

@@ -16,29 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk;
+package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-import java.util.Map;
+import java.util.Iterator;
 
-public interface ISegment {
+public interface ISchemaFile {
 
-  long getSegmentAddress();
+  IMNode getChildNode(IMNode parent, String childName);
 
-  void setSegmentAddress(long segmentAddress);
+  Iterator<IMNode> getChildren(IMNode parent);
 
-  boolean isVolatile();
+  void writeMNode(IMNode parent);
 
-  boolean isFull();
+  void deleteMNode(IMNode targetNode);
 
-  boolean isExpelled();
+  void sync();
 
-  Map<String, IMNode> getChildCache();
+  void close();
 
-  Map<String, IMNode> getNewChildBuffer();
-
-  Map<String, IMNode> getUpdatedChildBuffer();
-
-  void loadChildrenFromDisk(Map<String, IMNode> children);
+  void clear();
 }
