@@ -19,13 +19,22 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
+import org.apache.iotdb.db.metadata.MManager;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -41,17 +50,27 @@ public class AlignedSeriesCompactionExecutor {
   private TsFileResource targetResource;
   private TsFileIOWriter writer;
 
+  private AlignedChunkWriterImpl chunkWriter;
+
   public AlignedSeriesCompactionExecutor(
       String device,
       List<TsFileResource> tsFileResources,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter writer) {
+      TsFileIOWriter writer)
+      throws IllegalPathException, PathNotExistException {
     this.device = device;
     this.tsFileResources = tsFileResources;
     this.targetResource = targetResource;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.writer = writer;
+    List<MeasurementPath> subPaths =
+        MManager.getInstance().getAllMeasurementByDevicePath(new PartialPath(device));
+    List<IMeasurementSchema> iSchemaList = new ArrayList<>(subPaths.size());
+    for (MeasurementPath measurementPath : subPaths) {
+      iSchemaList.add(measurementPath.getMeasurementSchema());
+    }
+    chunkWriter = new AlignedChunkWriterImpl(iSchemaList);
   }
 
   public void execute() throws IOException {
@@ -75,7 +94,44 @@ public class AlignedSeriesCompactionExecutor {
 
         AlignedChunkReaderByTimestamp chunkReader =
             new AlignedChunkReaderByTimestamp(timeChunk, valueChunkList);
+
+        while (chunkReader.hasNextSatisfiedPage()) {
+          IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
+          while (batchDataIterator.hasNext()) {
+            TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
+            long time = batchDataIterator.currentTime();
+            for (TsPrimitiveType pointData : pointsData) {
+              switch (pointData.getDataType()) {
+                case TEXT:
+                  chunkWriter.write(time, pointData.getBinary(), false);
+                  break;
+                case FLOAT:
+                  chunkWriter.write(time, pointData.getFloat(), false);
+                  break;
+                case DOUBLE:
+                  chunkWriter.write(time, pointData.getDouble(), false);
+                  break;
+                case INT32:
+                  chunkWriter.write(time, pointData.getInt(), false);
+                  break;
+                case INT64:
+                  chunkWriter.write(time, pointData.getLong(), false);
+                  break;
+                case BOOLEAN:
+                  chunkWriter.write(time, pointData.getBoolean(), false);
+                  break;
+              }
+            }
+
+            chunkWriter.write(time);
+            targetResource.updateStartTime(device, time);
+            targetResource.updateEndTime(device, time);
+            batchDataIterator.next();
+          }
+        }
       }
     }
+
+    chunkWriter.writeToFileWriter(writer);
   }
 }
