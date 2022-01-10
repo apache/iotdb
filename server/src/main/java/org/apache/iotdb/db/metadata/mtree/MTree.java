@@ -923,9 +923,11 @@ public class MTree implements Serializable {
             if (plan.hasSgCol()) {
               res.add(
                   new ShowDevicesResult(
-                      device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
+                      device.getFullPath(),
+                      node.isAligned(),
+                      getBelongedStorageGroup(device).getFullPath()));
             } else {
-              res.add(new ShowDevicesResult(device.getFullPath()));
+              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             }
           }
         };

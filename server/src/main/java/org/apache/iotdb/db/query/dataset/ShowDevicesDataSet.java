@@ -32,16 +32,23 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
   private static final Path[] resourcePathsWithSg = {
-    new PartialPath(COLUMN_DEVICES, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_DEVICES, false),
+    new PartialPath(COLUMN_IS_ALIGNED, false),
+    new PartialPath(COLUMN_STORAGE_GROUP, false),
   };
-  private static final TSDataType[] resourceTypesWithSg = {TSDataType.TEXT, TSDataType.TEXT};
-  private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false)};
-  private static final TSDataType[] resourceTypes = {TSDataType.TEXT};
+  private static final TSDataType[] resourceTypesWithSg = {
+    TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
+  };
+  private static final Path[] resourcePaths = {
+    new PartialPath(COLUMN_DEVICES, false), new PartialPath(COLUMN_IS_ALIGNED, false)
+  };
+  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT};
 
   private boolean hasSgCol;
 
@@ -67,6 +74,7 @@ public class ShowDevicesDataSet extends ShowDataSet {
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
+      updateRecord(record, String.valueOf(result.isAligned()));
       if (hasSgCol) {
         updateRecord(record, result.getSgName());
       }
