@@ -30,7 +30,9 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
@@ -140,6 +142,17 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
 
       PhysicalPlan physicalPlan = basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
+
+      if (physicalPlan instanceof AlignByDevicePlan
+          || (physicalPlan instanceof RawDataQueryPlan
+              && !((RawDataQueryPlan) physicalPlan).isAlignByTime())) {
+        return Response.ok()
+            .entity(
+                new ExecutionStatus()
+                    .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
+                    .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
+            .build();
+      }
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
