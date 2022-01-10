@@ -36,8 +36,8 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -53,7 +53,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -185,7 +184,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
@@ -1371,14 +1371,6 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected IMNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    try {
-      return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
   private void checkFailedMeasurments(InsertPlan plan)
       throws PathNotExistException, StorageEngineException {
     // check if all path not exist exceptions
@@ -1412,12 +1404,7 @@ public class PlanExecutor implements IPlanExecutor {
       return;
     }
     try {
-      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
-        // check whether types are match
-        getSeriesSchemas(plan);
-      }
-      // ok, we can begin to write data into the engine..
+      // insert to storage engine
       StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
 
       List<String> notExistedPaths = null;
@@ -1498,12 +1485,9 @@ public class PlanExecutor implements IPlanExecutor {
                   insertRowPlan.getValues()[i], insertRowPlan.isNeedInferType());
         }
       }
-      // check whether types are match
-      getSeriesSchemas(insertRowPlan);
-      insertRowPlan.transferType();
-      if (insertRowPlan.getFailedMeasurementNumber() < insertRowPlan.getMeasurements().length) {
-        StorageEngine.getInstance().insert(insertRowPlan);
-      }
+
+      StorageEngine.getInstance().insert(insertRowPlan);
+
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
@@ -1623,8 +1607,9 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       insertTabletPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
-      getSeriesSchemas(insertTabletPlan);
+
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
+
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);
       }

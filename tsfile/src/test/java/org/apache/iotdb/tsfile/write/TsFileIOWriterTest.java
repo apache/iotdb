@@ -33,8 +33,8 @@ import org.apache.iotdb.tsfile.file.metadata.utils.TestHelper;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.MeasurementGroup;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -66,13 +66,13 @@ public class TsFileIOWriterTest {
     TsFileIOWriter writer = new TsFileIOWriter(new File(FILE_PATH));
 
     // file schema
-    UnaryMeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema(SENSOR_1);
+    MeasurementSchema measurementSchema = TestHelper.createSimpleMeasurementSchema(SENSOR_1);
     VectorMeasurementSchema vectorMeasurementSchema =
         new VectorMeasurementSchema(
             "", new String[] {"s1", "s2"}, new TSDataType[] {TSDataType.INT64, TSDataType.INT64});
-    List<UnaryMeasurementSchema> schemas = new ArrayList<>();
-    schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-    schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    List<MeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
     MeasurementGroup group = new MeasurementGroup(true, schemas);
 
     Schema schema = new Schema();
@@ -169,7 +169,7 @@ public class TsFileIOWriterTest {
     Assert.assertEquals(2, metaData.getMetadataIndex().getChildren().size());
   }
 
-  private void writeChunkGroup(TsFileIOWriter writer, UnaryMeasurementSchema measurementSchema)
+  private void writeChunkGroup(TsFileIOWriter writer, MeasurementSchema measurementSchema)
       throws IOException {
     for (int i = 0; i < CHUNK_GROUP_NUM; i++) {
       // chunk group

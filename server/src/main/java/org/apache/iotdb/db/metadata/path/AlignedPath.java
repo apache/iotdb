@@ -32,6 +32,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.AlignedLastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -286,9 +288,9 @@ public class AlignedPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -296,7 +298,7 @@ public class AlignedPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
+  public AlignedTimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeTimeSeriesMetadata = new TimeseriesMetadata();
@@ -368,13 +370,15 @@ public class AlignedPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(this);
+
     // check If memtable contains this path
-    if (!memTableMap.containsKey(getDevice())) {
+    if (!memTableMap.containsKey(deviceID)) {
       return null;
     }
     AlignedWritableMemChunk alignedMemChunk =
-        ((AlignedWritableMemChunkGroup) memTableMap.get(getDevice())).getAlignedMemChunk();
+        ((AlignedWritableMemChunkGroup) memTableMap.get(deviceID)).getAlignedMemChunk();
     boolean containsMeasurement = false;
     for (String measurement : measurementList) {
       if (alignedMemChunk.containsMeasurement(measurement)) {

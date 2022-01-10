@@ -22,10 +22,12 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.entry.TimeseriesID;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -70,6 +72,11 @@ public class LastQueryExecutor {
   private static final boolean CACHE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isLastCacheEnabled();
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
+  // for test to reload this parameter after restart, it can't be final
+  private static boolean ID_TABLE_ENABLED =
+      IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+
+  private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
 
   public LastQueryExecutor(LastQueryPlan lastQueryPlan) {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
@@ -168,8 +175,18 @@ public class LastQueryExecutor {
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, filter);
+
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
@@ -188,7 +205,7 @@ public class LastQueryExecutor {
         readerList.add(lastReader);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     // Compute Last result for the rest series paths by scanning Tsfiles
@@ -224,7 +241,11 @@ public class LastQueryExecutor {
     List<Pair<Boolean, TimeValuePair>> resultContainer = new ArrayList<>();
     if (CACHE_ENABLED) {
       for (PartialPath path : seriesPaths) {
-        cacheAccessors.add(new LastCacheAccessor(path));
+        if (ID_TABLE_ENABLED) {
+          cacheAccessors.add(new IDTableLastCacheAccessor(path));
+        } else {
+          cacheAccessors.add(new MManagerLastCacheAccessor(path));
+        }
       }
     } else {
       for (int i = 0; i < seriesPaths.size(); i++) {
@@ -262,12 +283,18 @@ public class LastQueryExecutor {
     return resultContainer;
   }
 
-  private static class LastCacheAccessor {
+  private interface LastCacheAccessor {
+    public TimeValuePair read();
+
+    public void write(TimeValuePair pair);
+  }
+
+  private static class MManagerLastCacheAccessor implements LastCacheAccessor {
 
     private final MeasurementPath path;
     private IMeasurementMNode node;
 
-    LastCacheAccessor(PartialPath seriesPath) {
+    MManagerLastCacheAccessor(PartialPath seriesPath) {
       this.path = (MeasurementPath) seriesPath;
     }
 
@@ -299,7 +326,44 @@ public class LastQueryExecutor {
     }
   }
 
+  private static class IDTableLastCacheAccessor implements LastCacheAccessor {
+
+    private PartialPath fullPath;
+
+    IDTableLastCacheAccessor(PartialPath seriesPath) {
+      fullPath = seriesPath;
+    }
+
+    @Override
+    public TimeValuePair read() {
+      try {
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
+        return table.getLastCache(new TimeseriesID(fullPath));
+      } catch (StorageEngineException | MetadataException e) {
+        logger.error("last query can't find storage group: path is: " + fullPath);
+      }
+
+      return null;
+    }
+
+    @Override
+    public void write(TimeValuePair pair) {
+      try {
+        IDTable table =
+            StorageEngine.getInstance().getProcessor(fullPath.getDevicePath()).getIdTable();
+        table.updateLastCache(new TimeseriesID(fullPath), pair, false, Long.MIN_VALUE);
+      } catch (MetadataException | StorageEngineException e) {
+        logger.error("last query can't find storage group: path is: " + fullPath);
+      }
+    }
+  }
+
   private static boolean satisfyFilter(Filter filter, TimeValuePair tvPair) {
     return filter == null || filter.satisfy(tvPair.getTimestamp(), tvPair.getValue().getValue());
+  }
+
+  public static void clear() {
+    ID_TABLE_ENABLED = IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
   }
 }

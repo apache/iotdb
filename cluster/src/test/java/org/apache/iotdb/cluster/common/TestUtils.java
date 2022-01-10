@@ -56,8 +56,8 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
@@ -210,7 +210,7 @@ public class TestUtils {
   public static IMeasurementSchema getTestMeasurementSchema(int seriesNum) {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
-    return new UnaryMeasurementSchema(
+    return new MeasurementSchema(
         TestUtils.getTestMeasurement(seriesNum),
         dataType,
         encoding,
@@ -222,7 +222,7 @@ public class TestUtils {
     TSDataType dataType = TSDataType.DOUBLE;
     TSEncoding encoding = IoTDBDescriptor.getInstance().getConfig().getDefaultDoubleEncoding();
     IMeasurementSchema measurementSchema =
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             TestUtils.getTestMeasurement(seriesNum),
             dataType,
             encoding,
@@ -307,7 +307,7 @@ public class TestUtils {
     // data for raw data query and aggregation
     // 10 devices (storage groups)
     for (int j = 0; j < 10; j++) {
-      insertPlan.setDeviceId(new PartialPath(getTestSg(j)));
+      insertPlan.setDevicePath(new PartialPath(getTestSg(j)));
       String[] measurements = new String[10];
       IMeasurementMNode[] mNodes = new IMeasurementMNode[10];
       // 10 series each device, all double
@@ -360,7 +360,7 @@ public class TestUtils {
     }
 
     // data for fill
-    insertPlan.setDeviceId(new PartialPath(getTestSg(0)));
+    insertPlan.setDevicePath(new PartialPath(getTestSg(0)));
     String[] measurements = new String[] {getTestMeasurement(10)};
     IMeasurementMNode[] schemas = new IMeasurementMNode[] {TestUtils.getTestMeasurementMNode(10)};
     insertPlan.setMeasurements(measurements);
@@ -407,7 +407,7 @@ public class TestUtils {
       file.getParentFile().mkdirs();
       try (TsFileWriter writer = new TsFileWriter(file)) {
         for (int k = 0; k < seriesNum; k++) {
-          UnaryMeasurementSchema schema = (UnaryMeasurementSchema) getTestMeasurementSchema(k);
+          MeasurementSchema schema = (MeasurementSchema) getTestMeasurementSchema(k);
           writer.registerTimeseries(new Path(getTestSg(sgNum)), schema);
         }
 

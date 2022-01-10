@@ -172,21 +172,19 @@ public class AlignedTVList extends TVList {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (validIndexesForTimeDuplicatedRows == null
-          && (columnValues == null
-              || bitMaps != null
-                  && bitMaps.get(columnIndex) != null
-                  && isValueMarked(valueIndex, columnIndex))) {
-        continue;
-      }
+      int validValueIndex;
       if (validIndexesForTimeDuplicatedRows != null) {
-        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
-        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
+        validValueIndex = validIndexesForTimeDuplicatedRows[columnIndex];
+      } else {
+        validValueIndex = valueIndex;
+      }
+      int arrayIndex = validValueIndex / ARRAY_SIZE;
+      int elementIndex = validValueIndex % ARRAY_SIZE;
+      if (columnValues == null || isValueMarked(validValueIndex, columnIndex)) {
+        continue;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
@@ -857,14 +855,20 @@ public class AlignedTVList extends TVList {
    */
   public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
+    // value array mem size
+    for (TSDataType type : types) {
+      if (type != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      }
+    }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
     // time array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
     // index array mem size
     size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value array mem size
-    for (TSDataType type : types) {
-      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
-    }
     // array headers mem size
     size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
     // Object references size in ArrayList

@@ -30,6 +30,8 @@ import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.executor.fill.LastPointReader;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.db.utils.datastructure.TVList;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
@@ -45,7 +48,7 @@ import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -77,7 +80,7 @@ public class MeasurementPath extends PartialPath {
 
   public MeasurementPath(String measurementPath, TSDataType type) throws IllegalPathException {
     super(measurementPath);
-    this.measurementSchema = new UnaryMeasurementSchema(getMeasurement(), type);
+    this.measurementSchema = new MeasurementSchema(getMeasurement(), type);
   }
 
   public MeasurementPath(PartialPath measurementPath, IMeasurementSchema measurementSchema) {
@@ -194,6 +197,7 @@ public class MeasurementPath extends PartialPath {
       Filter timeFilter,
       Filter valueFilter,
       boolean ascending) {
+    allSensors.add(this.getMeasurement());
     return new SeriesReader(
         this,
         allSensors,
@@ -213,9 +217,9 @@ public class MeasurementPath extends PartialPath {
       TsFileResource originTsFileResource)
       throws IOException {
     TsFileResource tsFileResource =
-        new TsFileResource(readOnlyMemChunk, chunkMetadataList, originTsFileResource);
+        new TsFileResource(this, readOnlyMemChunk, chunkMetadataList, originTsFileResource);
     tsFileResource.setTimeSeriesMetadata(
-        generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
+        this, generateTimeSeriesMetadata(readOnlyMemChunk, chunkMetadataList));
     return tsFileResource;
   }
 
@@ -223,7 +227,7 @@ public class MeasurementPath extends PartialPath {
    * Because the unclosed tsfile don't have TimeSeriesMetadata and memtables in the memory don't
    * have chunkMetadata, but query will use these, so we need to generate it for them.
    */
-  private TimeseriesMetadata generateTimeSeriesMetadata(
+  public ITimeSeriesMetadata generateTimeSeriesMetadata(
       List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     TimeseriesMetadata timeSeriesMetadata = new TimeseriesMetadata();
@@ -252,14 +256,14 @@ public class MeasurementPath extends PartialPath {
   public ReadOnlyMemChunk getReadOnlyMemChunkFromMemTable(
       IMemTable memTable, List<Pair<Modification, IMemTable>> modsToMemtable, long timeLowerBound)
       throws QueryProcessException, IOException {
-    Map<String, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    Map<IDeviceID, IWritableMemChunkGroup> memTableMap = memTable.getMemTableMap();
+    IDeviceID deviceID = DeviceIDFactory.getInstance().getDeviceID(getDevicePath());
     // check If Memtable Contains this path
-    if (!memTableMap.containsKey(getDevice())
-        || !memTableMap.get(getDevice()).contains(getMeasurement())) {
+    if (!memTableMap.containsKey(deviceID)
+        || !memTableMap.get(deviceID).contains(getMeasurement())) {
       return null;
     }
-    IWritableMemChunk memChunk =
-        memTableMap.get(getDevice()).getMemChunkMap().get(getMeasurement());
+    IWritableMemChunk memChunk = memTableMap.get(deviceID).getMemChunkMap().get(getMeasurement());
     // get sorted tv list is synchronized so different query can get right sorted list reference
     TVList chunkCopy = memChunk.getSortedTvListForQuery();
     int curSize = chunkCopy.size();

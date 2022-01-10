@@ -49,7 +49,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
   private long tagOffset = -1;
 
   public CreateTimeSeriesPlan() {
-    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    super(Operator.OperatorType.CREATE_TIMESERIES);
     canBeSplit = false;
   }
 
@@ -62,7 +62,7 @@ public class CreateTimeSeriesPlan extends PhysicalPlan {
       Map<String, String> tags,
       Map<String, String> attributes,
       String alias) {
-    super(false, Operator.OperatorType.CREATE_TIMESERIES);
+    super(Operator.OperatorType.CREATE_TIMESERIES);
     this.path = path;
     this.dataType = dataType;
     this.encoding = encoding;

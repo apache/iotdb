@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.memtable.IMemTable;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunk;
 import org.apache.iotdb.db.engine.memtable.IWritableMemChunkGroup;
 import org.apache.iotdb.db.exception.runtime.FlushRunTimeException;
+import org.apache.iotdb.db.metadata.idtable.entry.IDeviceID;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
@@ -107,9 +108,9 @@ public class MemTableFlushTask {
     long sortTime = 0;
 
     // for map do not use get(key) to iterate
-    for (Map.Entry<String, IWritableMemChunkGroup> memTableEntry :
+    for (Map.Entry<IDeviceID, IWritableMemChunkGroup> memTableEntry :
         memTable.getMemTableMap().entrySet()) {
-      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey()));
+      encodingTaskQueue.put(new StartFlushGroupIOTask(memTableEntry.getKey().toStringID()));
 
       final Map<String, IWritableMemChunk> value = memTableEntry.getValue().getMemChunkMap();
       for (Map.Entry<String, IWritableMemChunk> iWritableMemChunkEntry : value.entrySet()) {
