@@ -82,9 +82,10 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       .option("url", "jdbc:iotdb://127.0.0.1:6667/")
       .save
 
-    val result = session.executeQueryStatement("select ** from root")
+    val result = session.executeQueryStatement("select * from root")
     var size = 0
     while (result.hasNext) {
+      result.next()
       size += 1
     }
     assertResult(2)(size)
@@ -96,7 +97,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
       (2L, "root.test.d0", 2, 2L, 2.0F, 2.0D, false, "world")))
 
     val dfWithColumn = df.withColumnRenamed("_1", "Time")
-      .withColumnRenamed("_2", "device_name")
+      .withColumnRenamed("_2", "Device")
       .withColumnRenamed("_3", "s0")
       .withColumnRenamed("_4", "s1")
       .withColumnRenamed("_5", "s2")
@@ -110,6 +111,7 @@ class IoTDBWriteTest extends FunSuite with BeforeAndAfterAll {
     val result = session.executeQueryStatement("select * from root")
     var size = 0
     while (result.hasNext) {
+      result.next()
       size += 1
     }
     assertResult(2)(size)
