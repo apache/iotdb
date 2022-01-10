@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -494,9 +495,40 @@ public class IoTDBMetadataFetchIT {
   public void showCountTimeSeriesGroupBy() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT TIMESERIES root group by level=1"};
+      try {
+        // add some extract timeseries based on setUp data
+        String[] insertSqls =
+            new String[] {
+              "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+              "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+                  + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+              "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+              "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+                  + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
+            };
+
+        for (String sql : insertSqls) {
+          statement.execute(sql);
+        }
+      } catch (Exception e) {
+        logger.error("insertSQL() failed", e);
+        fail(e.getMessage());
+      }
+
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** group by level=1",
+            "COUNT TIMESERIES root.** group by level=3",
+            "COUNT TIMESERIES root.**.status group by level=2"
+          };
       Set<String>[] standards =
-          new Set[] {new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,0,", "root.ln2,0,"))};
+          new Set[] {
+            new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,2,", "root.ln2,2,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,2,", "root.ln1.wf01.wt01,2,", "root.ln2.wf01.wt01,2,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+          };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
@@ -505,11 +537,11 @@ public class IoTDBMetadataFetchIT {
           if (hasResultSet) {
             try (ResultSet resultSet = statement.getResultSet()) {
               while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append(resultSet.getString(1)).append(",");
-                builder.append(resultSet.getInt(2)).append(",");
-                Assert.assertTrue(standard.contains(builder.toString()));
+                String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
