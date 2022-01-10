@@ -53,7 +53,8 @@ public class TsFileSequenceRead {
     "squid:S106"
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
-    String filename = "test.tsfile";
+    String filename = "C:\\Users\\v-zesongsun\\Desktop\\test0.tsfile";
+
     if (args.length >= 1) {
       filename = args[0];
     }
@@ -83,8 +84,10 @@ public class TsFileSequenceRead {
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
             System.out.println("\t[Chunk]");
             System.out.println("\tchunk type: " + marker);
-            System.out.println("\tposition: " + reader.position());
+            System.out.println("\tposition: " + reader.position()); // 18
             ChunkHeader header = reader.readChunkHeader(marker);
+            System.out.println("\tposition: " + reader.position()); // 31
+
             System.out.println("\tMeasurement: " + header.getMeasurementID());
             System.out.println(
                 "\tChunk Size: " + (header.getDataSize() + header.getSerializedSize()));

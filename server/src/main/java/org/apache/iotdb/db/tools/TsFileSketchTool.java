@@ -57,8 +57,8 @@ public class TsFileSketchTool {
 
   public static void main(String[] args) throws IOException {
     Pair<String, String> fileNames = checkArgs(args);
-    String filename = "C:\\Users\\v-zesongsun\\Desktop\\test0-0.tsfile"; // fileNames.left;
-    String outFile = "C:\\Users\\v-zesongsun\\Desktop\\test0-0.txt"; // fileNames.right;
+    String filename = fileNames.left;
+    String outFile = fileNames.right;
     System.out.println("TsFile path:" + filename);
     System.out.println("Sketch save path:" + outFile);
     new TsFileSketchTool(filename, outFile).run();
