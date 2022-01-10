@@ -177,6 +177,11 @@ public abstract class Operator {
 
     UNSET_TEMPLATE,
     PRUNE_TEMPLATE,
-    APPEND_TEMPLATE
+    APPEND_TEMPLATE,
+
+    CREATE_PIPESINK,
+    DROP_PIPESINK,
+    SHOW_PIPESINK,
+    SHOW_PIPESINKTYPE
   }
 }

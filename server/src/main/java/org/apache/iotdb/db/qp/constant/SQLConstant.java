@@ -190,6 +190,11 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
 
+  public static final int TOK_CREATE_PIPESINK = 116;
+  public static final int TOK_DROP_PIPESINK = 117;
+  public static final int TOK_SHOW_PIPESINK = 118;
+  public static final int TOK_SHOW_PIPESINKTYPE = 119;
+
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
   public static String[] getSingleRootArray() {
@@ -267,6 +272,11 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_SET, "TOK_SCHEMA_TEMPLATE_SET");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
+
+    tokenNames.put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK");
+    tokenNames.put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

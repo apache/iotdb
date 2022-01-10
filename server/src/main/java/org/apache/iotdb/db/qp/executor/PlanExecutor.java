@@ -60,6 +60,9 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.newsync.sender.monitor.SenderFactory;
+import org.apache.iotdb.db.newsync.sender.monitor.SenderService;
+import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
@@ -93,6 +96,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
@@ -390,6 +394,9 @@ public class PlanExecutor implements IPlanExecutor {
         return operateDropContinuousQuery((DropContinuousQueryPlan) plan);
       case SETTLE:
         settle((SettlePlan) plan);
+        return true;
+      case CREATE_PIPESINK:
+        createPipeSink((CreatePipeSinkPlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -2186,6 +2193,25 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance().setSettling(sgPath, false);
       }
       throw new StorageEngineException(e.getMessage());
+    }
+  }
+
+  private void createPipeSink(CreatePipeSinkPlan plan) throws QueryProcessException {
+    if (SenderService.getInstance().getPipeSink(plan.getPipeSinkName()) != null) {
+      throw new QueryProcessException("There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please delete it.");
+    }
+    try {
+      PipeSink pipeSink = SenderFactory.createPipeSink(PipeSink.Type.valueOf(plan.getPipeSinkType()), plan.getPipeSinkName());
+      for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
+        pipeSink.setAttribute(pair.left, pair.right);
+      }
+      SenderService.getInstance().addPipeSink(pipeSink);
+    } catch (NumberFormatException e) {
+      throw new QueryProcessException("Wrong value format.", e);
+    } catch (IllegalArgumentException e) {
+      throw new QueryProcessException("Not support for type " + plan.getPipeSinkType() + ".", e);
+    } catch (UnsupportedOperationException e) {
+      throw new QueryProcessException("No attribute for " + plan.getPipeSinkType() + ".", e);
     }
   }
 }

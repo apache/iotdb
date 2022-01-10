@@ -1,0 +1,42 @@
+package org.apache.iotdb.db.qp.logical.sys;
+
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
+public class CreatePipeSinkOperator extends Operator {
+  private String pipeSinkName;
+  private String pipeSinkType;
+  private Map<String, String> pipeSinkAttributes;
+
+  public CreatePipeSinkOperator(String pipeSinkName, String pipeSinkType) {
+    super(SQLConstant.TOK_CREATE_PIPESINK);
+    this.pipeSinkName = pipeSinkName;
+    this.pipeSinkType = pipeSinkType;
+    pipeSinkAttributes = new HashMap<>();
+    this.operatorType = OperatorType.CREATE_PIPESINK;
+  }
+
+  public void putPipeSinkAttribute(String attr, String value) {
+    pipeSinkAttributes.put(attr, value);
+  }
+
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    CreatePipeSinkPlan plan = new CreatePipeSinkPlan(pipeSinkName, pipeSinkType);
+    Iterator<Map.Entry<String, String>> iterator = pipeSinkAttributes.entrySet().iterator();
+    while (iterator.hasNext()) {
+      Map.Entry<String, String> entry = iterator.next();
+      plan.addPipeSinkAttribute(entry.getKey(), entry.getValue());
+    }
+    return plan;
+  }
+}

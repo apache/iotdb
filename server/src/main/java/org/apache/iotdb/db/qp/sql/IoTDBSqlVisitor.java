@@ -62,6 +62,7 @@ import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreatePipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTimeSeriesOperator;
@@ -72,6 +73,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
 import org.apache.iotdb.db.qp.logical.sys.KillQueryOperator;
@@ -94,6 +96,8 @@ import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkTypeOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
@@ -137,6 +141,7 @@ import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -2116,7 +2121,45 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new File(parseStringWithQuotes(ctx.dstFileDir.getText())));
   }
 
-  /** 6. Common Clauses */
+  /** 6. sync statement */
+  @Override
+  public Operator visitCreatePipeSink(IoTDBSqlParser.CreatePipeSinkContext ctx) {
+    CreatePipeSinkOperator operator =
+        new CreatePipeSinkOperator(ctx.pipeSinkName.getText(), ctx.pipeSinkType.getText());
+    if (ctx.syncAttributeClauses() != null) {
+      Iterator<IoTDBSqlParser.PropertyClauseContext> propertyClauseIterator =
+          ctx.syncAttributeClauses().propertyClause().iterator();
+      while (propertyClauseIterator.hasNext()) {
+        IoTDBSqlParser.PropertyClauseContext propertyClause = propertyClauseIterator.next();
+        operator.putPipeSinkAttribute(
+            propertyClause.name.getText(), propertyClause.value.getText());
+      }
+    }
+    return operator;
+  }
+
+  @Override
+  public Operator visitDropPipeSink(IoTDBSqlParser.DropPipeSinkContext ctx) {
+    DropPipeSinkOperator operator = new DropPipeSinkOperator(ctx.pipeSinkName.getText());
+    return operator;
+  }
+
+  @Override
+  public Operator visitShowPipeSink(IoTDBSqlParser.ShowPipeSinkContext ctx) {
+    ShowPipeSinkOperator operator = new ShowPipeSinkOperator();
+    if (ctx.pipeSinkName != null) {
+      operator.setPipeSinkName(ctx.pipeSinkName.getText());
+    }
+    return operator;
+  }
+
+  @Override
+  public Operator visitShowPipeSinkType(IoTDBSqlParser.ShowPipeSinkTypeContext ctx) {
+    ShowPipeSinkTypeOperator operator = new ShowPipeSinkTypeOperator();
+    return operator;
+  }
+
+  /** 7. Common Clauses */
 
   // IoTDB Objects
 
@@ -2759,7 +2802,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.propertyClause(0) != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : tagsList) {
         String value;
-        if (property.propertyValue().STRING_LITERAL() != null) {
+        if (property.propertyValue().constant().STRING_LITERAL() != null) {
           value = parseStringWithQuotes(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
