@@ -85,7 +85,14 @@ public class TagManager {
     tagLogFile = new TagLogFile(config.getSchemaDir(), MetadataConstant.TAG_LOG);
   }
 
+  public void recoverIndex(long offset, IMeasurementMNode measurementMNode) throws IOException {
+    addIndex(tagLogFile.readTag(config.getTagAttributeTotalSize(), offset), measurementMNode);
+  }
+
   public void addIndex(String tagKey, String tagValue, IMeasurementMNode measurementMNode) {
+    if (tagKey == null || tagValue == null || measurementMNode == null) {
+      return;
+    }
     tagIndex
         .computeIfAbsent(tagKey, k -> new ConcurrentHashMap<>())
         .computeIfAbsent(tagValue, v -> Collections.synchronizedSet(new HashSet<>()))

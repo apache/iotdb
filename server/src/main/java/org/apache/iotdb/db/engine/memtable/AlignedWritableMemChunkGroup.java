@@ -71,6 +71,9 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
 
   @Override
   public Map<String, IWritableMemChunk> getMemChunkMap() {
+    if (memChunk.count() == 0) {
+      return Collections.emptyMap();
+    }
     return Collections.singletonMap("", memChunk);
   }
 
@@ -91,8 +94,8 @@ public class AlignedWritableMemChunkGroup implements IWritableMemChunkGroup {
         }
       }
     }
-    if (!columnsToBeRemoved.isEmpty()) {
-      memChunk.removeColumns(columnsToBeRemoved);
+    for (String columnToBeRemoved : columnsToBeRemoved) {
+      memChunk.removeColumn(columnToBeRemoved);
     }
     return deletedPointsNumber;
   }
