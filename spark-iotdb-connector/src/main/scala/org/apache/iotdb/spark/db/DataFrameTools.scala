@@ -22,25 +22,20 @@ package org.apache.iotdb.spark.db
 import org.apache.iotdb.session.Session
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType.{BOOLEAN, DOUBLE, FLOAT, INT32, INT64, TEXT}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{DataFrame, Row}
 
 import java.util
 import java.lang
 
 object DataFrameTools {
   def insertDataFrame(options: IoTDBOptions, dataframe: DataFrame): Unit = {
-    val filteredColumns = Array[String]("Time", "device_name")
+    val filteredColumns = Array[String]("Time", "Device")
     val sensorTypes = dataframe.dtypes.filter(x => !filteredColumns.contains(x._1))
 
-    val devices = dataframe
-      .select("device_name")
-      .distinct()
-      .collect()
-      .map(x => x.get(0))
-
     dataframe
-      .repartition(devices.length, dataframe.col("device_name"))
-      .foreachPartition { partition =>
+      .repartition(options.numPartition.toInt)
+      .sortWithinPartitions(dataframe.col("Device"))
+      .foreachPartition { (partition: Iterator[Row]) =>
         val hostPort = options.url.split("//")(1).replace("/", "").split(":")
         val session = new Session(
           hostPort(0),
@@ -50,13 +45,22 @@ object DataFrameTools {
         )
         session.open()
 
+        var device: lang.String = ""
         val times = new util.ArrayList[lang.Long]()
         val measurementsList = new util.ArrayList[util.List[lang.String]]()
         val typesList = new util.ArrayList[util.List[TSDataType]]()
         val valuesList = new util.ArrayList[util.List[Object]]()
-        var device: lang.String = ""
+
+        val batchSize = 1000
+        var currentSize = 0
+
         partition.foreach { record =>
           if ("".equals(device)) device = record.get(1).toString
+          else if (!device.equals(record.get(1).toString)) {
+            insertAndEmptyDataSet(session, device, times, measurementsList, typesList, valuesList)
+            device = record.get(1).toString
+            currentSize = 0
+          }
           val measurements = new util.ArrayList[lang.String]()
           val types = new util.ArrayList[TSDataType]()
           val values = new util.ArrayList[Object]()
@@ -67,13 +71,22 @@ object DataFrameTools {
             measurements.add(sensorTypes(i - 2)._1)
             types.add(getType(sensorTypes(i - 2)._2))
           }
-          times.add(record.get(0).asInstanceOf[Long])
-          measurementsList.add(measurements)
-          typesList.add(types)
-          valuesList.add(values)
+          if (!values.isEmpty) {
+            times.add(record.get(0).asInstanceOf[Long])
+            measurementsList.add(measurements)
+            typesList.add(types)
+            valuesList.add(values)
+            currentSize += 1
+          }
+          if (currentSize >= batchSize) {
+            insertAndEmptyDataSet(session, device, times, measurementsList, typesList, valuesList)
+            currentSize = 0
+          }
         }
 
-        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList)
+        if (!valuesList.isEmpty) {
+          insertAndEmptyDataSet(session, device, times, measurementsList, typesList, valuesList)
+        }
         session.close()
       }
 
@@ -101,5 +114,18 @@ object DataFrameTools {
       case "DoubleType" => DOUBLE
       case _ => null
     }
+  }
+
+  def insertAndEmptyDataSet(session: Session,
+                            device: lang.String,
+                            times: util.ArrayList[lang.Long],
+                            measurementsList: util.ArrayList[util.List[lang.String]],
+                            typesList: util.ArrayList[util.List[TSDataType]],
+                            valuesList: util.ArrayList[util.List[Object]]): Unit = {
+    session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList)
+    times.clear()
+    measurementsList.clear()
+    typesList.clear()
+    valuesList.clear()
   }
 }

@@ -25,7 +25,7 @@ The versions required for Spark and Java are as follow:
 
 | Spark Version | Scala Version | Java Version | TsFile |
 | :-------------: | :-------------: | :------------: |:------------: |
-| `2.4.3`        | `2.11`        | `1.8`        | `0.12.0`|
+| `2.4.5`        | `2.12`        | `1.8`        | `0.12.0`|
 
 
 > Currently we only support spark version 2.4.3 and there are some known issue on 2.4.7, do no use it
@@ -41,7 +41,7 @@ mvn clean scala:compile compile install
     <dependency>
       <groupId>org.apache.iotdb</groupId>
       <artifactId>spark-iotdb-connector</artifactId>
-      <version>0.10.0</version>
+      <version>0.12.4</version>
     </dependency>
 ```
 
@@ -201,8 +201,10 @@ val dfWithColumn = df.withColumnRenamed("_1", "Time")
     .withColumnRenamed("_7", "root.test.d0.s5")
 dfWithColumn.write.format("org.apache.iotdb.spark.db")
     .option("url", "jdbc:iotdb://127.0.0.1:6667/")
+    .option("numPartition", "10")
     .save
 ```
 
 ### Notes
 1. You can directly write data to IoTDB whatever the dataframe contains a wide table or a narrow table.
+2. The parameter `numPartition` is used to set the number of partitions. The dataframe that you want to save will be repartition based on this parameter before  writing data. Each partition will open a session to write data to increase the number of concurrent requests.
