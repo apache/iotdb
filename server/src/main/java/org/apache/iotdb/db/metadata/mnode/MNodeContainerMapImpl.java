@@ -18,30 +18,7 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import java.util.concurrent.ConcurrentHashMap;
 
-import java.util.Map;
-
-public interface IEntityMNode extends IMNode {
-
-  boolean addAlias(String alias, IMeasurementMNode child);
-
-  void deleteAliasChild(String alias);
-
-  IMNodeContainer<IMeasurementMNode> getAliasChildren();
-
-  void setAliasChildren(IMNodeContainer<IMeasurementMNode> aliasChildren);
-
-  @Override
-  boolean isUseTemplate();
-
-  void setUseTemplate(boolean useTemplate);
-
-  boolean isAligned();
-
-  void setAligned(boolean isAligned);
-
-  ILastCacheContainer getLastCacheContainer(String measurementId);
-
-  Map<String, ILastCacheContainer> getTemplateLastCaches();
-}
+public class MNodeContainerMapImpl<E extends IMNode> extends ConcurrentHashMap<String, E>
+    implements IMNodeContainer<E> {}

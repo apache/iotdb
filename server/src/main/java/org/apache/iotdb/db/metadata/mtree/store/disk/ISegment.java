@@ -16,32 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mtree.store.disk;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import java.util.Map;
 
-public interface IEntityMNode extends IMNode {
+public interface ISegment {
 
-  boolean addAlias(String alias, IMeasurementMNode child);
+  long getSegmentAddress();
 
-  void deleteAliasChild(String alias);
+  void setSegmentAddress(long segmentAddress);
 
-  IMNodeContainer<IMeasurementMNode> getAliasChildren();
+  boolean isVolatile();
 
-  void setAliasChildren(IMNodeContainer<IMeasurementMNode> aliasChildren);
+  boolean isFull();
 
-  @Override
-  boolean isUseTemplate();
+  boolean isExpelled();
 
-  void setUseTemplate(boolean useTemplate);
+  Map<String, ? extends IMNode> getChildCache();
 
-  boolean isAligned();
+  Map<String, ? extends IMNode> getNewChildBuffer();
 
-  void setAligned(boolean isAligned);
-
-  ILastCacheContainer getLastCacheContainer(String measurementId);
-
-  Map<String, ILastCacheContainer> getTemplateLastCaches();
+  Map<String, ? extends IMNode> getUpdatedChildBuffer();
 }

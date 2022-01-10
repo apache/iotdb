@@ -459,15 +459,16 @@ public class AlignedTVList extends TVList {
         deleteColumn = false;
       }
     }
-    if (deleteColumn) {
-      dataTypes.remove(columnIndex);
-      for (Object array : values.get(columnIndex)) {
-        PrimitiveArrayManager.release(array);
-      }
-      values.remove(columnIndex);
-      bitMaps.remove(columnIndex);
-    }
     return new Pair<>(deletedNumber, deleteColumn);
+  }
+
+  public void deleteColumn(int columnIndex) {
+    dataTypes.remove(columnIndex);
+    for (Object array : values.get(columnIndex)) {
+      PrimitiveArrayManager.release(array);
+    }
+    values.remove(columnIndex);
+    bitMaps.remove(columnIndex);
   }
 
   private void set(int index, long timestamp, int value) {

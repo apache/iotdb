@@ -49,6 +49,7 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.CounterTrave
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
@@ -1076,6 +1077,15 @@ public class MTreeService implements Serializable {
     counter.traverse();
     return counter.getCount();
   }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(root, pathPattern, store, level);
+    counter.traverse();
+    return counter.getResult();
+  }
+
   // endregion
 
   // endregion

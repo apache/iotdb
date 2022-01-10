@@ -177,6 +177,12 @@ public class IoTDBConfig {
   /** Unit: millisecond */
   private long walPoolTrimIntervalInMS = 10_000;
 
+  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
+  private long registerBufferSleepIntervalInMs = 200;
+
+  /** if total sleep time exceeds this, system will reject this write. */
+  private long registerBufferRejectThresholdInMs = 10_000;
+
   /** Unit: byte */
   private int estimatedSeriesSize = 300;
 
@@ -689,7 +695,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 500;
+  private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -1423,6 +1429,22 @@ public class IoTDBConfig {
 
   public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
     this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  }
+
+  public long getRegisterBufferSleepIntervalInMs() {
+    return registerBufferSleepIntervalInMs;
+  }
+
+  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
+    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
+  }
+
+  public long getRegisterBufferRejectThresholdInMs() {
+    return registerBufferRejectThresholdInMs;
+  }
+
+  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
+    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
   }
 
   public int getEstimatedSeriesSize() {

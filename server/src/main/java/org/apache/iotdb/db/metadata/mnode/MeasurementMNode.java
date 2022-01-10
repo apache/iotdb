@@ -32,8 +32,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
 
 public class MeasurementMNode extends MNode implements IMeasurementMNode {
 
@@ -205,12 +203,12 @@ public class MeasurementMNode extends MNode implements IMeasurementMNode {
   public void replaceChild(String oldChildName, IMNode newChildNode) {}
 
   @Override
-  public Map<String, IMNode> getChildren() {
-    return Collections.emptyMap();
+  public IMNodeContainer<IMNode> getChildren() {
+    return MNodeContainers.emptyMNodeContainer();
   }
 
   @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public void setChildren(IMNodeContainer<IMNode> children) {
     // Do nothing
   }
 

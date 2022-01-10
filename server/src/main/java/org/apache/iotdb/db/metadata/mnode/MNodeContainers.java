@@ -18,30 +18,17 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.metadata.lastCache.container.ILastCacheContainer;
+public class MNodeContainers {
 
-import java.util.Map;
+  @SuppressWarnings("rawtypes")
+  private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
 
-public interface IEntityMNode extends IMNode {
+  @SuppressWarnings("unchecked")
+  public static <E extends IMNode> IMNodeContainer<E> emptyMNodeContainer() {
+    return (IMNodeContainer<E>) EMPTY_CONTAINER;
+  }
 
-  boolean addAlias(String alias, IMeasurementMNode child);
-
-  void deleteAliasChild(String alias);
-
-  IMNodeContainer<IMeasurementMNode> getAliasChildren();
-
-  void setAliasChildren(IMNodeContainer<IMeasurementMNode> aliasChildren);
-
-  @Override
-  boolean isUseTemplate();
-
-  void setUseTemplate(boolean useTemplate);
-
-  boolean isAligned();
-
-  void setAligned(boolean isAligned);
-
-  ILastCacheContainer getLastCacheContainer(String measurementId);
-
-  Map<String, ILastCacheContainer> getTemplateLastCaches();
+  public static <E extends IMNode> IMNodeContainer<E> getNewMNodeContainer() {
+    return new MNodeContainerMapImpl<>();
+  }
 }

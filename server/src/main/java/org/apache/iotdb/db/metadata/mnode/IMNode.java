@@ -24,7 +24,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.Map;
 
 /** This interface defines a MNode's operation interfaces. */
 public interface IMNode extends Serializable {
@@ -55,9 +54,9 @@ public interface IMNode extends Serializable {
 
   void replaceChild(String oldChildName, IMNode newChildNode);
 
-  Map<String, IMNode> getChildren();
+  IMNodeContainer<IMNode> getChildren();
 
-  void setChildren(Map<String, IMNode> children);
+  void setChildren(IMNodeContainer<IMNode> children);
 
   boolean isUseTemplate();
 
