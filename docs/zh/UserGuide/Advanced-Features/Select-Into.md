@@ -126,7 +126,7 @@ intoPath
 
     ```sql
     select s1, s2, s3
-    into root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
+    into aligned root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
     from root.sg.d1
     ```
 
