@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
-public class MNodeContainers {
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-  public static final boolean IS_DISK_MODE = false;
+import java.util.Iterator;
 
-  @SuppressWarnings("rawtypes")
-  private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
+public interface ISchemaFile {
 
-  @SuppressWarnings("unchecked")
-  public static IMNodeContainer emptyMNodeContainer() {
-    return EMPTY_CONTAINER;
-  }
+  IMNode getChildNode(IMNode parent, String childName);
 
-  public static IMNodeContainer getNewMNodeContainer() {
-    if (IS_DISK_MODE) {
-      return new CachedMNodeContainer();
-    } else {
-      return new MNodeContainerMapImpl();
-    }
-  }
+  Iterator<IMNode> getChildren(IMNode parent);
+
+  void writeMNode(IMNode parent);
+
+  void deleteMNode(IMNode targetNode);
+
+  void sync();
+
+  void close();
+
+  void clear();
 }

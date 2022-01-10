@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
-public class MNodeContainers {
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-  public static final boolean IS_DISK_MODE = false;
+import java.util.List;
 
-  @SuppressWarnings("rawtypes")
-  private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
+public interface ICacheStrategy {
 
-  @SuppressWarnings("unchecked")
-  public static IMNodeContainer emptyMNodeContainer() {
-    return EMPTY_CONTAINER;
-  }
+  void updateCacheStatusAfterRead(IMNode node);
 
-  public static IMNodeContainer getNewMNodeContainer() {
-    if (IS_DISK_MODE) {
-      return new CachedMNodeContainer();
-    } else {
-      return new MNodeContainerMapImpl();
-    }
-  }
+  void updateCacheStatusAfterAppend(IMNode node);
+
+  void updateCacheStatusAfterUpdate(IMNode node);
+
+  void remove(IMNode node);
+
+  List<IMNode> evict();
+
+  void pinMNode(IMNode node);
+
+  void unPinMNode(IMNode node);
 }

@@ -269,7 +269,10 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
 
   @Override
   public boolean isExpelled() {
-    return childCache == null && newChildBuffer == null && updatedChildBuffer == null;
+    return !isVolatile()
+        && isEmpty(childCache)
+        && isEmpty(newChildBuffer)
+        && isEmpty(updatedChildBuffer);
   }
 
   @Override
@@ -293,5 +296,10 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
       childCache = new ConcurrentHashMap<>();
     }
     childCache.putAll(children);
+  }
+
+  @Override
+  public ISegment getSegment() {
+    return this;
   }
 }

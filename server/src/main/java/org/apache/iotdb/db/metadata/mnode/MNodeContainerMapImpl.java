@@ -18,7 +18,15 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.ISegment;
+
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MNodeContainerMapImpl extends ConcurrentHashMap<String, IMNode>
-    implements IMNodeContainer {}
+    implements IMNodeContainer {
+
+  @Override
+  public ISegment getSegment() {
+    return null;
+  }
+}
