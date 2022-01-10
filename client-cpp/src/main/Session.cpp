@@ -103,6 +103,10 @@ shared_ptr <TSFetchResultsResp> RpcUtils::getTSFetchResultsResp(const TSStatus &
 
 void Tablet::reset() {
     rowSize = 0;
+    for (int i = 0; i < schemas.size(); i++) {
+        BitMap *bitMap = bitMaps[i].get();
+        bitMap->reset();
+    }
 }
 
 void Tablet::createColumns() {
@@ -168,30 +172,51 @@ string SessionUtils::getValue(const Tablet &tablet) {
     MyStringBuffer valueBuffer;
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         TSDataType::TSDataType dataType = tablet.schemas[i].second;
+        BitMap *bitMap = tablet.bitMaps[i].get();
         switch (dataType) {
             case TSDataType::BOOLEAN:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putBool(tablet.values[i][index] == "true");
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putBool(tablet.values[i][index] == "true");
+                    } else {
+                        valueBuffer.putBool(false);
+                    }
                 }
                 break;
             case TSDataType::INT32:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putInt(stoi(tablet.values[i][index]));
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putInt(stoi(tablet.values[i][index]));
+                    } else {
+                        valueBuffer.putInt(INT_MIN);
+                    }
                 }
                 break;
             case TSDataType::INT64:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putLong(stol(tablet.values[i][index]));
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putLong(stol(tablet.values[i][index]));
+                    } else {
+                        valueBuffer.putLong(INT64_MIN);
+                    }
                 }
                 break;
             case TSDataType::FLOAT:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putFloat(stof(tablet.values[i][index]));
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putFloat(stof(tablet.values[i][index]));
+                    } else {
+                        valueBuffer.putFloat(FLT_MIN);
+                    }
                 }
                 break;
             case TSDataType::DOUBLE:
                 for (int index = 0; index < tablet.rowSize; index++) {
-                    valueBuffer.putDouble(stod(tablet.values[i][index]));
+                    if (!bitMap->isMarked(index)) {
+                        valueBuffer.putDouble(stod(tablet.values[i][index]));
+                    } else {
+                        valueBuffer.putDouble(DBL_MIN);
+                    }
                 }
                 break;
             case TSDataType::TEXT:
@@ -201,6 +226,16 @@ string SessionUtils::getValue(const Tablet &tablet) {
                 break;
             default:
                 throw UnSupportedDataTypeException(string("Data type ") + to_string(dataType) + " is not supported.");
+        }
+    }
+    for (size_t i = 0; i < tablet.schemas.size(); i++) {
+        BitMap *bitMap = tablet.bitMaps[i].get();
+        bool columnHasNull = !bitMap->isAllUnmarked();
+        if (columnHasNull) {
+            vector <byte> bytes = bitMap->getByteArray();
+            for (int j = 0; j < tablet.rowSize >> 3 + 1; j++) {
+                valueBuffer.put(bytes[j]);
+            }
         }
     }
     return valueBuffer.str;

@@ -48,6 +48,8 @@ using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
+typedef unsigned char byte;
+
 class IoTDBConnectionException : public std::exception {
 public:
     IoTDBConnectionException() : message() {}
@@ -289,6 +291,10 @@ public:
         str += ins;
     }
 
+    void put(byte ins) {
+        str += ins;
+    }
+
 public:
     std::string str;
     size_t pos;
@@ -329,6 +335,98 @@ private:
     char numericBuf[8];  //only be used by int, long, float, double etc.
 };
 
+class BitMap {
+public:
+    /** Initialize a BitMap with given size. */
+    BitMap(size_t size) {
+        this->size = size;
+        this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
+        std::fill(bits.begin(), bits.end(), (byte) 0);
+    }
+
+    /** mark as 1 at the given bit position. */
+    void mark(int position) {
+        bits[position >> 3] |= BIT_UTIL[position % 8];
+    }
+
+    /** mark as 0 at the given bit position. */
+    void unmark(int position) {
+        bits[position >> 3] &= UNMARK_BIT_UTIL[position % 8];
+    }
+
+    /** mark as 1 at all positions. */
+    void markAll() {
+        std::fill(bits.begin(), bits.end(), (byte) 0XFF);
+    }
+
+    /** mark as 0 at all positions. */
+    void reset() {
+        std::fill(bits.begin(), bits.end(), (byte) 0);
+    }
+
+    /** returns the value of the bit with the specified index. */
+    bool isMarked(int position) {
+        return (bits[position >> 3] & BIT_UTIL[position % 8]) != 0;
+    }
+
+    /** whether all bits are zero, i.e., no Null value */
+    bool isAllUnmarked() {
+        int j;
+        for (j = 0; j < size >> 3; j++) {
+            if (bits[j] != (byte) 0) {
+                return false;
+            }
+        }
+        for (j = 0; j < size % 8; j++) {
+            if ((bits[size >> 3] & BIT_UTIL[j]) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** whether all bits are one, i.e., all are Null */
+    bool isAllMarked() {
+        int j;
+        for (j = 0; j < size >> 3; j++) {
+            if (bits[j] != (byte) 0XFF) {
+                return false;
+            }
+        }
+        for (j = 0; j < size % 8; j++) {
+            if ((bits[size >> 3] & BIT_UTIL[j]) == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    std::vector <byte> getByteArray() {
+        return this->bits;
+    }
+
+    size_t getSize() {
+        return this->size;
+    }
+
+private:
+    std::vector <byte> BIT_UTIL = {
+            (byte) 1, (byte) 2, (byte) 4, (byte) 8, (byte) 16, (byte) 32, (byte) 64, (byte) -128
+    };
+    std::vector <byte> UNMARK_BIT_UTIL = {
+            (byte) 0XFE, // 11111110
+            (byte) 0XFD, // 11111101
+            (byte) 0XFB, // 11111011
+            (byte) 0XF7, // 11110111
+            (byte) 0XEF, // 11101111
+            (byte) 0XDF, // 11011111
+            (byte) 0XBF, // 10111111
+            (byte) 0X7F // 01111111
+    };
+
+    std::vector <byte> bits;
+    size_t size;
+};
 
 class Field {
 public:
@@ -367,8 +465,9 @@ private:
 public:
     std::string deviceId; // deviceId of this tablet
     std::vector <std::pair<std::string, TSDataType::TSDataType>> schemas; // the list of measurement schemas for creating the tablet
-    std::vector <int64_t> timestamps;   //timestamps in this tablet
-    std::vector <std::vector<std::string>> values;
+    std::vector <int64_t> timestamps;   // timestamps in this tablet
+    std::vector <std::vector<std::string>> values; // each object is a primitive type array, which represents values of one measurement
+    std::vector <std::unique_ptr<BitMap>> bitMaps; // each bitmap represents the existence of each value in the current column
     int rowSize;    //the number of rows to include in this tablet
     int maxRowNumber;   // the maximum number of rows for this tablet
     bool isAligned;   // whether this tablet store data of aligned timeseries or not
@@ -398,20 +497,22 @@ public:
      * @param maxRowNumber the maximum number of rows for this tablet
      */
     Tablet(const std::string &deviceId, const std::vector <std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber, bool isAligned_ = false) : deviceId(deviceId), schemas(schemas),
-                                                        maxRowNumber(maxRowNumber), isAligned(isAligned_) {
+           int maxRowNumber, bool _isAligned = false) : deviceId(deviceId), schemas(schemas),
+                                                        maxRowNumber(maxRowNumber), isAligned(_isAligned) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
-        // create value columns
+        // create value columns and bitMaps
         values.resize(schemas.size());
+        bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
             values[i].resize(maxRowNumber);
+            bitMaps[i] = std::unique_ptr<BitMap>(new BitMap(maxRowNumber));
         }
-
         this->rowSize = 0;
     }
 
     void reset(); // Reset Tablet to the default state - set the rowSize to 0
+
     void createColumns();
 
     int getTimeBytesSize();
