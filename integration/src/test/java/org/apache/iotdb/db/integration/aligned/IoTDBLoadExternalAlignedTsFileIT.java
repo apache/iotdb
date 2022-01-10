@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration;
+package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.integration.IoTDBLoadExternalTsfileIT;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
@@ -71,52 +72,52 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         //        "CREATE TIMESERIES root.test.d1.g0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
         "CREATE ALIGNED TIMESERIES root.vehicle.d0(s0 INT32 encoding=RLE, s1 TEXT encoding=PLAIN)",
         "CREATE ALIGNED TIMESERIES root.vehicle.d1(s2 FLOAT encoding=RLE, s3 BOOLEAN encoding=PLAIN)",
-        "CREATE ALIGNED TIMESERIES root.test.d0(s0, INT32 encoding=RLE, s1 TEXT encoding=PLAIN)",
+        "CREATE ALIGNED TIMESERIES root.test.d0(s0 INT32 encoding=RLE, s1 TEXT encoding=PLAIN)",
         "CREATE ALIGNED TIMESERIES root.test.d1.g0(s0 INT32 encoding=RLE)",
-        "insert into root.vehicle.d0(timestamp,s0) values(10,100)",
-        "insert into root.vehicle.d0(timestamp,s0,s1) values(12,101,'102')",
-        "insert into root.vehicle.d0(timestamp,s1) values(19,'103')",
-        "insert into root.vehicle.d1(timestamp,s2) values(11,104.0)",
-        "insert into root.vehicle.d1(timestamp,s2,s3) values(15,105.0,true)",
-        "insert into root.vehicle.d1(timestamp,s3) values(17,false)",
-        "insert into root.vehicle.d0(timestamp,s0) values(20,1000)",
-        "insert into root.test.d0(timestamp,s0) values(10,106)",
-        "insert into root.test.d0(timestamp,s0,s1) values(14,107,'108')",
-        "insert into root.test.d0(timestamp,s1) values(16,'109')",
-        "insert into root.test.d1.g0(timestamp,s0) values(1,110)",
-        "insert into root.test.d0(timestamp,s0) values(30,1006)",
-        "insert into root.test.d0(timestamp,s0,s1) values(34,1007,'1008')",
-        "insert into root.test.d0(timestamp,s1) values(36,'1090')",
-        "insert into root.test.d1.g0(timestamp,s0) values(10,1100)",
+        "insert into root.vehicle.d0(timestamp,s0) aligned values(10,100)",
+        "insert into root.vehicle.d0(timestamp,s0,s1) aligned values(12,101,'102')",
+        "insert into root.vehicle.d0(timestamp,s1) aligned values(19,'103')",
+        "insert into root.vehicle.d1(timestamp,s2) aligned values(11,104.0)",
+        "insert into root.vehicle.d1(timestamp,s2,s3) aligned values(15,105.0,true)",
+        "insert into root.vehicle.d1(timestamp,s3) aligned values(17,false)",
+        "insert into root.vehicle.d0(timestamp,s0) aligned values(20,1000)",
+        "insert into root.test.d0(timestamp,s0) aligned values(10,106)",
+        "insert into root.test.d0(timestamp,s0,s1) aligned values(14,107,'108')",
+        "insert into root.test.d0(timestamp,s1) aligned values(16,'109')",
+        "insert into root.test.d1.g0(timestamp,s0) aligned values(1,110)",
+        "insert into root.test.d0(timestamp,s0) aligned values(30,1006)",
+        "insert into root.test.d0(timestamp,s0,s1) aligned values(34,1007,'1008')",
+        "insert into root.test.d0(timestamp,s1) aligned values(36,'1090')",
+        "insert into root.test.d1.g0(timestamp,s0) aligned values(10,1100)",
         "flush",
-        "insert into root.test.d0(timestamp,s0) values(150,126)",
-        "insert into root.test.d0(timestamp,s0,s1) values(80,127,'128')",
-        "insert into root.test.d0(timestamp,s1) values(200,'129')",
-        "insert into root.test.d1.g0(timestamp,s0) values(140,430)",
-        "insert into root.test.d0(timestamp,s0) values(150,426)",
+        "insert into root.test.d0(timestamp,s0) aligned values(150,126)",
+        "insert into root.test.d0(timestamp,s0,s1) aligned values(80,127,'128')",
+        "insert into root.test.d0(timestamp,s1) aligned values(200,'129')",
+        "insert into root.test.d1.g0(timestamp,s0) aligned values(140,430)",
+        "insert into root.test.d0(timestamp,s0) aligned values(150,426)",
         "flush"
       };
 
   private static String[] insertUnsequenceSqls =
       new String[] {
-        "insert into root.vehicle.d0(timestamp,s0) values(6,120)",
-        "insert into root.vehicle.d0(timestamp,s0,s1) values(38,121,'122')",
-        "insert into root.vehicle.d0(timestamp,s1) values(9,'123')",
-        "insert into root.vehicle.d0(timestamp,s0) values(16,128)",
-        "insert into root.vehicle.d0(timestamp,s0,s1) values(18,189,'198')",
-        "insert into root.vehicle.d0(timestamp,s1) values(99,'1234')",
-        "insert into root.vehicle.d1(timestamp,s2) values(14,1024.0)",
-        "insert into root.vehicle.d1(timestamp,s2,s3) values(29,1205.0,true)",
-        "insert into root.vehicle.d1(timestamp,s3) values(33,true)",
-        "insert into root.test.d0(timestamp,s0) values(45,126)",
-        "insert into root.test.d0(timestamp,s0,s1) values(68,127,'128')",
-        "insert into root.test.d0(timestamp,s1) values(78,'129')",
-        "insert into root.test.d1.g0(timestamp,s0) values(14,430)",
+        "insert into root.vehicle.d0(timestamp,s0) aligned values(6,120)",
+        "insert into root.vehicle.d0(timestamp,s0,s1) aligned values(38,121,'122')",
+        "insert into root.vehicle.d0(timestamp,s1) aligned values(9,'123')",
+        "insert into root.vehicle.d0(timestamp,s0) aligned values(16,128)",
+        "insert into root.vehicle.d0(timestamp,s0,s1) aligned values(18,189,'198')",
+        "insert into root.vehicle.d0(timestamp,s1) aligned values(99,'1234')",
+        "insert into root.vehicle.d1(timestamp,s2) aligned values(14,1024.0)",
+        "insert into root.vehicle.d1(timestamp,s2,s3) aligned values(29,1205.0,true)",
+        "insert into root.vehicle.d1(timestamp,s3) aligned values(33,true)",
+        "insert into root.test.d0(timestamp,s0) aligned values(45,126)",
+        "insert into root.test.d0(timestamp,s0,s1) aligned values(68,127,'128')",
+        "insert into root.test.d0(timestamp,s1) aligned values(78,'129')",
+        "insert into root.test.d1.g0(timestamp,s0) aligned values(14,430)",
         "flush",
-        "insert into root.test.d0(timestamp,s0) values(20,426)",
-        "insert into root.test.d0(timestamp,s0,s1) values(13,427,'528')",
-        "insert into root.test.d0(timestamp,s1) values(2,'1209')",
-        "insert into root.test.d1.g0(timestamp,s0) values(4,330)",
+        "insert into root.test.d0(timestamp,s0) aligned values(20,426)",
+        "insert into root.test.d0(timestamp,s0,s1) aligned values(13,427,'528')",
+        "insert into root.test.d0(timestamp,s1) aligned values(2,'1209')",
+        "insert into root.test.d1.g0(timestamp,s0) aligned values(4,330)",
         "flush",
       };
 
@@ -714,9 +715,8 @@ public class IoTDBLoadExternalAlignedTsFileIT {
                   "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
                   "CREATE TIMESERIES root.vehicle.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
                   "CREATE TIMESERIES root.vehicle.d1.s3 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-                  "CREATE TIMESERIES root.test.d0.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
-                  "CREATE TIMESERIES root.test.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-                  "CREATE TIMESERIES root.test.d1.g0.s0 WITH DATATYPE=INT32, ENCODING=RLE"));
+                  "CREATE ALIGNED TIMESERIES root.test.d0(s0 FLOAT encoding=RLE, s1 TEXT encoding=PLAIN)",
+                  "CREATE ALIGNED TIMESERIES root.test.d1.g0(s0 INT32 encoding=RLE)"));
 
       for (String sql : metaDataSqls) {
         statement.execute(sql);
@@ -730,8 +730,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         hasError = true;
         assertTrue(
             e.getMessage()
-                .contains(
-                    "because root.vehicle.d0.s0 is INT32 in the loading TsFile but is INT64 in IoTDB."));
+                .contains("is aligned in the loading TsFile but is not aligned in IoTDB."));
       }
       assertTrue(hasError);
 

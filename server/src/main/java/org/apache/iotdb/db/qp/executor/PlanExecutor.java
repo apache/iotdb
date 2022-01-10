@@ -1230,8 +1230,12 @@ public class PlanExecutor implements IPlanExecutor {
       if (!IoTDB.metaManager.isPathExist(devicePath)) {
         continue;
       }
+      boolean isAlignedInIoTDB =
+          IoTDB.metaManager.getDeviceNode(devicePath).getAsEntityMNode().isAligned();
+      boolean isAlignedInTsFile = false;
       for (TimeseriesMetadata metadata : entry.getValue()) {
         if ("".equals(metadata.getMeasurementId())) {
+          isAlignedInTsFile = true;
           continue;
         }
         PartialPath fullPath =
@@ -1240,14 +1244,19 @@ public class PlanExecutor implements IPlanExecutor {
           TSDataType dataType = IoTDB.metaManager.getSeriesType(fullPath);
           if (dataType != metadata.getTSDataType()) {
             throw new QueryProcessException(
-                fullPath.getFullPath()
-                    + " is "
-                    + metadata.getTSDataType().name()
-                    + " in the loading TsFile but is "
-                    + dataType.name()
-                    + " in IoTDB.");
+                String.format(
+                    "%s is %s in the loading TsFile but is %s in IoTDB.",
+                    fullPath.getFullPath(), metadata.getTSDataType().name(), dataType.name()));
           }
         }
+      }
+      if (isAlignedInIoTDB != isAlignedInTsFile) {
+        throw new QueryProcessException(
+            String.format(
+                "%s is%s aligned in the loading TsFile but is%s aligned in IoTDB.",
+                devicePath.getFullPath(),
+                isAlignedInTsFile ? "" : " not",
+                isAlignedInIoTDB ? "" : " not"));
       }
     }
   }
@@ -1311,6 +1320,9 @@ public class PlanExecutor implements IPlanExecutor {
       }
 
       int size = needRegisterSeries.size();
+      if (size == 0) {
+        continue;
+      }
       if (isAligned) {
         List<String> measurements = new ArrayList<>();
         List<TSDataType> dataTypes = new ArrayList<>();
