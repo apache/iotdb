@@ -51,7 +51,7 @@ specialClause?
 
 ```sql
 intoClause
-  : INTO intoPath (COMMA intoPath)*
+  : INTO ALIGNED? intoPath (COMMA intoPath)*
   ;
 
 intoPath
@@ -112,6 +112,24 @@ intoPath
     into root.sg.d1.sg_t1, root.sg.d1.d1, root.d1.sg.t2
     from root.sg.d1
     ```
+
+
+
+**您可以通过关键词  `ALIGNED` 指定 `intoPath`（目标序列）是否为一个对齐时间序列。**
+
+当目标序列存在时，您需要保证源序列和目标时间序列的类型匹配。
+
+当目标序列不存在时，系统将自动创建一个新的目标对齐时间序列。
+
+
+  * 例子：
+
+    ```sql
+    select s1, s2, s3
+    into root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
+    from root.sg.d1
+    ```
+
 
 
 
