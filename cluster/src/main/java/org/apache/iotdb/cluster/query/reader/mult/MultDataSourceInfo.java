@@ -192,7 +192,7 @@ public class MultDataSourceInfo {
       return newReaderId;
     } catch (TApplicationException e) {
       throw e;
-    }  catch (TException e) {
+    } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
       client.close();
       throw e;
