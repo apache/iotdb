@@ -1226,7 +1226,7 @@ public class PlanExecutor implements IPlanExecutor {
         continue;
       }
       for (TimeseriesMetadata metadata : entry.getValue()) {
-        if (metadata.getMeasurementId().equals("")) {
+        if ("".equals(metadata.getMeasurementId())) {
           continue;
         }
         PartialPath fullPath =
@@ -1279,7 +1279,7 @@ public class PlanExecutor implements IPlanExecutor {
         existSeriesSet.add(path.getMeasurementAlias());
       }
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
-        if (chunkMetadata.getMeasurementUid().equals("")) {
+        if ("".equals(chunkMetadata.getMeasurementUid())) {
           isAligned = true;
           continue;
         }
