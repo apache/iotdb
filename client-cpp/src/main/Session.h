@@ -192,42 +192,42 @@ public:
 
     static void verifySuccess(const TSStatus &status);
 
-    static void verifySuccess(const std::vector<TSStatus> &statuses);
+    static void verifySuccess(const std::vector <TSStatus> &statuses);
 
     static TSStatus getStatus(TSStatusCode::TSStatusCode tsStatusCode);
 
     static TSStatus getStatus(int code, const std::string &message);
 
-    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr <TSExecuteStatementResp> getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode);
 
-    static std::shared_ptr<TSExecuteStatementResp>
+    static std::shared_ptr <TSExecuteStatementResp>
     getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &message);
 
-    static std::shared_ptr<TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus &status);
+    static std::shared_ptr <TSExecuteStatementResp> getTSExecuteStatementResp(const TSStatus &status);
 
-    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
+    static std::shared_ptr <TSFetchResultsResp> getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode);
 
-    static std::shared_ptr<TSFetchResultsResp>
+    static std::shared_ptr <TSFetchResultsResp>
     getTSFetchResultsResp(TSStatusCode::TSStatusCode tsStatusCode, const std::string &appendMessage);
 
-    static std::shared_ptr<TSFetchResultsResp> getTSFetchResultsResp(const TSStatus &status);
+    static std::shared_ptr <TSFetchResultsResp> getTSFetchResultsResp(const TSStatus &status);
 };
 
 // Simulate the ByteBuffer class in Java
 class MyStringBuffer {
 public:
-    MyStringBuffer():pos(0) {
+    MyStringBuffer() : pos(0) {
         checkBigEndian();
     }
 
-    MyStringBuffer(std::string str):str(str),pos(0) {
+    MyStringBuffer(std::string str) : str(str), pos(0) {
         checkBigEndian();
     }
 
     bool hasRemaining() {
         return pos < str.size();
     }
-    
+
     int getInt() {
         return *(int *) getOrderedByte(4);
     }
@@ -280,7 +280,7 @@ public:
     }
 
     void putBool(bool ins) {
-        char tmp = ins? 1 : 0;
+        char tmp = ins ? 1 : 0;
         str += tmp;
     }
 
@@ -317,8 +317,7 @@ private:
     void putOrderedByte(char *buf, int len) {
         if (isBigEndian) {
             str.assign(buf, len);
-        }
-        else {
+        } else {
             for (int i = len - 1; i > -1; i--) {
                 str += buf[i];
             }
@@ -383,7 +382,8 @@ public:
    * @param deviceId   the name of the device specified to be written in
    * @param timeseries the list of measurement schemas for creating the tablet
    */
-    Tablet(const std::string &deviceId, const std::vector <std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
+    Tablet(const std::string &deviceId,
+           const std::vector <std::pair<std::string, TSDataType::TSDataType>> &timeseries) {
         Tablet(deviceId, timeseries, DEFAULT_SIZE);
     }
 
@@ -398,7 +398,8 @@ public:
      * @param maxRowNumber the maximum number of rows for this tablet
      */
     Tablet(const std::string &deviceId, const std::vector <std::pair<std::string, TSDataType::TSDataType>> &schemas,
-           int maxRowNumber, bool isAligned_ = false) : deviceId(deviceId), schemas(schemas), maxRowNumber(maxRowNumber), isAligned(isAligned_){
+           int maxRowNumber, bool isAligned_ = false) : deviceId(deviceId), schemas(schemas),
+                                                        maxRowNumber(maxRowNumber), isAligned(isAligned_) {
         // create timestamp column
         timestamps.resize(maxRowNumber);
         // create value columns
@@ -454,12 +455,12 @@ public:
 
     std::string toString() {
         std::string ret = "";
-        if(this->timestamp != -1) {
+        if (this->timestamp != -1) {
             ret.append(std::to_string(timestamp));
             ret.append("\t");
         }
         for (size_t i = 0; i < fields.size(); i++) {
-            if(i != 0) {
+            if (i != 0) {
                 ret.append("\t");
             }
             TSDataType::TSDataType dataType = fields[i].dataType;
@@ -531,8 +532,8 @@ public:
     SessionDataSet() {}
 
     SessionDataSet(const std::string &sql,
-                   const std::vector<std::string> &columnNameList,
-                   const std::vector<std::string> &columnTypeList,
+                   const std::vector <std::string> &columnNameList,
+                   const std::vector <std::string> &columnTypeList,
                    std::map<std::string, int> &columnNameIndexMap,
                    bool isIgnoreTimeStamp,
                    int64_t queryId, int64_t statementId,
@@ -557,11 +558,13 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
-            if(!columnNameIndexMap.empty()) {
+            if (!columnNameIndexMap.empty()) {
                 this->valueBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
                 this->bitmapBuffers.push_back(
-                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
             } else {
                 this->valueBuffers.push_back(
                         std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
@@ -637,14 +640,17 @@ private:
     void appendValues(std::string &buffer, const char *value, int size);
 
     void
-    putValuesIntoBuffer(const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values, std::string &buf);
+    putValuesIntoBuffer(const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values,
+                        std::string &buf);
 
     int8_t getDataTypeNumber(TSDataType::TSDataType type);
 
     struct TsCompare {
         std::vector <int64_t> &timestamps;
-        TsCompare(std::vector <int64_t> &inTimestamps):timestamps(inTimestamps) {};
-        bool operator() (int i, int j) { return (timestamps[i] < timestamps[j]) ;};
+
+        TsCompare(std::vector <int64_t> &inTimestamps) : timestamps(inTimestamps) {};
+
+        bool operator()(int i, int j) { return (timestamps[i] < timestamps[j]); };
     };
 
 public:
@@ -662,7 +668,8 @@ public:
         this->zoneId = "UTC+08:00";
     }
 
-    Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password, int fetchSize) {
+    Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
+            int fetchSize) {
         this->host = host;
         this->rpcPort = rpcPort;
         this->username = username;
@@ -698,10 +705,10 @@ public:
                       const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values);
 
     void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector <std::string> &measurements,
-                      const std::vector <std::string> &values);
+                             const std::vector <std::string> &values);
 
     void insertAlignedRecord(const std::string &deviceId, int64_t time, const std::vector <std::string> &measurements,
-                      const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values);
+                             const std::vector <TSDataType::TSDataType> &types, const std::vector<char *> &values);
 
     void insertRecords(const std::vector <std::string> &deviceIds,
                        const std::vector <int64_t> &times,
@@ -715,15 +722,15 @@ public:
                        const std::vector <std::vector<char *>> &valuesList);
 
     void insertAlignedRecords(const std::vector <std::string> &deviceIds,
-                       const std::vector <int64_t> &times,
-                       const std::vector <std::vector<std::string>> &measurementsList,
-                       const std::vector <std::vector<std::string>> &valuesList);
+                              const std::vector <int64_t> &times,
+                              const std::vector <std::vector<std::string>> &measurementsList,
+                              const std::vector <std::vector<std::string>> &valuesList);
 
     void insertAlignedRecords(const std::vector <std::string> &deviceIds,
-                       const std::vector <int64_t> &times,
-                       const std::vector <std::vector<std::string>> &measurementsList,
-                       const std::vector <std::vector<TSDataType::TSDataType>> &typesList,
-                       const std::vector <std::vector<char *>> &valuesList);
+                              const std::vector <int64_t> &times,
+                              const std::vector <std::vector<std::string>> &measurementsList,
+                              const std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                              const std::vector <std::vector<char *>> &valuesList);
 
     void insertRecordsOfOneDevice(const std::string &deviceId,
                                   std::vector <int64_t> &times,
@@ -739,17 +746,17 @@ public:
                                   bool sorted);
 
     void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
-                                  std::vector <int64_t> &times,
-                                  std::vector <std::vector<std::string>> &measurementsList,
-                                  std::vector <std::vector<TSDataType::TSDataType>> &typesList,
-                                  std::vector <std::vector<char *>> &valuesList);
+                                         std::vector <int64_t> &times,
+                                         std::vector <std::vector<std::string>> &measurementsList,
+                                         std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                                         std::vector <std::vector<char *>> &valuesList);
 
     void insertAlignedRecordsOfOneDevice(const std::string &deviceId,
-                                  std::vector <int64_t> &times,
-                                  std::vector <std::vector<std::string>> &measurementsList,
-                                  std::vector <std::vector<TSDataType::TSDataType>> &typesList,
-                                  std::vector <std::vector<char *>> &valuesList,
-                                  bool sorted);
+                                         std::vector <int64_t> &times,
+                                         std::vector <std::vector<std::string>> &measurementsList,
+                                         std::vector <std::vector<TSDataType::TSDataType>> &typesList,
+                                         std::vector <std::vector<char *>> &valuesList,
+                                         bool sorted);
 
     void insertTablet(Tablet &tablet);
 

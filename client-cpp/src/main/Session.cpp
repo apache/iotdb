@@ -313,7 +313,7 @@ void SessionDataSet::constructOneRow() {
         outFields.push_back(field);
     }
 
-    if(!this->isIgnoreTimeStamp) {
+    if (!this->isIgnoreTimeStamp) {
         rowRecord = RowRecord(tsQueryDataSetTimeBuffer.getLong(), outFields);
     } else {
         tsQueryDataSetTimeBuffer.getLong();
@@ -406,7 +406,7 @@ void Session::sortTablet(Tablet &tablet) {
 }
 
 void Session::sortIndexByTimestamp(int *index, std::vector <int64_t> &timestamps, int length) {
-    if ( length <= 1 ) {
+    if (length <= 1) {
         return;
     }
 
@@ -617,8 +617,8 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
 }
 
 void Session::insertAlignedRecord(const string &deviceId, int64_t time,
-                           const vector <string> &measurements,
-                           const vector <string> &values) {
+                                  const vector <string> &measurements,
+                                  const vector <string> &values) {
     TSInsertStringRecordReq req;
     req.__set_sessionId(sessionId);
     req.__set_prefixPath(deviceId);
@@ -637,9 +637,9 @@ void Session::insertAlignedRecord(const string &deviceId, int64_t time,
 }
 
 void Session::insertAlignedRecord(const string &prefixPath, int64_t time,
-                           const vector <string> &measurements,
-                           const vector <TSDataType::TSDataType> &types,
-                           const vector<char *> &values) {
+                                  const vector <string> &measurements,
+                                  const vector <TSDataType::TSDataType> &types,
+                                  const vector<char *> &values) {
     TSInsertRecordReq req;
     req.__set_sessionId(sessionId);
     req.__set_prefixPath(prefixPath);
@@ -719,9 +719,9 @@ void Session::insertRecords(const vector <string> &deviceIds,
 }
 
 void Session::insertAlignedRecords(const vector <string> &deviceIds,
-                            const vector <int64_t> &times,
-                            const vector <vector<string>> &measurementsList,
-                            const vector <vector<string>> &valuesList) {
+                                   const vector <int64_t> &times,
+                                   const vector <vector<string>> &measurementsList,
+                                   const vector <vector<string>> &valuesList) {
     size_t len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
         logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
@@ -746,10 +746,10 @@ void Session::insertAlignedRecords(const vector <string> &deviceIds,
 }
 
 void Session::insertAlignedRecords(const vector <string> &deviceIds,
-                            const vector <int64_t> &times,
-                            const vector <vector<string>> &measurementsList,
-                            const vector <vector<TSDataType::TSDataType>> &typesList,
-                            const vector <vector<char *>> &valuesList) {
+                                   const vector <int64_t> &times,
+                                   const vector <vector<string>> &measurementsList,
+                                   const vector <vector<TSDataType::TSDataType>> &typesList,
+                                   const vector <vector<char *>> &valuesList) {
     size_t len = deviceIds.size();
     if (len != times.size() || len != measurementsList.size() || len != valuesList.size()) {
         logic_error e("deviceIds, times, measurementsList and valuesList's size should be equal");
@@ -834,19 +834,19 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
 }
 
 void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
-                                       vector <int64_t> &times,
-                                       vector <vector<string>> &measurementsList,
-                                       vector <vector<TSDataType::TSDataType>> &typesList,
-                                       vector <vector<char *>> &valuesList) {
+                                              vector <int64_t> &times,
+                                              vector <vector<string>> &measurementsList,
+                                              vector <vector<TSDataType::TSDataType>> &typesList,
+                                              vector <vector<char *>> &valuesList) {
     insertAlignedRecordsOfOneDevice(deviceId, times, measurementsList, typesList, valuesList, false);
 }
 
 void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
-                                       vector <int64_t> &times,
-                                       vector <vector<string>> &measurementsList,
-                                       vector <vector<TSDataType::TSDataType>> &typesList,
-                                       vector <vector<char *>> &valuesList,
-                                       bool sorted) {
+                                              vector <int64_t> &times,
+                                              vector <vector<string>> &measurementsList,
+                                              vector <vector<TSDataType::TSDataType>> &typesList,
+                                              vector <vector<char *>> &valuesList,
+                                              bool sorted) {
 
     if (sorted) {
         if (!checkSorted(times)) {
@@ -1002,7 +1002,7 @@ void Session::insertAlignedTablets(map<string, Tablet *> &tablets) {
 }
 
 void Session::insertAlignedTablets(map<string, Tablet *> &tablets, bool sorted) {
-    for(map<string, Tablet *>::iterator iter = tablets.begin(); iter != tablets.end(); iter++) {
+    for (map<string, Tablet *>::iterator iter = tablets.begin(); iter != tablets.end(); iter++) {
         iter->second->setAligned(true);
     }
     try {
@@ -1252,10 +1252,10 @@ void Session::createMultiTimeseries(const vector <string> &paths,
 }
 
 void Session::createAlignedTimeseries(const std::string &deviceId,
-                             const std::vector <std::string> &measurements,
-                             const std::vector <TSDataType::TSDataType> &dataTypes,
-                             const std::vector <TSEncoding::TSEncoding> &encodings,
-                             const std::vector <CompressionType::CompressionType> &compressors) {
+                                      const std::vector <std::string> &measurements,
+                                      const std::vector <TSDataType::TSDataType> &dataTypes,
+                                      const std::vector <TSEncoding::TSEncoding> &encodings,
+                                      const std::vector <CompressionType::CompressionType> &compressors) {
     shared_ptr <TSCreateAlignedTimeseriesReq> request(new TSCreateAlignedTimeseriesReq());
     request->__set_sessionId(sessionId);
     request->__set_prefixPath(deviceId);
@@ -1348,7 +1348,8 @@ unique_ptr <SessionDataSet> Session::executeQueryStatement(const string &sql) {
     }
     shared_ptr <TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
     return unique_ptr<SessionDataSet>(new SessionDataSet(
-            sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->ignoreTimeStamp, resp->queryId, statementId, client, sessionId, queryDataSet));
+            sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->ignoreTimeStamp, resp->queryId,
+            statementId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(const string &sql) {
