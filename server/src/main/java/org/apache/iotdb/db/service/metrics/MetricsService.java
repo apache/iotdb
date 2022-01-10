@@ -49,15 +49,15 @@ public class MetricsService implements MetricsServiceMBean, IService {
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private MetricManager metricManager;
+  private MetricManager metricManager = new DoNothingMetricManager();
 
-  private CompositeReporter compositeReporter;
+  private CompositeReporter compositeReporter = new CompositeReporter();;
 
-  private MetricsService() {
-    logger.info("Init metric service");
-    // load manager
-    loadManager();
-  }
+  private boolean isEnableMetric = metricConfig.getEnableMetric();
+
+  private int pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
+
+  private MetricsService() {}
 
   private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
@@ -85,7 +85,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   private void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-    compositeReporter = new CompositeReporter();
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
@@ -104,7 +103,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
   public void start(ReporterType reporter) {
-    if (!isEnable()) {
+    if (!isEnableMetric) {
       return;
     }
     compositeReporter.start(reporter);
@@ -112,7 +111,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
   public void stop(ReporterType reporter) {
-    if (!isEnable()) {
+    if (!isEnableMetric) {
       return;
     }
     compositeReporter.stop(reporter);
@@ -121,7 +120,8 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   public void start() throws StartupException {
     try {
-      if (metricConfig.getEnableMetric()) {
+      if (isEnableMetric) {
+        logger.info("Start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
       }
@@ -133,19 +133,23 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   @Override
   public void stop() {
-    if (metricConfig.getEnableMetric()) {
+    if (isEnableMetric) {
+      logger.info("Stop metric Service.");
       stopService();
       JMXService.deregisterMBean(mbeanName);
+      isEnableMetric = false;
     }
   }
 
   @Override
   /** Start all reporter. if is disabled, do nothing */
   public void startService() {
-    // load reporter
-    loadReporter();
+    // load manager
+    loadManager();
     // do some init work
     metricManager.init();
+    // load reporter
+    loadReporter();
     // start reporter
     compositeReporter.startAll();
 
@@ -238,10 +242,41 @@ public class MetricsService implements MetricsServiceMBean, IService {
     startService();
   }
 
+  public void reloadProperties() {
+    logger.info("Reload properties of metric service");
+    synchronized (this) {
+      try {
+        if (metricConfig.getEnableMetric() != isEnableMetric) {
+          if (metricConfig.getEnableMetric()) {
+            isEnableMetric = true;
+            logger.info("Start metric Service, after reload");
+            start();
+          } else {
+            logger.info("Stop metric Service, after reload");
+            stop();
+            isEnableMetric = false;
+          }
+        }
+        if (isEnableMetric) {
+          if (metricConfig.getPushPeriodInSecond() != pushPeriodInSecond) {
+            logger.info("Restart metric reporter, after reload");
+            pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
+            compositeReporter.restartAll();
+          }
+        }
+      } catch (StartupException startupException) {
+        logger.error("Failed to start metric when reload properties");
+      }
+    }
+  }
+
   @Override
   /** Stop metric service. if is disabled, do nothing */
   public void stopService() {
+    metricManager.stop();
     compositeReporter.stopAll();
+    metricManager = new DoNothingMetricManager();
+    compositeReporter = new CompositeReporter();
   }
 
   /**
@@ -257,7 +292,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   public boolean isEnable() {
-    return metricConfig.getEnableMetric();
+    return isEnableMetric;
   }
 
   @Override
