@@ -29,6 +29,7 @@ import org.apache.iotdb.db.integration.IoTDBLoadExternalTsfileIT;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.jdbc.Config;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
