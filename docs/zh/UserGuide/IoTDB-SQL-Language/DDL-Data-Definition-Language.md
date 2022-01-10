@@ -478,26 +478,28 @@ IoTDB> show devices root.ln.**
 你可以获得如下数据：
 
 ```
-+-------------------+
-|            devices|
-+-------------------+
-|  root.ln.wf01.wt01|
-|  root.ln.wf02.wt02|
-|root.sgcc.wf03.wt01|
-|    root.turbine.d1|
-+-------------------+
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|  root.ln.wf01.wt01|    false|
+|  root.ln.wf02.wt02|    false|
+|root.sgcc.wf03.wt01|    false|
+|    root.turbine.d1|    false|
++-------------------+---------+
 Total line number = 4
 It costs 0.002s
 
-+-----------------+
-|          devices|
-+-----------------+
-|root.ln.wf01.wt01|
-|root.ln.wf02.wt02|
-+-----------------+
++-----------------+---------+
+|          devices|isAligned|
++-----------------+---------+
+|root.ln.wf01.wt01|    false|
+|root.ln.wf02.wt02|    false|
++-----------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
+
+其中，`isAligned`表示该设备下的时间序列是否对齐。
 
 查看设备及其存储组信息，可以使用 `SHOW DEVICES WITH STORAGE GROUP` 语句。
 
@@ -514,23 +516,23 @@ IoTDB> show devices root.ln.** with storage group
 你可以获得如下数据：
 
 ```
-+-------------------+-------------+
-|            devices|storage group|
-+-------------------+-------------+
-|  root.ln.wf01.wt01|      root.ln|
-|  root.ln.wf02.wt02|      root.ln|
-|root.sgcc.wf03.wt01|    root.sgcc|
-|    root.turbine.d1| root.turbine|
-+-------------------+-------------+
++-------------------+-------------+---------+
+|            devices|storage group|isAligned|
++-------------------+-------------+---------+
+|  root.ln.wf01.wt01|      root.ln|    false|
+|  root.ln.wf02.wt02|      root.ln|    false|
+|root.sgcc.wf03.wt01|    root.sgcc|    false|
+|    root.turbine.d1| root.turbine|    false|
++-------------------+-------------+---------+
 Total line number = 4
 It costs 0.003s
 
-+-----------------+-------------+
-|          devices|storage group|
-+-----------------+-------------+
-|root.ln.wf01.wt01|      root.ln|
-|root.ln.wf02.wt02|      root.ln|
-+-----------------+-------------+
++-----------------+-------------+---------+
+|          devices|storage group|isAligned|
++-----------------+-------------+---------+
+|root.ln.wf01.wt01|      root.ln|    false|
+|root.ln.wf02.wt02|      root.ln|    false|
++-----------------+-------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
