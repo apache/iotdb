@@ -28,6 +28,7 @@ import org.apache.iotdb.metrics.type.*;
 import org.apache.iotdb.metrics.type.Timer;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 
+import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.jvm.*;
 import org.slf4j.Logger;
@@ -420,13 +421,15 @@ public class DropwizardMetricManager implements MetricManager {
 
   @Override
   public boolean init() {
-    // init somethings
+    // init something
     return true;
   }
 
   @Override
   public boolean stop() {
-    // clear everything
+    isEnable = metricConfig.getEnableMetric();
+    metricRegistry.removeMatching(MetricFilter.ALL);
+    currentMeters = new ConcurrentHashMap<>();
     return true;
   }
 }

@@ -65,8 +65,8 @@ public class MetricConfigDescriptor {
     return url;
   }
 
-  /** Load an property file and set MetricConfig variables. If not found file, use default value. */
-  private void loadProps() {
+  /** Load a property file and set MetricConfig variables. If not found file, use default value. */
+  public void loadProps() {
     String url = getPropsUrl();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
@@ -82,6 +82,27 @@ public class MetricConfigDescriptor {
       logger.warn("Fail to find config file, use default");
     }
     metricConfig = new MetricConfig();
+  }
+
+  public void loadHotProperties() {
+    String url = getPropsUrl();
+    Constructor constructor = new Constructor(MetricConfig.class);
+    Yaml yaml = new Yaml(constructor);
+    MetricConfig newMetricConfig = null;
+    if (url != null) {
+      try (InputStream inputStream = new FileInputStream(new File(url))) {
+        logger.info("Start to read config file {}", url);
+        newMetricConfig = (MetricConfig) yaml.load(inputStream);
+      } catch (IOException e) {
+        logger.warn("Fail to find config file : {}, use default", url, e);
+      }
+    } else {
+      logger.warn("Fail to find config file, use default");
+    }
+    if (newMetricConfig != null) {
+      metricConfig.setEnableMetric(newMetricConfig.getEnableMetric());
+      metricConfig.setPushPeriodInSecond(newMetricConfig.getPushPeriodInSecond());
+    }
   }
 
   private static class MetricConfigDescriptorHolder {
