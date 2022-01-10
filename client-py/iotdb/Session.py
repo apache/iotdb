@@ -753,5 +753,5 @@ class Session(object):
         if status.code == Session.SUCCESS_CODE:
             return 0
 
-        logger.debug("error status is", status)
+        logger.error("error status is", status)
         return -1
