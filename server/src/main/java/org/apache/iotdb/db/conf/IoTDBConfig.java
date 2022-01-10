@@ -172,6 +172,11 @@ public class IoTDBConfig {
 
   private long walPoolTrimIntervalInMS = 10_000;
 
+  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
+  private long registerBufferSleepIntervalInMs = 200;
+  /** if total sleep time exceeds this, system will reject this write. */
+  private long registerBufferRejectThresholdInMs = 10_000;
+
   private int estimatedSeriesSize = 300;
 
   /**
@@ -233,8 +238,16 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 8;
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
+  private int concurrentQueryThread = 16;
+
+  /**
+   * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
+   */
+  private int concurrentSubRawQueryThread = 8;
+
+  /** Blocking queue size for read task in raw data query. */
+  private int rawQueryBlockingQueueCapacity = 5;
 
   /** Is the write mem control for writing enable. */
   private boolean enableMemControl = true;
@@ -589,7 +602,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 500;
+  private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -1086,8 +1099,24 @@ public class IoTDBConfig {
     return concurrentQueryThread;
   }
 
-  void setConcurrentQueryThread(int concurrentQueryThread) {
+  public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentSubRawQueryThread() {
+    return concurrentSubRawQueryThread;
+  }
+
+  void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
+    this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  }
+
+  public int getRawQueryBlockingQueueCapacity() {
+    return rawQueryBlockingQueueCapacity;
+  }
+
+  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
+    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public long getSeqTsFileSize() {
@@ -1246,6 +1275,22 @@ public class IoTDBConfig {
 
   public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
     this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  }
+
+  public long getRegisterBufferSleepIntervalInMs() {
+    return registerBufferSleepIntervalInMs;
+  }
+
+  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
+    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
+  }
+
+  public long getRegisterBufferRejectThresholdInMs() {
+    return registerBufferRejectThresholdInMs;
+  }
+
+  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
+    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
   }
 
   public int getEstimatedSeriesSize() {

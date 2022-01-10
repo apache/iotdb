@@ -39,7 +39,7 @@
     <description>Grafana data source connector for IoTDB</description>
     <properties>
         <start-class>org.apache.iotdb.web.grafana.TsfileWebDemoApplication</start-class>
-        <spring-boot.version>2.5.5</spring-boot.version>
+        <spring-boot.version>1.5.15.RELEASE</spring-boot.version>
         <spring.version>4.3.9.RELEASE</spring.version>
         <grafana.test.skip>false</grafana.test.skip>
         <grafana.it.skip>${grafana.test.skip}</grafana.it.skip>
@@ -136,7 +136,7 @@
                         <dependency>
                             <groupId>org.springframework.boot</groupId>
                             <artifactId>spring-boot-maven-plugin</artifactId>
-                            <version>2.5.5</version>
+                            <version>1.5.15.RELEASE</version>
                         </dependency>
                     </dependencies>
                     <configuration>
@@ -170,7 +170,7 @@
                                     <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                         <resource>META-INF/spring.schemas</resource>
                                     </transformer>
-                                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                                    <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                     <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                         <mainClass>${start-class}</mainClass>
                                     </transformer>
