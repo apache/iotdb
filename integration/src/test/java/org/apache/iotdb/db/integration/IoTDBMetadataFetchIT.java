@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 /**
@@ -68,6 +69,12 @@ public class IoTDBMetadataFetchIT {
             "SET STORAGE GROUP TO root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+            "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+            "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+                + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+            "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+            "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
                 + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
           };
 
@@ -101,15 +108,15 @@ public class IoTDBMetadataFetchIT {
       String[] sqls =
           new String[] {
             "show timeseries root.ln.wf01.wt01.status", // full seriesPath
-            "show timeseries root.ln", // prefix seriesPath
-            "show timeseries root.ln.*.wt01", // seriesPath with stars
+            "show timeseries root.ln.**", // prefix seriesPath
+            "show timeseries root.ln.*.wt01.*", // seriesPath with stars
             "show timeseries", // the same as root
             "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
           };
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
-                Arrays.asList(
+                Collections.singletonList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
             new HashSet<>(
                 Arrays.asList(
@@ -122,8 +129,12 @@ public class IoTDBMetadataFetchIT {
             new HashSet<>(
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
-            new HashSet<>(Collections.singletonList(""))
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+            new HashSet<>()
           };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
@@ -138,8 +149,11 @@ public class IoTDBMetadataFetchIT {
                 for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
-                Assert.assertTrue(standard.contains(builder.toString()));
+                String string = builder.toString();
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
@@ -158,7 +172,7 @@ public class IoTDBMetadataFetchIT {
       String[] sqls =
           new String[] {
             "show storage group",
-            "show storage group root.ln.wf01",
+            "show storage group root.ln.wf01.**",
             "show storage group root.ln.wf01.wt01.status"
           };
       Set<String>[] standards =
@@ -166,7 +180,7 @@ public class IoTDBMetadataFetchIT {
             new HashSet<>(
                 Arrays.asList("root.ln.wf01.wt01,", "root.ln1.wf01.wt01,", "root.ln2.wf01.wt01,")),
             new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,")),
-            new HashSet<>(Collections.singletonList(""))
+            new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -183,7 +197,11 @@ public class IoTDBMetadataFetchIT {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 Assert.assertTrue(standard.contains(builder.toString()));
+                String string = builder.toString();
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
@@ -197,19 +215,13 @@ public class IoTDBMetadataFetchIT {
   @Test
   @Category({LocalStandaloneTest.class})
   public void databaseMetaDataTest() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection()) {
       databaseMetaData = connection.getMetaData();
       showTimeseriesInJson();
 
     } catch (Exception e) {
       logger.error("databaseMetaDataTest() failed", e);
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -240,15 +252,13 @@ public class IoTDBMetadataFetchIT {
         Statement statement = connection.createStatement()) {
       String[] sqls =
           new String[] {
-            "show devices root.ln with storage group", "show devices root.ln.wf01.wt01.temperature"
+            "show devices root.ln.** with storage group",
+            "show devices root.ln.wf01.wt01.temperature"
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,root.ln.wf01.wt01,",
-                    "root.ln.wf01.wt01.status,root.ln.wf01.wt01,")),
-            new HashSet<>(Collections.singletonList(""))
+            new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,root.ln.wf01.wt01,")),
+            new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -264,8 +274,11 @@ public class IoTDBMetadataFetchIT {
                 for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
-                Assert.assertTrue(standard.contains(builder.toString()));
+                String string = builder.toString();
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
@@ -282,11 +295,10 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls =
-          new String[] {"show devices root.ln", "show devices root.ln.wf01.wt01.temperature"};
+          new String[] {"show devices root.ln.**", "show devices root.ln.wf01.wt01.temperature"};
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt01.status,")),
-            new HashSet<>(Collections.singletonList(""))
+            new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,")), new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -302,8 +314,11 @@ public class IoTDBMetadataFetchIT {
                 for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
                   builder.append(resultSet.getString(i)).append(",");
                 }
-                Assert.assertTrue(standard.contains(builder.toString()));
+                String string = builder.toString();
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
@@ -386,7 +401,7 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
-      String[] standards = new String[] {"2,\n", "2,\n"};
+      String[] standards = new String[] {"2,\n", "6,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -424,7 +439,7 @@ public class IoTDBMetadataFetchIT {
             "COUNT DEVICES",
             "COUNT DEVICES root.ln.wf01.wt01.temperature"
           };
-      String[] standards = new String[] {"1,\n", "1,\n", "0,\n"};
+      String[] standards = new String[] {"1,\n", "3,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -494,9 +509,20 @@ public class IoTDBMetadataFetchIT {
   public void showCountTimeSeriesGroupBy() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT TIMESERIES root group by level=1"};
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** group by level=1",
+            "COUNT TIMESERIES root.** group by level=3",
+            "COUNT TIMESERIES root.**.status group by level=2"
+          };
       Set<String>[] standards =
-          new Set[] {new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,0,", "root.ln2,0,"))};
+          new Set[] {
+            new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,2,", "root.ln2,2,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,2,", "root.ln1.wf01.wt01,2,", "root.ln2.wf01.wt01,2,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+          };
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         Set<String> standard = standards[n];
@@ -505,11 +531,11 @@ public class IoTDBMetadataFetchIT {
           if (hasResultSet) {
             try (ResultSet resultSet = statement.getResultSet()) {
               while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                builder.append(resultSet.getString(1)).append(",");
-                builder.append(resultSet.getInt(2)).append(",");
-                Assert.assertTrue(standard.contains(builder.toString()));
+                String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
               }
+              assertEquals(0, standard.size());
             }
           }
         } catch (SQLException e) {
@@ -567,39 +593,7 @@ public class IoTDBMetadataFetchIT {
     String standard =
         "===  Timeseries Tree  ===\n"
             + "\n"
-            + "{\n"
-            + "\t\"root\":{\n"
-            + "\t\t\"ln2\":{\n"
-            + "\t\t\t\"wf01\":{\n"
-            + "\t\t\t\t\"wt01\":{}\n"
-            + "\t\t\t}\n"
-            + "\t\t},\n"
-            + "\t\t\"ln\":{\n"
-            + "\t\t\t\"wf01\":{\n"
-            + "\t\t\t\t\"wt01\":{\n"
-            + "\t\t\t\t\t\"temperature\":{\n"
-            + "\t\t\t\t\t\t\"args\":\"{max_point_number=3}\",\n"
-            + "\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
-            + "\t\t\t\t\t\t\"DataType\":\"FLOAT\",\n"
-            + "\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
-            + "\t\t\t\t\t\t\"Encoding\":\"RLE\"\n"
-            + "\t\t\t\t\t},\n"
-            + "\t\t\t\t\t\"status\":{\n"
-            + "\t\t\t\t\t\t\t\"StorageGroup\":\"root.ln.wf01.wt01\",\n"
-            + "\t\t\t\t\t\t\t\"DataType\":\"BOOLEAN\",\n"
-            + "\t\t\t\t\t\t\t\"Compressor\":\"SNAPPY\",\n"
-            + "\t\t\t\t\t\t\t\"Encoding\":\"PLAIN\"\n"
-            + "\t\t\t\t\t}\n"
-            + "\t\t\t\t}\n"
-            + "\t\t\t}\n"
-            + "\t\t},\n"
-            + "\t\t\"ln1\":{\n"
-            + "\t\t\t\"wf01\":{\n"
-            + "\t\t\t\t\"wt01\":{}\n"
-            + "\t\t\t}\n"
-            + "\t\t}\n"
-            + "\t}\n"
-            + "}";
+            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
 
     // TODO Remove the constant json String.
     // Do not depends on the sequence of property in json string if you do not

@@ -1076,6 +1076,15 @@ public class MTreeService implements Serializable {
     counter.traverse();
     return counter.getCount();
   }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(root, pathPattern, level);
+    counter.traverse();
+    return counter.getResult();
+  }
+
   // endregion
 
   // endregion
