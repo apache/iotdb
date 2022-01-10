@@ -877,7 +877,7 @@ public class MTreeTest {
 
   @Test
   public void testGetMeasurementCountGroupByLevel() throws Exception {
-    MTree root = new MTree();
+    MTreeService root = new MTreeService();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.s1"),
