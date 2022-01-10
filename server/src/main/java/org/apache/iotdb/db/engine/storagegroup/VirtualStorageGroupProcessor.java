@@ -2927,8 +2927,7 @@ public class VirtualStorageGroupProcessor {
   public void setDataTTL(long dataTTL) {
     // Check files ttl will lock tsfile resource firstly and then lock tsfile.
     // This lock order is conflict with tsfile creation in insert method, so we get a potential dead
-    // lock
-    // Add this write lock to avoid dead lock above.
+    // lock. Add this write lock to avoid dead lock above.
     writeLock("setDataTTL");
     try {
       this.dataTTL = dataTTL;
