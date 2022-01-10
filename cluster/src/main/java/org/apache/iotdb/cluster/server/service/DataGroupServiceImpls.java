@@ -44,6 +44,7 @@ import org.apache.iotdb.cluster.rpc.thrift.TSDataService;
 import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 
@@ -691,7 +692,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
     try {
       return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -727,7 +728,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
     } catch (IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 

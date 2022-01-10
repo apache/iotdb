@@ -124,6 +124,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -979,7 +980,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
 
     WatermarkEncoder encoder = null;

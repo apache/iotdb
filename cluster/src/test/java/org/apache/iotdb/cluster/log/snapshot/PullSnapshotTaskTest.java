@@ -47,6 +47,7 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -130,7 +131,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                   }
                   return targetMember.getSnapshot(request);
                 } catch (IOException e) {
-                  throw new TException(e);
+                  throw new TApplicationException(e.getMessage());
                 }
               }
 
@@ -140,7 +141,7 @@ public class PullSnapshotTaskTest extends DataSnapshotTest {
                 try {
                   return IOUtils.readFile(filePath, offset, length);
                 } catch (IOException e) {
-                  throw new TException(e);
+                  throw new TApplicationException(e.getMessage());
                 }
               }
 

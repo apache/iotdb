@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -147,7 +148,7 @@ public class AssignPathManagedMergeReaderTest {
                       AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(
@@ -176,7 +177,7 @@ public class AssignPathManagedMergeReaderTest {
                       MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(() -> resultHandler.onComplete(1L)).start();

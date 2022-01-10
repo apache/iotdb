@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -67,7 +68,8 @@ public class DatasourceInfoTest {
                   public void querySingleSeries(
                       SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
                       throws TException {
-                    throw new TException("Don't worry, this is the exception I constructed.");
+                    throw new TApplicationException(
+                        "Don't worry, this is the exception I constructed.");
                   }
                 };
               }

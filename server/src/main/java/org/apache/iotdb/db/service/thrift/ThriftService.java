@@ -127,7 +127,7 @@ public abstract class ThriftService implements IService {
         | IllegalAccessException
         | InstantiationException e) {
       Thread.currentThread().interrupt();
-      throw new StartupException(this.getID().getName(), e.getMessage());
+      throw new StartupException(this.getID().getName(), e);
     }
 
     logger.info(

@@ -619,6 +619,7 @@ public abstract class Cases {
     try {
       writeStatement.execute(createTimeSeries);
     } catch (Exception e) {
+      System.out.println(e.getClass().getName() + ":" + e.getMessage());
       Assert.assertTrue(
           e.getMessage()
               .contains("Database is read-only, and does not accept non-query operation now"));

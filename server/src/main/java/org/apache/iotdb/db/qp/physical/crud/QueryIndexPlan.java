@@ -22,6 +22,7 @@ import org.apache.iotdb.db.index.common.IndexType;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 
 import java.util.BitSet;
@@ -43,7 +44,7 @@ public class QueryIndexPlan extends RawDataQueryPlan {
   public List<TSDataType> getWideQueryHeaders(
       List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws TException {
-    throw new TException("unsupported query type: " + getOperatorType());
+    throw new TApplicationException("unsupported query type: " + getOperatorType());
   }
 
   public IndexType getIndexType() {

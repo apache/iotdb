@@ -30,6 +30,15 @@ public class StartupException extends IoTDBException {
         TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 
+  public StartupException(String name, Throwable throwable) {
+    super(
+        String.format(
+            "Failed to start [%s], because [%s]",
+            name, throwable.getClass().getName() + ":" + throwable.getMessage()),
+        throwable,
+        TSStatusCode.START_UP_ERROR.getStatusCode());
+  }
+
   public StartupException(Throwable cause) {
     super(cause.getMessage(), TSStatusCode.START_UP_ERROR.getStatusCode());
   }

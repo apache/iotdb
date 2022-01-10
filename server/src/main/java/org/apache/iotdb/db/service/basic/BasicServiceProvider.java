@@ -51,6 +51,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,7 +142,7 @@ public class BasicServiceProvider {
     try {
       authorizer = BasicAuthorizer.getInstance();
     } catch (AuthException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
     String loginMessage = null;
     try {

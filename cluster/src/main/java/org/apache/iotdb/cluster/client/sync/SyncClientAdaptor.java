@@ -66,6 +66,7 @@ import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -248,7 +249,7 @@ public class SyncClientAdaptor {
       }
     }
     if (handler.getException() != null) {
-      throw new TException(handler.getException());
+      throw new TApplicationException(handler.getException().getMessage());
     }
     return resultRef.get();
   }
@@ -265,7 +266,7 @@ public class SyncClientAdaptor {
       }
     }
     if (handler.getException() != null) {
-      throw new TException(handler.getException());
+      throw new TApplicationException(handler.getException().getMessage());
     }
     return resultRef.get();
   }
@@ -334,7 +335,7 @@ public class SyncClientAdaptor {
       }
     }
     if (handler.getException() != null) {
-      throw new TException(handler.getException());
+      throw new TApplicationException(handler.getException().getMessage());
     }
     return resultReference.get();
   }

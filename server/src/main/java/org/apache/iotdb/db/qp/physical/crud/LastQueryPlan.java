@@ -33,6 +33,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGt;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter.TimeGtEq;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 
 import java.util.ArrayList;
@@ -72,7 +73,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
   public List<TSDataType> getWideQueryHeaders(
       List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws TException {
-    throw new TException("unsupported query type: " + getOperatorType());
+    throw new TApplicationException("unsupported query type: " + getOperatorType());
   }
 
   @Override

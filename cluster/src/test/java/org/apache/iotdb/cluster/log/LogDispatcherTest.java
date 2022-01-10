@@ -39,6 +39,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -114,7 +115,7 @@ public class LogDispatcherTest {
                   }
                   return -1;
                 } catch (UnknownLogTypeException e) {
-                  throw new TException(e);
+                  throw new TApplicationException(e.getMessage());
                 }
               }
 
@@ -126,7 +127,7 @@ public class LogDispatcherTest {
                   }
                   return -1;
                 } catch (UnknownLogTypeException e) {
-                  throw new TException(e);
+                  throw new TApplicationException(e.getMessage());
                 }
               }
             };

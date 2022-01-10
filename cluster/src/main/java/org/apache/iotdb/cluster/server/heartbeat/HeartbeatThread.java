@@ -442,6 +442,9 @@ public class HeartbeatThread implements Runnable {
   }
 
   private long getElectionRandomWaitMs() {
+    //  if the next election wait time is too small, a node may start an election before the new
+    // leader sends a heartbeat to it when its last election fails. So the node should wait for at
+    // least one heartbeat to ensure that the new leader will send a new heartbeat to it
     return ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs()
         + Math.abs(random.nextLong() % ClusterConstant.getElectionMaxWaitMs());
   }

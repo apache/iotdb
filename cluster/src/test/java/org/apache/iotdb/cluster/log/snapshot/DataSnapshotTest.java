@@ -40,6 +40,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
@@ -153,12 +154,12 @@ public abstract class DataSnapshotTest {
                   throws TException {
                 if (addNetFailure && (failureCnt++) % failureFrequency == 0) {
                   // simulate failures
-                  throw new TException("[Ignore me in tests] Faked network failure");
+                  throw new TApplicationException("[Ignore me in tests] Faked network failure");
                 }
                 try {
                   return IOUtils.readFile(filePath, offset, length);
                 } catch (IOException e) {
-                  throw new TException(e);
+                  throw new TApplicationException(e.getMessage());
                 }
               }
             };

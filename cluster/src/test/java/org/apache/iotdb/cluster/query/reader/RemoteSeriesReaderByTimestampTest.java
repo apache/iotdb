@@ -38,6 +38,7 @@ import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.junit.After;
@@ -82,7 +83,7 @@ public class RemoteSeriesReaderByTimestampTest {
                       org.apache.thrift.async.AsyncMethodCallback<java.lang.Long> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(() -> resultHandler.onComplete(1L)).start();
@@ -96,7 +97,7 @@ public class RemoteSeriesReaderByTimestampTest {
                       AsyncMethodCallback<ByteBuffer> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(

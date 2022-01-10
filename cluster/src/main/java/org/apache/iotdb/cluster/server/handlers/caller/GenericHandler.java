@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.server.handlers.caller;
 
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -87,7 +88,7 @@ public class GenericHandler<T> implements AsyncMethodCallback<T> {
       }
     }
     if (getException() != null) {
-      throw new TException(getException());
+      throw new TApplicationException(getException().getMessage());
     }
     return result.get();
   }

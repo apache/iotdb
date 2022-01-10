@@ -55,6 +55,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
 import org.apache.iotdb.session.util.SessionUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -160,7 +161,7 @@ public class SessionConnection {
             openResp.getServerProtocolVersion().getValue());
         // less than 0.10
         if (openResp.getServerProtocolVersion().getValue() == 0) {
-          throw new TException(
+          throw new TApplicationException(
               String.format(
                   "Protocol not supported, Client version is %s, but Server version is %s",
                   Session.protocolVersion.getValue(),

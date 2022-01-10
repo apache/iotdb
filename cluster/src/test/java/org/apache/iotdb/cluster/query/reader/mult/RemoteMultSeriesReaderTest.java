@@ -48,6 +48,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -215,7 +216,7 @@ public class RemoteMultSeriesReaderTest {
                       AsyncMethodCallback<Map<String, ByteBuffer>> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(
@@ -244,7 +245,7 @@ public class RemoteMultSeriesReaderTest {
                       MultSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TException("Node down.");
+                      throw new TApplicationException("Node down.");
                     }
 
                     new Thread(() -> resultHandler.onComplete(1L)).start();
@@ -300,7 +301,7 @@ public class RemoteMultSeriesReaderTest {
                     public Map<String, ByteBuffer> fetchMultSeries(
                         RaftNode header, long readerId, List<String> paths) throws TException {
                       if (failedNodes.contains(node)) {
-                        throw new TException("Node down.");
+                        throw new TApplicationException("Node down.");
                       }
 
                       Map<String, ByteBuffer> stringByteBufferMap = Maps.newHashMap();
@@ -322,7 +323,7 @@ public class RemoteMultSeriesReaderTest {
                     @Override
                     public long queryMultSeries(MultSeriesQueryRequest request) throws TException {
                       if (failedNodes.contains(node)) {
-                        throw new TException("Node down.");
+                        throw new TApplicationException("Node down.");
                       }
 
                       return 1L;

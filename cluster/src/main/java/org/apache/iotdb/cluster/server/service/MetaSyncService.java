@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,16 +88,16 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     AddNodeResponse addNodeResponse;
     if (!metaGroupMember.isReady()) {
       logger.debug(ERROR_MSG_META_NOT_READY);
-      throw new TException(ERROR_MSG_META_NOT_READY);
+      throw new TApplicationException(ERROR_MSG_META_NOT_READY);
     }
 
     try {
       addNodeResponse = metaGroupMember.addNode(node, startUpStatus);
     } catch (AddSelfException | LogExecutionException | CheckConsistencyException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
     if (addNodeResponse != null) {
       return addNodeResponse;
@@ -111,7 +112,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         return addNodeResponse;
       }
     }
-    throw new TException(new LeaderUnknownException(member.getAllNodes()));
+    throw new TApplicationException(new LeaderUnknownException(member.getAllNodes()).getMessage());
   }
 
   @Override
@@ -120,7 +121,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     try {
       metaGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -176,7 +177,7 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   public long removeNode(Node node) throws TException {
     if (!metaGroupMember.isReady()) {
       logger.debug(ERROR_MSG_META_NOT_READY);
-      throw new TException(ERROR_MSG_META_NOT_READY);
+      throw new TApplicationException(ERROR_MSG_META_NOT_READY);
     }
 
     long result;
@@ -186,11 +187,11 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         | LogExecutionException
         | CheckConsistencyException e) {
       logger.error("Can not remove node {}", node, e);
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error("Can not remove node {}", node, e);
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
 
     if (result != Response.RESPONSE_NULL) {
@@ -206,7 +207,8 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
         return rst;
       }
     }
-    throw new TException(new LeaderUnknownException(metaGroupMember.getAllNodes()));
+    throw new TApplicationException(
+        new LeaderUnknownException(metaGroupMember.getAllNodes()).getMessage());
   }
 
   /**

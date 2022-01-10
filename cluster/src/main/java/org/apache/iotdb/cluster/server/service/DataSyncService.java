@@ -77,7 +77,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.receiveSnapshot(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -87,7 +87,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       pullSnapshotResp = dataGroupMember.getSnapshot(request);
     } catch (IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
     if (pullSnapshotResp == null) {
       return forwardPullSnapshot(request);
@@ -109,7 +109,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
       if (client == null) {
         logger.error("{}, can not get the client for node={}", name, dataGroupMember.getLeader());
-        throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+        throw new TApplicationException(
+            new LeaderUnknownException(dataGroupMember.getAllNodes()).getMessage());
       }
       PullSnapshotResp pullSnapshotResp = null;
       try {
@@ -122,7 +123,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       }
       return pullSnapshotResp;
     } else {
-      throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      throw new TApplicationException(
+          new LeaderUnknownException(dataGroupMember.getAllNodes()).getMessage());
     }
   }
 
@@ -146,7 +148,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
           return dataGroupMember.getLocalQueryExecutor().queryTimeSeriesSchema(request);
         } catch (CheckConsistencyException | MetadataException ex) {
-          throw new TException(ex);
+          throw new TApplicationException(ex.getMessage());
         }
       }
     }
@@ -156,7 +158,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     SyncDataClient client =
         (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
     if (client == null) {
-      throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      throw new TApplicationException(
+          new LeaderUnknownException(dataGroupMember.getAllNodes()).getMessage());
     }
     PullSchemaResp pullSchemaResp;
     try {
@@ -189,7 +192,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           dataGroupMember.getMetaGroupMember().syncLeaderWithConsistencyCheck(false);
           return dataGroupMember.getLocalQueryExecutor().queryMeasurementSchema(request);
         } catch (CheckConsistencyException | MetadataException ex) {
-          throw new TException(ex);
+          throw new TApplicationException(ex.getMessage());
         }
       }
     }
@@ -199,7 +202,8 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     SyncDataClient client =
         (SyncDataClient) dataGroupMember.getSyncClient(dataGroupMember.getLeader());
     if (client == null) {
-      throw new TException(new LeaderUnknownException(dataGroupMember.getAllNodes()));
+      throw new TApplicationException(
+          new LeaderUnknownException(dataGroupMember.getAllNodes()).getMessage());
     }
     PullSchemaResp pullSchemaResp;
     try {
@@ -218,7 +222,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().querySingleSeries(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -227,7 +231,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().queryMultSeries(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -236,7 +240,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().querySingleSeriesByTimestamp(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -245,7 +249,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       dataGroupMember.getQueryManager().endQuery(requester, queryId);
     } catch (StorageEngineException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -254,7 +258,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchSingleSeries(readerId);
     } catch (ReaderNotFoundException | IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -264,7 +268,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().fetchMultSeries(readerId, paths);
     } catch (ReaderNotFoundException | IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -277,7 +281,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           .fetchSingleSeriesByTimestamps(
               readerId, timestamps.stream().mapToLong(k -> k).toArray(), timestamps.size());
     } catch (ReaderNotFoundException | IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -288,7 +292,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
     } catch (MetadataException | CheckConsistencyException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -298,7 +302,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getAllDevices(path);
     } catch (MetadataException | CheckConsistencyException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -307,7 +311,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getDevices(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -317,7 +321,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getNodeList(path, nodeLevel);
     } catch (CheckConsistencyException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -327,7 +331,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getChildNodeInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -337,7 +341,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
       return ((CMManager) IoTDB.metaManager).getChildNodePathInNextLevel(path);
     } catch (CheckConsistencyException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -347,7 +351,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getAllMeasurementSchema(planBinary);
     } catch (CheckConsistencyException | IOException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -370,7 +374,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getUnregisteredTimeseries(timeseriesList);
     } catch (CheckConsistencyException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -379,7 +383,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getGroupByExecutor(request);
     } catch (QueryProcessException | StorageEngineException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -391,7 +395,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           .getLocalQueryExecutor()
           .getGroupByResult(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException | QueryProcessException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -403,7 +407,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | StorageEngineException
         | IOException
         | IllegalPathException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -416,7 +420,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
         | IOException
         | StorageEngineException
         | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -425,7 +429,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level);
     } catch (CheckConsistencyException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -434,7 +438,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
     try {
       return dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery);
     } catch (CheckConsistencyException | MetadataException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -451,7 +455,7 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
           .getLocalQueryExecutor()
           .peekNextNotNullValue(executorId, startTime, endTime);
     } catch (ReaderNotFoundException | IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 }

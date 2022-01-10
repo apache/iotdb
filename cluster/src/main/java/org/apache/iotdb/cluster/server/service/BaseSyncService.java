@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.utils.IOUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +75,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       return member.appendEntry(request);
     } catch (UnknownLogTypeException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -87,9 +88,9 @@ public abstract class BaseSyncService implements RaftService.Iface {
           "Underflow buffers {} of logs from {}",
           request.getEntries(),
           request.getPrevLogIndex() + 1);
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -115,7 +116,8 @@ public abstract class BaseSyncService implements RaftService.Iface {
     member.waitLeader();
     Client client = member.getSyncClient(member.getLeader());
     if (client == null) {
-      throw new TException(new LeaderUnknownException(member.getAllNodes()));
+      throw new TApplicationException(
+          new LeaderUnknownException(member.getAllNodes()).getMessage());
     }
     try {
       response = client.requestCommitIndex(header);
@@ -133,7 +135,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       return IOUtils.readFile(filePath, offset, length);
     } catch (IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -142,7 +144,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       Files.deleteIfExists(new File(hardLinkPath).toPath());
     } catch (IOException e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 
@@ -175,7 +177,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
     try {
       return member.executeNonQueryPlan(request);
     } catch (Exception e) {
-      throw new TException(e);
+      throw new TApplicationException(e.getMessage());
     }
   }
 }

@@ -20,6 +20,7 @@ package org.apache.iotdb.rpc;
 
 import org.apache.iotdb.service.rpc.thrift.TSIService;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 
 import java.lang.reflect.InvocationHandler;
@@ -46,10 +47,22 @@ public class SynchronizedHandler implements InvocationHandler {
         throw e.getTargetException();
       } else {
         // should not happen
-        throw new TException("Error in calling method " + method.getName(), e.getTargetException());
+        throw new TApplicationException(
+            "Error in calling method "
+                + method.getName()
+                + ":"
+                + e.getTargetException().getClass().getName()
+                + ":"
+                + e.getTargetException().getMessage());
       }
     } catch (Exception e) {
-      throw new TException("Error in calling method " + method.getName(), e);
+      throw new TApplicationException(
+          "Error in calling method "
+              + method.getName()
+              + ":"
+              + e.getClass().getName()
+              + ":"
+              + e.getMessage());
     }
   }
 }

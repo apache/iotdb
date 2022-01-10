@@ -30,6 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 
 import java.nio.ByteBuffer;
@@ -300,7 +301,8 @@ public class IoTDBJDBCDataSet {
         throw new StatementExecutionException(
             "Error occurs for close operation in server side because ", e);
       } catch (TException e) {
-        throw new TException("Error occurs when connecting to server for close operation ", e);
+        throw new TApplicationException(
+            "Error occurs when connecting to server for close " + "operation " + e.getMessage());
       }
     }
     client = null;

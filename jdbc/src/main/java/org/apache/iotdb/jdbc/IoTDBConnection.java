@@ -30,6 +30,7 @@ import org.apache.iotdb.service.rpc.thrift.TSProtocolVersion;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -477,7 +478,7 @@ public class IoTDBConnection implements Connection {
             protocolVersion.getValue(),
             openResp.getServerProtocolVersion().getValue());
         if (openResp.getServerProtocolVersion().getValue() == 0) { // less than 0.10
-          throw new TException(
+          throw new TApplicationException(
               String.format(
                   "Protocol not supported, Client version is %s, but Server version is %s",
                   protocolVersion.getValue(), openResp.getServerProtocolVersion().getValue()));
