@@ -915,6 +915,14 @@ Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 * 列出角色权限
 
 ```
+LIST ROLE PRIVILEGES <roleName>
+roleName:=identifier
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
+```
+
+* 列出角色在具体路径上的权限
+
+```
 LIST PRIVILEGES ROLE <roleName> ON <path>;    
 roleName:=identifier  
 path=‘root’ (DOT identifier)*
@@ -927,14 +935,6 @@ Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
 Eg: IoTDB > LIST USER PRIVILEGES tempuser;
-```
-
-* 列出角色权限
-
-```
-LIST ROLE PRIVILEGES <roleName>
-roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * 列出用户角色 
