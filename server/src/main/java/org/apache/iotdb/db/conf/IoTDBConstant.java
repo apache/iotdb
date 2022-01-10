@@ -121,6 +121,10 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
+  public static final String COLUMN_PIPESINK_NAME = "name";
+  public static final String COLUMN_PIPESINK_TYPE = "type";
+  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";

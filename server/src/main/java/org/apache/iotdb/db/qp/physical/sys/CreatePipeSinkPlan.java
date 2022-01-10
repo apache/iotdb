@@ -15,7 +15,7 @@ public class CreatePipeSinkPlan extends PhysicalPlan {
   private List<Pair<String, String>> pipeSinkAttributes;
 
   public CreatePipeSinkPlan(String pipeSinkName, String pipeSinkType) {
-    super(false, Operator.OperatorType.CREATE_PIPESINK);
+    super(Operator.OperatorType.CREATE_PIPESINK);
     this.pipeSinkName = pipeSinkName;
     this.pipeSinkType = pipeSinkType;
     pipeSinkAttributes = new ArrayList<>();

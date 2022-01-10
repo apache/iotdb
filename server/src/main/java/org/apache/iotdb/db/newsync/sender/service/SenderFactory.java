@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.newsync.sender.monitor;
+package org.apache.iotdb.db.newsync.sender.service;
 
 import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;

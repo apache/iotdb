@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.newsync.sender.monitor;
+package org.apache.iotdb.db.newsync.sender.service;
 
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
@@ -39,12 +39,24 @@ public class SenderService implements IService {
     return pipeSinks.getOrDefault(name, null);
   }
 
+  public synchronized boolean isPipeSinkExist(String name) {
+    return pipeSinks.containsKey(name);
+  }
+
   public synchronized void addPipeSink(PipeSink pipeSink) {
     pipeSinks.put(pipeSink.getName(), pipeSink);
   }
 
   public synchronized void dropPipeSink(String name) {
     pipeSinks.remove(name);
+  }
+
+  public synchronized List<PipeSink> getAllPipeSink() {
+    List<PipeSink> allPipeSinks = new ArrayList<>();
+    for (Map.Entry<String, PipeSink> entry : pipeSinks.entrySet()) {
+      allPipeSinks.add(entry.getValue());
+    }
+    return allPipeSinks;
   }
 
   @Override

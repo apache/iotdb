@@ -11,8 +11,12 @@ public class DropPipeSinkPlan extends PhysicalPlan {
   private String pipeSinkName;
 
   public DropPipeSinkPlan(String pipeSinkName) {
-    super(false, Operator.OperatorType.DROP_PIPESINK);
+    super(Operator.OperatorType.DROP_PIPESINK);
     this.pipeSinkName = pipeSinkName;
+  }
+
+  public String getPipeSinkName() {
+    return pipeSinkName;
   }
 
   @Override
