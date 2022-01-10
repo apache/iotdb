@@ -231,10 +231,11 @@ string SessionUtils::getValue(const Tablet &tablet) {
     for (size_t i = 0; i < tablet.schemas.size(); i++) {
         BitMap *bitMap = tablet.bitMaps[i].get();
         bool columnHasNull = !bitMap->isAllUnmarked();
+        valueBuffer.putChar(columnHasNull ? (char) 1 : (char) 0);
         if (columnHasNull) {
-            vector <byte> bytes = bitMap->getByteArray();
-            for (int j = 0; j < tablet.rowSize >> 3 + 1; j++) {
-                valueBuffer.put(bytes[j]);
+            vector<char> bytes = bitMap->getByteArray();
+            for (int j = 0; j < bytes.size(); j++) {
+                valueBuffer.putChar(bytes[j]);
             }
         }
     }

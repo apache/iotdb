@@ -48,8 +48,6 @@ using ::apache::thrift::transport::TBufferedTransport;
 using ::apache::thrift::transport::TFramedTransport;
 using ::apache::thrift::TException;
 
-typedef unsigned char byte;
-
 class IoTDBConnectionException : public std::exception {
 public:
     IoTDBConnectionException() : message() {}
@@ -291,10 +289,6 @@ public:
         str += ins;
     }
 
-    void put(byte ins) {
-        str += ins;
-    }
-
 public:
     std::string str;
     size_t pos;
@@ -341,7 +335,7 @@ public:
     BitMap(size_t size) {
         this->size = size;
         this->bits.resize((size >> 3) + 1); // equal to "size/8 + 1"
-        std::fill(bits.begin(), bits.end(), (byte) 0);
+        std::fill(bits.begin(), bits.end(), (char) 0);
     }
 
     /** mark as 1 at the given bit position. */
@@ -356,12 +350,12 @@ public:
 
     /** mark as 1 at all positions. */
     void markAll() {
-        std::fill(bits.begin(), bits.end(), (byte) 0XFF);
+        std::fill(bits.begin(), bits.end(), (char) 0XFF);
     }
 
     /** mark as 0 at all positions. */
     void reset() {
-        std::fill(bits.begin(), bits.end(), (byte) 0);
+        std::fill(bits.begin(), bits.end(), (char) 0);
     }
 
     /** returns the value of the bit with the specified index. */
@@ -373,7 +367,7 @@ public:
     bool isAllUnmarked() {
         int j;
         for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (byte) 0) {
+            if (bits[j] != (char) 0) {
                 return false;
             }
         }
@@ -389,7 +383,7 @@ public:
     bool isAllMarked() {
         int j;
         for (j = 0; j < size >> 3; j++) {
-            if (bits[j] != (byte) 0XFF) {
+            if (bits[j] != (char) 0XFF) {
                 return false;
             }
         }
@@ -401,7 +395,7 @@ public:
         return true;
     }
 
-    std::vector <byte> getByteArray() {
+    std::vector<char> getByteArray() {
         return this->bits;
     }
 
@@ -410,21 +404,21 @@ public:
     }
 
 private:
-    std::vector <byte> BIT_UTIL = {
-            (byte) 1, (byte) 2, (byte) 4, (byte) 8, (byte) 16, (byte) 32, (byte) 64, (byte) -128
+    std::vector<char> BIT_UTIL = {
+            (char) 1, (char) 2, (char) 4, (char) 8, (char) 16, (char) 32, (char) 64, (char) -128
     };
-    std::vector <byte> UNMARK_BIT_UTIL = {
-            (byte) 0XFE, // 11111110
-            (byte) 0XFD, // 11111101
-            (byte) 0XFB, // 11111011
-            (byte) 0XF7, // 11110111
-            (byte) 0XEF, // 11101111
-            (byte) 0XDF, // 11011111
-            (byte) 0XBF, // 10111111
-            (byte) 0X7F // 01111111
+    std::vector<char> UNMARK_BIT_UTIL = {
+            (char) 0XFE, // 11111110
+            (char) 0XFD, // 11111101
+            (char) 0XFB, // 11111011
+            (char) 0XF7, // 11110111
+            (char) 0XEF, // 11101111
+            (char) 0XDF, // 11011111
+            (char) 0XBF, // 10111111
+            (char) 0X7F // 01111111
     };
 
-    std::vector <byte> bits;
+    std::vector<char> bits;
     size_t size;
 };
 
