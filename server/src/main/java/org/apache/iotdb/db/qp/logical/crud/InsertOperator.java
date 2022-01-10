@@ -27,7 +27,6 @@ import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowsPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import java.util.Arrays;
 import java.util.List;
 
 /** this class extends {@code RootOperator} and process insert statement. */
@@ -111,12 +110,7 @@ public class InsertOperator extends Operator {
                 measurementsNum, valueLists.get(i).length));
       }
       InsertRowPlan insertRowPlan =
-          new InsertRowPlan(
-              device,
-              times[i],
-              measurementList,
-              Arrays.copyOfRange(
-                  valueLists.get(i), i * measurementsNum, (i + 1) * measurementsNum));
+          new InsertRowPlan(device, times[i], measurementList, valueLists.get(i));
       insertRowPlan.setAligned(isAligned);
       insertRowsPlan.addOneInsertRowPlan(insertRowPlan, i);
     }
