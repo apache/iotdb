@@ -71,10 +71,10 @@ public class InnerSpaceCompactionUtils {
         String device = deviceInfo.left;
         boolean aligned = deviceInfo.right;
         writer.startChunkGroup(device);
-        if (!aligned) {
-          compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
-        } else {
+        if (aligned) {
 
+        } else {
+          compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
         }
         writer.endChunkGroup();
       }
@@ -111,6 +111,8 @@ public class InnerSpaceCompactionUtils {
       compactionExecutorOfCurrentTimeSeries.execute();
     }
   }
+
+  private static void compactAlignedSeries() {}
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {
