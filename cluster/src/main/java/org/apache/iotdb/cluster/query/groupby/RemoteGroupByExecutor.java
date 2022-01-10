@@ -32,6 +32,7 @@ import org.apache.iotdb.db.query.dataset.groupby.GroupByExecutor;
 import org.apache.iotdb.db.utils.SerializeUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,6 +89,8 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
                   .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
           aggrBuffers =
               syncDataClient.getGroupByResult(header, executorId, curStartTime, curEndTime);
+        } catch (TApplicationException e) {
+          throw e;
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();
@@ -140,6 +143,8 @@ public class RemoteGroupByExecutor implements GroupByExecutor {
                   .getSyncDataClient(source, ClusterConstant.getReadOperationTimeoutMS());
           aggrBuffer =
               syncDataClient.peekNextNotNullValue(header, executorId, nextStartTime, nextEndTime);
+        } catch (TApplicationException e) {
+          throw e;
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();

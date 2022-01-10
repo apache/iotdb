@@ -31,6 +31,7 @@ import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotRequest;
 import org.apache.iotdb.cluster.rpc.thrift.PullSnapshotResp;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -161,6 +162,8 @@ public class PullSnapshotTask<T extends Snapshot> implements Callable<Void> {
       PullSnapshotResp pullSnapshotResp;
       try {
         pullSnapshotResp = client.pullSnapshot(request);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         client.close();
         throw e;

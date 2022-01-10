@@ -46,6 +46,7 @@ import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -578,6 +579,8 @@ public class FileSnapshot extends Snapshot implements TimeseriesSchemaSnapshot {
           }
           offset += len;
         }
+      } catch (TApplicationException e) {
+        throw new IOException(e.getMessage());
       } catch (TException e) {
         client.close();
       } finally {

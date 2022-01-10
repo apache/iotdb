@@ -88,6 +88,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -900,6 +901,8 @@ public class CMManager extends MManager {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         result = syncDataClient.getUnregisteredTimeseries(partitionGroup.getHeader(), seriesList);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -1045,6 +1048,8 @@ public class CMManager extends MManager {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -1184,6 +1189,8 @@ public class CMManager extends MManager {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
           paths = syncDataClient.getAllDevices(header, pathsToQuery);
+        } catch (TApplicationException e) {
+          throw e;
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();
@@ -1572,6 +1579,8 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
+      } catch (TApplicationException e) {
+        throw new MetadataException(e.getMessage());
       } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (InterruptedException e) {
@@ -1597,7 +1606,8 @@ public class CMManager extends MManager {
   }
 
   private void getRemoteDevices(
-      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet) {
+      PartitionGroup group, ShowDevicesPlan plan, Set<ShowDevicesResult> resultSet)
+      throws MetadataException {
     ByteBuffer resultBinary = null;
     for (Node node : group) {
       try {
@@ -1605,6 +1615,8 @@ public class CMManager extends MManager {
         if (resultBinary != null) {
           break;
         }
+      } catch (TApplicationException e) {
+        throw new MetadataException(e.getMessage());
       } catch (IOException | TException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (InterruptedException e) {
@@ -1645,6 +1657,8 @@ public class CMManager extends MManager {
           resultBinary =
               syncDataClient.getAllMeasurementSchema(
                   group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+        } catch (TApplicationException e) {
+          throw e;
         } catch (TException e) {
           // the connection may be broken, close it to avoid it being reused
           syncDataClient.close();
@@ -1678,6 +1692,8 @@ public class CMManager extends MManager {
         resultBinary =
             syncDataClient.getDevices(
                 group.getHeader(), ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();

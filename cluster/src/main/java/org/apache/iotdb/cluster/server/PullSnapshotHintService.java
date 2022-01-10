@@ -30,6 +30,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,6 +150,8 @@ public class PullSnapshotHintService {
         return false;
       }
       return syncDataClient.onSnapshotApplied(hint.getHeader(), hint.slots);
+    } catch (TApplicationException e) {
+      throw e;
     } catch (TException e) {
       syncDataClient.close();
       throw e;

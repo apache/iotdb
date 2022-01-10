@@ -85,6 +85,7 @@ import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -1161,6 +1162,8 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
     try {
       response = client.requestCommitIndex(getHeader());
+    } catch (TApplicationException e) {
+      throw e;
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       throw e;
@@ -1385,7 +1388,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
-    } catch (IOException e) {
+    } catch (TApplicationException | IOException e) {
       logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);
       return StatusUtils.getStatus(StatusUtils.INTERNAL_ERROR, e.getMessage());
     } catch (TException e) {
@@ -1907,6 +1910,8 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
         handler.onComplete(result);
+      } catch (TApplicationException e) {
+        handler.onError(e);
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         handler.onError(e);

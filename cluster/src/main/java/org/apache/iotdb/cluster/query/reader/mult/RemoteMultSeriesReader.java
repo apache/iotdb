@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,6 +187,9 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     try {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchMultSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), paths);
+    } catch (TApplicationException e) {
+      logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);
+      return null;
     } catch (TException e) {
       curSyncClient.close();
       logger.error("Failed to fetch result sync, connect to {}", sourceInfo, e);

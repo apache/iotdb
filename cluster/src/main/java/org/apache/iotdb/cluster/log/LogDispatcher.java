@@ -35,6 +35,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
 import org.slf4j.Logger;
@@ -309,6 +310,9 @@ public class LogDispatcher {
               result);
         }
         handler.onComplete(result);
+      } catch (TApplicationException e) {
+        handler.onError(e);
+        logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         handler.onError(e);

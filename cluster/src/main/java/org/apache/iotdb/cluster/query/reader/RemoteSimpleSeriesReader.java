@@ -29,6 +29,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,6 +128,8 @@ public class RemoteSimpleSeriesReader implements IPointReader {
             .getCurAsyncClient(ClusterConstant.getReadOperationTimeoutMS())
             .fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId(), handler);
         fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
+      } catch (TApplicationException e) {
+        throw new IOException(sourceInfo.getCurrentNode() + ":" + e.getMessage());
       } catch (TException e) {
         // try other node
         if (!sourceInfo.switchNode(false, lastTimestamp)) {
@@ -147,6 +150,8 @@ public class RemoteSimpleSeriesReader implements IPointReader {
     try {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeries(sourceInfo.getHeader(), sourceInfo.getReaderId());
+    } catch (TApplicationException e) {
+      throw new IOException(sourceInfo.getCurrentNode() + ":" + e.getMessage());
     } catch (TException e) {
       curSyncClient.close();
       // try other node

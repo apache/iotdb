@@ -26,6 +26,7 @@ import org.apache.iotdb.cluster.server.handlers.caller.GenericHandler;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.db.utils.SerializeUtils;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,8 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
             .fetchSingleSeriesByTimestamps(
                 sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList, handler);
         fetchResult.wait(ClusterConstant.getReadOperationTimeoutMS());
+      } catch (TApplicationException e) {
+        throw new IOException(sourceInfo.getCurrentNode() + ":" + e.getMessage());
       } catch (TException e) {
         // try other node
         if (!sourceInfo.switchNode(true, timestamps[0])) {
@@ -106,6 +109,8 @@ public class RemoteSeriesReaderByTimestamp implements IReaderByTimestamp {
       curSyncClient = sourceInfo.getCurSyncClient(ClusterConstant.getReadOperationTimeoutMS());
       return curSyncClient.fetchSingleSeriesByTimestamps(
           sourceInfo.getHeader(), sourceInfo.getReaderId(), timestampList);
+    } catch (TApplicationException e) {
+      throw new IOException(sourceInfo.getCurrentNode() + ":" + e.getMessage());
     } catch (TException e) {
       curSyncClient.close();
       // try other node

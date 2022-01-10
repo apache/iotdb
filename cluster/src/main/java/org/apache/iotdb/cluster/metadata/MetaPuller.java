@@ -44,6 +44,7 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,6 +251,8 @@ public class MetaPuller {
                   ? MeasurementSchema.partialDeserializeFrom(buffer)
                   : VectorMeasurementSchema.partialDeserializeFrom(buffer));
         }
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -438,6 +441,8 @@ public class MetaPuller {
         for (int i = 0; i < size; i++) {
           schemas.add(TimeseriesSchema.deserializeFrom(buffer));
         }
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         syncDataClient.close();
         throw e;

@@ -37,6 +37,7 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.utils.TestOnly;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,6 +158,9 @@ public class LogCatchUpTask implements Callable<Boolean> {
       long result = client.appendEntry(request);
       handler.onComplete(result);
       return handler.getAppendSucceed().get();
+    } catch (TApplicationException e) {
+      handler.onError(e);
+      return false;
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       handler.onError(e);
@@ -320,6 +324,10 @@ public class LogCatchUpTask implements Callable<Boolean> {
       long result = client.appendEntries(request);
       handler.onComplete(result);
       return appendSucceed.get();
+    } catch (TApplicationException e) {
+      handler.onError(e);
+      logger.warn("Failed logs: {}, first index: {}", logList, request.prevLogIndex + 1);
+      return false;
     } catch (TException e) {
       client.getInputProtocol().getTransport().close();
       handler.onError(e);

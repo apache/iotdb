@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -189,7 +190,9 @@ public class MultDataSourceInfo {
       request.setTimeFilterBytes(SerializeUtils.serializeFilter(newFilter));
       newReaderId = client.queryMultSeries(request);
       return newReaderId;
-    } catch (TException e) {
+    } catch (TApplicationException e) {
+      throw e;
+    }  catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
       client.close();
       throw e;

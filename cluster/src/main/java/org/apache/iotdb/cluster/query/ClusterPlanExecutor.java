@@ -59,6 +59,7 @@ import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -250,6 +251,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
         count = syncDataClient.getDeviceCount(partitionGroup.getHeader(), pathsToCount);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -469,6 +472,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         syncDataClient.setTimeout(ClusterConstant.getReadOperationTimeoutMS());
         count = syncDataClient.getPathCount(partitionGroup.getHeader(), pathsToQuery, level);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -576,6 +581,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         paths = syncDataClient.getNodeList(group.getHeader(), schemaPattern.getFullPath(), level);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -678,6 +685,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         nextChildrenNodes =
             syncDataClient.getChildNodeInNextLevel(group.getHeader(), path.getFullPath());
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();
@@ -803,6 +812,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         nextChildren =
             syncDataClient.getChildNodePathInNextLevel(group.getHeader(), path.getFullPath());
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();

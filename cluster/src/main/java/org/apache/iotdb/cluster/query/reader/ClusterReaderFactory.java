@@ -928,6 +928,8 @@ public class ClusterReaderFactory {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         executorId = syncDataClient.getGroupByExecutor(request);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();

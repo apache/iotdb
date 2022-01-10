@@ -277,6 +277,8 @@ public class ClusterAggregator {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         resultBuffers = syncDataClient.getAggrResult(request);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         // the connection may be broken, close it to avoid it being reused
         syncDataClient.close();

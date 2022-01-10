@@ -47,6 +47,7 @@ import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -142,6 +143,8 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
         try {
           client.checkAlive();
           isAlive = true;
+        } catch (TApplicationException e) {
+          LOGGER.warn("Cannot get node status from {}: {}", node, e.getMessage());
         } catch (TException e) {
           client.getInputProtocol().getTransport().close();
         } finally {

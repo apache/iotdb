@@ -91,6 +91,7 @@ import org.apache.iotdb.service.rpc.thrift.EndPoint;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
@@ -462,6 +463,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       }
       try {
         resp = client.addNode(thisNode, startUpStatus);
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         client.close();
         throw e;
@@ -778,6 +781,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       if (syncClient != null) {
         try {
           syncClient.handshake(thisNode);
+        } catch (TApplicationException e) {
+          logger.error("failed send handshake to node: {}", node, e);
         } catch (TException e) {
           syncClient.close();
           logger.error("failed send handshake to node: {}", node, e);
@@ -1173,6 +1178,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       }
       try {
         return client.checkStatus(getStartUpStatus());
+      } catch (TApplicationException e) {
+        logger.warn("Error occurs when check status on node : {}", seedNode);
       } catch (TException e) {
         client.close();
         logger.warn("Error occurs when check status on node : {}", seedNode);
@@ -1528,6 +1535,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         Node response = null;
         try {
           response = client.checkAlive();
+        } catch (TApplicationException e) {
+          logger.warn("Cannot get status from {}: {}", node, e.getMessage());
         } catch (TException e) {
           client.close();
         } finally {
@@ -1578,6 +1587,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     }
     try {
       return ClusterUtils.deserializeMigrationStatus(client.collectMigrationStatus());
+    } catch (TApplicationException e) {
+      throw e;
     } catch (TException e) {
       client.close();
       throw e;
@@ -1799,6 +1810,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       }
       try {
         client.exile(removeNodeLog.serialize());
+      } catch (TApplicationException e) {
+        logger.warn("Cannot inform {} its removal", node, e);
       } catch (TException e) {
         client.close();
         logger.warn("Cannot inform {} its removal", node, e);

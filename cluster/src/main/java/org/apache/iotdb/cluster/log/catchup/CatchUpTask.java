@@ -35,6 +35,7 @@ import org.apache.iotdb.cluster.server.monitor.Peer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.db.utils.TestOnly;
 
+import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -291,6 +292,8 @@ public class CatchUpTask implements Runnable {
       }
       try {
         matched = client.matchTerm(logIndex, logTerm, raftMember.getHeader());
+      } catch (TApplicationException e) {
+        throw e;
       } catch (TException e) {
         client.getInputProtocol().getTransport().close();
         throw e;
