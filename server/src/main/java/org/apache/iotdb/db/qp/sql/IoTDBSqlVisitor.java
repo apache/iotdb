@@ -2806,7 +2806,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (ctx.propertyClause(0) != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : tagsList) {
         String value;
-        if (property.propertyValue().constant().STRING_LITERAL() != null) {
+        if (property.propertyValue().constant() != null
+            && property.propertyValue().constant().STRING_LITERAL() != null) {
           value = parseStringWithQuotes(property.propertyValue().getText());
         } else {
           value = property.propertyValue().getText();
