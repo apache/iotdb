@@ -27,6 +27,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.AlignedTimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
@@ -389,7 +390,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     }
     ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
     MetadataIndexNode metadataIndexNode;
-    TimeseriesMetadata firstTimeseriesMetadata = null;
+    TimeseriesMetadata firstTimeseriesMetadata;
     try {
       // next layer MeasurementNode of the specific DeviceNode
       metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
@@ -733,7 +734,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
     for (int i = 0; i < metadataIndexEntryList.size(); i++) {
       MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
-      long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
+      long endOffset = metadataIndexNode.getEndOffset();
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
@@ -905,7 +906,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
     for (int i = 0; i < metadataIndexEntryList.size(); i++) {
       MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
-      long endOffset = tsFileMetaData.getMetadataIndex().getEndOffset();
+      long endOffset = metadataIndexNode.getEndOffset();
       if (i != metadataIndexEntryList.size() - 1) {
         endOffset = metadataIndexEntryList.get(i + 1).getOffset();
       }
@@ -1456,6 +1457,86 @@ public class TsFileSequenceReader implements AutoCloseable {
 
   public List<ChunkMetadata> getChunkMetadataList(Path path) throws IOException {
     return getChunkMetadataList(path, false);
+  }
+
+  /**
+   * Get AlignedChunkMetadata of sensors under one device
+   *
+   * @param device device name
+   */
+  public List<AlignedChunkMetadata> getAlignedChunkMetadata(String device) throws IOException {
+    readFileMetadata();
+    MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
+    Pair<MetadataIndexEntry, Long> metadataIndexPair =
+        getMetadataAndEndOffset(deviceMetadataIndexNode, device, true, true);
+    if (metadataIndexPair == null) {
+      throw new IOException("Device {" + device + "} is not in tsFileMetaData");
+    }
+    ByteBuffer buffer = readData(metadataIndexPair.left.getOffset(), metadataIndexPair.right);
+    MetadataIndexNode metadataIndexNode;
+    TimeseriesMetadata firstTimeseriesMetadata;
+    try {
+      // next layer MeasurementNode of the specific DeviceNode
+      metadataIndexNode = MetadataIndexNode.deserializeFrom(buffer);
+    } catch (BufferOverflowException e) {
+      logger.error(METADATA_INDEX_NODE_DESERIALIZE_ERROR, file);
+      throw e;
+    }
+    firstTimeseriesMetadata = tryToGetFirstTimeseriesMetadata(metadataIndexNode);
+    if (firstTimeseriesMetadata == null) {
+      throw new IOException("Timeseries of device {" + device + "} are not aligned");
+    }
+
+    Map<String, List<TimeseriesMetadata>> timeseriesMetadataMap = new TreeMap<>();
+    List<MetadataIndexEntry> metadataIndexEntryList = metadataIndexNode.getChildren();
+
+    for (int i = 0; i < metadataIndexEntryList.size(); i++) {
+      MetadataIndexEntry metadataIndexEntry = metadataIndexEntryList.get(i);
+      long endOffset = metadataIndexNode.getEndOffset();
+      if (i != metadataIndexEntryList.size() - 1) {
+        endOffset = metadataIndexEntryList.get(i + 1).getOffset();
+      }
+      buffer = readData(metadataIndexEntry.getOffset(), endOffset);
+      if (metadataIndexNode.getNodeType().equals(MetadataIndexNodeType.LEAF_MEASUREMENT)) {
+        List<TimeseriesMetadata> timeseriesMetadataList = new ArrayList<>();
+        while (buffer.hasRemaining()) {
+          timeseriesMetadataList.add(TimeseriesMetadata.deserializeFrom(buffer, true));
+        }
+        timeseriesMetadataMap
+            .computeIfAbsent(device, k -> new ArrayList<>())
+            .addAll(timeseriesMetadataList);
+      } else {
+        generateMetadataIndex(
+            metadataIndexEntry,
+            buffer,
+            device,
+            metadataIndexNode.getNodeType(),
+            timeseriesMetadataMap,
+            true);
+      }
+    }
+
+    for (List<TimeseriesMetadata> timeseriesMetadataList : timeseriesMetadataMap.values()) {
+      TimeseriesMetadata timeseriesMetadata = timeseriesMetadataList.get(0);
+      List<TimeseriesMetadata> valueTimeseriesMetadataList = new ArrayList<>();
+
+      for (int i = 1; i < timeseriesMetadataList.size(); i++) {
+        valueTimeseriesMetadataList.add(timeseriesMetadataList.get(i));
+      }
+
+      AlignedTimeSeriesMetadata alignedTimeSeriesMetadata =
+          new AlignedTimeSeriesMetadata(timeseriesMetadata, valueTimeseriesMetadataList);
+      List<AlignedChunkMetadata> chunkMetadataList = new ArrayList<>();
+      for (IChunkMetadata chunkMetadata : readIChunkMetaDataList(alignedTimeSeriesMetadata)) {
+        chunkMetadataList.add((AlignedChunkMetadata) chunkMetadata);
+      }
+      // only one timeseriesMetadataList in one device
+      return chunkMetadataList;
+    }
+
+    throw new IOException(
+        String.format(
+            "Error when reading timeseriesMetadata of device %s in file %s", device, file));
   }
 
   /**
