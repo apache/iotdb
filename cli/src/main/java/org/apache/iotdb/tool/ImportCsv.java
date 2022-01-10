@@ -71,14 +71,17 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_ARGS = "fd";
   private static final String FAILED_FILE_NAME = "failed file directory";
 
+  private static final String ALIGNED_ARGS = "aligned";
+  private static final String ALIGNED_Name = "use the aligned interface";
+
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
 
   private static final String TSFILEDB_CLI_PREFIX = "ImportCsv";
-  private static final String ILLEGAL_PATH_ARGUMENT = "Path parameter is null";
 
   private static String targetPath;
   private static String failedFileDirectory = null;
+  private static Boolean aligned = false;
 
   /**
    * create the commandline options.
@@ -107,6 +110,14 @@ public class ImportCsv extends AbstractCsvTool {
                 "Specifying a directory to save failed file, default YOUR_CSV_FILE_PATH (optional)")
             .build();
     options.addOption(opFailedFile);
+
+    Option opAligned =
+            Option.builder(ALIGNED_ARGS)
+                    .argName(ALIGNED_Name)
+                    .hasArg()
+                    .desc("Whether to use the interface of aligned (optional)")
+                    .build();
+    options.addOption(opAligned);
 
     Option opHelp =
         Option.builder(HELP_ARGS)
@@ -142,6 +153,9 @@ public class ImportCsv extends AbstractCsvTool {
         file.mkdir();
         failedFileDirectory = file.getAbsolutePath() + File.separator;
       }
+    }
+    if (commandLine.getOptionValue(ALIGNED_ARGS) != null) {
+      aligned = Boolean.valueOf(commandLine.getOptionValue(ALIGNED_ARGS));
     }
   }
 
@@ -525,13 +539,12 @@ public class ImportCsv extends AbstractCsvTool {
       List<List<String>> measurementsList,
       int retryTime) {
     try {
-      session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
-
-      times.clear();
-      typesList.clear();
-      valuesList.clear();
-      measurementsList.clear();
-    } catch (IoTDBConnectionException | StatementExecutionException e) {
+      if (!aligned) {
+        session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
+      } else {
+        session.insertAlignedRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
+      }
+    } catch (IoTDBConnectionException e) {
       try {
         session.open();
       } catch (IoTDBConnectionException ex) {
@@ -542,6 +555,13 @@ public class ImportCsv extends AbstractCsvTool {
       } else {
         return;
       }
+    } catch (StatementExecutionException e) {
+      System.out.println("Meet error when insert csv because " + e.getMessage());
+    } finally{
+      times.clear();
+      typesList.clear();
+      valuesList.clear();
+      measurementsList.clear();
     }
   }
 
