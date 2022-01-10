@@ -199,7 +199,7 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
   @Test
   public void testHugeInsertMultiTabletPlan()
       throws QueryProcessException, MetadataException, StorageEngineException, IOException,
-      InterruptedException, QueryFilterOptimizationException {
+          InterruptedException, QueryFilterOptimizationException {
     // run this test case, can throw write_process_npe
     long[] times = new long[10000];
     for (int i = 0; i < times.length; i++) {
@@ -267,8 +267,8 @@ public class InsertTabletMultiPlanTest extends InsertTabletPlanTest {
           new InsertTabletPlan(
               new PartialPath("root.multi" + i / 20 + ".d" + i),
               new String[] {
-                  "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13",
-                  "s14", "s15", "s16"
+                "s1", "s2", "s3", "s4", "s5", "s6", "s7", "s8", "s9", "s10", "s11", "s12", "s13",
+                "s14", "s15", "s16"
               },
               dataTypes);
       tabletPlan.setTimes(times);
