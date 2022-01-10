@@ -58,7 +58,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
@@ -1990,13 +1990,13 @@ Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or e
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### Other ResultSet Formats
@@ -2010,7 +2010,7 @@ The 'align by device' indicates that the deviceId is considered as a column. The
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 The result shows below:
@@ -2039,7 +2039,7 @@ The 'disable align' indicates that there are 2 columns for each time series in t
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 The result shows below:

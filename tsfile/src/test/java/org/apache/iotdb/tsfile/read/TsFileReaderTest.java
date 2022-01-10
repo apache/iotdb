@@ -21,6 +21,8 @@ package org.apache.iotdb.tsfile.read;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -51,6 +53,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class TsFileReaderTest {
 
@@ -473,5 +476,42 @@ public class TsFileReaderTest {
       rowCount++;
     }
     return rowCount;
+  }
+
+  @Test
+  public void testGetAlignedChunkMetadata() throws IOException {
+    // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
+    // "d2.s1","d2.s2","d2.s3"
+    TsFileGeneratorForTest.generateAlignedTsFile(10, 100, 30);
+    String filePath = TsFileGeneratorForTest.alignedOutputDataFile;
+    try (TsFileSequenceReader reader = new TsFileSequenceReader(filePath)) {
+      // query for non-exist device
+      try {
+        reader.getAlignedChunkMetadata("d3");
+      } catch (IOException e) {
+        Assert.assertEquals("Device {d3} is not in tsFileMetaData", e.getMessage());
+      }
+
+      // query for non-aligned device
+      try {
+        reader.getAlignedChunkMetadata("d2");
+      } catch (IOException e) {
+        Assert.assertEquals("Timeseries of device {d2} are not aligned", e.getMessage());
+      }
+
+      String[] expected = new String[] {"s1", "s2", "s3", "s4"};
+
+      List<AlignedChunkMetadata> chunkMetadataList = reader.getAlignedChunkMetadata("d1");
+      AlignedChunkMetadata alignedChunkMetadata = chunkMetadataList.get(0);
+      Assert.assertEquals("", alignedChunkMetadata.getTimeChunkMetadata().getMeasurementUid());
+      int i = 0;
+      for (IChunkMetadata chunkMetadata : alignedChunkMetadata.getValueChunkMetadataList()) {
+        Assert.assertEquals(expected[i], chunkMetadata.getMeasurementUid());
+        i++;
+      }
+
+      Assert.assertEquals(expected.length, i);
+    }
+    TsFileGeneratorForTest.closeAlignedTsFile();
   }
 }
