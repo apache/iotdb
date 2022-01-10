@@ -136,7 +136,7 @@ public class IoTDBDescriptor {
                   "enable_monitor_series_write", Boolean.toString(conf.isEnableStatMonitor()))));
 
       conf.setRpcAddress(properties.getProperty("rpc_address", conf.getRpcAddress()));
-      replaceHostnameWithIP();
+      // replaceHostnameWithIP();
 
       conf.setRpcThriftCompressionEnable(
           Boolean.parseBoolean(

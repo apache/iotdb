@@ -193,7 +193,7 @@ public class ClientManager implements IClientManager {
         throw e;
       } catch (Exception e) {
         // external doesn't care of other exceptions
-        logger.error("BorrowSyncClient fail.", e);
+        logger.error("BorrowSyncClient fail. Node: {}, Category: {}", node, category, e);
       }
     } else {
       logger.warn(
