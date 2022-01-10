@@ -107,17 +107,25 @@ In order to make it easier and faster to express multiple timeseries paths, IoTD
 
 ## Timeseries
 
+### Timestamp
+
+The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps. For detailed description, please go to [Data Type doc](./Data-Type.md).
+
 ### Data point
 
 **A "time-value" pair**.
 
-### Timeseries (A measurement of an entity corresponds to a timeseries. Also called meter, timeline, and tag, parameter in real time database)
+### Timeseries
 
 **The record of a measurement of an entity on the time axis.** Timeseries is a series of data points.
 
+A measurement of an entity corresponds to a timeseries. 
+
+Also called meter, timeline, and tag, parameter in real time database.
+
 For example, if entity wt01 in power plant wf01 of power group ln has a measurement named status, its timeseries  can be expressed as: `root.ln.wf01.wt01.status`.
 
-### Aligned timeseries (From v0.13)
+### Aligned timeseries
 
 There is a situation that multiple measurements of an entity are sampled simultaneously in practical applications, forming multiple timeseries aligned on a time column.
 
@@ -135,14 +143,7 @@ When inserting data, it is allowed to insert null value in the aligned timeserie
 
 In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
 
-### Timestamp
-
-The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps. For detailed description, please go to [Data Type doc](./Data-Type.md).
-
-
 ## Schema Template
-
-### Schema template (From v0.13)
 
 In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **schema template** can be declared to define the collectable measurements set. Schema template helps save memory by implementing schema sharing. For detailed description, please refer to [Schema Template doc](./Schema-Template.md).
 
