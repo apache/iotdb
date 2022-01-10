@@ -174,4 +174,5 @@ public class IoTDBConstant {
   public static final String COLUMN_PIPE_NAME = "pipe name";
   public static final String COLUMN_PIPE_STATUS = "status";
   public static final String COLUMN_PIPE_START_TIME = "start time";
+  public static final String COLUMN_PIPE_SERVER_PORT = "port";
 }

@@ -179,7 +179,7 @@ public abstract class Operator {
     PRUNE_TEMPLATE,
     APPEND_TEMPLATE,
 
-    START_OPERATOR,
-    STOP_OPERATOR
+    START_PIPE_SERVER,
+    STOP_PIPE_SERVER
   }
 }

@@ -193,6 +193,8 @@ public class SQLConstant {
   public static final int TOK_SHOW_PIPE_SERVER = 116;
   public static final int TOK_PIPE_SERVER_START = 117;
   public static final int TOK_PIPE_SERVER_STOP = 118;
+  public static final int TOK_SHOW_PIPE = 118;
+
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -275,6 +277,7 @@ public class SQLConstant {
     tokenNames.put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER");
     tokenNames.put(TOK_PIPE_SERVER_START, "TOK_PIPE_SERVER_START");
     tokenNames.put(TOK_PIPE_SERVER_STOP, "TOK_PIPE_SERVER_STOP");
+    tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
   }
 
   public static boolean isReservedPath(PartialPath pathStr) {

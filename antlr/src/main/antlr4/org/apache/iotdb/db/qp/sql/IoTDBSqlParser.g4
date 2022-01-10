@@ -31,7 +31,7 @@ singleStatement
     ;
 
 statement
-    : ddlStatement | dmlStatement | dclStatement | utilityStatement
+    : ddlStatement | dmlStatement | dclStatement | utilityStatement | syncStatement
     ;
 
 ddlStatement
@@ -44,7 +44,6 @@ ddlStatement
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | countStorageGroup | countDevices | countTimeseries | countNodes
-    | showPipeServer | startPipeServer | stopPipeServer
     ;
 
 dmlStatement
@@ -63,7 +62,9 @@ utilityStatement
     | showQueryProcesslist | killQuery | grantWatermarkEmbedding | revokeWatermarkEmbedding
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
-
+syncStatement
+    : showPipeServer | startPipeServer | stopPipeServer | showPipes
+    ;
 /**
  * 2. Data Definition Language (DDL)
  */
@@ -889,4 +890,8 @@ startPipeServer
 
 stopPipeServer
     : STOP SERVICE PIPESERVER
+    ;
+
+showPipes
+    : SHOW PIPES
     ;

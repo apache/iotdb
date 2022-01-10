@@ -16,10 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.qp.logical.sys;
 
-public class ShowPipeServerPlan extends ShowPlan {
-  public ShowPipeServerPlan() {
-    super(ShowContentType.PIPESERVER);
-  }
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+
+public class ShowPipeOperator extends ShowOperator{
+    public ShowPipeOperator(int tokenIntType) {
+        super(tokenIntType);
+    }
+
+    @Override
+    public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+            throws QueryProcessException {
+        return new ShowPipePlan();
+    }
 }

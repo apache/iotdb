@@ -354,6 +354,14 @@ PATHS
     : P A T H S
     ;
 
+PIPE
+    : P I P E
+    ;
+
+PIPES
+    : P I P E S
+    ;
+
 PIPESERVER
     : P I P E S E R V E R
     ;

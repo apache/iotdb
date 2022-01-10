@@ -27,6 +27,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
+import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -38,25 +39,7 @@ import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
-import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
-import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
-import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowContinuousQueriesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowTriggersPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
-import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
+import org.apache.iotdb.db.qp.physical.sys.*;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
@@ -1208,6 +1191,40 @@ public class PhysicalPlanTest {
     Assert.assertTrue(plan.isQuery());
     Assert.assertEquals(ShowPlan.ShowContentType.TRIGGERS, plan.getShowContentType());
   }
+
+  @Test
+  public void testShowPipe() throws QueryProcessException {
+    String sql = "SHOW PIPES";
+    ShowPipePlan plan = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan.getShowContentType());
+  }
+
+  @Test
+  public void testShowPipeServer() throws QueryProcessException {
+    String sql = "SHOW SERVICE PIPESERVER";
+    ShowPipeServerPlan plan = (ShowPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertTrue(plan.isQuery());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPESERVER, plan.getShowContentType());
+  }
+
+  @Test
+  public void testStartPipeServer() throws QueryProcessException {
+    String sql = "START SERVICE PIPESERVER";
+    StartPipeServerPlan plan = (StartPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(Operator.OperatorType.START_PIPE_SERVER, plan.getOperatorType());
+  }
+
+  @Test
+  public void testStopPipeServer() throws QueryProcessException {
+    String sql = "STOP SERVICE PIPESERVER";
+    StopPipeServerPlan plan = (StopPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
+    Assert.assertFalse(plan.isQuery());
+    Assert.assertEquals(OperatorType.STOP_PIPE_SERVER, plan.getOperatorType());
+  }
+
+
 
   @Test
   public void testCreateCQ1() throws QueryProcessException {

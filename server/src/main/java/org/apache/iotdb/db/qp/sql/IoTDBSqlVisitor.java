@@ -56,6 +56,7 @@ import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
+import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -2768,11 +2769,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   @Override
   public Operator visitStartPipeServer(IoTDBSqlParser.StartPipeServerContext ctx) {
-    return new ShowPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
+    return new StartPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
   }
 
   @Override
   public Operator visitStopPipeServer(IoTDBSqlParser.StopPipeServerContext ctx) {
-    return new ShowPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_STOP);
+    return new StopPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_STOP);
+  }
+
+  @Override
+  public Operator visitShowPipes(IoTDBSqlParser.ShowPipesContext ctx) {
+    return new ShowPipeOperator(SQLConstant.TOK_SHOW_PIPE);
   }
 }
