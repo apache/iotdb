@@ -8,6 +8,7 @@ on:
     branches:
       - master
       - 'rel/*'
+      - new_sync
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - master
       - 'rel/*'
       - cluster_new
+      - new_sync
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
