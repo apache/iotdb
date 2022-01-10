@@ -41,7 +41,7 @@ public class UDTFExample implements UDTF {
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (1, -2, 2);
    * INSERT INTO root.sg1.d1(timestamp, s1, s2) VALUES (2, -3, 3);
    *
-   * CREATE FUNCTION example AS "org.apache.iotdb.udf.UDTFExample";
+   * CREATE FUNCTION example AS 'org.apache.iotdb.udf.UDTFExample';
    * SHOW FUNCTIONS;
    * SELECT s1, example(s1), s2, example(s2) FROM root.sg1.d1;
    */
