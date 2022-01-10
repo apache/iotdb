@@ -19,12 +19,17 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
+import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -42,9 +47,11 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.Path;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -462,10 +469,77 @@ public class CompactionCheckerUtils {
         List<List<Long>> sourceChunkPages = chunkPagePointsNumEntry.getValue();
         List<List<Long>> mergedChunkPages = mergedChunkPagePointsNum.get(fullPath);
         for (int i = 0; i < sourceChunkPages.size(); i++) {
-          for (int j = 0; j < sourceChunkPages.get(0).size(); j++) {
+          for (int j = 0; j < sourceChunkPages.get(i).size(); j++) {
             assertEquals(sourceChunkPages.get(i).get(j), mergedChunkPages.get(i).get(j));
           }
         }
+      }
+    }
+  }
+
+  /**
+   * Using SeriesRawDataBatchReader to read raw data from files, and return it as a map.
+   *
+   * @param fullPaths
+   * @param schemas
+   * @param sequenceResources
+   * @param unsequenceResources
+   * @return
+   * @throws IllegalPathException
+   * @throws IOException
+   */
+  public static Map<String, List<TimeValuePair>> getDataByQuery(
+      List<String> fullPaths,
+      List<IMeasurementSchema> schemas,
+      List<TsFileResource> sequenceResources,
+      List<TsFileResource> unsequenceResources)
+      throws IllegalPathException, IOException {
+    Map<String, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    for (int i = 0; i < fullPaths.size(); ++i) {
+      TimeSeriesMetadataCache.getInstance().clear();
+      ChunkCache.getInstance().clear();
+
+      PartialPath path = new MeasurementPath(fullPaths.get(i));
+      List<TimeValuePair> dataList = new LinkedList<>();
+      IBatchReader reader =
+          new SeriesRawDataBatchReader(
+              path,
+              schemas.get(i).getType(),
+              EnvironmentUtils.TEST_QUERY_CONTEXT,
+              sequenceResources,
+              unsequenceResources,
+              null,
+              null,
+              true);
+      while (reader.hasNextBatch()) {
+        BatchData batchData = reader.nextBatch();
+        while (batchData.hasCurrent()) {
+          dataList.add(
+              new TimeValuePair(batchData.currentTime(), batchData.currentTsPrimitiveType()));
+          batchData.next();
+        }
+      }
+      pathDataMap.put(fullPaths.get(i), dataList);
+
+      TimeSeriesMetadataCache.getInstance().clear();
+      ChunkCache.getInstance().clear();
+    }
+    return pathDataMap;
+  }
+
+  public static void validDataByValueList(
+      Map<String, List<TimeValuePair>> expectedData, Map<String, List<TimeValuePair>> actualData) {
+    for (String path : expectedData.keySet()) {
+      List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
+      List<TimeValuePair> actualTimeValueList = actualData.get(path);
+
+      assertEquals(expectedTimeValueList.size(), actualTimeValueList.size());
+
+      for (int i = 0; i < expectedTimeValueList.size(); ++i) {
+        TimeValuePair expectedTimeValuePair = expectedTimeValueList.get(i);
+        TimeValuePair actualTimeValuePair = actualTimeValueList.get(i);
+        assertEquals(expectedTimeValuePair.getTimestamp(), actualTimeValuePair.getTimestamp());
+        assertEquals(expectedTimeValuePair.getValue(), actualTimeValuePair.getValue());
       }
     }
   }

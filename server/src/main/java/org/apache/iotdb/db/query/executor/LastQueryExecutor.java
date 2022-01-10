@@ -175,8 +175,18 @@ public class LastQueryExecutor {
 
     // Acquire query resources for the rest series paths
     List<LastPointReader> readerList = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(nonCachedPaths);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, filter);
+
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
@@ -195,7 +205,7 @@ public class LastQueryExecutor {
         readerList.add(lastReader);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     // Compute Last result for the rest series paths by scanning Tsfiles

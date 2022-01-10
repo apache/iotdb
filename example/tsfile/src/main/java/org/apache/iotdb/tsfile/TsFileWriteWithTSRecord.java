@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,10 +52,10 @@ public class TsFileWriteWithTSRecord {
       }
 
       try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-        List<UnaryMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-        schemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+        List<MeasurementSchema> schemas = new ArrayList<>();
+        schemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+        schemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
         // register timeseries
         tsFileWriter.registerTimeseries(new Path(deviceId), schemas);

@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -50,36 +51,41 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
 
   @Test
   public void testHandleExceptionTargetCompleteAndSourceExists() {
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-    SizeTieredCompactionTask task =
-        new SizeTieredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
+    IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(2_000);
     try {
-      new Thread(
-              () -> {
-                try {
-                  task.call();
-                } catch (Exception e) {
+      tsFileManager.addAll(seqResources, true);
+      tsFileManager.addAll(unseqResources, false);
+      SizeTieredCompactionTask task =
+          new SizeTieredCompactionTask(
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              tsFileManager,
+              tsFileManager.getSequenceListByTimePartition(0),
+              seqResources,
+              true,
+              new AtomicInteger(0));
+      tsFileManager.writeLock("test");
+      try {
+        new Thread(
+                () -> {
+                  try {
+                    task.call();
+                  } catch (Exception e) {
 
-                }
-              })
-          .start();
-      Thread.sleep(65_000);
-    } catch (Exception e) {
+                  }
+                })
+            .start();
+        Thread.sleep(4_000);
+      } catch (Exception e) {
+      } finally {
+        tsFileManager.writeUnlock();
+      }
+      Assert.assertTrue(tsFileManager.isAllowCompaction());
+      Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
     } finally {
-      tsFileManager.writeUnlock();
+      IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(60_000);
     }
-    Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
   }
 
   @Test
@@ -119,79 +125,89 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
 
   @Test
   public void testHandleExceptionTargetCompleteAndSourceNotExists() {
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-    SizeTieredCompactionTask task =
-        new SizeTieredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
+    IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(10_000);
     try {
-      new Thread(
-              () -> {
-                try {
-                  task.call();
-                } catch (Exception e) {
+      tsFileManager.addAll(seqResources, true);
+      tsFileManager.addAll(unseqResources, false);
+      SizeTieredCompactionTask task =
+          new SizeTieredCompactionTask(
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              tsFileManager,
+              tsFileManager.getSequenceListByTimePartition(0),
+              seqResources,
+              true,
+              new AtomicInteger(0));
+      tsFileManager.writeLock("test");
+      try {
+        new Thread(
+                () -> {
+                  try {
+                    task.call();
+                  } catch (Exception e) {
 
-                }
-              })
-          .start();
-      Thread.sleep(10_000);
-      seqResources.get(0).remove();
-      tsFileManager.getTsFileList(true).remove(seqResources.get(0));
-      Thread.sleep(60_000);
-    } catch (Exception e) {
+                  }
+                })
+            .start();
+        Thread.sleep(8_000);
+        seqResources.get(0).remove();
+        tsFileManager.getTsFileList(true).remove(seqResources.get(0));
+        Thread.sleep(3_000);
+      } catch (Exception e) {
+      } finally {
+        tsFileManager.writeUnlock();
+      }
+      Assert.assertTrue(tsFileManager.isAllowCompaction());
+      Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
     } finally {
-      tsFileManager.writeUnlock();
+      IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(60_000L);
     }
-    Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(1, tsFileManager.getTsFileList(true).size());
   }
 
   @Test
   public void testHandleExceptionTargetNotCompleteAndSourceExists() {
-    tsFileManager.addAll(seqResources, true);
-    tsFileManager.addAll(unseqResources, false);
-    SizeTieredCompactionTask task =
-        new SizeTieredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
-    tsFileManager.writeLock("test");
+    IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(10_000L);
     try {
-      new Thread(
-              () -> {
-                try {
-                  task.call();
-                } catch (Exception e) {
+      tsFileManager.addAll(seqResources, true);
+      tsFileManager.addAll(unseqResources, false);
+      SizeTieredCompactionTask task =
+          new SizeTieredCompactionTask(
+              COMPACTION_TEST_SG,
+              "0",
+              0,
+              tsFileManager,
+              tsFileManager.getSequenceListByTimePartition(0),
+              seqResources,
+              true,
+              new AtomicInteger(0));
+      tsFileManager.writeLock("test");
+      try {
+        new Thread(
+                () -> {
+                  try {
+                    task.call();
+                  } catch (Exception e) {
 
-                }
-              })
-          .start();
-      Thread.sleep(10_000);
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
-      File targetFile = new File(seqResources.get(0).getTsFile().getParent(), targetFileName);
-      FileChannel channel = new FileOutputStream(targetFile, true).getChannel();
-      channel.truncate(10);
-      channel.close();
-      Thread.sleep(60_000);
-    } catch (Exception e) {
+                  }
+                })
+            .start();
+        Thread.sleep(8_000);
+        String targetFileName =
+            TsFileNameGenerator.getInnerCompactionFileName(seqResources, true).getName();
+        File targetFile = new File(seqResources.get(0).getTsFile().getParent(), targetFileName);
+        FileChannel channel = new FileOutputStream(targetFile, true).getChannel();
+        channel.truncate(10);
+        channel.close();
+        Thread.sleep(3_000);
+      } catch (Exception e) {
+      } finally {
+        tsFileManager.writeUnlock();
+      }
+      Assert.assertTrue(tsFileManager.isAllowCompaction());
+      Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
     } finally {
-      tsFileManager.writeUnlock();
+      IoTDBDescriptor.getInstance().getConfig().setCompactionAcquireWriteLockTimeout(60_000L);
     }
-    Assert.assertTrue(tsFileManager.isAllowCompaction());
-    Assert.assertEquals(10, tsFileManager.getTsFileList(true).size());
   }
 }

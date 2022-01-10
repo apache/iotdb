@@ -48,7 +48,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.io.FileUtils;
 import org.junit.After;
@@ -263,8 +263,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device),
-                new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+                new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
       } catch (WriteProcessException e) {
@@ -304,8 +303,7 @@ public class TsFileRewriteToolTest {
           String device = entry.getKey();
           for (String sensor : entry.getValue()) {
             tsFileWriter.registerTimeseries(
-                new Path(device),
-                new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+                new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
           }
         }
       } catch (WriteProcessException e) {
@@ -378,7 +376,7 @@ public class TsFileRewriteToolTest {
       // add measurements into file schema
       try {
         tsFileWriter.registerTimeseries(
-            new Path(device), new UnaryMeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
+            new Path(device), new MeasurementSchema(sensor, TSDataType.INT64, TSEncoding.RLE));
       } catch (WriteProcessException e) {
         Assert.fail(e.getMessage());
       }

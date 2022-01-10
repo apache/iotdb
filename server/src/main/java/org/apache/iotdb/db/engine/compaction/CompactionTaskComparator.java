@@ -69,6 +69,13 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
           - o2.getSumOfCompactionCount() / o2.getSelectedTsFileResourceList().size();
     }
 
+    // if the max file version of o1 and o2 are different
+    // we prefer to execute task with greater file version
+    // because we want to compact newly written files
+    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
+      return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
+    }
+
     List<TsFileResource> selectedFilesOfO1 = o1.getSelectedTsFileResourceList();
     List<TsFileResource> selectedFilesOfO2 = o2.getSelectedTsFileResourceList();
 
@@ -83,13 +90,6 @@ public class CompactionTaskComparator implements Comparator<AbstractCompactionTa
     // because small files can be compacted quickly
     if (o1.getSelectedFileSize() != o2.getSelectedFileSize()) {
       return (int) (o1.getSelectedFileSize() - o2.getSelectedFileSize());
-    }
-
-    // if the max file version of o1 and o2 are different
-    // we prefer to execute task with greater file version
-    // because we want to compact newly written files
-    if (o1.getMaxFileVersion() != o2.getMaxFileVersion()) {
-      return o2.getMaxFileVersion() > o1.getMaxFileVersion() ? 1 : -1;
     }
 
     return 0;

@@ -59,7 +59,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 插入数据后我们可以使用 SELECT 语句简单查询已插入的数据。
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
@@ -74,7 +74,34 @@ IoTDB > select * from root.ln.wf02 where time < 5
 |1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
 Total line number = 4
-It costs 0.170s
+It costs 0.004s
+```
+
+### 向对齐时间序列插入数据
+
+向对齐时间序列插入数据只需在SQL中增加`ALIGNED`关键词，其他类似。
+
+示例代码如下：
+
+```sql
+IoTDB > create aligned timeseries root.sg1.d1(s1 INT32, s2 DOUBLE)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(2, 2, 2), (3, 3, 3)
+IoTDB > select * from root.sg1.d1
+```
+
+结果如图所示。由查询结果可以看出，数据的插入操作正确执行。
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d2.s1|root.sg1.d2.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|             1|           1.0|
+|1970-01-01T08:00:00.002+08:00|             2|           2.0|
+|1970-01-01T08:00:00.003+08:00|             3|           3.0|
++-----------------------------+--------------+--------------+
+Total line number = 3
+It costs 0.004s
 ```
 
 ## 数据查询

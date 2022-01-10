@@ -44,7 +44,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Before;
@@ -165,8 +165,7 @@ public abstract class IoTDBTest {
     List<PartialPath> paths = new ArrayList<>();
     for (String pathStr : pathStrs) {
       MeasurementPath path = new MeasurementPath(pathStr);
-      path.setMeasurementSchema(
-          new UnaryMeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
+      path.setMeasurementSchema(new MeasurementSchema(path.getMeasurement(), TSDataType.DOUBLE));
       paths.add(path);
     }
     queryPlan.setDeduplicatedPathsAndUpdate(paths);

@@ -277,7 +277,10 @@ public class VirtualStorageGroupProcessor {
 
   private IDTable idTable;
 
-  /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
+   * fails
+   */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
@@ -307,9 +310,21 @@ public class VirtualStorageGroupProcessor {
       } else {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
-        currentWalPoolSize += 2;
-        res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-        res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        try {
+          currentWalPoolSize += 2;
+          res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+          res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        } catch (OutOfMemoryError e) {
+          if (res[0] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[0]);
+            currentWalPoolSize -= 1;
+          }
+          if (res[1] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[1]);
+            currentWalPoolSize -= 1;
+          }
+          return null;
+        }
       }
       // if the pool is empty, set the time back to MAX_VALUE
       if (walByteBufferPool.isEmpty()) {
@@ -1705,31 +1720,32 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  // TODO need a read lock, please consider the concurrency with flush manager threads.
-
   /**
    * build query data source by searching all tsfile which fit in query filter
    *
-   * @param fullPath data path
+   * @param pathList data paths
    * @param context query context
    * @param timeFilter time filter
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
    * @return query data source
    */
   public QueryDataSource query(
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       QueryFileManager filePathsManager,
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
-    fullPath = IDTable.translateQueryPath(fullPath);
 
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(true),
               upgradeSeqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               true);
@@ -1737,7 +1753,8 @@ public class VirtualStorageGroupProcessor {
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(false),
               upgradeUnseqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               false);
@@ -1790,31 +1807,32 @@ public class VirtualStorageGroupProcessor {
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
       throws MetadataException {
-    String deviceId = fullPath.getDevice();
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info(
-          "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
-          deviceId,
-          fullPath.getMeasurement(),
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          pathList,
           tsFileResources,
           isSeq,
           (timeFilter == null ? "null" : timeFilter));
     }
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    long ttlLowerBound =
+
+    long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(ttlLowerBound);
+    context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1827,7 +1845,7 @@ public class VirtualStorageGroupProcessor {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1835,9 +1853,7 @@ public class VirtualStorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource
-              .getUnsealedFileProcessor()
-              .query(fullPath, context, tsfileResourcesForQuery);
+          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2018,7 +2034,7 @@ public class VirtualStorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
@@ -2924,8 +2940,16 @@ public class VirtualStorageGroupProcessor {
   }
 
   public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
-    checkFilesTTL();
+    // Check files ttl will lock tsfile resource firstly and then lock tsfile.
+    // This lock order is conflict with tsfile creation in insert method, so we get a potential dead
+    // lock. Add this write lock to avoid dead lock above.
+    writeLock("setDataTTL");
+    try {
+      this.dataTTL = dataTTL;
+      checkFilesTTL();
+    } finally {
+      writeUnlock();
+    }
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {
@@ -2938,6 +2962,11 @@ public class VirtualStorageGroupProcessor {
 
   public String getVirtualStorageGroupId() {
     return virtualStorageGroupId;
+  }
+
+  /** @return virtual storage group path, like root.sg1/0 */
+  public String getStorageGroupPath() {
+    return logicalStorageGroupName + File.separator + virtualStorageGroupId;
   }
 
   public StorageGroupInfo getStorageGroupInfo() {

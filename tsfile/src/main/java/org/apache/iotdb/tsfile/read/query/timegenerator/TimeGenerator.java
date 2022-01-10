@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.read.expression.ExpressionType;
 import org.apache.iotdb.tsfile.read.expression.IBinaryExpression;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.AndNode;
 import org.apache.iotdb.tsfile.read.query.iterator.LeafNode;
 import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
@@ -152,4 +153,6 @@ public abstract class TimeGenerator {
   }
 
   protected abstract boolean isAscending();
+
+  public abstract Filter getTimeFilter();
 }

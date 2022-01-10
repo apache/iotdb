@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -492,6 +493,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
+      throws IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public ITimeSeriesMetadata generateTimeSeriesMetadata(
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
