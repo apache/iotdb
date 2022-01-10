@@ -1061,7 +1061,7 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @param position the file offset of this chunk's header
    * @param chunkHeaderSize the size of chunk's header
    */
-  public ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
+  private ChunkHeader readChunkHeader(long position, int chunkHeaderSize) throws IOException {
     return ChunkHeader.deserializeFrom(tsFileInput, position, chunkHeaderSize);
   }
 

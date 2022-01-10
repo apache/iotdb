@@ -81,7 +81,6 @@ public class TsFileSplitTool {
    * @param filename input file path
    */
   public TsFileSplitTool(String filename) {
-    super();
     this.filename = filename;
   }
 

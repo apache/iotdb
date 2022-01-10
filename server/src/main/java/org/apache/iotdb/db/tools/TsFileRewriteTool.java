@@ -126,8 +126,6 @@ public class TsFileRewriteTool implements AutoCloseable {
     }
   }
 
-  public TsFileRewriteTool() {}
-
   /**
    * Rewrite an old file to the latest version
    *
