@@ -33,6 +33,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -72,7 +73,6 @@ public class InnerSpaceCompactionUtils {
         boolean aligned = deviceInfo.right;
         writer.startChunkGroup(device);
         if (aligned) {
-
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
         }
@@ -99,7 +99,7 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-        deviceIterator.iterateOneSeries(device);
+        deviceIterator.iterateNotAlignedSeries(device);
     while (seriesIterator.hasNextSeries()) {
       // TODO: we can provide a configuration item to enable concurrent between each series
       String currentSeries = seriesIterator.nextSeries();
@@ -112,7 +112,15 @@ public class InnerSpaceCompactionUtils {
     }
   }
 
-  private static void compactAlignedSeries() {}
+  private static void compactAlignedSeries(
+      String device,
+      TsFileResource targetResource,
+      TsFileIOWriter writer,
+      MultiTsFileDeviceIterator deviceIterator)
+      throws IOException {
+    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
+        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+  }
 
   public static boolean deleteTsFilesInDisk(
       Collection<TsFileResource> mergeTsFiles, String storageGroupName) {

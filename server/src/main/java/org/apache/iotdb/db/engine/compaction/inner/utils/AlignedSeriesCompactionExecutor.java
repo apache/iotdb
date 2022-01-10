@@ -19,29 +19,63 @@
 package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.read.common.Chunk;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
 public class AlignedSeriesCompactionExecutor {
   private String device;
   private List<TsFileResource> tsFileResources;
-  private LinkedList<Pair<TsFileSequenceReader, List<IChunkMetadata>>> readerAndChunkMetadataList;
+  private LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      readerAndChunkMetadataList;
   private TsFileResource targetResource;
+  private TsFileIOWriter writer;
 
   public AlignedSeriesCompactionExecutor(
       String device,
       List<TsFileResource> tsFileResources,
       TsFileResource targetResource,
-      LinkedList<Pair<TsFileSequenceReader, List<IChunkMetadata>>> readerAndChunkMetadataList) {
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
+      TsFileIOWriter writer) {
     this.device = device;
     this.tsFileResources = tsFileResources;
     this.targetResource = targetResource;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
+    this.writer = writer;
   }
 
-  public void execute() {}
+  public void execute() throws IOException {
+    while (readerAndChunkMetadataList.size() > 0) {
+      Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair =
+          readerAndChunkMetadataList.removeFirst();
+      TsFileSequenceReader reader = readerListPair.left;
+      List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
+
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+        IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
+        List<IChunkMetadata> valueChunkMetadataList =
+            alignedChunkMetadata.getValueChunkMetadataList();
+
+        Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
+        List<Chunk> valueChunkList = new ArrayList<>();
+        // TODO: if some chunk doesn't exist, fill it with null
+        for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
+          valueChunkList.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
+        }
+
+        AlignedChunkReaderByTimestamp chunkReader =
+            new AlignedChunkReaderByTimestamp(timeChunk, valueChunkList);
+      }
+    }
+  }
 }

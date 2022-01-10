@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.QueryUtils;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -33,12 +34,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -67,15 +66,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
       throw throwable;
     }
-  }
-
-  public Set<String> getDevices() throws IOException {
-    Set<String> deviceSet = new HashSet<>();
-    for (TsFileResource tsFileResource : tsFileResources) {
-      TsFileSequenceReader reader = readerMap.get(tsFileResource);
-      deviceSet.addAll(reader.getAllDevices());
-    }
-    return deviceSet;
   }
 
   public boolean hasNextDevice() {
@@ -112,8 +102,30 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return currentDevice;
   }
 
-  public MeasurementIterator iterateOneSeries(String device) throws IOException {
+  public MeasurementIterator iterateNotAlignedSeries(String device) throws IOException {
     return new MeasurementIterator(readerMap, device);
+  }
+
+  public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
+    if (currentDevice == null || !currentDevice.right) {
+      return null;
+    }
+
+    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
+        new LinkedList<>();
+    for (TsFileResource tsFileResource : tsFileResources) {
+      TsFileDeviceIterator iterator = deviceIteratorMap.get(tsFileResource);
+      if (!iterator.current().equals(currentDevice)) {
+        continue;
+      }
+      TsFileSequenceReader reader = readerMap.get(tsFileResource);
+      List<AlignedChunkMetadata> alignedChunkMetadataList =
+          reader.getAlignedChunkMetadata(currentDevice.left);
+      readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
+    }
+
+    return readerAndChunkMetadataList;
   }
 
   @Override
