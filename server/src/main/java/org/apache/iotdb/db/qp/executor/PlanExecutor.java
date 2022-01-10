@@ -686,20 +686,19 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
-    // get the nodes that need to group by first
-    List<PartialPath> nodes = getNodesList(countPlan.getPath(), countPlan.getLevel());
+    Map<PartialPath, Integer> countResults = getTimeseriesCountGroupByLevel(countPlan);
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(
                 new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    for (PartialPath columnPath : nodes) {
+    for (PartialPath columnPath : countResults.keySet()) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
       Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setIntV(getPathsNum(columnPath));
+      field1.setIntV(countResults.get(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -774,6 +773,12 @@ public class PlanExecutor implements IPlanExecutor {
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
     return IoTDB.metaManager.getNodesListInGivenLevel(schemaPattern, level);
+  }
+
+  private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
+      throws MetadataException {
+    return IoTDB.metaManager.getMeasurementCountGroupByLevel(
+        countPlan.getPath(), countPlan.getLevel());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
