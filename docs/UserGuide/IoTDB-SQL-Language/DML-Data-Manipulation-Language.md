@@ -22,13 +22,13 @@
 # DML (Data Manipulation Language)
 
 ## INSERT
-### Insert Real-time Data
 
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Appendix/SQL-Reference.md) in [Client/Shell tools](../CLI/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Appendix/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Appendix/SQL-Reference.md) for real-time data import in the scenario.
 
-#### Use of INSERT Statements
+### Use of INSERT Statements
+
 The [INSERT SQL statement](../Appendix/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
@@ -73,7 +73,34 @@ The result is shown below. The query result shows that the insertion statements 
 |1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
 Total line number = 4
-It costs 0.170s
+It costs 0.004s
+```
+
+### Insert Data Into Aligned Timeseries
+
+To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
+
+The sample code is as follows:
+
+```sql
+IoTDB > create aligned timeseries root.sg1.d1(s1 INT32, s2 DOUBLE)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(2, 2, 2), (3, 3, 3)
+IoTDB > select * from root.sg1.d1
+```
+
+The result is shown below. The query result shows that the insertion statements are performed correctly.
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d2.s1|root.sg1.d2.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|             1|           1.0|
+|1970-01-01T08:00:00.002+08:00|             2|           2.0|
+|1970-01-01T08:00:00.003+08:00|             3|           3.0|
++-----------------------------+--------------+--------------+
+Total line number = 3
+It costs 0.004s
 ```
 
 ## SELECT

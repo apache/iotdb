@@ -251,14 +251,10 @@ public class AlignedWritableMemChunk implements IWritableMemChunk {
     return list.delete(lowerBound, upperBound, measurementIndexMap.get(measurementId));
   }
 
-  public void removeColumns(List<String> measurements) {
-    List<IMeasurementSchema> schemasToBeRemoved = new ArrayList<>();
-    for (String measurement : measurements) {
-      schemasToBeRemoved.add(schemaList.get(measurementIndexMap.get(measurement)));
-    }
-    for (IMeasurementSchema schema : schemasToBeRemoved) {
-      schemaList.remove(schema);
-    }
+  public void removeColumn(String measurementId) {
+    list.deleteColumn(measurementIndexMap.get(measurementId));
+    IMeasurementSchema schemaToBeRemoved = schemaList.get(measurementIndexMap.get(measurementId));
+    schemaList.remove(schemaToBeRemoved);
     measurementIndexMap.clear();
     for (int i = 0; i < schemaList.size(); i++) {
       measurementIndexMap.put(schemaList.get(i).getMeasurementId(), i);

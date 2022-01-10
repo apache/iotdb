@@ -63,7 +63,7 @@ public class CompactionTaskComparatorTest {
 
     for (int i = 0; i < 100; ++i) {
       AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
-      assertTrue(currentTask == compactionTasks[i]);
+      assertTrue(currentTask == compactionTasks[99 - i]);
     }
   }
 
@@ -190,7 +190,7 @@ public class CompactionTaskComparatorTest {
 
     for (int i = 0; i < 100; i++) {
       AbstractCompactionTask currentTask = compactionTaskQueue.pollFirst();
-      assertTrue(currentTask == innerCompactionTasks[i]);
+      assertTrue(currentTask == innerCompactionTasks[99 - i]);
     }
 
     for (int i = 0; i < 100; i++) {

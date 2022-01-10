@@ -25,7 +25,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -46,7 +46,12 @@ import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompac
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
+/**
+ * This test is used for old version of inner space compact. We leave it as it still validates the
+ * current compaction. However, due to this test's strong coupling with an older version of
+ * compaction, we may remove it in the future.
+ */
+public class InnerSpaceCompactionUtilsOldTest extends InnerCompactionTest {
 
   File tempSGDir;
 
@@ -68,7 +73,7 @@ public class InnerSpaceCompactionUtilsTest extends InnerCompactionTest {
   }
 
   @Test
-  public void testCompact() throws IOException, IllegalPathException {
+  public void testCompact() throws IOException, MetadataException {
     TsFileResource targetTsFileResource =
         new TsFileResource(
             new File(

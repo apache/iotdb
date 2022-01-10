@@ -19,9 +19,9 @@
 
 -->
 
-## Schema Template
+# Schema Template
 
-### Problem scenario
+## Problem scenario
 
 When faced with a large number of entities of the same type and the measurements of these entities are the same, registering time series for each measurent will result in the following problems. On the one hand, the metadata of time series will occupy a lot of memory resources; on the other hand, the maintenance of a large number of time series will be very complex.
 
@@ -31,7 +31,7 @@ The following picture illustrates the data model of petrol vehicle scenario. The
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_without_template.png?raw=true" alt="example without template">
 
-### Concept
+## Concept
 
 Supported from v0.13
 
@@ -45,7 +45,7 @@ After applying schema template, the following picture illustrates the new data m
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Measurement%20Template/example_with_template.png?raw=true" alt="example with template">
 
-### Usage
+## Usage
 
 Currently, only Session API supports Schema Template usage.
 

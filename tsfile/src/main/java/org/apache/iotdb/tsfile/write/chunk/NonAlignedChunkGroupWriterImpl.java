@@ -25,6 +25,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -54,14 +55,14 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(IMeasurementSchema schema) {
+  public void tryToAddSeriesWriter(MeasurementSchema schema) {
     if (!chunkWriters.containsKey(schema.getMeasurementId())) {
       this.chunkWriters.put(schema.getMeasurementId(), new ChunkWriterImpl(schema));
     }
   }
 
   @Override
-  public void tryToAddSeriesWriter(List<IMeasurementSchema> schemas) {
+  public void tryToAddSeriesWriter(List<MeasurementSchema> schemas) {
     for (IMeasurementSchema schema : schemas) {
       if (!chunkWriters.containsKey(schema.getMeasurementId())) {
         this.chunkWriters.put(schema.getMeasurementId(), new ChunkWriterImpl(schema));
@@ -88,7 +89,7 @@ public class NonAlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public int write(Tablet tablet) throws WriteProcessException {
     int pointCount = 0;
-    List<IMeasurementSchema> timeseries = tablet.getSchemas();
+    List<MeasurementSchema> timeseries = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
       boolean hasOneColumnWritten = false;
