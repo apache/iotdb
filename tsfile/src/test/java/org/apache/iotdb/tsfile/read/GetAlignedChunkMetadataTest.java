@@ -31,7 +31,7 @@ import java.util.List;
 
 public class GetAlignedChunkMetadataTest {
   @Test
-  public void getAlignedChunkMetadataTest() {
+  public void getAlignedChunkMetadataTest() throws IOException {
     // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
     // "d2.s1","d2.s2","d2.s3"
     TsFileGeneratorForTest.generateAlignedTsFile(10, 100, 30);
@@ -63,9 +63,6 @@ public class GetAlignedChunkMetadataTest {
       }
 
       Assert.assertEquals(expected.length, i);
-
-    } catch (IOException e) {
-      e.printStackTrace();
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
   }
