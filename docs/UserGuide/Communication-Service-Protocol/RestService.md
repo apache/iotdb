@@ -46,9 +46,9 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 ```
 Response parameters:
 
-| The parameter name |The parameter types  |Parameters to describe|
-| ------------ | ------------ | ------------|
-| code | integer |  status code |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+|code | integer |  status code |
 | message  |  string | message |
 
 Sample response:
@@ -78,9 +78,9 @@ Request path:http://ip:port/rest/v1/query
 
 Parameter Description:
 
-|The parameter name  |The parameter types |是否必填|Parameters to describe|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | yes  |   |
+|parameter name  |parameter type |is required|parameter describe|
+|:--- | :--- | :---| :---|
+|  sql | string | yes  |  query content |
 
 Example request:
 ```shell
@@ -89,11 +89,11 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 Response parameters:
 
-|The parameter name  |The parameter types  |Parameters to describe|
-| ------------ | ------------ | ------------|
-| expressions | array | An array of result set column names |
-| timestamps | array | Timestamp column |
-|values|array|Value column array, the number of columns is the same length as the result set column name array|
+|  parameter name  |  parameter type |  parameter describe|
+| :--- |  :--- |  --- |
+|expressions | array |An array of result set column names|
+|timestamps | array | Timestamp column |
+|values| array |Value column, the number of columns is the same length as the result set column name array |
 
 Sample response:
 
@@ -121,23 +121,23 @@ Request path:http://ip:port/rest/v1/nonQuery
 
 Parameter Description:
 
-|The parameter name  |The parameter types  |If required|Parameters to describe|
-| ------------ | ------------ | ------------ |------------ |
-|  sql | string | yes  |   |
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
+|  sql | string | query content  | 
 
 Example request:
 ```shell
 curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X POST --data '{"sql":"set storage group to root.ln"}' http://127.0.0.1:18080/rest/v1/nonQuery
 ```
 
-响应参数:
+Response parameters:
 
-|The parameter name |The parameter types  |Parameters to describe|
-| ------------ | ------------ | ------------|
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
 | code | integer |  status code |
 | message  |  string | message |
 
-响应示例：
+Sample response:
 ```json
 {
   "code": 200,
@@ -157,8 +157,8 @@ Request path:http://ip:port/rest/v1/insertTablet
 
 Parameter Description:
 
-|The parameter name  |The parameter types  |If required|Parameters to describe|
-| ------------ | ------------ | ------------ |------------ |
+|parameter name  |parameter type |is required|parameter describe|
+|:--- | :--- | :---| :---| 
 |  timestamps | array | yes |  Time column  |
 |  measurements | array | yes  | The name of the measuring point |
 | dataTypes | array | yes  | The data type |
@@ -173,12 +173,12 @@ curl -H "Content-Type:application/json" -H "Authorization:Basic cm9vdDpyb290" -X
 
 Sample response:
 
-|The parameter name  |The parameter types  |Parameters to describe|
-| ------------ | ------------ | ------------|
+|parameter name  |parameter type |parameter describe|
+|:--- | :--- | :---|
 | code | integer |  status code |
 | message  |  string | message |
 
-响应示例：
+Sample response:
 ```json
 {
   "code": 200,
