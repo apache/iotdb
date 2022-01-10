@@ -28,8 +28,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.utils.RecordUtils;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -165,32 +165,26 @@ public class PerfTest {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
-            "s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
-    schema.registerTimeseries(
-        new Path("d2"),
-        new UnaryMeasurementSchema(
-            "s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new Path("d1"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
-            "s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
-            "s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+        new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+        new Path("d2"),
+        new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
+    schema.registerTimeseries(
+        new Path("d2"), new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
 
     JsonObject s4 = new JsonObject();
     s4.addProperty(JsonFormatConstant.MEASUREMENT_UID, "s4");

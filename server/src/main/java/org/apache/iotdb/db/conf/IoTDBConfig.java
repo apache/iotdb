@@ -177,6 +177,12 @@ public class IoTDBConfig {
   /** Unit: millisecond */
   private long walPoolTrimIntervalInMS = 10_000;
 
+  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
+  private long registerBufferSleepIntervalInMs = 200;
+
+  /** if total sleep time exceeds this, system will reject this write. */
+  private long registerBufferRejectThresholdInMs = 10_000;
+
   /** Unit: byte */
   private int estimatedSeriesSize = 300;
 
@@ -251,8 +257,16 @@ public class IoTDBConfig {
   /** How many threads can concurrently flush. When <= 0, use CPU core number. */
   private int concurrentFlushThread = Runtime.getRuntime().availableProcessors();
 
-  /** How many threads can concurrently query. When <= 0, use CPU core number. */
-  private int concurrentQueryThread = 8;
+  /** How many threads can concurrently execute query statement. When <= 0, use CPU core number. */
+  private int concurrentQueryThread = 16;
+
+  /**
+   * How many threads can concurrently read data for raw data query. When <= 0, use CPU core number.
+   */
+  private int concurrentSubRawQueryThread = 8;
+
+  /** Blocking queue size for read task in raw data query. */
+  private int rawQueryBlockingQueueCapacity = 5;
 
   /** How many threads can concurrently evaluate windows. When <= 0, use CPU core number. */
   private int concurrentWindowEvaluationThread = Runtime.getRuntime().availableProcessors();
@@ -373,8 +387,32 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
-  /** The target tsfile size in compaction. */
-  private long targetCompactionFileSize = 2147483648L;
+  /** The target tsfile size in compaction, 1 GB by default */
+  private long targetCompactionFileSize = 1073741824L;
+
+  /** The target chunk size in compaction. */
+  private long targetChunkSize = 1048576L;
+
+  /** The target chunk point num in compaction. */
+  private long targetChunkPointNum = 100000L;
+
+  /**
+   * If the chunk size is lower than this threshold, it will be deserialized into points, default is
+   * 1 KB
+   */
+  private long chunkSizeLowerBoundInCompaction = 1024L;
+
+  /**
+   * If the chunk point num is lower than this threshold, it will be deserialized into points,
+   * default is 100
+   */
+  private long chunkPointNumLowerBoundInCompaction = 100;
+
+  /**
+   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
+   * will be abort.
+   */
+  private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
@@ -657,7 +695,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 500;
+  private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -782,6 +820,17 @@ public class IoTDBConfig {
   private String adminName = "root";
 
   private String adminPassword = "root";
+
+  /** the method to transform device path to device id, can be 'Plain' or 'SHA256' */
+  private String deviceIDTransformationMethod = "Plain";
+
+  /** whether to use id table. ATTENTION: id table is not compatible with alias */
+  private boolean enableIDTable = false;
+
+  /**
+   * whether create mapping file of id table. This file can map device id in tsfile to device path
+   */
+  private boolean enableIDTableLogFile = false;
 
   public IoTDBConfig() {
     // empty constructor
@@ -1176,8 +1225,24 @@ public class IoTDBConfig {
     return concurrentQueryThread;
   }
 
-  void setConcurrentQueryThread(int concurrentQueryThread) {
+  public void setConcurrentQueryThread(int concurrentQueryThread) {
     this.concurrentQueryThread = concurrentQueryThread;
+  }
+
+  public int getConcurrentSubRawQueryThread() {
+    return concurrentSubRawQueryThread;
+  }
+
+  void setConcurrentSubRawQueryThread(int concurrentSubRawQueryThread) {
+    this.concurrentSubRawQueryThread = concurrentSubRawQueryThread;
+  }
+
+  public int getRawQueryBlockingQueueCapacity() {
+    return rawQueryBlockingQueueCapacity;
+  }
+
+  public void setRawQueryBlockingQueueCapacity(int rawQueryBlockingQueueCapacity) {
+    this.rawQueryBlockingQueueCapacity = rawQueryBlockingQueueCapacity;
   }
 
   public int getConcurrentWindowEvaluationThread() {
@@ -1364,6 +1429,22 @@ public class IoTDBConfig {
 
   public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
     this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  }
+
+  public long getRegisterBufferSleepIntervalInMs() {
+    return registerBufferSleepIntervalInMs;
+  }
+
+  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
+    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
+  }
+
+  public long getRegisterBufferRejectThresholdInMs() {
+    return registerBufferRejectThresholdInMs;
+  }
+
+  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
+    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
   }
 
   public int getEstimatedSeriesSize() {
@@ -2433,6 +2514,46 @@ public class IoTDBConfig {
     this.targetCompactionFileSize = targetCompactionFileSize;
   }
 
+  public long getTargetChunkSize() {
+    return targetChunkSize;
+  }
+
+  public void setTargetChunkSize(long targetChunkSize) {
+    this.targetChunkSize = targetChunkSize;
+  }
+
+  public long getChunkSizeLowerBoundInCompaction() {
+    return chunkSizeLowerBoundInCompaction;
+  }
+
+  public void setChunkSizeLowerBoundInCompaction(long chunkSizeLowerBoundInCompaction) {
+    this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
+  }
+
+  public long getTargetChunkPointNum() {
+    return targetChunkPointNum;
+  }
+
+  public void setTargetChunkPointNum(long targetChunkPointNum) {
+    this.targetChunkPointNum = targetChunkPointNum;
+  }
+
+  public long getChunkPointNumLowerBoundInCompaction() {
+    return chunkPointNumLowerBoundInCompaction;
+  }
+
+  public void setChunkPointNumLowerBoundInCompaction(long chunkPointNumLowerBoundInCompaction) {
+    this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
+  }
+
+  public long getCompactionAcquireWriteLockTimeout() {
+    return compactionAcquireWriteLockTimeout;
+  }
+
+  public void setCompactionAcquireWriteLockTimeout(long compactionAcquireWriteLockTimeout) {
+    this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
+  }
+
   public long getCompactionScheduleInterval() {
     return compactionScheduleInterval;
   }
@@ -2455,5 +2576,29 @@ public class IoTDBConfig {
 
   public void setCompactionSubmissionInterval(long interval) {
     compactionSubmissionInterval = interval;
+  }
+
+  public String getDeviceIDTransformationMethod() {
+    return deviceIDTransformationMethod;
+  }
+
+  public void setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    this.deviceIDTransformationMethod = deviceIDTransformationMethod;
+  }
+
+  public boolean isEnableIDTable() {
+    return enableIDTable;
+  }
+
+  public void setEnableIDTable(boolean enableIDTable) {
+    this.enableIDTable = enableIDTable;
+  }
+
+  public boolean isEnableIDTableLogFile() {
+    return enableIDTableLogFile;
+  }
+
+  public void setEnableIDTableLogFile(boolean enableIDTableLogFile) {
+    this.enableIDTableLogFile = enableIDTableLogFile;
   }
 }

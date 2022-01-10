@@ -56,6 +56,8 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.OutOfTTLException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.metadata.idtable.IDTable;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
@@ -198,31 +200,7 @@ public class VirtualStorageGroupProcessor {
       new CopyOnReadLinkedList<>();
 
   private AtomicInteger upgradeFileCount = new AtomicInteger();
-  /*
-   * time partition id -> map, which contains
-   * device -> global latest timestamp of each device latestTimeForEachDevice caches non-flushed
-   * changes upon timestamps of each device, and is used to update partitionLatestFlushedTimeForEachDevice
-   * when a flush is issued.
-   */
-  private Map<Long, Map<String, Long>> latestTimeForEachDevice = new HashMap<>();
-  /**
-   * time partition id -> map, which contains device -> largest timestamp of the latest memtable to
-   * be submitted to asyncTryToFlush partitionLatestFlushedTimeForEachDevice determines whether a
-   * data point should be put into a sequential file or an unsequential file. Data of some device
-   * with timestamp less than or equals to the device's latestFlushedTime should go into an
-   * unsequential file.
-   */
-  private Map<Long, Map<String, Long>> partitionLatestFlushedTimeForEachDevice = new HashMap<>();
-  /** used to record the latest flush time while upgrading and inserting */
-  private Map<Long, Map<String, Long>> newlyFlushedPartitionLatestFlushedTimeForEachDevice =
-      new HashMap<>();
-  /**
-   * global mapping of device -> largest timestamp of the latest memtable to * be submitted to
-   * asyncTryToFlush, globalLatestFlushedTimeForEachDevice is utilized to maintain global
-   * latestFlushedTime of devices and will be updated along with
-   * partitionLatestFlushedTimeForEachDevice
-   */
-  private Map<String, Long> globalLatestFlushedTimeForEachDevice = new HashMap<>();
+
   /** virtual storage group id */
   private String virtualStorageGroupId;
   /** logical storage group name */
@@ -284,6 +262,8 @@ public class VirtualStorageGroupProcessor {
   // DEFAULT_POOL_TRIM_INTERVAL_MILLIS
   private long timeWhenPoolNotEmpty = Long.MAX_VALUE;
 
+  private LastFlushTimeManager lastFlushTimeManager = new LastFlushTimeManager();
+
   /**
    * record the insertWriteLock in SG is being hold by which method, it will be empty string if on
    * one holds the insertWriteLock
@@ -295,7 +275,12 @@ public class VirtualStorageGroupProcessor {
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
-  /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
+  private IDTable idTable;
+
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
+   * fails
+   */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
@@ -325,9 +310,21 @@ public class VirtualStorageGroupProcessor {
       } else {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
-        currentWalPoolSize += 2;
-        res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-        res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        try {
+          currentWalPoolSize += 2;
+          res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+          res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        } catch (OutOfMemoryError e) {
+          if (res[0] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[0]);
+            currentWalPoolSize -= 1;
+          }
+          if (res[1] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[1]);
+            currentWalPoolSize -= 1;
+          }
+          return null;
+        }
       }
       // if the pool is empty, set the time back to MAX_VALUE
       if (walByteBufferPool.isEmpty()) {
@@ -410,6 +407,14 @@ public class VirtualStorageGroupProcessor {
         config.getWalPoolTrimIntervalInMS(),
         config.getWalPoolTrimIntervalInMS(),
         TimeUnit.MILLISECONDS);
+    // use id table
+    if (config.isEnableIDTable()) {
+      try {
+        idTable = IDTableManager.getInstance().getIDTable(new PartialPath(logicalStorageGroupName));
+      } catch (IllegalPathException e) {
+        logger.error("failed to create id table");
+      }
+    }
     recover();
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
@@ -516,13 +521,9 @@ public class VirtualStorageGroupProcessor {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId, endTime);
       }
-      latestTimeForEachDevice
-          .computeIfAbsent(timePartitionId, l -> new HashMap<>())
-          .putAll(endTimeMap);
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-          .putAll(endTimeMap);
-      globalLatestFlushedTimeForEachDevice.putAll(endTimeMap);
+      lastFlushTimeManager.setLastTimeAll(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setFlushedTimeAll(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setGlobalFlushedTimeAll(endTimeMap);
     }
 
     // recover and start timed compaction thread
@@ -645,17 +646,13 @@ public class VirtualStorageGroupProcessor {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        latestTimeForEachDevice
-            .computeIfAbsent(endTimePartitionId, l -> new HashMap<>())
-            .put(deviceId, endTime);
-        globalLatestFlushedTimeForEachDevice.put(deviceId, endTime);
+        lastFlushTimeManager.setLastTime(endTimePartitionId, deviceId, endTime);
+        lastFlushTimeManager.setGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
         long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
-          partitionLatestFlushedTimeForEachDevice
-              .computeIfAbsent(partitionId, l -> new HashMap<>())
-              .put(deviceId, endTime);
+          lastFlushTimeManager.setFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
             File directory =
                 SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));
@@ -796,7 +793,8 @@ public class VirtualStorageGroupProcessor {
                   + FILE_NAME_SEPARATOR,
               tsFileResource,
               isSeq,
-              i == tsFiles.size() - 1);
+              i == tsFiles.size() - 1,
+              this);
 
       RestorableTsFileIOWriter writer = null;
       try {
@@ -918,14 +916,12 @@ public class VirtualStorageGroupProcessor {
       // init map
       long timePartitionId = StorageEngine.getTimePartition(insertRowPlan.getTime());
 
-      partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
-          timePartitionId, id -> new HashMap<>());
+      lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
 
       boolean isSequence =
           insertRowPlan.getTime()
-              > partitionLatestFlushedTimeForEachDevice
-                  .get(timePartitionId)
-                  .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+              > lastFlushTimeManager.getFlushedTime(
+                  timePartitionId, insertRowPlan.getDevicePath().getFullPath());
 
       // is unsequence and user set config to discard out of order data
       if (!isSequence
@@ -933,7 +929,7 @@ public class VirtualStorageGroupProcessor {
         return;
       }
 
-      latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+      lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
 
       // fire trigger before insertion
       TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, insertRowPlan);
@@ -995,9 +991,8 @@ public class VirtualStorageGroupProcessor {
           StorageEngine.getTimePartition(insertTabletPlan.getTimes()[before]);
       // init map
       long lastFlushTime =
-          partitionLatestFlushedTimeForEachDevice
-              .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-              .computeIfAbsent(insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+          lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
+              beforeTimePartition, insertTabletPlan.getDevicePath().getFullPath(), Long.MIN_VALUE);
       // if is sequence
       boolean isSequence = false;
       while (loc < insertTabletPlan.getRowCount()) {
@@ -1017,10 +1012,11 @@ public class VirtualStorageGroupProcessor {
           before = loc;
           beforeTimePartition = curTimePartition;
           lastFlushTime =
-              partitionLatestFlushedTimeForEachDevice
-                  .computeIfAbsent(beforeTimePartition, id -> new HashMap<>())
-                  .computeIfAbsent(
-                      insertTabletPlan.getDeviceId().getFullPath(), id -> Long.MIN_VALUE);
+              lastFlushTimeManager.ensureFlushedTimePartitionAndInit(
+                  beforeTimePartition,
+                  insertTabletPlan.getDevicePath().getFullPath(),
+                  Long.MIN_VALUE);
+
           isSequence = false;
         }
         // still in this partition
@@ -1051,8 +1047,7 @@ public class VirtualStorageGroupProcessor {
                 && noFailure;
       }
       long globalLatestFlushedTime =
-          globalLatestFlushedTimeForEachDevice.getOrDefault(
-              insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+          lastFlushTimeManager.getGlobalFlushedTime(insertTabletPlan.getDevicePath().getFullPath());
       tryToUpdateBatchInsertLastCache(insertTabletPlan, globalLatestFlushedTime);
 
       if (!noFailure) {
@@ -1117,16 +1112,13 @@ public class VirtualStorageGroupProcessor {
       return false;
     }
 
-    latestTimeForEachDevice.computeIfAbsent(timePartitionId, t -> new HashMap<>());
+    lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
     // try to update the latest time of the device of this tsRecord
-    if (sequence
-        && latestTimeForEachDevice
-                .get(timePartitionId)
-                .getOrDefault(insertTabletPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
-            < insertTabletPlan.getTimes()[end - 1]) {
-      latestTimeForEachDevice
-          .get(timePartitionId)
-          .put(insertTabletPlan.getDeviceId().getFullPath(), insertTabletPlan.getTimes()[end - 1]);
+    if (sequence) {
+      lastFlushTimeManager.updateLastTime(
+          timePartitionId,
+          insertTabletPlan.getDevicePath().getFullPath(),
+          insertTabletPlan.getTimes()[end - 1]);
     }
 
     // check memtable size and may async try to flush the work memtable
@@ -1148,7 +1140,7 @@ public class VirtualStorageGroupProcessor {
       // Update cached last value with high priority
       if (mNodes[i] == null) {
         IoTDB.metaManager.updateLastCache(
-            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+            plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeLastTimeValuePair(i),
             true,
             latestFlushedTime);
@@ -1172,18 +1164,11 @@ public class VirtualStorageGroupProcessor {
     tsFileProcessor.insert(insertRowPlan);
 
     // try to update the latest time of the device of this tsRecord
-    if (latestTimeForEachDevice
-            .get(timePartitionId)
-            .getOrDefault(insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE)
-        < insertRowPlan.getTime()) {
-      latestTimeForEachDevice
-          .get(timePartitionId)
-          .put(insertRowPlan.getDeviceId().getFullPath(), insertRowPlan.getTime());
-    }
+    lastFlushTimeManager.updateLastTime(
+        timePartitionId, insertRowPlan.getDevicePath().getFullPath(), insertRowPlan.getTime());
 
     long globalLatestFlushTime =
-        globalLatestFlushedTimeForEachDevice.getOrDefault(
-            insertRowPlan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+        lastFlushTimeManager.getGlobalFlushedTime(insertRowPlan.getDevicePath().getFullPath());
 
     tryToUpdateInsertLastCache(insertRowPlan, globalLatestFlushTime);
 
@@ -1205,7 +1190,7 @@ public class VirtualStorageGroupProcessor {
       // Update cached last value with high priority
       if (mNodes[i] == null) {
         IoTDB.metaManager.updateLastCache(
-            plan.getDeviceId().concatNode(plan.getMeasurements()[i]),
+            plan.getDevicePath().concatNode(plan.getMeasurements()[i]),
             plan.composeTimeValuePair(i),
             true,
             latestFlushedTime);
@@ -1496,9 +1481,9 @@ public class VirtualStorageGroupProcessor {
       this.workSequenceTsFileProcessors.clear();
       this.workUnsequenceTsFileProcessors.clear();
       this.tsFileManager.clear();
-      this.partitionLatestFlushedTimeForEachDevice.clear();
-      this.globalLatestFlushedTimeForEachDevice.clear();
-      this.latestTimeForEachDevice.clear();
+      lastFlushTimeManager.clearFlushedTime();
+      lastFlushTimeManager.clearGlobalFlushedTime();
+      lastFlushTimeManager.clearLastTime();
     } finally {
       writeUnlock();
     }
@@ -1735,29 +1720,32 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  // TODO need a read lock, please consider the concurrency with flush manager threads.
-
   /**
    * build query data source by searching all tsfile which fit in query filter
    *
-   * @param fullPath data path
+   * @param pathList data paths
    * @param context query context
    * @param timeFilter time filter
+   * @param singleDeviceId selected deviceId (not null only when all the selected series are under
+   *     the same device)
    * @return query data source
    */
   public QueryDataSource query(
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       QueryFileManager filePathsManager,
       Filter timeFilter)
       throws QueryProcessException {
     readLock();
+
     try {
       List<TsFileResource> seqResources =
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(true),
               upgradeSeqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               true);
@@ -1765,7 +1753,8 @@ public class VirtualStorageGroupProcessor {
           getFileResourceListForQuery(
               tsFileManager.getTsFileList(false),
               upgradeUnseqFileList,
-              fullPath,
+              pathList,
+              singleDeviceId,
               context,
               timeFilter,
               false);
@@ -1818,31 +1807,32 @@ public class VirtualStorageGroupProcessor {
   private List<TsFileResource> getFileResourceListForQuery(
       Collection<TsFileResource> tsFileResources,
       List<TsFileResource> upgradeTsFileResources,
-      PartialPath fullPath,
+      List<PartialPath> pathList,
+      String singleDeviceId,
       QueryContext context,
       Filter timeFilter,
       boolean isSeq)
       throws MetadataException {
-    String deviceId = fullPath.getDevice();
 
     if (context.isDebug()) {
       DEBUG_LOGGER.info(
-          "Path: {}.{}, get tsfile list: {} isSeq: {} timefilter: {}",
-          deviceId,
-          fullPath.getMeasurement(),
+          "Path: {}, get tsfile list: {} isSeq: {} timefilter: {}",
+          pathList,
           tsFileResources,
           isSeq,
           (timeFilter == null ? "null" : timeFilter));
     }
 
     List<TsFileResource> tsfileResourcesForQuery = new ArrayList<>();
-    long ttlLowerBound =
+
+    long timeLowerBound =
         dataTTL != Long.MAX_VALUE ? System.currentTimeMillis() - dataTTL : Long.MIN_VALUE;
-    context.setQueryTimeLowerBound(ttlLowerBound);
+    context.setQueryTimeLowerBound(timeLowerBound);
 
     // for upgrade files and old files must be closed
     for (TsFileResource tsFileResource : upgradeTsFileResources) {
-      if (!tsFileResource.isSatisfied(deviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
+      if (!tsFileResource.isSatisfied(
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1855,7 +1845,7 @@ public class VirtualStorageGroupProcessor {
 
     for (TsFileResource tsFileResource : tsFileResources) {
       if (!tsFileResource.isSatisfied(
-          fullPath.getDevice(), timeFilter, isSeq, dataTTL, context.isDebug())) {
+          singleDeviceId, timeFilter, isSeq, dataTTL, context.isDebug())) {
         continue;
       }
       closeQueryLock.readLock().lock();
@@ -1863,9 +1853,7 @@ public class VirtualStorageGroupProcessor {
         if (tsFileResource.isClosed()) {
           tsfileResourcesForQuery.add(tsFileResource);
         } else {
-          tsFileResource
-              .getUnsealedFileProcessor()
-              .query(fullPath, context, tsfileResourcesForQuery);
+          tsFileResource.getProcessor().query(pathList, context, tsfileResourcesForQuery);
         }
       } catch (IOException e) {
         throw new MetadataException(e);
@@ -2046,7 +2034,7 @@ public class VirtualStorageGroupProcessor {
 
       // delete data in memory of unsealed file
       if (!tsFileResource.isClosed()) {
-        TsFileProcessor tsfileProcessor = tsFileResource.getUnsealedFileProcessor();
+        TsFileProcessor tsfileProcessor = tsFileResource.getProcessor();
         tsfileProcessor.deleteDataInMemory(deletion, devicePaths);
       }
 
@@ -2077,7 +2065,7 @@ public class VirtualStorageGroupProcessor {
     TsFileResource resource = tsFileProcessor.getTsFileResource();
     for (String deviceId : resource.getDevices()) {
       resource.updateEndTime(
-          deviceId, latestTimeForEachDevice.get(tsFileProcessor.getTimeRangeId()).get(deviceId));
+          deviceId, lastFlushTimeManager.getLastTime(tsFileProcessor.getTimeRangeId(), deviceId));
     }
   }
 
@@ -2086,31 +2074,16 @@ public class VirtualStorageGroupProcessor {
   }
 
   private boolean updateLatestFlushTimeCallback(TsFileProcessor processor) {
-    // update the largest timestamp in the last flushing memtable
-    Map<String, Long> curPartitionDeviceLatestTime =
-        latestTimeForEachDevice.get(processor.getTimeRangeId());
-
-    if (curPartitionDeviceLatestTime == null) {
+    boolean res = lastFlushTimeManager.updateLatestFlushTime(processor.getTimeRangeId());
+    if (!res) {
       logger.warn(
           "Partition: {} does't have latest time for each device. "
               + "No valid record is written into memtable. Flushing tsfile is: {}",
           processor.getTimeRangeId(),
           processor.getTsFileResource().getTsFile());
-      return false;
     }
 
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(processor.getTimeRangeId(), id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
-          processor.getTimeRangeId(), entry.getKey(), entry.getValue());
-      if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
-          < entry.getValue()) {
-        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return true;
+    return res;
   }
 
   /**
@@ -2121,42 +2094,24 @@ public class VirtualStorageGroupProcessor {
    * @return true if update latest flush time success
    */
   private boolean updateLatestFlushTimeToPartition(long partitionId, long latestFlushTime) {
-    // update the largest timestamp in the last flushing memtable
-    Map<String, Long> curPartitionDeviceLatestTime = latestTimeForEachDevice.get(partitionId);
-
-    if (curPartitionDeviceLatestTime == null) {
+    boolean res =
+        lastFlushTimeManager.updateLatestFlushTimeToPartition(partitionId, latestFlushTime);
+    if (!res) {
       logger.warn(
           "Partition: {} does't have latest time for each device. "
               + "No valid record is written into memtable.  latest flush time is: {}",
           partitionId,
           latestFlushTime);
-      return false;
     }
 
-    for (Entry<String, Long> entry : curPartitionDeviceLatestTime.entrySet()) {
-      // set lastest flush time to latestTimeForEachDevice
-      entry.setValue(latestFlushTime);
-
-      partitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      newlyFlushedPartitionLatestFlushedTimeForEachDevice
-          .computeIfAbsent(partitionId, id -> new HashMap<>())
-          .put(entry.getKey(), entry.getValue());
-      if (globalLatestFlushedTimeForEachDevice.getOrDefault(entry.getKey(), Long.MIN_VALUE)
-          < entry.getValue()) {
-        globalLatestFlushedTimeForEachDevice.put(entry.getKey(), entry.getValue());
-      }
-    }
-    return true;
+    return res;
   }
 
   /** used for upgrading */
   public void updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
       long partitionId, String deviceId, long time) {
-    newlyFlushedPartitionLatestFlushedTimeForEachDevice
-        .computeIfAbsent(partitionId, id -> new HashMap<>())
-        .compute(deviceId, (k, v) -> v == null ? time : Math.max(v, time));
+    lastFlushTimeManager.updateNewlyFlushedPartitionLatestFlushedTimeForEachDevice(
+        partitionId, deviceId, time);
   }
 
   /** put the memtable back to the MemTablePool and make the metadata in writer visible */
@@ -2237,21 +2192,7 @@ public class VirtualStorageGroupProcessor {
         writeUnlock();
       }
       // after upgrade complete, update partitionLatestFlushedTimeForEachDevice
-      for (Entry<Long, Map<String, Long>> entry :
-          newlyFlushedPartitionLatestFlushedTimeForEachDevice.entrySet()) {
-        long timePartitionId = entry.getKey();
-        Map<String, Long> latestFlushTimeForPartition =
-            partitionLatestFlushedTimeForEachDevice.getOrDefault(timePartitionId, new HashMap<>());
-        for (Entry<String, Long> endTimeMap : entry.getValue().entrySet()) {
-          String device = endTimeMap.getKey();
-          long endTime = endTimeMap.getValue();
-          if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
-            partitionLatestFlushedTimeForEachDevice
-                .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-                .put(device, endTime);
-          }
-        }
-      }
+      lastFlushTimeManager.applyNewlyFlushedTimeToFlushedTime();
     }
   }
 
@@ -2727,24 +2668,9 @@ public class VirtualStorageGroupProcessor {
     for (String device : newTsFileResource.getDevices()) {
       long endTime = newTsFileResource.getEndTime(device);
       long timePartitionId = StorageEngine.getTimePartition(endTime);
-      if (!latestTimeForEachDevice
-              .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-              .containsKey(device)
-          || latestTimeForEachDevice.get(timePartitionId).get(device) < endTime) {
-        latestTimeForEachDevice.get(timePartitionId).put(device, endTime);
-      }
-
-      Map<String, Long> latestFlushTimeForPartition =
-          partitionLatestFlushedTimeForEachDevice.getOrDefault(timePartitionId, new HashMap<>());
-
-      if (latestFlushTimeForPartition.getOrDefault(device, Long.MIN_VALUE) < endTime) {
-        partitionLatestFlushedTimeForEachDevice
-            .computeIfAbsent(timePartitionId, id -> new HashMap<>())
-            .put(device, endTime);
-      }
-      if (globalLatestFlushedTimeForEachDevice.getOrDefault(device, Long.MIN_VALUE) < endTime) {
-        globalLatestFlushedTimeForEachDevice.put(device, endTime);
-      }
+      lastFlushTimeManager.updateLastTime(timePartitionId, device, endTime);
+      lastFlushTimeManager.updateFlushedTime(timePartitionId, device, endTime);
+      lastFlushTimeManager.updateGlobalFlushedTime(device, endTime);
     }
   }
 
@@ -3014,8 +2940,16 @@ public class VirtualStorageGroupProcessor {
   }
 
   public void setDataTTL(long dataTTL) {
-    this.dataTTL = dataTTL;
-    checkFilesTTL();
+    // Check files ttl will lock tsfile resource firstly and then lock tsfile.
+    // This lock order is conflict with tsfile creation in insert method, so we get a potential dead
+    // lock. Add this write lock to avoid dead lock above.
+    writeLock("setDataTTL");
+    try {
+      this.dataTTL = dataTTL;
+      checkFilesTTL();
+    } finally {
+      writeUnlock();
+    }
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {
@@ -3028,6 +2962,11 @@ public class VirtualStorageGroupProcessor {
 
   public String getVirtualStorageGroupId() {
     return virtualStorageGroupId;
+  }
+
+  /** @return virtual storage group path, like root.sg1/0 */
+  public String getStorageGroupPath() {
+    return logicalStorageGroupName + File.separator + virtualStorageGroupId;
   }
 
   public StorageGroupInfo getStorageGroupInfo() {
@@ -3179,24 +3118,23 @@ public class VirtualStorageGroupProcessor {
         // init map
         long timePartitionId = StorageEngine.getTimePartition(plan.getTime());
 
-        partitionLatestFlushedTimeForEachDevice.computeIfAbsent(
-            timePartitionId, id -> new HashMap<>());
+        lastFlushTimeManager.ensureFlushedTimePartition(timePartitionId);
         // as the plans have been ordered, and we have get the write lock,
         // So, if a plan is sequenced, then all the rest plans are sequenced.
         //
         if (!isSequence) {
           isSequence =
               plan.getTime()
-                  > partitionLatestFlushedTimeForEachDevice
-                      .get(timePartitionId)
-                      .getOrDefault(plan.getDeviceId().getFullPath(), Long.MIN_VALUE);
+                  > lastFlushTimeManager.getFlushedTime(
+                      timePartitionId, plan.getDevicePath().getFullPath());
         }
         // is unsequence and user set config to discard out of order data
         if (!isSequence
             && IoTDBDescriptor.getInstance().getConfig().isEnableDiscardOutOfOrderData()) {
           return;
         }
-        latestTimeForEachDevice.computeIfAbsent(timePartitionId, l -> new HashMap<>());
+
+        lastFlushTimeManager.ensureLastTimePartition(timePartitionId);
 
         // fire trigger before insertion
         TriggerEngine.fire(TriggerEvent.BEFORE_INSERT, plan);
@@ -3319,5 +3257,9 @@ public class VirtualStorageGroupProcessor {
 
   public ScheduledExecutorService getTimedCompactionScheduleTask() {
     return timedCompactionScheduleTask;
+  }
+
+  public IDTable getIdTable() {
+    return idTable;
   }
 }

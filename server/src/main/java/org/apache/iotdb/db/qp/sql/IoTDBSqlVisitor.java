@@ -1256,6 +1256,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     groupByClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
             ctx.DURATION_LITERAL(0).getText(), true, groupByClauseComponent));
+    if (groupByClauseComponent.getUnit() <= 0) {
+      throw new SQLParserException(
+          "The second parameter time interval should be a positive integer.");
+    }
     // parse sliding step
     if (ctx.DURATION_LITERAL().size() == 2) {
       groupByClauseComponent.setSlidingStep(

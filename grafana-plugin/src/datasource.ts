@@ -56,6 +56,9 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
         if (target.condition) {
           target.condition = getTemplateSrv().replace(target.condition, options.scopedVars);
         }
+        if (target.control) {
+          target.control = getTemplateSrv().replace(target.control, options.scopedVars);
+        }
       }
       //target.paths = ['root', ...target.paths];
       return this.doRequest(target);
@@ -80,7 +83,7 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
       })
       .then(response => response.data)
       .then(a => {
-        if (a.expressions !== null) {
+        if (a.hasOwnProperty('expressions') && a.expressions !== null) {
           let dataframes: any = [];
           a.expressions.map((v: any, index: any) => {
             let datapoints: any = [];
@@ -93,8 +96,13 @@ export class DataSource extends DataSourceApi<IoTDBQuery, IoTDBOptions> {
             dataframes[index] = { target: v, datapoints: datapoints };
           });
           return dataframes.map(toDataFrame);
+        } else if (a.hasOwnProperty('expressions')) {
+          let dataframes: any = [];
+          return dataframes.map(toDataFrame);
+        } else if (a.hasOwnProperty('code')) {
+          throw a.message;
         } else {
-          throw 'the result is null';
+          throw 'the result is not object';
         }
       });
   }

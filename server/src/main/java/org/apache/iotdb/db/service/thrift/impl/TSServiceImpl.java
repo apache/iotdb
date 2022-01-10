@@ -62,6 +62,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.tracing.TracingConstant;
 import org.apache.iotdb.db.query.dataset.DirectAlignByTimeDataSet;
 import org.apache.iotdb.db.query.dataset.DirectNonAlignDataSet;
+import org.apache.iotdb.db.query.pool.QueryTaskManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.StaticResps;
 import org.apache.iotdb.db.service.basic.BasicOpenSessionResp;
@@ -137,6 +138,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onIoTDBException;
@@ -147,6 +150,81 @@ import static org.apache.iotdb.db.utils.ErrorHandlingUtils.tryCatchQueryExceptio
 
 /** Thrift RPC implementation at server side. */
 public class TSServiceImpl extends BasicServiceProvider implements TSIService.Iface {
+
+  protected class QueryTask implements Callable<TSExecuteStatementResp> {
+
+    private PhysicalPlan plan;
+    private final long queryStartTime;
+    private final long sessionId;
+    private final String statement;
+    private final long statementId;
+    private final long timeout;
+    private final int fetchSize;
+    private final boolean isJdbcQuery;
+    private final boolean enableRedirectQuery;
+
+    /**
+     * Execute query statement, return TSExecuteStatementResp with dataset.
+     *
+     * @param plan must be a plan for Query: QueryPlan, ShowPlan, and some AuthorPlan
+     */
+    public QueryTask(
+        PhysicalPlan plan,
+        long queryStartTime,
+        long sessionId,
+        String statement,
+        long statementId,
+        long timeout,
+        int fetchSize,
+        boolean isJdbcQuery,
+        boolean enableRedirectQuery) {
+      this.plan = plan;
+      this.queryStartTime = queryStartTime;
+      this.sessionId = sessionId;
+      this.statement = statement;
+      this.statementId = statementId;
+      this.timeout = timeout;
+      this.fetchSize = fetchSize;
+      this.isJdbcQuery = isJdbcQuery;
+      this.enableRedirectQuery = enableRedirectQuery;
+    }
+
+    @Override
+    public TSExecuteStatementResp call() throws Exception {
+      String username = sessionManager.getUsername(sessionId);
+      plan.setLoginUserName(username);
+
+      queryFrequencyRecorder.incrementAndGet();
+      AUDIT_LOGGER.debug("Session {} execute Query: {}", sessionId, statement);
+
+      final long queryId = sessionManager.requestQueryId(statementId, true);
+      QueryContext context =
+          genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
+
+      TSExecuteStatementResp resp;
+      try {
+        if (plan instanceof QueryPlan) {
+          QueryPlan queryPlan = (QueryPlan) plan;
+          queryPlan.setEnableRedirect(enableRedirectQuery);
+          resp = executeQueryPlan(queryPlan, context, isJdbcQuery, fetchSize, username);
+        } else {
+          resp = executeShowOrAuthorPlan(plan, context, fetchSize, username);
+        }
+        resp.setQueryId(queryId);
+        resp.setOperationType(plan.getOperatorType().toString());
+      } catch (Exception e) {
+        sessionManager.releaseQueryResourceNoExceptions(queryId);
+        throw e;
+      } finally {
+        addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
+        long costTime = System.currentTimeMillis() - queryStartTime;
+        if (costTime >= CONFIG.getSlowQueryThreshold()) {
+          SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
+        }
+      }
+      return resp;
+    }
+  }
 
   // main logger
   private static final Logger LOGGER = LoggerFactory.getLogger(TSServiceImpl.class);
@@ -455,24 +533,30 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.getSessionId()));
 
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              startTime,
-              req.timeout,
-              req.getSessionId(),
-              req.isEnableRedirectQuery(),
-              req.isJdbcQuery())
-          : executeUpdateStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              req.timeout,
-              req.getSessionId());
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        startTime,
+                        req.sessionId,
+                        req.statement,
+                        req.statementId,
+                        req.timeout,
+                        req.fetchSize,
+                        req.jdbcQuery,
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return executeUpdateStatement(
+            statement,
+            req.statementId,
+            physicalPlan,
+            req.fetchSize,
+            req.timeout,
+            req.getSessionId());
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -496,19 +580,25 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       PhysicalPlan physicalPlan =
           processor.parseSQLToPhysicalPlan(statement, sessionManager.getZoneId(req.sessionId));
 
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              statement,
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              startTime,
-              req.timeout,
-              req.getSessionId(),
-              req.isEnableRedirectQuery(),
-              req.isJdbcQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        startTime,
+                        req.sessionId,
+                        req.statement,
+                        req.statementId,
+                        req.timeout,
+                        req.fetchSize,
+                        req.jdbcQuery,
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -532,19 +622,26 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           processor.rawDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              "",
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              startTime,
-              CONFIG.getQueryTimeoutThreshold(),
-              req.sessionId,
-              req.isEnableRedirectQuery(),
-              req.isJdbcQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        startTime,
+                        req.sessionId,
+                        "",
+                        req.statementId,
+                        CONFIG.getQueryTimeoutThreshold(),
+                        req.fetchSize,
+                        req.isJdbcQuery(),
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -566,19 +663,26 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           processor.lastDataQueryReqToPhysicalPlan(req, sessionManager.getZoneId(req.sessionId));
-      return physicalPlan.isQuery()
-          ? internalExecuteQueryStatement(
-              "",
-              req.statementId,
-              physicalPlan,
-              req.fetchSize,
-              startTime,
-              CONFIG.getQueryTimeoutThreshold(),
-              req.sessionId,
-              req.isEnableRedirectQuery(),
-              req.isJdbcQuery())
-          : RpcUtils.getTSExecuteStatementResp(
-              TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+
+      if (physicalPlan.isQuery()) {
+        Future<TSExecuteStatementResp> resp =
+            QueryTaskManager.getInstance()
+                .submit(
+                    new QueryTask(
+                        physicalPlan,
+                        startTime,
+                        req.sessionId,
+                        "",
+                        req.statementId,
+                        CONFIG.getQueryTimeoutThreshold(),
+                        req.fetchSize,
+                        req.isJdbcQuery(),
+                        req.enableRedirectQuery));
+        return resp.get();
+      } else {
+        return RpcUtils.getTSExecuteStatementResp(
+            TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is not a query statement.");
+      }
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
@@ -590,67 +694,16 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     }
   }
 
-  /**
-   * Execute query statement, return TSExecuteStatementResp with dataset.
-   *
-   * @param plan must be a plan for Query: QueryPlan, ShowPlan, and some AuthorPlan
-   */
-  @SuppressWarnings({"squid:S3776", "squid:S1141"}) // Suppress high Cognitive Complexity warning
-  private TSExecuteStatementResp internalExecuteQueryStatement(
-      String statement,
-      long statementId,
-      PhysicalPlan plan,
-      int fetchSize,
-      long queryStartTime,
-      long timeout,
-      long sessionId,
-      boolean enableRedirect,
-      boolean isJdbcQuery)
-      throws QueryProcessException, SQLException, StorageEngineException,
-          QueryFilterOptimizationException, MetadataException, IOException, InterruptedException,
-          TException, AuthException {
-    String username = sessionManager.getUsername(sessionId);
-    plan.setLoginUserName(username);
-
-    queryFrequencyRecorder.incrementAndGet();
-    AUDIT_LOGGER.debug(
-        "Session {} execute Query: {}", sessionManager.getCurrSessionId(), statement);
-
-    final long queryId = sessionManager.requestQueryId(statementId, true);
-    QueryContext context =
-        genQueryContext(queryId, plan.isDebug(), queryStartTime, statement, timeout);
-
-    TSExecuteStatementResp resp;
-    try {
-      if (plan instanceof QueryPlan) {
-        QueryPlan queryPlan = (QueryPlan) plan;
-        queryPlan.setEnableRedirect(enableRedirect);
-        resp = executeQueryPlan(queryPlan, context, isJdbcQuery, fetchSize, username);
-      } else {
-        resp = executeShowOrAuthorPlan(plan, context, fetchSize, username);
-      }
-      resp.setQueryId(queryId);
-      resp.setOperationType(plan.getOperatorType().toString());
-    } catch (Exception e) {
-      sessionManager.releaseQueryResourceNoExceptions(queryId);
-      throw e;
-    } finally {
-      addOperationLatency(Operation.EXECUTE_QUERY, queryStartTime);
-      long costTime = System.currentTimeMillis() - queryStartTime;
-      if (costTime >= CONFIG.getSlowQueryThreshold()) {
-        SLOW_SQL_LOGGER.info("Cost: {} ms, sql is {}", costTime, statement);
-      }
-    }
-    return resp;
-  }
-
   private TSExecuteStatementResp executeQueryPlan(
       QueryPlan plan, QueryContext context, boolean isJdbcQuery, int fetchSize, String username)
       throws TException, MetadataException, QueryProcessException, StorageEngineException,
           SQLException, IOException, InterruptedException, QueryFilterOptimizationException,
           AuthException {
     // check permissions
-    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
+    List<? extends PartialPath> authPaths = plan.getAuthPaths();
+    if (authPaths != null
+        && !authPaths.isEmpty()
+        && !checkAuthorization(authPaths, plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -665,6 +718,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
       tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
     }
+    context.setAscending(plan.isAscending());
 
     TSExecuteStatementResp resp = null;
     // execute it before createDataSet since it may change the content of query plan
@@ -1197,7 +1251,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     for (int i = 0; i < req.prefixPaths.size(); i++) {
       InsertRowPlan plan = new InsertRowPlan();
       try {
-        plan.setDeviceId(new PartialPath(req.getPrefixPaths().get(i)));
+        plan.setDevicePath(new PartialPath(req.getPrefixPaths().get(i)));
         plan.setTime(req.getTimestamps().get(i));
         addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1335,7 +1389,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           req.getTimestamp());
 
       InsertRowPlan plan = new InsertRowPlan();
-      plan.setDeviceId(new PartialPath(req.getPrefixPath()));
+      plan.setDevicePath(new PartialPath(req.getPrefixPath()));
       plan.setTime(req.getTimestamp());
       plan.setMeasurements(req.getMeasurements().toArray(new String[0]));
       plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
@@ -1802,7 +1856,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       resp.setStatus(RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS, "Execute successfully"));
       return resp;
     } catch (MetadataException e) {
-      e.printStackTrace();
+      LOGGER.error("fail to query schema template because: " + e);
     }
     return null;
   }

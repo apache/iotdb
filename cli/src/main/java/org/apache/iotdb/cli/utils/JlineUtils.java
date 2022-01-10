@@ -51,7 +51,9 @@ public class JlineUtils {
           .collect(Collectors.toSet());
 
   public static LineReader getLineReader() throws IOException {
-    Terminal terminal = TerminalBuilder.builder().build();
+    // Defaulting to a dumb terminal when a supported terminal can not be correctly created
+    // see https://github.com/jline/jline3/issues/291
+    Terminal terminal = TerminalBuilder.builder().dumb(true).build();
     if (terminal.getWidth() == 0 || terminal.getHeight() == 0) {
       // Hard coded terminal size when redirecting.
       terminal.setSize(new Size(120, 40));
