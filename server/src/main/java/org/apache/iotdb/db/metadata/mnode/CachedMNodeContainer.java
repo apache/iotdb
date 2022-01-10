@@ -286,4 +286,12 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
   public Map<String, IMNode> getUpdatedChildBuffer() {
     return updatedChildBuffer == null ? Collections.emptyMap() : updatedChildBuffer;
   }
+
+  @Override
+  public void loadChildrenFromDisk(Map<String, IMNode> children) {
+    if (childCache == null) {
+      childCache = new ConcurrentHashMap<>();
+    }
+    childCache.putAll(children);
+  }
 }

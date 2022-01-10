@@ -39,4 +39,6 @@ public interface ISegment {
   Map<String, IMNode> getNewChildBuffer();
 
   Map<String, IMNode> getUpdatedChildBuffer();
+
+  void loadChildrenFromDisk(Map<String, IMNode> children);
 }
