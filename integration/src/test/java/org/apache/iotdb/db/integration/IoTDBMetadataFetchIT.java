@@ -116,7 +116,7 @@ public class IoTDBMetadataFetchIT {
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
-                Arrays.asList(
+                Collections.singletonList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
             new HashSet<>(
                 Arrays.asList(
@@ -215,19 +215,13 @@ public class IoTDBMetadataFetchIT {
   @Test
   @Category({LocalStandaloneTest.class})
   public void databaseMetaDataTest() throws SQLException {
-    Connection connection = null;
-    try {
-      connection = EnvFactory.getEnv().getConnection();
+    try (Connection connection = EnvFactory.getEnv().getConnection()) {
       databaseMetaData = connection.getMetaData();
       showTimeseriesInJson();
 
     } catch (Exception e) {
       logger.error("databaseMetaDataTest() failed", e);
       fail(e.getMessage());
-    } finally {
-      if (connection != null) {
-        connection.close();
-      }
     }
   }
 
@@ -515,18 +509,6 @@ public class IoTDBMetadataFetchIT {
   public void showCountTimeSeriesGroupBy() throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      try {
-        // add some extract timeseries based on setUp data
-        String[] insertSqls = new String[] {};
-
-        for (String sql : insertSqls) {
-          statement.execute(sql);
-        }
-      } catch (Exception e) {
-        logger.error("insertSQL() failed", e);
-        fail(e.getMessage());
-      }
-
       String[] sqls =
           new String[] {
             "COUNT TIMESERIES root.** group by level=1",
