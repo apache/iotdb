@@ -182,7 +182,7 @@ public class MetaUtils {
         List<Integer> indexes = pathToAggrIndexesMap.remove(seriesPath);
         AlignedPath groupPath = temp.get(seriesPath.getFullPath());
         if (groupPath == null) {
-          groupPath = (AlignedPath) seriesPath;
+          groupPath = (AlignedPath) seriesPath.copy();
           temp.put(groupPath.getFullPath(), groupPath);
           alignedPathToAggrIndexesMap
               .computeIfAbsent(groupPath, key -> new ArrayList<>())

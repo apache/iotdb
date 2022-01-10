@@ -218,6 +218,7 @@ public class AlignedPath extends PartialPath {
     result.fullPath = fullPath;
     result.device = device;
     result.measurementList = new ArrayList<>(measurementList);
+    result.schemaList = new ArrayList<>(schemaList);
     return result;
   }
 
