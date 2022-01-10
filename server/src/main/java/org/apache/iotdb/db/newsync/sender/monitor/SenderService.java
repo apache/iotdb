@@ -48,14 +48,10 @@ public class SenderService implements IService {
   }
 
   @Override
-  public void start() throws StartupException {
-
-  }
+  public void start() throws StartupException {}
 
   @Override
-  public void stop() {
-
-  }
+  public void stop() {}
 
   @Override
   public ServiceType getID() {

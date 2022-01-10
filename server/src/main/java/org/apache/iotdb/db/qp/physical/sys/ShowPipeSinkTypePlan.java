@@ -8,12 +8,12 @@ import java.util.Collections;
 import java.util.List;
 
 public class ShowPipeSinkTypePlan extends PhysicalPlan {
-    public ShowPipeSinkTypePlan() {
-        super(false, Operator.OperatorType.SHOW_PIPESINKTYPE);
-    }
+  public ShowPipeSinkTypePlan() {
+    super(false, Operator.OperatorType.SHOW_PIPESINKTYPE);
+  }
 
-    @Override
-    public List<? extends PartialPath> getPaths() {
-        return Collections.emptyList();
-    }
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
 }

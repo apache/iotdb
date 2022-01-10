@@ -2198,10 +2198,13 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void createPipeSink(CreatePipeSinkPlan plan) throws QueryProcessException {
     if (SenderService.getInstance().getPipeSink(plan.getPipeSinkName()) != null) {
-      throw new QueryProcessException("There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please delete it.");
+      throw new QueryProcessException(
+          "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please delete it.");
     }
     try {
-      PipeSink pipeSink = SenderFactory.createPipeSink(PipeSink.Type.valueOf(plan.getPipeSinkType()), plan.getPipeSinkName());
+      PipeSink pipeSink =
+          SenderFactory.createPipeSink(
+              PipeSink.Type.valueOf(plan.getPipeSinkType()), plan.getPipeSinkName());
       for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
         pipeSink.setAttribute(pair.left, pair.right);
       }
