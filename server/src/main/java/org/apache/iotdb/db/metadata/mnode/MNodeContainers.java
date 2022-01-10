@@ -24,11 +24,11 @@ public class MNodeContainers {
   private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
 
   @SuppressWarnings("unchecked")
-  public static <E extends IMNode> IMNodeContainer<E> emptyMNodeContainer() {
-    return (IMNodeContainer<E>) EMPTY_CONTAINER;
+  public static IMNodeContainer emptyMNodeContainer() {
+    return EMPTY_CONTAINER;
   }
 
-  public static <E extends IMNode> IMNodeContainer<E> getNewMNodeContainer() {
-    return new MNodeContainerMapImpl<>();
+  public static IMNodeContainer getNewMNodeContainer() {
+    return new MNodeContainerMapImpl();
   }
 }

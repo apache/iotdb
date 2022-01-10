@@ -34,9 +34,9 @@ public interface ISegment {
 
   boolean isExpelled();
 
-  Map<String, ? extends IMNode> getChildCache();
+  Map<String, IMNode> getChildCache();
 
-  Map<String, ? extends IMNode> getNewChildBuffer();
+  Map<String, IMNode> getNewChildBuffer();
 
-  Map<String, ? extends IMNode> getUpdatedChildBuffer();
+  Map<String, IMNode> getUpdatedChildBuffer();
 }

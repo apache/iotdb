@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -39,7 +40,7 @@ public class InternalMNode extends MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile IMNodeContainer<IMNode> children = null;
+  protected transient volatile IMNodeContainer children = null;
 
   // schema template
   protected Template schemaTemplate = null;
@@ -144,7 +145,7 @@ public class InternalMNode extends MNode {
     }
 
     // newChildNode builds parent-child relationship
-    IMNodeContainer<IMNode> grandChildren = oldChildNode.getChildren();
+    IMNodeContainer grandChildren = oldChildNode.getChildren();
     if (!grandChildren.isEmpty()) {
       newChildNode.setChildren(grandChildren);
       grandChildren.forEach(
@@ -152,7 +153,7 @@ public class InternalMNode extends MNode {
     }
 
     if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      IMNodeContainer<IMeasurementMNode> grandAliasChildren =
+      Map<String, IMeasurementMNode> grandAliasChildren =
           oldChildNode.getAsEntityMNode().getAliasChildren();
       if (!grandAliasChildren.isEmpty()) {
         newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
@@ -171,7 +172,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public IMNodeContainer<IMNode> getChildren() {
+  public IMNodeContainer getChildren() {
     if (children == null) {
       return MNodeContainers.emptyMNodeContainer();
     }
@@ -179,7 +180,7 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public void setChildren(IMNodeContainer<IMNode> children) {
+  public void setChildren(IMNodeContainer children) {
     this.children = children;
   }
 
