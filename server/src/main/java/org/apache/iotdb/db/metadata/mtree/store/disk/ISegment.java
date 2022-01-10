@@ -16,19 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mtree.store.disk;
 
-public class MNodeContainers {
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
-  @SuppressWarnings("rawtypes")
-  private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();
+import java.util.Map;
 
-  @SuppressWarnings("unchecked")
-  public static <E extends IMNode> IMNodeContainer<E> emptyMNodeContainer() {
-    return (IMNodeContainer<E>) EMPTY_CONTAINER;
-  }
+public interface ISegment {
 
-  public static <E extends IMNode> IMNodeContainer<E> getNewMNodeContainer() {
-    return new MNodeContainerMapImpl<>();
-  }
+  long getSegmentAddress();
+
+  void setSegmentAddress(long segmentAddress);
+
+  boolean isVolatile();
+
+  boolean isFull();
+
+  boolean isExpelled();
+
+  Map<String, ? extends IMNode> getChildCache();
+
+  Map<String, ? extends IMNode> getNewChildBuffer();
+
+  Map<String, ? extends IMNode> getUpdatedChildBuffer();
 }
