@@ -223,7 +223,7 @@ prometheusReporterConfig:
 1. 打开配置文件中的metric开关
 2. 其他参数默认不动即可
 3. 启动IoTDB
-4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9001/metrics```, 就能看到metric数据了:
+4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
 
 ```
 # HELP file_count
