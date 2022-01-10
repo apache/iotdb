@@ -28,9 +28,9 @@ public interface IEntityMNode extends IMNode {
 
   void deleteAliasChild(String alias);
 
-  Map<String, IMeasurementMNode> getAliasChildren();
+  IMNodeContainer<IMeasurementMNode> getAliasChildren();
 
-  void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren);
+  void setAliasChildren(IMNodeContainer<IMeasurementMNode> aliasChildren);
 
   @Override
   boolean isUseTemplate();

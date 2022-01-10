@@ -23,10 +23,6 @@ import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This class is the implementation of Metadata Node. One MNode instance represents one node in the
@@ -43,7 +39,7 @@ public class InternalMNode extends MNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  protected transient volatile Map<String, IMNode> children = null;
+  protected transient volatile IMNodeContainer<IMNode> children = null;
 
   // schema template
   protected Template schemaTemplate = null;
@@ -87,7 +83,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new ConcurrentHashMap<>();
+          children = MNodeContainers.getNewMNodeContainer();
         }
       }
     }
@@ -116,7 +112,7 @@ public class InternalMNode extends MNode {
       // double check, children is volatile
       synchronized (this) {
         if (children == null) {
-          children = new ConcurrentHashMap<>();
+          children = MNodeContainers.getNewMNodeContainer();
         }
       }
     }
@@ -148,7 +144,7 @@ public class InternalMNode extends MNode {
     }
 
     // newChildNode builds parent-child relationship
-    Map<String, IMNode> grandChildren = oldChildNode.getChildren();
+    IMNodeContainer<IMNode> grandChildren = oldChildNode.getChildren();
     if (!grandChildren.isEmpty()) {
       newChildNode.setChildren(grandChildren);
       grandChildren.forEach(
@@ -156,7 +152,7 @@ public class InternalMNode extends MNode {
     }
 
     if (newChildNode.isEntity() && oldChildNode.isEntity()) {
-      Map<String, IMeasurementMNode> grandAliasChildren =
+      IMNodeContainer<IMeasurementMNode> grandAliasChildren =
           oldChildNode.getAsEntityMNode().getAliasChildren();
       if (!grandAliasChildren.isEmpty()) {
         newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
@@ -175,15 +171,15 @@ public class InternalMNode extends MNode {
   }
 
   @Override
-  public Map<String, IMNode> getChildren() {
+  public IMNodeContainer<IMNode> getChildren() {
     if (children == null) {
-      return Collections.emptyMap();
+      return MNodeContainers.emptyMNodeContainer();
     }
     return children;
   }
 
   @Override
-  public void setChildren(Map<String, IMNode> children) {
+  public void setChildren(IMNodeContainer<IMNode> children) {
     this.children = children;
   }
 
@@ -236,8 +232,8 @@ public class InternalMNode extends MNode {
     if (children == null) {
       return;
     }
-    for (Entry<String, IMNode> entry : children.entrySet()) {
-      entry.getValue().serializeTo(logWriter);
+    for (IMNode child : children.values()) {
+      child.serializeTo(logWriter);
     }
   }
 

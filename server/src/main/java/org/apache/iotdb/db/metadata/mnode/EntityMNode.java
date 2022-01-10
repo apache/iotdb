@@ -33,7 +33,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
    * <p>This will be a ConcurrentHashMap instance
    */
   @SuppressWarnings("squid:S3077")
-  private transient volatile Map<String, IMeasurementMNode> aliasChildren = null;
+  private transient volatile IMNodeContainer<IMeasurementMNode> aliasChildren = null;
 
   private volatile boolean isAligned = false;
 
@@ -76,7 +76,7 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
       // double check, alias children volatile
       synchronized (this) {
         if (aliasChildren == null) {
-          aliasChildren = new ConcurrentHashMap<>();
+          aliasChildren = MNodeContainers.getNewMNodeContainer();
         }
       }
     }
@@ -93,15 +93,15 @@ public class EntityMNode extends InternalMNode implements IEntityMNode {
   }
 
   @Override
-  public Map<String, IMeasurementMNode> getAliasChildren() {
+  public IMNodeContainer<IMeasurementMNode> getAliasChildren() {
     if (aliasChildren == null) {
-      return Collections.emptyMap();
+      return MNodeContainers.emptyMNodeContainer();
     }
     return aliasChildren;
   }
 
   @Override
-  public void setAliasChildren(Map<String, IMeasurementMNode> aliasChildren) {
+  public void setAliasChildren(IMNodeContainer<IMeasurementMNode> aliasChildren) {
     this.aliasChildren = aliasChildren;
   }
 

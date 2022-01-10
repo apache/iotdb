@@ -26,8 +26,10 @@ import org.apache.iotdb.db.metadata.logfile.MLogReader;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeContainerMapImpl;
 import org.apache.iotdb.db.metadata.mnode.MNodeUtils;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -48,8 +50,6 @@ import java.nio.file.Files;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /** This is a memory-based implementation of IMTreeStore. All MNodes are stored in memory. */
 public class MemMTreeStore implements IMTreeStore {
@@ -104,11 +104,6 @@ public class MemMTreeStore implements IMTreeStore {
   @Override
   public IMNode getChild(IMNode parent, String name) {
     return parent.getChild(name);
-  }
-
-  @Override
-  public Map<String, IMNode> getChildren(IMNode parent) {
-    return parent.getChildren();
   }
 
   @Override
@@ -208,7 +203,7 @@ public class MemMTreeStore implements IMTreeStore {
         }
 
         if (childrenSize != 0) {
-          ConcurrentHashMap<String, IMNode> childrenMap = new ConcurrentHashMap<>();
+          IMNodeContainer<IMNode> childrenMap = new MNodeContainerMapImpl<>();
           for (int i = 0; i < childrenSize; i++) {
             IMNode child = nodeStack.removeFirst();
             childrenMap.put(child.getName(), child);
