@@ -62,6 +62,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
       List<TSDataType> deduplicatedDataTypes,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws QueryProcessException, IOException {
     super(new ArrayList<>(deduplicatedPaths), deduplicatedDataTypes);
@@ -75,6 +76,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
             deduplicatedDataTypes,
             timestampGenerator,
             readersOfSelectedSeries,
+            readerToIndexList,
             cached);
 
     initTransformers();

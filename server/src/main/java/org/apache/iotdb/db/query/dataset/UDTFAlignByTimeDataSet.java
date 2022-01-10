@@ -52,6 +52,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       UDTFPlan udtfPlan,
       TimeGenerator timestampGenerator,
       List<IReaderByTimestamp> readersOfSelectedSeries,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached)
       throws IOException, QueryProcessException {
     super(
@@ -61,6 +62,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         udtfPlan.getDeduplicatedDataTypes(),
         timestampGenerator,
         readersOfSelectedSeries,
+        readerToIndexList,
         cached);
     keepNull = false;
     initTimeHeap();
