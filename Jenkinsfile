@@ -141,7 +141,7 @@ pipeline {
             steps {
                 echo 'Deploying'
                 // Deploy the artifacts using the wagon-maven-plugin.
-                sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload -P get-jar-with-dependencies'
+                sh 'mvn -f jenkins.pom -X -P deploy-snapshots -P client-cpp wagon:upload -P get-jar-with-dependencies -P !library-udf'
             }
         }
 
