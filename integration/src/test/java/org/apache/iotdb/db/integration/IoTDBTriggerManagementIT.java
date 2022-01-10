@@ -195,7 +195,7 @@ public class IoTDBTriggerManagementIT {
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
       statement.execute(
-          "create trigger trigger_1 after insert on root.vehicle.d1.s1 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
+          "create trigger trigger_1 after insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (SQLException throwable) {
       assertTrue(
           throwable
@@ -492,15 +492,16 @@ public class IoTDBTriggerManagementIT {
       assertFalse(trigger2Info.isStopped());
 
       statement.execute("drop trigger trigger_2");
+      statement.execute("drop trigger trigger_1");
       statement.execute(
           "create trigger trigger_2 after insert on root.vehicle.d1.s3 as 'org.apache.iotdb.db.engine.trigger.example.Counter'");
-      statement.execute("drop trigger trigger_1");
       statement.execute(
           "create trigger trigger_1 before insert on root.vehicle.d1.s4 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator' with ('k5'='v5')");
       statement.execute("stop trigger trigger_2");
       statement.execute(
           "create trigger trigger_3 before insert on root.vehicle.d1.s2 as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'");
     } catch (Exception e) {
+      e.printStackTrace();
       fail(e.getMessage());
     }
 
