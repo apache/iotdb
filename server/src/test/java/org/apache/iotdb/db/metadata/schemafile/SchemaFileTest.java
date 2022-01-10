@@ -1,12 +1,15 @@
 package org.apache.iotdb.db.metadata.schemafile;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.ISchemaFile;
+import org.apache.iotdb.db.metadata.mtree.store.disk.schemafile.SchemaFile;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOError;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 public class SchemaFileTest {
 
@@ -39,5 +42,18 @@ public class SchemaFileTest {
   public void storeTree() {
     int x = 1;
     System.out.println(++x);
+  }
+
+  @Test
+  public void testBuffer() {
+    ByteBuffer buffer = ByteBuffer.allocate(1024);
+    short i = ReadWriteIOUtils.readShort(buffer);
+    String a = "a";
+    String b = "b";
+    print(a.compareTo(b));
+  }
+
+  public static void print(Object o) {
+    System.out.println(o.toString());
   }
 }

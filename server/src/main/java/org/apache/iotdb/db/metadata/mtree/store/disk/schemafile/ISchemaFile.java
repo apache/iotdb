@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.schemafile;
+package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;

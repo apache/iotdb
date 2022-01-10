@@ -1,4 +1,4 @@
-package org.apache.iotdb.db.metadata.schemafile;
+package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -136,6 +136,7 @@ public class SchemaFile implements ISchemaFile{
       initPageHeader();
       segAddress.add(freeAddressInPage);
       // init this segment as root segment
+
     } else {
       channel.read(headerContent);
       headerContent.position(0);
@@ -166,15 +167,33 @@ public class SchemaFile implements ISchemaFile{
     freeAddressInPage = SchemaFile.PAGE_HEADER_SIZE;
   }
 
+  private ByteBuffer getSegmentBuffer(int index) {
+    short segAddr = segAddress.get(index);
+    currentPage.position(segAddr);
+    short length = ReadWriteIOUtils.readShort(currentPage);
+    currentPage.position(segAddr);
+    currentPage.limit(segAddr + length);
+    return currentPage.slice();
+  }
+
   // endregion
 
   // region space management
 
   private void allocateNewPage() throws IOException{
+    // TODO: improve rather than append way
     loadPage(++currentPageIndex);
     initPageHeader();
   }
 
+  /**
+   * Try to allocate segment within current page
+   * Will allocate new page if no available segment
+   * Record segment address into segAddress
+   * @param size target size of the segment
+   * @return concatenation of PAGE_INDEX and SEG_INDEX
+   * @throws IOException
+   */
   private long allocateSegment(short size) throws IOException {
     return 0L;
   }
@@ -189,13 +208,13 @@ public class SchemaFile implements ISchemaFile{
   }
 
   private void loadPage(int pageIndex) throws IOException {
-    storePage();
+    writePage2File();
     currentPage.clear();
     currentPageIndex = pageIndex;
     channel.read(currentPage, getPageAddress(currentPageIndex));
   }
 
-  private void storePage() throws IOException{
+  private void writePage2File() throws IOException{
     channel.write(currentPage, getPageAddress(currentPageIndex));
   }
 
