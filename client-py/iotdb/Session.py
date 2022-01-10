@@ -27,6 +27,7 @@ from thrift.transport import TSocket, TTransport
 from .thrift.rpc.TSIService import (
     Client,
     TSCreateTimeseriesReq,
+    TSCreateAlignedTimeseriesReq,
     TSInsertRecordReq,
     TSInsertStringRecordReq,
     TSInsertTabletReq,
@@ -38,7 +39,7 @@ from .thrift.rpc.TSIService import (
     TSInsertRecordsReq,
     TSInsertRecordsOfOneDeviceReq,
 )
-from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq, TSCreateAlignedTimeseriesReq
+from .thrift.rpc.ttypes import TSDeleteDataReq, TSProtocolVersion, TSSetTimeZoneReq
 
 # for debug
 # from IoTDBConstants import *
@@ -394,6 +395,7 @@ class Session(object):
         )
 
         return Session.verify_success(status)
+
     def insert_aligned_record(self, device_id, timestamp, measurements, data_types, values):
         """
         insert one row of aligned record into database, if you want improve your performance, please use insertTablet method
