@@ -921,6 +921,14 @@ path=‘root’ (DOT identifier)*
 Eg: IoTDB > LIST PRIVILEGES USER sgcc_wirte_user ON root.sgcc;
 ```
 
+* List Privileges of Roles
+
+```
+LIST ROLE PRIVILEGES <roleName>
+roleName:=identifier
+Eg: IoTDB > LIST ROLE PRIVILEGES actor;
+```
+
 * List Privileges of Roles(On Specific Path)
 
 ```
@@ -936,14 +944,6 @@ Eg: IoTDB > LIST PRIVILEGES ROLE wirte_role ON root.sgcc;
 LIST USER PRIVILEGES <username> ;   
 username:=identifier  
 Eg: IoTDB > LIST USER PRIVILEGES tempuser;
-```
-
-* List Privileges of Roles
-
-```
-LIST ROLE PRIVILEGES <roleName>
-roleName:=identifier
-Eg: IoTDB > LIST ROLE PRIVILEGES actor;
 ```
 
 * List Roles of Users
