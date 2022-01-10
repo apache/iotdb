@@ -39,8 +39,8 @@ public class ShowDevicesDataSet extends ShowDataSet {
 
   private static final Path[] resourcePathsWithSg = {
     new PartialPath(COLUMN_DEVICES, false),
-    new PartialPath(COLUMN_IS_ALIGNED, false),
     new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_IS_ALIGNED, false)
   };
   private static final TSDataType[] resourceTypesWithSg = {
     TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
@@ -74,10 +74,10 @@ public class ShowDevicesDataSet extends ShowDataSet {
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);
       updateRecord(record, result.getName());
-      updateRecord(record, String.valueOf(result.isAligned()));
       if (hasSgCol) {
         updateRecord(record, result.getSgName());
       }
+      updateRecord(record, String.valueOf(result.isAligned()));
       records.add(record);
       putRecord(record);
     }
