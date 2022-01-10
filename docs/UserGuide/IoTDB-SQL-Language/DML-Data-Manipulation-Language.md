@@ -1134,7 +1134,7 @@ When the fill method is not specified, each data type bears its own default fill
 IoTDB provides [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) clause and [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
-and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+and the use of OFFSET and SOFFSET clauses allows users to set the starting position of the results for display.
 
 Note that the LIMIT and OFFSET are not supported in group by query.
 

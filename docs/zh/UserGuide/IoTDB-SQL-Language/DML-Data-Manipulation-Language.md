@@ -1042,7 +1042,7 @@ It costs 0.006s
 #### LIMIT & OFFSET
 
 IoTDB提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 子句，以使用户可以更好地控制查询结果。使用LIMIT和SLIMIT子句可让用户控制查询结果的行数和列数，
-并且使用OFFSET和SOFSET子句允许用户设置结果显示的起始位置。
+并且使用OFFSET和SOFFSET子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持LIMIT和OFFSET。
 
