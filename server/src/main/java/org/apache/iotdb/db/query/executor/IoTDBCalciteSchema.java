@@ -7,6 +7,7 @@ import org.apache.calcite.DataContext;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.linq4j.Enumerable;
+import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.linq4j.Linq4j;
 import org.apache.calcite.linq4j.QueryProvider;
 import org.apache.calcite.linq4j.Queryable;
@@ -46,7 +47,7 @@ import java.util.Arrays;
 
 public class IoTDBCalciteSchema extends CalciteSchema {
 
-  static class IoTDBTable implements QueryableTable, Table {
+  static class IoTDBTable implements ScannableTable, Table {
 
     private final String path;
     private final TSDataType dataType;
@@ -81,6 +82,8 @@ public class IoTDBCalciteSchema extends CalciteSchema {
       switch (type) {
         case INT32:
           return Integer.class;
+        case TEXT:
+          return String.class;
         default:
           throw new NotImplementedException("Type " + type + " not yet supported!");
       }
@@ -106,18 +109,15 @@ public class IoTDBCalciteSchema extends CalciteSchema {
       return false;
     }
 
-    @Override
     public <T> Queryable<T> asQueryable(QueryProvider queryProvider, SchemaPlus schema, String tableName) {
       throw new UnsupportedOperationException();
     }
 
-    @Override
     public Type getElementType() {
       // Should be allowed as we return Object[]
       return null;
     }
 
-    @Override
     public Expression getExpression(SchemaPlus schema, String tableName, Class clazz) {
       Method apply;
       try {
@@ -143,6 +143,19 @@ public class IoTDBCalciteSchema extends CalciteSchema {
       );
     }
 
+    @Override
+    public Enumerable<Object[]> scan(DataContext root) {
+      Enumerable<Object[]> enumerable = (Enumerable<Object[]>) ((Function2) root.get("series")).apply(path, dataType);
+//      Enumerator<Object[]> enumerator = enumerable.enumerator();
+//
+//      while (enumerator.moveNext()) {
+//        Object[] current = enumerator.current();
+//
+//        System.out.println(" ==> " + Arrays.toString(current));
+//      }
+      return enumerable;
+    }
+
 //    @Override
 //    public Enumerable<Object[]> scan(DataContext root) {
 //      return Linq4j.asEnumerable(Arrays.asList(
@@ -158,12 +171,15 @@ public class IoTDBCalciteSchema extends CalciteSchema {
 
   @Override
   protected @Nullable CalciteSchema getImplicitSubSchema(String schemaName, boolean caseSensitive) {
+    if ("root".equals(schemaName)) {
+      return new IoTDBCalciteSchema(this, schema, "root");
+    }
     throw new UnsupportedOperationException();
   }
 
   @Override
   protected @Nullable TableEntry getImplicitTable(String tableName, boolean caseSensitive) {
-    return new TableEntryImpl(this, name, new IoTDBTable(tableName), ImmutableList.of());
+    return new TableEntryImpl(this, tableName, new IoTDBTable(tableName), ImmutableList.of());
   }
 
   @Override

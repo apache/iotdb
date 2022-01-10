@@ -26,7 +26,7 @@ public class EnumeratorDataSet extends QueryDataSet {
   @Override
   public RowRecord nextWithoutConstraint() throws IOException {
     Object[] next = this.enumerator.current();
-    if (next == null) {
+    if (next == null || next[0] == null) {
       return null;
     }
     RowRecord record = new RowRecord((Long) next[0]);

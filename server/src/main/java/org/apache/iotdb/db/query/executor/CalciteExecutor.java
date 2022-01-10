@@ -28,6 +28,7 @@ import org.apache.calcite.plan.volcano.VolcanoPlanner;
 import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.BiRel;
+import org.apache.calcite.rel.RelCollationTraitDef;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Join;
@@ -48,6 +49,9 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.Schemas;
 import org.apache.calcite.schema.Table;
+import org.apache.calcite.sql.SqlOperatorTable;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.util.SqlOperatorTables;
 import org.apache.calcite.tools.FrameworkConfig;
 import org.apache.calcite.tools.Frameworks;
 import org.apache.calcite.tools.RelBuilder;
@@ -181,6 +185,7 @@ public class CalciteExecutor {
 
     RelOptUtil.registerDefaultRules(planner, false, true);
     planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
+    planner.addRelTraitDef(RelCollationTraitDef.INSTANCE);
 
     cluster = RelOptCluster.create(planner, rexBuilder);
     relBuilder = new IoTDBRelBuilder(frameworkConfig.getContext(), cluster, catalogReader);
@@ -197,13 +202,14 @@ public class CalciteExecutor {
     RelNode expectedRoot = planner.changeTraits(root, desired);
     planner.setRoot(expectedRoot);
 
+    Hook.JAVA_PLAN.addThread((Consumer<? extends Object>) System.out::println);
+
     RelNode exp = planner.findBestExp();
     Bindable bestExp = (Bindable) exp;
 
     System.out.println(RelOptUtil.toString(root));
     System.out.println(RelOptUtil.toString(exp));
 
-    Hook.JAVA_PLAN.addThread((Consumer<? extends Object>) System.out::println);
 
     Enumerable<@Nullable Object[]> enumerable = bestExp.bind(this.getContext(queryContext));
 
@@ -211,7 +217,9 @@ public class CalciteExecutor {
       throw new NotImplementedException();
     }
 
-    TSDataType[] dataTypes = exp.getRowType().getFieldList().stream().filter(field -> !"time".equals(field.getName())).map(field -> calciteTypeToTSDataType(field.getType())).toArray(TSDataType[]::new);
+    TSDataType[] dataTypes = exp.getRowType().getFieldList().stream().filter(
+        field -> !Arrays.asList("time", "$f0").contains(field.getName())
+    ).map(field -> calciteTypeToTSDataType(field.getType())).toArray(TSDataType[]::new);
 
     return new EnumeratorDataSet(dataTypes, enumerable.enumerator());
   }
@@ -221,7 +229,10 @@ public class CalciteExecutor {
       case "JavaType(class java.lang.Integer)":
         return TSDataType.INT32;
       case "JavaType(class java.lang.Long)":
+      case "JavaType(long) NOT NULL":
         return TSDataType.INT64;
+      case "JavaType(class java.lang.String)":
+        return TSDataType.TEXT;
       default:
         throw new NotImplementedException("Type: " + type.getFullTypeString() + " no yet implemented!");
     }
@@ -234,7 +245,7 @@ public class CalciteExecutor {
 
       @Override
       public @Nullable SchemaPlus getRootSchema() {
-        return inner.getRootSchema();
+        return rootSchema.plus();
       }
 
       @Override
@@ -262,11 +273,11 @@ public class CalciteExecutor {
                 throw new IllegalStateException();
               }
               return Linq4j.asEnumerable(new Iterable<Object[]>() {
-              @Override
-              public Iterator<Object[]> iterator() {
-                return series;
-              }
-            });
+                @Override
+                public Iterator<Object[]> iterator() {
+                  return series;
+                }
+              });
             }
           };
           return producer;
@@ -292,14 +303,41 @@ public class CalciteExecutor {
   }
 
   public RelNode toRelNode(RawDataQueryPlan queryPlan) {
-    return transform(queryPlan.getExpression());
+    if (!(queryPlan.getPaths().size() == 1)) {
+      throw new UnsupportedOperationException();
+    }
+    relBuilder.scan(queryPlan.getPaths().get(0).getFullPath());
+    if (queryPlan.getExpression() != null) {
+      transform(queryPlan.getExpression());
+    }
+    return relBuilder.build();
   }
 
-  public RelNode transform(IExpression expression) {
+  public void transform(IExpression expression) {
     if (expression.getType() == ExpressionType.SERIES) {
-      return relBuilder.scan(((SingleSeriesExpression) expression).getSeriesPath().getFullPath()).build();
+      // Add a Filter stage
+      SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
+
+      relBuilder.scan(seriesExpression.getSeriesPath().getFullPath());
+//      if (seriesExpression.getFilter())
+//      relBuilder.filter()
+      relBuilder.join(JoinRelType.LEFT, "time");
+      relBuilder.project(
+          relBuilder.alias(
+              rexBuilder.makeCall(SqlStdOperatorTable.COALESCE,
+                  relBuilder.field(0),
+                  relBuilder.field(2)
+              ),
+              "time"),
+          relBuilder.field(1),
+          relBuilder.field(3)
+      );
+      relBuilder.sort(0);
+      relBuilder.filter(relBuilder.greaterThan(relBuilder.field(2), rexBuilder.makeLiteral(100, typeFactory.createJavaType(Long.class))));
+      relBuilder.project(relBuilder.field(0), relBuilder.field(1));
+      return;
     }
-    return null;
+    throw new NotImplementedException();
   }
 
 }
