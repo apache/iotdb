@@ -124,7 +124,7 @@
         <slf4j.version>1.7.12</slf4j.version>
         <logback.version>1.2.10</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.5</spark.version>
+        <spark.version>2.4.8</spark.version>
         <flink.version>1.14.0</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
