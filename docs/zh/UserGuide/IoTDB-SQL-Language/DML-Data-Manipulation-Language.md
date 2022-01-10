@@ -59,7 +59,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 插入数据后我们可以使用 SELECT 语句简单查询已插入的数据。
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
@@ -1642,7 +1642,7 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ### 结果集行列输出控制 (LIMIT & OFFSET)
 
 IoTDB 提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 子句，以使用户可以更好地控制查询结果。使用 LIMIT 和 SLIMIT 子句可让用户控制查询结果的行数和列数，
-并且使用 OFFSET 和 SOFSET 子句允许用户设置结果显示的起始位置。
+并且使用 OFFSET 和 SOFFSET 子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持 LIMIT 和 OFFSET。
 
