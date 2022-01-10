@@ -55,6 +55,9 @@ public abstract class AbstractCsvTool {
   protected static final String TIME_FORMAT_ARGS = "tf";
   protected static final String TIME_FORMAT_NAME = "timeformat";
 
+  protected static final String COMPRESS_ARGS = "c";
+  protected static final String COMPRESS_NAME = "compress";
+
   protected static final String TIME_ZONE_ARGS = "tz";
   protected static final String TIME_ZONE_NAME = "timeZone";
   protected static final int MAX_HELP_CONSOLE_WIDTH = 92;
@@ -110,6 +113,8 @@ public abstract class AbstractCsvTool {
   protected static Session session;
 
   public AbstractCsvTool() {}
+
+  protected static CompressMode compressMode = CompressMode.PLAIN;
 
   protected static String checkRequiredArg(String arg, String name, CommandLine commandLine)
       throws ArgsErrorException {
