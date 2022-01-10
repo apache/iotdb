@@ -354,6 +354,10 @@ PATHS
     : P A T H S
     ;
 
+PIPESERVER
+    : P I P E S E R V E R
+    ;
+
 PREVIOUS
     : P R E V I O U S
     ;
@@ -448,6 +452,10 @@ SNAPSHOT
 
 SOFFSET
     : S O F F S E T
+    ;
+
+SERVICE
+    : S E R V I C E
     ;
 
 STORAGE

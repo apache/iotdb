@@ -169,4 +169,9 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
+
+  // sync receiver
+  public static final String COLUMN_PIPE_NAME = "pipe name";
+  public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_START_TIME = "start time";
 }

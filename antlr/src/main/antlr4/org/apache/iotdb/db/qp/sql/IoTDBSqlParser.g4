@@ -44,6 +44,7 @@ ddlStatement
     | showStorageGroup | showDevices | showTimeseries | showChildPaths | showChildNodes
     | showFunctions | showTriggers | showContinuousQueries | showTTL | showAllTTL
     | countStorageGroup | countDevices | countTimeseries | countNodes
+    | showPipeServer | startPipeServer | stopPipeServer
     ;
 
 dmlStatement
@@ -875,4 +876,17 @@ slimitClause
 
 soffsetClause
     : SOFFSET INTEGER_LITERAL
+    ;
+
+// sync receiver
+showPipeServer
+    : SHOW SERVICE PIPESERVER
+    ;
+
+startPipeServer
+    : START SERVICE PIPESERVER
+    ;
+
+stopPipeServer
+    : STOP SERVICE PIPESERVER
     ;

@@ -177,6 +177,9 @@ public abstract class Operator {
 
     UNSET_TEMPLATE,
     PRUNE_TEMPLATE,
-    APPEND_TEMPLATE
+    APPEND_TEMPLATE,
+
+    START_OPERATOR,
+    STOP_OPERATOR
   }
 }
