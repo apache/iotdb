@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
@@ -43,7 +42,6 @@ public enum CrossCompactionStrategy {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
@@ -57,7 +55,6 @@ public enum CrossCompactionStrategy {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            mergeResource,
             storageGroupDir,
             seqTsFileResourceList,
             unSeqTsFileResourceList,

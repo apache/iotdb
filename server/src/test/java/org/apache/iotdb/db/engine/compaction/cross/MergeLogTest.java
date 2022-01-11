@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -66,9 +65,9 @@ public class MergeLogTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources.subList(0, 1), unseqResources.subList(0, 1)),
+            seqResources.subList(0, 1),
+            unseqResources.subList(0, 1),
             tempSGDir.getPath(),
-            this::testCallBack,
             "test",
             false,
             1,

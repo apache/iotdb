@@ -505,11 +505,6 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "merge_chunk_subthread_num",
                   Integer.toString(conf.getMergeChunkSubThreadNum()))));
-      conf.setContinueMergeAfterReboot(
-          Boolean.parseBoolean(
-              properties.getProperty(
-                  "continue_merge_after_reboot",
-                  Boolean.toString(conf.isContinueMergeAfterReboot()))));
       conf.setMergeFileSelectionTimeBudget(
           Long.parseLong(
               properties.getProperty(

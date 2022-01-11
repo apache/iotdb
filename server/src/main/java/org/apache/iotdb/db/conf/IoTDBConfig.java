@@ -589,13 +589,6 @@ public class IoTDBConfig {
   private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * When set to true, if some crashed merges are detected during system rebooting, such merges will
-   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
-   * finished parts still remain as they are.
-   */
-  private boolean continueMergeAfterReboot = false;
-
-  /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
    * (if proper merge candidates can be found). Unit: second.
    */
@@ -1469,14 +1462,6 @@ public class IoTDBConfig {
 
   void setMergeMemoryBudget(long mergeMemoryBudget) {
     this.mergeMemoryBudget = mergeMemoryBudget;
-  }
-
-  public boolean isContinueMergeAfterReboot() {
-    return continueMergeAfterReboot;
-  }
-
-  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
-    this.continueMergeAfterReboot = continueMergeAfterReboot;
   }
 
   public long getMergeIntervalSec() {

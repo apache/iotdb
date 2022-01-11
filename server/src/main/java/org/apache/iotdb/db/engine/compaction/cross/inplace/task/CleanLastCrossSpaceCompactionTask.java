@@ -19,13 +19,20 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
+import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -41,27 +48,105 @@ public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
-      MergeCallback callback,
       String taskName,
       boolean fullMerge,
       String storageGroupName) {
-    super(
-        seqFiles, unseqFiles, storageGroupSysDir, callback, taskName, fullMerge, storageGroupName);
+    super(seqFiles, unseqFiles, storageGroupSysDir, taskName, fullMerge, storageGroupName);
   }
 
-  public void cleanLastCrossSpaceCompactionInfo(boolean continueMerge, File logFile)
-      throws IOException {
+  public void cleanLastCrossSpaceCompactionInfo(File logFile) throws IOException {
     if (!logFile.exists()) {
       logger.info("{} no merge.log, cross space compaction clean ends.", taskName);
       return;
     }
     long startTime = System.currentTimeMillis();
-    cleanUp(continueMerge);
+    if (mergeLogCrashed(logFile)) {
+      reuseLastTargetFiles(logFile);
+    }
+    cleanUp();
+
     if (logger.isInfoEnabled()) {
       logger.info(
           "{} cross space compaction clean ends after {}ms.",
           taskName,
           (System.currentTimeMillis() - startTime));
+    }
+  }
+
+  private boolean mergeLogCrashed(File logFile) throws IOException {
+    FileChannel fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ);
+    long totalSize = fileChannel.size();
+    ByteBuffer magicStringBytes =
+        ByteBuffer.allocate(InplaceCompactionLogger.MAGIC_STRING.getBytes().length);
+    fileChannel.read(
+        magicStringBytes, totalSize - InplaceCompactionLogger.MAGIC_STRING.getBytes().length);
+    magicStringBytes.flip();
+    if (!InplaceCompactionLogger.MAGIC_STRING.equals(new String(magicStringBytes.array()))) {
+      return false;
+    }
+    magicStringBytes.clear();
+    fileChannel.read(magicStringBytes, 0);
+    magicStringBytes.flip();
+    fileChannel.close();
+    return InplaceCompactionLogger.MAGIC_STRING.equals(new String(magicStringBytes.array()));
+  }
+
+  void reuseLastTargetFiles(File logFile) throws IOException {
+    FileReader fr = new FileReader(logFile);
+    BufferedReader br = new BufferedReader(fr);
+    String line;
+    int isTargetFile = 0;
+    List<File> mergeTmpFile = new ArrayList<>();
+    while ((line = br.readLine()) != null) {
+      switch (line) {
+        case InplaceCompactionLogger.STR_TARGET_FILES:
+          isTargetFile = 1;
+          break;
+        case InplaceCompactionLogger.STR_SEQ_FILES:
+        case InplaceCompactionLogger.STR_UNSEQ_FILES:
+          isTargetFile = 2;
+          break;
+        default:
+          progress(isTargetFile, line, mergeTmpFile, logFile);
+          break;
+      }
+    }
+    br.close();
+    fr.close();
+  }
+
+  boolean moveTargetFile(File file) {
+    if (file.exists()) {
+      return file.renameTo(new File(file.getAbsolutePath().replace(MERGE_SUFFIX, "")));
+    } else {
+      return new File(file.getAbsolutePath().replace(MERGE_SUFFIX, "")).exists();
+    }
+  }
+
+  void deleteOldFile(String fileName) {
+    File oldFile = new File(fileName);
+    // todo update tsfileManager
+    oldFile.delete();
+  }
+
+  void progress(int isTargetFile, String fileName, List<File> mergeTmpFile, File logFile) {
+    if (isTargetFile == 1) {
+      mergeTmpFile.add(new File(fileName));
+    } else if (isTargetFile == 2) {
+      for (File file : mergeTmpFile) {
+        if (moveTargetFile(file)) {
+          // todo add resource file?
+          sequenceTsFileResourceList.add(new TsFileResource(file));
+        } else {
+          logger.warn(
+              "The last target file '{}' cannot be reused in {}.",
+              file.getAbsolutePath(),
+              logFile.getAbsolutePath());
+          return;
+        }
+      }
+      mergeTmpFile.clear();
+      deleteOldFile(fileName);
     }
   }
 }

@@ -21,7 +21,6 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -162,13 +161,7 @@ public class MergeOverLapTest extends MergeTest {
   public void testFullMerge() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            true,
-            1,
-            MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", true, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =

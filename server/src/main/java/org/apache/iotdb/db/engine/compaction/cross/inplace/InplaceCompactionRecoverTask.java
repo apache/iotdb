@@ -25,19 +25,17 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AbstractCrossSpaceCompactionRecoverTask.class);
   private File logFile;
@@ -56,7 +54,6 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartitionId,
-        null,
         storageGroupDir,
         seqTsFileResourceList,
         unSeqTsFileResourceList,
@@ -68,35 +65,23 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   }
 
   @Override
-  public void doCompaction() throws IOException, MetadataException {
+  public void doCompaction() throws IOException {
     String taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
-    Iterator<TsFileResource> seqIterator = seqTsFileResourceList.iterator();
-    Iterator<TsFileResource> unSeqIterator = unSeqTsFileResourceList.iterator();
-    List<TsFileResource> seqFileList = new ArrayList<>();
-    List<TsFileResource> unSeqFileList = new ArrayList<>();
-    while (seqIterator.hasNext()) {
-      seqFileList.add(seqIterator.next());
-    }
-    while (unSeqIterator.hasNext()) {
-      unSeqFileList.add(unSeqIterator.next());
-    }
+    List<TsFileResource> seqFileList =
+        CrossSpaceCompactionUtils.convertArrayListByResourceList(seqTsFileResourceList);
     CleanLastCrossSpaceCompactionTask cleanLastCrossSpaceCompactionTask =
         new CleanLastCrossSpaceCompactionTask(
             seqFileList,
-            unSeqFileList,
+            CrossSpaceCompactionUtils.convertArrayListByResourceList(unSeqTsFileResourceList),
             storageGroupDir,
-            this::mergeEndAction,
             taskName,
             IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             logicalStorageGroupName);
     LOGGER.info(
         "{} a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName, taskName);
-    cleanLastCrossSpaceCompactionTask.cleanLastCrossSpaceCompactionInfo(
-        IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot(), logFile);
-    if (!IoTDBDescriptor.getInstance().getConfig().isContinueMergeAfterReboot()) {
-      for (TsFileResource seqFile : seqFileList) {
-        ModificationFile.getCompactionMods(seqFile).remove();
-      }
+    cleanLastCrossSpaceCompactionTask.cleanLastCrossSpaceCompactionInfo(logFile);
+    for (TsFileResource seqFile : seqFileList) {
+      ModificationFile.getCompactionMods(seqFile).remove();
     }
   }
 

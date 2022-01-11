@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -33,7 +32,6 @@ public class CrossSpaceCompactionTaskFactory {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
@@ -47,7 +45,6 @@ public class CrossSpaceCompactionTaskFactory {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            mergeResource,
             storageGroupDir,
             seqTsFileResourceList,
             unSeqTsFileResourceList,

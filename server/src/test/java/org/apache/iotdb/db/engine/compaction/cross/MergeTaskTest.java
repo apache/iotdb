@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -81,13 +80,7 @@ public class MergeTaskTest extends MergeTest {
   public void testMerge() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(
@@ -121,11 +114,9 @@ public class MergeTaskTest extends MergeTest {
     List<TsFileResource> testUnseqResource = unseqResources.subList(5, 6);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResource),
+            testSeqResources,
+            testUnseqResource,
             tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(499, k.get(2).getEndTime("root.mergeTest.device1"));
-            },
             "test",
             false,
             1,
@@ -175,11 +166,9 @@ public class MergeTaskTest extends MergeTest {
     testUnseqResources.add(smallUnseqTsFileResource);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResources),
+            testSeqResources,
+            testUnseqResources,
             tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(49, k.get(0).getEndTime("root.mergeTest.device1"));
-            },
             "test",
             false,
             1,
@@ -191,13 +180,7 @@ public class MergeTaskTest extends MergeTest {
   public void testFullMerge() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            true,
-            1,
-            MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", true, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -234,13 +217,7 @@ public class MergeTaskTest extends MergeTest {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", false, 1, MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -273,9 +250,9 @@ public class MergeTaskTest extends MergeTest {
   public void testPartialMerge1() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 1)),
+            seqResources,
+            unseqResources.subList(0, 1),
             tempSGDir.getPath(),
-            (k, v, l) -> {},
             "test",
             false,
             1,
@@ -316,9 +293,9 @@ public class MergeTaskTest extends MergeTest {
   public void testPartialMerge2() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(5, 6)),
+            seqResources,
+            unseqResources.subList(5, 6),
             tempSGDir.getPath(),
-            (k, v, l) -> {},
             "test",
             false,
             1,
@@ -355,9 +332,9 @@ public class MergeTaskTest extends MergeTest {
   public void testPartialMerge3() throws Exception {
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 5)),
+            seqResources,
+            unseqResources.subList(0, 5),
             tempSGDir.getPath(),
-            (k, v, l) -> {},
             "test",
             false,
             1,
@@ -413,15 +390,9 @@ public class MergeTaskTest extends MergeTest {
 
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 1)),
+            seqResources,
+            unseqResources.subList(0, 1),
             tempSGDir.getPath(),
-            (k, v, l) -> {
-              try {
-                seqResources.get(0).removeModFile();
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-            },
             "test",
             false,
             1,
@@ -468,9 +439,9 @@ public class MergeTaskTest extends MergeTest {
     List<TsFileResource> testUnseqResource = unseqResources.subList(5, 6);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResource),
+            testSeqResources,
+            testUnseqResource,
             tempSGDir.getPath(),
-            (k, v, l) -> {},
             "test",
             false,
             1,
@@ -531,11 +502,9 @@ public class MergeTaskTest extends MergeTest {
     testUnseqResources.add(unseqTsFileResourceWithoutSomeSensor);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResources),
+            testSeqResources,
+            testUnseqResources,
             tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(99, k.get(0).getEndTime("root.mergeTest.device1"));
-            },
             "test",
             false,
             1,

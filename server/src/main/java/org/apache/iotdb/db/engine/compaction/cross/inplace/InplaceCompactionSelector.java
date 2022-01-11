@@ -137,7 +137,6 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               logicalStorageGroupName,
               virtualGroupId,
               timePartition,
-              mergeResource,
               storageGroupDir,
               sequenceFileList,
               unsequenceFileList,

@@ -35,8 +35,10 @@ public class InplaceCompactionLogger {
 
   public static final String MERGE_LOG_NAME = "merge.log";
 
-  static final String STR_SEQ_FILES = "seqFiles";
-  static final String STR_UNSEQ_FILES = "unseqFiles";
+  public static final String STR_SEQ_FILES = "seqFiles";
+  public static final String STR_TARGET_FILES = "targetFiles";
+  public static final String STR_UNSEQ_FILES = "unseqFiles";
+  public static final String MAGIC_STRING = "crossSpaceCompaction";
   static final String STR_TIMESERIES = "timeseries";
   static final String STR_START = "start";
   static final String STR_END = "end";
@@ -48,10 +50,17 @@ public class InplaceCompactionLogger {
 
   public InplaceCompactionLogger(String storageGroupDir) throws IOException {
     logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
+    logStringInfo(MAGIC_STRING);
   }
 
   public void close() throws IOException {
     logStream.close();
+  }
+
+  public void logStringInfo(String logInfo) throws IOException {
+    logStream.write(logInfo);
+    logStream.newLine();
+    logStream.flush();
   }
 
   public void logTSStart(List<PartialPath> paths) throws IOException {
@@ -70,15 +79,11 @@ public class InplaceCompactionLogger {
   }
 
   public void logTSEnd() throws IOException {
-    logStream.write(STR_END);
-    logStream.newLine();
-    logStream.flush();
+    logStringInfo(STR_END);
   }
 
   public void logAllTsEnd() throws IOException {
-    logStream.write(STR_ALL_TS_END);
-    logStream.newLine();
-    logStream.flush();
+    logStringInfo(STR_ALL_TS_END);
   }
 
   public void logFileMergeStart(File file, long position) throws IOException {
@@ -91,24 +96,20 @@ public class InplaceCompactionLogger {
   }
 
   public void logFileMergeEnd() throws IOException {
-    logStream.write(STR_END);
-    logStream.newLine();
-    logStream.flush();
+    logStringInfo(STR_END);
   }
 
   public void logMergeEnd() throws IOException {
-    logStream.write(STR_MERGE_END);
-    logStream.newLine();
-    logStream.flush();
+    logStringInfo(STR_MERGE_END);
   }
 
   public void logFiles(CrossSpaceMergeResource resource) throws IOException {
-    logSeqFiles(resource.getSeqFiles());
-    logUnseqFiles(resource.getUnseqFiles());
+    logFiles(resource.getSeqFiles(), STR_SEQ_FILES);
+    logFiles(resource.getUnseqFiles(), STR_UNSEQ_FILES);
   }
 
-  private void logSeqFiles(List<TsFileResource> seqFiles) throws IOException {
-    logStream.write(STR_SEQ_FILES);
+  public void logFiles(List<TsFileResource> seqFiles, String flag) throws IOException {
+    logStream.write(flag);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
       logStream.write(
@@ -120,23 +121,8 @@ public class InplaceCompactionLogger {
     logStream.flush();
   }
 
-  private void logUnseqFiles(List<TsFileResource> unseqFiles) throws IOException {
-    logStream.write(STR_UNSEQ_FILES);
-    logStream.newLine();
-    for (TsFileResource tsFileResource : unseqFiles) {
-      logStream.write(
-          TsFileIdentifier.getFileIdentifierFromFilePath(
-                  tsFileResource.getTsFile().getAbsolutePath())
-              .toString());
-      logStream.newLine();
-    }
-    logStream.flush();
-  }
-
   public void logMergeStart() throws IOException {
-    logStream.write(STR_MERGE_START);
-    logStream.newLine();
-    logStream.flush();
+    logStringInfo(STR_MERGE_START);
   }
 
   public static File[] findCrossSpaceCompactionLogs(String directory) {

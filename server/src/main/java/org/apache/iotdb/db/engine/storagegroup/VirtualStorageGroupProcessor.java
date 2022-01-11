@@ -123,7 +123,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.regex.Pattern;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.FILE_NAME_SEPARATOR;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger.COMPACTION_LOG_NAME;
 import static org.apache.iotdb.db.engine.storagegroup.TsFileResource.TEMP_SUFFIX;
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFFIX;
@@ -699,10 +698,6 @@ public class VirtualStorageGroupProcessor {
       // resources
       continueFailedRenames(fileFolder, TEMP_SUFFIX);
 
-      // some TsFiles were going to be replaced by the merged files when the system crashed and
-      // the process was interrupted before the merged files could be named
-      continueFailedRenames(fileFolder, MERGE_SUFFIX);
-
       File[] subFiles = fileFolder.listFiles();
       if (subFiles != null) {
         for (File partitionFolder : subFiles) {
@@ -713,11 +708,6 @@ public class VirtualStorageGroupProcessor {
             // such
             // resources
             continueFailedRenames(partitionFolder, TEMP_SUFFIX);
-
-            // some TsFiles were going to be replaced by the merged files when the system crashed
-            // and
-            // the process was interrupted before the merged files could be named
-            continueFailedRenames(partitionFolder, MERGE_SUFFIX);
 
             Collections.addAll(
                 tsFiles,

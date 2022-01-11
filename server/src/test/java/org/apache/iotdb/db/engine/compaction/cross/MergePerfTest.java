@@ -48,7 +48,13 @@ public class MergePerfTest extends MergeTest {
     resource.setCacheDeviceMeta(true);
     CrossSpaceMergeTask mergeTask =
         new CrossSpaceMergeTask(
-            resource, tempSGDir.getPath(), (k, v, l) -> {}, "test", fullMerge, 100, MERGE_TEST_SG);
+            seqResources,
+            unseqResources,
+            tempSGDir.getPath(),
+            "test",
+            fullMerge,
+            100,
+            MERGE_TEST_SG);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();
