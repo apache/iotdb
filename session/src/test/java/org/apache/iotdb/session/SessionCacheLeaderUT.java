@@ -32,8 +32,7 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
 import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -536,10 +535,10 @@ public class SessionCacheLeaderUT {
     assertNull(session.endPointToSessionConnection);
 
     String deviceId = "root.sg2.d2";
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
     Tablet tablet = new Tablet(deviceId, schemaList, 100);
     long timestamp = System.currentTimeMillis();
     for (long row = 0; row < 100; row++) {
@@ -618,10 +617,10 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(allDeviceIds.get(1), schemaList, 100);
     Tablet tablet2 = new Tablet(allDeviceIds.get(2), schemaList, 100);
@@ -885,10 +884,10 @@ public class SessionCacheLeaderUT {
             add("root.sg4.d1");
           }
         };
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT64));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT64));
 
     Tablet tablet1 = new Tablet(allDeviceIds.get(1), schemaList, 100);
     Tablet tablet2 = new Tablet(allDeviceIds.get(2), schemaList, 100);

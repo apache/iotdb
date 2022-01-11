@@ -273,21 +273,19 @@ public class IoTDBMergeIT {
         for (int i = 0; i < 10; i++) {
           // sequence files
           for (int j = i * 1000 + 300 + k * 100; j <= i * 1000 + 399 + k * 100; j++) {
-            statement.addBatch(
+            statement.execute(
                 String.format(
                     "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                     j, j + 1, j + 2, j + 3));
           }
-          statement.executeBatch();
           statement.execute("FLUSH");
           // unsequence files
           for (int j = i * 1000 + k * 100; j <= i * 1000 + 99 + k * 100; j++) {
-            statement.addBatch(
+            statement.execute(
                 String.format(
                     "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                     j, j + 10, j + 20, j + 30));
           }
-          statement.executeBatch();
           statement.execute("FLUSH");
         }
       }

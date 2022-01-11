@@ -361,6 +361,61 @@ public class IoTDBSelectIntoIT {
   }
 
   @Test
+  public void testSelectIntoAlignedTimeSeriesCorrectly() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "select s1, s1 "
+              + "into aligned root.sg.`aligned`.s1s2, root.sg.`aligned`.s1s3 "
+              + "from root.sg.d1 "
+              + "where time <= 2");
+      statement.execute(
+          "select s1, s1 "
+              + "into aligned root.sg.`aligned`.s1s2, root.sg.`aligned`.s1s3 "
+              + "from root.sg.d1 "
+              + "where time > 2");
+
+      try (ResultSet resultSet =
+          statement.executeQuery("select s1s2, s1s3 from root.sg.`aligned`")) {
+        assertEquals(1 + 2, resultSet.getMetaData().getColumnCount());
+
+        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
+          assertTrue(resultSet.next());
+          for (int j = 0; j < 2 + 1; ++j) {
+            assertEquals(resultSet.getString(2), resultSet.getString(3));
+          }
+        }
+
+        assertFalse(resultSet.next());
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testSelectIntoAlignedTimeSeriesWithUnmatchedTypes() {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute("create aligned timeseries root.sg.`aligned`(s1 TEXT, s2 TEXT)");
+      statement.execute(
+          "select s1, s1 "
+              + "into aligned root.sg.`aligned`.s1, root.sg.`aligned`.s2 "
+              + "from root.sg.d1");
+      fail();
+    } catch (SQLException throwable) {
+      assertTrue(
+          throwable
+              .getMessage()
+              .contains("failed to insert measurements [s1, s2] caused by DataType mismatch"));
+    }
+  }
+
+  @Test
   public void testGroupByQuery() {
     try (Connection connection =
             DriverManager.getConnection(

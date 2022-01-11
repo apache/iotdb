@@ -700,7 +700,10 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           SQLException, IOException, InterruptedException, QueryFilterOptimizationException,
           AuthException {
     // check permissions
-    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
+    List<? extends PartialPath> authPaths = plan.getAuthPaths();
+    if (authPaths != null
+        && !authPaths.isEmpty()
+        && !checkAuthorization(authPaths, plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -715,6 +718,7 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
       tracingManager.setSeriesPathNum(queryId, plan.getPaths().size());
     }
+    context.setAscending(plan.isAscending());
 
     TSExecuteStatementResp resp = null;
     // execute it before createDataSet since it may change the content of query plan
@@ -837,18 +841,18 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     queryFrequencyRecorder.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
-    if (physicalPlan instanceof QueryPlan && ((QueryPlan) physicalPlan).isEnableTracing()) {
+    if (queryPlan.isEnableTracing()) {
       tracingManager.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
 
     try {
-
       InsertTabletPlansIterator insertTabletPlansIterator =
           new InsertTabletPlansIterator(
               queryPlan,
               createQueryDataSet(context, queryPlan, fetchSize),
               selectIntoPlan.getFromPath(),
-              selectIntoPlan.getIntoPaths());
+              selectIntoPlan.getIntoPaths(),
+              selectIntoPlan.isIntoPathsAligned());
       while (insertTabletPlansIterator.hasNext()) {
         TSStatus executionStatus =
             insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);

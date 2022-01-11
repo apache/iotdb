@@ -82,7 +82,6 @@ public class TsFileSequenceRead {
           case MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER:
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.TIME_COLUMN_MASK):
           case (byte) (MetaMarker.ONLY_ONE_PAGE_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
-            // case (byte) (MetaMarker.EMPTY_CHUNK_HEADER | TsFileConstant.VALUE_COLUMN_MASK):
             System.out.println("\t[Chunk]");
             System.out.println("\tchunk type: " + marker);
             System.out.println("\tposition: " + reader.position());
@@ -93,6 +92,8 @@ public class TsFileSequenceRead {
               System.out.println("\t-- Empty Chunk ");
               break;
             }
+            System.out.println(
+                "\tChunk Size: " + (header.getDataSize() + header.getSerializedSize()));
             Decoder defaultTimeDecoder =
                 Decoder.getDecoderByType(
                     TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
@@ -141,8 +142,8 @@ public class TsFileSequenceRead {
                   System.out.println("\t\tpoints in the page: " + valueBatch.length);
                 }
                 if (printDetail) {
-                  for (int i = 0; i < valueBatch.length; i++) {
-                    System.out.println("\t\t\tvalue: " + valueBatch[i]);
+                  for (TsPrimitiveType batch : valueBatch) {
+                    System.out.println("\t\t\tvalue: " + batch);
                   }
                 }
               } else { // NonAligned Chunk

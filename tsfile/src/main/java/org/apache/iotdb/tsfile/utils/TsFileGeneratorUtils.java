@@ -13,13 +13,12 @@ import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.PATH_SEPARATOR;
 
@@ -32,7 +31,7 @@ public class TsFileGeneratorUtils {
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue,
@@ -57,15 +56,13 @@ public class TsFileGeneratorUtils {
   public static void writeWithTablet(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowNum,
       long startTime,
       long startValue,
       boolean isAligned)
       throws IOException, WriteProcessException {
-    List<IMeasurementSchema> measurementSchemas =
-        schemas.stream().map(schema -> (IMeasurementSchema) schema).collect(Collectors.toList());
-    Tablet tablet = new Tablet(deviceId, measurementSchemas);
+    Tablet tablet = new Tablet(deviceId, schemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     long sensorNum = schemas.size();
@@ -121,22 +118,21 @@ public class TsFileGeneratorUtils {
       TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
-      List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
 
       // register nonAlign timeseries
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
 
       TsFileGeneratorUtils.writeWithTsRecord(
@@ -167,10 +163,10 @@ public class TsFileGeneratorUtils {
       TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
-      List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       for (int i = 0; i < measurementNum; i++) {
         alignedMeasurementSchemas.add(
-            new UnaryMeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+            new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
       for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
         tsFileWriter.registerAlignedTimeseries(
@@ -212,10 +208,9 @@ public class TsFileGeneratorUtils {
       TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register nonAlign timeseries
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
       for (int i = 0; i < measurementNum; i++) {
-        measurementSchemas.add(
-            new UnaryMeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
       }
       for (int i = 0; i < deviceNum; i++) {
         tsFileWriter.registerTimeseries(
