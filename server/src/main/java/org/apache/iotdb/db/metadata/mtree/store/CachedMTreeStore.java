@@ -31,9 +31,10 @@ import org.apache.iotdb.db.metadata.mtree.store.disk.file.MockSchemaFile;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 public class CachedMTreeStore implements IMTreeStore {
-
 
   private IMemManager memManager = new MemManager();
 
@@ -59,10 +60,13 @@ public class CachedMTreeStore implements IMTreeStore {
   @Override
   public IMNode getChild(IMNode parent, String name) {
     IMNode node = parent.getChild(name);
-    if(node == null){
+    if (node == null) {
       node = file.getChildNode(parent, name);
+      if (node != null) {
+        cacheMNodeInMemory(node);
+      }
     }
-    if(node != null){
+    if (node != null) {
       cacheStrategy.updateCacheStatusAfterRead(node);
     }
     return node;
@@ -70,12 +74,13 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    return file.getChildren(parent);
+    return new CachedMNodeIterator(file.getChildren(parent));
   }
 
   @Override
   public void addChild(IMNode parent, String childName, IMNode child) {
     parent.addChild(childName, child);
+    cacheMNodeInMemory(child);
     cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
@@ -88,6 +93,7 @@ public class CachedMTreeStore implements IMTreeStore {
   public void deleteChild(IMNode parent, String childName) {
     IMNode node = parent.getChild(childName);
     parent.deleteChild(childName);
+    cacheStrategy.remove(node);
     file.deleteMNode(node);
   }
 
@@ -109,5 +115,44 @@ public class CachedMTreeStore implements IMTreeStore {
     root = null;
     cacheStrategy.clear();
     file.close();
+  }
+
+  private void cacheMNodeInMemory(IMNode node) {
+    if (!memManager.requestMemResource(node)) {
+      List<IMNode> evictedMNodes;
+      while (!memManager.isUnderThreshold()) {
+        evictedMNodes = cacheStrategy.evict();
+        for (IMNode evictedMNode : evictedMNodes) {
+          memManager.releaseMemResource(evictedMNode);
+          file.writeMNode(evictedMNode);
+        }
+      }
+      memManager.requestMemResource(node);
+    }
+  }
+
+  private class CachedMNodeIterator implements Iterator<IMNode> {
+
+    Iterator<IMNode> diskIterator;
+
+    CachedMNodeIterator(Iterator<IMNode> diskIterator) {
+      this.diskIterator = diskIterator;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return diskIterator.hasNext();
+    }
+
+    @Override
+    public IMNode next() {
+      IMNode result = diskIterator.next();
+      if (result != null) {
+        cacheMNodeInMemory(result);
+        cacheStrategy.updateCacheStatusAfterRead(result);
+        return result;
+      }
+      throw new NoSuchElementException();
+    }
   }
 }
