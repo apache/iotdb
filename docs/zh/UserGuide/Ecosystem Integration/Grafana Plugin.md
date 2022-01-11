@@ -64,7 +64,7 @@ git clone https://github.com/apache/iotdb.git
 * 使用 maven 编译，在 `grafana-plugin` 目录下执行：
 
 ```shell
-mvn install package
+mvn install package -P compile-grafana-plugin
 ```
 
 * 或使用 yarn 编译，在 `grafana-plugin` 目录下执行：
