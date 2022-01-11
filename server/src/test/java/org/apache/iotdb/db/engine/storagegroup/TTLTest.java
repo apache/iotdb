@@ -439,6 +439,8 @@ public class TTLTest {
     assertEquals(4, virtualStorageGroupProcessor.getUnSequenceFileList().size());
 
     virtualStorageGroupProcessor.setDataTTL(0);
+    virtualStorageGroupProcessor.checkFilesTTL();
+
     assertEquals(0, virtualStorageGroupProcessor.getSequenceFileTreeSet().size());
     assertEquals(0, virtualStorageGroupProcessor.getUnSequenceFileList().size());
   }

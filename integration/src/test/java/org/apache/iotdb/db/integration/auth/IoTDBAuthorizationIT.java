@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -99,13 +100,8 @@ public class IoTDBAuthorizationIT {
         }
         assertTrue(caught);
 
-        caught = false;
-        try {
-          userStmt.execute("SELECT * from root.a");
-        } catch (SQLException e) {
-          caught = true;
-        }
-        assertTrue(caught);
+        // empty result timeseries set doesn't need authority check
+        userStmt.execute("SELECT * from root.a");
 
         caught = false;
         try {
@@ -153,11 +149,15 @@ public class IoTDBAuthorizationIT {
 
         caught = false;
         try {
-          userStmt.execute("SELECT * from root.b");
+          userStmt.execute("SELECT * from root.a");
         } catch (SQLException e) {
+          // user has no authority on root.a
           caught = true;
         }
         assertTrue(caught);
+
+        // empty result timeseries set doesn't need authority check
+        userStmt.execute("SELECT * from root.b");
 
         caught = false;
         try {
@@ -1176,6 +1176,28 @@ public class IoTDBAuthorizationIT {
             userStatement.executeQuery(
                 "SELECT s1, s1, s1 - s3, s2 * sin(s1), s1 + 1 / 2 * sin(s1), sin(s1), sin(s1) FROM root.test")) {
       assertTrue(resultSet.next());
+    }
+  }
+
+  @Test
+  public void testEmptySetAuthorityCheck() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStatement = adminConnection.createStatement()) {
+      adminStatement.execute("CREATE USER a_application 'a_application'");
+      adminStatement.execute("GRANT USER a_application PRIVILEGES READ_TIMESERIES on root.ln;");
+
+      adminStatement.execute("INSERT INTO root.ln.wt01.wf01(time, s1) VALUES(1, 2)");
+    }
+
+    try (Connection userConnection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "a_application", "a_application");
+        Statement userStatement = userConnection.createStatement();
+        ResultSet resultSet = userStatement.executeQuery("SELECT * FROM root.ln.*")) {
+      assertFalse(resultSet.next());
     }
   }
 }
