@@ -57,44 +57,52 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 * 初始化 Session
 
 ```java
-    // 全部使用默认配置
-    session = new Session.Builder.build();
+// 全部使用默认配置
+session = new Session.Builder.build();
 
-    // 指定一个可连接节点
-    session = 
-        new Session.Builder()
-            .host(String host)
-            .port(int port)
-            .build();
+// 指定一个可连接节点
+session = 
+    new Session.Builder()
+        .host(String host)
+        .port(int port)
+        .build();
 
-    // 指定多个可连接节点
-    session = 
-        new Session.Builder()
-            .nodeUrls(List<String> nodeUrls)
-            .build();
+// 指定多个可连接节点
+session = 
+    new Session.Builder()
+        .nodeUrls(List<String> nodeUrls)
+        .build();
 
-    // 其他配置项
-    session = 
-        new Session.Builder()
-            .fetchSize(int fetchSize)
-            .username(String username)
-            .password(String password)
-            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
-            .thriftMaxFrameSize(int thriftMaxFrameSize)
-            .enableCacheLeader(boolean enableCacheLeader)
-            .build();
+// 其他配置项
+session = 
+    new Session.Builder()
+        .fetchSize(int fetchSize)
+        .username(String username)
+        .password(String password)
+        .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+        .thriftMaxFrameSize(int thriftMaxFrameSize)
+        .enableCacheLeader(boolean enableCacheLeader)
+        .build();
 ```
 
 * 开启 Session
 
 ```java
-Session.open()
+void open()
 ```
+
+* 开启 Session，并决定是否开启 RPC 压缩
+
+```java
+void open(boolean enableRPCCompression)
+```
+
+注意: 客户端的 RPC 压缩开启状态需和服务端一致
 
 * 关闭 Session
 
 ```java
-Session.close()
+void close()
 ```
 
 ### 数据定义接口 DDL
@@ -143,6 +151,12 @@ void createAlignedTimeseries(String prefixPath, List<String> measurements,
 ```java
 void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
+```
+
+* 检测时间序列是否存在
+
+```java
+boolean checkTimeseriesExists(String path)
 ```
 
 #### 物理量模版
@@ -320,27 +334,14 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablets)
 ```
 
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
-
-```java
-void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
-```
-
-* 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, 
-                   List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
 
 ```java
 void insertRecord(String prefixPath, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
-* 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
+* 插入多个 Record
 
 ```java
 void insertRecords(List<String> deviceIds,
@@ -350,13 +351,40 @@ void insertRecords(List<String> deviceIds,
         List<List<Object>> valuesList)
 ```
 
-* 插入同属于一个 device 的多个 Record。
+* 插入同属于一个 device 的多个 Record
 
 ```java
 void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<String>> measurementsList, List<List<TSDataType>> typesList,
     List<List<Object>> valuesList)
 ```
+
+#### 带有类型推断的写入
+
+服务器需要做类型推断，可能会有额外耗时，速度较无需类型推断的写入慢
+
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据
+
+```java
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
+```
+
+* 插入多个 Record
+
+```java
+void insertRecords(List<String> deviceIds, List<Long> times,
+   List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
+#### 对齐时间序列的写入
+
+对齐时间序列的写入使用 insertAlignedXXX 接口，其余与上述接口类似：
+
+* insertAlignedRecord
+* insertAlignedRecords
+* insertAlignedRecordsOfOneDevice
+* insertAlignedTablet
+* insertAlignedTablets
 
 #### 数据删除
 
@@ -391,36 +419,47 @@ void executeNonQueryStatement(String sql)
 
 ### 写入测试接口 (用于分析网络带宽)
 
-* 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
+不实际写入数据，只将数据传输到 server 即返回
 
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times, List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-  或
-
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-      List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-      List<List<Object>> valuesList)
-```
-
-* 测试 insertRecord，不实际写入数据，只将数据传输到 server 即返回。
+* 测试 insertRecord
 
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
+
+void testInsertRecord(String deviceId, long time, List<String> measurements,
+        List<TSDataType> types, List<Object> values)
 ```
-  或
+
+* 测试 testInsertRecords
 
 ```java
-void testInsertRecord(String deviceId, long time, List<String> measurements,
-      List<TSDataType> types, List<Object> values)
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
 ```
 
-* 测试 insertTablet，不实际写入数据，只将数据传输到 server 即返回。
+* 测试 insertTablet
 
 ```java
 void testInsertTablet(Tablet tablet)
 ```
+
+* 测试 insertTablets
+
+```java
+void testInsertTablets(Map<String, Tablet> tablets)
+```
+
+### 示例代码
+
+浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
+
+使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
+
+使用对齐时间序列和物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 ## 针对原生接口的连接池
 
@@ -440,15 +479,6 @@ void testInsertTablet(Tablet tablet)
 使用示例可以参见 `session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java`
 
 或 `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
-
-使用对齐时间序列和物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
-
-### 示例代码
-
-浏览上述接口的详细信息，请参阅代码 ```session/src/main/java/org/apache/iotdb/session/Session.java```
-
-使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
-
 
 ## 集群信息相关的接口 （仅在集群模式下可用）
 
@@ -474,29 +504,29 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
-    public class CluserInfoClient {
-      TTransport transport;
-      ClusterInfoService.Client client;
-      public void connect() {
-          transport =
-              RpcTransportFactory.INSTANCE.getTransport(
-                  new TSocket(
-                      // the RPC address
-                      IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                      // the RPC port
-                      ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
-          try {
-            transport.open();
-          } catch (TTransportException e) {
-            Assert.fail(e.getMessage());
-          }
-          //get the client
-          client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
-       }
-      public void close() {
-        transport.close();
-      }  
+public class CluserInfoClient {
+  TTransport transport;
+  ClusterInfoService.Client client;
+  public void connect() {
+    transport =
+      RpcTransportFactory.INSTANCE.getTransport(
+        new TSocket(
+          // the RPC address
+          IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+          // the RPC port
+          ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
+    try {
+      transport.open();
+    } catch (TTransportException e) {
+      Assert.fail(e.getMessage());
     }
+    //get the client
+    client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
+   }
+  public void close() {
+    transport.close();
+  }  
+}
 ```
 
 API 列表：
@@ -510,36 +540,36 @@ list<Node> getRing();
 * 给定一个路径（应包括一个 SG 作为前缀）和起止时间，获取其覆盖的数据分区情况：
 
 ```java 
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return the data partition info. If the time range only covers one data partition, the the size
-     * of the list is one.
-     */
-    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return the data partition info. If the time range only covers one data partition, the the size
+ * of the list is one.
+ */
+list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 ```
 
 * 给定一个路径（应包括一个 SG 作为前缀），获取其被分到了哪个节点上：
 ```java  
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return metadata partition information
-     */
-    list<Node> getMetaPartition(1:string path);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return metadata partition information
+ */
+list<Node> getMetaPartition(1:string path);
 ```
 
 * 获取所有节点的死活状态：
 ```java
-    /**
-     * @return key: node, value: live or not
-     */
-    map<Node, bool> getAllNodeStatus();
+/**
+ * @return key: node, value: live or not
+ */
+map<Node, bool> getAllNodeStatus();
 ```
 
 * 获取当前连接节点的 Raft 组信息（投票编号等）（一般用户无需使用该接口）:
 ```java  
-    /**
-     * @return A multi-line string with each line representing the total time consumption, invocation
-     *     number, and average time consumption.
-     */
-    string getInstrumentingInfo();
+/**
+ * @return A multi-line string with each line representing the total time consumption, invocation
+ *     number, and average time consumption.
+ */
+string getInstrumentingInfo();
 ```

@@ -54,44 +54,52 @@ Here we show the commonly used interfaces and their parameters in the Native API
 * Initialize a Session
 
 ```java
-    // use default configuration 
-    session = new Session.Builder.build();
+// use default configuration 
+session = new Session.Builder.build();
 
-    // initialize with a single node
-    session = 
-        new Session.Builder()
-            .host(String host)
-            .port(int port)
-            .build();
+// initialize with a single node
+session = 
+    new Session.Builder()
+        .host(String host)
+        .port(int port)
+        .build();
 
-    // initialize with multiple nodes
-    session = 
-        new Session.Builder()
-            .nodeUrls(List<String> nodeUrls)
-            .build();
+// initialize with multiple nodes
+session = 
+    new Session.Builder()
+        .nodeUrls(List<String> nodeUrls)
+        .build();
 
-    // other configurations
-    session = 
-        new Session.Builder()
-            .fetchSize(int fetchSize)
-            .username(String username)
-            .password(String password)
-            .thriftDefaultBufferSize(int thriftDefaultBufferSize)
-            .thriftMaxFrameSize(int thriftMaxFrameSize)
-            .enableCacheLeader(boolean enableCacheLeader)
-            .build();
+// other configurations
+session = 
+    new Session.Builder()
+        .fetchSize(int fetchSize)
+        .username(String username)
+        .password(String password)
+        .thriftDefaultBufferSize(int thriftDefaultBufferSize)
+        .thriftMaxFrameSize(int thriftMaxFrameSize)
+        .enableCacheLeader(boolean enableCacheLeader)
+        .build();
 ```
 
 * Open a Session
 
 ```java
-Session.open()
+void open()
 ```
+
+* Open a session, with a parameter to specify whether to enable RPC compression
+  
+```java
+void open(boolean enableRPCCompression)
+```
+
+Notice: this RPC compression status of client must comply with that of IoTDB server
 
 * Close a Session
 
 ```java
-Session.close()
+void close()
 ```
 
 ### Data Definition Interface (DDL Interface)
@@ -140,6 +148,12 @@ Attention: Alias of measurements are **not supported** currently.
 ```java
 void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
+```
+
+* Check whether the specific timeseries exists.
+
+```java
+boolean checkTimeseriesExists(String path)
 ```
 
 #### Schema Template
@@ -330,27 +344,14 @@ public class Tablet {
 void insertTablets(Map<String, Tablet> tablet)
 ```
 
-* Insert a Record，which contains multiple measurement value of a device at a timestamp. Without type info the server has to do type inference, which may cost some time
-
-```java
-void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
-```
-
-* Insert multiple Records. Without type info the server has to do type inference, which may cost some time
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, 
-                   List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-
-* Insert a Record, which contains multiple measurement value of a device at a timestamp. With type info the server has no need to do type inference, which leads a better performance
+* Insert a Record, which contains multiple measurement value of a device at a timestamp
 
 ```java
 void insertRecord(String deviceId, long time, List<String> measurements,
    List<TSDataType> types, List<Object> values)
 ```
 
-* Insert multiple Records. With type info the server has no need to do type inference, which leads a better performance
+* Insert multiple Records
 
 ```java
 void insertRecords(List<String> deviceIds, List<Long> times,
@@ -366,7 +367,34 @@ void insertRecordsOfOneDevice(String deviceId, List<Long> times,
     List<List<Object>> valuesList)
 ```
 
-##### Delete
+#### Insert with type inference
+
+Without type information, server has to do type inference, which may cost some time.
+
+* Insert a Record, which contains multiple measurement value of a device at a timestamp
+
+```java
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
+```
+
+* Insert multiple Records
+
+```java
+void insertRecords(List<String> deviceIds, List<Long> times, 
+   List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
+#### Insert of Aligned Timeseries
+
+The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
+
+* insertAlignedRecord
+* insertAlignedRecords
+* insertAlignedRecordsOfOneDevice
+* insertAlignedTablet
+* insertAlignedTablets
+
+#### Delete
 
 * Delete data before or equal to a timestamp of one or several timeseries
 
@@ -375,7 +403,7 @@ void deleteData(String path, long time)
 void deleteData(List<String> paths, long time)
 ```
 
-##### Query
+#### Query
 
 * Raw data query. Time interval include startTime and exclude endTime
 
@@ -399,44 +427,38 @@ void executeNonQueryStatement(String sql)
 
 ### Write Test Interface (to profile network cost)
 
-* Test the network and client cost of insertRecords. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+These methods **don't** insert data into database and server just return after accept the request.
 
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-              List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-  or
-```java
-void testInsertRecords(List<String> deviceIds, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* Test the network and client cost of insertRecordsOfOneDevice. 
-This method NOT insert data into database and server just return after accept the request, 
-this method should be used to test other time cost in client
-
-```java
-void testInsertRecordsOfOneDevice(String deviceId, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* Test the network and client cost of insertRecord. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test the network and client cost of insertRecord
 
 ```java
 void testInsertRecord(String deviceId, long time, List<String> measurements, List<String> values)
-```
-  or
-```java
+
 void testInsertRecord(String deviceId, long time, List<String> measurements,
-    List<TSDataType> types, List<Object> values)
+        List<TSDataType> types, List<Object> values)
 ```
 
-* Test the network and client cost of insertTablet. This method NOT insert data into database and server just return after accept the request, this method should be used to test other time cost in client
+* Test the network and client cost of insertRecords
+
+```java
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+        
+void testInsertRecords(List<String> deviceIds, List<Long> times,
+        List<List<String>> measurementsList, List<List<TSDataType>> typesList
+        List<List<Object>> valuesList)
+```
+
+* Test the network and client cost of insertTablet
 
 ```java
 void testInsertTablet(Tablet tablet)
+```
+
+* Test the network and client cost of insertTablets
+
+```java
+void testInsertTablets(Map<String, Tablet> tablets)
 ```
 
 ### Coding Examples
@@ -444,6 +466,8 @@ void testInsertTablet(Tablet tablet)
 To get more information of the following interfaces, please view session/src/main/java/org/apache/iotdb/session/Session.java
 
 The sample code of using these interfaces is in example/session/src/main/java/org/apache/iotdb/SessionExample.java，which provides an example of how to open an IoTDB session, execute a batch insertion.
+
+For examples of aligned timeseries and measurement template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
 ## Session Pool for Native API
@@ -469,8 +493,6 @@ you have to call `SessionPool.closeResultSet(wrapper)` manually;
 Examples: ```session/src/test/java/org/apache/iotdb/session/pool/SessionPoolTest.java```
 
 Or `example/session/src/main/java/org/apache/iotdb/SessionPoolExample.java`
-
-For examples of aligned timeseries and measurement template, you can refer to `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 
 ## Cluster information related APIs (only works in the cluster mode)
@@ -499,29 +521,29 @@ import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 
-    public class CluserInfoClient {
-      TTransport transport;
-      ClusterInfoService.Client client;
-      public void connect() {
-          transport =
-              RpcTransportFactory.INSTANCE.getTransport(
-                  new TSocket(
-                      // the RPC address
-                      IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
-                      // the RPC port
-                      ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
-          try {
-            transport.open();
-          } catch (TTransportException e) {
-            Assert.fail(e.getMessage());
-          }
-          //get the client
-          client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
-       }
-      public void close() {
-        transport.close();
-      }  
+public class CluserInfoClient {
+  TTransport transport;
+  ClusterInfoService.Client client;
+  public void connect() {
+    transport =
+            RpcTransportFactory.INSTANCE.getTransport(
+                    new TSocket(
+                            // the RPC address
+                            IoTDBDescriptor.getInstance().getConfig().getRpcAddress(),
+                            // the RPC port
+                            ClusterDescriptor.getInstance().getConfig().getClusterRpcPort()));
+    try {
+      transport.open();
+    } catch (TTransportException e) {
+      Assert.fail(e.getMessage());
     }
+    //get the client
+    client = new ClusterInfoService.Client(new TBinaryProtocol(transport));
+  }
+  public void close() {
+    transport.close();
+  }
+}
 ```
 
 APIs in `ClusterInfoService.Client`:
@@ -536,37 +558,37 @@ list<Node> getRing();
 * Get data partition information of input path and time range:
 
 ```java 
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return the data partition info. If the time range only covers one data partition, the the size
-     * of the list is one.
-     */
-    list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return the data partition info. If the time range only covers one data partition, the the size
+ * of the list is one.
+ */
+list<DataPartitionEntry> getDataPartition(1:string path, 2:long startTime, 3:long endTime);
 ```
 
 * Get metadata partition information of input path:
 ```java  
-    /**
-     * @param path input path (should contains a Storage group name as its prefix)
-     * @return metadata partition information
-     */
-    list<Node> getMetaPartition(1:string path);
+/**
+ * @param path input path (should contains a Storage group name as its prefix)
+ * @return metadata partition information
+ */
+list<Node> getMetaPartition(1:string path);
 ```
 
 * Get the status (alive or not) of all nodes:
 ```java
-    /**
-     * @return key: node, value: live or not
-     */
-    map<Node, bool> getAllNodeStatus();
+/**
+ * @return key: node, value: live or not
+ */
+map<Node, bool> getAllNodeStatus();
 ```
 
 * get the raft group info (voteFor, term, etc..) of the connected node
   (Notice that this API is rarely used by users):
 ```java  
-    /**
-     * @return A multi-line string with each line representing the total time consumption, invocation
-     *     number, and average time consumption.
-     */
-    string getInstrumentingInfo();
+/**
+ * @return A multi-line string with each line representing the total time consumption, invocation
+ *     number, and average time consumption.
+ */
+string getInstrumentingInfo();
 ```
