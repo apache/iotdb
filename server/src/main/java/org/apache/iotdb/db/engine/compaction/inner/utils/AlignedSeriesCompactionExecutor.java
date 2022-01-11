@@ -39,8 +39,11 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public class AlignedSeriesCompactionExecutor {
   private String device;
@@ -51,6 +54,8 @@ public class AlignedSeriesCompactionExecutor {
   private TsFileIOWriter writer;
 
   private AlignedChunkWriterImpl chunkWriter;
+  private List<IMeasurementSchema> iSchemaList = new ArrayList<>();
+  private Map<String, Integer> measurementIndexMap = new HashMap<>();
 
   public AlignedSeriesCompactionExecutor(
       String device,
@@ -66,9 +71,9 @@ public class AlignedSeriesCompactionExecutor {
     this.writer = writer;
     List<MeasurementPath> subPaths =
         MManager.getInstance().getAllMeasurementByDevicePath(new PartialPath(device));
-    List<IMeasurementSchema> iSchemaList = new ArrayList<>(subPaths.size());
-    for (MeasurementPath measurementPath : subPaths) {
-      iSchemaList.add(measurementPath.getMeasurementSchema());
+    for (int i = 0; i < subPaths.size(); ++i) {
+      iSchemaList.add(subPaths.get(i).getMeasurementSchema());
+      measurementIndexMap.put(subPaths.get(i).getMeasurement(), i);
     }
     chunkWriter = new AlignedChunkWriterImpl(iSchemaList);
   }
@@ -86,14 +91,15 @@ public class AlignedSeriesCompactionExecutor {
             alignedChunkMetadata.getValueChunkMetadataList();
 
         Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
-        List<Chunk> valueChunkList = new ArrayList<>();
+        Chunk[] valueChunks = new Chunk[valueChunkMetadataList.size()];
         // TODO: if some chunk doesn't exist, fill it with null
         for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
-          valueChunkList.add(reader.readMemChunk((ChunkMetadata) valueChunkMetadata));
+          valueChunks[measurementIndexMap.get(valueChunkMetadata.getMeasurementUid())] =
+              reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
         }
 
         AlignedChunkReaderByTimestamp chunkReader =
-            new AlignedChunkReaderByTimestamp(timeChunk, valueChunkList);
+            new AlignedChunkReaderByTimestamp(timeChunk, Arrays.asList(valueChunks));
 
         while (chunkReader.hasNextSatisfiedPage()) {
           IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
