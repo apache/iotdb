@@ -36,7 +36,7 @@ tool.check(path, false);
 ```
 
 * check 方法的返回值有四种。
-* 返回值为 -1 表示 TsFile 自检无错。
-* 返回值为 -2 表示 TsFile 存在 Statistics 不一致问题。具体会有两种异常，一种是 TimeSeriesMetadata 的 Statistics 与其后面的 ChunkMetadata 的聚合统计的 Statistics 不一致。另一种是 ChunkMetadata 的 Statistics 与其索引的 Chunk 中的 Page 聚合统计的 Statistics 不一致。
-* 返回值为 -3 表示 TsFile 版本不兼容。
-* 返回值为 -4 表示给定路径不存在 TsFile 文件。
+* 返回值为 0 表示 TsFile 自检无错。
+* 返回值为 -1 表示 TsFile 存在 Statistics 不一致问题。具体会有两种异常，一种是 TimeSeriesMetadata 的 Statistics 与其后面的 ChunkMetadata 的聚合统计的 Statistics 不一致。另一种是 ChunkMetadata 的 Statistics 与其索引的 Chunk 中的 Page 聚合统计的 Statistics 不一致。
+* 返回值为 -2 表示 TsFile 版本不兼容。
+* 返回值为 -3 表示给定路径不存在 TsFile 文件。

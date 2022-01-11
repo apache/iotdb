@@ -67,14 +67,14 @@ public class TsFileSelfCheckTool {
    * @param filename The path of TsFile.
    * @param fastFinish If true, the method will only check the format of head (Magic String TsFile,
    *     Version Number) and tail (Magic String TsFile) of TsFile.
-   * @return There are four return values of the check method. The return value is -1, which means
-   *     that the TsFile self check is error-free. The return value is -2, which means that TsFile
+   * @return There are four return values of the check method. The return value is 0, which means
+   *     that the TsFile self check is error-free. The return value is -1, which means that TsFile
    *     has inconsistencies in Statistics. There will be two specific exceptions, one is that the
    *     Statistics of TimeSeriesMetadata is inconsistent with the Statistics of the aggregated
    *     statistics of ChunkMetadata. The other is that the Statistics of ChunkMetadata is
    *     inconsistent with the Statistics of Page aggregation statistics in the Chunk indexed by it.
-   *     The return value is -3, which means that the TsFile version is not compatible. The return
-   *     value is -4, which means that the TsFile file does not exist in the given path.
+   *     The return value is -2, which means that the TsFile version is not compatible. The return
+   *     value is -3, which means that the TsFile file does not exist in the given path.
    */
   public long check(String filename, boolean fastFinish)
       throws IOException, TsFileStatisticsMistakesException, TsFileTimeseriesMetadataException {
