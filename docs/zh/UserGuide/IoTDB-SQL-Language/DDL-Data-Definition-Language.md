@@ -137,7 +137,7 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ### 查看时间序列
 
-* SHOW LATEST? TIMESERIES pathPattern? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
   SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 

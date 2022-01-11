@@ -138,7 +138,7 @@ IoTDB> delete timeseries root.ln.wf02.*
 
 ### Show Timeseries
 
-* SHOW LATEST? TIMESERIES pathPattern? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
   There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
