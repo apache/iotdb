@@ -2201,7 +2201,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
    *
    * <p>eg. now() + 1d - 2h
    */
-  private long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
+  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx) {
     long time;
     time = parseDateFormat(ctx.getChild(0).getText());
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
@@ -2214,7 +2214,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return time;
   }
 
-  private long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
+  private Long parseDateExpression(IoTDBSqlParser.DateExpressionContext ctx, long currentTime) {
     long time;
     time = parseDateFormat(ctx.getChild(0).getText(), currentTime);
     for (int i = 1; i < ctx.getChildCount(); i = i + 2) {
