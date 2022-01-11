@@ -22,10 +22,8 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
-import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -77,38 +75,31 @@ public class TsFileSplitTool {
   public static void main(String[] args) throws IOException {
     String fileName = args[0];
     logger.info("Splitting TsFile {} ...", fileName);
-    try {
-      new TsFileSplitTool(fileName).run();
-    } catch (IllegalPathException | PageException e) {
-      logger.error(e.getMessage());
-    }
+    new TsFileSplitTool(fileName).run();
   }
 
-  /**
-   * construct TsFileSketchTool
-   *
-   * @param filename input file path
-   */
+  /* construct TsFileSketchTool */
   public TsFileSplitTool(String filename) {
     this.filename = filename;
   }
 
-  /** entry of tool */
-  public void run() throws IOException, IllegalPathException, PageException {
+  /* entry of tool */
+  @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
+  public void run() throws IOException {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Iterator<List<Path>> pathIterator = reader.getPathsIterator();
       Set<String> devices = new HashSet<>();
       String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
       int versionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]) + 1;
-      TsFileIOWriter tsFileIOWriter = null;
+      TsFileIOWriter writer = null;
 
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
           String deviceId = path.getDevice();
           if (devices.add(deviceId)) {
-            if (tsFileIOWriter != null) {
+            if (writer != null) {
               // seal last TsFile
-              TsFileResource resource = endFileAndGenerateResource(tsFileIOWriter);
+              TsFileResource resource = endFileAndGenerateResource(writer);
               resource.close();
             }
 
@@ -121,14 +112,13 @@ public class TsFileSplitTool {
               }
             }
             // open a new TsFile
-            tsFileIOWriter =
-                new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
+            writer = new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
             versionIndex++;
-            tsFileIOWriter.startChunkGroup(deviceId);
+            writer.startChunkGroup(deviceId);
           }
 
           List<ChunkMetadata> chunkMetadataList = reader.getChunkMetadataList(path);
-          assert tsFileIOWriter != null;
+          assert writer != null;
 
           ChunkMetadata firstChunkMetadata = chunkMetadataList.get(0);
           reader.position(firstChunkMetadata.getOffsetOfChunkHeader());
@@ -176,7 +166,7 @@ public class TsFileSplitTool {
                     chunkHeader.getDataType());
                 numInChunk++;
                 if (numInChunk == chunkPointNumLowerBoundInCompaction) {
-                  chunkWriter.writeToFileWriter(tsFileIOWriter);
+                  chunkWriter.writeToFileWriter(writer);
                   numInChunk = 0;
                 }
                 batchData.next();
@@ -186,15 +176,15 @@ public class TsFileSplitTool {
             }
           }
           if (numInChunk != 0) {
-            chunkWriter.writeToFileWriter(tsFileIOWriter);
+            chunkWriter.writeToFileWriter(writer);
           }
         }
       }
 
       logger.info("TsFile {} is split into {} new files.", filename, devices.size());
-      if (tsFileIOWriter != null) {
+      if (writer != null) {
         // seal last TsFile
-        TsFileResource resource = endFileAndGenerateResource(tsFileIOWriter);
+        TsFileResource resource = endFileAndGenerateResource(writer);
         resource.close();
       }
     }
