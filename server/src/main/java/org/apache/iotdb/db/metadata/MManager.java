@@ -21,9 +21,11 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -100,13 +102,6 @@ import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -122,6 +117,13 @@ import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.utils.EncodingInferenceUtils.getDefaultEncoding;
@@ -496,6 +498,15 @@ public class MManager {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
+        createContinuousQuery(createContinuousQueryPlan);
+        break;
+      case DROP_CONTINUOUS_QUERY:
+        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
+        dropContinuousQuery(dropContinuousQueryPlan);
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -503,11 +514,27 @@ public class MManager {
   // endregion
 
   // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().register(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().deregister(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriter.createContinuousQuery(plan);
   }
 
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
     logWriter.dropContinuousQuery(plan);
   }
   // endregion
