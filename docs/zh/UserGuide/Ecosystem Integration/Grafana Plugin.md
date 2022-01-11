@@ -85,7 +85,7 @@ yarn build
 在 IoTDB 仓库的根目录下执行：
 
 ```shell
- mvn clean package -pl distribution -am -DskipTests 
+ mvn clean package -pl distribution -am -DskipTests -P compile-grafana-plugin
 ```
 
 如果编译成功，我们将看到 `distribution/target` 路径下包含了编译好的 Grafana 前端插件：
