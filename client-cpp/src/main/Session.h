@@ -27,6 +27,7 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <unordered_map>
 #include <utility>
 #include <memory>
 #include <new>
@@ -609,9 +610,9 @@ private:
     std::vector<std::string> columnNameList;
     std::vector<std::string> columnTypeDeduplicatedList;
     // duplicated column index -> origin index
-    std::map<int, int> duplicateLocation;
+    std::unordered_map<int, int> duplicateLocation;
     // column name -> column location
-    std::map<std::string, int> columnMap;
+    std::unordered_map<std::string, int> columnMap;
     // column size
     int columnSize = 0;
     bool isIgnoreTimeStamp = false;
@@ -631,7 +632,7 @@ public:
     SessionDataSet(const std::string &sql,
                    const std::vector<std::string> &columnNameList,
                    const std::vector<std::string> &columnTypeList,
-                   std::map<std::string, int> &columnNameIndexMap,
+                   std::unordered_map<std::string, int> &columnNameIndexMap,
                    bool isIgnoreTimeStamp,
                    int64_t queryId, int64_t statementId,
                    std::shared_ptr<TSIServiceIf> client, int64_t sessionId,
@@ -863,13 +864,13 @@ public:
 
     void insertAlignedTablet(Tablet &tablet, bool sorted);
 
-    void insertTablets(std::map<std::string, Tablet *> &tablets);
+    void insertTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
-    void insertTablets(std::map<std::string, Tablet *> &tablets, bool sorted);
+    void insertTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
 
-    void insertAlignedTablets(std::map<std::string, Tablet *> &tablets);
+    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets);
 
-    void insertAlignedTablets(std::map<std::string, Tablet *> &tablets, bool sorted);
+    void insertAlignedTablets(std::unordered_map<std::string, Tablet *> &tablets, bool sorted);
 
     void testInsertRecord(const std::string &deviceId, int64_t time,
                           const std::vector<std::string> &measurements,

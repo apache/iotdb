@@ -273,7 +273,7 @@ bool SessionDataSet::hasNext() {
                 return false;
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
-                tsQueryDataSetTimeBuffer = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
                 rowsIndex = 0;
             }
         }
@@ -981,7 +981,7 @@ void Session::insertAlignedTablet(Tablet &tablet, bool sorted) {
     }
 }
 
-void Session::insertTablets(map<string, Tablet *> &tablets) {
+void Session::insertTablets(unordered_map<string, Tablet *> &tablets) {
     try {
         insertTablets(tablets, false);
     }
@@ -991,7 +991,7 @@ void Session::insertTablets(map<string, Tablet *> &tablets) {
     }
 }
 
-void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
+void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorted) {
     TSInsertTabletsReq request;
     request.__set_sessionId(sessionId);
     if (tablets.empty()) {
@@ -1034,11 +1034,11 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
     }
 }
 
-void Session::insertAlignedTablets(map<string, Tablet *> &tablets) {
+void Session::insertAlignedTablets(unordered_map<string, Tablet *> &tablets) {
     insertAlignedTablets(tablets, false);
 }
 
-void Session::insertAlignedTablets(map<string, Tablet *> &tablets, bool sorted) {
+void Session::insertAlignedTablets(unordered_map<string, Tablet *> &tablets, bool sorted) {
     for (auto iter = tablets.begin(); iter != tablets.end(); iter++) {
         iter->second->setAligned(true);
     }
