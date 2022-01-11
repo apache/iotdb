@@ -19,10 +19,11 @@
 
 #include "Session.h"
 #include <algorithm>
+#include <memory>
 
 using namespace std;
 
-TSDataType::TSDataType getTSDataTypeFromString(string str) {
+TSDataType::TSDataType getTSDataTypeFromString(const string &str) {
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
     if (str == "BOOLEAN") return TSDataType::BOOLEAN;
     else if (str == "INT32") return TSDataType::INT32;
@@ -45,7 +46,7 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
 }
 
 void RpcUtils::verifySuccess(const vector<TSStatus> &statuses) {
-    for (TSStatus status: statuses) {
+    for (const TSStatus &status: statuses) {
         if (status.code != TSStatusCode::SUCCESS_STATUS) {
             throw BatchExecutionException(statuses, status.message);
         }
@@ -79,7 +80,7 @@ RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, con
 shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus &status) {
     shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
     TSStatus tsStatus(status);
-    resp->status = status;
+    resp->status = tsStatus;
     return resp;
 }
 
@@ -144,7 +145,7 @@ int Tablet::getValueByteSize() {
                 break;
             case TSDataType::TEXT:
                 valueOccupation += rowSize * 4;
-                for (string value: values[i]) {
+                for (const string &value: values[i]) {
                     valueOccupation += value.size();
                 }
                 break;
@@ -234,8 +235,8 @@ string SessionUtils::getValue(const Tablet &tablet) {
         valueBuffer.putChar(columnHasNull ? (char) 1 : (char) 0);
         if (columnHasNull) {
             vector<char> bytes = bitMap->getByteArray();
-            for (int j = 0; j < bytes.size(); j++) {
-                valueBuffer.putChar(bytes[j]);
+            for (char byte: bytes) {
+                valueBuffer.putChar(byte);
             }
         }
     }
@@ -276,7 +277,7 @@ bool SessionDataSet::hasNext() {
                 rowsIndex = 0;
             }
         }
-        catch (IoTDBConnectionException e) {
+        catch (IoTDBConnectionException &e) {
             throw IoTDBConnectionException(
                     string("Cannot fetch result from server, because of network connection: ") + e.what());
         }
@@ -338,7 +339,7 @@ void SessionDataSet::constructOneRow() {
                     }
                     default: {
                         throw UnSupportedDataTypeException(
-                                string("Data type ") + columnTypeDeduplicatedList[i].c_str() + " is not supported.");
+                                string("Data type ") + columnTypeDeduplicatedList[i] + " is not supported.");
                     }
                 }
             } else {
@@ -367,7 +368,7 @@ bool SessionDataSet::isNull(int index, int rowNum) {
 RowRecord *SessionDataSet::next() {
     if (!hasCachedRecord) {
         if (!hasNext()) {
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -385,7 +386,7 @@ void SessionDataSet::closeOperationHandle() {
         client->closeOperation(*closeResp, *closeReq);
         RpcUtils::verifySuccess(*closeResp);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(
                 string("Error occurs when connecting to server for close operation, because: ") + e.what());
     }
@@ -544,7 +545,7 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         try {
             transport->open();
         }
-        catch (TTransportException e) {
+        catch (TTransportException &e) {
             throw IoTDBConnectionException(e.what());
         }
     }
@@ -574,13 +575,13 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         sessionId = openResp.sessionId;
         statementId = client->requestStatementId(sessionId);
 
-        if (zoneId != "") {
+        if (!zoneId.empty()) {
             setTimeZone(zoneId);
         } else {
             zoneId = getTimeZone();
         }
     }
-    catch (exception e) {
+    catch (exception &e) {
         transport->close();
         throw IoTDBConnectionException(e.what());
     }
@@ -599,7 +600,7 @@ void Session::close() {
         shared_ptr<TSStatus> resp(new TSStatus());
         client->closeSession(*resp, *req);
     }
-    catch (exception e) {
+    catch (exception &e) {
         throw IoTDBConnectionException(
                 string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
@@ -961,7 +962,7 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
-        throw new IoTDBConnectionException(e.what());
+        throw IoTDBConnectionException(e.what());
     }
 }
 
@@ -1038,7 +1039,7 @@ void Session::insertAlignedTablets(map<string, Tablet *> &tablets) {
 }
 
 void Session::insertAlignedTablets(map<string, Tablet *> &tablets, bool sorted) {
-    for (map<string, Tablet *>::iterator iter = tablets.begin(); iter != tablets.end(); iter++) {
+    for (auto iter = tablets.begin(); iter != tablets.end(); iter++) {
         iter->second->setAligned(true);
     }
     try {
@@ -1063,7 +1064,7 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
         client->insertStringRecord(*resp, *req);
         RpcUtils::verifySuccess(*resp);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1187,7 +1188,7 @@ void Session::createTimeseries(const string &path,
                                TSEncoding::TSEncoding encoding,
                                CompressionType::CompressionType compressor) {
     try {
-        createTimeseries(path, dataType, encoding, compressor, NULL, NULL, NULL, "");
+        createTimeseries(path, dataType, encoding, compressor, nullptr, nullptr, nullptr, "");
     }
     catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
@@ -1209,17 +1210,17 @@ void Session::createTimeseries(const string &path,
     req->__set_dataType(dataType);
     req->__set_encoding(encoding);
     req->__set_compressor(compressor);
-    if (props != NULL) {
+    if (props != nullptr) {
         req->__set_props(*props);
     }
 
-    if (tags != NULL) {
+    if (tags != nullptr) {
         req->__set_tags(*tags);
     }
-    if (attributes != NULL) {
+    if (attributes != nullptr) {
         req->__set_attributes(*attributes);
     }
-    if (measurementAlias != "") {
+    if (!measurementAlias.empty()) {
         req->__set_measurementAlias(measurementAlias);
     }
 
@@ -1246,34 +1247,37 @@ void Session::createMultiTimeseries(const vector<string> &paths,
     request->__set_paths(paths);
 
     vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
     for (TSDataType::TSDataType dataType: dataTypes) {
         dataTypesOrdinal.push_back(dataType);
     }
     request->__set_dataTypes(dataTypesOrdinal);
 
     vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
     for (TSEncoding::TSEncoding encoding: encodings) {
         encodingsOrdinal.push_back(encoding);
     }
     request->__set_encodings(encodingsOrdinal);
 
     vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
     for (CompressionType::CompressionType compressor: compressors) {
         compressorsOrdinal.push_back(compressor);
     }
     request->__set_compressors(compressorsOrdinal);
 
-    if (propsList != NULL) {
+    if (propsList != nullptr) {
         request->__set_propsList(*propsList);
     }
 
-    if (tagsList != NULL) {
+    if (tagsList != nullptr) {
         request->__set_tagsList(*tagsList);
     }
-    if (attributesList != NULL) {
+    if (attributesList != nullptr) {
         request->__set_attributesList(*attributesList);
     }
-    if (measurementAliasList != NULL) {
+    if (measurementAliasList != nullptr) {
         request->__set_measurementAliasList(*measurementAliasList);
     }
 
@@ -1298,18 +1302,21 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
     request->__set_measurements(measurements);
 
     vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
     for (TSDataType::TSDataType dataType: dataTypes) {
         dataTypesOrdinal.push_back(dataType);
     }
     request->__set_dataTypes(dataTypesOrdinal);
 
     vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
     for (TSEncoding::TSEncoding encoding: encodings) {
         encodingsOrdinal.push_back(encoding);
     }
     request->__set_encodings(encodingsOrdinal);
 
     vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
     for (CompressionType::CompressionType compressor: compressors) {
         compressorsOrdinal.push_back(compressor);
     }
@@ -1339,7 +1346,7 @@ bool Session::checkTimeseriesExists(const string &path) {
 }
 
 string Session::getTimeZone() {
-    if (zoneId != "") {
+    if (!zoneId.empty()) {
         return zoneId;
     }
     shared_ptr<TSGetTimeZoneResp> resp(new TSGetTimeZoneResp());
@@ -1379,13 +1386,13 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
         client->executeStatement(*resp, *req);
         RpcUtils::verifySuccess(resp->status);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
-    return unique_ptr<SessionDataSet>(new SessionDataSet(
+    return std::make_unique<SessionDataSet>(
             sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->ignoreTimeStamp, resp->queryId,
-            statementId, client, sessionId, queryDataSet));
+            statementId, client, sessionId, queryDataSet);
 }
 
 void Session::executeNonQueryStatement(const string &sql) {
@@ -1398,7 +1405,7 @@ void Session::executeNonQueryStatement(const string &sql) {
         client->executeUpdateStatement(*resp, *req);
         RpcUtils::verifySuccess(resp->status);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());
     }
 }
