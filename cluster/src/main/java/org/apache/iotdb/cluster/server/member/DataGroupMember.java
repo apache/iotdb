@@ -86,6 +86,7 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
+import org.apache.iotdb.db.qp.physical.BatchPlan;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertMultiTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertPlan;
@@ -744,6 +745,9 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
             && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()
             && isCausedByNoTimeseries(e)
             && createTimeseriesForFailedInsertion(((InsertPlan) plan))) {
+          if (plan instanceof BatchPlan) {
+            ((BatchPlan) plan).getResults().clear();
+          }
           return executeNonQueryPlan(plan);
         }
       } catch (MetadataException
