@@ -57,12 +57,10 @@ public class SingleNodeIT extends Cases {
           .waitingFor(Wait.forListeningPort());
 
   int rpcPort = 6667;
-  int syncPort = 5555;
 
   @Before
   public void init() throws Exception {
     rpcPort = dslContainer.getMappedPort(6667);
-    syncPort = dslContainer.getMappedPort(5555);
     Class.forName(Config.JDBC_DRIVER_NAME);
     readConnections = new Connection[1];
     readStatements = new Statement[1];

@@ -84,7 +84,7 @@ public abstract class Cases {
   }
 
   protected Connection openConnection(String hostname, int port) throws SQLException {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 20; i++) {
       try {
         return DriverManager.getConnection("jdbc:iotdb://" + hostname + ":" + port, "root", "root");
       } catch (SQLException e) {
