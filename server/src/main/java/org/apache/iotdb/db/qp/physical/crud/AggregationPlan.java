@@ -81,7 +81,7 @@ public class AggregationPlan extends RawDataQueryPlan {
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws MetadataException {
     List<TSDataType> seriesTypes = new ArrayList<>();
     List<String> aggregations = getAggregations();

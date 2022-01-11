@@ -36,12 +36,12 @@ public class SetTTLPlan extends PhysicalPlan {
   private long dataTTL;
 
   public SetTTLPlan() {
-    super(false, OperatorType.TTL);
+    super(OperatorType.TTL);
   }
 
   public SetTTLPlan(PartialPath storageGroup, long dataTTL) {
     // set TTL
-    super(false, OperatorType.TTL);
+    super(OperatorType.TTL);
     this.storageGroup = storageGroup;
     this.dataTTL = dataTTL;
   }

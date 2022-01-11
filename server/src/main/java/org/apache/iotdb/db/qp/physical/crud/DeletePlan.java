@@ -44,7 +44,7 @@ public class DeletePlan extends PhysicalPlan {
   private TimePartitionFilter partitionFilter;
 
   public DeletePlan() {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
   }
 
   /**
@@ -55,7 +55,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param path time series path
    */
   public DeletePlan(long startTime, long endTime, PartialPath path) {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
     this.paths.add(path);
@@ -69,7 +69,7 @@ public class DeletePlan extends PhysicalPlan {
    * @param paths time series paths in List structure
    */
   public DeletePlan(long startTime, long endTime, List<PartialPath> paths) {
-    super(false, Operator.OperatorType.DELETE);
+    super(Operator.OperatorType.DELETE);
     this.deleteStartTime = startTime;
     this.deleteEndTime = endTime;
     this.paths = paths;

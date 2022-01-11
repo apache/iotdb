@@ -28,7 +28,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +48,10 @@ public class TsFileWriteAlignedWithTSRecord {
       throw new RuntimeException("can not delete " + f.getAbsolutePath());
     }
     try (TsFileWriter tsFileWriter = new TsFileWriter(f)) {
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.RLE));
 
       // register timeseries
       tsFileWriter.registerAlignedTimeseries(new Path("root.sg.d1"), measurementSchemas);

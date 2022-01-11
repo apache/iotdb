@@ -126,18 +126,20 @@ public class IoTDBMergeIT {
       for (int i = 0; i < 10; i++) {
         logger.info("Running the {} round merge", i);
         for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
-          statement.execute(
+          statement.addBatch(
               String.format(
                   "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                   j, j + 1, j + 2, j + 3));
         }
+        statement.executeBatch();
         statement.execute("FLUSH");
         for (int j = i * 10 + 1; j <= (i + 1) * 10; j++) {
-          statement.execute(
+          statement.addBatch(
               String.format(
                   "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                   j, j + 10, j + 20, j + 30));
         }
+        statement.executeBatch();
         statement.execute("FLUSH");
         try {
           Thread.sleep(1000);
@@ -185,33 +187,37 @@ public class IoTDBMergeIT {
       }
 
       for (int j = 10; j < 20; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 1, j + 2, j + 3));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
       for (int j = 20; j < 30; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 1, j + 2, j + 3));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
 
       for (int j = 20; j < 30; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 10, j + 20, j + 30));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
       for (int j = 10; j < 20; j++) {
-        statement.execute(
+        statement.addBatch(
             String.format(
                 "INSERT INTO root.mergeTest(timestamp,s1,s2,s3) VALUES (%d,%d," + "%d,%d)",
                 j, j + 10, j + 20, j + 30));
       }
+      statement.executeBatch();
       statement.execute("FLUSH");
 
       statement.execute("MERGE");

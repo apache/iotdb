@@ -52,6 +52,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -71,8 +72,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -393,8 +394,15 @@ public class MTree implements Serializable {
       }
 
       if (upperTemplate != null
-          && (upperTemplate.hasSchema(leafName) || upperTemplate.hasSchema(alias))) {
+          && (upperTemplate.getDirectNode(leafName) != null
+              || upperTemplate.getDirectNode(alias) != null)) {
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
+      }
+
+      if (cur.isEntity() && cur.getAsEntityMNode().isAligned()) {
+        throw new AlignedTimeseriesException(
+            "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
+            cur.getFullPath());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
@@ -403,7 +411,7 @@ public class MTree implements Serializable {
           MeasurementMNode.getMeasurementMNode(
               entityMNode,
               leafName,
-              new UnaryMeasurementSchema(leafName, dataType, encoding, compressor, props),
+              new MeasurementSchema(leafName, dataType, encoding, compressor, props),
               alias);
       entityMNode.addChild(leafName, measurementMNode);
       // link alias to LeafMNode
@@ -448,33 +456,31 @@ public class MTree implements Serializable {
       if (upperTemplate != null) {
         for (String measurement : measurements) {
           if (upperTemplate.getDirectNode(measurement) != null) {
-            throw new PathAlreadyExistException(
-                devicePath.concatNode(measurement).getFullPath()
-                    + " ( which is incompatible with template )");
+            throw new TemplateImcompatibeException(
+                devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
           }
         }
       }
 
-      if (cur.isEntity()
-          && !cur.getAsEntityMNode().isAligned()
-          && (!cur.getChildren().isEmpty() || cur.isUseTemplate())) {
+      if (cur.isEntity() && !cur.getAsEntityMNode().isAligned()) {
         throw new AlignedTimeseriesException(
-            "Aligned timeseries cannot be created under this entity", devicePath.getFullPath());
+            "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
+            devicePath.getFullPath());
       }
 
       IEntityMNode entityMNode = MNodeUtils.setToEntity(cur);
+      entityMNode.setAligned(true);
 
       for (int i = 0; i < measurements.size(); i++) {
         IMeasurementMNode measurementMNode =
             MeasurementMNode.getMeasurementMNode(
                 entityMNode,
                 measurements.get(i),
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
                 null);
         entityMNode.addChild(measurements.get(i), measurementMNode);
       }
-      entityMNode.setAligned(true);
     }
   }
 
@@ -868,14 +874,15 @@ public class MTree implements Serializable {
    * storage group using the children of a mNode. If one child is a storage group node, put a
    * storageGroupName-fullPath pair into paths.
    */
-  public Map<String, String> groupPathByStorageGroup(PartialPath path) throws MetadataException {
-    Map<String, String> result = new HashMap<>();
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+      throws MetadataException {
+    Map<String, List<PartialPath>> result = new HashMap<>();
     StorageGroupCollector<Map<String, String>> collector =
         new StorageGroupCollector<Map<String, String>>(root, path) {
           @Override
           protected void collectStorageGroup(IStorageGroupMNode node) {
             PartialPath sgPath = node.getPartialPath();
-            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath).getFullPath());
+            result.put(sgPath.getFullPath(), path.alterPrefixPath(sgPath));
           }
         };
     collector.setCollectInternal(true);
@@ -917,9 +924,11 @@ public class MTree implements Serializable {
             if (plan.hasSgCol()) {
               res.add(
                   new ShowDevicesResult(
-                      device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
+                      device.getFullPath(),
+                      node.isAligned(),
+                      getBelongedStorageGroup(device).getFullPath()));
             } else {
-              res.add(new ShowDevicesResult(device.getFullPath()));
+              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             }
           }
         };
@@ -1245,6 +1254,15 @@ public class MTree implements Serializable {
     counter.traverse();
     return counter.getCount();
   }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(root, pathPattern, level);
+    counter.traverse();
+    return counter.getResult();
+  }
+
   // endregion
 
   // endregion

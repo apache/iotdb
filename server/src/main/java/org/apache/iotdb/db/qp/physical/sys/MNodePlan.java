@@ -35,17 +35,17 @@ public class MNodePlan extends PhysicalPlan {
   protected int childSize;
 
   public MNodePlan() {
-    super(false, Operator.OperatorType.MNODE);
+    super(Operator.OperatorType.MNODE);
+  }
+
+  public MNodePlan(Operator.OperatorType operatorType) {
+    super(operatorType);
   }
 
   public MNodePlan(String name, int childSize) {
-    super(false, Operator.OperatorType.MNODE);
+    super(Operator.OperatorType.MNODE);
     this.name = name;
     this.childSize = childSize;
-  }
-
-  public MNodePlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override

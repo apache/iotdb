@@ -19,7 +19,7 @@
 
 -->
 
-## 数据类型
+# 数据类型
 
 IoTDB 支持：
 
@@ -53,7 +53,7 @@ IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIM
 
 在用户在输入时间戳时，可以使用 LONG 类型的时间戳或 DATETIME-INPUT 类型的时间戳，其中 DATETIME-INPUT 类型的时间戳支持格式如表所示：
 
-<center>
+<div style="text-align: center;">
 
 **DATETIME-INPUT 类型支持格式**
 
@@ -74,11 +74,13 @@ IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIM
 | yyyy.MM.dd HH:mm:ss.SSSZZ    |
 | ISO8601 standard time format |
 
-</center>
+
+</div>
+
 
 IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类型，其中 DATETIME-DISPLAY 类型可以支持用户自定义时间格式。自定义时间格式的语法如表所示：
 
-<center>
+<div style="text-align: center;">
 
 **DATETIME-DISPLAY 自定义时间格式的语法**
 
@@ -115,7 +117,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
 |   '    |       escape for text       |  delimiter   |                                    |
 |   ''   |        single quote         |   literal    |                 '                  |
 
-</center>
+</div>
 
 * 相对时间戳
 
@@ -127,7 +129,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
   RelativeTime = (now() | DATETIME) ((+|-) Duration)+
   ```
 
-  <center>
+  <div style="text-align: center;">
   
   **The syntax of the duration unit**
 
@@ -147,7 +149,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
   |   us   | microsecond |   1us=1000 nanoseconds   |   1us    |
   |   ns   | nanosecond  |     1ns=1 nanosecond     |   1ns    |
 
-  </center>
+  </div>
 
   例子：
 
@@ -156,4 +158,4 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
   now() - 1w //比服务器时间早 1 周的时间
   ```
 
-  > 注意：'+'和'-'的左右两边必须有空格 
+  > 注意：'+'和'-'的左右两边必须有空格

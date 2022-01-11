@@ -134,6 +134,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
         sql += " and " + expressionRequest.getCondition();
       }
+      if (StringUtils.isNotEmpty(expressionRequest.getControl())) {
+        sql += " " + expressionRequest.getControl();
+      }
 
       PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
 

@@ -92,7 +92,8 @@ public class InfluxDBServiceImpl implements InfluxDBService.Iface {
 
     List<TSStatus> tsStatusList = new ArrayList<>();
     int executeCode = TSStatusCode.SUCCESS_STATUS.getStatusCode();
-    for (Point point : InfluxLineParser.parserRecordsToPoints(req.lineProtocol)) {
+    for (Point point :
+        InfluxLineParser.parserRecordsToPointsWithPrecision(req.lineProtocol, req.precision)) {
       IoTDBPoint iotdbPoint = new IoTDBPoint(req.database, point, metaManager);
       try {
         InsertRowPlan plan = iotdbPoint.convertToInsertRowPlan();

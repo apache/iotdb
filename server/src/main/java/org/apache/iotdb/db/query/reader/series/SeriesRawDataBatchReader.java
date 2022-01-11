@@ -81,7 +81,6 @@ public class SeriesRawDataBatchReader implements ManagedSeriesReader {
       Filter valueFilter,
       boolean ascending) {
     Set<String> allSensors = new HashSet<>();
-    allSensors.add(seriesPath.getMeasurement());
     this.seriesReader =
         seriesPath.createSeriesReader(
             allSensors,

@@ -88,9 +88,8 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     this.ascending = ascending;
   }
 
-  public boolean isEmpty() {
-    return queryDataSource.getSeqResources().isEmpty()
-        && queryDataSource.getUnseqResources().isEmpty();
+  public boolean isEmpty() throws IOException {
+    return !reader.hasNextFile();
   }
 
   @Override

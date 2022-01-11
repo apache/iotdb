@@ -55,7 +55,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
   private static final int NEW_PLAN = -1;
 
   public CreateTemplatePlan() {
-    super(false, OperatorType.CREATE_TEMPLATE);
+    super(OperatorType.CREATE_TEMPLATE);
   }
 
   public CreateTemplatePlan(
@@ -66,7 +66,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       List<List<CompressionType>> compressors) {
     // New constructor for tree-structured template where aligned measurements get individual
     // compressors
-    super(false, OperatorType.CREATE_TEMPLATE);
+    super(OperatorType.CREATE_TEMPLATE);
 
     this.name = name;
     schemaNames = null;
@@ -134,7 +134,7 @@ public class CreateTemplatePlan extends PhysicalPlan {
       TSDataType[][] dataTypes,
       TSEncoding[][] encodings,
       CompressionType[][] compressors) {
-    super(false, OperatorType.CREATE_TEMPLATE);
+    super(OperatorType.CREATE_TEMPLATE);
     this.name = name;
     this.schemaNames = null;
     this.measurements = measurements;

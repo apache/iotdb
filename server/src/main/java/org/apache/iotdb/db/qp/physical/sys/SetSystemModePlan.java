@@ -36,11 +36,11 @@ public class SetSystemModePlan extends PhysicalPlan {
   private boolean isReadOnly;
 
   public SetSystemModePlan() {
-    super(false, OperatorType.SET_SYSTEM_MODE);
+    super(OperatorType.SET_SYSTEM_MODE);
   }
 
   public SetSystemModePlan(boolean isReadOnly) {
-    super(false, OperatorType.SET_SYSTEM_MODE);
+    super(OperatorType.SET_SYSTEM_MODE);
     this.isReadOnly = isReadOnly;
   }
 

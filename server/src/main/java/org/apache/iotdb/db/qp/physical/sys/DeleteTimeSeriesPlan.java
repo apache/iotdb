@@ -46,12 +46,12 @@ public class DeleteTimeSeriesPlan extends PhysicalPlan {
   private TimePartitionFilter partitionFilter;
 
   public DeleteTimeSeriesPlan(List<PartialPath> deletePathList) {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
     this.deletePathList = deletePathList;
   }
 
   public DeleteTimeSeriesPlan() {
-    super(false, Operator.OperatorType.DELETE_TIMESERIES);
+    super(Operator.OperatorType.DELETE_TIMESERIES);
   }
 
   @Override

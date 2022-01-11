@@ -51,7 +51,7 @@ The `intoClause` is the mark clause for query write-back.
 
 ```sql
 intoClause
-  : INTO intoPath (COMMA intoPath)*
+  : INTO ALIGNED? intoPath (COMMA intoPath)*
   ;
 
 intoPath
@@ -112,6 +112,23 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
     into root.sg.d1.sg_t1, root.sg.d1.d1, root.d1.sg.t2
     from root.sg.d1
     ```
+
+
+
+**You can specify whether the target timeseries are aligned via the keyword `ALIGNED`. **
+
+When the target aligned timeseries are existed, you need to ensure that the types of the source and target time series match.
+
+When the target aligned timeseries are not existed, the system will automatically create the target aligned time series.
+
+
+   * Example:
+
+     ```sql
+     select s1, s2, s3
+     into aligned root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
+     from root.sg.d1
+     ````
 
 
 

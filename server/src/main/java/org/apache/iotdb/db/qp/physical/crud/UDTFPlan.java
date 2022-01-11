@@ -91,7 +91,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList) {
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       respColumns.add(resultColumns.get(i).getResultColumnName());

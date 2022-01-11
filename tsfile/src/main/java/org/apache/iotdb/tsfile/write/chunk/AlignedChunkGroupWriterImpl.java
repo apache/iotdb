@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import org.slf4j.Logger;
@@ -65,7 +65,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(IMeasurementSchema measurementSchema) {
+  public void tryToAddSeriesWriter(MeasurementSchema measurementSchema) {
     if (!valueChunkWriterMap.containsKey(measurementSchema.getMeasurementId())) {
       ValueChunkWriter valueChunkWriter =
           new ValueChunkWriter(
@@ -80,8 +80,8 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   }
 
   @Override
-  public void tryToAddSeriesWriter(List<IMeasurementSchema> measurementSchemas) {
-    for (IMeasurementSchema schema : measurementSchemas) {
+  public void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas) {
+    for (MeasurementSchema schema : measurementSchemas) {
       if (!valueChunkWriterMap.containsKey(schema.getMeasurementId())) {
         ValueChunkWriter valueChunkWriter =
             new ValueChunkWriter(
@@ -140,7 +140,7 @@ public class AlignedChunkGroupWriterImpl implements IChunkGroupWriter {
   @Override
   public int write(Tablet tablet) throws WriteProcessException, IOException {
     int pointCount = 0;
-    List<IMeasurementSchema> measurementSchemas = tablet.getSchemas();
+    List<MeasurementSchema> measurementSchemas = tablet.getSchemas();
     for (int row = 0; row < tablet.rowSize; row++) {
       long time = tablet.timestamps[row];
       checkIsHistoryData("", time);

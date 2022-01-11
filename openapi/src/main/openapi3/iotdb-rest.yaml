@@ -206,6 +206,8 @@ components:
             type: string
         condition:
           type: string
+        control:
+           type: string
         startTime:
           type: number
         endTime:
