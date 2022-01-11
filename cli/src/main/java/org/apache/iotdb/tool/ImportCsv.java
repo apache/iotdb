@@ -72,7 +72,7 @@ public class ImportCsv extends AbstractCsvTool {
   private static final String FAILED_FILE_NAME = "failed file directory";
 
   private static final String ALIGNED_ARGS = "aligned";
-  private static final String ALIGNED_Name = "use the aligned interface";
+  private static final String ALIGNED_NAME = "use the aligned interface";
 
   private static final String CSV_SUFFIXS = "csv";
   private static final String TXT_SUFFIXS = "txt";
