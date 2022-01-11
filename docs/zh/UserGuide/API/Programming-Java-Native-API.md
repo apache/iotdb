@@ -19,7 +19,9 @@
 
 -->
 
-## Java 原生接口
+# Java 原生接口
+
+## 安装
 
 ### 依赖
 
@@ -46,9 +48,11 @@ mvn clean install -pl session -am -Dmaven.test.skip=true
 </dependencies>
 ```
 
-### 原生接口说明
+## 基本接口说明
 
 下面将给出 Session 对应的接口的简要介绍和对应参数：
+
+### 初始化
 
 * 初始化 Session
 
@@ -93,6 +97,10 @@ Session.open()
 Session.close()
 ```
 
+### 数据定义接口 DDL
+
+#### 存储组管理
+
 * 设置存储组
 
 ```java
@@ -105,6 +113,7 @@ void setStorageGroup(String storageGroupId)
 void deleteStorageGroup(String storageGroup)
 void deleteStorageGroups(List<String> storageGroups)
 ```
+#### 时间序列管理
 
 * 创建单个或多个时间序列
 
@@ -136,80 +145,7 @@ void deleteTimeseries(String path)
 void deleteTimeseries(List<String> paths)
 ```
 
-* 删除一个或多个时间序列在某个时间点前或这个时间点的数据
-
-```java
-void deleteData(String path, long endTime)
-void deleteData(List<String> paths, long endTime)
-```
-
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
-
-```java
-void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
-```
-
-* 插入一个 Tablet，Tablet 是一个设备若干行非空数据块，每一行的列都相同
-
-```java
-void insertTablet(Tablet tablet)
-```
-
-* 插入多个 Tablet
-
-```java
-void insertTablets(Map<String, Tablet> tablets)
-```
-
-* 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
-
-```java
-void insertRecords(List<String> deviceIds, List<Long> times, 
-                   List<List<String>> measurementsList, List<List<String>> valuesList)
-```
-
-* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
-
-```java
-void insertRecord(String prefixPath, long time, List<String> measurements,
-   List<TSDataType> types, List<Object> values)
-```
-
-* 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
-
-```java
-void insertRecords(List<String> deviceIds,
-        List<Long> times,
-        List<List<String>> measurementsList,
-        List<List<TSDataType>> typesList,
-        List<List<Object>> valuesList)
-```
-
-* 插入同属于一个 device 的多个 Record。
-
-```java
-void insertRecordsOfOneDevice(String deviceId, List<Long> times,
-    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
-    List<List<Object>> valuesList)
-```
-
-* 原始数据查询。时间间隔包含开始时间，不包含结束时间
-
-```java
-SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
-```
-
-* 执行查询语句
-
-```java
-SessionDataSet executeQueryStatement(String sql)
-```
-
-* 执行非查询语句
-
-```java
-void executeNonQueryStatement(String sql)
-```
+#### 物理量模版
 
 * 物理量模板内部支持树状结构，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
 
@@ -344,7 +280,114 @@ void unsetSchemaTemplate(String prefixPath, String templateName)
 
 注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
 
-### 测试接口说明
+
+### 数据操作接口 DML
+
+#### 数据写入
+
+推荐使用 insertTablet 帮助提高写入效率
+
+* 插入一个 Tablet，Tablet 是一个设备若干行数据块，每一行的列都相同
+  * **写入效率高**
+  * **支持写入空值**：空值处可以填入任意值，然后通过 BitMap 标记空值
+
+```java
+void insertTablet(Tablet tablet)
+
+public class Tablet {
+  /** deviceId of this tablet */
+  public String prefixPath;
+  /** the list of measurement schemas for creating the tablet */
+  private List<MeasurementSchema> schemas;
+  /** timestamps in this tablet */
+  public long[] timestamps;
+  /** each object is a primitive type array, which represents values of one measurement */
+  public Object[] values;
+  /** each bitmap represents the existence of each value in the current column. */
+  public BitMap[] bitMaps;
+  /** the number of rows to include in this tablet */
+  public int rowSize;
+  /** the maximum number of rows for this tablet */
+  private int maxRowNumber;
+  /** whether this tablet store data of aligned timeseries or not */
+  private boolean isAligned;
+}
+```
+
+* 插入多个 Tablet
+
+```java
+void insertTablets(Map<String, Tablet> tablets)
+```
+
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。服务器需要做类型推断，可能会有额外耗时
+
+```java
+void insertRecord(String prefixPath, long time, List<String> measurements, List<String> values)
+```
+
+* 插入多个 Record。服务器需要做类型推断，可能会有额外耗时
+
+```java
+void insertRecords(List<String> deviceIds, List<Long> times, 
+                   List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
+* 插入一个 Record，一个 Record 是一个设备一个时间戳下多个测点的数据。提供数据类型后，服务器不需要做类型推断，可以提高性能
+
+```java
+void insertRecord(String prefixPath, long time, List<String> measurements,
+   List<TSDataType> types, List<Object> values)
+```
+
+* 插入多个 Record。提供数据类型后，服务器不需要做类型推断，可以提高性能
+
+```java
+void insertRecords(List<String> deviceIds,
+        List<Long> times,
+        List<List<String>> measurementsList,
+        List<List<TSDataType>> typesList,
+        List<List<Object>> valuesList)
+```
+
+* 插入同属于一个 device 的多个 Record。
+
+```java
+void insertRecordsOfOneDevice(String deviceId, List<Long> times,
+    List<List<String>> measurementsList, List<List<TSDataType>> typesList,
+    List<List<Object>> valuesList)
+```
+
+#### 数据删除
+
+* 删除一个或多个时间序列在某个时间点前或这个时间点的数据
+
+```java
+void deleteData(String path, long endTime)
+void deleteData(List<String> paths, long endTime)
+```
+
+#### 数据查询
+
+* 原始数据查询。时间间隔包含开始时间，不包含结束时间
+
+```java
+SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
+```
+
+* 执行查询语句
+
+```java
+SessionDataSet executeQueryStatement(String sql)
+```
+
+* 执行非查询语句
+
+```java
+void executeNonQueryStatement(String sql)
+```
+
+### 测试接口
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
 
@@ -377,7 +420,7 @@ void testInsertRecord(String deviceId, long time, List<String> measurements,
 void testInsertTablet(Tablet tablet)
 ```
 
-### 针对原生接口的连接池
+## 针对原生接口的连接池
 
 我们提供了一个针对原生接口的连接池 (`SessionPool`)，使用该接口时，你只需要指定连接池的大小，就可以在使用时从池中获取连接。
 如果超过 60s 都没得到一个连接的话，那么会打印一条警告日志，但是程序仍将继续等待。
@@ -404,7 +447,8 @@ void testInsertTablet(Tablet tablet)
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
-### 集群信息相关的接口 （仅在集群模式下可用）
+
+## 集群信息相关的接口 （仅在集群模式下可用）
 
 集群信息相关的接口允许用户获取如数据分区情况、节点是否当机等信息。
 要使用该 API，需要增加依赖：
