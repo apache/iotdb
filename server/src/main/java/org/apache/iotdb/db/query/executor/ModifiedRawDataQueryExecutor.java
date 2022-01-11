@@ -109,8 +109,8 @@ public class ModifiedRawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> list = null;
+//        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
@@ -185,8 +185,8 @@ public class ModifiedRawDataQueryExecutor {
       QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<VirtualStorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> list = null;
+//        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
     try {
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {

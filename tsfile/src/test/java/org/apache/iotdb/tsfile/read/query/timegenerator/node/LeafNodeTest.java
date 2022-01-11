@@ -23,7 +23,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.LocalNioTsFileOutput;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -178,11 +178,11 @@ public class LeafNodeTest {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s2", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
 
     java.nio.file.Path path = fs.getPath("/tmp");
@@ -219,11 +219,11 @@ public class LeafNodeTest {
     TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s2", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
 
     java.nio.file.Path path = fs.getPath("/tmp");

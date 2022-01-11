@@ -321,24 +321,6 @@ public class RawDataQueryExecutor {
     return null;
   }
 
-  protected void newScan(QueryContext context, RawDataQueryPlan queryPlan) throws StorageEngineException {
-    List<PartialPath> pathList = new ArrayList<>();
-    IExpression expression = queryPlan.getExpression();
-
-    if (!(expression instanceof SingleSeriesExpression)) {
-      throw new IllegalArgumentException("Only single series Exceptions are supported at the moment!");
-    }
-
-    getAndTransformPartialPathFromExpression(expression, pathList);
-    List<VirtualStorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(pathList);
-    try {
-      // Check if its a single series Expression
-//      operatorNode = construct(context, expression);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
-    }
-  }
-
   protected IBatchReader getReaderForSeries(QueryContext context, SingleSeriesExpression expression) {
     try {
       return generateNewBatchReader(context, expression);

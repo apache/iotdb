@@ -56,7 +56,7 @@ import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.LocalNioTsFileOutput;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.After;
@@ -152,11 +152,11 @@ public class TimeSeriesQueryDataSetTest {
       TSFileConfig conf = TSFileDescriptor.getInstance().getConfig();
       schema.registerTimeseries(
           new Path("d1"),
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "s1", TSDataType.INT64, TSEncoding.valueOf(conf.getValueEncoder())));
       schema.registerTimeseries(
           new Path("d1"),
-          new UnaryMeasurementSchema(
+          new MeasurementSchema(
               "s2", TSDataType.FLOAT, TSEncoding.valueOf(conf.getValueEncoder())));
 
       java.nio.file.Path path = fs.getPath("/tmp");

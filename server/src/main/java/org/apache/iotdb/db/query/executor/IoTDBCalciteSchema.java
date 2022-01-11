@@ -15,6 +15,8 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.linq4j.function.Function2;
 import org.apache.calcite.linq4j.tree.Expression;
 import org.apache.calcite.linq4j.tree.Expressions;
+import org.apache.calcite.rel.RelCollations;
+import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.Function;
@@ -91,7 +93,7 @@ public class IoTDBCalciteSchema extends CalciteSchema {
 
     @Override
     public Statistic getStatistic() {
-      return Statistics.UNKNOWN;
+      return Statistics.of(null, null, null, Arrays.asList(RelCollations.of(new RelFieldCollation(0, RelFieldCollation.Direction.ASCENDING))));
     }
 
     @Override

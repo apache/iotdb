@@ -29,6 +29,8 @@ import org.apache.calcite.prepare.CalciteCatalogReader;
 import org.apache.calcite.prepare.Prepare;
 import org.apache.calcite.rel.BiRel;
 import org.apache.calcite.rel.RelCollationTraitDef;
+import org.apache.calcite.rel.RelCollations;
+import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.CorrelationId;
 import org.apache.calcite.rel.core.Join;
@@ -49,6 +51,7 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.Schemas;
 import org.apache.calcite.schema.Table;
+import org.apache.calcite.sql.SqlExplainLevel;
 import org.apache.calcite.sql.SqlOperatorTable;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.util.SqlOperatorTables;
@@ -197,7 +200,9 @@ public class CalciteExecutor {
   }
 
   public QueryDataSet execute(QueryContext queryContext, RelNode root) {
-    RelTraitSet desired = cluster.traitSet().replace(BindableConvention.INSTANCE);
+    RelTraitSet desired = cluster.traitSet()
+        .replace(BindableConvention.INSTANCE)
+        .replace(RelCollations.of(new RelFieldCollation(0, RelFieldCollation.Direction.ASCENDING)));
 
     RelNode expectedRoot = planner.changeTraits(root, desired);
     planner.setRoot(expectedRoot);
@@ -207,8 +212,8 @@ public class CalciteExecutor {
     RelNode exp = planner.findBestExp();
     Bindable bestExp = (Bindable) exp;
 
-    System.out.println(RelOptUtil.toString(root));
-    System.out.println(RelOptUtil.toString(exp));
+    System.out.println(RelOptUtil.toString(root, SqlExplainLevel.ALL_ATTRIBUTES));
+    System.out.println(RelOptUtil.toString(exp, SqlExplainLevel.ALL_ATTRIBUTES));
 
 
     Enumerable<@Nullable Object[]> enumerable = bestExp.bind(this.getContext(queryContext));
@@ -322,19 +327,15 @@ public class CalciteExecutor {
 //      if (seriesExpression.getFilter())
 //      relBuilder.filter()
       relBuilder.join(JoinRelType.LEFT, "time");
-      relBuilder.project(
-          relBuilder.alias(
-              rexBuilder.makeCall(SqlStdOperatorTable.COALESCE,
-                  relBuilder.field(0),
-                  relBuilder.field(2)
-              ),
-              "time"),
-          relBuilder.field(1),
-          relBuilder.field(3)
-      );
+//      relBuilder.project(
+//          relBuilder.field(0),
+//          relBuilder.field(1),
+//          relBuilder.field(3)
+//      );
       relBuilder.sort(0);
-      relBuilder.filter(relBuilder.greaterThan(relBuilder.field(2), rexBuilder.makeLiteral(100, typeFactory.createJavaType(Long.class))));
+      relBuilder.filter(relBuilder.greaterThan(relBuilder.field(3), rexBuilder.makeLiteral(100, typeFactory.createJavaType(Long.class))));
       relBuilder.project(relBuilder.field(0), relBuilder.field(1));
+      relBuilder.sort(0);
       return;
     }
     throw new NotImplementedException();
