@@ -26,6 +26,8 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.ChangeMembershipException;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.UnknownLogTypeException;
 import org.apache.iotdb.cluster.exception.UnsupportedPlanException;
 import org.apache.iotdb.cluster.log.Log;
@@ -199,6 +201,14 @@ public class Coordinator {
     } catch (MetadataException | CheckConsistencyException e) {
       logger.error("{}: Cannot find storage groups for {}", name, plan);
       return StatusUtils.NO_STORAGE_GROUP;
+    } catch (PartitionTableUnavailableException e) {
+      return new TSStatus()
+          .setCode(TSStatusCode.PARTITION_NOT_READY.getStatusCode())
+          .setMessage(e.getMessage());
+    } catch (NotInSameGroupException e) {
+      return new TSStatus()
+          .setCode(TSStatusCode.PARTITION_GROUP_CHANGED.getStatusCode())
+          .setMessage(e.getMessage());
     }
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     logger.debug("Forwarding global data plan {} to {} groups", plan, globalGroups.size());
@@ -206,7 +216,8 @@ public class Coordinator {
   }
 
   public void createSchemaIfNecessary(PhysicalPlan plan)
-      throws MetadataException, CheckConsistencyException {
+      throws MetadataException, CheckConsistencyException, NotInSameGroupException,
+          PartitionTableUnavailableException {
     if (plan instanceof SetTemplatePlan) {
       try {
         IoTDB.metaManager.getBelongedStorageGroup(
@@ -247,26 +258,38 @@ public class Coordinator {
 
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      if ((plan instanceof InsertPlan
-              || plan instanceof CreateTimeSeriesPlan
-              || plan instanceof CreateAlignedTimeSeriesPlan
-              || plan instanceof CreateMultiTimeSeriesPlan)
-          && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
-
-        logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
-        try {
-          ((CMManager) IoTDB.metaManager).createSchema(plan);
-          return processPartitionedPlan(plan);
-        } catch (MetadataException | CheckConsistencyException e) {
-          logger.error(
-              String.format("Failed to set storage group or create timeseries, because %s", e));
-        }
-      }
-      logger.error("{}: Cannot find storage groups for {}", name, plan);
-      return StatusUtils.NO_STORAGE_GROUP;
+      return createSGAndRetryPlan(plan);
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
+  }
+
+  private TSStatus createSGAndRetryPlan(PhysicalPlan plan) throws UnsupportedPlanException {
+    if ((plan instanceof InsertPlan
+            || plan instanceof CreateTimeSeriesPlan
+            || plan instanceof CreateAlignedTimeSeriesPlan
+            || plan instanceof CreateMultiTimeSeriesPlan)
+        && ClusterDescriptor.getInstance().getConfig().isEnableAutoCreateSchema()) {
+
+      logger.debug("{}: No associated storage group found for {}, auto-creating", name, plan);
+      try {
+        ((CMManager) IoTDB.metaManager).createSchema(plan);
+        return processPartitionedPlan(plan);
+      } catch (MetadataException | CheckConsistencyException e) {
+        logger.error(
+            String.format("Failed to set storage group or create timeseries, because %s", e));
+      } catch (PartitionTableUnavailableException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_NOT_READY.getStatusCode())
+            .setMessage(e.getMessage());
+      } catch (NotInSameGroupException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_GROUP_CHANGED.getStatusCode())
+            .setMessage(e.getMessage());
+      }
+    }
+    logger.error("{}: Cannot find storage groups for {}", name, plan);
+    return StatusUtils.NO_STORAGE_GROUP;
   }
 
   /**
@@ -295,26 +318,7 @@ public class Coordinator {
     TSStatus status;
     List<String> errorCodePartitionGroups = new ArrayList<>();
     for (PartitionGroup partitionGroup : partitionGroups) {
-      if (partitionGroup.contains(thisNode)) {
-        // the query should be handled by a group the local node is in, handle it with in the group
-        status =
-            metaGroupMember
-                .getLocalDataMember(partitionGroup.getHeader())
-                .executeNonQueryPlan(plan);
-        logger.debug(
-            "Execute {} in a local group of {} with status {}",
-            plan,
-            partitionGroup.getHeader(),
-            status);
-      } else {
-        // forward the query to the group that should handle it
-        status = forwardPlan(plan, partitionGroup);
-        logger.debug(
-            "Forward {} to a remote group of {} with status {}",
-            plan,
-            partitionGroup.getHeader(),
-            status);
-      }
+      status = forwardPlanToPartitionGroup(plan, partitionGroup);
       if (status.getCode() != TSStatusCode.SUCCESS_STATUS.getStatusCode()
           && !(plan instanceof SetTemplatePlan
               && status.getCode() == TSStatusCode.DUPLICATED_TEMPLATE.getStatusCode())
@@ -334,6 +338,45 @@ public class Coordinator {
               StatusUtils.EXECUTE_STATEMENT_ERROR, MSG_MULTIPLE_ERROR + errorCodePartitionGroups);
     }
     logger.debug("{}: executed {} with answer {}", name, plan, status);
+    return status;
+  }
+
+  private TSStatus forwardPlanToPartitionGroup(PhysicalPlan plan, PartitionGroup partitionGroup) {
+    TSStatus status;
+    if (partitionGroup.contains(thisNode)) {
+      // the query should be handled by a group the local node is in, handle it with in the group
+      try {
+        status =
+            metaGroupMember
+                .getLocalDataMember(partitionGroup.getHeader())
+                .executeNonQueryPlan(plan);
+      } catch (PartitionTableUnavailableException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_NOT_READY.getStatusCode())
+            .setMessage(e.getMessage());
+      } catch (NotInSameGroupException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_GROUP_CHANGED.getStatusCode())
+            .setMessage(e.getMessage());
+      } catch (CheckConsistencyException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.CONSISTENCY_FAILURE.getStatusCode())
+            .setMessage(e.getMessage());
+      }
+      logger.debug(
+          "Execute {} in a local group of {} with status {}",
+          plan,
+          partitionGroup.getHeader(),
+          status);
+    } else {
+      // forward the query to the group that should handle it
+      status = forwardPlan(plan, partitionGroup);
+      logger.debug(
+          "Forward {} to a remote group of {} with status {}",
+          plan,
+          partitionGroup.getHeader(),
+          status);
+    }
     return status;
   }
 
@@ -477,10 +520,24 @@ public class Coordinator {
       long startTime =
           Timer.Statistic.META_GROUP_MEMBER_EXECUTE_NON_QUERY_IN_LOCAL_GROUP
               .getOperationStartTime();
-      result =
-          metaGroupMember
-              .getLocalDataMember(entry.getValue().getHeader())
-              .executeNonQueryPlan(entry.getKey());
+      try {
+        result =
+            metaGroupMember
+                .getLocalDataMember(entry.getValue().getHeader())
+                .executeNonQueryPlan(entry.getKey());
+      } catch (PartitionTableUnavailableException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_NOT_READY.getStatusCode())
+            .setMessage(e.getMessage());
+      } catch (NotInSameGroupException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.PARTITION_GROUP_CHANGED.getStatusCode())
+            .setMessage(e.getMessage());
+      } catch (CheckConsistencyException e) {
+        return new TSStatus()
+            .setCode(TSStatusCode.CONSISTENCY_FAILURE.getStatusCode())
+            .setMessage(e.getMessage());
+      }
       logger.debug(
           "Execute {} in a local group of {}, {}",
           entry.getKey(),
@@ -585,50 +642,10 @@ public class Coordinator {
         // set the status from one group to the proper positions of the overall status
         if (parentPlan instanceof InsertMultiTabletPlan) {
           InsertMultiTabletPlan tmpMultiTabletPlan = ((InsertMultiTabletPlan) entry.getKey());
-          for (int i = 0; i < tmpMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
-            InsertTabletPlan tmpInsertTabletPlan = tmpMultiTabletPlan.getInsertTabletPlan(i);
-            int parentIndex = tmpMultiTabletPlan.getParentIndex(i);
-            int parentPlanRowCount = ((InsertMultiTabletPlan) parentPlan).getRowCount(parentIndex);
-            if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-              subStatus[parentIndex] = tmpStatus.subStatus.get(i);
-              if (tmpStatus.subStatus.get(i).getCode()
-                  == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-                if (subStatus[parentIndex].subStatus == null) {
-                  TSStatus[] tmpSubTsStatus = new TSStatus[parentPlanRowCount];
-                  Arrays.fill(tmpSubTsStatus, RpcUtils.SUCCESS_STATUS);
-                  subStatus[parentIndex].subStatus = Arrays.asList(tmpSubTsStatus);
-                }
-                TSStatus[] reorderTsStatus =
-                    subStatus[parentIndex].subStatus.toArray(new TSStatus[] {});
-
-                PartitionUtils.reordering(
-                    tmpInsertTabletPlan,
-                    reorderTsStatus,
-                    tmpStatus.subStatus.get(i).subStatus.toArray(new TSStatus[] {}));
-                subStatus[parentIndex].subStatus = Arrays.asList(reorderTsStatus);
-              }
-              if (tmpStatus.isSetRedirectNode()) {
-                if (tmpStatus.isSetRedirectNode()
-                    && tmpInsertTabletPlan.getMaxTime()
-                        == ((InsertMultiTabletPlan) parentPlan)
-                            .getInsertTabletPlan(parentIndex)
-                            .getMaxTime()) {
-                  subStatus[parentIndex].setRedirectNode(tmpStatus.redirectNode);
-                  isBatchRedirect = true;
-                }
-              }
-            } else if (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-              if (tmpStatus.isSetRedirectNode()
-                  && tmpInsertTabletPlan.getMaxTime()
-                      == ((InsertMultiTabletPlan) parentPlan)
-                          .getInsertTabletPlan(parentIndex)
-                          .getMaxTime()) {
-                subStatus[parentIndex] =
-                    StatusUtils.getStatus(RpcUtils.SUCCESS_STATUS, tmpStatus.redirectNode);
-                isBatchRedirect = true;
-              }
-            }
-          }
+          isBatchRedirect =
+              setSubStatus(
+                      tmpMultiTabletPlan, (InsertMultiTabletPlan) parentPlan, tmpStatus, subStatus)
+                  || isBatchRedirect;
         } else if (parentPlan instanceof CreateMultiTimeSeriesPlan) {
           CreateMultiTimeSeriesPlan subPlan = (CreateMultiTimeSeriesPlan) entry.getKey();
           for (int i = 0; i < subPlan.getIndexes().size(); i++) {
@@ -636,25 +653,7 @@ public class Coordinator {
           }
         } else if (parentPlan instanceof InsertRowsPlan) {
           InsertRowsPlan subPlan = (InsertRowsPlan) entry.getKey();
-          if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-            for (int i = 0; i < subPlan.getInsertRowPlanIndexList().size(); i++) {
-              subStatus[subPlan.getInsertRowPlanIndexList().get(i)] = tmpStatus.subStatus.get(i);
-              if (tmpStatus.isSetRedirectNode()) {
-                subStatus[subPlan.getInsertRowPlanIndexList().get(i)].setRedirectNode(
-                    tmpStatus.getRedirectNode());
-                isBatchRedirect = true;
-              }
-            }
-          } else if (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()) {
-            if (tmpStatus.isSetRedirectNode()) {
-              isBatchRedirect = true;
-              TSStatus redirectStatus =
-                  StatusUtils.getStatus(RpcUtils.SUCCESS_STATUS, tmpStatus.getRedirectNode());
-              for (int i = 0; i < subPlan.getInsertRowPlanIndexList().size(); i++) {
-                subStatus[subPlan.getInsertRowPlanIndexList().get(i)] = redirectStatus;
-              }
-            }
-          }
+          isBatchRedirect = setSubStatus(subPlan, tmpStatus, subStatus) || isBatchRedirect;
         }
       }
 
@@ -679,6 +678,86 @@ public class Coordinator {
         errorCodePartitionGroups);
   }
 
+  private boolean setSubStatus(InsertRowsPlan subPlan, TSStatus tmpStatus, TSStatus[] subStatus) {
+    boolean isBatchRedirect = false;
+    if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (int i = 0; i < subPlan.getInsertRowPlanIndexList().size(); i++) {
+        subStatus[subPlan.getInsertRowPlanIndexList().get(i)] = tmpStatus.subStatus.get(i);
+        if (tmpStatus.isSetRedirectNode()) {
+          subStatus[subPlan.getInsertRowPlanIndexList().get(i)].setRedirectNode(
+              tmpStatus.getRedirectNode());
+          isBatchRedirect = true;
+        }
+      }
+    } else if (tmpStatus.getCode() == TSStatusCode.SUCCESS_STATUS.getStatusCode()
+        && tmpStatus.isSetRedirectNode()) {
+      TSStatus redirectStatus =
+          StatusUtils.getStatus(RpcUtils.SUCCESS_STATUS, tmpStatus.getRedirectNode());
+      for (int i = 0; i < subPlan.getInsertRowPlanIndexList().size(); i++) {
+        subStatus[subPlan.getInsertRowPlanIndexList().get(i)] = redirectStatus;
+      }
+      isBatchRedirect = true;
+    }
+    return isBatchRedirect;
+  }
+
+  private boolean setSubStatus(
+      InsertMultiTabletPlan insertMultiTabletPlan,
+      InsertMultiTabletPlan parentPlan,
+      TSStatus tmpStatus,
+      TSStatus[] subStatus) {
+    boolean isBatchRedirected = false;
+    for (int i = 0; i < insertMultiTabletPlan.getInsertTabletPlanList().size(); i++) {
+      isBatchRedirected =
+          setSubStatus(insertMultiTabletPlan, parentPlan, tmpStatus, subStatus, i)
+              || isBatchRedirected;
+    }
+    return isBatchRedirected;
+  }
+
+  private boolean setSubStatus(
+      InsertMultiTabletPlan plan,
+      InsertMultiTabletPlan parentPlan,
+      TSStatus tmpStatus,
+      TSStatus[] subStatus,
+      int i) {
+    boolean isBatchRedirected = false;
+    InsertTabletPlan tmpInsertTabletPlan = plan.getInsertTabletPlan(i);
+    int parentIndex = plan.getParentIndex(i);
+    int parentPlanRowCount = parentPlan.getRowCount(parentIndex);
+    if (tmpStatus.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      subStatus[parentIndex] = tmpStatus.subStatus.get(i);
+      if (tmpStatus.subStatus.get(i).getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+        if (subStatus[parentIndex].subStatus == null) {
+          TSStatus[] tmpSubTsStatus = new TSStatus[parentPlanRowCount];
+          Arrays.fill(tmpSubTsStatus, RpcUtils.SUCCESS_STATUS);
+          subStatus[parentIndex].subStatus = Arrays.asList(tmpSubTsStatus);
+        }
+        TSStatus[] reorderTsStatus = subStatus[parentIndex].subStatus.toArray(new TSStatus[] {});
+
+        PartitionUtils.reordering(
+            tmpInsertTabletPlan,
+            reorderTsStatus,
+            tmpStatus.subStatus.get(i).subStatus.toArray(new TSStatus[] {}));
+        subStatus[parentIndex].subStatus = Arrays.asList(reorderTsStatus);
+      }
+    }
+
+    if (tmpStatus.isSetRedirectNode()
+        && tmpInsertTabletPlan.getMaxTime()
+            == parentPlan.getInsertTabletPlan(parentIndex).getMaxTime()) {
+      if (subStatus[parentIndex] != null) {
+        subStatus[parentIndex].setRedirectNode(tmpStatus.redirectNode);
+      } else {
+        subStatus[parentIndex] =
+            StatusUtils.getStatus(RpcUtils.SUCCESS_STATUS, tmpStatus.redirectNode);
+      }
+      isBatchRedirected = true;
+    }
+
+    return isBatchRedirected;
+  }
+
   private TSStatus concludeFinalStatus(
       PhysicalPlan parentPlan,
       int totalRowNum,
@@ -687,45 +766,20 @@ public class Coordinator {
       boolean isBatchFailure,
       TSStatus[] subStatus,
       List<String> errorCodePartitionGroups) {
-    if (parentPlan instanceof InsertMultiTabletPlan
-        && !((InsertMultiTabletPlan) parentPlan).getResults().isEmpty()) {
-      if (subStatus == null) {
-        subStatus = new TSStatus[totalRowNum];
-        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-      }
-      noFailure = false;
-      isBatchFailure = true;
-      for (Map.Entry<Integer, TSStatus> integerTSStatusEntry :
-          ((InsertMultiTabletPlan) parentPlan).getResults().entrySet()) {
-        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
-      }
-    }
 
-    if (parentPlan instanceof CreateMultiTimeSeriesPlan
-        && !((CreateMultiTimeSeriesPlan) parentPlan).getResults().isEmpty()) {
-      if (subStatus == null) {
-        subStatus = new TSStatus[totalRowNum];
-        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-      }
-      noFailure = false;
-      isBatchFailure = true;
-      for (Map.Entry<Integer, TSStatus> integerTSStatusEntry :
-          ((CreateMultiTimeSeriesPlan) parentPlan).getResults().entrySet()) {
-        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
-      }
-    }
-
-    if (parentPlan instanceof InsertRowsPlan
-        && !((InsertRowsPlan) parentPlan).getResults().isEmpty()) {
-      if (subStatus == null) {
-        subStatus = new TSStatus[totalRowNum];
-        Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
-      }
-      noFailure = false;
-      isBatchFailure = true;
-      for (Map.Entry<Integer, TSStatus> integerTSStatusEntry :
-          ((InsertRowsPlan) parentPlan).getResults().entrySet()) {
-        subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
+    if (parentPlan instanceof BatchPlan) {
+      BatchPlan batchPlan = (BatchPlan) parentPlan;
+      if (!batchPlan.getResults().isEmpty()) {
+        if (subStatus == null) {
+          subStatus = new TSStatus[totalRowNum];
+          Arrays.fill(subStatus, RpcUtils.SUCCESS_STATUS);
+        }
+        noFailure = false;
+        isBatchFailure = true;
+        for (Map.Entry<Integer, TSStatus> integerTSStatusEntry :
+            batchPlan.getResults().entrySet()) {
+          subStatus[integerTSStatusEntry.getKey()] = integerTSStatusEntry.getValue();
+        }
       }
     }
 

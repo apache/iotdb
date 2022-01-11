@@ -27,6 +27,8 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.LocalQueryExecutor;
@@ -156,9 +158,16 @@ public class ClusterAggregator {
           ascending);
     } else {
       // perform the aggregations locally
-      DataGroupMember dataMember =
-          metaGroupMember.getLocalDataMember(
-              partitionGroup.getHeader(), partitionGroup.getRaftId());
+      DataGroupMember dataMember;
+      try {
+        dataMember =
+            metaGroupMember.getLocalDataMember(
+                partitionGroup.getHeader(), partitionGroup.getRaftId());
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new StorageEngineException(e);
+      }
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataMember);
       try {
         logger.debug(
@@ -246,15 +255,13 @@ public class ClusterAggregator {
           return results;
         }
       } catch (TApplicationException e) {
-        logger.error(
-            metaGroupMember.getName() + " query aggregation error " + path + " from " + node, e);
         throw new StorageEngineException(e.getMessage());
       } catch (TException | IOException e) {
         logger.error(
-            metaGroupMember.getName() + " cannot query aggregation " + path + " from " + node, e);
+            "{} query aggregation error {} from {}", metaGroupMember.getName(), path, node, e);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
-        logger.error(metaGroupMember.getName() + " query interrupted " + path + " from " + node, e);
+        logger.error("{} query interrupted {} from {}", metaGroupMember.getName(), path, node, e);
       }
     }
     throw new StorageEngineException(
@@ -263,7 +270,7 @@ public class ClusterAggregator {
 
   private List<ByteBuffer> getRemoteAggregateResult(Node node, GetAggrResultRequest request)
       throws IOException, TException, InterruptedException {
-    List<ByteBuffer> resultBuffers = null;
+    List<ByteBuffer> resultBuffers;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()

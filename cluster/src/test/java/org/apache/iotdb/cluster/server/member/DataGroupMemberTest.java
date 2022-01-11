@@ -93,7 +93,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -195,7 +194,7 @@ public class DataGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(Node node, PartitionGroup nodes) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(new Factory(), nodes, testMetaMember) {
+        new DataGroupMember(nodes, testMetaMember) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;

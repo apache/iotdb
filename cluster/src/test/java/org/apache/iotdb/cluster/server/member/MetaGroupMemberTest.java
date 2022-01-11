@@ -36,6 +36,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
 import org.apache.iotdb.cluster.log.Log;
@@ -189,7 +190,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
     dataGroupEngine =
         new DataGroupEngine(
-            new DataGroupMember.Factory(new Factory(), testMetaMember) {
+            new DataGroupMember.Factory(testMetaMember) {
               @Override
               public DataGroupMember create(PartitionGroup partitionGroup) {
                 return getDataGroupMember(partitionGroup, TestUtils.getNode(0));
@@ -233,7 +234,7 @@ public class MetaGroupMemberTest extends BaseMember {
 
   private DataGroupMember getDataGroupMember(PartitionGroup group, Node node) {
     DataGroupMember dataGroupMember =
-        new DataGroupMember(new Factory(), group, testMetaMember) {
+        new DataGroupMember(group, testMetaMember) {
           @Override
           public boolean syncLeader(CheckConsistency checkConsistency) {
             return true;
@@ -595,7 +596,8 @@ public class MetaGroupMemberTest extends BaseMember {
   @Test
   public void testClosePartition()
       throws QueryProcessException, StorageEngineException, StorageGroupNotSetException,
-          IllegalPathException {
+          IllegalPathException, PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
     System.out.println("Start testClosePartition()");
     // the operation is accepted
     dummyResponse.set(Response.RESPONSE_AGREE);
@@ -1081,7 +1083,8 @@ public class MetaGroupMemberTest extends BaseMember {
   }
 
   @Test
-  public void testGetMatchedPaths() throws MetadataException {
+  public void testGetMatchedPaths()
+      throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
     System.out.println("Start testGetMatchedPaths()");
     List<MeasurementPath> matchedPaths =
         ((CMManager) IoTDB.metaManager)

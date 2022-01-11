@@ -26,6 +26,8 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.metadata.CMManager;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -85,6 +87,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClusterPlanExecutor extends PlanExecutor {
 
   private static final Logger logger = LoggerFactory.getLogger(ClusterPlanExecutor.class);
+  public static final String ERROR_OCCURS_WHEN_GETTING_NODE_LISTS_IN_NODE =
+      "Error occurs when getting node lists in node {}.";
+  public static final String INTERRUPTED_WHEN_GETTING_NODE_LISTS_IN_NODE =
+      "Interrupted when getting node lists in node {}.";
   private final MetaGroupMember metaGroupMember;
 
   public static final int THREAD_POOL_SIZE = 6;
@@ -125,7 +131,11 @@ public class ClusterPlanExecutor extends PlanExecutor {
   @Override
   @TestOnly
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
-    return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+    try {
+      return ((CMManager) IoTDB.metaManager).getMatchedPaths(path);
+    } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
@@ -298,6 +308,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
     try {
       // level >= 0 is the COUNT NODE query
       if (level >= 0) {
+        // TODO: check the semantics of COUNT NODE when LEVEL is reached before wildcards
         int prefixPartIdx = 0;
         for (; prefixPartIdx < path.getNodeLength(); prefixPartIdx++) {
           String currentPart = path.getNodes()[prefixPartIdx];
@@ -333,7 +344,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
         ret += matchedPath.size();
       }
       ret += getPathCount(sgPathMap, level);
-    } catch (CheckConsistencyException e) {
+    } catch (CheckConsistencyException
+        | PartitionTableUnavailableException
+        | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
     logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
@@ -349,7 +362,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @return the number of paths that match the pattern at given level
    */
   private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
-      throws MetadataException, CheckConsistencyException {
+      throws MetadataException, CheckConsistencyException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     AtomicInteger result = new AtomicInteger();
     // split the paths by the data group they belong to
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();
@@ -515,7 +529,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private List<PartialPath> getNodesList(PartitionGroup group, PartialPath schemaPattern, int level)
-      throws CheckConsistencyException, MetadataException {
+      throws CheckConsistencyException, MetadataException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNodesList(group, schemaPattern, level);
     } else {
@@ -525,7 +540,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   private List<PartialPath> getLocalNodesList(
       PartitionGroup group, PartialPath schemaPattern, int level)
-      throws CheckConsistencyException, MetadataException {
+      throws CheckConsistencyException, MetadataException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
@@ -554,9 +570,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (IOException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (TException e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
+        logger.error(ERROR_OCCURS_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
       } catch (InterruptedException e) {
-        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        logger.error(INTERRUPTED_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
         Thread.currentThread().interrupt();
       }
     }
@@ -626,7 +642,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Set<String> getChildNodeInNextLevel(PartitionGroup group, PartialPath path)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalChildNodeInNextLevel(group, path);
     } else {
@@ -635,7 +652,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Set<String> getLocalChildNodeInNextLevel(PartitionGroup group, PartialPath path)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     DataGroupMember localDataMember =
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
@@ -658,9 +676,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (IOException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (TException e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
+        logger.error(ERROR_OCCURS_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
       } catch (InterruptedException e) {
-        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        logger.error(INTERRUPTED_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
         Thread.currentThread().interrupt();
       }
     }
@@ -754,7 +772,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Set<String> getNextChildren(PartitionGroup group, PartialPath path)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     if (group.contains(metaGroupMember.getThisNode())) {
       return getLocalNextChildren(group, path);
     } else {
@@ -763,7 +782,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   private Set<String> getLocalNextChildren(PartitionGroup group, PartialPath path)
-      throws CheckConsistencyException {
+      throws CheckConsistencyException, PartitionTableUnavailableException,
+          NotInSameGroupException {
     DataGroupMember localDataMember = metaGroupMember.getLocalDataMember(group.getHeader());
     localDataMember.syncLeaderWithConsistencyCheck(false);
     try {
@@ -785,9 +805,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       } catch (IOException e) {
         logger.error(LOG_FAIL_CONNECT, node, e);
       } catch (TException e) {
-        logger.error("Error occurs when getting node lists in node {}.", node, e);
+        logger.error(ERROR_OCCURS_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
       } catch (InterruptedException e) {
-        logger.error("Interrupted when getting node lists in node {}.", node, e);
+        logger.error(INTERRUPTED_WHEN_GETTING_NODE_LISTS_IN_NODE, node, e);
         Thread.currentThread().interrupt();
       }
     }

@@ -27,6 +27,8 @@ import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.RequestTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
@@ -168,9 +170,16 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(
-              partitionGroup.getHeader(), partitionGroup.getRaftId());
+      DataGroupMember dataGroupMember;
+      try {
+        dataGroupMember =
+            metaGroupMember.getLocalDataMember(
+                partitionGroup.getHeader(), partitionGroup.getRaftId());
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       if (logger.isDebugEnabled()) {
         logger.debug(
             "{}: creating a local reader for {}#{}",
@@ -316,12 +325,19 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(
-              partitionGroup.getHeader(),
-              String.format(
-                  "Query: %s, time filter: %s, queryId: %d",
-                  partialPaths, timeFilter, context.getQueryId()));
+      DataGroupMember dataGroupMember;
+      try {
+        dataGroupMember =
+            metaGroupMember.getLocalDataMember(
+                partitionGroup.getHeader(),
+                String.format(
+                    "Query: %s, time filter: %s, queryId: %d",
+                    partialPaths, timeFilter, context.getQueryId()));
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       Map<String, IPointReader> partialPathPointReaderMap = Maps.newHashMap();
       for (int i = 0; i < partialPaths.size(); i++) {
         PartialPath partialPath = partialPaths.get(i);
@@ -437,12 +453,19 @@ public class ClusterReaderFactory {
       throws IOException, StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(
-              partitionGroup.getHeader(),
-              String.format(
-                  "Query: %s, time filter: %s, queryId: %d",
-                  path, timeFilter, context.getQueryId()));
+      DataGroupMember dataGroupMember;
+      try {
+        dataGroupMember =
+            metaGroupMember.getLocalDataMember(
+                partitionGroup.getHeader(),
+                String.format(
+                    "Query: %s, time filter: %s, queryId: %d",
+                    path, timeFilter, context.getQueryId()));
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       IPointReader seriesPointReader =
           getSeriesPointReader(
               path,
@@ -806,9 +829,16 @@ public class ClusterReaderFactory {
       throws StorageEngineException, QueryProcessException {
     if (partitionGroup.contains(metaGroupMember.getThisNode())) {
       // the target storage group contains this node, perform a local query
-      DataGroupMember dataGroupMember =
-          metaGroupMember.getLocalDataMember(
-              partitionGroup.getHeader(), partitionGroup.getRaftId());
+      DataGroupMember dataGroupMember;
+      try {
+        dataGroupMember =
+            metaGroupMember.getLocalDataMember(
+                partitionGroup.getHeader(), partitionGroup.getRaftId());
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       LocalQueryExecutor localQueryExecutor = new LocalQueryExecutor(dataGroupMember);
       logger.debug(
           "{}: creating a local group by executor for {}#{}",
@@ -864,53 +894,66 @@ public class ClusterReaderFactory {
     List<Node> orderedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : orderedNodes) {
       // query a remote node
-      logger.debug("{}: querying group by {} from {}", metaGroupMember.getName(), path, node);
-
-      try {
-        Long executorId = getRemoteGroupByExecutorId(node, request);
-
-        if (executorId == null) {
-          continue;
-        }
-
-        if (executorId != -1) {
-          logger.debug(
-              "{}: get an executorId {} for {}@{} from {}",
-              metaGroupMember.getName(),
-              executorId,
-              aggregationTypes,
-              path,
-              node);
-          // create a remote executor with the return id
-          RemoteGroupByExecutor remoteGroupByExecutor =
-              new RemoteGroupByExecutor(executorId, node, partitionGroup.getHeader());
-          for (Integer aggregationType : aggregationTypes) {
-            remoteGroupByExecutor.addAggregateResult(
-                AggregateResultFactory.getAggrResultByType(
-                    AggregationType.values()[aggregationType], dataType, ascending));
-          }
-          return remoteGroupByExecutor;
-        } else {
-          // an id of -1 means there is no satisfying data on the remote node, create an empty
-          // reader tp reduce further communication
-          logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
-          return new EmptyReader();
-        }
-      } catch (TApplicationException e) {
-        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
-        throw new StorageEngineException(e.getMessage());
-      } catch (TException | IOException e) {
-        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.error(metaGroupMember.getName() + ": Cannot query " + path + " from " + node, e);
-      } finally {
-        // record the queried node to release resources later
-        ((RemoteQueryContext) context).registerRemoteNode(node, partitionGroup.getHeader());
+      GroupByExecutor remoteGroupByExecutor =
+          getRemoteGroupByExecutor(
+              path, node, partitionGroup.getHeader(), request, ((RemoteQueryContext) context));
+      if (remoteGroupByExecutor != null) {
+        return remoteGroupByExecutor;
       }
     }
     throw new StorageEngineException(
         new RequestTimeOutException("Query " + path + " in " + partitionGroup));
+  }
+
+  private GroupByExecutor getRemoteGroupByExecutor(
+      Path path, Node node, RaftNode header, GroupByRequest request, RemoteQueryContext context)
+      throws StorageEngineException {
+    logger.debug("{}: querying group by {} from {}", metaGroupMember.getName(), path, node);
+
+    try {
+      Long executorId = getRemoteGroupByExecutorId(node, request);
+
+      if (executorId == null) {
+        return null;
+      }
+
+      if (executorId != -1) {
+        logger.debug(
+            "{}: get an executorId {} for {}@{} from {}",
+            metaGroupMember.getName(),
+            executorId,
+            request.aggregationTypeOrdinals,
+            path,
+            node);
+        // create a remote executor with the return id
+        RemoteGroupByExecutor remoteGroupByExecutor =
+            new RemoteGroupByExecutor(executorId, node, header);
+        for (Integer aggregationType : request.aggregationTypeOrdinals) {
+          remoteGroupByExecutor.addAggregateResult(
+              AggregateResultFactory.getAggrResultByType(
+                  AggregationType.values()[aggregationType],
+                  TSDataType.values()[request.dataTypeOrdinal],
+                  request.ascending));
+        }
+        return remoteGroupByExecutor;
+      } else {
+        // an id of -1 means there is no satisfying data on the remote node, create an empty
+        // reader tp reduce further communication
+        logger.debug("{}: no data for {} from {}", metaGroupMember.getName(), path, node);
+        return new EmptyReader();
+      }
+    } catch (TApplicationException e) {
+      throw new StorageEngineException(e.getMessage());
+    } catch (TException | IOException e) {
+      logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.error("{}: Cannot query {} from {}", metaGroupMember.getName(), path, node, e);
+    } finally {
+      // record the queried node to release resources later
+      context.registerRemoteNode(node, header);
+    }
+    return null;
   }
 
   private Long getRemoteGroupByExecutorId(Node node, GroupByRequest request)

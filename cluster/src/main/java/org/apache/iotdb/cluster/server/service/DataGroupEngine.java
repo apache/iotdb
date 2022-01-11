@@ -55,6 +55,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
@@ -75,7 +76,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   private static TProtocolFactory protocolFactory;
 
   private DataGroupEngine() {
-    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
+    dataMemberFactory = new DataGroupMember.Factory(metaGroupMember);
     stoppedMemberManager = new StoppedMemberManager(dataMemberFactory);
   }
 
@@ -88,7 +89,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
 
   @TestOnly
   public void resetFactory() {
-    dataMemberFactory = new DataGroupMember.Factory(protocolFactory, metaGroupMember);
+    dataMemberFactory = new DataGroupMember.Factory(metaGroupMember);
   }
 
   @TestOnly
@@ -124,22 +125,64 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   public <T> DataAsyncService getDataAsyncService(
-      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request) {
-    return asyncServiceMap.computeIfAbsent(
-        header,
-        h -> {
-          DataGroupMember dataMember = getDataMember(header, resultHandler, request);
-          return dataMember != null ? new DataAsyncService(dataMember) : null;
-        });
+      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request)
+      throws PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
+    AtomicReference<Exception> ex = new AtomicReference<>();
+    DataAsyncService dataAsyncService =
+        asyncServiceMap.computeIfAbsent(
+            header,
+            h -> {
+              DataGroupMember dataMember = null;
+              try {
+                dataMember = getDataMember(header, resultHandler, request);
+              } catch (NotInSameGroupException
+                  | CheckConsistencyException
+                  | PartitionTableUnavailableException e) {
+                ex.set(e);
+              }
+              return dataMember != null ? new DataAsyncService(dataMember) : null;
+            });
+    if (ex.get() != null) {
+      handleGetDataMemberException(ex.get());
+    }
+    return dataAsyncService;
   }
 
-  public DataSyncService getDataSyncService(RaftNode header) {
-    return syncServiceMap.computeIfAbsent(
-        header,
-        h -> {
-          DataGroupMember dataMember = getDataMember(header, null, null);
-          return dataMember != null ? new DataSyncService(dataMember) : null;
-        });
+  public DataSyncService getDataSyncService(RaftNode header)
+      throws PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
+    AtomicReference<Exception> ex = new AtomicReference<>();
+    DataSyncService dataSyncService =
+        syncServiceMap.computeIfAbsent(
+            header,
+            h -> {
+              DataGroupMember dataMember = null;
+              try {
+                dataMember = getDataMember(header, null, null);
+              } catch (NotInSameGroupException
+                  | CheckConsistencyException
+                  | PartitionTableUnavailableException e) {
+                ex.set(e);
+              }
+              return dataMember != null ? new DataSyncService(dataMember) : null;
+            });
+    if (ex.get() != null) {
+      handleGetDataMemberException(ex.get());
+    }
+    return dataSyncService;
+  }
+
+  private void handleGetDataMemberException(Exception e)
+      throws NotInSameGroupException, CheckConsistencyException,
+          PartitionTableUnavailableException {
+    if (e instanceof NotInSameGroupException) {
+      throw ((NotInSameGroupException) e);
+    } else if (e instanceof CheckConsistencyException) {
+      throw ((CheckConsistencyException) e);
+    } else if (e instanceof PartitionTableUnavailableException) {
+      throw ((PartitionTableUnavailableException) e);
+    }
   }
 
   /**
@@ -178,7 +221,9 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
    * @return
    */
   public <T> DataGroupMember getDataMember(
-      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request) {
+      RaftNode header, AsyncMethodCallback<T> resultHandler, Object request)
+      throws NotInSameGroupException, CheckConsistencyException,
+          PartitionTableUnavailableException {
     // if the resultHandler is not null, then the request is a external one and must be with a
     // header
     if (header.getNode() == null) {
@@ -193,7 +238,6 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     }
 
     // avoid creating two members for a header
-    Exception ex = null;
     member = headerGroupMap.get(header);
     if (member != null) {
       return member;
@@ -203,16 +247,26 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       try {
         member = createNewMember(header);
       } catch (NotInSameGroupException | CheckConsistencyException e) {
-        ex = e;
+        if (resultHandler != null) {
+          resultHandler.onError(e);
+        } else {
+          throw e;
+        }
       }
     } else {
-      logger.info("Partition is not ready, cannot create member");
-      ex = new PartitionTableUnavailableException(thisNode);
-    }
-    if (ex != null && resultHandler != null) {
-      resultHandler.onError(ex);
+      handleNoPartitionTable(resultHandler);
     }
     return member;
+  }
+
+  private <T> void handleNoPartitionTable(AsyncMethodCallback<T> resultHandler)
+      throws PartitionTableUnavailableException {
+    logger.info("Partition is not ready, cannot create member");
+    if (resultHandler != null) {
+      resultHandler.onError(new PartitionTableUnavailableException(thisNode));
+    } else {
+      throw new PartitionTableUnavailableException(thisNode);
+    }
   }
 
   /**
@@ -485,6 +539,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   }
 
   private static class InstanceHolder {
+
     private InstanceHolder() {}
 
     private static final DataGroupEngine Instance = new DataGroupEngine();

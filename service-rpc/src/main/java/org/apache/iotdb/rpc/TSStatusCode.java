@@ -101,6 +101,7 @@ public enum TSStatusCode {
   NO_CONNECTION(706),
   NEED_REDIRECTION(707),
   PARSE_LOG_ERROR(708),
+  PARTITION_GROUP_CHANGED(709),
 
   // configuration
   CONFIG_ERROR(800);

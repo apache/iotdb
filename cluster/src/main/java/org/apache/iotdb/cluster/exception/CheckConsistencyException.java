@@ -18,11 +18,13 @@
  */
 package org.apache.iotdb.cluster.exception;
 
+import org.apache.thrift.TApplicationException;
+
 /**
  * Raised when check consistency failed, now only happens if there is a strong-consistency and
  * syncLeader failed
  */
-public class CheckConsistencyException extends Exception {
+public class CheckConsistencyException extends TApplicationException {
 
   public CheckConsistencyException(String errMsg) {
     super(String.format("check consistency failed, error message=%s ", errMsg));

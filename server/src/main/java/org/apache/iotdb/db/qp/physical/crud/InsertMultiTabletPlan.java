@@ -444,4 +444,14 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     }
     return isEnableMultithreading;
   }
+
+  @Override
+  public InsertPlan getPlanFromFailed() {
+    for (InsertTabletPlan insertPlan : getInsertTabletPlanList()) {
+      if (insertPlan.getFailedMeasurements() != null) {
+        insertPlan.getPlanFromFailed();
+      }
+    }
+    return super.getPlanFromFailed();
+  }
 }

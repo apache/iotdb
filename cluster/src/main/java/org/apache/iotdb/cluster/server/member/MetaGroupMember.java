@@ -33,6 +33,7 @@ import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.exception.EmptyIntervalException;
 import org.apache.iotdb.cluster.exception.LogExecutionException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
 import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.exception.StartUpCheckFailureException;
@@ -244,7 +245,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * close the partition through that member. Notice: only partitions owned by this node can be
    * closed by the method.
    */
-  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq) {
+  public boolean closePartition(String storageGroupName, long partitionId, boolean isSeq)
+      throws PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
     RaftNode raftNode =
         partitionTable.routeToHeaderByTime(
             storageGroupName, partitionId * StorageEngine.getTimePartitionInterval());
@@ -1912,7 +1915,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    * @param request the toString() of this parameter should explain what the request is and it is
    *     only used in logs for tracing
    */
-  public DataGroupMember getLocalDataMember(RaftNode header, Object request) {
+  public DataGroupMember getLocalDataMember(RaftNode header, Object request)
+      throws PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
     return getDataGroupEngine().getDataMember(header, null, request);
   }
 
@@ -1921,7 +1926,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    *
    * @param raftNode the header of the group which the local node is in
    */
-  public DataGroupMember getLocalDataMember(RaftNode raftNode) {
+  public DataGroupMember getLocalDataMember(RaftNode raftNode)
+      throws PartitionTableUnavailableException, CheckConsistencyException,
+          NotInSameGroupException {
     return getDataGroupEngine().getDataMember(raftNode, null, "Internal call");
   }
 

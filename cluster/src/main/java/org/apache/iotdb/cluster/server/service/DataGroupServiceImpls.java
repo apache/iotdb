@@ -60,7 +60,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void sendHeartbeat(
-      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler) {
+      HeartBeatRequest request, AsyncMethodCallback<HeartBeatResponse> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -70,7 +71,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void startElection(ElectionRequest request, AsyncMethodCallback<Long> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -80,7 +82,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void appendEntries(AppendEntriesRequest request, AsyncMethodCallback<Long> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -90,7 +93,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void appendEntry(AppendEntryRequest request, AsyncMethodCallback<Long> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -100,7 +104,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler) {
+  public void sendSnapshot(SendSnapshotRequest request, AsyncMethodCallback<Void> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -111,7 +116,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void pullSnapshot(
-      PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler) {
+      PullSnapshotRequest request, AsyncMethodCallback<PullSnapshotResp> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -122,7 +128,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void executeNonQueryPlan(
-      ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) {
+      ExecutNonQueryReq request, AsyncMethodCallback<TSStatus> resultHandler) throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -133,7 +139,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void requestCommitIndex(
-      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler) {
+      RaftNode header, AsyncMethodCallback<RequestCommitIndexResponse> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Request commit index");
@@ -154,7 +161,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void querySingleSeries(
-      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(
@@ -178,7 +185,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void fetchSingleSeries(
-      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Fetch reader:" + readerId);
@@ -207,7 +215,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       RaftNode header,
       List<String> paths,
       boolean withAlias,
-      AsyncMethodCallback<GetAllPathsResult> resultHandler) {
+      AsyncMethodCallback<GetAllPathsResult> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Find path:" + paths);
@@ -218,7 +227,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void endQuery(
-      RaftNode header, Node thisNode, long queryId, AsyncMethodCallback<Void> resultHandler) {
+      RaftNode header, Node thisNode, long queryId, AsyncMethodCallback<Void> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "End query");
     if (service != null) {
@@ -228,7 +238,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void querySingleSeriesByTimestamp(
-      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) {
+      SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler) throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(
@@ -250,7 +260,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       RaftNode header,
       long readerId,
       List<Long> timestamps,
-      AsyncMethodCallback<ByteBuffer> resultHandler) {
+      AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Fetch by timestamp:" + readerId);
@@ -261,7 +272,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void pullTimeSeriesSchema(
-      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -272,7 +284,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void pullMeasurementSchema(
-      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler) {
+      PullSchemaRequest request, AsyncMethodCallback<PullSchemaResp> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, "Pull measurement schema");
@@ -283,7 +296,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getAllDevices(
-      RaftNode header, List<String> paths, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, List<String> paths, AsyncMethodCallback<Set<String>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Get all devices");
     if (service != null) {
@@ -304,10 +318,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getNodeList(
-      RaftNode header,
-      String path,
-      int nodeLevel,
-      AsyncMethodCallback<List<String>> resultHandler) {
+      RaftNode header, String path, int nodeLevel, AsyncMethodCallback<List<String>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Get node list");
     if (service != null) {
@@ -317,7 +329,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getChildNodeInNextLevel(
-      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Get child node in next level");
@@ -328,7 +341,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getChildNodePathInNextLevel(
-      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler) {
+      RaftNode header, String path, AsyncMethodCallback<Set<String>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Get child node path in next level");
@@ -339,7 +353,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getAllMeasurementSchema(
-      RaftNode header, ByteBuffer planBytes, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      RaftNode header, ByteBuffer planBytes, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Get all measurement schema");
@@ -350,7 +365,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getAggrResult(
-      GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+      GetAggrResultRequest request, AsyncMethodCallback<List<ByteBuffer>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -361,9 +377,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void getUnregisteredTimeseries(
-      RaftNode header,
-      List<String> timeseriesList,
-      AsyncMethodCallback<List<String>> resultHandler) {
+      RaftNode header, List<String> timeseriesList, AsyncMethodCallback<List<String>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Check if measurements are registered");
@@ -373,7 +388,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler) {
+  public void getGroupByExecutor(GroupByRequest request, AsyncMethodCallback<Long> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -388,7 +404,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       long executorId,
       long startTime,
       long endTime,
-      AsyncMethodCallback<List<ByteBuffer>> resultHandler) {
+      AsyncMethodCallback<List<ByteBuffer>> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Fetch group by");
     if (service != null) {
@@ -398,7 +415,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void previousFill(
-      PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+      PreviousFillRequest request, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, request);
@@ -409,7 +427,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void matchTerm(
-      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler) {
+      long index, long term, RaftNode header, AsyncMethodCallback<Boolean> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "Match term");
     if (service != null) {
@@ -418,7 +437,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler) {
+  public void last(LastQueryRequest request, AsyncMethodCallback<ByteBuffer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(request.getHeader(), resultHandler, "last");
@@ -432,7 +452,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       RaftNode header,
       List<String> pathsToQuery,
       int level,
-      AsyncMethodCallback<Integer> resultHandler) {
+      AsyncMethodCallback<Integer> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance().getDataAsyncService(header, resultHandler, "count path");
     if (service != null) {
@@ -453,7 +474,8 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
 
   @Override
   public void onSnapshotApplied(
-      RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler) {
+      RaftNode header, List<Integer> slots, AsyncMethodCallback<Boolean> resultHandler)
+      throws TException {
     DataAsyncService service =
         DataGroupEngine.getInstance()
             .getDataAsyncService(header, resultHandler, "Snapshot applied");
@@ -629,7 +651,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) {
+  public boolean onSnapshotApplied(RaftNode header, List<Integer> slots) throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(header)
         .onSnapshotApplied(header, slots);
@@ -643,14 +665,14 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) {
+  public HeartBeatResponse sendHeartbeat(HeartBeatRequest request) throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(request.getHeader())
         .sendHeartbeat(request);
   }
 
   @Override
-  public long startElection(ElectionRequest request) {
+  public long startElection(ElectionRequest request) throws TException {
     return DataGroupEngine.getInstance()
         .getDataSyncService(request.getHeader())
         .startElection(request);
@@ -697,7 +719,7 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
   }
 
   @Override
-  public boolean matchTerm(long index, long term, RaftNode header) {
+  public boolean matchTerm(long index, long term, RaftNode header) throws TException {
     return DataGroupEngine.getInstance().getDataSyncService(header).matchTerm(index, term, header);
   }
 

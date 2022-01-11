@@ -26,6 +26,8 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.manage.QueryCoordinator;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -62,6 +64,8 @@ import java.util.stream.Collectors;
 public class MetaPuller {
 
   private static final Logger logger = LoggerFactory.getLogger(MetaPuller.class);
+  public static final String CANNOT_PULL_TIMESERIES_SCHEMAS_OF_AND_OTHER_PATHS_FROM =
+      "{}: Cannot pull timeseries schemas of {} and other {} paths from {}";
   private MetaGroupMember metaGroupMember;
 
   private MetaPuller() {}
@@ -147,6 +151,8 @@ public class MetaPuller {
             .syncLeader(null);
       } catch (CheckConsistencyException e) {
         logger.warn("Failed to check consistency.", e);
+      } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
+        logger.warn("Failed to find associated data member.", e);
       }
       int preSize = results.size();
       for (PartialPath prefixPath : prefixPaths) {
@@ -192,7 +198,7 @@ public class MetaPuller {
       schemas = pullMeasurementSchemas(node, request);
     } catch (IOException | TException e) {
       logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          CANNOT_PULL_TIMESERIES_SCHEMAS_OF_AND_OTHER_PATHS_FROM,
           metaGroupMember.getName(),
           request.getPrefixPaths().get(0),
           request.getPrefixPaths().size() - 1,
@@ -201,7 +207,7 @@ public class MetaPuller {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          CANNOT_PULL_TIMESERIES_SCHEMAS_OF_AND_OTHER_PATHS_FROM,
           metaGroupMember.getName(),
           request.getPrefixPaths().get(0),
           request.getPrefixPaths().size() - 1,
@@ -336,6 +342,8 @@ public class MetaPuller {
             .syncLeader(null);
       } catch (CheckConsistencyException e) {
         logger.warn("Failed to check consistency.", e);
+      } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
+        e.printStackTrace();
       }
       return;
     }
@@ -376,7 +384,7 @@ public class MetaPuller {
       schemas = pullTimeSeriesSchemas(node, request);
     } catch (IOException | TException e) {
       logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          CANNOT_PULL_TIMESERIES_SCHEMAS_OF_AND_OTHER_PATHS_FROM,
           metaGroupMember.getName(),
           request.getPrefixPaths().get(0),
           request.getPrefixPaths().size() - 1,
@@ -385,7 +393,7 @@ public class MetaPuller {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.error(
-          "{}: Cannot pull timeseries schemas of {} and other {} paths from {}",
+          CANNOT_PULL_TIMESERIES_SCHEMAS_OF_AND_OTHER_PATHS_FROM,
           metaGroupMember.getName(),
           request.getPrefixPaths().get(0),
           request.getPrefixPaths().size() - 1,

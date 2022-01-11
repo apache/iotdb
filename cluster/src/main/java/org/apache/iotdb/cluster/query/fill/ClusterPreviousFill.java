@@ -26,6 +26,8 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.exception.QueryTimeOutException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -160,8 +162,15 @@ public class ClusterPreviousFill extends PreviousFill {
       QueryContext context,
       PartitionGroup group,
       PreviousFillHandler fillHandler) {
-    DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+    DataGroupMember localDataMember;
+    try {
+      localDataMember = metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+    } catch (PartitionTableUnavailableException
+        | CheckConsistencyException
+        | NotInSameGroupException e) {
+      fillHandler.onError(e);
+      return;
+    }
     try {
       fillHandler.onComplete(
           localDataMember
