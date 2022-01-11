@@ -26,9 +26,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
@@ -43,10 +40,6 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
-import org.apache.thrift.TException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -54,6 +47,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.thrift.TException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ContinuousQueryTask extends WrappedRunnable {
 
@@ -103,23 +100,10 @@ public class ContinuousQueryTask extends WrappedRunnable {
   }
 
   private GroupByTimePlan generateQueryPlan() throws QueryProcessException {
-    QueryOperator queryOperator = plan.getQueryOperator();
-
-    // To handle the time series meta changes in different queries, i.e. creation & deletion,
-    // we need to apply concatenation optimization to SelectComponent before every query.
-    // Since the concatenation optimization will change resultColumns information of
-    // SelectComponent,
-    // we need to save one copy of the original SelectComponent.
-    SelectComponent selectComponentCopy = new SelectComponent(queryOperator.getSelectComponent());
-
     GroupByTimePlan queryPlan =
-        serviceProvider.getPlanner().cqQueryOperatorToGroupByTimePlan(queryOperator);
-
-    queryOperator.setSelectComponent(selectComponentCopy);
-
+        (GroupByTimePlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(plan.getQuerySql());
     queryPlan.setStartTime(windowEndTimestamp - plan.getForInterval());
     queryPlan.setEndTime(windowEndTimestamp);
-
     return queryPlan;
   }
 
@@ -156,11 +140,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
         (int)
             Math.min(
                 EXECUTION_BATCH_SIZE,
-                Math.ceil(
-                    (float) plan.getForInterval()
-                        / ((GroupByClauseComponent)
-                                plan.getQueryOperator().getSpecialClauseComponent())
-                            .getUnit()));
+                Math.ceil((float) plan.getForInterval() / (plan.getGroupByTimeIntervalUnit())));
 
     Object[][] columns = constructColumns(columnSize, batchSize, dataType);
     long[][] timestamps = new long[columnSize][batchSize];

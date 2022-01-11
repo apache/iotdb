@@ -35,6 +35,7 @@ public class CreateContinuousQueryOperator extends Operator {
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
+  private long groupByTimeIntervalUnit;
 
   public CreateContinuousQueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -45,24 +46,12 @@ public class CreateContinuousQueryOperator extends Operator {
     this.querySql = querySql;
   }
 
-  public String getQuerySql() {
-    return querySql;
-  }
-
   public void setContinuousQueryName(String continuousQueryName) {
     this.continuousQueryName = continuousQueryName;
   }
 
-  public String getContinuousQueryName() {
-    return continuousQueryName;
-  }
-
   public void setTargetPath(PartialPath targetPath) {
     this.targetPath = targetPath;
-  }
-
-  public PartialPath getTargetPath() {
-    return targetPath;
   }
 
   public void setEveryInterval(long everyInterval) {
@@ -81,6 +70,10 @@ public class CreateContinuousQueryOperator extends Operator {
     return forInterval;
   }
 
+  public void setGroupByTimeIntervalUnit(long groupByTimeIntervalUnit) {
+    this.groupByTimeIntervalUnit = groupByTimeIntervalUnit;
+  }
+
   public void setQueryOperator(QueryOperator queryOperator) {
     this.queryOperator = queryOperator;
   }
@@ -93,6 +86,11 @@ public class CreateContinuousQueryOperator extends Operator {
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
     return new CreateContinuousQueryPlan(
-        querySql, continuousQueryName, targetPath, everyInterval, forInterval, queryOperator);
+        querySql,
+        continuousQueryName,
+        targetPath,
+        everyInterval,
+        forInterval,
+        groupByTimeIntervalUnit);
   }
 }

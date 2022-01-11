@@ -22,7 +22,6 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
@@ -38,7 +37,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private QueryOperator queryOperator;
+  private long groupByTimeIntervalUnit;
   private long creationTimestamp;
 
   public CreateContinuousQueryPlan() {
@@ -51,27 +50,19 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       PartialPath targetPath,
       long everyInterval,
       long forInterval,
-      QueryOperator queryOperator) {
+      long groupByTimeIntervalUnit) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     this.querySql = querySql;
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
-    this.queryOperator = queryOperator;
+    this.groupByTimeIntervalUnit = groupByTimeIntervalUnit;
     this.creationTimestamp = DatetimeUtils.currentTime();
-  }
-
-  public void setQuerySql(String querySql) {
-    this.querySql = querySql;
   }
 
   public String getQuerySql() {
     return querySql;
-  }
-
-  public void setContinuousQueryName(String continuousQueryName) {
-    this.continuousQueryName = continuousQueryName;
   }
 
   public String getContinuousQueryName() {
@@ -86,32 +77,16 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     return targetPath;
   }
 
-  public void setEveryInterval(long everyInterval) {
-    this.everyInterval = everyInterval;
-  }
-
   public long getEveryInterval() {
     return everyInterval;
-  }
-
-  public void setForInterval(long forInterval) {
-    this.forInterval = forInterval;
   }
 
   public long getForInterval() {
     return forInterval;
   }
 
-  public void setQueryOperator(QueryOperator queryOperator) {
-    this.queryOperator = queryOperator;
-  }
-
-  public QueryOperator getQueryOperator() {
-    return queryOperator;
-  }
-
-  public void setCreationTimestamp(long creationTimestamp) {
-    this.creationTimestamp = creationTimestamp;
+  public long getGroupByTimeIntervalUnit() {
+    return groupByTimeIntervalUnit;
   }
 
   public long getCreationTimestamp() {
@@ -131,6 +106,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     buffer.putLong(everyInterval);
     buffer.putLong(forInterval);
+    buffer.putLong(groupByTimeIntervalUnit);
     buffer.putLong(creationTimestamp);
   }
 
@@ -141,6 +117,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     targetPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     everyInterval = ReadWriteIOUtils.readLong(buffer);
     forInterval = ReadWriteIOUtils.readLong(buffer);
+    groupByTimeIntervalUnit = ReadWriteIOUtils.readLong(buffer);
     creationTimestamp = ReadWriteIOUtils.readLong(buffer);
   }
 }
