@@ -34,7 +34,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -62,16 +63,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
   private static final Pattern PATH_NODE_NAME_PATTERN = Pattern.compile("\\$\\{\\w+}");
   private static final int EXECUTION_BATCH_SIZE = 10000;
 
-  // TODO: support CQ in cluster mode
-  private static BasicServiceProvider serviceProvider;
-
-  static {
-    try {
-      serviceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      LOGGER.error(e.getMessage());
-    }
-  }
+  private final ServiceProvider serviceProvider;
 
   // To save the continuous query info
   private final CreateContinuousQueryPlan plan;
@@ -81,6 +73,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
   public ContinuousQueryTask(CreateContinuousQueryPlan plan, long windowEndTimestamp) {
     this.plan = plan;
     this.windowEndTimestamp = windowEndTimestamp;
+    serviceProvider = IoTDB.serviceProvider;
   }
 
   @Override
