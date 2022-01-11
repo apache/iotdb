@@ -25,15 +25,16 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.integration.IoTDBLoadExternalTsfileIT;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,9 +55,11 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+@Category({LocalStandaloneTest.class})
 public class IoTDBLoadExternalAlignedTsFileIT {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBLoadExternalTsfileIT.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IoTDBLoadExternalAlignedTsFileIT.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
