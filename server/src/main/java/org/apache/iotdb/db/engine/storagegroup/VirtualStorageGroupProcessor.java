@@ -2934,7 +2934,6 @@ public class VirtualStorageGroupProcessor {
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-    checkFilesTTL();
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {
