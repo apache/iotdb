@@ -148,7 +148,7 @@ void insertAlignedTablets() {
     Tablet tablet2("root.sg1.d2", schemas, 10);
     Tablet tablet3("root.sg1.d3", schemas, 10);
 
-    map<string, Tablet *> tabletMap;
+    unordered_map<string, Tablet *> tabletMap;
     tabletMap["root.sg1.d1"] = &tablet1;
     tabletMap["root.sg1.d2"] = &tablet2;
     tabletMap["root.sg1.d3"] = &tablet3;

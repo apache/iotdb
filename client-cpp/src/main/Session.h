@@ -632,7 +632,7 @@ public:
     SessionDataSet(const std::string &sql,
                    const std::vector<std::string> &columnNameList,
                    const std::vector<std::string> &columnTypeList,
-                   std::unordered_map<std::string, int> &columnNameIndexMap,
+                   std::map<std::string, int> &columnNameIndexMap,
                    bool isIgnoreTimeStamp,
                    int64_t queryId, int64_t statementId,
                    std::shared_ptr<TSIServiceIf> client, int64_t sessionId,
