@@ -94,6 +94,36 @@ public class AggregationQueryOperator extends QueryOperator {
         : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
   }
 
+  private boolean verifyAllAggregationDataTypesMatched() {
+    List<String> aggregations = selectComponent.getAggregationFunctions();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(selectComponent.getPaths());
+
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean verifyIsAggregationDataTypeMatched(String aggregation, TSDataType dataType) {
+    switch (aggregation.toLowerCase()) {
+      case SQLConstant.AVG:
+      case SQLConstant.SUM:
+      case SQLConstant.EXTREME:
+      case SQLConstant.MIN_VALUE:
+      case SQLConstant.MAX_VALUE:
+        return dataType.isNumeric();
+      case SQLConstant.COUNT:
+      case SQLConstant.MIN_TIME:
+      case SQLConstant.MAX_TIME:
+      case SQLConstant.FIRST_VALUE:
+      case SQLConstant.LAST_VALUE:
+      default:
+        return true;
+    }
+  }
+
   private boolean verifyAllAggregationDataTypesEqual() throws MetadataException {
     List<String> aggregations = selectComponent.getAggregationFunctions();
     if (aggregations.isEmpty()) {
@@ -126,6 +156,10 @@ public class AggregationQueryOperator extends QueryOperator {
   protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
+    if (!verifyAllAggregationDataTypesMatched()) {
+      throw new LogicalOperatorException(
+          "Aggregate [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+    }
     if (isGroupByLevel()) {
       initGroupByLevel(aggregationPlan);
     }
