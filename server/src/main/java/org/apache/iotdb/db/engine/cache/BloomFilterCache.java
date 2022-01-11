@@ -170,14 +170,15 @@ public class BloomFilterCache {
         return false;
       }
       BloomFilterCache.BloomFilterCacheKey that = (BloomFilterCache.BloomFilterCacheKey) o;
-      return tsFileVersion == that.tsFileVersion
+      return filePath.equals(that.filePath)
+          && tsFileVersion == that.tsFileVersion
           && compactionVersion == that.compactionVersion
           && tsFilePrefixPath.equals(that.tsFilePrefixPath);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tsFilePrefixPath, tsFileVersion, compactionVersion);
+      return Objects.hash(filePath, tsFilePrefixPath, tsFileVersion, compactionVersion);
     }
   }
 
