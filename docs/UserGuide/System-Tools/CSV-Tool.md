@@ -172,9 +172,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
-> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+> tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 # Windows
-> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+> tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 ```
 
 Description:
@@ -186,6 +186,10 @@ Description:
 * `-fd`:
   - specifying a directory to save files which save failed lines. If you don't use this parameter, the failed file will be saved at original directory, and the filename will be the source filename with suffix `.failed`.
   - example: `-fd ./failed/`
+  
+* `-aligned`:
+  - whether to use the aligned interface? The option `false` is default.
+  - example: `-aligned true`
 
 ### Example
 

@@ -172,9 +172,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 ```
 
 参数:
@@ -186,6 +186,10 @@ Time,Device,str(TEXT),int(INT32)
 * `-fd`:
   - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
   - example: `-fd ./failed/`
+
+* `-aligned`:
+  - 是否使用`aligned`接口？ 默认参数为`false`。
+  - example: `-aligned true`
 
 ### 运行示例
 
