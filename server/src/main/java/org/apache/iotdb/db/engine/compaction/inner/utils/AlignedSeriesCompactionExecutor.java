@@ -31,6 +31,7 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
+import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
@@ -91,7 +92,7 @@ public class AlignedSeriesCompactionExecutor {
             alignedChunkMetadata.getValueChunkMetadataList();
 
         Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
-        Chunk[] valueChunks = new Chunk[valueChunkMetadataList.size()];
+        Chunk[] valueChunks = new Chunk[iSchemaList.size()];
         // TODO: if some chunk doesn't exist, fill it with null
         for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
           valueChunks[measurementIndexMap.get(valueChunkMetadata.getMeasurementUid())] =
@@ -106,25 +107,42 @@ public class AlignedSeriesCompactionExecutor {
           while (batchDataIterator.hasNext()) {
             TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
             long time = batchDataIterator.currentTime();
-            for (TsPrimitiveType pointData : pointsData) {
-              switch (pointData.getDataType()) {
+            for (int i = 0; i < pointsData.length; ++i) {
+              TsPrimitiveType pointData = pointsData[i];
+              switch (iSchemaList.get(i).getType()) {
                 case TEXT:
-                  chunkWriter.write(time, pointData.getBinary(), false);
+                  chunkWriter.write(
+                      time,
+                      pointData == null ? new Binary(new byte[] {}) : pointData.getBinary(),
+                      pointData == null);
                   break;
                 case FLOAT:
-                  chunkWriter.write(time, pointData.getFloat(), false);
+                  chunkWriter.write(
+                      time,
+                      pointData == null ? Float.MIN_VALUE : pointData.getFloat(),
+                      pointData == null);
                   break;
                 case DOUBLE:
-                  chunkWriter.write(time, pointData.getDouble(), false);
+                  chunkWriter.write(
+                      time,
+                      pointData == null ? Double.MIN_VALUE : pointData.getDouble(),
+                      pointData == null);
                   break;
                 case INT32:
-                  chunkWriter.write(time, pointData.getInt(), false);
+                  chunkWriter.write(
+                      time,
+                      pointData == null ? Integer.MIN_VALUE : pointData.getInt(),
+                      pointData == null);
                   break;
                 case INT64:
-                  chunkWriter.write(time, pointData.getLong(), false);
+                  chunkWriter.write(
+                      time,
+                      pointData == null ? Long.MIN_VALUE : pointData.getLong(),
+                      pointData == null);
                   break;
                 case BOOLEAN:
-                  chunkWriter.write(time, pointData.getBoolean(), false);
+                  chunkWriter.write(
+                      time, pointData == null ? false : pointData.getBoolean(), pointData == null);
                   break;
               }
             }
