@@ -51,7 +51,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   private MetricManager metricManager = new DoNothingMetricManager();
 
-  private CompositeReporter compositeReporter = new CompositeReporter();;
+  private CompositeReporter compositeReporter = new CompositeReporter();
 
   private boolean isEnableMetric = metricConfig.getEnableMetric();
 
@@ -144,10 +144,12 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   /** Start all reporter. if is disabled, do nothing */
   public void startService() {
+    metricManager = new DoNothingMetricManager();
     // load manager
     loadManager();
     // do some init work
     metricManager.init();
+    compositeReporter = new CompositeReporter();
     // load reporter
     loadReporter();
     // start reporter
@@ -249,12 +251,12 @@ public class MetricsService implements MetricsServiceMBean, IService {
         if (metricConfig.getEnableMetric() != isEnableMetric) {
           if (metricConfig.getEnableMetric()) {
             isEnableMetric = true;
-            logger.info("Start metric Service, after reload");
             start();
+            logger.info("Start metric Service, after reload");
           } else {
-            logger.info("Stop metric Service, after reload");
             stop();
             isEnableMetric = false;
+            logger.info("Stop metric Service, after reload");
           }
         }
         if (isEnableMetric) {
