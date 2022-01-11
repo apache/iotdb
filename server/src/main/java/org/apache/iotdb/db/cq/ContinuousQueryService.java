@@ -48,7 +48,7 @@ public class ContinuousQueryService implements IService {
       ContinuousQueryTaskPoolManager.getInstance();
   private static final long TASK_SUBMIT_CHECK_INTERVAL =
       IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
-  private ScheduledExecutorService cqTasksSubmitThread;
+  private ScheduledExecutorService continuousQueryTaskSubmitThread;
 
   private final ConcurrentHashMap<String, CreateContinuousQueryPlan> continuousQueryPlans =
       new ConcurrentHashMap<>();
@@ -71,9 +71,9 @@ public class ContinuousQueryService implements IService {
       nextExecutionTimestamps.put(plan.getContinuousQueryName(), nextExecutionTimestamp);
     }
 
-    cqTasksSubmitThread =
+    continuousQueryTaskSubmitThread =
         IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Task-Submit-Thread");
-    cqTasksSubmitThread.scheduleAtFixedRate(
+    continuousQueryTaskSubmitThread.scheduleAtFixedRate(
         this::checkAndSubmitTasks,
         0,
         TASK_SUBMIT_CHECK_INTERVAL,
@@ -85,7 +85,6 @@ public class ContinuousQueryService implements IService {
 
   private void checkAndSubmitTasks() {
     long currentTimestamp = DatetimeUtils.currentTime();
-
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
       long nextExecutionTimestamp = nextExecutionTimestamps.get(plan.getContinuousQueryName());
       while (currentTimestamp >= nextExecutionTimestamp) {
@@ -98,13 +97,13 @@ public class ContinuousQueryService implements IService {
 
   @Override
   public void stop() {
-    if (cqTasksSubmitThread != null) {
-      cqTasksSubmitThread.shutdown();
+    if (continuousQueryTaskSubmitThread != null) {
+      continuousQueryTaskSubmitThread.shutdown();
       try {
-        cqTasksSubmitThread.awaitTermination(600, TimeUnit.MILLISECONDS);
+        continuousQueryTaskSubmitThread.awaitTermination(600, TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
         LOGGER.warn("Check thread still doesn't exit after 60s");
-        cqTasksSubmitThread.shutdownNow();
+        continuousQueryTaskSubmitThread.shutdownNow();
         Thread.currentThread().interrupt();
       }
     }
@@ -122,19 +121,21 @@ public class ContinuousQueryService implements IService {
 
   public boolean register(CreateContinuousQueryPlan plan, boolean shouldWriteLog)
       throws ContinuousQueryException {
+    if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      throw new ContinuousQueryException(
+          String.format("Continuous Query [%s] already exists", plan.getContinuousQueryName()));
+    }
+
+    // some exceptions will only occur at runtime
+    tryExecuteCQTaskOnceBeforeRegistration(plan);
+
     acquireRegistrationLock();
     try {
-      if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
-        throw new ContinuousQueryException(
-            String.format("Continuous Query [%s] already exists", plan.getContinuousQueryName()));
-      }
       if (shouldWriteLog) {
         IoTDB.metaManager.createContinuousQuery(plan);
       }
       doRegister(plan);
       return true;
-    } catch (ContinuousQueryException e) {
-      throw e;
     } catch (Exception e) {
       throw new ContinuousQueryException(e.getMessage());
     } finally {
@@ -142,9 +143,22 @@ public class ContinuousQueryService implements IService {
     }
   }
 
+  private void tryExecuteCQTaskOnceBeforeRegistration(CreateContinuousQueryPlan plan)
+      throws ContinuousQueryException {
+    try {
+      new ContinuousQueryTask(plan, plan.getCreationTimestamp()).run();
+    } catch (Exception e) {
+      throw new ContinuousQueryException("Failed to create continuous query task.", e);
+    }
+  }
+
   private void doRegister(CreateContinuousQueryPlan plan) {
     continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
-    nextExecutionTimestamps.put(plan.getContinuousQueryName(), plan.getCreationTimestamp());
+    // one cq task has been executed in tryExecuteCQTaskOnceBeforeRegistration
+    // so nextExecutionTimestamp should start with
+    //     plan.getCreationTimestamp() + plan.getEveryInterval()
+    nextExecutionTimestamps.put(
+        plan.getContinuousQueryName(), plan.getCreationTimestamp() + plan.getEveryInterval());
   }
 
   public void deregisterAll() throws ContinuousQueryException {
@@ -154,17 +168,16 @@ public class ContinuousQueryService implements IService {
   }
 
   public boolean deregister(DropContinuousQueryPlan plan) throws ContinuousQueryException {
+    if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
+      throw new ContinuousQueryException(
+          String.format("Continuous Query [%s] does not exist", plan.getContinuousQueryName()));
+    }
+
     acquireRegistrationLock();
     try {
-      if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
-        throw new ContinuousQueryException(
-            String.format("Continuous Query [%s] does not exist", plan.getContinuousQueryName()));
-      }
       IoTDB.metaManager.dropContinuousQuery(plan);
       doDeregister(plan);
       return true;
-    } catch (ContinuousQueryException e) {
-      throw e;
     } catch (Exception e) {
       throw new ContinuousQueryException(e.getMessage());
     } finally {
