@@ -301,15 +301,15 @@ public class IoTDBConfig {
   private String indexRootFolder = "data" + File.separator + "index";
 
   /** When a TsFile's file size (in byte) exceed this, the TsFile is forced closed. Unit: byte */
-  private long tsFileSizeThreshold = 1024 * 1024 * 1024L;
+  private long tsFileSizeThreshold = 1L;
   /** When a unSequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
   private long unSeqTsFileSize = 1024 * 1024 * 1024L;
 
   /** When a sequence TsFile's file size (in byte) exceed this, the TsFile is forced closed. */
-  private long seqTsFileSize = 512 * 1024L;
+  private long seqTsFileSize = 1L;
 
   /** When a memTable's size (in byte) exceeds this, the memtable is flushed to disk. Unit: byte */
-  private long memtableSizeThreshold = 1024 * 1024 * 1024L;
+  private long memtableSizeThreshold = 1L;
 
   /** Whether to timed flush sequence tsfiles' memtables. */
   private boolean enableTimedFlushSeqMemtable = false;
