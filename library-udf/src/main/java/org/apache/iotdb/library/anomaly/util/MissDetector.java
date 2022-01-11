@@ -1,51 +1,50 @@
 /*
- * Copyright © 2021 iotdb-quality developer group (iotdb-quality@protonmail.com)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
-package org.apache.iotdb.quality.anomaly.util;
+
+package org.apache.iotdb.library.anomaly.util;
 
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.access.RowIterator;
-import org.apache.iotdb.quality.util.Util;
+import org.apache.iotdb.library.util.Util;
 
 import org.apache.commons.math3.stat.regression.SimpleRegression;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
 import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
 
 import java.util.ArrayList;
 
-/**
- * 针对缺失异常的异常检测
- *
- * @author Wang Haoyu
- */
+/** Anomaly detection for anomalies of data missing. */
 public class MissDetector {
 
-  private LongArrayList time = new LongArrayList();
-  private DoubleArrayList value = new DoubleArrayList();
-  private IntArrayList predictLabel = new IntArrayList();
-  private int len;
+  private final LongArrayList time = new LongArrayList();
+  private final DoubleArrayList value = new DoubleArrayList();
+  private final IntArrayList predictLabel = new IntArrayList();
+  private final int len;
 
   private int minLength;
   private double threshold = 0.9999;
   private double lineBoundary = 0.6;
   private long startTime;
-  private int windowCnt = 0; // 统计window数目的计数器
-  private double r2 = 0; // 统计全段数据的平均R^2
-  private ArrayList<MissingSubSeries> anomalyList = new ArrayList<>(); // 存储所有异常片段
+  private int windowCnt = 0;
+  private double r2 = 0;
+  private final ArrayList<MissingSubSeries> anomalyList = new ArrayList<>();
 
   public MissDetector(RowIterator iterator, int minLength) throws Exception {
     while (iterator.hasNextRow()) {
@@ -61,21 +60,20 @@ public class MissDetector {
   }
 
   public void detect() {
-    getPredictLabel().addAll(new int[getLen()]); // 将全部预测标签都初始化为0
-    this.startTime = getTime().get(0); // 初始化全局开始时间
-    int i = 0, windowSize = minLength / 2;
-    double data[][] = new double[windowSize][2];
+    getPredictLabel().addAll(new int[getLen()]);
+    this.startTime = getTime().get(0);
+    int i = 0;
+    int windowSize = minLength / 2;
+    double[][] data = new double[windowSize][2];
     SimpleRegression regression = new SimpleRegression();
     while (i + windowSize < getLen()) {
-      // 准备窗口内的数据
       for (int j = 0; j < windowSize; j++) {
         data[j][0] = getTime().get(i + j) - startTime;
         data[j][1] = getValue().get(i + j);
       }
-      // 线性拟合
       regression.addData(data);
       double alpha = regression.getRSquare();
-      if (Double.isNaN(alpha) || alpha >= threshold) { // R2为NAN是因为斜率为0
+      if (Double.isNaN(alpha) || alpha >= threshold) {
         i = extend(regression, i, i + windowSize);
       } else {
         i += windowSize;
@@ -84,21 +82,12 @@ public class MissDetector {
       r2 += Double.isNaN(alpha) ? 1 : alpha;
       windowCnt++;
     }
-    label(); // 标记异常
+    label();
   }
 
-  /**
-   * 基于已发现的线性窗口向前后扩展，寻找局部最大的线性窗口
-   *
-   * @param regression 线性回归器
-   * @param start 已发现的窗口的起始索引（包含）
-   * @param end 已发现的窗口的末尾索引（不包含）
-   * @return 扩展后的窗口的末尾索引（不包含）
-   */
   private int extend(SimpleRegression regression, int start, int end) {
-    boolean horizon = Double.isNaN(regression.getRSquare()); // 拟合得到的曲线是否是水平的
+    boolean horizon = Double.isNaN(regression.getRSquare());
     double standard = regression.getIntercept();
-    // 向前扩展
     int bindex = start;
     while (bindex > 0) {
       bindex--;
@@ -109,10 +98,9 @@ public class MissDetector {
       }
     }
     regression.removeData(getTime().get(bindex) - startTime, getValue().get(bindex));
-    if (bindex == 0) { // 缺失异常应该发生在数据中间，而不是数据的头部
+    if (bindex == 0) {
       return end;
     }
-    // 向后扩展
     int findex = end;
     while (findex < getLen()) {
       regression.addData(getTime().get(findex) - startTime, getValue().get(findex));
@@ -122,16 +110,14 @@ public class MissDetector {
       }
       findex++;
     }
-    if (findex == getLen()) { // 缺失异常应该发生在数据中间，而不是数据的尾部
+    if (findex == getLen()) {
       return end;
     }
-    // 标记异常子序列
     MissingSubSeries m = new MissingSubSeries(bindex + 1, findex);
     anomalyList.add(m);
     return findex;
   }
 
-  /** 如果数据不是直线型的，则标记所有缺失异常的子序列 */
   private void label() {
     if (r2 / windowCnt < lineBoundary) {
       for (MissingSubSeries m : anomalyList) {
