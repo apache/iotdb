@@ -19,11 +19,11 @@
 
 package org.apache.iotdb.db.tools;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.write.PageException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
@@ -98,8 +98,8 @@ public class TsFileSplitTool {
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Iterator<List<Path>> pathIterator = reader.getPathsIterator();
       Set<String> devices = new HashSet<>();
-      String fileNamePrefix = filename.substring(0, filename.length() - 7).concat("-");
-      int fileIndex = 0;
+      String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
+      int versionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]) + 1;
       TsFileIOWriter tsFileIOWriter = null;
 
       while (pathIterator.hasNext()) {
@@ -112,12 +112,18 @@ public class TsFileSplitTool {
               resource.close();
             }
 
+            filePathSplit[filePathSplit.length - 3] = String.valueOf(versionIndex);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < filePathSplit.length; i++) {
+              sb.append(filePathSplit[i]);
+              if (i != filePathSplit.length - 1) {
+                sb.append("-");
+              }
+            }
             // open a new TsFile
             tsFileIOWriter =
-                new TsFileIOWriter(
-                    FSFactoryProducer.getFSFactory()
-                        .getFile(fileNamePrefix + fileIndex + TsFileConstant.TSFILE_SUFFIX));
-            fileIndex++;
+                new TsFileIOWriter(FSFactoryProducer.getFSFactory().getFile(sb.toString()));
+            versionIndex++;
             tsFileIOWriter.startChunkGroup(deviceId);
           }
 
