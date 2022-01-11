@@ -19,18 +19,18 @@ import { SegmentInput } from '@grafana/ui';
 import React from 'react';
 
 export interface Props {
-  groupBy: string;
+  slidingStep: string;
   onChange: (groupByStr: string) => void;
 }
 
-export const GroupByValue: FunctionComponent<Props> = ({ groupBy, onChange }) => (
+export const GroupBySlidingValue: FunctionComponent<Props> = ({ slidingStep, onChange }) => (
   <>
     {
       <>
         <SegmentInput
           className="min-width-8"
           placeholder="(optional)"
-          value={groupBy}
+          value={slidingStep}
           onChange={string => onChange(string.toString())}
         />
       </>

@@ -14,29 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { FunctionComponent } from 'react';
+import { SegmentInput } from '@grafana/ui';
+import React from 'react';
 
-import React, { InputHTMLAttributes, FunctionComponent } from 'react';
-import { InlineFormLabel } from '@grafana/ui';
-
-export interface Props extends InputHTMLAttributes<HTMLInputElement> {
-  label: string;
-  tooltip?: string;
-  children?: React.ReactNode;
+export interface Props {
+  interval: string;
+  onChange: (groupByStr: string) => void;
 }
 
-export const QueryField: FunctionComponent<Partial<Props>> = ({ label, tooltip, children }) => (
+export const GroupByIntervalValue: FunctionComponent<Props> = ({ interval, onChange }) => (
   <>
-    <InlineFormLabel width={10} className="query-keyword" tooltip={tooltip}>
-      {label}
-    </InlineFormLabel>
-    {children}
+    {
+      <>
+        <SegmentInput
+          className="min-width-8"
+          placeholder="(optional)"
+          value={interval}
+          onChange={string => onChange(string.toString())}
+        />
+      </>
+    }
   </>
 );
-
-export const QueryInlineField: FunctionComponent<Props> = ({ ...props }) => {
-  return (
-    <div className={'gf-form-inline'}>
-      <QueryField {...props} />
-    </div>
-  );
-};

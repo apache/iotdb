@@ -208,7 +208,9 @@ components:
           type: string
         control:
            type: string
-        groupBy:
+        interval:
+          type: string
+        slidingStep:
           type: string
         fill:
           type: string

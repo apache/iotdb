@@ -24,15 +24,17 @@ import { SelectValue } from 'componments/SelectValue';
 import { FromValue } from 'componments/FromValue';
 import { WhereValue } from 'componments/WhereValue';
 import { ControlValue } from 'componments/ControlValue';
-import { GroupByValue } from 'componments/GroupByValue';
+import { GroupByIntervalValue } from 'componments/GroupByIntervalValue';
 import { FillValue } from 'componments/FillValue';
+import { GroupBySlidingValue } from 'componments/GroupBySlidingValue';
 
 interface State {
   expression: string[];
   prefixPath: string[];
   condition: string;
   control: string;
-  groupBy: string;
+  interval: string;
+  slidingStep: string;
   fill: string;
 }
 
@@ -46,7 +48,8 @@ export class QueryEditor extends PureComponent<Props, State> {
     prefixPath: paths,
     condition: '',
     control: '',
-    groupBy: '',
+    interval: '',
+    slidingStep: '',
     fill: '',
   };
 
@@ -67,10 +70,15 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query, condition: c });
     this.setState({ condition: c });
   };
-  onGroupByValueChange = (c: string) => {
+  onGroupByIntervalValueChange = (c: string) => {
     const { onChange, query } = this.props;
-    onChange({ ...query, groupBy: c });
-    this.setState({ groupBy: c });
+    onChange({ ...query, interval: c });
+    this.setState({ interval: c });
+  };
+  onGroupBySlidingValueChange = (c: string) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, slidingStep: c });
+    this.setState({ slidingStep: c });
   };
   onFillValueChange = (c: string) => {
     const { onChange, query } = this.props;
@@ -90,7 +98,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition, control, groupBy, fill } = query;
+    const { expression, prefixPath, condition, control, interval, slidingStep, fill } = query;
 
     return (
       <>
@@ -118,8 +126,13 @@ export class QueryEditor extends PureComponent<Props, State> {
               </QueryInlineField>
             </div>
             <div className="gf-form">
-              <QueryInlineField label={'GROUP BY'}>
-                <GroupByValue groupBy={groupBy} onChange={this.onGroupByValueChange} />
+              <QueryInlineField label={'GROUP BY INTERVAL'}>
+                <GroupByIntervalValue interval={interval} onChange={this.onGroupByIntervalValueChange} />
+              </QueryInlineField>
+            </div>
+            <div className="gf-form">
+              <QueryInlineField label={'GROUP BY SLIDING STEP'}>
+                <GroupBySlidingValue slidingStep={slidingStep} onChange={this.onGroupBySlidingValueChange} />
               </QueryInlineField>
             </div>
             <div className="gf-form">

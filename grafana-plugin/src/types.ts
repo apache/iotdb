@@ -25,7 +25,8 @@ export interface IoTDBQuery extends DataQuery {
   queryText?: string;
   constant: number;
   control: string;
-  groupBy: string;
+  interval: string;
+  slidingStep: string;
   fill: string;
 }
 

@@ -135,8 +135,29 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
         sql += " and " + expressionRequest.getCondition();
       }
-      if (StringUtils.isNotEmpty(expressionRequest.getGroupBy())) {
-        sql += " group by(" + expressionRequest.getGroupBy() + ")";
+      if (StringUtils.isNotEmpty(expressionRequest.getInterval())
+          && StringUtils.isEmpty(expressionRequest.getSlidingStep())) {
+        sql +=
+            " group by(["
+                + startTime
+                + ","
+                + endTime
+                + "),"
+                + expressionRequest.getInterval()
+                + ")";
+      }
+      if (StringUtils.isNotEmpty(expressionRequest.getInterval())
+          && StringUtils.isNotEmpty(expressionRequest.getSlidingStep())) {
+        sql +=
+            " group by(["
+                + startTime
+                + ","
+                + endTime
+                + "),"
+                + expressionRequest.getInterval()
+                + ","
+                + expressionRequest.getSlidingStep()
+                + ")";
       }
       if (StringUtils.isNotEmpty(expressionRequest.getFill())) {
         sql += " fill(" + expressionRequest.getFill() + ")";
