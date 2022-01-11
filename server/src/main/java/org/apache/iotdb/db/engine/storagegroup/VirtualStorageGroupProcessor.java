@@ -1533,33 +1533,26 @@ public class VirtualStorageGroupProcessor {
       return;
     }
 
-    TsFileResourceList resourceList =
-        tsFileManager.getSequenceListByTimePartition(resource.getTimePartition());
-    resourceList.writeLock();
-    try {
-      // prevent new merges and queries from choosing this file
-      resource.setDeleted(true);
+    // prevent new merges and queries from choosing this file
+    resource.setDeleted(true);
 
-      // ensure that the file is not used by any queries
-      if (resource.tryWriteLock()) {
-        try {
-          // physical removal
-          resource.remove();
-          resourceList.remove(resource);
-          if (logger.isInfoEnabled()) {
-            logger.info(
-                "Removed a file {} before {} by ttl ({}ms)",
-                resource.getTsFilePath(),
-                new Date(ttlLowerBound),
-                dataTTL);
-          }
-          tsFileManager.remove(resource, isSeq);
-        } finally {
-          resource.writeUnlock();
+    // ensure that the file is not used by any queries
+    tsFileManager.remove(resource, isSeq);
+
+    // try to delete physical data file
+    if (resource.tryWriteLock()) {
+      try {
+        resource.remove();
+        if (logger.isInfoEnabled()) {
+          logger.info(
+              "Removed a file {} before {} by ttl ({}ms)",
+              resource.getTsFilePath(),
+              new Date(ttlLowerBound),
+              dataTTL);
         }
+      } finally {
+        resource.writeUnlock();
       }
-    } finally {
-      resourceList.writeUnlock();
     }
   }
 
@@ -2940,16 +2933,8 @@ public class VirtualStorageGroupProcessor {
   }
 
   public void setDataTTL(long dataTTL) {
-    // Check files ttl will lock tsfile resource firstly and then lock tsfile.
-    // This lock order is conflict with tsfile creation in insert method, so we get a potential dead
-    // lock. Add this write lock to avoid dead lock above.
-    writeLock("setDataTTL");
-    try {
-      this.dataTTL = dataTTL;
-      checkFilesTTL();
-    } finally {
-      writeUnlock();
-    }
+    this.dataTTL = dataTTL;
+    checkFilesTTL();
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {
