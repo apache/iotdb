@@ -1039,6 +1039,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
+    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
     return selectIntoOperator;
   }
 

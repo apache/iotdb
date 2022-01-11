@@ -34,9 +34,8 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.LongDataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 
 import org.junit.Assert;
 import org.junit.Ignore;
@@ -49,7 +48,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 
 @Ignore
 public class TsFileGeneratorForTest {
@@ -118,10 +116,9 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
-    FileWriter fw = new FileWriter(file);
 
-    long startTime = START_TIMESTAMP;
-    try {
+    try (FileWriter fw = new FileWriter(file)) {
+      long startTime = START_TIMESTAMP;
       for (int i = 0; i < maxRowCount; i++) {
         // write d1
         String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
@@ -152,7 +149,7 @@ public class TsFileGeneratorForTest {
           d2 += ",s1," + (i * 10 + 1);
         }
         if (i % 8 == 0) {
-          d2 += ",s4," + "dog" + i % 4;
+          d2 += ",s4," + "dog" + 0;
         }
         fw.write(d2 + "\r\n");
       }
@@ -167,8 +164,6 @@ public class TsFileGeneratorForTest {
       fw.write(d + "\r\n");
       d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
       fw.write(d + "\r\n");
-    } finally {
-      fw.close();
     }
   }
 
@@ -204,41 +199,41 @@ public class TsFileGeneratorForTest {
   private static Schema generateTestSchema() {
     Schema schema = new Schema();
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d1"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d1"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
             CompressionType.UNCOMPRESSED,
             Collections.singletonMap(Encoder.MAX_STRING_LENGTH, "20")));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
+        new Path("d1"), new MeasurementSchema("s5", TSDataType.BOOLEAN, TSEncoding.RLE));
     schema.registerTimeseries(
         new Path("d1"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s6",
             TSDataType.FLOAT,
             TSEncoding.RLE,
             CompressionType.SNAPPY,
             Collections.singletonMap(Encoder.MAX_POINT_NUMBER, "5")));
     schema.registerTimeseries(
-        new Path("d1"), new UnaryMeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
+        new Path("d1"), new MeasurementSchema("s7", TSDataType.DOUBLE, TSEncoding.GORILLA_V1));
 
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
+        new Path("d2"), new MeasurementSchema("s1", TSDataType.INT32, TSEncoding.RLE));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+        new Path("d2"), new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
     schema.registerTimeseries(
-        new Path("d2"), new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
+        new Path("d2"), new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.TS_2DIFF));
     schema.registerTimeseries(
         new Path("d2"),
-        new UnaryMeasurementSchema(
+        new MeasurementSchema(
             "s4",
             TSDataType.TEXT,
             TSEncoding.PLAIN,
@@ -298,22 +293,21 @@ public class TsFileGeneratorForTest {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(pageSize);
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
-      List<UnaryMeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
+      List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
       alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new UnaryMeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
+          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
       tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
 
       // register nonAlign timeseries
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
       tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
 
       writeWithTsRecord(tsFileWriter, "d1", alignedMeasurementSchemas, rowCount, 0, 0, true);
@@ -334,7 +328,7 @@ public class TsFileGeneratorForTest {
   public static void writeWithTsRecord(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowSize,
       long startTime,
       long startValue,
@@ -343,7 +337,7 @@ public class TsFileGeneratorForTest {
     for (long time = startTime; time < rowSize + startTime; time++) {
       // construct TsRecord
       TSRecord tsRecord = new TSRecord(time, deviceId);
-      for (IMeasurementSchema schema : schemas) {
+      for (MeasurementSchema schema : schemas) {
         DataPoint dPoint = new LongDataPoint(schema.getMeasurementId(), startValue++);
         tsRecord.addTuple(dPoint);
       }
@@ -359,15 +353,13 @@ public class TsFileGeneratorForTest {
   public static void writeWithTablet(
       TsFileWriter tsFileWriter,
       String deviceId,
-      List<UnaryMeasurementSchema> schemas,
+      List<MeasurementSchema> schemas,
       long rowNum,
       long startTime,
       long startValue,
       boolean isAligned)
       throws IOException, WriteProcessException {
-    List<IMeasurementSchema> measurementSchemas =
-        schemas.stream().map(schema -> (IMeasurementSchema) schema).collect(Collectors.toList());
-    Tablet tablet = new Tablet(deviceId, measurementSchemas);
+    Tablet tablet = new Tablet(deviceId, schemas);
     long[] timestamps = tablet.timestamps;
     Object[] values = tablet.values;
     long sensorNum = schemas.size();

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
@@ -43,6 +44,7 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -80,9 +82,15 @@ public class CompactionSchedulerTest {
       };
 
   @Before
-  public void setUp() throws MetadataException {
+  public void setUp() throws MetadataException, IOException {
+    CompactionClearUtils.clearAllCompactionFiles();
+    EnvironmentUtils.cleanAllDir();
     IoTDB.metaManager.init();
-    IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    try {
+      IoTDB.metaManager.setStorageGroup(new PartialPath(COMPACTION_TEST_SG));
+    } catch (Exception e) {
+      logger.error("exception occurs", e);
+    }
     for (String fullPath : fullPaths) {
       PartialPath path = new PartialPath(fullPath);
       IoTDB.metaManager.createTimeseries(
@@ -91,6 +99,10 @@ public class CompactionSchedulerTest {
           TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getValueEncoder()),
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
+    }
+    File basicOutputDir = new File(TestConstant.BASE_OUTPUT_PATH);
+    if (!basicOutputDir.exists()) {
+      assertTrue(basicOutputDir.mkdirs());
     }
     MergeManager.getINSTANCE().start();
     CompactionTaskManager.getInstance().start();
@@ -105,11 +117,11 @@ public class CompactionSchedulerTest {
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
-    CompactionClearUtils.clearAllCompactionFiles();
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     MergeManager.getINSTANCE().stop();
     IoTDB.metaManager.clear();
+    CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
     try {
       Thread.sleep(10_000);
@@ -141,63 +153,44 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
+      }
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
+      }
 
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      if (totalWaitingTime > MAX_WAITING_TIME) {
-        fail();
-        break;
-      }
-      if (totalWaitingTime % 10_000 == 0) {
-        logger.warn(
-            "sequence file num is {}, unsequence file num is {}",
-            tsFileManager.getTsFileList(true).size(),
-            tsFileManager.getTsFileList(false).size());
-      }
-      if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-        logger.warn("Has waited for  {} s, Schedule again", totalWaitingTime / 1000);
-        CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-      }
-    }
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
           break;
@@ -209,58 +202,87 @@ public class CompactionSchedulerTest {
               tsFileManager.getTsFileList(false).size());
         }
         if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+          logger.warn("Has waited for  {} s, Schedule again", totalWaitingTime / 1000);
           CompactionScheduler.scheduleCompaction(tsFileManager, 0);
         }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
       }
-    }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
 
+        }
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
         }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
       }
-    }
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 
   /**
@@ -287,110 +309,120 @@ public class CompactionSchedulerTest {
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
-    CompactionTaskManager.getInstance().restart();
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
 
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+        }
+      }
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 
   /**
@@ -415,106 +447,116 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
+    try {
 
-    CompactionTaskManager.getInstance().restart();
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(1, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(1, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 
   /**
@@ -539,80 +581,89 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-
-    CompactionTaskManager.getInstance().restart();
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+        }
+      }
+
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
@@ -637,137 +688,147 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "The number of sequence tsfile is {}, {} is wanted",
-              tsFileManager.getTsFileList(true).size(),
-              1);
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
 
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "The number of sequence tsfile is {}, {} is wanted",
+                tsFileManager.getTsFileList(true).size(),
+                1);
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 
   /**
@@ -794,104 +855,114 @@ public class CompactionSchedulerTest {
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
-    CompactionTaskManager.getInstance().restart();
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
@@ -916,103 +987,114 @@ public class CompactionSchedulerTest {
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
 
-    CompactionTaskManager.getInstance().restart();
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 1) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 1) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
@@ -1036,80 +1118,91 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 0) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 0) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
@@ -1133,95 +1226,106 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
+      }
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
+      }
 
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 50) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 50) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 25) {
+        try {
+          Thread.sleep(100);
+        } catch (Exception e) {
+
+        }
+        totalWaitingTime += 100;
         if (totalWaitingTime > MAX_WAITING_TIME) {
           fail();
-          break;
         }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
+      }
+      assertTrue(tsFileManager.getTsFileList(true).size() <= 25);
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
         }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
+    } finally {
 
-      }
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 25) {
-      try {
-        Thread.sleep(100);
-      } catch (Exception e) {
-
-      }
-      totalWaitingTime += 100;
-      if (totalWaitingTime > MAX_WAITING_TIME) {
-        fail();
-      }
-    }
-    assertTrue(tsFileManager.getTsFileList(true).size() <= 25);
-
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
   }
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
@@ -1248,108 +1352,118 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 50) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (InterruptedException e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 25) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 50) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (InterruptedException e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 25) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
@@ -1373,105 +1487,115 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 50) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 25) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 50) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 25) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 
   /**
@@ -1496,107 +1620,117 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 98) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 96) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 98) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 96) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
@@ -1620,106 +1754,116 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 99) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 98) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 99) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 98) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
@@ -1743,106 +1887,116 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
-
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 99) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+    try {
+      CompactionTaskManager.getInstance().restart();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 98) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 99) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 98) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        logger.warn("waiting");
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
@@ -1866,106 +2020,117 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 99) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(true).size() > 98) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(false).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 99) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(true).size() > 98) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(false).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
@@ -1989,105 +2154,115 @@ public class CompactionSchedulerTest {
     IoTDBDescriptor.getInstance()
         .getConfig()
         .setTargetCompactionFileSize(2L * 1024L * 1024L * 1024L);
-    CompactionTaskManager.getInstance().restart();
+    try {
+      CompactionTaskManager.getInstance().restart();
 
-    TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
-      tsFileManager.add(tsFileResource, true);
-    }
-    for (int i = 0; i < 100; i++) {
-      Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
-      List<List<Long>> chunkPagePointsNum = new ArrayList<>();
-      List<Long> pagePointsNum = new ArrayList<>();
-      pagePointsNum.add(100L);
-      chunkPagePointsNum.add(pagePointsNum);
-      TsFileResource tsFileResource =
-          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
-      CompactionFileGeneratorUtils.writeTsFile(
-          fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
-      tsFileManager.add(tsFileResource, false);
-    }
-
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    long totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 98) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+      TsFileManager tsFileManager = new TsFileManager(COMPACTION_TEST_SG, "0", "target");
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(true, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
+        tsFileManager.add(tsFileResource, true);
       }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
-    while (CompactionTaskManager.currentTaskNum.get() > 0) {
-      try {
-        Thread.sleep(10);
-      } catch (Exception e) {
-
+      for (int i = 0; i < 100; i++) {
+        Set<String> fullPath = new HashSet<>(Arrays.asList(fullPaths));
+        List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+        List<Long> pagePointsNum = new ArrayList<>();
+        pagePointsNum.add(100L);
+        chunkPagePointsNum.add(pagePointsNum);
+        TsFileResource tsFileResource =
+            CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+        CompactionFileGeneratorUtils.writeTsFile(
+            fullPath, chunkPagePointsNum, 100 * i + 50, tsFileResource);
+        tsFileManager.add(tsFileResource, false);
       }
-    }
-    CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-    CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
-    totalWaitingTime = 0;
-    while (tsFileManager.getTsFileList(false).size() > 96) {
-      try {
-        Thread.sleep(10);
-        totalWaitingTime += 10;
-        if (totalWaitingTime > MAX_WAITING_TIME) {
-          fail();
-          break;
-        }
-        if (totalWaitingTime % 10_000 == 0) {
-          logger.warn(
-              "sequence file num is {}, unsequence file num is {}",
-              tsFileManager.getTsFileList(true).size(),
-              tsFileManager.getTsFileList(false).size());
-        }
-        if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
-          logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
-          CompactionScheduler.scheduleCompaction(tsFileManager, 0);
-        }
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    assertEquals(100, tsFileManager.getTsFileList(true).size());
 
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setConcurrentCompactionThread(prevCompactionConcurrentThread);
-    IoTDBDescriptor.getInstance()
-        .getConfig()
-        .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      long totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 98) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+      CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+      CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
+      totalWaitingTime = 0;
+      while (tsFileManager.getTsFileList(false).size() > 96) {
+        try {
+          Thread.sleep(10);
+          totalWaitingTime += 10;
+          if (totalWaitingTime > MAX_WAITING_TIME) {
+            fail();
+            break;
+          }
+          if (totalWaitingTime % 10_000 == 0) {
+            logger.warn(
+                "sequence file num is {}, unsequence file num is {}",
+                tsFileManager.getTsFileList(true).size(),
+                tsFileManager.getTsFileList(false).size());
+          }
+          if (totalWaitingTime % SCHEDULE_AGAIN_TIME == 0) {
+            logger.warn("Has waited for {} s, Schedule again", totalWaitingTime / 1000);
+            CompactionScheduler.scheduleCompaction(tsFileManager, 0);
+          }
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      }
+      assertEquals(100, tsFileManager.getTsFileList(true).size());
+      tsFileManager.setAllowCompaction(false);
+      while (CompactionTaskManager.currentTaskNum.get() > 0) {
+        try {
+          Thread.sleep(10);
+        } catch (Exception e) {
+
+        }
+      }
+    } finally {
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableSeqSpaceCompaction(prevEnableSeqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setEnableUnseqSpaceCompaction(prevEnableUnseqSpaceCompaction);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentCompactionThread(prevCompactionConcurrentThread);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
+    }
   }
 }

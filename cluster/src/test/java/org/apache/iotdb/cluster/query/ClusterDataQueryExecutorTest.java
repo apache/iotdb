@@ -42,7 +42,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.filter.operator.AndFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -175,15 +175,15 @@ public class ClusterDataQueryExecutorTest extends BaseQueryTest {
           new MeasurementPath(
               TestUtils.getTestSg(100),
               TestUtils.getTestMeasurement(0),
-              new UnaryMeasurementSchema(TestUtils.getTestMeasurement(0), TSDataType.DOUBLE)),
+              new MeasurementSchema(TestUtils.getTestMeasurement(0), TSDataType.DOUBLE)),
           new MeasurementPath(
               TestUtils.getTestSg(100),
               TestUtils.getTestMeasurement(1),
-              new UnaryMeasurementSchema(TestUtils.getTestMeasurement(1), TSDataType.DOUBLE)),
+              new MeasurementSchema(TestUtils.getTestMeasurement(1), TSDataType.DOUBLE)),
           new MeasurementPath(
               TestUtils.getTestSg(100),
               TestUtils.getTestMeasurement(2),
-              new UnaryMeasurementSchema(TestUtils.getTestMeasurement(2), TSDataType.DOUBLE)),
+              new MeasurementSchema(TestUtils.getTestMeasurement(2), TSDataType.DOUBLE)),
         };
     String[] measurements =
         new String[] {

@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -45,7 +46,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -56,8 +57,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -884,8 +887,8 @@ public class MManagerBasicTest {
     IMNode node = manager.getDeviceNode(new PartialPath("root.sg1.d1"));
     node = manager.setUsingSchemaTemplate(node);
 
-    UnaryMeasurementSchema s11 =
-        new UnaryMeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
+    MeasurementSchema s11 =
+        new MeasurementSchema("s11", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     assertNotNull(node.getSchemaTemplate());
 
     Set<String> allSchema = new HashSet<>();
@@ -2197,5 +2200,64 @@ public class MManagerBasicTest {
         Collections.emptyMap());
     manager.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
     assertFalse(manager.isPathExist(new PartialPath("root.sg.d2")));
+  }
+
+  @Test
+  public void testTagIndexRecovery() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    PartialPath path = new PartialPath("root.sg.d.s");
+    Map<String, String> tags = new HashMap<>();
+    tags.put("description", "oldValue");
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            tags,
+            null,
+            null));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    List<ShowTimeSeriesResult> results =
+        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    Map<String, String> resultTag = results.get(0).getTag();
+    assertEquals("oldValue", resultTag.get("description"));
+
+    tags.put("description", "newValue");
+    manager.upsertTagsAndAttributes(null, tags, null, path);
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
+
+    manager.clear();
+    manager.init();
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(0, results.size());
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
   }
 }

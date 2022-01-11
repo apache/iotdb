@@ -311,7 +311,7 @@ selectStatement
     ;
 
 intoClause
-    : INTO intoPath (COMMA intoPath)*
+    : INTO ALIGNED? intoPath (COMMA intoPath)*
     ;
 
 intoPath

@@ -38,7 +38,7 @@ import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import org.junit.After;
@@ -111,7 +111,7 @@ public class TsFileProcessorTest {
         new MeasurementPath(
             deviceId,
             measurementId,
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
@@ -170,7 +170,7 @@ public class TsFileProcessorTest {
         new MeasurementPath(
             deviceId,
             measurementId,
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
@@ -257,7 +257,7 @@ public class TsFileProcessorTest {
         new MeasurementPath(
             deviceId,
             measurementId,
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
@@ -301,7 +301,7 @@ public class TsFileProcessorTest {
         new MeasurementPath(
             deviceId,
             measurementId,
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 measurementId, dataType, encoding, CompressionType.UNCOMPRESSED, props));
     processor.query(Collections.singletonList(fullPath), context, tsfileResourcesForQuery);
     assertTrue(tsfileResourcesForQuery.isEmpty());
