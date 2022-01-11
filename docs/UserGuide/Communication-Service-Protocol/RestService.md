@@ -74,7 +74,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path:http://ip:port/rest/v1/query
+Request path: http://ip:port/rest/v1/query
 
 Parameter Description:
 
@@ -117,7 +117,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path:http://ip:port/rest/v1/nonQuery
+Request path: http://ip:port/rest/v1/nonQuery
 
 Parameter Description:
 
@@ -153,7 +153,7 @@ Request method: `POST`
 
 Request header: `application/json`
 
-Request path:http://ip:port/rest/v1/insertTablet
+Request path: http://ip:port/rest/v1/insertTablet
 
 Parameter Description:
 
