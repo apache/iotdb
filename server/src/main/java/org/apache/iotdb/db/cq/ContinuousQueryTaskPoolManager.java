@@ -37,17 +37,18 @@ public class ContinuousQueryTaskPoolManager extends AbstractPoolManager {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ContinuousQueryTaskPoolManager.class);
 
-  private static final int nThreads =
+  private static final int CONTINUOUS_QUERY_THREAD_NUM =
       IoTDBDescriptor.getInstance().getConfig().getContinuousQueryThreadNum();
 
   private ContinuousQueryTaskPoolManager() {
-
-    LOGGER.info("ContinuousQueryTaskPoolManager is initializing, thread number: {}", nThreads);
+    LOGGER.info(
+        "ContinuousQueryTaskPoolManager is initializing, thread number: {}",
+        CONTINUOUS_QUERY_THREAD_NUM);
 
     pool =
         new ThreadPoolExecutor(
-            nThreads,
-            nThreads,
+            CONTINUOUS_QUERY_THREAD_NUM,
+            CONTINUOUS_QUERY_THREAD_NUM,
             0L,
             TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(
@@ -81,8 +82,8 @@ public class ContinuousQueryTaskPoolManager extends AbstractPoolManager {
 
     pool =
         new ThreadPoolExecutor(
-            nThreads,
-            nThreads,
+            CONTINUOUS_QUERY_THREAD_NUM,
+            CONTINUOUS_QUERY_THREAD_NUM,
             0L,
             TimeUnit.MILLISECONDS,
             new LinkedBlockingQueue<>(
