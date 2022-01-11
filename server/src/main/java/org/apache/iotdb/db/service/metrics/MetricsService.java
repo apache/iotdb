@@ -59,6 +59,57 @@ public class MetricsService implements MetricsServiceMBean, IService {
 
   private MetricsService() {}
 
+  @Override
+  public void start() throws StartupException {
+    try {
+      if (isEnableMetric) {
+        logger.info("Start metric Service.");
+        JMXService.registerMBean(getInstance(), mbeanName);
+        startService();
+      }
+    } catch (Exception e) {
+      logger.error("Failed to start {} because: ", this.getID().getName(), e);
+      throw new StartupException(this.getID().getName(), e.getMessage());
+    }
+  }
+
+  @Override
+  public void stop() {
+    if (isEnableMetric) {
+      logger.info("Stop metric Service.");
+      stopService();
+      JMXService.deregisterMBean(mbeanName);
+      isEnableMetric = false;
+    }
+  }
+
+  @Override
+  /** Start all reporter. if is disabled, do nothing */
+  public void startService() {
+    // load manager
+    loadManager();
+    // load reporter
+    loadReporter();
+    // do some init work
+    metricManager.init();
+    // start reporter
+    compositeReporter.startAll();
+
+    enablePredefinedMetric(PredefinedMetric.JVM);
+    enablePredefinedMetric(PredefinedMetric.LOGBACK);
+
+    collectFileSystemInfo();
+  }
+
+  @Override
+  /** Stop metric service. if is disabled, do nothing */
+  public void stopService() {
+    metricManager.stop();
+    compositeReporter.stopAll();
+    metricManager = new DoNothingMetricManager();
+    compositeReporter = new CompositeReporter();
+  }
+
   private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
@@ -115,50 +166,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
       return;
     }
     compositeReporter.stop(reporter);
-  }
-
-  @Override
-  public void start() throws StartupException {
-    try {
-      if (isEnableMetric) {
-        logger.info("Start metric Service.");
-        JMXService.registerMBean(getInstance(), mbeanName);
-        startService();
-      }
-    } catch (Exception e) {
-      logger.error("Failed to start {} because: ", this.getID().getName(), e);
-      throw new StartupException(this.getID().getName(), e.getMessage());
-    }
-  }
-
-  @Override
-  public void stop() {
-    if (isEnableMetric) {
-      logger.info("Stop metric Service.");
-      stopService();
-      JMXService.deregisterMBean(mbeanName);
-      isEnableMetric = false;
-    }
-  }
-
-  @Override
-  /** Start all reporter. if is disabled, do nothing */
-  public void startService() {
-    metricManager = new DoNothingMetricManager();
-    // load manager
-    loadManager();
-    // do some init work
-    metricManager.init();
-    compositeReporter = new CompositeReporter();
-    // load reporter
-    loadReporter();
-    // start reporter
-    compositeReporter.startAll();
-
-    enablePredefinedMetric(PredefinedMetric.JVM);
-    enablePredefinedMetric(PredefinedMetric.LOGBACK);
-
-    collectFileSystemInfo();
   }
 
   private void collectFileSystemInfo() {
@@ -270,15 +277,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
         logger.error("Failed to start metric when reload properties");
       }
     }
-  }
-
-  @Override
-  /** Stop metric service. if is disabled, do nothing */
-  public void stopService() {
-    metricManager.stop();
-    compositeReporter.stopAll();
-    metricManager = new DoNothingMetricManager();
-    compositeReporter = new CompositeReporter();
   }
 
   /**

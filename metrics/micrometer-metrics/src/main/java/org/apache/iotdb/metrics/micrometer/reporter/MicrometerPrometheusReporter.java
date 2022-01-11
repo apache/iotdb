@@ -25,6 +25,7 @@ import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
@@ -36,6 +37,8 @@ import reactor.netty.DisposableServer;
 import reactor.netty.http.server.HttpServer;
 
 import java.time.Duration;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class MicrometerPrometheusReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerPrometheusReporter.class);
@@ -44,12 +47,20 @@ public class MicrometerPrometheusReporter implements Reporter {
 
   private MetricManager metricManager;
   private DisposableServer httpServer;
-  private PrometheusMeterRegistry prometheusMeterRegistry;
 
   @Override
   public boolean start() {
-    prometheusMeterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    Metrics.addRegistry(prometheusMeterRegistry);
+    Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+    Set<MeterRegistry> meterRegistrySet =
+        Metrics.globalRegistry.getRegistries().stream()
+            .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
+            .collect(Collectors.toSet());
+    if (meterRegistrySet.size() != 1) {
+      LOGGER.error("Too less or too many prometheusReporters");
+      return false;
+    }
+    PrometheusMeterRegistry prometheusMeterRegistry =
+        (PrometheusMeterRegistry) meterRegistrySet.toArray()[0];
     httpServer =
         HttpServer.create()
             .idleTimeout(Duration.ofMillis(30_000L))
@@ -74,8 +85,14 @@ public class MicrometerPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        Metrics.removeRegistry(prometheusMeterRegistry);
-        prometheusMeterRegistry = null;
+        Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+        Set<MeterRegistry> meterRegistrySet =
+            Metrics.globalRegistry.getRegistries().stream()
+                .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
+                .collect(Collectors.toSet());
+        for (MeterRegistry meterRegistry : meterRegistrySet) {
+          Metrics.removeRegistry(meterRegistry);
+        }
         httpServer.disposeNow();
         httpServer = null;
       } catch (Exception e) {

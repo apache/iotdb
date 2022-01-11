@@ -24,22 +24,32 @@ import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.jmx.JmxMeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 public class MicrometerJmxReporter implements Reporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(MicrometerJmxReporter.class);
   private MetricManager metricManager;
-  private JmxMeterRegistry jmxMeterRegistry;
 
   @Override
   public boolean start() {
     try {
-      jmxMeterRegistry = new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM);
-      Metrics.addRegistry(jmxMeterRegistry);
-      jmxMeterRegistry.start();
+      Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
+      Set<MeterRegistry> meterRegistrySet =
+          Metrics.globalRegistry.getRegistries().stream()
+              .filter(reporter -> reporter instanceof JmxMeterRegistry)
+              .collect(Collectors.toSet());
+      for (MeterRegistry meterRegistry : meterRegistrySet) {
+        if (meterRegistry.isClosed()) {
+          ((JmxMeterRegistry) meterRegistry).start();
+        }
+      }
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
       return false;
@@ -50,8 +60,17 @@ public class MicrometerJmxReporter implements Reporter {
   @Override
   public boolean stop() {
     try {
-      jmxMeterRegistry.stop();
-      Metrics.removeRegistry(jmxMeterRegistry);
+      Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
+      Set<MeterRegistry> meterRegistrySet =
+          Metrics.globalRegistry.getRegistries().stream()
+              .filter(reporter -> reporter instanceof JmxMeterRegistry)
+              .collect(Collectors.toSet());
+      for (MeterRegistry meterRegistry : meterRegistrySet) {
+        if (!meterRegistry.isClosed()) {
+          ((JmxMeterRegistry) meterRegistry).stop();
+          Metrics.removeRegistry(meterRegistry);
+        }
+      }
     } catch (Exception e) {
       LOGGER.error("Failed to stop Micrometer JmxReporter, because {}", e.getMessage());
       return false;
