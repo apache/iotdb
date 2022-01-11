@@ -18,6 +18,7 @@
 package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
@@ -44,10 +45,12 @@ public class RestApiServiceImpl extends RestApiService {
 
   private final BasicServiceProvider basicServiceProvider;
   private final AuthorizationHandler authorizationHandler;
+  private final Integer limitValue;
 
   public RestApiServiceImpl() throws QueryProcessException {
     basicServiceProvider = new BasicServiceProvider();
     authorizationHandler = new AuthorizationHandler(basicServiceProvider);
+    limitValue = IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryFetchSize();
   }
 
   @Override
@@ -92,6 +95,18 @@ public class RestApiServiceImpl extends RestApiService {
                     .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
+      }
+
+      if (physicalPlan instanceof QueryPlan) {
+        int limit = ((QueryPlan) physicalPlan).getRowLimit();
+        if ((sql.getFetchSize() == null || sql.getFetchSize() <= 0)
+            && (limit == 0 || limit > limitValue)) {
+          ((QueryPlan) physicalPlan).setRowLimit(limitValue);
+        } else if (sql.getFetchSize() != null
+            && sql.getFetchSize() != 0
+            && sql.getFetchSize() <= limit) {
+          ((QueryPlan) physicalPlan).setRowLimit(sql.getFetchSize());
+        }
       }
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);

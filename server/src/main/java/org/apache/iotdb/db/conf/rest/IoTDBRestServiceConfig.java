@@ -53,6 +53,8 @@ public class IoTDBRestServiceConfig {
   /** init number of users stored in cache */
   private int cacheInitNum = 10;
 
+  private int restQueryFetchSize = 10000;
+
   public String getTrustStorePwd() {
     return trustStorePwd;
   }
@@ -139,5 +141,13 @@ public class IoTDBRestServiceConfig {
 
   public void setCacheInitNum(int cacheInitNum) {
     this.cacheInitNum = cacheInitNum;
+  }
+
+  public int getRestQueryFetchSize() {
+    return restQueryFetchSize;
+  }
+
+  public void setRestQueryFetchSize(int restQueryFetchSize) {
+    this.restQueryFetchSize = restQueryFetchSize;
   }
 }
