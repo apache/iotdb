@@ -16,8 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-#ifndef __IOTDB_SESSION
-#define __IOTDB_SESSION
+#ifndef IOTDB_SESSION_H
+#define IOTDB_SESSION_H
 
 #include <memory>
 #include <string>
@@ -927,4 +927,4 @@ public:
     void executeNonQueryStatement(const std::string &sql);
 };
 
-#endif // __IOTDB_SESSION
+#endif // IOTDB_SESSION_H
