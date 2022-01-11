@@ -19,10 +19,11 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 
 import java.util.Map;
 
-public interface ISegment {
+public interface ICachedMNodeContainer extends IMNodeContainer {
 
   long getSegmentAddress();
 

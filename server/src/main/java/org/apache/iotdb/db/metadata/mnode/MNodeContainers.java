@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
+import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
+
 public class MNodeContainers {
 
   public static final boolean IS_DISK_MODE = false;

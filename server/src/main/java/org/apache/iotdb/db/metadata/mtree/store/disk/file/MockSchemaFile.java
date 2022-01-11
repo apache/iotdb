@@ -18,17 +18,16 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
-import org.apache.iotdb.db.metadata.mnode.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.ISegment;
+import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
+import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -56,7 +55,7 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public void writeMNode(IMNode parent) {
-    ISegment segment = getSegment(parent);
+    ICachedMNodeContainer segment = getCachedMNodeContainer(parent);
     long address = segment.getSegmentAddress();
     if (segment.isVolatile()) {
       address = fileTail++;
@@ -75,7 +74,7 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public void deleteMNode(IMNode targetNode) {
-    ISegment segment = getSegment(targetNode.getParent());
+    ICachedMNodeContainer segment = getCachedMNodeContainer(targetNode.getParent());
     mockFile.get(segment.getSegmentAddress()).remove(targetNode.getName());
   }
 
@@ -90,12 +89,12 @@ public class MockSchemaFile implements ISchemaFile {
     mockFile.clear();
   }
 
-  private ISegment getSegment(IMNode node) {
-    return node.getChildren().getSegment();
+  private ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
+    return (ICachedMNodeContainer) node.getChildren();
   }
 
   private long getSegmentAddress(IMNode node) {
-    return node.getChildren().getSegment().getSegmentAddress();
+    return getCachedMNodeContainer(node).getSegmentAddress();
   }
 
   private IMNode cloneMNode(IMNode node) {
@@ -137,9 +136,8 @@ public class MockSchemaFile implements ISchemaFile {
   private void cloneInternalMNodeData(IMNode node, IMNode result) {
     result.setUseTemplate(node.isUseTemplate());
     result.setSchemaTemplate(node.getSchemaTemplate());
-    IMNodeContainer container = new CachedMNodeContainer();
-    ISegment segment = container.getSegment();
-    segment.setSegmentAddress(node.getChildren().getSegment().getSegmentAddress());
+    ICachedMNodeContainer container = new CachedMNodeContainer();
+    container.setSegmentAddress((getCachedMNodeContainer(node)).getSegmentAddress());
     result.setChildren(container);
   }
 }

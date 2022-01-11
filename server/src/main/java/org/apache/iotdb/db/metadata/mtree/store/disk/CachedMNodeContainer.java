@@ -16,9 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.metadata.mnode;
+package org.apache.iotdb.db.metadata.mtree.store.disk;
 
-import org.apache.iotdb.db.metadata.mtree.store.disk.ISegment;
+import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,7 +35,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
-public class CachedMNodeContainer implements IMNodeContainer, ISegment {
+public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   private long segmentAddress = -1;
   Map<String, IMNode> childCache = null;
@@ -184,59 +184,59 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
 
   @Override
   public IMNode getOrDefault(Object key, IMNode defaultValue) {
-    return IMNodeContainer.super.getOrDefault(key, defaultValue);
+    return ICachedMNodeContainer.super.getOrDefault(key, defaultValue);
   }
 
   @Override
   public void forEach(BiConsumer<? super String, ? super IMNode> action) {
-    IMNodeContainer.super.forEach(action);
+    ICachedMNodeContainer.super.forEach(action);
   }
 
   @Override
   public void replaceAll(BiFunction<? super String, ? super IMNode, ? extends IMNode> function) {
-    IMNodeContainer.super.replaceAll(function);
+    ICachedMNodeContainer.super.replaceAll(function);
   }
 
   @Nullable
   @Override
   public IMNode putIfAbsent(String key, IMNode value) {
-    return IMNodeContainer.super.putIfAbsent(key, value);
+    return ICachedMNodeContainer.super.putIfAbsent(key, value);
   }
 
   @Override
   public boolean remove(Object key, Object value) {
-    return IMNodeContainer.super.remove(key, value);
+    return ICachedMNodeContainer.super.remove(key, value);
   }
 
   @Override
   public boolean replace(String key, IMNode oldValue, IMNode newValue) {
-    return IMNodeContainer.super.replace(key, oldValue, newValue);
+    return ICachedMNodeContainer.super.replace(key, oldValue, newValue);
   }
 
   @Nullable
   @Override
   public IMNode replace(String key, IMNode value) {
-    return IMNodeContainer.super.replace(key, value);
+    return ICachedMNodeContainer.super.replace(key, value);
   }
 
   @Override
   public IMNode computeIfAbsent(
       String key, @NotNull Function<? super String, ? extends IMNode> mappingFunction) {
-    return IMNodeContainer.super.computeIfAbsent(key, mappingFunction);
+    return ICachedMNodeContainer.super.computeIfAbsent(key, mappingFunction);
   }
 
   @Override
   public IMNode computeIfPresent(
       String key,
       @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return IMNodeContainer.super.computeIfPresent(key, remappingFunction);
+    return ICachedMNodeContainer.super.computeIfPresent(key, remappingFunction);
   }
 
   @Override
   public IMNode compute(
       String key,
       @NotNull BiFunction<? super String, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return IMNodeContainer.super.compute(key, remappingFunction);
+    return ICachedMNodeContainer.super.compute(key, remappingFunction);
   }
 
   @Override
@@ -244,7 +244,7 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
       String key,
       @NotNull IMNode value,
       @NotNull BiFunction<? super IMNode, ? super IMNode, ? extends IMNode> remappingFunction) {
-    return IMNodeContainer.super.merge(key, value, remappingFunction);
+    return ICachedMNodeContainer.super.merge(key, value, remappingFunction);
   }
 
   @Override
@@ -296,10 +296,5 @@ public class CachedMNodeContainer implements IMNodeContainer, ISegment {
       childCache = new ConcurrentHashMap<>();
     }
     childCache.putAll(children);
-  }
-
-  @Override
-  public ISegment getSegment() {
-    return this;
   }
 }
