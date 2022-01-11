@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -67,7 +68,7 @@ public class CompactionUtils {
         boolean isAligned =
             ((EntityMNode) MManager.getInstance().getDeviceNode(new PartialPath(device)))
                 .isAligned();
-        compactionWriter.startChunkGroup(device, isAligned);
+        // compactionWriter.startChunkGroup(device, isAligned);
         Map<String, TimeseriesMetadata> deviceMeasurementsMap =
             getDeviceMeasurementsMap(device, seqFileResources, unseqFileResources);
         PartialPath seriesPath;
@@ -80,12 +81,12 @@ public class CompactionUtils {
                 measurementSchemas.add(
                     new UnaryMeasurementSchema(measurementId, timeseriesMetadata.getTSDataType()));
               });
-          compactionWriter.startMeasurement(measurementSchemas);
+          // compactionWriter.startMeasurement(measurementSchemas);
 
           seriesPath =
               new AlignedPath(
                   device, new ArrayList<>(deviceMeasurementsMap.keySet()), measurementSchemas);
-          SeriesRawDataBatchReader dataBatchReader =
+          IBatchReader dataBatchReader =
               new SeriesRawDataBatchReader(
                   seriesPath,
                   deviceMeasurementsMap.keySet(),
@@ -96,28 +97,28 @@ public class CompactionUtils {
                   null,
                   null,
                   true);
-          while (dataBatchReader.hasNextBatch()) {
-            BatchData batchData = dataBatchReader.nextBatch();
-            while (batchData.hasCurrent()) {
-              compactionWriter.write(batchData.currentTime(), batchData.currentValue());
-              batchData.next();
-            }
+          if (dataBatchReader.hasNextBatch()) {
+            // Todo
+            compactionWriter.startChunkGroup(device, isAligned);
+            compactionWriter.startMeasurement(measurementSchemas);
+            writeWithReader(compactionWriter, dataBatchReader);
+            compactionWriter.endMeasurement();
           }
-          compactionWriter.endMeasurement();
         } else {
           //  nonAligned
+          boolean hasStartChunkGroup = false;
           for (Map.Entry<String, TimeseriesMetadata> entry : deviceMeasurementsMap.entrySet()) {
             List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
             measurementSchemas.add(
                 IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())));
-            compactionWriter.startMeasurement(measurementSchemas);
+            // compactionWriter.startMeasurement(measurementSchemas);
 
             seriesPath =
                 new MeasurementPath(
                     device,
                     entry.getKey(),
                     new UnaryMeasurementSchema(entry.getKey(), entry.getValue().getTSDataType()));
-            SeriesRawDataBatchReader dataBatchReader =
+            IBatchReader dataBatchReader =
                 new SeriesRawDataBatchReader(
                     seriesPath,
                     deviceMeasurementsMap.keySet(),
@@ -128,14 +129,15 @@ public class CompactionUtils {
                     null,
                     null,
                     true);
-            while (dataBatchReader.hasNextBatch()) {
-              BatchData batchData = dataBatchReader.nextBatch();
-              while (batchData.hasCurrent()) {
-                compactionWriter.write(batchData.currentTime(), batchData.currentValue());
-                batchData.next();
+            if (dataBatchReader.hasNextBatch()) {
+              if (!hasStartChunkGroup) {
+                compactionWriter.startChunkGroup(device, isAligned);
+                hasStartChunkGroup = true;
               }
+              compactionWriter.startMeasurement(measurementSchemas);
+              writeWithReader(compactionWriter, dataBatchReader);
+              compactionWriter.endMeasurement();
             }
-            compactionWriter.endMeasurement();
           }
         }
         compactionWriter.endChunkGroup();
@@ -146,6 +148,17 @@ public class CompactionUtils {
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
       compactionWriter.close();
+    }
+  }
+
+  private static void writeWithReader(AbstractCompactionWriter writer, IBatchReader reader)
+      throws IOException {
+    while (reader.hasNextBatch()) {
+      BatchData batchData = reader.nextBatch();
+      while (batchData.hasCurrent()) {
+        writer.write(batchData.currentTime(), batchData.currentValue());
+        batchData.next();
+      }
     }
   }
 

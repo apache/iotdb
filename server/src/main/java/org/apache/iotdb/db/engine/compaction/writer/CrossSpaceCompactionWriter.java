@@ -1,5 +1,6 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
@@ -60,12 +61,19 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     seqFileIndex = 0;
   }
 
+  // Todo:现在跨空间合并可能存在目标文件里某个对齐序列全部都是空valueChunk，即该序列的TimeseriesMetadata里的statistics里标记数据为空，因此查询的时候会出现死循环，即firstTimeseriesMetadata不为null，可是在解它到ChunkMetadataList却发现起始结束时间不对
   @Override
   public void write(long timestamp, Object value) throws IOException {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
-    while (timestamp > seqTsFileResources.get(seqFileIndex).getEndTime(deviceId)) {
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
+    // 若该文件不存在该设备，则会返回Long.Min。因此此处要判断若该文件不存在该device则将seqFileIndex++即可。
+    if (IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().ordinal() == 1) {
+      // device time index
+      while (timestamp > seqTsFileResources.get(seqFileIndex).getEndTime(deviceId)) {
+        writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+        chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
+      }
+    } else {
+      // Todo
     }
     if (checkChunkSizeAndMayOpenANewChunk()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());

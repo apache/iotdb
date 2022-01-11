@@ -44,12 +44,6 @@ public class MetaMarker {
   /** Chunk header marker and this chunk has only one page. */
   public static final byte ONLY_ONE_PAGE_CHUNK_HEADER = 5;
 
-  /**
-   * Chunk header marker and this chunk is an empty chunk, which has no page at all. At present,
-   * only aligned valueChunk may be empty chunk due to compaction.
-   */
-  public static final byte EMPTY_CHUNK_HEADER = 6;
-
   private MetaMarker() {}
 
   public static void handleUnexpectedMarker(byte marker) throws IOException {

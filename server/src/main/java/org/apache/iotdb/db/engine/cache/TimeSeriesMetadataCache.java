@@ -154,7 +154,9 @@ public class TimeSeriesMetadataCache {
           && !bloomFilter.contains(key.device + IoTDBConstant.PATH_SEPARATOR + key.measurement)) {
         return null;
       }
-      return reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
+      TimeseriesMetadata timeseriesMetadata =
+          reader.readTimeseriesMetadata(new Path(key.device, key.measurement), false);
+      return timeseriesMetadata.getStatistics().getCount() == 0 ? null : timeseriesMetadata;
     }
 
     TimeseriesMetadata timeseriesMetadata = lruCache.getIfPresent(key);
@@ -194,9 +196,18 @@ public class TimeSeriesMetadataCache {
             TimeSeriesMetadataCacheKey k =
                 new TimeSeriesMetadataCacheKey(
                     key.filePath, key.device, metadata.getMeasurementId());
-            lruCache.put(k, metadata);
+            //            if (metadata.getStatistics().getCount() == 0) {
+            //              // an aligned timeseries may be all empty chunk after compaction, whose
+            // data count is
+            //              // 0.
+            //              lruCache.put(k, null);
+            //              continue;
+            //            }
+            if (metadata.getStatistics().getCount() != 0) {
+              lruCache.put(k, metadata);
+            }
             if (metadata.getMeasurementId().equals(key.measurement)) {
-              timeseriesMetadata = metadata;
+              timeseriesMetadata = metadata.getStatistics().getCount() == 0 ? null : metadata;
             }
           }
         }

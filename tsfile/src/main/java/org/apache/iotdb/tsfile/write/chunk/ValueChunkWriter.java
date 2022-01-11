@@ -272,9 +272,13 @@ public class ValueChunkWriter {
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
     if (statistics.getCount() == 0) {
-      // In order to ensure that different chunkgroups in a tsfile have the same chunks during
-      // compaction, it is possible to have an empty valueChunk in a chunkGroup. To save the disk
-      // space, we only serialize chunkHeader for the empty valueChunk, whose chunkType is 6.
+      if (pageBuffer.size() == 0) {
+        return;
+      }
+      // In order to ensure that different chunkgroups in a tsfile have the same chunks or if all
+      // data of this timeseries has been deleted, it is possible to have an empty valueChunk in a
+      // chunkGroup during compaction. To save the disk space, we only serialize chunkHeader for the
+      // empty valueChunk, whose dataSize is 0.
       writer.startFlushChunk(
           measurementId,
           compressionType,
