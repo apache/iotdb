@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.spark.db
 
-
-import org.apache.iotdb.spark.db.tools.DataFrameTools
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider}
 import org.slf4j.LoggerFactory
@@ -50,7 +48,7 @@ private[iotdb] class DefaultSource extends RelationProvider with DataSourceRegis
     }
     val iotdbOptions = new IoTDBOptions(parameters)
 
-    if (!data.columns.contains("device_name")) {
+    if (!data.columns.contains("Device")) {
       data.columns.foreach(column => if (!column.startsWith("root.") && column != "Time") sys.error("Invalidate column: " + column))
       val narrowDf = Transformer.toNarrowForm(sqlContext.sparkSession, data)
       DataFrameTools.insertDataFrame(iotdbOptions, narrowDf)

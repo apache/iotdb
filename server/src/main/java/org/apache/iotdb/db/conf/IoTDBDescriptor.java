@@ -925,11 +925,29 @@ public class IoTDBDescriptor {
     }
 
     long poolTrimIntervalInMS =
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
     if (poolTrimIntervalInMS > 0) {
       conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
+    }
+
+    long registerBufferSleepIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_sleep_interval_in_ms",
+                Long.toString(conf.getRegisterBufferSleepIntervalInMs())));
+    if (registerBufferSleepIntervalInMs > 0) {
+      conf.setRegisterBufferSleepIntervalInMs(registerBufferSleepIntervalInMs);
+    }
+
+    long registerBufferRejectThresholdInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_reject_threshold_in_ms",
+                Long.toString(conf.getRegisterBufferRejectThresholdInMs())));
+    if (registerBufferRejectThresholdInMs > 0) {
+      conf.setRegisterBufferRejectThresholdInMs(registerBufferRejectThresholdInMs);
     }
   }
 

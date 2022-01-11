@@ -976,6 +976,11 @@ public class MManager {
     return mtree.getNodesCountInGivenLevel(pathPattern, level);
   }
 
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level);
+  }
+
   // endregion
 
   // region Interfaces for level Node info Query
@@ -1942,7 +1947,9 @@ public class MManager {
             internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
           } else {
             internalAlignedCreateTimeseries(
-                devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                devicePath,
+                Collections.singletonList(measurement),
+                Collections.singletonList(plan.getDataTypes()[loc]));
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);
