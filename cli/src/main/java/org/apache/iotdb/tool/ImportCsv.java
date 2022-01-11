@@ -112,11 +112,11 @@ public class ImportCsv extends AbstractCsvTool {
     options.addOption(opFailedFile);
 
     Option opAligned =
-            Option.builder(ALIGNED_ARGS)
-                    .argName(ALIGNED_Name)
-                    .hasArg()
-                    .desc("Whether to use the interface of aligned (optional)")
-                    .build();
+        Option.builder(ALIGNED_ARGS)
+            .argName(ALIGNED_Name)
+            .hasArg()
+            .desc("Whether to use the interface of aligned (optional)")
+            .build();
     options.addOption(opAligned);
 
     Option opHelp =
@@ -277,7 +277,7 @@ public class ImportCsv extends AbstractCsvTool {
         } else {
           failedFilePath = failedFileDirectory + file.getName() + ".failed";
         }
-        if (!headerNames.contains("Device")) {
+        if (!"DEVICE".equalsIgnoreCase(headerNames.get(1))) {
           writeDataAlignedByTime(headerNames, records, failedFilePath);
         } else {
           writeDataAlignedByDevice(headerNames, records, failedFilePath);
@@ -542,7 +542,8 @@ public class ImportCsv extends AbstractCsvTool {
       if (!aligned) {
         session.insertRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
       } else {
-        session.insertAlignedRecordsOfOneDevice(device, times, measurementsList, typesList, valuesList);
+        session.insertAlignedRecordsOfOneDevice(
+            device, times, measurementsList, typesList, valuesList);
       }
     } catch (IoTDBConnectionException e) {
       try {
@@ -557,7 +558,7 @@ public class ImportCsv extends AbstractCsvTool {
       }
     } catch (StatementExecutionException e) {
       System.out.println("Meet error when insert csv because " + e.getMessage());
-    } finally{
+    } finally {
       times.clear();
       typesList.clear();
       valuesList.clear();
@@ -640,7 +641,8 @@ public class ImportCsv extends AbstractCsvTool {
     try {
       sessionDataSet = session.executeQueryStatement(sql);
     } catch (StatementExecutionException e) {
-      System.out.println("Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
+      System.out.println(
+          "Meet error when query the type of timeseries because the IoTDB v0.13 don't support that the path contains any purely digital path.");
       return;
     }
     List<String> columnNames = sessionDataSet.getColumnNames();
