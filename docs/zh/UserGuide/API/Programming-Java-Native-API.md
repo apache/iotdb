@@ -375,6 +375,8 @@ void deleteData(List<String> paths, long endTime)
 SessionDataSet executeRawDataQuery(List<String> paths, long startTime, long endTime)
 ```
 
+### IoTDB-SQL 接口
+
 * 执行查询语句
 
 ```java
@@ -387,7 +389,7 @@ SessionDataSet executeQueryStatement(String sql)
 void executeNonQueryStatement(String sql)
 ```
 
-### 测试接口
+### 写入测试接口 (用于分析网络带宽)
 
 * 测试 testInsertRecords，不实际写入数据，只将数据传输到 server 即返回。
 
