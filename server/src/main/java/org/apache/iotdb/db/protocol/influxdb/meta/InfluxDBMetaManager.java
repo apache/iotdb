@@ -57,7 +57,7 @@ public class InfluxDBMetaManager {
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
 
   public static InfluxDBMetaManager getInstance() {
-    return MetaManagerHolder.INSTANCE;
+    return InfluxDBMetaManagerHolder.INSTANCE;
   }
 
   // TODO avoid OOM
@@ -205,9 +205,9 @@ public class InfluxDBMetaManager {
     }
   }
 
-  private static class MetaManagerHolder {
+  private static class InfluxDBMetaManagerHolder {
     private static final InfluxDBMetaManager INSTANCE = new InfluxDBMetaManager();
 
-    private MetaManagerHolder() {}
+    private InfluxDBMetaManagerHolder() {}
   }
 }

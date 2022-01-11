@@ -46,7 +46,6 @@ public class SingleNodeTest extends BaseSingleNodeTest {
   @Before
   public void setUp() throws Exception {
     super.setUp();
-    Thread.sleep(10000);
     session = openSession();
   }
 
