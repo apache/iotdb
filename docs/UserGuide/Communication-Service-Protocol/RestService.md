@@ -33,13 +33,13 @@ RESTful services use basic authentication. Each URL request needs to carry `'Aut
 
 #### ping
 
-Request method:`GET`
+Request method: `GET`
 
-Request path:http://ip:port/ping
+Request path: http://ip:port/ping
 
-The user name used in the example is:root，password：root
+The user name used in the example is: root, password: root
 
-Example request:
+Example request: 
 
 ```shell
 $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
@@ -70,9 +70,9 @@ Example Of user name and password authentication failure:
 
 #### query
 
-Request method:`POST`
+Request method: `POST`
 
-Request header:`application/json`
+Request header: `application/json`
 
 Request path:http://ip:port/rest/v1/query
 
@@ -113,9 +113,9 @@ Sample response:
 
 #### nonQuery
 
-Request method:`POST`
+Request method: `POST`
 
-Request header:`application/json`
+Request header: `application/json`
 
 Request path:http://ip:port/rest/v1/nonQuery
 
@@ -149,9 +149,9 @@ Sample response:
 
 #### insertTablet
 
-Request method:`POST`
+Request method: `POST`
 
-Request header:`application/json`
+Request header: `application/json`
 
 Request path:http://ip:port/rest/v1/insertTablet
 
@@ -164,7 +164,7 @@ Parameter Description:
 | dataTypes | array | yes  | The data type |
 |  values | array | yes  | Value columns, the values in each column can be `null` |
 |  isAligned | boolean | yes  | Whether to align the timeseries |
-|  deviceId | boolean | yse  | Device name |
+|  deviceId | boolean | yes  | Device name |
 
 Example request:
 ```shell
