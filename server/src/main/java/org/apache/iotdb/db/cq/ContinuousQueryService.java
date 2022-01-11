@@ -22,7 +22,6 @@ package org.apache.iotdb.db.cq;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
-import org.apache.iotdb.db.exception.ShutdownException;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
@@ -43,38 +42,17 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ContinuousQueryService implements IService {
 
-  private static long CHECK_INTERVAL =
-      IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
+  private static final Logger LOGGER = LoggerFactory.getLogger(ContinuousQueryService.class);
 
-  private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryService.class);
+  private static final ContinuousQueryTaskPoolManager TASK_POOL_MANAGER =
+      ContinuousQueryTaskPoolManager.getInstance();
+  private static final long TASK_SUBMIT_CHECK_INTERVAL =
+      IoTDBDescriptor.getInstance().getConfig().getContinuousQueryMinimumEveryInterval() / 2;
+  private ScheduledExecutorService cqTasksSubmitThread;
 
   private final ConcurrentHashMap<String, CreateContinuousQueryPlan> continuousQueryPlans =
       new ConcurrentHashMap<>();
-
   private final ConcurrentHashMap<String, Long> nextExecutionTimestamps = new ConcurrentHashMap<>();
-
-  private final ReentrantLock registrationLock = new ReentrantLock();
-
-  private static final ContinuousQueryService INSTANCE = new ContinuousQueryService();
-
-  private ScheduledExecutorService checkThread;
-
-  protected static final ContinuousQueryTaskPoolManager TASK_POOL_MANAGER =
-      ContinuousQueryTaskPoolManager.getInstance();
-
-  private ContinuousQueryService() {}
-
-  public static ContinuousQueryService getInstance() {
-    return INSTANCE;
-  }
-
-  public void acquireRegistrationLock() {
-    registrationLock.lock();
-  }
-
-  public void releaseRegistrationLock() {
-    registrationLock.unlock();
-  }
 
   @Override
   public ServiceType getID() {
@@ -83,7 +61,6 @@ public class ContinuousQueryService implements IService {
 
   @Override
   public void start() {
-
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
       long durationFromCreation = DatetimeUtils.currentTime() - plan.getCreationTimestamp();
       long nextExecutionTimestamp =
@@ -94,34 +71,16 @@ public class ContinuousQueryService implements IService {
       nextExecutionTimestamps.put(plan.getContinuousQueryName(), nextExecutionTimestamp);
     }
 
-    checkThread = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Check");
-    checkThread.scheduleAtFixedRate(
+    cqTasksSubmitThread =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("CQ-Task-Submit-Thread");
+    cqTasksSubmitThread.scheduleAtFixedRate(
         this::checkAndSubmitTasks,
         0,
-        CHECK_INTERVAL,
+        TASK_SUBMIT_CHECK_INTERVAL,
         DatetimeUtils.timestampPrecisionStringToTimeUnit(
             IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
 
-    logger.info("Continuous query service started.");
-  }
-
-  @Override
-  public void stop() {
-    if (checkThread != null) {
-      checkThread.shutdown();
-      try {
-        checkThread.awaitTermination(600, TimeUnit.MILLISECONDS);
-      } catch (InterruptedException e) {
-        logger.warn("Check thread still doesn't exit after 60s");
-        checkThread.shutdownNow();
-        Thread.currentThread().interrupt();
-      }
-    }
-  }
-
-  @Override
-  public void shutdown(long milliseconds) throws ShutdownException {
-    stop();
+    LOGGER.info("Continuous query service started.");
   }
 
   private void checkAndSubmitTasks() {
@@ -137,20 +96,43 @@ public class ContinuousQueryService implements IService {
     }
   }
 
-  public boolean register(CreateContinuousQueryPlan plan, boolean writeLog)
+  @Override
+  public void stop() {
+    if (cqTasksSubmitThread != null) {
+      cqTasksSubmitThread.shutdown();
+      try {
+        cqTasksSubmitThread.awaitTermination(600, TimeUnit.MILLISECONDS);
+      } catch (InterruptedException e) {
+        LOGGER.warn("Check thread still doesn't exit after 60s");
+        cqTasksSubmitThread.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private final ReentrantLock registrationLock = new ReentrantLock();
+
+  public void acquireRegistrationLock() {
+    registrationLock.lock();
+  }
+
+  public void releaseRegistrationLock() {
+    registrationLock.unlock();
+  }
+
+  public boolean register(CreateContinuousQueryPlan plan, boolean shouldWriteLog)
       throws ContinuousQueryException {
-
     acquireRegistrationLock();
-
     try {
       if (continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
         throw new ContinuousQueryException(
             String.format("Continuous Query [%s] already exists", plan.getContinuousQueryName()));
       }
-      if (writeLog) {
+      if (shouldWriteLog) {
         IoTDB.metaManager.createContinuousQuery(plan);
       }
       doRegister(plan);
+      return true;
     } catch (ContinuousQueryException e) {
       throw e;
     } catch (Exception e) {
@@ -158,7 +140,6 @@ public class ContinuousQueryService implements IService {
     } finally {
       releaseRegistrationLock();
     }
-    return true;
   }
 
   private void doRegister(CreateContinuousQueryPlan plan) {
@@ -173,9 +154,7 @@ public class ContinuousQueryService implements IService {
   }
 
   public boolean deregister(DropContinuousQueryPlan plan) throws ContinuousQueryException {
-
     acquireRegistrationLock();
-
     try {
       if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
         throw new ContinuousQueryException(
@@ -183,6 +162,7 @@ public class ContinuousQueryService implements IService {
       }
       IoTDB.metaManager.dropContinuousQuery(plan);
       doDeregister(plan);
+      return true;
     } catch (ContinuousQueryException e) {
       throw e;
     } catch (Exception e) {
@@ -190,8 +170,6 @@ public class ContinuousQueryService implements IService {
     } finally {
       releaseRegistrationLock();
     }
-
-    return true;
   }
 
   private void doDeregister(DropContinuousQueryPlan plan) {
@@ -200,11 +178,8 @@ public class ContinuousQueryService implements IService {
   }
 
   public List<ShowContinuousQueriesResult> getShowContinuousQueriesResultList() {
-
     List<ShowContinuousQueriesResult> results = new ArrayList<>(continuousQueryPlans.size());
-
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
-
       results.add(
           new ShowContinuousQueriesResult(
               plan.getQuerySql(),
@@ -213,7 +188,14 @@ public class ContinuousQueryService implements IService {
               plan.getEveryInterval(),
               plan.getForInterval()));
     }
-
     return results;
+  }
+
+  private ContinuousQueryService() {}
+
+  private static final ContinuousQueryService INSTANCE = new ContinuousQueryService();
+
+  public static ContinuousQueryService getInstance() {
+    return INSTANCE;
   }
 }
