@@ -26,6 +26,8 @@ import org.apache.iotdb.cluster.client.sync.SyncDataClient;
 import org.apache.iotdb.cluster.config.ClusterConstant;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
+import org.apache.iotdb.cluster.exception.NotInSameGroupException;
+import org.apache.iotdb.cluster.exception.PartitionTableUnavailableException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.rpc.thrift.LastQueryRequest;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
@@ -190,8 +192,14 @@ public class ClusterLastQueryExecutor extends LastQueryExecutor {
     private List<Pair<Boolean, TimeValuePair>> calculateSeriesLastLocally(
         PartitionGroup group, List<PartialPath> seriesPaths, QueryContext context)
         throws StorageEngineException, QueryProcessException, IOException {
-      DataGroupMember localDataMember =
-          metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+      DataGroupMember localDataMember;
+      try {
+        localDataMember = metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+      } catch (PartitionTableUnavailableException
+          | CheckConsistencyException
+          | NotInSameGroupException e) {
+        throw new QueryProcessException(e.getMessage());
+      }
       try {
         localDataMember.syncLeaderWithConsistencyCheck(false);
       } catch (CheckConsistencyException e) {
