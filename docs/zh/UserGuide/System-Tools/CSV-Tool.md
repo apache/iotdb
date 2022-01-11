@@ -113,7 +113,7 @@ Time,Device,hardware(TEXT),status(BOOLEAN)
 
 注意，如果导出字段存在如下特殊字符:
 
-1. `,`: 需要在字符前加`\`来进行转义。
+1. `,`: 导出程序会在`,`字符前加`\`来进行转义。
 
 ## 使用import-csv.sh
 
