@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.tools;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -30,6 +31,7 @@ import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -50,6 +52,7 @@ import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TsFileSplitTool {
@@ -64,6 +67,12 @@ public class TsFileSplitTool {
    */
   private final long chunkPointNumLowerBoundInCompaction =
       IoTDBDescriptor.getInstance().getConfig().getChunkPointNumLowerBoundInCompaction();
+
+  /** Maximum index of plans executed within this TsFile. */
+  protected long maxPlanIndex = Long.MIN_VALUE;
+
+  /** Minimum index of plans executed within this TsFile. */
+  protected long minPlanIndex = Long.MAX_VALUE;
 
   public static void main(String[] args) throws IOException {
     String fileName = args[0];
@@ -92,13 +101,15 @@ public class TsFileSplitTool {
       String fileNamePrefix = filename.substring(0, filename.length() - 7).concat("-");
       int fileIndex = 0;
       TsFileIOWriter tsFileIOWriter = null;
+
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
           String deviceId = path.getDevice();
           if (devices.add(deviceId)) {
             if (tsFileIOWriter != null) {
               // seal last TsFile
-              tsFileIOWriter.endFile();
+              TsFileResource resource = endFileAndGenerateResource(tsFileIOWriter);
+              resource.close();
             }
 
             // open a new TsFile
@@ -175,6 +186,11 @@ public class TsFileSplitTool {
       }
 
       logger.info("TsFile {} is split into {} new files.", filename, devices.size());
+      if (tsFileIOWriter != null) {
+        // seal last TsFile
+        TsFileResource resource = endFileAndGenerateResource(tsFileIOWriter);
+        resource.close();
+      }
     }
   }
 
@@ -203,5 +219,29 @@ public class TsFileSplitTool {
         throw new UnSupportedDataTypeException(
             String.format("Data type %s is not supported.", dataType));
     }
+  }
+
+  private TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
+      throws IOException {
+    tsFileIOWriter.endChunkGroup();
+    tsFileIOWriter.endFile();
+
+    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
+    Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
+        tsFileIOWriter.getDeviceTimeseriesMetadataMap();
+    for (Map.Entry<String, List<TimeseriesMetadata>> entry :
+        deviceTimeseriesMetadataMap.entrySet()) {
+      String device = entry.getKey();
+      for (TimeseriesMetadata timeseriesMetaData : entry.getValue()) {
+        tsFileResource.updateStartTime(device, timeseriesMetaData.getStatistics().getStartTime());
+        tsFileResource.updateEndTime(device, timeseriesMetaData.getStatistics().getEndTime());
+      }
+    }
+    tsFileResource.setMinPlanIndex(minPlanIndex);
+    tsFileResource.setMaxPlanIndex(maxPlanIndex);
+    tsFileResource.setClosed(true);
+    tsFileResource.serialize();
+
+    return tsFileResource;
   }
 }
