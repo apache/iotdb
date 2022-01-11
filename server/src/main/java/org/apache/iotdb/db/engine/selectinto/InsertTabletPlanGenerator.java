@@ -43,6 +43,7 @@ public class InsertTabletPlanGenerator {
   private final List<String> targetMeasurementIds;
 
   private final int tabletRowLimit;
+  private final boolean isIntoPathsAligned;
 
   // the following fields are used to construct plan
   private int rowCount;
@@ -53,12 +54,15 @@ public class InsertTabletPlanGenerator {
 
   private int numberOfInitializedColumns;
 
-  public InsertTabletPlanGenerator(String targetDevice, int tabletRowLimit) {
+  public InsertTabletPlanGenerator(
+      String targetDevice, int tabletRowLimit, boolean isIntoPathsAligned) {
     this.targetDevice = targetDevice;
     queryDataSetIndexes = new ArrayList<>();
     targetMeasurementIds = new ArrayList<>();
 
     this.tabletRowLimit = tabletRowLimit;
+
+    this.isIntoPathsAligned = isIntoPathsAligned;
   }
 
   public void collectTargetPathInformation(String targetMeasurementId, int queryDataSetIndex) {
@@ -206,7 +210,7 @@ public class InsertTabletPlanGenerator {
 
     InsertTabletPlan insertTabletPlan =
         new InsertTabletPlan(new PartialPath(targetDevice), nonEmptyColumnNames);
-    insertTabletPlan.setAligned(false);
+    insertTabletPlan.setAligned(isIntoPathsAligned);
     insertTabletPlan.setRowCount(rowCount);
 
     if (countOfNonEmptyColumns != columns.length) {
