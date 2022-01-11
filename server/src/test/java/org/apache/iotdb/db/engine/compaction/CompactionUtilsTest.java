@@ -1,8 +1,27 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.AlignedPath;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -18,7 +37,8 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -56,7 +76,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         new MeasurementPath(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d1",
             "s1",
-            new UnaryMeasurementSchema("s1", TSDataType.INT64));
+            new MeasurementSchema("s1", TSDataType.INT64));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -127,7 +147,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -170,12 +190,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         PartialPath path =
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -224,7 +244,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s1",
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -260,7 +280,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s1",
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -310,7 +330,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -364,7 +384,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -448,7 +468,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -498,7 +518,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -572,7 +592,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -622,7 +642,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -675,7 +695,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 3; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -716,7 +736,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 3; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -769,7 +789,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -822,7 +842,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -886,7 +906,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -939,7 +959,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1004,7 +1024,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1062,7 +1082,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1171,7 +1191,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1234,7 +1254,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1327,7 +1347,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1387,7 +1407,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 7; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1451,7 +1471,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 3; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1492,7 +1512,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i++) {
       for (int j = 0; j < 3; j++) {
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1546,7 +1566,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         new MeasurementPath(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d1",
             "s1",
-            new UnaryMeasurementSchema("s1", TSDataType.INT64));
+            new MeasurementSchema("s1", TSDataType.INT64));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -1638,7 +1658,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -1697,7 +1717,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
             new MeasurementPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
                 "s" + j,
-                new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+                new MeasurementSchema("s" + j, TSDataType.INT64));
         IBatchReader tsFilesReader =
             new SeriesRawDataBatchReader(
                 path,
@@ -1747,6 +1767,629 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   }
 
   /**
+   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   *
+   * <p>The data of d0.s0, d0.s1, d2.s4 and d3.s4 is deleted in each file.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithAllDataDeletedInTimeseries()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    // generate mods file
+    for (int i = 0; i < unseqResources.size(); i++) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0 + PATH_SEPARATOR + "s0",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0 + PATH_SEPARATOR + "s1",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 2 + PATH_SEPARATOR + "s4",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 3 + PATH_SEPARATOR + "s4",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
+    }
+    for (int i = 0; i < seqResources.size(); i++) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0 + PATH_SEPARATOR + "s0",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 0 + PATH_SEPARATOR + "s1",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 2 + PATH_SEPARATOR + "s4",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      deleteMap.put(
+          COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + 3 + PATH_SEPARATOR + "s4",
+          new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+      CompactionFileGeneratorUtils.generateMods(deleteMap, seqResources.get(i), false);
+    }
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if ((i == 0 && j == 0) || (i == 0 && j == 1) || (i == 2 && j == 4) || (i == 3 && j == 4)) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if ((i == 0 && j == 0) || (i == 0 && j == 1) || (i == 2 && j == 4) || (i == 3 && j == 4)) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if (i < 1 && j < 4) {
+          assertEquals(1230, count);
+        } else if (i == 0) {
+          assertEquals(800, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+  }
+
+  /**
+   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   *
+   * <p>The data of d0 and d2 is deleted in each file.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithAllDataDeletedInDevice()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    // generate mods file
+    List<String> devices = new ArrayList<>();
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      measurements.add("s" + i);
+    }
+    generateModsFile(devices, measurements, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    generateModsFile(devices, measurements, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 2) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 2) {
+          assertEquals(0, count);
+        } else if (i < 2 && j < 3) {
+          assertEquals(1280, count);
+        } else if ((i == 1 && j == 4)) {
+          assertEquals(600, count);
+        } else if (i < 3) {
+          assertEquals(1200, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+  }
+
+  /**
+   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   *
+   * <p>The data of d0, d1 and d2 is deleted in each file. Data in the first target file is all
+   * deleted.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithAllDataDeletedInOneTargetFile()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    // generate mods file
+    List<String> devices = new ArrayList<>();
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      measurements.add("s" + i);
+    }
+    generateModsFile(devices, measurements, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+    generateModsFile(devices, measurements, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 1 || i == 2) {
+          assertEquals(0, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i == 0 || i == 1 || i == 2) {
+          assertEquals(0, count);
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+  }
+
+  /**
+   * Total 5 seq files and 5 unseq files, each file has different nonAligned timeseries.
+   *
+   * <p>Seq files<br>
+   * first and second file has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 350 ~ 649, value range
+   * is 0 ~ 299 and 350 ~ 649.<br>
+   * third and forth file has d0 ~ d3 and s0 ~ S4,time range is 700 ~ 999 and 1050 ~ 1349, value
+   * range is 700 ~ 999 and 1050 ~ 1349.<br>
+   *
+   * <p>UnSeq files<br>
+   * first, second and third file has d0 ~ d2 and s0 ~ s3, time range is 20 ~ 219, 250 ~ 449 and 480
+   * ~ 679, value range is 10020 ~ 10219, 10250 ~ 10449 and 10480 ~ 10679.<br>
+   * forth and fifth file has d0 and s0 ~ s4, time range is 450 ~ 549 and 550 ~ 649, value range is
+   * 20450 ~ 20549 and 20550 ~ 20649.
+   *
+   * <p>The data of d0, d1 and d2 is deleted in each seq file.
+   */
+  @Test
+  public void testCrossSpaceCompactionWithAllDataDeletedInDeviceInSeqFiles()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(4, 5, false);
+    createFiles(2, 2, 3, 300, 0, 0, 50, 50, false, true);
+    createFiles(2, 4, 5, 300, 700, 700, 50, 50, false, true);
+    createFiles(3, 3, 4, 200, 20, 10020, 30, 30, false, false);
+    createFiles(2, 1, 5, 100, 450, 20450, 0, 0, false, false);
+
+    // generate mods file
+    List<String> devices = new ArrayList<>();
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0");
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1");
+    devices.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2");
+    List<String> measurements = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      measurements.add("s" + i);
+    }
+    generateModsFile(devices, measurements, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        System.out.println(i + "," + j);
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < 1) {
+          if (j < 4) {
+            assertEquals(630, count);
+          } else {
+            assertEquals(200, count);
+          }
+        } else if (i < 3) {
+          if (j < 4) {
+            assertEquals(600, count);
+          } else {
+            assertEquals(0, count);
+          }
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+
+    for (int i = 0; i < 4; i++) {
+      for (int j = 0; j < 5; j++) {
+        System.out.println(i + "," + j);
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                targetResources,
+                new ArrayList<>(),
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            if (i == 0
+                && ((450 <= batchData.currentTime() && batchData.currentTime() < 550)
+                    || (550 <= batchData.currentTime() && batchData.currentTime() < 650))) {
+              assertEquals(batchData.currentTime() + 20000, batchData.currentValue());
+            } else if ((i < 3 && j < 4)
+                && ((20 <= batchData.currentTime() && batchData.currentTime() < 220)
+                    || (250 <= batchData.currentTime() && batchData.currentTime() < 450)
+                    || (480 <= batchData.currentTime() && batchData.currentTime() < 680))) {
+              assertEquals(batchData.currentTime() + 10000, batchData.currentValue());
+            } else {
+              assertEquals(batchData.currentTime(), batchData.currentValue());
+            }
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        if (i < 1) {
+          if (j < 4) {
+            assertEquals(630, count);
+          } else {
+            assertEquals(200, count);
+          }
+        } else if (i < 3) {
+          if (j < 4) {
+            assertEquals(600, count);
+          } else {
+            assertEquals(0, count);
+          }
+        } else {
+          assertEquals(600, count);
+        }
+      }
+    }
+  }
+
+  /**
    * Total 5 seq files and 5 unseq files, each file has the same aligned timeseries
    *
    * <p>Seq files has d0 ~ d1 and s0 ~ s2, time range is 0 ~ 99, 100 ~ 199, 200 ~ 299, 300 ~ 399 and
@@ -1764,7 +2407,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     createFiles(5, 2, 3, 50, 0, 10000, 50, 50, true, false);
 
     List<IMeasurementSchema> schemas = new ArrayList<>();
-    schemas.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s1", TSDataType.INT64));
     AlignedPath path =
         new AlignedPath(
             COMPACTION_TEST_SG + PATH_SEPARATOR + "d10000",
@@ -1866,9 +2509,8 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
         i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -1932,14 +2574,12 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
     CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
-    System.out.println("-----------------------");
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
         i++) {
       for (int j = 0; j < 5; j++) {
-        System.out.println(i + "," + j);
         List<IMeasurementSchema> schemas = new ArrayList<>();
-        schemas.add(new UnaryMeasurementSchema("s" + j, TSDataType.INT64));
+        schemas.add(new MeasurementSchema("s" + j, TSDataType.INT64));
         AlignedPath path =
             new AlignedPath(
                 COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
@@ -2000,6 +2640,25 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
           assertEquals(600, count);
         }
       }
+    }
+  }
+
+  private void generateModsFile(
+      List<String> deviceIds,
+      List<String> measurementIds,
+      List<TsFileResource> resources,
+      long startValue,
+      long endValue)
+      throws IllegalPathException, IOException {
+    for (TsFileResource resource : resources) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      for (String deviceId : deviceIds) {
+        for (String measurementId : measurementIds) {
+          deleteMap.put(
+              deviceId + PATH_SEPARATOR + measurementId, new Pair<>(startValue, endValue));
+        }
+      }
+      CompactionFileGeneratorUtils.generateMods(deleteMap, resource, false);
     }
   }
 }

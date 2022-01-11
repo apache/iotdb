@@ -1,12 +1,32 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
@@ -18,6 +38,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -25,15 +46,16 @@ import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-import org.eclipse.jetty.util.ConcurrentHashSet;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -57,80 +79,74 @@ public class CompactionUtils {
         .getQueryFileManager()
         .addUsedFilesForQuery(queryId, queryDataSource);
 
-    AbstractCompactionWriter compactionWriter = null;
-    try {
-      compactionWriter =
-          getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
-      // Todo: use iterator
-      Set<String> tsFileDevicesSet = getTsFileDevicesSet(seqFileResources, unseqFileResources);
+    List<TsFileResource> allResources = new ArrayList<>();
+    allResources.addAll(seqFileResources);
+    allResources.addAll(unseqFileResources);
+    try (AbstractCompactionWriter compactionWriter =
+            getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
+        MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
+      Set<String> tsFileDevicesSet = deviceIterator.getDevices();
 
       for (String device : tsFileDevicesSet) {
+        // calculate the read order of unseqResources
+        QueryUtils.fillOrderIndexes(queryDataSource, device, true);
+        // Todo: use iterator to get measurements
         boolean isAligned =
             ((EntityMNode) MManager.getInstance().getDeviceNode(new PartialPath(device)))
                 .isAligned();
-        // compactionWriter.startChunkGroup(device, isAligned);
         Map<String, TimeseriesMetadata> deviceMeasurementsMap =
             getDeviceMeasurementsMap(device, seqFileResources, unseqFileResources);
-        PartialPath seriesPath;
+
+        List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
         if (isAligned) {
           //  aligned
           deviceMeasurementsMap.remove("");
-          List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
           deviceMeasurementsMap.forEach(
               (measurementId, timeseriesMetadata) -> {
                 measurementSchemas.add(
-                    new UnaryMeasurementSchema(measurementId, timeseriesMetadata.getTSDataType()));
+                    new MeasurementSchema(measurementId, timeseriesMetadata.getTSDataType()));
               });
-          // compactionWriter.startMeasurement(measurementSchemas);
 
-          seriesPath =
-              new AlignedPath(
-                  device, new ArrayList<>(deviceMeasurementsMap.keySet()), measurementSchemas);
           IBatchReader dataBatchReader =
-              new SeriesRawDataBatchReader(
-                  seriesPath,
+              constructReader(
+                  device,
+                  new ArrayList<>(deviceMeasurementsMap.keySet()),
+                  measurementSchemas,
                   deviceMeasurementsMap.keySet(),
-                  TSDataType.VECTOR,
                   queryContext,
                   queryDataSource,
-                  null,
-                  null,
-                  null,
-                  true);
+                  isAligned);
+
           if (dataBatchReader.hasNextBatch()) {
-            // Todo
+            // chunkgroup is serialized only when at least one timeseries under this device has data
             compactionWriter.startChunkGroup(device, isAligned);
             compactionWriter.startMeasurement(measurementSchemas);
             writeWithReader(compactionWriter, dataBatchReader);
             compactionWriter.endMeasurement();
+            compactionWriter.endChunkGroup();
           }
         } else {
           //  nonAligned
           boolean hasStartChunkGroup = false;
           for (Map.Entry<String, TimeseriesMetadata> entry : deviceMeasurementsMap.entrySet()) {
-            List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
+            measurementSchemas.clear();
             measurementSchemas.add(
                 IoTDB.metaManager.getSeriesSchema(new PartialPath(device, entry.getKey())));
-            // compactionWriter.startMeasurement(measurementSchemas);
 
-            seriesPath =
-                new MeasurementPath(
-                    device,
-                    entry.getKey(),
-                    new UnaryMeasurementSchema(entry.getKey(), entry.getValue().getTSDataType()));
             IBatchReader dataBatchReader =
-                new SeriesRawDataBatchReader(
-                    seriesPath,
+                constructReader(
+                    device,
+                    Collections.singletonList(entry.getKey()),
+                    measurementSchemas,
                     deviceMeasurementsMap.keySet(),
-                    entry.getValue().getTSDataType(),
                     queryContext,
                     queryDataSource,
-                    null,
-                    null,
-                    null,
-                    true);
+                    isAligned);
+
             if (dataBatchReader.hasNextBatch()) {
               if (!hasStartChunkGroup) {
+                // chunkgroup is serialized only when at least one timeseries under this device has
+                // data
                 compactionWriter.startChunkGroup(device, isAligned);
                 hasStartChunkGroup = true;
               }
@@ -139,15 +155,16 @@ public class CompactionUtils {
               compactionWriter.endMeasurement();
             }
           }
+          if (hasStartChunkGroup) {
+            compactionWriter.endChunkGroup();
+          }
         }
-        compactionWriter.endChunkGroup();
       }
       compactionWriter.endFile();
       updateDeviceStartTimeAndEndTime(targetFileResources, compactionWriter);
       updatePlanIndexes(targetFileResources, seqFileResources, unseqFileResources);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
-      compactionWriter.close();
     }
   }
 
@@ -162,18 +179,26 @@ public class CompactionUtils {
     }
   }
 
-  private static Set<String> getTsFileDevicesSet(
-      List<TsFileResource> seqResources, List<TsFileResource> unseqResources) throws IOException {
-    Set<String> deviceSet = new ConcurrentHashSet<>();
-    for (TsFileResource seqResource : seqResources) {
-      deviceSet.addAll(
-          FileReaderManager.getInstance().get(seqResource.getTsFilePath(), true).getAllDevices());
+  private static IBatchReader constructReader(
+      String deviceId,
+      List<String> measurementIds,
+      List<IMeasurementSchema> measurementSchemas,
+      Set<String> allSensors,
+      QueryContext queryContext,
+      QueryDataSource queryDataSource,
+      boolean isAlign)
+      throws IllegalPathException {
+    PartialPath seriesPath;
+    TSDataType tsDataType;
+    if (isAlign) {
+      seriesPath = new AlignedPath(deviceId, measurementIds, measurementSchemas);
+      tsDataType = TSDataType.VECTOR;
+    } else {
+      seriesPath = new MeasurementPath(deviceId, measurementIds.get(0), measurementSchemas.get(0));
+      tsDataType = measurementSchemas.get(0).getType();
     }
-    for (TsFileResource unseqResource : unseqResources) {
-      deviceSet.addAll(
-          FileReaderManager.getInstance().get(unseqResource.getTsFilePath(), true).getAllDevices());
-    }
-    return deviceSet;
+    return new SeriesRawDataBatchReader(
+        seriesPath, allSensors, tsDataType, queryContext, queryDataSource, null, null, null, true);
   }
 
   private static AbstractCompactionWriter getCompactionWriter(

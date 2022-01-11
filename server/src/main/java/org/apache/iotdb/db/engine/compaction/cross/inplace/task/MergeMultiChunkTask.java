@@ -515,7 +515,7 @@ public class MergeMultiChunkTask {
       mergedChunkNum.incrementAndGet();
     }
 
-    //   points written statistics
+    // update points written statistics
     mergeContext.incTotalPointWritten((long) unclosedChunkPoint - lastUnclosedChunkPoint);
     if (minChunkPointNum > 0 && unclosedChunkPoint >= minChunkPointNum
         || unclosedChunkPoint > 0 && minChunkPointNum < 0) {

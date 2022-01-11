@@ -32,6 +32,7 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.TimeStatistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.page.TimePageWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -216,7 +217,6 @@ public class TimeChunkWriter {
    */
   public void writeAllPagesOfChunkToTsFile(TsFileIOWriter writer) throws IOException {
     if (statistics.getCount() == 0) {
-      // Todo:
       return;
     }
 

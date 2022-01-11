@@ -142,7 +142,6 @@ public class TsFileNameGenerator {
     return tsFileResource;
   }
 
-  // Todo:delete
   public static File increaseCrossCompactionCnt(File tsFile) throws IOException {
     String path = tsFile.getParent();
     TsFileName tsFileName = getTsFileName(tsFile.getName());

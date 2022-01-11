@@ -45,6 +45,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -154,10 +155,7 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = tsFile.query(queryExpression);
     long aimedTimestamp = 1480562618000L;
     while (queryDataSet.hasNext()) {
-      // System.out.println("find next!");
       RowRecord rowRecord = queryDataSet.next();
-      // System.out.println("result datum: "+rowRecord.getTimestamp()+","
-      // +rowRecord.getFields());
       Assert.assertEquals(aimedTimestamp, rowRecord.getTimestamp());
       aimedTimestamp++;
     }
@@ -221,7 +219,6 @@ public class TsFileReaderTest {
     int cnt = 0;
     while (queryDataSet.hasNext()) {
       RowRecord r = queryDataSet.next();
-      // System.out.println(r);
       cnt++;
     }
     Assert.assertEquals(10647, cnt);
@@ -343,7 +340,7 @@ public class TsFileReaderTest {
       IExpression timeFilter =
           BinaryExpression.and(
               new GlobalTimeExpression(TimeFilter.gtEq(2000)),
-              new GlobalTimeExpression(TimeFilter.ltEq(3000L)));
+              new GlobalTimeExpression(TimeFilter.ltEq(10000L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
       long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
@@ -414,9 +411,9 @@ public class TsFileReaderTest {
     try (TsFileReader tsFileReader = new TsFileReader(new TsFileSequenceReader(filePath)); ) {
       // timeseries path for query
       ArrayList<Path> paths = new ArrayList<>();
-      // paths.add(new Path("d1", "s1"));
+      paths.add(new Path("d1", "s1"));
       paths.add(new Path("d1", "s9"));
-      // paths.add(new Path("d2", "s1"));
+      paths.add(new Path("d2", "s1"));
       paths.add(new Path("d2", "s8"));
       paths.add(new Path("d9", "s8"));
 
@@ -430,7 +427,7 @@ public class TsFileReaderTest {
               new GlobalTimeExpression(TimeFilter.gtEq(1799L)),
               new GlobalTimeExpression(TimeFilter.ltEq(1900L)));
       IExpression binaryExpression = BinaryExpression.and(valueFilter, timeFilter);
-      long rowCount = queryAndPrint(paths, tsFileReader, null);
+      long rowCount = queryAndPrint(paths, tsFileReader, binaryExpression);
       Assert.assertNotEquals(0, rowCount);
     }
     TsFileGeneratorForTest.closeAlignedTsFile();
@@ -470,7 +467,7 @@ public class TsFileReaderTest {
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     long rowCount = 0;
     while (queryDataSet.hasNext()) {
-      System.out.println(queryDataSet.next());
+      // System.out.println(queryDataSet.next());
       queryDataSet.next();
       rowCount++;
     }

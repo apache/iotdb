@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -31,8 +49,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void startChunkGroup(String deviceId, boolean isAlign) throws IOException {
     this.deviceId = deviceId;
     this.isAlign = isAlign;
-    // Todo:若某个文件里的该设备的数据都被删光了，则可能出现空ChunkGroup
     for (TsFileResource resource : seqTsFileResources) {
+      // Todo:timeFileIndex cannot find device
       if (resource.isDeviceIdExist(deviceId)) {
         fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
       }
@@ -61,19 +79,16 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     seqFileIndex = 0;
   }
 
-  // Todo:现在跨空间合并可能存在目标文件里某个对齐序列全部都是空valueChunk，即该序列的TimeseriesMetadata里的statistics里标记数据为空，因此查询的时候会出现死循环，即firstTimeseriesMetadata不为null，可是在解它到ChunkMetadataList却发现起始结束时间不对
   @Override
   public void write(long timestamp, Object value) throws IOException {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
-    // 若该文件不存在该设备，则会返回Long.Min。因此此处要判断若该文件不存在该device则将seqFileIndex++即可。
     if (IoTDBDescriptor.getInstance().getConfig().getTimeIndexLevel().ordinal() == 1) {
-      // device time index
       while (timestamp > seqTsFileResources.get(seqFileIndex).getEndTime(deviceId)) {
         writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
         chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
       }
     } else {
-      // Todo
+      // Todo : if is timeFileIndex
     }
     if (checkChunkSizeAndMayOpenANewChunk()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());

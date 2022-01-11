@@ -19,9 +19,6 @@
 
 package org.apache.iotdb.db.engine.cache;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -39,6 +36,10 @@ import org.apache.iotdb.tsfile.utils.BloomFilter;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
+
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -196,13 +197,6 @@ public class TimeSeriesMetadataCache {
             TimeSeriesMetadataCacheKey k =
                 new TimeSeriesMetadataCacheKey(
                     key.filePath, key.device, metadata.getMeasurementId());
-            //            if (metadata.getStatistics().getCount() == 0) {
-            //              // an aligned timeseries may be all empty chunk after compaction, whose
-            // data count is
-            //              // 0.
-            //              lruCache.put(k, null);
-            //              continue;
-            //            }
             if (metadata.getStatistics().getCount() != 0) {
               lruCache.put(k, metadata);
             }
