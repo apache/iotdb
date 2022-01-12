@@ -104,6 +104,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -523,7 +524,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseCqSelectIntoClause(
       IoTDBSqlParser.CqSelectIntoClauseContext ctx,
       CreateContinuousQueryOperator createContinuousQueryOperator) {
-
     queryOp = new GroupByQueryOperator();
 
     parseSelectClause(ctx.selectClause());
@@ -532,12 +532,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (queryOp.getSelectComponent().getResultColumns().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple result columns.");
     }
-
     if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple series.");
     }
 
-    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), createContinuousQueryOperator);
 
     if (queryOp.isGroupByLevel()) {
       int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
@@ -551,12 +550,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
-  public void parseCqGroupByTimeClause(IoTDBSqlParser.CqGroupByTimeClauseContext ctx) {
-
+  public void parseCqGroupByTimeClause(
+      CqGroupByTimeClauseContext ctx, CreateContinuousQueryOperator createContinuousQueryOperator) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
 
-    groupByClauseComponent.setUnit(
-        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent));
+    long groupByInterval =
+        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent);
+    groupByClauseComponent.setUnit(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeInterval(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeIntervalString(ctx.DURATION_LITERAL().getText());
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
     groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
