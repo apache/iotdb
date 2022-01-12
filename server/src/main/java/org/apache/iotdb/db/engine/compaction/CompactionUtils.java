@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +61,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * This tool can be used to perform inner space or cross space compaction of aligned and non aligned
+ * timeseries . Currently, we use {@link
+ * org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils} to speed up if it is
+ * an inner space compaction.
+ */
 public class CompactionUtils {
   private static final Logger logger = LoggerFactory.getLogger("CompactionUtils");
 

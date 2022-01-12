@@ -33,6 +33,11 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 import java.io.IOException;
 import java.util.List;
 
+/**
+ * This writer is used for compaction to write data into target file. Notice that, In a cross space
+ * compaction task, each seq source file has its corresponding target file. In an inner space
+ * compaction task, there is only a target file.
+ */
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected IChunkWriter chunkWriter;
 
