@@ -89,9 +89,6 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      Operator operator = LogicalGenerator.generate(sql.getSql(), ZoneId.systemDefault());
-      PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
-
       PhysicalPlan physicalPlan =
           basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
       if (!(physicalPlan instanceof QueryPlan)) {
@@ -101,6 +98,11 @@ public class RestApiServiceImpl extends RestApiService {
                     .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
+      }
+
+      if (physicalPlan instanceof QueryPlan) {
+        Operator operator = LogicalGenerator.generate(sql.getSql(), ZoneId.systemDefault());
+        PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
       }
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
