@@ -1537,12 +1537,11 @@ public class VirtualStorageGroupProcessor {
     resource.setDeleted(true);
 
     // ensure that the file is not used by any queries
-    tsFileManager.remove(resource, isSeq);
-
-    // try to delete physical data file
     if (resource.tryWriteLock()) {
       try {
+        // try to delete physical data file
         resource.remove();
+        tsFileManager.remove(resource, isSeq);
         if (logger.isInfoEnabled()) {
           logger.info(
               "Removed a file {} before {} by ttl ({}ms)",
