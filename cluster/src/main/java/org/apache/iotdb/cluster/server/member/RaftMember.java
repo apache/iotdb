@@ -1418,7 +1418,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       return clientManager.borrowAsyncClient(node, getClientCategory());
     } catch (Exception e) {
-      logger.error("borrow async client fail", e);
+      logger.error("borrow async client of {} fail: {}", node, e.getMessage());
       return null;
     }
   }
@@ -1427,7 +1427,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       return clientManager.borrowAsyncClient(node, ClientCategory.DATA_ASYNC_APPEND_CLIENT);
     } catch (Exception e) {
-      logger.error("borrow send log async client fail", e);
+      logger.error("borrow send log async client of {} fail: {}", node, e.getMessage());
       return null;
     }
   }
@@ -1443,7 +1443,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       return clientManager.borrowSyncClient(node, getClientCategory());
     } catch (IOException e) {
-      logger.error("borrow sync client fail", e);
+      logger.error("borrow sync client of {} fail: {}", node, e.getMessage());
       return null;
     }
   }
@@ -1474,7 +1474,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       return clientManager.borrowAsyncClient(node, category);
     } catch (Exception e) {
-      logger.error("borrow async heartbeat client fail", e);
+      logger.error("borrow async heartbeat client of {} fail: {}", node, e.getMessage());
       return null;
     }
   }
@@ -1492,7 +1492,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       return clientManager.borrowSyncClient(node, category);
     } catch (IOException e) {
-      logger.error("borrow sync heartbeat client fail", e);
+      logger.error("borrow sync heartbeat client of {} fail: {}", node, e.getMessage());
       return null;
     }
   }
