@@ -81,14 +81,20 @@ public class TsFileSelfCheckTool {
     logger.info("file path: " + filename);
     TsFileSelfCheckToolReader reader = new TsFileSelfCheckToolReader(filename);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap = null;
+    long res = -1;
     try {
       timeseriesMetadataMap = getTimeseriesMetadataMapWithReader(reader);
+      res = reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
+    } catch (TsFileStatisticsMistakesException e) {
+      throw e;
     } catch (Exception e) {
       logger.error("Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
       throw new TsFileTimeseriesMetadataException(
           "Error occurred while getting all TimeseriesMetadata with offset in TsFile.");
+    } finally {
+      reader.close();
     }
-    return reader.selfCheckWithInfo(filename, fastFinish, timeseriesMetadataMap);
+    return res;
   }
 
   private class TsFileSelfCheckToolReader extends TsFileSequenceReader {

@@ -1443,6 +1443,7 @@ public class TsFileSequenceReader implements AutoCloseable {
     String message = " exists statistics mistakes at position ";
     File checkFile = FSFactoryProducer.getFSFactory().getFile(filename);
     if (!checkFile.exists()) {
+      tsFileInput.close();
       return TsFileCheckStatus.FILE_NOT_FOUND;
     }
     long fileSize = checkFile.length();

@@ -64,7 +64,6 @@ public class TsFileSelfCheckToolTest {
           .concat("0")
           .concat(File.separator)
           .concat("1-0-0-0.tsfile");
-  String sketchOut = "sketch.out";
   String device = "root.device_0";
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckToolTest.class);
@@ -168,6 +167,7 @@ public class TsFileSelfCheckToolTest {
       byte[] serialArr = bo.toByteArray();
       raf.seek(pos);
       raf.write(serialArr, 0, serialArr.length);
+      bo.close();
       raf.close();
 
       // We only modify one statistics of TimeseriesMetadata in TsFile to test the check method, so
@@ -206,6 +206,7 @@ public class TsFileSelfCheckToolTest {
     // randomly modify timeseriesMetadata region
     raf.seek(878375);
     raf.write(serialArr, 0, serialArr.length);
+    bo.close();
     raf.close();
 
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
