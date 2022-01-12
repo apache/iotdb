@@ -241,11 +241,8 @@ public class CatchUpTask implements Runnable {
   private boolean checkMatchIndex(int index)
       throws LeaderUnknownException, TException, InterruptedException {
     Log log = logs.get(index);
-    synchronized (raftMember.getTerm()) {
-      // make sure this node is still a leader
-      if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-        throw new LeaderUnknownException(raftMember.getAllNodes());
-      }
+    if (raftMember.getCharacter() != NodeCharacter.LEADER) {
+      throw new LeaderUnknownException(raftMember.getAllNodes());
     }
 
     long prevLogIndex = log.getCurrLogIndex() - 1;

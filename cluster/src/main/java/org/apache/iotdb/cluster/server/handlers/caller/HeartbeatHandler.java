@@ -65,7 +65,7 @@ public class HeartbeatHandler implements AsyncMethodCallback<HeartBeatResponse> 
       handleNormalHeartbeatResponse(resp);
     } else {
       // current leadership is invalid because the follower has a larger term
-      synchronized (localMember.getTerm()) {
+      synchronized (localMember.getLogManager()) {
         long currTerm = localMember.getTerm().get();
         if (currTerm < followerTerm) {
           logger.info(

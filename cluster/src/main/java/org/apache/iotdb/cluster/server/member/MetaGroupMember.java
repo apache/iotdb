@@ -667,22 +667,27 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     // if all nodes' ids are known, we can build the partition table
     if (!ready && allNodesIdKnown()) {
       // Notice that this should only be called once.
+      synchronized (logManager) {
+        if (!ready && allNodesIdKnown()) {
+          // When the meta raft group is established, the follower reports its node information to
+          // the
+          // leader through the first heartbeat. After the leader knows the node information of all
+          // nodes, it can replace the incomplete node information previously saved locally, and
+          // build
+          // partitionTable to send it to other followers.
+          allNodes = new PartitionGroup(idNodeMap.values());
+          if (partitionTable == null) {
+            partitionTable = new SlotPartitionTable(allNodes, thisNode);
+            logger.info("Partition table is set up");
+          }
 
-      // When the meta raft group is established, the follower reports its node information to the
-      // leader through the first heartbeat. After the leader knows the node information of all
-      // nodes, it can replace the incomplete node information previously saved locally, and build
-      // partitionTable to send it to other followers.
-      allNodes = new PartitionGroup(idNodeMap.values());
-      if (partitionTable == null) {
-        partitionTable = new SlotPartitionTable(allNodes, thisNode);
-        logger.info("Partition table is set up");
+          router = new ClusterPlanRouter(partitionTable);
+          this.coordinator.setRouter(router);
+          rebuildDataGroups();
+          logger.info("The Meta Engine is ready");
+          this.ready = true;
+        }
       }
-
-      router = new ClusterPlanRouter(partitionTable);
-      this.coordinator.setRouter(router);
-      rebuildDataGroups();
-      logger.info("The Meta Engine is ready");
-      this.ready = true;
     }
   }
 
@@ -1749,7 +1754,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
 
       // the leader is removed, start the next election ASAP
       if (oldNode.equals(leader.get()) && !oldNode.equals(thisNode)) {
-        synchronized (term) {
+        synchronized (logManager) {
           setCharacter(NodeCharacter.ELECTOR);
           setLeader(null);
         }

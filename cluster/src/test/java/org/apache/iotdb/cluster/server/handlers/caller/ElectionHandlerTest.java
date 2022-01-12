@@ -61,7 +61,7 @@ public class ElectionHandlerTest {
     AtomicInteger failingVoteCounter = new AtomicInteger(5);
     long electorTerm = 10;
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (member.getTerm()) {
+    synchronized (member.getLogManager()) {
       for (int i = 0; i < 5; i++) {
         ElectionHandler handler =
             new ElectionHandler(
@@ -120,7 +120,7 @@ public class ElectionHandlerTest {
     AtomicBoolean electionValid = new AtomicBoolean(false);
     long electorTerm = 10;
     AtomicInteger quorum = new AtomicInteger(5);
-    synchronized (member.getTerm()) {
+    synchronized (member.getLogManager()) {
       for (int i = 0; i < 3; i++) {
         ElectionHandler handler =
             new ElectionHandler(

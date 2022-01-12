@@ -50,8 +50,6 @@ public class ClientManager implements IClientManager {
   private Map<ClientCategory, GenericKeyedObjectPool<Node, Client>> syncClientPoolMap;
   private ClientPoolFactory clientPoolFactory;
 
-  private Exception createStack;
-
   /**
    * {@link ClientManager.Type#RequestForwardClient} represents the clients used to forward external
    * client requests to proper node to handle such as query, insert request.
@@ -78,8 +76,6 @@ public class ClientManager implements IClientManager {
       syncClientPoolMap = Maps.newHashMap();
       constructSyncClientMap(type);
     }
-
-    this.createStack = new Exception();
   }
 
   private void constructAsyncClientMap(Type type) {
@@ -247,5 +243,6 @@ public class ClientManager implements IClientManager {
       syncClientPoolMap.clear();
     }
     clientPoolFactory = null;
+    logger.info("ClientManager closed: {}", this);
   }
 }

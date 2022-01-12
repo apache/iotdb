@@ -144,7 +144,7 @@ public class HeartbeatThread implements Runnable {
 
   /** Send each node (except the local node) in the group of the member a heartbeat. */
   protected void sendHeartbeats() {
-    synchronized (localMember.getTerm()) {
+    synchronized (localMember.getLogManager()) {
       request.setTerm(localMember.getTerm().get());
       request.setLeader(localMember.getThisNode());
       request.setCommitLogIndex(localMember.getLogManager().getCommitLogIndex());
@@ -290,7 +290,7 @@ public class HeartbeatThread implements Runnable {
       logger.info("{}: Skip election because this node has stopped.", memberName);
       return;
     }
-    synchronized (localMember.getTerm()) {
+    synchronized (localMember.getLogManager()) {
       if (localMember.getCharacter() != NodeCharacter.ELECTOR) {
         return;
       }

@@ -369,7 +369,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    */
   public HeartBeatResponse processHeartbeatRequest(HeartBeatRequest request) {
     logger.trace("{} received a heartbeat", name);
-    synchronized (term) {
+    synchronized (logManager) {
       long thisTerm = term.get();
       long leaderTerm = request.getTerm();
       HeartBeatResponse response = new HeartBeatResponse();
@@ -452,7 +452,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       logger.debug(
           "{}: start to handle request from elector {}", name, electionRequest.getElector());
     }
-    synchronized (term) {
+    synchronized (logManager) {
       long currentTerm = term.get();
       long response =
           checkElectorTerm(currentTerm, electionRequest.getTerm(), electionRequest.getElector());
@@ -625,7 +625,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
   public void setLeader(Node leader) {
     if (!Objects.equals(leader, this.leader.get())) {
-      synchronized (term) {
+      synchronized (logManager) {
         if (ClusterConstant.EMPTY_NODE.equals(leader) || leader == null) {
           logger.info("{} has been set to null in term {}", getName(), term.get());
         } else if (!Objects.equals(leader, this.thisNode)) {
@@ -1654,7 +1654,7 @@ public abstract class RaftMember implements RaftMemberMBean {
    *     elector.
    */
   public void stepDown(long newTerm, boolean fromLeader) {
-    synchronized (term) {
+    synchronized (logManager) {
       long currTerm = term.get();
       // confirm that the heartbeat of the new leader hasn't come
       if (currTerm < newTerm) {
@@ -2071,7 +2071,7 @@ public abstract class RaftMember implements RaftMemberMBean {
   private long checkRequestTerm(long leaderTerm, Node leader) {
     long localTerm;
 
-    synchronized (term) {
+    synchronized (logManager) {
       // if the request comes before the heartbeat arrives, the local term may be smaller than the
       // leader term
       localTerm = term.get();

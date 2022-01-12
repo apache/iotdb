@@ -78,7 +78,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   public void onComplete(Long resp) {
     long voterResp = resp;
     String result = "fail";
-    synchronized (raftMember.getTerm()) {
+    synchronized (raftMember.getLogManager()) {
       if (terminated.get()) {
         // a voter has rejected this election, which means the term or the log id falls behind
         // this node is not able to be the leader
@@ -156,7 +156,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
   private void onFail() {
     int failingVoteRemaining = failingVoteCounter.decrementAndGet();
     if (failingVoteRemaining <= 0) {
-      synchronized (raftMember.getTerm()) {
+      synchronized (raftMember.getLogManager()) {
         // wake up heartbeat thread to start the next election
         raftMember.getTerm().notifyAll();
       }

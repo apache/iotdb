@@ -331,10 +331,7 @@ public class LogDispatcher {
       }
       request.setLeader(member.getThisNode());
       request.setLeaderCommit(member.getLogManager().getCommitLogIndex());
-
-      synchronized (member.getTerm()) {
-        request.setTerm(member.getTerm().get());
-      }
+      request.setTerm(member.getTerm().get());
 
       request.setEntries(logList);
       // set index for raft

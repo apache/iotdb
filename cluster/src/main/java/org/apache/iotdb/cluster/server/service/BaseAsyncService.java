@@ -91,7 +91,7 @@ public abstract class BaseAsyncService implements RaftService.AsyncIface {
     long commitIndex;
     long commitTerm;
     long curTerm;
-    synchronized (member.getTerm()) {
+    synchronized (member.getLogManager()) {
       commitIndex = member.getLogManager().getCommitLogIndex();
       commitTerm = member.getLogManager().getCommitLogTerm();
       curTerm = member.getTerm().get();

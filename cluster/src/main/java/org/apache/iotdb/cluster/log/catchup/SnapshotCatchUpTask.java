@@ -72,11 +72,9 @@ public class SnapshotCatchUpTask extends LogCatchUpTask implements Callable<Bool
     }
     request.setSnapshotBytes(data);
 
-    synchronized (raftMember.getTerm()) {
-      // make sure this node is still a leader
-      if (raftMember.getCharacter() != NodeCharacter.LEADER) {
-        throw new LeaderUnknownException(raftMember.getAllNodes());
-      }
+    // make sure this node is still a leader
+    if (raftMember.getCharacter() != NodeCharacter.LEADER) {
+      throw new LeaderUnknownException(raftMember.getAllNodes());
     }
 
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
