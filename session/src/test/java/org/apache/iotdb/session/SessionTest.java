@@ -497,8 +497,16 @@ public class SessionTest {
     Template template = new Template("emptyTemplate");
     session.createSchemaTemplate(template);
 
-    session.addAlignedMeasurementInTemplate(
+    session.addUnalignedMeasurementInTemplate(
         "emptyTemplate", "speed", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+    try {
+      session.addAlignedMeasurementInTemplate(
+          "emptyTemplate", "speed2", TSDataType.FLOAT, TSEncoding.GORILLA, CompressionType.SNAPPY);
+      fail();
+    } catch (Exception e) {
+      assertEquals(
+          "315:  is not a legal path, because path already exists but not aligned", e.getMessage());
+    }
   }
 
   @Test
