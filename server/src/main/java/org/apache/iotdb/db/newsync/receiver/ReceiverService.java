@@ -152,7 +152,10 @@ public class ReceiverService implements IService {
   /** IService * */
   @Override
   public void start() throws StartupException {
-    ReceiverManager.getInstance().init();
+    receiverManager.init();
+    if(receiverManager.isPipeServerEnable()){
+      // TODO: start collector
+    }
   }
 
   @Override
