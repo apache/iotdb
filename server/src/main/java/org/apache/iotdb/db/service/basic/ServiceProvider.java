@@ -79,11 +79,11 @@ public abstract class ServiceProvider {
 
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  private final Planner processor;
+  private final Planner planner;
   protected final IPlanExecutor executor;
 
-  public Planner getProcessor() {
-    return processor;
+  public Planner getPlanner() {
+    return planner;
   }
 
   public IPlanExecutor getExecutor() {
@@ -91,7 +91,7 @@ public abstract class ServiceProvider {
   }
 
   public ServiceProvider(PlanExecutor executor) throws QueryProcessException {
-    processor = new Planner();
+    planner = new Planner();
     this.executor = executor;
   }
 
@@ -256,9 +256,5 @@ public abstract class ServiceProvider {
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
-  }
-
-  public Planner getPlanner() {
-    return processor;
   }
 }

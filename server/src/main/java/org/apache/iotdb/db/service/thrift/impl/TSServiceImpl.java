@@ -445,7 +445,7 @@ public class TSServiceImpl implements TSIService.Iface {
       try {
         PhysicalPlan physicalPlan =
             serviceProvider
-                .getProcessor()
+                .getPlanner()
                 .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
         if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
@@ -546,7 +546,7 @@ public class TSServiceImpl implements TSIService.Iface {
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
-              .getProcessor()
+              .getPlanner()
               .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
 
       if (physicalPlan.isQuery()) {
@@ -595,7 +595,7 @@ public class TSServiceImpl implements TSIService.Iface {
       String statement = req.getStatement();
       PhysicalPlan physicalPlan =
           serviceProvider
-              .getProcessor()
+              .getPlanner()
               .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
 
       if (physicalPlan.isQuery()) {
@@ -640,7 +640,7 @@ public class TSServiceImpl implements TSIService.Iface {
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
-              .getProcessor()
+              .getPlanner()
               .rawDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
 
       if (physicalPlan.isQuery()) {
@@ -683,7 +683,7 @@ public class TSServiceImpl implements TSIService.Iface {
       long startTime = System.currentTimeMillis();
       PhysicalPlan physicalPlan =
           serviceProvider
-              .getProcessor()
+              .getPlanner()
               .lastDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
 
       if (physicalPlan.isQuery()) {
@@ -1032,7 +1032,7 @@ public class TSServiceImpl implements TSIService.Iface {
     try {
       PhysicalPlan physicalPlan =
           serviceProvider
-              .getProcessor()
+              .getPlanner()
               .parseSQLToPhysicalPlan(req.statement, SESSION_MANAGER.getZoneId(req.sessionId));
       return physicalPlan.isQuery()
           ? RpcUtils.getTSExecuteStatementResp(

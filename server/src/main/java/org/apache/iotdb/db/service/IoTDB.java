@@ -146,8 +146,10 @@ public class IoTDB implements IoTDBMBean {
     }
 
     initProtocols();
-    // in cluster mode, InfluxDBMManager has init.
-    if (!isClusterMode()) {
+    // in cluster mode, InfluxDBMManager has been initialized, so there is no need to init again to
+    // avoid wasting time.
+    if (!isClusterMode()
+        && IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
       initInfluxDBMManager();
     }
 

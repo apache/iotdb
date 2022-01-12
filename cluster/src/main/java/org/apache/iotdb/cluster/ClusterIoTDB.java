@@ -403,7 +403,10 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
-    IoTDB.initInfluxDBMManager();
+    // init influxDB MManager
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      IoTDB.initInfluxDBMManager();
+    }
   }
 
   /** Be added to the cluster by seed nodes */

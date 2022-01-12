@@ -51,7 +51,7 @@ public class RestApiServiceImpl extends RestApiService {
 
   public RestApiServiceImpl() throws QueryProcessException {
     this.authorizationHandler = new AuthorizationHandler(serviceProvider);
-    planner = serviceProvider.getProcessor();
+    planner = serviceProvider.getPlanner();
   }
 
   @Override

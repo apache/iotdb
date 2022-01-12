@@ -67,7 +67,7 @@ public class InfluxDBMetaManager {
   private InfluxDBMetaManager() {
     serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
-    planner = serviceProvider.getProcessor();
+    planner = serviceProvider.getPlanner();
   }
 
   public void recover() {
