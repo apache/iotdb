@@ -118,7 +118,7 @@ public abstract class MetricService {
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
   public void start(ReporterType reporter) {
-    if (!isEnableMetric) {
+    if (!isEnable()) {
       return;
     }
     compositeReporter.start(reporter);
@@ -126,7 +126,7 @@ public abstract class MetricService {
 
   /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
   public void stop(ReporterType reporter) {
-    if (!isEnableMetric) {
+    if (!isEnable()) {
       return;
     }
     compositeReporter.stop(reporter);

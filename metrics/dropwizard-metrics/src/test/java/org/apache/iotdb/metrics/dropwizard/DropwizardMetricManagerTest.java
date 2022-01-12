@@ -45,6 +45,7 @@ public class DropwizardMetricManagerTest {
 
   @BeforeClass
   public static void init() {
+    metricConfig.setEnableMetric(true);
     metricConfig.setMonitorType(MonitorType.dropwizard);
     metricConfig.setPredefinedMetrics(new ArrayList<>());
     metricService.startService();

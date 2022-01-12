@@ -49,7 +49,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   @Override
   public void start() throws StartupException {
     try {
-      if (isEnableMetric) {
+      if (isEnable()) {
         logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
@@ -63,7 +63,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
 
   @Override
   public void stop() {
-    if (isEnableMetric) {
+    if (isEnable()) {
       logger.info("Stop metric Service.");
       stopService();
       JMXService.deregisterMBean(mbeanName);

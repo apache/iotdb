@@ -45,6 +45,7 @@ public class MicrometerMetricManagerTest {
 
   @BeforeClass
   public static void init() {
+    metricConfig.setEnableMetric(true);
     metricConfig.setMonitorType(MonitorType.micrometer);
     metricService.startService();
     metricManager = metricService.getMetricManager();
