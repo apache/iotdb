@@ -400,7 +400,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     int retry = DEFAULT_JOIN_RETRY;
     while (retry > 0) {
       if (tryJoinCluster()) {
-        break;
+        return;
       }
       // start the next try
       retry--;
