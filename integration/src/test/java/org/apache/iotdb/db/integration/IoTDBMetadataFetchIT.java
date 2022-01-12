@@ -65,11 +65,13 @@ public class IoTDBMetadataFetchIT {
       String[] insertSqls =
           new String[] {
             "SET STORAGE GROUP TO root.ln.wf01.wt01",
+            "SET STORAGE GROUP TO root.ln.wf01.wt02",
             "SET STORAGE GROUP TO root.ln1.wf01.wt01",
             "SET STORAGE GROUP TO root.ln2.wf01.wt01",
             "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
                 + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+            "CREATE ALIGNED TIMESERIES root.ln.wf01.wt02(s1 INT32, s2 DOUBLE)",
             "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
             "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
                 + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
@@ -121,7 +123,9 @@ public class IoTDBMetadataFetchIT {
             new HashSet<>(
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,")),
             new HashSet<>(
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
@@ -130,6 +134,8 @@ public class IoTDBMetadataFetchIT {
                 Arrays.asList(
                     "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
                     "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
+                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,",
                     "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
                     "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
                     "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
@@ -178,8 +184,12 @@ public class IoTDBMetadataFetchIT {
       Set<String>[] standards =
           new Set[] {
             new HashSet<>(
-                Arrays.asList("root.ln.wf01.wt01,", "root.ln1.wf01.wt01,", "root.ln2.wf01.wt01,")),
-            new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,")),
+                Arrays.asList(
+                    "root.ln.wf01.wt01,",
+                    "root.ln.wf01.wt02,",
+                    "root.ln1.wf01.wt01,",
+                    "root.ln2.wf01.wt01,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
             new HashSet<>()
           };
 
@@ -257,7 +267,10 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,root.ln.wf01.wt01,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,",
+                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,")),
             new HashSet<>()
           };
 
@@ -275,6 +288,7 @@ public class IoTDBMetadataFetchIT {
                   builder.append(resultSet.getString(i)).append(",");
                 }
                 String string = builder.toString();
+                System.out.println(string);
                 Assert.assertTrue(standard.contains(string));
                 standard.remove(string);
               }
@@ -298,7 +312,8 @@ public class IoTDBMetadataFetchIT {
           new String[] {"show devices root.ln.**", "show devices root.ln.wf01.wt01.temperature"};
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Collections.singletonList("root.ln.wf01.wt01,")), new HashSet<>()
+            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+            new HashSet<>()
           };
 
       for (int n = 0; n < sqls.length; n++) {
@@ -401,7 +416,7 @@ public class IoTDBMetadataFetchIT {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
-      String[] standards = new String[] {"2,\n", "6,\n"};
+      String[] standards = new String[] {"4,\n", "8,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -439,7 +454,7 @@ public class IoTDBMetadataFetchIT {
             "COUNT DEVICES",
             "COUNT DEVICES root.ln.wf01.wt01.temperature"
           };
-      String[] standards = new String[] {"1,\n", "3,\n", "0,\n"};
+      String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -477,7 +492,7 @@ public class IoTDBMetadataFetchIT {
             "count storage group",
             "count storage group root.ln.wf01.wt01.status"
           };
-      String[] standards = new String[] {"1,\n", "3,\n", "0,\n"};
+      String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -517,10 +532,13 @@ public class IoTDBMetadataFetchIT {
           };
       Set<String>[] standards =
           new Set[] {
-            new HashSet<>(Arrays.asList("root.ln,2,", "root.ln1,2,", "root.ln2,2,")),
+            new HashSet<>(Arrays.asList("root.ln,4,", "root.ln1,2,", "root.ln2,2,")),
             new HashSet<>(
                 Arrays.asList(
-                    "root.ln.wf01.wt01,2,", "root.ln1.wf01.wt01,2,", "root.ln2.wf01.wt01,2,")),
+                    "root.ln.wf01.wt01,2,",
+                    "root.ln.wf01.wt02,2,",
+                    "root.ln1.wf01.wt01,2,",
+                    "root.ln2.wf01.wt01,2,")),
             new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
           };
       for (int n = 0; n < sqls.length; n++) {
@@ -560,7 +578,7 @@ public class IoTDBMetadataFetchIT {
             "COUNT NODES root.ln.wf01.* level=3",
             "COUNT NODES root.ln.wf01.* level=4"
           };
-      String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "1,\n", "0,\n"};
+      String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];
@@ -593,8 +611,7 @@ public class IoTDBMetadataFetchIT {
     String standard =
         "===  Timeseries Tree  ===\n"
             + "\n"
-            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
-
+            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt02\":{\"s1\":{\"DataType\":\"INT32\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"},\"s2\":{\"DataType\":\"DOUBLE\",\"Encoding\":\"GORILLA\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"}},\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
     // TODO Remove the constant json String.
     // Do not depends on the sequence of property in json string if you do not
     // explictly mark the sequence, when we use jackson, the json result may change again
