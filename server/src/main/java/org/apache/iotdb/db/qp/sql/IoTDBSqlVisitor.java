@@ -1387,8 +1387,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseTimeInterval(
       IoTDBSqlParser.TimeIntervalContext timeInterval,
       GroupByClauseComponent groupByClauseComponent) {
-    long startTime = parseTimeValue(timeInterval.timeValue(0));
-    long endTime = parseTimeValue(timeInterval.timeValue(1));
+    long currentTime = DatetimeUtils.currentTime();
+    long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
+    long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
     groupByClauseComponent.setEndTime(endTime);
     if (startTime >= endTime) {
@@ -1590,7 +1591,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           throw new SQLParserException(
               "the measurementList's size is not consistent with the valueList's size");
         }
-        timestamp = parseTimeValue(insertMultiValues.get(i).timeValue());
+        timestamp =
+            parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
       } else {
         if (!isTimeDefault) {
           throw new SQLParserException(
@@ -2227,8 +2229,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return time;
   }
 
-  private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx) {
-    long currentTime = DatetimeUtils.currentTime();
+  private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
     if (ctx.INTEGER_LITERAL() != null) {
       return Long.parseLong(ctx.INTEGER_LITERAL().getText());
     } else if (ctx.dateExpression() != null) {
