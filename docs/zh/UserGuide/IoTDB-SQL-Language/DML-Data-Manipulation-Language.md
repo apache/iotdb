@@ -77,6 +77,12 @@ Total line number = 4
 It costs 0.004s
 ```
 
+此外，我们可以省略 timestamp 列，此时系统将使用当前的系统时间作为该数据点的时间戳，示例代码如下：
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**注意：** 当一次插入多行数据时必须指定时间戳。
+
 ### 向对齐时间序列插入数据
 
 向对齐时间序列插入数据只需在SQL中增加`ALIGNED`关键词，其他类似。
