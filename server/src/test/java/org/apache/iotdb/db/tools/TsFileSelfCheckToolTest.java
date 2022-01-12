@@ -63,7 +63,7 @@ public class TsFileSelfCheckToolTest {
           .concat(File.separator)
           .concat("0")
           .concat(File.separator)
-          .concat("1-0-0-0.tsfile");
+          .concat("1-0-0-1.tsfile");
   String device = "root.device_0";
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckToolTest.class);
