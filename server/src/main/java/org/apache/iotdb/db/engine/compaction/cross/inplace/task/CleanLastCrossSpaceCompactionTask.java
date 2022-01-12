@@ -39,7 +39,7 @@ import java.util.List;
  * RecoverCrossMergeTask is an extension of MergeTask, which resumes the last merge progress by
  * scanning merge.log using LogAnalyzer and continue the unfinished merge.
  */
-public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
+public class CleanLastCrossSpaceCompactionTask extends CrossSpaceCompactionTask {
 
   private static final Logger logger =
       LoggerFactory.getLogger(CleanLastCrossSpaceCompactionTask.class);
@@ -49,9 +49,8 @@ public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
       String taskName,
-      boolean fullMerge,
       String storageGroupName) {
-    super(seqFiles, unseqFiles, storageGroupSysDir, taskName, fullMerge, storageGroupName);
+    super(seqFiles, unseqFiles, storageGroupSysDir, taskName, storageGroupName);
   }
 
   public void cleanLastCrossSpaceCompactionInfo(File logFile) throws IOException {
@@ -117,8 +116,11 @@ public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
 
   boolean moveTargetFile(File file) {
     if (file.exists()) {
+      // if the file that ends with ".merge", we need to rename it
       return file.renameTo(new File(file.getAbsolutePath().replace(MERGE_SUFFIX, "")));
     } else {
+      // check whether the file has been changed.
+      // if the file before and after the change does not exist, an exception exists
       return new File(file.getAbsolutePath().replace(MERGE_SUFFIX, "")).exists();
     }
   }
@@ -131,8 +133,10 @@ public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
 
   void progress(int isTargetFile, String fileName, List<File> mergeTmpFile, File logFile) {
     if (isTargetFile == 1) {
+      // Get all ".merge" files
       mergeTmpFile.add(new File(fileName));
     } else if (isTargetFile == 2) {
+      // move ".merge" to ".tsfile"
       for (File file : mergeTmpFile) {
         if (moveTargetFile(file)) {
           // todo add resource file?
@@ -142,11 +146,15 @@ public class CleanLastCrossSpaceCompactionTask extends CrossSpaceMergeTask {
               "The last target file '{}' cannot be reused in {}.",
               file.getAbsolutePath(),
               logFile.getAbsolutePath());
+          // if one of the files that ends with ".merge" is abnormal, it cannot be restored.
+          // in the method of cleanup(), all temporary files would be deleted.
           return;
         }
       }
       mergeTmpFile.clear();
+      // clear seqFiles and unseqFiles that have been merged
       deleteOldFile(fileName);
     }
+    // The first line is the magic string, just skip
   }
 }

@@ -19,14 +19,11 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
 
 import com.google.common.util.concurrent.RateLimiter;
 import org.junit.Test;
-
-import java.util.PriorityQueue;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -35,11 +32,12 @@ public class MergeManagerTest extends MergeTest {
 
   @Test
   public void testRateLimiter() {
-    RateLimiter compactionRateLimiter = MergeManager.getINSTANCE().getMergeWriteRateLimiter();
+    RateLimiter compactionRateLimiter =
+        CompactionTaskManager.getInstance().getMergeWriteRateLimiter();
     long startTime = System.currentTimeMillis();
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
+    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, 160 * 1024 * 1024L);
     assertTrue((System.currentTimeMillis() - startTime) <= 1000);
-    MergeManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
+    CompactionTaskManager.mergeRateLimiterAcquire(compactionRateLimiter, 16 * 1024 * 1024L);
     assertTrue((System.currentTimeMillis() - startTime) >= 9000);
   }
 
@@ -63,13 +61,13 @@ public class MergeManagerTest extends MergeTest {
     }
   }
 
-  static class FakedMainMergeTask extends CrossSpaceMergeTask {
+  static class FakedMainCompactionTask extends CrossSpaceCompactionTask {
 
     private int serialNum;
     private String progress = "0";
 
-    public FakedMainMergeTask(int serialNum) {
-      super(null, null, null, null, false, 0, null);
+    public FakedMainCompactionTask(int serialNum) {
+      super(null, null, null, null, 0, null);
       this.serialNum = serialNum;
     }
 
@@ -95,52 +93,6 @@ public class MergeManagerTest extends MergeTest {
     @Override
     public String getTaskName() {
       return "task" + serialNum;
-    }
-  }
-
-  static class FakedMergeMultiChunkTask extends MergeMultiChunkTask {
-
-    public FakedMergeMultiChunkTask() {
-      super(null, null, null, null, false, null, 0, null);
-    }
-
-    public MergeChunkHeapTask createSubTask(int serialNum) {
-      return new FakedSubMergeTask(serialNum);
-    }
-
-    class FakedSubMergeTask extends MergeChunkHeapTask {
-
-      private int serialNum;
-      private String progress = "0";
-
-      public FakedSubMergeTask(int serialNum) {
-        super(new PriorityQueue<>(), null, null, null, null, null, null, false, serialNum);
-        this.serialNum = serialNum;
-      }
-
-      @Override
-      public Void call() {
-        while (!Thread.currentThread().isInterrupted()) {
-          // wait until interrupt
-        }
-        progress = "1";
-        return null;
-      }
-
-      @Override
-      public String getStorageGroupName() {
-        return "test";
-      }
-
-      @Override
-      public String getProgress() {
-        return progress;
-      }
-
-      @Override
-      public String getTaskName() {
-        return "task" + serialNum;
-      }
     }
   }
 }

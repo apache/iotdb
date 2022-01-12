@@ -2255,12 +2255,8 @@ public class VirtualStorageGroupProcessor {
     resources.clear();
   }
 
-  /**
-   * merge file under this storage group processor
-   *
-   * @param isFullMerge whether this merge is a full merge or not
-   */
-  public void merge(boolean isFullMerge) {
+  /** merge file under this storage group processor */
+  public void merge() {
     writeLock("merge");
     try {
       executeCompaction();

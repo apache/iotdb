@@ -60,7 +60,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
-import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -104,7 +103,6 @@ import org.apache.iotdb.db.qp.physical.sys.DropTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
-import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
@@ -334,7 +332,7 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case MERGE:
       case FULL_MERGE:
-        operateMerge((MergePlan) plan);
+        operateMerge();
         return true;
       case SET_SYSTEM_MODE:
         operateSetSystemMode((SetSystemModePlan) plan);
@@ -487,12 +485,8 @@ public class PlanExecutor implements IPlanExecutor {
     return true;
   }
 
-  private void operateMerge(MergePlan plan) throws StorageEngineException {
-    if (plan.getOperatorType() == OperatorType.FULL_MERGE) {
-      StorageEngine.getInstance().mergeAll(true);
-    } else {
-      StorageEngine.getInstance().mergeAll(false);
-    }
+  private void operateMerge() throws StorageEngineException {
+    StorageEngine.getInstance().mergeAll();
   }
 
   private void operateClearCache() {

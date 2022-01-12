@@ -23,12 +23,10 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask.MergeChunkHeapTask;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 
-import com.google.common.util.concurrent.RateLimiter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +39,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -60,8 +57,6 @@ public class MergeManager implements IService, MergeManagerMBean {
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
-  private final RateLimiter mergeWriteRateLimiter = RateLimiter.create(Double.MAX_VALUE);
-
   private AtomicInteger threadCnt = new AtomicInteger();
   private ThreadPoolExecutor mergeChunkSubTaskPool;
   private ScheduledExecutorService taskCleanerThreadPool;
@@ -71,43 +66,8 @@ public class MergeManager implements IService, MergeManagerMBean {
 
   private MergeManager() {}
 
-  public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
-    return mergeWriteRateLimiter;
-  }
-
-  /** wait by throughoutMbPerSec limit to avoid continuous Write Or Read */
-  public static void mergeRateLimiterAcquire(RateLimiter limiter, long bytesLength) {
-    while (bytesLength >= Integer.MAX_VALUE) {
-      limiter.acquire(Integer.MAX_VALUE);
-      bytesLength -= Integer.MAX_VALUE;
-    }
-    if (bytesLength > 0) {
-      limiter.acquire((int) bytesLength);
-    }
-  }
-
-  private void setWriteMergeRate(final double throughoutMbPerSec) {
-    double throughout = throughoutMbPerSec * 1024.0 * 1024.0;
-    // if throughout = 0, disable rate limiting
-    if (throughout == 0) {
-      throughout = Double.MAX_VALUE;
-    }
-    if (mergeWriteRateLimiter.getRate() != throughout) {
-      mergeWriteRateLimiter.setRate(throughout);
-    }
-  }
-
   public static MergeManager getINSTANCE() {
     return INSTANCE;
-  }
-
-  public Future<Void> submitChunkSubTask(MergeChunkHeapTask task) {
-    MergeFuture future = (MergeFuture) mergeChunkSubTaskPool.submit(task);
-    storageGroupSubTasks
-        .computeIfAbsent(task.getStorageGroupName(), k -> new ConcurrentSkipListSet<>())
-        .add(future);
-    return future;
   }
 
   @Override

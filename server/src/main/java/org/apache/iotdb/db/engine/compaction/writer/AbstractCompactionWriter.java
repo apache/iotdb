@@ -18,34 +18,25 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.List;
 
-/**
- * This writer is used for compaction to write data into target file. Notice that, In a cross space
- * compaction task, each seq source file has its corresponding target file. In an inner space
- * compaction task, there is only a target file.
- */
 public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected IChunkWriter chunkWriter;
 
   protected boolean isAlign;
 
   protected String deviceId;
-
-  private final long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -97,55 +88,57 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     } else {
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
       for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
-        if (val == null) {
-          chunkWriter.write(timestamp, null, true);
-        } else {
-          TSDataType tsDataType = chunkWriter.getCurrentValueChunkType();
-          switch (tsDataType) {
-            case TEXT:
-              chunkWriter.write(timestamp, val.getBinary(), false);
-              break;
-            case DOUBLE:
-              chunkWriter.write(timestamp, val.getDouble(), false);
-              break;
-            case BOOLEAN:
-              chunkWriter.write(timestamp, val.getBoolean(), false);
-              break;
-            case INT64:
-              chunkWriter.write(timestamp, val.getLong(), false);
-              break;
-            case INT32:
-              chunkWriter.write(timestamp, val.getInt(), false);
-              break;
-            case FLOAT:
-              chunkWriter.write(timestamp, val.getFloat(), false);
-              break;
-            default:
-              throw new UnsupportedOperationException("Unknown data type " + tsDataType);
-          }
+        Object v = val == null ? null : val.getValue();
+        // if val is null, then give it a random type
+        TSDataType tsDataType = val == null ? TSDataType.TEXT : val.getDataType();
+        boolean isNull = v == null;
+        switch (tsDataType) {
+          case TEXT:
+            chunkWriter.write(timestamp, (Binary) v, isNull);
+            break;
+          case DOUBLE:
+            chunkWriter.write(timestamp, (Double) v, isNull);
+            break;
+          case BOOLEAN:
+            chunkWriter.write(timestamp, (Boolean) v, isNull);
+            break;
+          case INT64:
+            chunkWriter.write(timestamp, (Long) v, isNull);
+            break;
+          case INT32:
+            chunkWriter.write(timestamp, (Integer) v, isNull);
+            break;
+          case FLOAT:
+            chunkWriter.write(timestamp, (Float) v, isNull);
+            break;
+          default:
+            throw new UnsupportedOperationException("Unknown data type " + tsDataType);
         }
       }
       chunkWriter.write(timestamp);
     }
   }
 
-  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
-    if (checkChunkSize()) {
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriter);
-    }
-  }
-
-  private boolean checkChunkSize() {
+  protected boolean checkChunkSizeAndMayOpenANewChunk() { // Todo:
     if (chunkWriter instanceof AlignedChunkWriterImpl) {
-      return ((AlignedChunkWriterImpl) chunkWriter).checkIsChunkSizeOverThreshold(targetChunkSize);
+      if (((AlignedChunkWriterImpl) chunkWriter).getTimeChunkWriter().estimateMaxSeriesMemSize()
+          > 2 * 1024) {
+        return true;
+      }
+      for (ValueChunkWriter valueChunkWriter :
+          ((AlignedChunkWriterImpl) chunkWriter).getValueChunkWriterList()) {
+        if (valueChunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) {
+          return true;
+        }
+      }
+      return false;
     } else {
-      return chunkWriter.estimateMaxSeriesMemSize() > targetChunkSize;
+      return chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024;
     }
   }
 
   protected void writeRateLimit(long bytesLength) {
-    MergeManager.mergeRateLimiterAcquire(
-        MergeManager.getINSTANCE().getMergeWriteRateLimiter(), bytesLength);
+    CompactionTaskManager.mergeRateLimiterAcquire(
+        CompactionTaskManager.getInstance().getMergeWriteRateLimiter(), bytesLength);
   }
 }

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.inplace;
 
-import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CleanLastCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -75,7 +74,6 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
             CrossSpaceCompactionUtils.convertArrayListByResourceList(unSeqTsFileResourceList),
             storageGroupDir,
             taskName,
-            IoTDBDescriptor.getInstance().getConfig().isForceFullMerge(),
             logicalStorageGroupName);
     LOGGER.info(
         "{} a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName, taskName);

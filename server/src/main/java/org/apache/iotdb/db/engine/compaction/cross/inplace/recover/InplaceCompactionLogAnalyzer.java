@@ -21,7 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -204,7 +204,7 @@ public class InplaceCompactionLogAnalyzer {
     for (TsFileResource seqFile : resource.getSeqFiles()) {
       File mergeFile =
           SystemFileFactory.INSTANCE.getFile(
-              seqFile.getTsFilePath() + CrossSpaceMergeTask.MERGE_SUFFIX);
+              seqFile.getTsFilePath() + CrossSpaceCompactionTask.MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -287,7 +287,7 @@ public class InplaceCompactionLogAnalyzer {
         }
         fileLastPositions.remove(currFile);
         String seqFilePath =
-            currFile.getAbsolutePath().replace(CrossSpaceMergeTask.MERGE_SUFFIX, "");
+            currFile.getAbsolutePath().replace(CrossSpaceCompactionTask.MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();

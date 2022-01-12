@@ -19,10 +19,14 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
+import java.util.Arrays;
+import java.util.Collections;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +43,16 @@ import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.Inplac
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
 
 /**
- * CrossSpaceMergeTask merges given seqFiles and unseqFiles into new ones, which basically consists
- * of three steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge files 2.
- * move the merged chunks in the temp files back to the seqFiles or move the unmerged chunks in the
- * seqFiles into temp files and replace the seqFiles with the temp files. 3. remove unseqFiles
+ * CrossSpaceCompactionTask merges given seqFiles and unseqFiles into new ones, which basically
+ * consists of three steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge
+ * files 2. move the merged chunks in the temp files back to the seqFiles. 3. remove unseqFiles and
+ * seqFiles
  */
-public class CrossSpaceMergeTask implements Callable<Void> {
+public class CrossSpaceCompactionTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
-  private static final Logger logger = LoggerFactory.getLogger(CrossSpaceMergeTask.class);
+  private static final Logger logger = LoggerFactory.getLogger(CrossSpaceCompactionTask.class);
 
-  //  CrossSpaceMergeResource resource;
   List<TsFileResource> sequenceTsFileResourceList;
   List<TsFileResource> unsequenceTsFileResourceList;
   String storageGroupSysDir;
@@ -57,38 +60,33 @@ public class CrossSpaceMergeTask implements Callable<Void> {
   InplaceCompactionLogger inplaceCompactionLogger;
   int concurrentMergeSeriesNum;
   String taskName;
-  boolean fullMerge;
   States states = States.START;
 
-  CrossSpaceMergeTask(
+  CrossSpaceCompactionTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
       String taskName,
-      boolean fullMerge,
       String storageGroupName) {
     this.sequenceTsFileResourceList = seqFiles;
     this.unsequenceTsFileResourceList = unseqFiles;
     this.storageGroupSysDir = storageGroupSysDir;
     this.taskName = taskName;
-    this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = 1;
     this.storageGroupName = storageGroupName;
   }
 
-  public CrossSpaceMergeTask(
+  public CrossSpaceCompactionTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
       String taskName,
-      boolean fullMerge,
       int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.sequenceTsFileResourceList = seqFiles;
     this.unsequenceTsFileResourceList = unseqFiles;
     this.storageGroupSysDir = storageGroupSysDir;
     this.taskName = taskName;
-    this.fullMerge = fullMerge;
     this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
@@ -96,10 +94,15 @@ public class CrossSpaceMergeTask implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     try {
-      doMerge();
+      doCompaction();
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       abort();
+    } finally {
+      // to avoid repeated close, handle it uniformly in finally
+      if (inplaceCompactionLogger != null) {
+        inplaceCompactionLogger.close();
+      }
     }
     return null;
   }
@@ -109,44 +112,42 @@ public class CrossSpaceMergeTask implements Callable<Void> {
     cleanUp();
   }
 
-  void compact(
-      List<TsFileResource> sequenceTsFileResourceList,
-      List<TsFileResource> unsequenceTsFileResourceList,
-      String storageGroupName,
-      List<TsFileResource> targetTsFileResource) {
-  }
-
-  private void doMerge() throws IOException {
+  private void doCompaction() throws IOException, StorageEngineException, MetadataException {
     long startTime = System.currentTimeMillis();
 
     List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
-    for (TsFileResource tsFileResource : sequenceTsFileResourceList) {
-      targetTsfileResourceList.add(
-          new TsFileResource(TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource)));
+    List<File> targetFiles =
+        TsFileNameGenerator.getCrossCompactionTargetFile(sequenceTsFileResourceList);
+    for (File targetFile : targetFiles) {
+      targetTsfileResourceList.add(new TsFileResource(targetFile));
     }
     logger.info("{}-crossSpaceCompactionTask start.", storageGroupName);
     inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
+    // print the path of the temporary file first for priority check during recovery
     inplaceCompactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
     inplaceCompactionLogger.logFiles(sequenceTsFileResourceList, STR_SEQ_FILES);
     inplaceCompactionLogger.logFiles(unsequenceTsFileResourceList, STR_UNSEQ_FILES);
-    compact(
+    states = States.COMPACTION;
+    CompactionUtils.compact(
         sequenceTsFileResourceList,
         unsequenceTsFileResourceList,
-        storageGroupName,
-        targetTsfileResourceList);
+        targetTsfileResourceList,
+        storageGroupName);
+    // indicates that the merge is complete and needs to be cleared
+    // the result can be reused during a restart recovery
     inplaceCompactionLogger.logStringInfo(MAGIC_STRING);
 
-    for (TsFileResource tsFileResource : targetTsfileResourceList) {
-      moveToTargetFile(tsFileResource);
-    }
-    List<String> unDeletedFiles =
-        deleteOldFiles(sequenceTsFileResourceList, unsequenceTsFileResourceList);
-    if (unDeletedFiles != null && !unDeletedFiles.isEmpty()) {
+    states = States.CLEAN_UP;
+    CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
+    List<String> failedToDeleteFiles = new ArrayList<>();
+    deleteOldFiles(sequenceTsFileResourceList, failedToDeleteFiles);
+    deleteOldFiles(unsequenceTsFileResourceList, failedToDeleteFiles);
+    if (!failedToDeleteFiles.isEmpty()) {
       logger.warn(
-          "Failed to delete old files in the process of crossSpaceCompaction:" + unDeletedFiles);
+          "Failed to delete old files in the process of crossSpaceCompaction:"
+              + failedToDeleteFiles);
       throw new IOException("Delete old files failed.");
     }
-    states = States.CLEAN_UP;
     cleanUp();
     logger.info(
         "{}-crossSpaceCompactionTask Costs {} s",
@@ -154,47 +155,24 @@ public class CrossSpaceMergeTask implements Callable<Void> {
         (System.currentTimeMillis() - startTime) / 1000);
   }
 
-  List<String> deleteOldFiles(
-      List<TsFileResource> sequenceTsFileResourceList,
-      List<TsFileResource> unsequenceTsFileResourceList) {
-    List<String> failedToDeleteFileList = new ArrayList<>();
-    for (TsFileResource tsFileResource : sequenceTsFileResourceList) {
+  void deleteOldFiles(
+      List<TsFileResource> tsFileResourceList, List<String> failedToDeleteFiles) {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.getTsFile().delete()) {
-        failedToDeleteFileList.add(tsFileResource.getTsFile().getAbsolutePath());
+        failedToDeleteFiles.add(tsFileResource.getTsFile().getAbsolutePath());
       }
     }
-    for (TsFileResource tsFileResource : unsequenceTsFileResourceList) {
-      if (!tsFileResource.getTsFile().delete()) {
-        failedToDeleteFileList.add(tsFileResource.getTsFile().getAbsolutePath());
-      }
-    }
-    return failedToDeleteFileList;
-  }
-
-  void moveToTargetFile(TsFileResource targetFileResource) throws IOException {
-    File targetFile = targetFileResource.getTsFile();
-    File newFile =
-        new File(
-            targetFile
-                .getAbsolutePath()
-                .substring(0, targetFile.getAbsolutePath().lastIndexOf(MERGE_SUFFIX)));
-    FSFactoryProducer.getFSFactory().moveFile(targetFile, newFile);
-    targetFileResource.setFile(newFile);
-    targetFileResource.serialize();
-    targetFileResource.close();
   }
 
   void cleanUp() throws IOException {
     logger.info("{} is cleaning up", taskName);
-
-    if (inplaceCompactionLogger != null) {
-      inplaceCompactionLogger.close();
-    }
-
     for (TsFileResource seqFile : sequenceTsFileResourceList) {
-      File mergeFile = new File(seqFile.getTsFilePath() + MERGE_SUFFIX);
-      mergeFile.delete();
-      seqFile.setMerging(false);
+      for (File file : TsFileNameGenerator.getCrossCompactionTargetFile(
+          Collections.singletonList(seqFile))) {
+        // this file does not necessarily exist, so deletion results need not be processed
+        file.delete();
+        seqFile.setMerging(false);
+      }
     }
     for (TsFileResource unseqFile : unsequenceTsFileResourceList) {
       unseqFile.setMerging(false);
@@ -214,9 +192,8 @@ public class CrossSpaceMergeTask implements Callable<Void> {
         return "Aborted";
       case CLEAN_UP:
         return "Cleaning up";
-      case MERGE_FILES:
-      case MERGE_CHUNKS:
-        return "Merging ...";
+      case COMPACTION:
+        return "Compaction";
       case START:
       default:
         return "Just started";
@@ -229,8 +206,7 @@ public class CrossSpaceMergeTask implements Callable<Void> {
 
   enum States {
     START,
-    MERGE_CHUNKS,
-    MERGE_FILES,
+    COMPACTION,
     CLEAN_UP,
     ABORTED
   }

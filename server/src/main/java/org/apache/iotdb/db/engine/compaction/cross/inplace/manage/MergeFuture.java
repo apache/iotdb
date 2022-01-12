@@ -19,8 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.MergeMultiChunkTask.MergeChunkHeapTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -71,9 +70,9 @@ public abstract class MergeFuture extends FutureTask<Void> implements Comparable
 
   public static class MainMergeFuture extends MergeFuture {
 
-    private CrossSpaceMergeTask bindingTask;
+    private CrossSpaceCompactionTask bindingTask;
 
-    public MainMergeFuture(CrossSpaceMergeTask task) {
+    public MainMergeFuture(CrossSpaceCompactionTask task) {
       super(task);
       bindingTask = task;
     }
@@ -100,46 +99,6 @@ public abstract class MergeFuture extends FutureTask<Void> implements Comparable
         return false;
       }
       MainMergeFuture that = (MainMergeFuture) o;
-      return Objects.equals(bindingTask, that.bindingTask);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(super.hashCode(), bindingTask);
-    }
-  }
-
-  public static class SubMergeFuture extends MergeFuture {
-
-    private MergeChunkHeapTask bindingTask;
-
-    public SubMergeFuture(MergeChunkHeapTask task) {
-      super(task);
-      bindingTask = task;
-    }
-
-    @Override
-    public String getTaskName() {
-      return bindingTask.getTaskName();
-    }
-
-    @Override
-    public String getProgress() {
-      return bindingTask.getProgress();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      if (!super.equals(o)) {
-        return false;
-      }
-      SubMergeFuture that = (SubMergeFuture) o;
       return Objects.equals(bindingTask, that.bindingTask);
     }
 

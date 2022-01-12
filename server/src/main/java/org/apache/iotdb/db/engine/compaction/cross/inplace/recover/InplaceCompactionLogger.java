@@ -86,23 +86,6 @@ public class InplaceCompactionLogger {
     logStringInfo(STR_ALL_TS_END);
   }
 
-  public void logFileMergeStart(File file, long position) throws IOException {
-    logStream.write(
-        String.format(
-            "%s %d",
-            TsFileIdentifier.getFileIdentifierFromFilePath(file.getAbsolutePath()), position));
-    logStream.newLine();
-    logStream.flush();
-  }
-
-  public void logFileMergeEnd() throws IOException {
-    logStringInfo(STR_END);
-  }
-
-  public void logMergeEnd() throws IOException {
-    logStringInfo(STR_MERGE_END);
-  }
-
   public void logFiles(CrossSpaceMergeResource resource) throws IOException {
     logFiles(resource.getSeqFiles(), STR_SEQ_FILES);
     logFiles(resource.getUnseqFiles(), STR_UNSEQ_FILES);
@@ -119,10 +102,6 @@ public class InplaceCompactionLogger {
       logStream.newLine();
     }
     logStream.flush();
-  }
-
-  public void logMergeStart() throws IOException {
-    logStringInfo(STR_MERGE_START);
   }
 
   public static File[] findCrossSpaceCompactionLogs(String directory) {
