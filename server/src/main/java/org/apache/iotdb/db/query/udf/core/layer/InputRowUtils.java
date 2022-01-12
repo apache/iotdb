@@ -48,7 +48,7 @@ public class InputRowUtils {
    * @param row the returned row by calling {@link IUDFInputDataSet#nextRowInObjects()}
    * @return true if any row field is null.
    */
-  public static boolean hasAnyNull(Object[] row) {
+  public static boolean hasNullField(Object[] row) {
     if (row == null) {
       return true;
     }

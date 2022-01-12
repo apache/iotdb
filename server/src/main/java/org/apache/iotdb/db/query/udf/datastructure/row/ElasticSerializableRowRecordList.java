@@ -154,18 +154,18 @@ public class ElasticSerializableRowRecordList {
   }
 
   public void put(Object[] rowRecord) throws IOException, QueryProcessException {
-    put(rowRecord, InputRowUtils.hasAnyNull(rowRecord));
+    put(rowRecord, InputRowUtils.hasNullField(rowRecord));
   }
 
   /**
    * Put the row in the list with an any-field-null marker, this method is faster than calling put
    * directly
    */
-  private void put(Object[] rowRecord, boolean fieldsHasAnyNull)
+  private void put(Object[] rowRecord, boolean hasNullField)
       throws IOException, QueryProcessException {
     checkExpansion();
     cache.get(size / internalRowRecordListCapacity).put(rowRecord);
-    if (fieldsHasAnyNull) {
+    if (hasNullField) {
       bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
     }
     ++size;

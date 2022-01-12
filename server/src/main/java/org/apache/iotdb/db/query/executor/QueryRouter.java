@@ -181,11 +181,7 @@ public class QueryRouter implements IQueryRouter {
       innerQueryDataSet = groupBy((GroupByTimePlan) innerPlan, context);
       // In GroupByTimePlan, we think it is better to keep the windows with null values, so we set
       // keepNull to true.
-      // However, if user explicitly set 'without null any' or 'without null all'
-      if (!(udafPlan.isWithoutAnyNull()
-          || (udafPlan.getResultColumns().size() == 1 && udafPlan.isWithoutAllNull()))) {
-        keepNull = true;
-      }
+      keepNull = true;
     } else {
       innerQueryDataSet = aggregate(innerPlan, context);
     }

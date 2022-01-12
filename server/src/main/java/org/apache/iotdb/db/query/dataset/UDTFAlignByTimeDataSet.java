@@ -116,7 +116,28 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
         && (rowLimit <= 0 || alreadyReturnedRowNum < rowLimit)
         && !timeHeap.isEmpty()) {
 
+      int nullFieldsCnt = 0;
       long minTime = timeHeap.pollFirst();
+
+      for (LayerPointReader reader : transformers) {
+        if (!reader.next() || reader.currentTime() != minTime) {
+          nullFieldsCnt++;
+          continue;
+        }
+        if (reader.isCurrentNull()) {
+          nullFieldsCnt++;
+        }
+      }
+      // In method QueryDataSetUtils.convertQueryDataSetByFetchSize(), we fetch a row and can easily
+      // use rowRecord.isAllNull() or rowRecord.hasNullField() to judge whether this row should be
+      // kept with clause 'with null'.
+      // Here we get a timestamp first and then construct the row column by column.
+      // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
+      // or nullFieldsCnt == columnNum and withoutAllNull == true
+      if ((nullFieldsCnt == columnsNum && withoutAllNull)
+          || (nullFieldsCnt > 0 && withoutAnyNull)) {
+        continue;
+      }
       if (rowOffset == 0) {
         timeBAOS.write(BytesUtils.longToBytes(minTime));
       }
