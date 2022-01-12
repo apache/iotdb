@@ -273,14 +273,6 @@ public class SingleSeriesCompactionExecutor {
     if (chunkMetadata.getEndTime() > maxEndTimestamp) {
       maxEndTimestamp = chunkMetadata.getEndTime();
     }
-    try {
-      Thread.sleep(
-          (getChunkSize(chunk) / 1024)
-              / (IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec()
-                  * 1024L));
-    } catch (Exception e) {
-
-    }
     fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
@@ -289,14 +281,6 @@ public class SingleSeriesCompactionExecutor {
         || chunkWriter.estimateMaxSeriesMemSize() >= targetChunkSize) {
       MergeManager.mergeRateLimiterAcquire(
           compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-      try {
-        Thread.sleep(
-            (chunkWriter.estimateMaxSeriesMemSize() / 1024)
-                / (IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec()
-                    * 1024L));
-      } catch (Exception e) {
-
-      }
       chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
     }
@@ -315,14 +299,6 @@ public class SingleSeriesCompactionExecutor {
     MergeManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
     long size = chunkWriter.estimateMaxSeriesMemSize();
-    try {
-      Thread.sleep(
-          (size / 1024)
-              / (IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec()
-                  * 1024L));
-    } catch (Exception e) {
-
-    }
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }
