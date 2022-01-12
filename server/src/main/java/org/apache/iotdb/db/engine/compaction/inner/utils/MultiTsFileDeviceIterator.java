@@ -33,7 +33,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -78,6 +77,11 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     return hasNext;
   }
 
+  /**
+   * Return next device that is minimal in lexicographical order
+   *
+   * @return Pair of device full path and whether this device is aligned
+   */
   public Pair<String, Boolean> nextDevice() {
     List<TsFileResource> toBeRemovedResources = new LinkedList<>();
     Pair<String, Boolean> minDevice = null;
@@ -98,23 +102,42 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
     }
     currentDevice = minDevice;
+    // remove the iterator with no device remaining
     for (TsFileResource resource : toBeRemovedResources) {
       deviceIteratorMap.remove(resource);
     }
     return currentDevice;
   }
 
+  /**
+   * return MeasurementIterator, who iterates the measurements of not aligned device
+   *
+   * @param device the full path of the device to be iterated
+   * @return
+   * @throws IOException
+   */
   public MeasurementIterator iterateNotAlignedSeries(String device) throws IOException {
     return new MeasurementIterator(readerMap, device);
   }
 
+  /**
+   * return a list of the tsfile reader and its aligned chunk metadata list for the aligned device
+   * which this iterator is visiting. If there is any modification for this device, it will be
+   * applied to the AlignedChunkMetadata, so that the user of this function can reader Chunk
+   * directly using the reader and the chunkMetadata returned. Notice, if the TsFile corresponding
+   * to a TsFileSequenceReader does not contain the current device, the TsFileSequenceReader will
+   * not appear in the return list.
+   *
+   * @return a list of pair(TsFileSequenceReader, the list of AlignedChunkMetadata for current
+   *     device)
+   * @throws IOException
+   */
   public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException, IllegalPathException {
+      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
     if (currentDevice == null || !currentDevice.right) {
       return null;
     }
 
-    PartialPath pathForCurrDevice = new PartialPath(currentDevice.left);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
@@ -128,31 +151,49 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(currentDevice.left);
-      ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
-      Collection<Modification> modifications = modificationFile.getModifications();
-      AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
-      List<IChunkMetadata> valueChunkMetadataList =
-          alignedChunkMetadata.getValueChunkMetadataList();
-      List<List<Modification>> modificationForCurDevice =
-          new ArrayList<>(valueChunkMetadataList.size());
-      for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-        modificationForCurDevice.add(new ArrayList<>());
-      }
-      for (Modification modification : modifications) {
-        if (modification.getDevice().equals(currentDevice.left)) {
-          for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
-            IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
-            if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
-              modificationForCurDevice.get(i).add(modification);
-            }
-          }
-        }
-      }
-      QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, modificationForCurDevice);
+      applyModificationForAlignedChunkMetadataList(tsFileResource, alignedChunkMetadataList);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
 
     return readerAndChunkMetadataList;
+  }
+
+  /**
+   * collect the modification for current device and apply it to the alignedChunkMetadataList
+   *
+   * @param tsFileResource
+   * @param alignedChunkMetadataList
+   */
+  private void applyModificationForAlignedChunkMetadataList(
+      TsFileResource tsFileResource, List<AlignedChunkMetadata> alignedChunkMetadataList) {
+    ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
+    if (!modificationFile.exists()) {
+      return;
+    }
+    List<Modification> modifications =
+        modificationCache.computeIfAbsent(
+            tsFileResource, r -> new ArrayList<>(modificationFile.getModifications()));
+
+    // construct the input params List<List<Modification>> for QueryUtils.modifyAlignedChunkMetaData
+    AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
+    List<List<Modification>> modificationForCurDevice = new ArrayList<>();
+    for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+      modificationForCurDevice.add(new ArrayList<>());
+    }
+
+    for (Modification modification : modifications) {
+      if (modification.getDevice().equals(currentDevice.left)) {
+        for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+          IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
+          if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+            modificationForCurDevice.get(i).add(modification);
+          }
+        }
+      }
+    }
+
+    QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, modificationForCurDevice);
   }
 
   @Override

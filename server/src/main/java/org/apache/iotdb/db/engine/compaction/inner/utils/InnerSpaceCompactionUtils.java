@@ -75,7 +75,7 @@ public class InnerSpaceCompactionUtils {
         boolean aligned = deviceInfo.right;
         writer.startChunkGroup(device);
         if (aligned) {
-          compactAlignedSeries(device, tsFileResources, targetResource, writer, deviceIterator);
+          compactAlignedSeries(device, targetResource, writer, deviceIterator);
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
         }
@@ -117,7 +117,6 @@ public class InnerSpaceCompactionUtils {
 
   private static void compactAlignedSeries(
       String device,
-      List<TsFileResource> resources,
       TsFileResource targetResource,
       TsFileIOWriter writer,
       MultiTsFileDeviceIterator deviceIterator)
@@ -126,7 +125,7 @@ public class InnerSpaceCompactionUtils {
         deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
     AlignedSeriesCompactionExecutor compactionExecutor =
         new AlignedSeriesCompactionExecutor(
-            device, resources, targetResource, readerAndChunkMetadataList, writer);
+            device, targetResource, readerAndChunkMetadataList, writer);
     compactionExecutor.execute();
   }
 
