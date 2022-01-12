@@ -120,11 +120,7 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
       long minTime = timeHeap.pollFirst();
 
       for (LayerPointReader reader : transformers) {
-        if (!reader.next() || reader.currentTime() != minTime) {
-          nullFieldsCnt++;
-          continue;
-        }
-        if (reader.isCurrentNull()) {
+        if (!reader.next() || reader.currentTime() != minTime || reader.isCurrentNull()) {
           nullFieldsCnt++;
         }
       }
