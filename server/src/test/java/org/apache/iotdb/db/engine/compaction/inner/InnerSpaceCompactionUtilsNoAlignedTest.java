@@ -65,7 +65,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
   private final String[] measurements = new String[] {"s0", "s1", "s2", "s3", "s4"};
   private Set<String> fullPathSet = new HashSet<>();
   private MeasurementSchema[] schemas = new MeasurementSchema[measurements.length];
-  private List<String> paths = new ArrayList<>();
+  private List<PartialPath> paths = new ArrayList<>();
   private List<IMeasurementSchema> schemaList = new ArrayList<>();
 
   private static File tempSGDir;
@@ -148,7 +148,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             schema.getCompressor(),
             Collections.emptyMap());
         fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementId());
-        paths.add(device.getFullPath() + "." + schema.getMeasurementId());
+        paths.add(new PartialPath(device.getFullPath() + "." + schema.getMeasurementId()));
         schemaList.add(schema);
       }
     }
@@ -182,7 +182,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -206,7 +206,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionCheckerUtils.putOnePageChunks(chunkPagePointsNumMerged, path, points);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -272,7 +272,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       CompactionFileGeneratorUtils.writeTsFile(
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -292,7 +292,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       for (String path : fullPathSet) {
         CompactionCheckerUtils.putChunk(chunkPagePointsNumMerged, path, points);
       }
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -364,7 +364,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       CompactionFileGeneratorUtils.writeTsFile(
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -387,7 +387,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             path,
             (fileNum - 1) * fileNum * pointStep / 2 + testTargetChunkPointNum + 100L);
       }
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -439,7 +439,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -475,7 +475,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         chunkPagePointsNumMerged.put(path, chunkPointsArray);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -547,7 +547,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
       CompactionFileGeneratorUtils.writeTsFile(
           fullPathSet, chunkPagePointsNum, fileNum * testTargetChunkPointNum, resource);
 
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -570,7 +570,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             path,
             (fileNum - 1) * fileNum * pointStep / 2 + testTargetChunkPointNum - 100L);
       }
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -626,7 +626,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -649,7 +649,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -708,7 +708,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionFileGeneratorUtils.writeTsFile(
             fullPathSet, chunkPagePointsNum, i * 1500L, resource);
       }
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -731,7 +731,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             chunkPagePointsNumMerged, path, fileNum * (fileNum + 1) * pointStep / 2);
       }
       CompactionCheckerUtils.checkChunkAndPage(chunkPagePointsNumMerged, targetResource);
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);
@@ -784,7 +784,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             fullPathSet, chunkPagePointsNum, i * 2500L, resource);
       }
 
-      Map<String, List<TimeValuePair>> originData =
+      Map<PartialPath, List<TimeValuePair>> originData =
           CompactionCheckerUtils.getDataByQuery(paths, schemaList, sourceFiles, new ArrayList<>());
       TsFileNameGenerator.TsFileName tsFileName =
           TsFileNameGenerator.getTsFileName(sourceFiles.get(0).getTsFile().getName());
@@ -808,7 +808,7 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
         CompactionCheckerUtils.putChunk(
             chunkPagePointsNumMerged, path, new long[] {1000, 500, 500});
       }
-      Map<String, List<TimeValuePair>> compactedData =
+      Map<PartialPath, List<TimeValuePair>> compactedData =
           CompactionCheckerUtils.getDataByQuery(
               paths, schemaList, Collections.singletonList(targetResource), new ArrayList<>());
       CompactionCheckerUtils.validDataByValueList(originData, compactedData);

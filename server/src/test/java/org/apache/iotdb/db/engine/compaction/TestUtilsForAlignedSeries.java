@@ -29,7 +29,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -40,14 +40,14 @@ import java.util.Random;
 
 public class TestUtilsForAlignedSeries {
   public static void registerTimeSeries(
-      String storageGroup, String[] devices, MeasurementSchema[] schemas, boolean[] isAligned)
+      String storageGroup, String[] devices, IMeasurementSchema[] schemas, boolean[] isAligned)
       throws MetadataException {
     IoTDB.metaManager.setStorageGroup(new PartialPath(storageGroup));
     for (int i = 0; i < devices.length; ++i) {
       boolean aligned = isAligned[i];
       String device = devices[i];
       if (!aligned) {
-        for (MeasurementSchema schema : schemas) {
+        for (IMeasurementSchema schema : schemas) {
           IoTDB.metaManager.createTimeseries(
               new PartialPath(device, schema.getMeasurementId()),
               schema.getType(),
@@ -78,7 +78,7 @@ public class TestUtilsForAlignedSeries {
 
   public static void writeTsFile(
       String[] devices,
-      MeasurementSchema[] schemas,
+      IMeasurementSchema[] schemas,
       TsFileResource tsFileResource,
       boolean[] alignedArray,
       long startTime,
@@ -94,15 +94,19 @@ public class TestUtilsForAlignedSeries {
         } else {
           writeNotAlignedChunkGroup(writer, device, schemas, startTime, endTime, randomNull[i]);
         }
+        tsFileResource.updateStartTime(devices[i], startTime);
+        tsFileResource.updateEndTime(devices[i], endTime);
       }
       writer.endFile();
     }
+    tsFileResource.close();
+    tsFileResource.serialize();
   }
 
   private static void writeAlignedChunkGroup(
       TsFileIOWriter writer,
       String device,
-      MeasurementSchema[] schemas,
+      IMeasurementSchema[] schemas,
       long startTime,
       long endTime,
       boolean randomNull)
@@ -151,14 +155,14 @@ public class TestUtilsForAlignedSeries {
   private static void writeNotAlignedChunkGroup(
       TsFileIOWriter writer,
       String device,
-      MeasurementSchema[] schemas,
+      IMeasurementSchema[] schemas,
       long startTime,
       long endTime,
       boolean randomNull)
       throws IOException {
     writer.startChunkGroup(device);
     Random random = new Random();
-    for (MeasurementSchema schema : schemas) {
+    for (IMeasurementSchema schema : schemas) {
       ChunkWriterImpl chunkWriter = new ChunkWriterImpl(schema);
       for (long time = startTime; time < endTime; ++time) {
         if (randomNull && random.nextInt(2) == 1) {

@@ -26,6 +26,8 @@ import org.apache.iotdb.db.engine.compaction.TestUtilsForAlignedSeries;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -44,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 public class InnerSpaceCompactionUtilsAlignedTest {
   private static final String storageGroup = "root.testAlignedCompaction";
@@ -79,7 +82,7 @@ public class InnerSpaceCompactionUtilsAlignedTest {
       devices.add(storageGroup + ".d" + i);
     }
     boolean[] aligned = new boolean[] {true, true, true, true, true};
-    List<MeasurementSchema> schemas = new ArrayList<>();
+    List<IMeasurementSchema> schemas = new ArrayList<>();
     schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
     schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
     schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
@@ -90,18 +93,18 @@ public class InnerSpaceCompactionUtilsAlignedTest {
     TestUtilsForAlignedSeries.registerTimeSeries(
         storageGroup,
         devices.toArray(new String[] {}),
-        schemas.toArray(new MeasurementSchema[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
         aligned);
 
     boolean[] randomNull = new boolean[] {false, false, false, false, false};
     int timeInterval = 500;
     List<TsFileResource> resources = new ArrayList<>();
-    for (int i = 0; i < 30; i++) {
+    for (int i = 1; i < 31; i++) {
       TsFileResource resource =
           new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
       TestUtilsForAlignedSeries.writeTsFile(
           devices.toArray(new String[] {}),
-          schemas.toArray(new MeasurementSchema[0]),
+          schemas.toArray(new IMeasurementSchema[0]),
           resource,
           aligned,
           timeInterval * i,
@@ -110,19 +113,343 @@ public class InnerSpaceCompactionUtilsAlignedTest {
       resources.add(resource);
     }
     TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
-    List<String> fullPaths = new ArrayList<>();
+    List<PartialPath> fullPaths = new ArrayList<>();
     List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
     for (String device : devices) {
-      for (MeasurementSchema schema : schemas) {
-        iMeasurementSchemas.add(schema);
-        fullPaths.add(device + "." + schema.getMeasurementId());
-      }
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
     }
-    Map<String, List<TimeValuePair>> originData =
+    Map<PartialPath, List<TimeValuePair>> originData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
     InnerSpaceCompactionUtils.compact(targetResource, resources, true);
-    Map<String, List<TimeValuePair>> compactedData =
+    Map<PartialPath, List<TimeValuePair>> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths,
+            iMeasurementSchemas,
+            Collections.singletonList(targetResource),
+            new ArrayList<>());
+    CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedTsFileWithNullValueCompaction() throws Exception {
+    List<String> devices = new ArrayList<>();
+    for (int i = 0; i < 5; ++i) {
+      devices.add(storageGroup + ".d" + i);
+    }
+    boolean[] aligned = new boolean[] {true, true, true, true, true};
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    TestUtilsForAlignedSeries.registerTimeSeries(
+        storageGroup,
+        devices.toArray(new String[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
+        aligned);
+
+    boolean[] randomNull = new boolean[] {true, false, true, false, true};
+    int timeInterval = 500;
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i < 31; i++) {
+      TsFileResource resource =
+          new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      TestUtilsForAlignedSeries.writeTsFile(
+          devices.toArray(new String[] {}),
+          schemas.toArray(new IMeasurementSchema[0]),
+          resource,
+          aligned,
+          timeInterval * i,
+          timeInterval * (i + 1),
+          randomNull);
+      resources.add(resource);
+    }
+    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    List<PartialPath> fullPaths = new ArrayList<>();
+    List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
+    for (String device : devices) {
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
+    }
+    Map<PartialPath, List<TimeValuePair>> originData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    Map<PartialPath, List<TimeValuePair>> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths,
+            iMeasurementSchemas,
+            Collections.singletonList(targetResource),
+            new ArrayList<>());
+    CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedTsFileWithDifferentSchemaInDifferentTsFileCompaction() throws Exception {
+    List<String> devices = new ArrayList<>();
+    for (int i = 0; i < 5; ++i) {
+      devices.add(storageGroup + ".d" + i);
+    }
+    boolean[] aligned = new boolean[] {true, true, true, true, true};
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    TestUtilsForAlignedSeries.registerTimeSeries(
+        storageGroup,
+        devices.toArray(new String[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
+        aligned);
+
+    boolean[] randomNull = new boolean[] {true, false, true, false, true};
+    int timeInterval = 500;
+    Random random = new Random(1);
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i < 31; i++) {
+      TsFileResource resource =
+          new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      TestUtilsForAlignedSeries.writeTsFile(
+          devices.toArray(new String[] {}),
+          schemas
+              .subList(0, random.nextInt(schemas.size() - 1) + 1)
+              .toArray(new IMeasurementSchema[0]),
+          resource,
+          aligned,
+          timeInterval * i,
+          timeInterval * (i + 1),
+          randomNull);
+      resources.add(resource);
+    }
+    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    List<PartialPath> fullPaths = new ArrayList<>();
+    List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
+    for (String device : devices) {
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
+    }
+    Map<PartialPath, List<TimeValuePair>> originData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    Map<PartialPath, List<TimeValuePair>> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths,
+            iMeasurementSchemas,
+            Collections.singletonList(targetResource),
+            new ArrayList<>());
+    CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedTsFileWithDifferentDataTypeCompaction() throws Exception {
+    List<String> devices = new ArrayList<>();
+    for (int i = 0; i < 5; ++i) {
+      devices.add(storageGroup + ".d" + i);
+    }
+    boolean[] aligned = new boolean[] {false, true, false, true, false};
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    TestUtilsForAlignedSeries.registerTimeSeries(
+        storageGroup,
+        devices.toArray(new String[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
+        aligned);
+
+    boolean[] randomNull = new boolean[] {true, false, true, false, true};
+    int timeInterval = 500;
+    Random random = new Random(1);
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i < 31; i++) {
+      TsFileResource resource =
+          new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      TestUtilsForAlignedSeries.writeTsFile(
+          devices.toArray(new String[] {}),
+          schemas.toArray(new IMeasurementSchema[0]),
+          resource,
+          aligned,
+          timeInterval * i,
+          timeInterval * (i + 1),
+          randomNull);
+      resources.add(resource);
+    }
+    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    List<PartialPath> fullPaths = new ArrayList<>();
+    List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
+    for (String device : devices) {
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
+    }
+    Map<PartialPath, List<TimeValuePair>> originData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    Map<PartialPath, List<TimeValuePair>> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths,
+            iMeasurementSchemas,
+            Collections.singletonList(targetResource),
+            new ArrayList<>());
+    CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedTsFileWithDifferentDataTypeInDifferentTsFileCompaction() throws Exception {
+    List<String> devices = new ArrayList<>();
+    for (int i = 0; i < 5; ++i) {
+      devices.add(storageGroup + ".d" + i);
+    }
+    boolean[] aligned = new boolean[] {false, true, false, true, false};
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    TestUtilsForAlignedSeries.registerTimeSeries(
+        storageGroup,
+        devices.toArray(new String[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
+        aligned);
+
+    boolean[] randomNull = new boolean[] {true, false, true, false, true};
+    int timeInterval = 500;
+    Random random = new Random(5);
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i < 31; i++) {
+      TsFileResource resource =
+          new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      TestUtilsForAlignedSeries.writeTsFile(
+          devices.subList(0, random.nextInt(devices.size() - 1) + 1).toArray(new String[0]),
+          schemas
+              .subList(0, random.nextInt(schemas.size() - 1) + 1)
+              .toArray(new IMeasurementSchema[0]),
+          resource,
+          aligned,
+          timeInterval * i,
+          timeInterval * (i + 1),
+          randomNull);
+      resources.add(resource);
+    }
+    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    List<PartialPath> fullPaths = new ArrayList<>();
+    List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
+    for (String device : devices) {
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
+    }
+    Map<PartialPath, List<TimeValuePair>> originData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    Map<PartialPath, List<TimeValuePair>> compactedData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths,
+            iMeasurementSchemas,
+            Collections.singletonList(targetResource),
+            new ArrayList<>());
+    CompactionCheckerUtils.validDataByValueList(originData, compactedData);
+  }
+
+  @Test
+  public void testAlignedTsFileWithBadSchemaCompaction() throws Exception {
+    List<String> devices = new ArrayList<>();
+    devices.add(storageGroup + ".d" + 0);
+    for (int i = 1; i < 5; ++i) {
+      devices.add(devices.get(i - 1) + ".d" + i);
+    }
+    boolean[] aligned = new boolean[] {false, true, false, true, false};
+    List<IMeasurementSchema> schemas = new ArrayList<>();
+    schemas.add(new MeasurementSchema("s0", TSDataType.DOUBLE));
+    schemas.add(new MeasurementSchema("s1", TSDataType.FLOAT));
+    schemas.add(new MeasurementSchema("s2", TSDataType.INT64));
+    schemas.add(new MeasurementSchema("s3", TSDataType.INT32));
+    schemas.add(new MeasurementSchema("s4", TSDataType.TEXT));
+    schemas.add(new MeasurementSchema("s5", TSDataType.BOOLEAN));
+
+    TestUtilsForAlignedSeries.registerTimeSeries(
+        storageGroup,
+        devices.toArray(new String[] {}),
+        schemas.toArray(new IMeasurementSchema[] {}),
+        aligned);
+
+    boolean[] randomNull = new boolean[] {true, false, true, false, true};
+    int timeInterval = 500;
+    Random random = new Random(5);
+    List<TsFileResource> resources = new ArrayList<>();
+    for (int i = 1; i < 31; i++) {
+      TsFileResource resource =
+          new TsFileResource(new File(dataDirectory, String.format("%d-%d-0-0.tsfile", i, i)));
+      TestUtilsForAlignedSeries.writeTsFile(
+          devices.subList(0, random.nextInt(devices.size() - 1) + 1).toArray(new String[0]),
+          schemas
+              .subList(0, random.nextInt(schemas.size() - 1) + 1)
+              .toArray(new IMeasurementSchema[0]),
+          resource,
+          aligned,
+          timeInterval * i,
+          timeInterval * (i + 1),
+          randomNull);
+      resources.add(resource);
+    }
+    TsFileResource targetResource = new TsFileResource(new File(dataDirectory, "1-1-1-0.tsfile"));
+    List<PartialPath> fullPaths = new ArrayList<>();
+    List<IMeasurementSchema> iMeasurementSchemas = new ArrayList<>();
+    List<String> measurementIds = new ArrayList<>();
+    schemas.forEach(
+        (e) -> {
+          measurementIds.add(e.getMeasurementId());
+        });
+    for (String device : devices) {
+      iMeasurementSchemas.addAll(schemas);
+      fullPaths.add(new AlignedPath(device, measurementIds, schemas));
+    }
+    Map<PartialPath, List<TimeValuePair>> originData =
+        CompactionCheckerUtils.getDataByQuery(
+            fullPaths, iMeasurementSchemas, resources, new ArrayList<>());
+    InnerSpaceCompactionUtils.compact(targetResource, resources, true);
+    Map<PartialPath, List<TimeValuePair>> compactedData =
         CompactionCheckerUtils.getDataByQuery(
             fullPaths,
             iMeasurementSchemas,
