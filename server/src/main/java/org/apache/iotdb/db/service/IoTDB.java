@@ -64,7 +64,7 @@ public class IoTDB implements IoTDBMBean {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static void main(String[] args) throws Exception {
+  public static void main(String[] args) {
     try {
       IoTDBConfigCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
