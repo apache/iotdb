@@ -387,7 +387,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         setLeader(request.getLeader());
         if (character != NodeCharacter.FOLLOWER) {
           // interrupt current election
-          term.notifyAll();
+          logManager.notifyAll();
         }
 
         // the heartbeat comes from a valid leader, process it with the sub-class logic
@@ -2087,7 +2087,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         }
         setLeader(leader);
         if (character != NodeCharacter.FOLLOWER) {
-          term.notifyAll();
+          logManager.notifyAll();
         }
       }
     }

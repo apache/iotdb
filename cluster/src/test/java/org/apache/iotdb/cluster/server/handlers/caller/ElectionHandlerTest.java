@@ -74,7 +74,7 @@ public class ElectionHandlerTest {
                 failingVoteCounter);
         new Thread(() -> handler.onComplete(Response.RESPONSE_AGREE)).start();
       }
-      member.getTerm().wait();
+      member.getLogManager().wait();
     }
     assertEquals(0, quorum.get());
     assertTrue(electionValid.get());
@@ -145,7 +145,7 @@ public class ElectionHandlerTest {
                 new AtomicInteger(5));
         new Thread(() -> handler.onComplete(electorTerm + 3)).start();
       }
-      member.getTerm().wait();
+      member.getLogManager().wait();
     }
     assertFalse(electionValid.get());
     assertTrue(terminated.get());

@@ -335,7 +335,7 @@ public class HeartbeatThread implements Runnable {
             "{}: Wait for {}ms until election time out",
             memberName,
             ClusterConstant.getElectionTimeoutMs());
-        localMember.getTerm().wait(ClusterConstant.getElectionTimeoutMs());
+        localMember.getLogManager().wait(ClusterConstant.getElectionTimeoutMs());
       } catch (InterruptedException e) {
         logger.info(
             "{}: Unexpected interruption when waiting the result of election {}",

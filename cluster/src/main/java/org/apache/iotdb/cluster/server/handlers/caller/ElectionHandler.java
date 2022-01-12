@@ -101,7 +101,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           // the election is valid
           electionValid.set(true);
           terminated.set(true);
-          raftMember.getTerm().notifyAll();
+          raftMember.getLogManager().notifyAll();
           raftMember.onElectionWins();
           result = "win";
           logger.info("{}: Election {} is won", memberName, currTerm);
@@ -126,7 +126,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
           raftMember.stepDown(voterResp, false);
           // the election is rejected
           terminated.set(true);
-          raftMember.getTerm().notifyAll();
+          raftMember.getLogManager().notifyAll();
         }
       }
     }
@@ -158,7 +158,7 @@ public class ElectionHandler implements AsyncMethodCallback<Long> {
     if (failingVoteRemaining <= 0) {
       synchronized (raftMember.getLogManager()) {
         // wake up heartbeat thread to start the next election
-        raftMember.getTerm().notifyAll();
+        raftMember.getLogManager().notifyAll();
       }
     }
   }
