@@ -95,7 +95,8 @@ public class TsFilePipe implements Pipe {
     String pipeName, pipeSinkName;
     boolean syncDelOp;
     if (attributes.length != 5) {
-      throw new PipeException("deserialize error, get more attributes than expected : " + serializationString);
+      throw new PipeException(
+          "deserialize error, get more attributes than expected : " + serializationString);
     }
     try {
     } catch (Exception e) {
