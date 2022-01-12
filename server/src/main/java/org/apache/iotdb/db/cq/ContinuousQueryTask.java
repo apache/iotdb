@@ -19,21 +19,19 @@
 package org.apache.iotdb.db.cq;
 
 import org.apache.iotdb.db.concurrent.WrappedRunnable;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.Planner;
-import org.apache.iotdb.db.qp.executor.PlanExecutor;
-import org.apache.iotdb.db.qp.logical.crud.GroupByClauseComponent;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -42,10 +40,12 @@ import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -54,131 +54,119 @@ import java.util.regex.Pattern;
 
 public class ContinuousQueryTask extends WrappedRunnable {
 
-  private static final int FETCH_SIZE = 10000;
-  private static final int BATCH_SIZE = 10000;
+  private static final Logger LOGGER = LoggerFactory.getLogger(ContinuousQueryTask.class);
 
-  private static final Logger logger = LoggerFactory.getLogger(ContinuousQueryTask.class);
+  private static final Pattern PATH_NODE_NAME_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  private static final int EXECUTION_BATCH_SIZE = IoTDBConstant.DEFAULT_FETCH_SIZE;
 
-  // To execute the query plan
-  private static PlanExecutor planExecutor;
+  // TODO: support CQ in cluster mode
+  private static BasicServiceProvider serviceProvider;
 
   static {
     try {
-      planExecutor = new PlanExecutor();
+      serviceProvider = new BasicServiceProvider();
     } catch (QueryProcessException e) {
-      logger.error(e.getMessage());
+      LOGGER.error(e.getMessage());
     }
   }
 
   // To save the continuous query info
-  private final CreateContinuousQueryPlan plan;
-  // To transform query operator to query plan
-  private static final Planner planner = new Planner();
+  private final CreateContinuousQueryPlan continuousQueryPlan;
   // Next timestamp to execute a query
-  private long windowEndTimestamp;
+  private final long windowEndTimestamp;
 
-  private static final Pattern pattern = Pattern.compile("\\$\\{\\w+}");
-
-  public ContinuousQueryTask(CreateContinuousQueryPlan plan, long windowEndTimestamp) {
-    this.plan = plan;
+  public ContinuousQueryTask(
+      CreateContinuousQueryPlan continuousQueryPlan, long windowEndTimestamp) {
+    this.continuousQueryPlan = continuousQueryPlan;
     this.windowEndTimestamp = windowEndTimestamp;
   }
 
   @Override
   public void runMayThrow()
       throws QueryProcessException, StorageEngineException, IOException, InterruptedException,
-          QueryFilterOptimizationException, MetadataException {
+          QueryFilterOptimizationException, MetadataException, TException, SQLException {
+    final String sql = generateSQL();
 
-    GroupByTimePlan queryPlan = generateQueryPlan();
-
+    // construct query plan
+    final GroupByTimePlan queryPlan =
+        (GroupByTimePlan) serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
     if (queryPlan.getDeduplicatedPaths().isEmpty()) {
-      logger.info(plan.getContinuousQueryName() + ": deduplicated paths empty");
+      if (continuousQueryPlan.isDebug()) {
+        LOGGER.info(continuousQueryPlan.getContinuousQueryName() + ": deduplicated paths empty.");
+      }
       return;
     }
 
-    QueryDataSet result = doQuery(queryPlan);
-
-    if (result == null || result.getPaths().size() == 0) {
-      logger.info(plan.getContinuousQueryName() + ": query result empty");
-      return;
-    }
-
-    doInsert(result, queryPlan);
-  }
-
-  public void onRejection() {
-    logger.warn("Continuous Query Task {} rejected", plan.getContinuousQueryName());
-  }
-
-  private GroupByTimePlan generateQueryPlan() throws QueryProcessException {
-
-    QueryOperator queryOperator = plan.getQueryOperator();
-
-    // To handle the time series meta changes in different queries, i.e. creation & deletion,
-    // we need to apply concatenation optimization to SelectComponent before every query.
-    // Since the concatenation optimization will change resultColumns information of
-    // SelectComponent,
-    // we need to save one copy of the original SelectComponent.
-    SelectComponent selectComponentCopy = new SelectComponent(queryOperator.getSelectComponent());
-
-    GroupByTimePlan queryPlan = planner.cqQueryOperatorToGroupByTimePlan(queryOperator);
-
-    queryOperator.setSelectComponent(selectComponentCopy);
-
-    queryPlan.setStartTime(windowEndTimestamp - plan.getForInterval());
-    queryPlan.setEndTime(windowEndTimestamp);
-
-    return queryPlan;
-  }
-
-  private QueryDataSet doQuery(GroupByTimePlan queryPlan)
-      throws StorageEngineException, QueryFilterOptimizationException, MetadataException,
-          IOException, InterruptedException, QueryProcessException {
-    long queryId = QueryResourceManager.getInstance().assignQueryId(true);
-
+    // construct query dataset
+    final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
-      return planExecutor.processQuery(queryPlan, new QueryContext(queryId));
+      final QueryContext queryContext =
+          serviceProvider.genQueryContext(
+              queryId,
+              queryPlan.isDebug(),
+              System.currentTimeMillis(),
+              sql,
+              IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
+      final QueryDataSet queryDataSet =
+          serviceProvider.createQueryDataSet(queryContext, queryPlan, EXECUTION_BATCH_SIZE);
+      if (queryDataSet == null || queryDataSet.getPaths().size() == 0) {
+        if (continuousQueryPlan.isDebug()) {
+          LOGGER.info(continuousQueryPlan.getContinuousQueryName() + ": query result empty.");
+        }
+        return;
+      }
+
+      // insert data into target timeseries
+      doInsert(queryDataSet, queryPlan);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
     }
   }
 
-  private void doInsert(QueryDataSet result, GroupByTimePlan queryPlan)
-      throws QueryProcessException, IOException, IllegalPathException {
+  private String generateSQL() {
+    return continuousQueryPlan.getQuerySqlBeforeGroupByClause()
+        + "group by (["
+        + (windowEndTimestamp - continuousQueryPlan.getForInterval())
+        + ','
+        + windowEndTimestamp
+        + "),"
+        + continuousQueryPlan.getGroupByTimeIntervalString()
+        + ") "
+        + (continuousQueryPlan.getQuerySqlAfterGroupByClause().equals("") ? "" : ", ")
+        + continuousQueryPlan.getQuerySqlAfterGroupByClause();
+  }
 
-    int columnSize = result.getDataTypes().size();
+  private void doInsert(QueryDataSet queryDataSet, GroupByTimePlan queryPlan)
+      throws IOException, IllegalPathException, QueryProcessException, StorageGroupNotSetException,
+          StorageEngineException {
+    int columnSize = queryDataSet.getDataTypes().size();
     TSDataType dataType =
         TypeInferenceUtils.getAggrDataType(
             queryPlan.getAggregations().get(0), queryPlan.getDataTypes().get(0));
-
-    InsertTabletPlan[] insertTabletPlans = generateInsertTabletPlans(columnSize, result, dataType);
+    InsertTabletPlan[] insertTabletPlans =
+        generateInsertTabletPlans(columnSize, queryDataSet, dataType);
 
     int batchSize =
         (int)
             Math.min(
-                BATCH_SIZE,
+                EXECUTION_BATCH_SIZE,
                 Math.ceil(
-                    (float) plan.getForInterval()
-                        / ((GroupByClauseComponent)
-                                plan.getQueryOperator().getSpecialClauseComponent())
-                            .getUnit()));
-
+                    (float) continuousQueryPlan.getForInterval()
+                        / (continuousQueryPlan.getGroupByTimeInterval())));
     Object[][] columns = constructColumns(columnSize, batchSize, dataType);
     long[][] timestamps = new long[columnSize][batchSize];
     int[] rowNums = new int[columnSize];
 
     boolean hasNext = true;
-
     while (hasNext) {
       int rowNum = 0;
 
       while (++rowNum <= batchSize) {
-        if (!result.hasNextWithoutConstraint()) {
+        if (!queryDataSet.hasNext()) {
           hasNext = false;
           break;
         }
-        RowRecord record = result.nextWithoutConstraint();
-        fillColumns(columns, dataType, record, rowNums, timestamps);
+        fillColumns(columns, dataType, queryDataSet.next(), rowNums, timestamps);
       }
 
       for (int i = 0; i < columnSize; i++) {
@@ -186,7 +174,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
           insertTabletPlans[i].setTimes(timestamps[i]);
           insertTabletPlans[i].setColumns(columns[i]);
           insertTabletPlans[i].setRowCount(rowNums[i]);
-          planExecutor.insertTablet(insertTabletPlans[i]);
+          serviceProvider.executeNonQuery(insertTabletPlans[i]);
         }
       }
     }
@@ -284,7 +272,8 @@ public class ContinuousQueryTask extends WrappedRunnable {
       nodes[nodes.length - 1] = nodes[nodes.length - 1].substring(0, indexOfRightBracket);
     }
     StringBuffer sb = new StringBuffer();
-    Matcher m = pattern.matcher(this.plan.getTargetPath().getFullPath());
+    Matcher m =
+        PATH_NODE_NAME_PATTERN.matcher(this.continuousQueryPlan.getTargetPath().getFullPath());
     while (m.find()) {
       String param = m.group();
       String value = nodes[Integer.parseInt(param.substring(2, param.length() - 1).trim())];
@@ -294,7 +283,10 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return sb.toString();
   }
 
-  public CreateContinuousQueryPlan getCreateContinuousQueryPlan() {
-    return plan;
+  public void onRejection() {
+    LOGGER.warn(
+        "continuous query task {} was rejected, sql: {}",
+        continuousQueryPlan.getContinuousQueryName(),
+        generateSQL());
   }
 }

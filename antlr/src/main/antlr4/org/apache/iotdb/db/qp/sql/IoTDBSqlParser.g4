@@ -314,7 +314,7 @@ selectStatement
     ;
 
 intoClause
-    : INTO intoPath (COMMA intoPath)*
+    : INTO ALIGNED? intoPath (COMMA intoPath)*
     ;
 
 intoPath
@@ -407,12 +407,6 @@ timeInterval
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
-timeValue
-    : datetimeLiteral
-    | dateExpression
-    | INTEGER_LITERAL
-    ;
-
 // Insert Statement
 insertStatement
     : INSERT INTO prefixPath insertColumnsSpec ALIGNED? VALUES insertValuesSpec
@@ -427,8 +421,7 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET datetimeLiteral (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
@@ -772,6 +765,11 @@ realLiteral
     | EXPONENT_NUM_PART
     ;
 
+timeValue
+    : datetimeLiteral
+    | dateExpression
+    | INTEGER_LITERAL
+    ;
 
 // Expression & Predicate
 
