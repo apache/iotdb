@@ -23,18 +23,14 @@ import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
 import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanConstructionHandler;
-import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanValidationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
-import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
@@ -90,7 +86,9 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateSQL(sql);
 
       PhysicalPlan physicalPlan =
-          basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+          basicServiceProvider
+              .getPlanner()
+              .parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
       if (!(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
@@ -98,11 +96,6 @@ public class RestApiServiceImpl extends RestApiService {
                     .code(TSStatusCode.EXECUTE_STATEMENT_ERROR.getStatusCode())
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
-      }
-
-      if (physicalPlan instanceof QueryPlan) {
-        Operator operator = LogicalGenerator.generate(sql.getSql(), ZoneId.systemDefault());
-        PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
       }
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);

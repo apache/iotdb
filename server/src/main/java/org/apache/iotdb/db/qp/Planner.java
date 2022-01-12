@@ -23,6 +23,7 @@ import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanValidationHandler;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
@@ -151,5 +152,37 @@ public class Planner {
   @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
     return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
+  }
+
+  public PhysicalPlan parseSQLToRestQueryPlan(String sqlStr, ZoneId zoneId)
+      throws QueryProcessException {
+    // from SQL to logical operator
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // extra check for rest query
+    if (operator.isQuery()) {
+      PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
+    }
+    // optimize the logical operator
+    operator = logicalOptimize(operator);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator);
+  }
+
+  public PhysicalPlan parseSQLToGrafanaQueryPlan(String sqlStr, ZoneId zoneId)
+      throws QueryProcessException {
+    // from SQL to logical operator
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // check if there are logical errors
+    LogicalChecker.check(operator);
+    // extra check for grafana query
+    if (operator.isQuery()) {
+      PhysicalPlanValidationHandler.checkGrafanaExp((QueryOperator) operator);
+    }
+    // optimize the logical operator
+    operator = logicalOptimize(operator);
+    // from logical operator to physical plan
+    return new PhysicalGenerator().transformToPhysicalPlan(operator);
   }
 }
