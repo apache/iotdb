@@ -57,23 +57,22 @@ imagePullPolicy: Always
 # You can run the following command to get the final secret string
 #  "kubectl create secret docker-registry regsecret --docker-server=<your-registry-server> --docker-username=<your-name> --docker-password=<your-pword> --dry-run -o yaml"
 #imagePullSecrets: ""
-imagePullSecrets: "eyJhdXRocyI6eyJyZWdpc3RyeS5jbi1oYW5nemhvdS5hbGl5dW5jcy5jb20iOnsidXNlcm5hbWUiOiJwZW5nY2hhby56cGNAMTg5MDgwMTU1NjU5MjY3MiIsInBhc3N3b3JkIjoiUmVnaXN0cnkyMDIxMTEwMSIsImF1dGgiOiJjR1Z1WjJOb1lXOHVlbkJqUURFNE9UQTRNREUxTlRZMU9USTJOekk2VW1WbmFYTjBjbmt5TURJeE1URXdNUT09In19fQ==" 
 
 # When deleting, it will wait some sconds before execute terminal operation, if not set, use default (0).
 terminationGracePeriodSeconds: 10
 
 # The resource limitation for each pod
-cpu: 2
+cpu: 4
 memory: 8Gi
 disk: 20Gi
 
 # The storageClassName for PersistenceVolume, which can create pv dynamically, it depends on your kubernetes provisioner
 # If not set, you should create enough pvs for iotdb manually, more details about pv see:
 # https://kubernetes.io/docs/concepts/storage/persistent-volumes/
-storageClassName: alicloud-disk-ssd
+#storageClassName: alicloud-disk-ssd
 
 # If you want to expose service to outside of kubernetes, you can set this parameter to either "LoadBalancer" or "NodePort"
 # For LoadBalancer, you must ensure that your kubernetes provisioner has the ability to provide LoadBalancer for k8s.
 # The NodePort could work but is not recommended.
 # More details see https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
-exposeService: LoadBalancer
+#exposeService: LoadBalancer
