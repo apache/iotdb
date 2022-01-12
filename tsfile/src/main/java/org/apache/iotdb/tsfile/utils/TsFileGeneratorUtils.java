@@ -113,12 +113,10 @@ public class TsFileGeneratorUtils {
     }
   }
 
-  // generate aligned timeseries "d1.s1","d1.s2","d1.s3","d1.s4" and nonAligned timeseries
-  // "d2.s1","d2.s2","d2.s3"
+  // including aligned and nonAligned timeseries
   public static File generateMixTsFile(
       String filePath,
-      int alignDeviceNum,
-      int NonAlignDeviceNum,
+      int deviceNum,
       int measurementNum,
       int pointNum,
       int startTime,
@@ -137,28 +135,50 @@ public class TsFileGeneratorUtils {
     try (TsFileWriter tsFileWriter = new TsFileWriter(file)) {
       // register align timeseries
       List<MeasurementSchema> alignedMeasurementSchemas = new ArrayList<>();
-      alignedMeasurementSchemas.add(
-          new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(
-          new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
-      alignedMeasurementSchemas.add(new MeasurementSchema("s4", TSDataType.INT64, TSEncoding.RLE));
-      tsFileWriter.registerAlignedTimeseries(new Path("d1"), alignedMeasurementSchemas);
+      for (int i = 0; i < measurementNum; i++) {
+        alignedMeasurementSchemas.add(
+            new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+      }
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
+        tsFileWriter.registerAlignedTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), alignedMeasurementSchemas);
+      }
+
+      // write with record
+      for (int i = alignDeviceOffset; i < alignDeviceOffset + deviceNum; i++) {
+        writeWithTsRecord(
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            alignedMeasurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            true);
+      }
 
       // register nonAlign timeseries
       List<MeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.PLAIN));
-      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.INT64, TSEncoding.PLAIN));
-      tsFileWriter.registerTimeseries(new Path("d2"), measurementSchemas);
+      for (int i = 0; i < measurementNum; i++) {
+        measurementSchemas.add(new MeasurementSchema("s" + i, TSDataType.INT64, TSEncoding.PLAIN));
+      }
+      for (int i = 0; i < deviceNum; i++) {
+        tsFileWriter.registerTimeseries(
+            new Path(testStorageGroup + PATH_SEPARATOR + "d" + i), measurementSchemas);
+      }
 
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, "d1", alignedMeasurementSchemas, pointNum, 0, 0, true);
-      TsFileGeneratorUtils.writeWithTsRecord(
-          tsFileWriter, "d2", measurementSchemas, pointNum, 0, 0, false);
-      return file;
+      // write with record
+      for (int i = 0; i < deviceNum; i++) {
+        writeWithTsRecord(
+            tsFileWriter,
+            testStorageGroup + PATH_SEPARATOR + "d" + i,
+            measurementSchemas,
+            pointNum,
+            startTime,
+            startValue,
+            false);
+      }
     }
+    return file;
   }
 
   public static File generateAlignedTsFile(

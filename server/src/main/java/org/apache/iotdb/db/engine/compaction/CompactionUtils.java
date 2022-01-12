@@ -48,7 +48,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +84,7 @@ public class CompactionUtils {
     try (AbstractCompactionWriter compactionWriter =
             getCompactionWriter(seqFileResources, unseqFileResources, targetFileResources);
         MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(allResources)) {
+      // Todo: use iterator to get devices
       Set<String> tsFileDevicesSet = deviceIterator.getDevices();
 
       for (String device : tsFileDevicesSet) {
@@ -99,7 +99,7 @@ public class CompactionUtils {
 
         List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
         if (isAligned) {
-          //  aligned
+          // aligned
           deviceMeasurementsMap.remove("");
           deviceMeasurementsMap.forEach(
               (measurementId, timeseriesMetadata) -> {
@@ -126,7 +126,7 @@ public class CompactionUtils {
             compactionWriter.endChunkGroup();
           }
         } else {
-          //  nonAligned
+          // nonAligned
           boolean hasStartChunkGroup = false;
           for (Map.Entry<String, TimeseriesMetadata> entry : deviceMeasurementsMap.entrySet()) {
             measurementSchemas.clear();
@@ -219,9 +219,12 @@ public class CompactionUtils {
       String device, List<TsFileResource> seqFileResources, List<TsFileResource> unseqFileResources)
       throws IOException {
     Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
+    // Todo:省内存or省时间？
+    // 省内存：迭代地获取所有顺序、乱序源文件该设备下的一个Timesermetadata节点上的所有Timesermetadata，以获取measurementId，但没有缓存，后续还要再次获取该设备下的某文件的该设备的所有TimeseriesMetadata来判断该设备的结束时间
+    // 省时间：一次获取所有顺序、乱序源文件该设备下的所有TimeseriesMetadata有缓存，然后获取某文件该设备的结束时间和所有measurementId
     for (TsFileResource seqResource : seqFileResources) {
       deviceMeasurementsMap.putAll(
-          FileReaderManager.getInstance()
+          FileReaderManager.getInstance() // Todo:这里很有用，共享TsFileSequenceReader
               .get(seqResource.getTsFilePath(), true)
               .readDeviceMetadata(device));
     }

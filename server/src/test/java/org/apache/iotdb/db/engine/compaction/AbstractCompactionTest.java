@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -32,8 +33,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
-
-import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
@@ -102,7 +101,8 @@ public class AbstractCompactionTest {
    * @param startValue start value of each timeseries
    * @param timeInterval time interval of each timeseries between files
    * @param valueInterval value interval of each timeseries between files
-   * @param isAlign
+   * @param isAlign when it is true, it will create mix tsfile which contains aligned and nonAligned
+   *     timeseries
    * @param isSeq
    * @throws IOException
    * @throws WriteProcessException
@@ -135,7 +135,7 @@ public class AbstractCompactionTest {
       File file;
       if (isAlign) {
         file =
-            TsFileGeneratorUtils.generateAlignedTsFile(
+            TsFileGeneratorUtils.generateMixTsFile(
                 filePath,
                 deviceNum,
                 measurementNum,
@@ -171,6 +171,10 @@ public class AbstractCompactionTest {
     TsFileResource resource = new TsFileResource(file);
     int deviceStartindex = 0;
     if (isAlign) {
+      for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
+        resource.updateStartTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, startTime);
+        resource.updateEndTime(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, endTime);
+      }
       deviceStartindex = TsFileGeneratorUtils.getAlignDeviceOffset();
     }
     for (int i = deviceStartindex; i < deviceStartindex + deviceNum; i++) {
@@ -179,6 +183,7 @@ public class AbstractCompactionTest {
     }
     resource.updatePlanIndexes(fileVersion);
     resource.setClosed(true);
+    resource.setTimeIndexType((byte) 0);
     if (isSeq) {
       seqResources.add(resource);
     } else {
@@ -199,6 +204,12 @@ public class AbstractCompactionTest {
           dataTypes.add(TSDataType.INT64);
           encodings.add(TSEncoding.PLAIN);
           compressionTypes.add(CompressionType.UNCOMPRESSED);
+          IoTDB.metaManager.createTimeseries(
+              new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i, "s" + j),
+              TSDataType.INT64,
+              TSEncoding.PLAIN,
+              CompressionType.UNCOMPRESSED,
+              Collections.emptyMap());
         }
         IoTDB.metaManager.createAlignedTimeSeries(
             new PartialPath(COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + (i + 10000)),
