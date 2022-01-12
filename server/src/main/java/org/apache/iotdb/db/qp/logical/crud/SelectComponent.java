@@ -50,9 +50,15 @@ public final class SelectComponent {
 
   public SelectComponent(SelectComponent selectComponent) {
     zoneId = selectComponent.zoneId;
+
     hasPlainAggregationFunction = selectComponent.hasPlainAggregationFunction;
     hasTimeSeriesGeneratingFunction = selectComponent.hasTimeSeriesGeneratingFunction;
+    hasUserDefinedAggregationFunction = selectComponent.hasUserDefinedAggregationFunction;
+
     resultColumns.addAll(selectComponent.resultColumns);
+
+    pathsCache = null;
+    aggregationFunctionsCache = null;
   }
 
   public ZoneId getZoneId() {

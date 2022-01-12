@@ -700,7 +700,10 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
           SQLException, IOException, InterruptedException, QueryFilterOptimizationException,
           AuthException {
     // check permissions
-    if (!checkAuthorization(plan.getAuthPaths(), plan, username)) {
+    List<? extends PartialPath> authPaths = plan.getAuthPaths();
+    if (authPaths != null
+        && !authPaths.isEmpty()
+        && !checkAuthorization(authPaths, plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,
@@ -838,18 +841,18 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     queryFrequencyRecorder.incrementAndGet();
     AUDIT_LOGGER.debug(
         "Session {} execute select into: {}", sessionManager.getCurrSessionId(), statement);
-    if (physicalPlan instanceof QueryPlan && ((QueryPlan) physicalPlan).isEnableTracing()) {
+    if (queryPlan.isEnableTracing()) {
       tracingManager.setSeriesPathNum(queryId, queryPlan.getPaths().size());
     }
 
     try {
-
       InsertTabletPlansIterator insertTabletPlansIterator =
           new InsertTabletPlansIterator(
               queryPlan,
               createQueryDataSet(context, queryPlan, fetchSize),
               selectIntoPlan.getFromPath(),
-              selectIntoPlan.getIntoPaths());
+              selectIntoPlan.getIntoPaths(),
+              selectIntoPlan.isIntoPathsAligned());
       while (insertTabletPlansIterator.hasNext()) {
         TSStatus executionStatus =
             insertTabletsInternally(insertTabletPlansIterator.next(), sessionId);
@@ -1202,9 +1205,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       InsertRowsOfOneDevicePlan plan =
           new InsertRowsOfOneDevicePlan(
               new PartialPath(req.getPrefixPath()),
-              req.getTimestamps().toArray(new Long[0]),
+              req.getTimestamps(),
               req.getMeasurementsList(),
-              req.getValuesList().toArray(new ByteBuffer[0]),
+              req.getValuesList(),
               req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));

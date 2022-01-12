@@ -533,6 +533,24 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "target_compaction_file_size",
                   Long.toString(conf.getTargetCompactionFileSize()))));
+      conf.setTargetChunkSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_chunk_size", Long.toString(conf.getTargetChunkSize()))));
+      conf.setTargetChunkPointNum(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_chunk_point_num", Long.toString(conf.getTargetChunkPointNum()))));
+      conf.setChunkPointNumLowerBoundInCompaction(
+          Long.parseLong(
+              properties.getProperty(
+                  "chunk_size_lower_bound_in_compaction",
+                  Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
+      conf.setChunkSizeLowerBoundInCompaction(
+          Long.parseLong(
+              properties.getProperty(
+                  "chunk_size_lower_bound_in_compaction",
+                  Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
       conf.setMaxCompactionCandidateFileNum(
           Integer.parseInt(
               properties.getProperty(
@@ -907,11 +925,29 @@ public class IoTDBDescriptor {
     }
 
     long poolTrimIntervalInMS =
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
     if (poolTrimIntervalInMS > 0) {
       conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
+    }
+
+    long registerBufferSleepIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_sleep_interval_in_ms",
+                Long.toString(conf.getRegisterBufferSleepIntervalInMs())));
+    if (registerBufferSleepIntervalInMs > 0) {
+      conf.setRegisterBufferSleepIntervalInMs(registerBufferSleepIntervalInMs);
+    }
+
+    long registerBufferRejectThresholdInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_reject_threshold_in_ms",
+                Long.toString(conf.getRegisterBufferRejectThresholdInMs())));
+    if (registerBufferRejectThresholdInMs > 0) {
+      conf.setRegisterBufferRejectThresholdInMs(registerBufferRejectThresholdInMs);
     }
   }
 

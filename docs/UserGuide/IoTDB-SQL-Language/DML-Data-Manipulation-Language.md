@@ -58,7 +58,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
@@ -75,6 +75,12 @@ The result is shown below. The query result shows that the insertion statements 
 Total line number = 4
 It costs 0.004s
 ```
+
+In addition, we can omit the timestamp column, and the system will use the current system timestamp as the timestamp of the data point. The sample code is as follows:
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
 
 ### Insert Data Into Aligned Timeseries
 
@@ -1536,32 +1542,31 @@ Fuzzy query is divided into Like statement and Regexp statement, both of which c
 
 Like statement:
 
-Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+Example 1: Query data containing `'cc'` in `value` under `root.sg.d1`. 
 The percentage (`%`) wildcard matches any string of zero or more characters.
 
-
 ```
-IoTDB> select * from root.sg.device where value like '%cc%'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value like '%cc%'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.d1`.
 The underscore (`_`) wildcard matches any single character.
 
 ```
 IoTDB> select * from root.sg.device where value like '_b_'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|                 abc| 
-+-----------------------------+--------------------+
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:02.000+08:00|             abc| 
++-----------------------------+----------------+
 Total line number = 1
 It costs 0.002s
 ```
@@ -1570,30 +1575,30 @@ Regexp statement：
 
 The filter conditions that need to be passed in are regular expressions in the Java standard library style
 
-Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+Example 1: Query a string composed of 26 English characters for the value under root.sg.d1
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[A-Za-z]+$'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+Example 2: Query root.sg.d1 where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[a-z]+$' and time > 100
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
@@ -1630,7 +1635,7 @@ The result set is：
 IoTDB provides [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) clause and [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
-and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+and the use of OFFSET and SOFFSET clauses allows users to set the starting position of the results for display.
 
 Note that the LIMIT and OFFSET are not supported in group by query.
 
@@ -1990,13 +1995,13 @@ Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or e
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### Other ResultSet Formats
@@ -2010,7 +2015,7 @@ The 'align by device' indicates that the deviceId is considered as a column. The
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 The result shows below:
@@ -2039,7 +2044,7 @@ The 'disable align' indicates that there are 2 columns for each time series in t
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 The result shows below:
