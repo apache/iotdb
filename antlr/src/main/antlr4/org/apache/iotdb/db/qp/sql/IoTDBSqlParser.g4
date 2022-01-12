@@ -64,7 +64,7 @@ utilityStatement
 
 syncStatement
     : createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
-    | createPipe | showPipe | pausePipe | startPipe | dropPipe;
+    | createPipe | showPipe | stopPipe | startPipe | dropPipe;
 
 /**
  * 2. Data Definition Language (DDL)
@@ -692,15 +692,15 @@ dropPipeSink
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=ID TO pipeSinkName=ID FROM LR_BRACKET selectStatement RR_BRACKET WITH (syncAttributeClauses)?
+    : CREATE PIPE pipeName=ID TO pipeSinkName=ID (FROM LR_BRACKET selectStatement RR_BRACKET)? (WITH syncAttributeClauses)?
     ;
 
 showPipe
     : SHOW PIPE (pipeName=ID)?
     ;
 
-pausePipe
-    : PAUSE PIPE pipeName=ID
+stopPipe
+    : STOP PIPE pipeName=ID
     ;
 
 startPipe

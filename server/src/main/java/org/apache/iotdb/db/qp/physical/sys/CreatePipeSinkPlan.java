@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -59,5 +61,34 @@ public class CreatePipeSinkPlan extends PhysicalPlan {
   @Override
   public List<? extends PartialPath> getPaths() {
     return Collections.emptyList();
+  }
+
+  public static CreatePipeSinkPlan parseString(String parsedString) throws IOException {
+    String[] attributes = parsedString.split(SenderConf.planSplitCharacter);
+    if (attributes.length < 3) {
+      throw new IOException("Parsing CreatePipeSinkPlan error. Attributes is less than expected.");
+    }
+    CreatePipeSinkPlan plan = new CreatePipeSinkPlan(attributes[0], attributes[1]);
+    int size = (Integer.parseInt(attributes[2]) << 1);
+    if (attributes.length != (size + 3)) {
+      throw new IOException("Parsing CreatePipeSinkPlan error. Attributes number is wrong.");
+    }
+    for (int i = 0; i < size; i += 2) {
+      plan.addPipeSinkAttribute(attributes[i + 3], attributes[i + 4]);
+    }
+    return plan;
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder.append(pipeSinkName).append(SenderConf.planSplitCharacter);
+    builder.append(pipeSinkType).append(SenderConf.planSplitCharacter);
+    builder.append(pipeSinkAttributes.size());
+    for (int i = 0; i < pipeSinkAttributes.size(); i++) {
+      builder.append(pipeSinkAttributes.get(i).left).append(SenderConf.planSplitCharacter);
+      builder.append(pipeSinkAttributes.get(i).right).append(SenderConf.planSplitCharacter);
+    }
+    return builder.toString();
   }
 }

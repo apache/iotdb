@@ -52,7 +52,8 @@ public class IoTDBPipeSink implements PipeSink {
         throw new PipeSinkException(attr, value, TSDataType.INT32.name());
       }
     } else {
-      throw new PipeSinkException("there is No attribute " + attr + " in " + Type.IoTDB);
+      throw new PipeSinkException(
+          "there is No attribute " + attr + " in " + Type.IoTDB + " pipeSink.");
     }
   }
 

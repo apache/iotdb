@@ -84,7 +84,6 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigur
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
-import org.apache.iotdb.db.qp.logical.sys.PausePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
@@ -108,6 +107,7 @@ import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
+import org.apache.iotdb.db.qp.logical.sys.StopPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
@@ -2179,7 +2179,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreatePipeOperator operator =
         new CreatePipeOperator(ctx.pipeName.getText(), ctx.pipeSinkName.getText());
 
-    parseSelectStatementForPipe(ctx.selectStatement(), operator);
+    if (ctx.selectStatement() != null) {
+      parseSelectStatementForPipe(ctx.selectStatement(), operator);
+    }
     if (ctx.syncAttributeClauses() != null) {
       operator.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
@@ -2196,8 +2198,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitPausePipe(IoTDBSqlParser.PausePipeContext ctx) {
-    return new PausePipeOperator(ctx.pipeName.getText());
+  public Operator visitStopPipe(IoTDBSqlParser.StopPipeContext ctx) {
+    return new StopPipeOperator(ctx.pipeName.getText());
   }
 
   @Override

@@ -24,7 +24,7 @@ import org.apache.iotdb.db.exception.PipeException;
 public interface Pipe {
   void start();
 
-  void pause();
+  void stop();
 
   void drop();
 
@@ -40,7 +40,7 @@ public interface Pipe {
 
   enum PipeStatus {
     RUNNING,
-    PAUSED,
+    STOP,
     DROP
   }
 

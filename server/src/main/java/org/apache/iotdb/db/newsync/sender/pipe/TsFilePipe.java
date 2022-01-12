@@ -43,14 +43,28 @@ public class TsFilePipe implements Pipe {
     createTime = System.currentTimeMillis();
   }
 
+  public TsFilePipe(
+      long createTime,
+      String name,
+      IoTDBPipeSink pipeSink,
+      long dataStartTimestamp,
+      boolean syncDelOp) {
+    this.createTime = createTime;
+    this.name = name;
+    this.pipeSink = pipeSink;
+    this.dataStartTimestamp = dataStartTimestamp;
+    this.syncDelOp = syncDelOp;
+    this.status = PipeStatus.STOP;
+  }
+
   @Override
   public void start() {
     status = PipeStatus.RUNNING;
   }
 
   @Override
-  public void pause() {
-    status = PipeStatus.PAUSED;
+  public void stop() {
+    status = PipeStatus.STOP;
   }
 
   @Override
@@ -91,13 +105,11 @@ public class TsFilePipe implements Pipe {
 
   public static TsFilePipe deserialize(String serializationString) throws PipeException {
     String[] attributes = serializationString.split(SERIALIZE_SPLIT_TOKEN);
-    long createTime, dataStartTimestamp;
-    String pipeName, pipeSinkName;
-    boolean syncDelOp;
     if (attributes.length != 5) {
       throw new PipeException(
           "deserialize error, get more attributes than expected : " + serializationString);
     }
+    TsFilePipe pipe;
     try {
     } catch (Exception e) {
       throw new PipeException("");

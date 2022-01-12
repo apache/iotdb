@@ -26,12 +26,12 @@ import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class PausePipeOperator extends Operator {
+public class StopPipeOperator extends Operator {
   private String pipeName;
 
-  public PausePipeOperator(String pipeName) {
-    super(SQLConstant.TOK_PAUSE_PIPE);
-    this.operatorType = OperatorType.PAUSE_PIPE;
+  public StopPipeOperator(String pipeName) {
+    super(SQLConstant.TOK_STOP_PIPE);
+    this.operatorType = OperatorType.STOP_PIPE;
 
     this.pipeName = pipeName;
   }

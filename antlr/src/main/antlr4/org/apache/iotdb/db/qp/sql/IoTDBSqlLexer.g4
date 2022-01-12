@@ -354,10 +354,6 @@ PATHS
     : P A T H S
     ;
 
-PAUSE
-    : P A U S E
-    ;
-
 PIPE
     : P I P E
     ;

@@ -19,13 +19,31 @@
  */
 package org.apache.iotdb.db.newsync.sender.recovery;
 
+import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
 public class SenderLogAnalyzer {
+  private BufferedReader br;
+
+  public SenderLogAnalyzer() throws IOException {
+    File senderLog = new File(SenderConf.senderLog);
+    if (!senderLog.exists()) {
+      senderLog.createNewFile();
+    }
+
+    br = new BufferedReader(new FileReader(senderLog));
+  }
+
   public Map<String, PipeSink> getRecoveryPipeSinks() {
     return null;
   }

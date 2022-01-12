@@ -41,6 +41,7 @@ import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.Time
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
+import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.QueryIdNotExsitException;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -60,6 +61,7 @@ import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
@@ -112,6 +114,7 @@ import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
@@ -123,6 +126,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowFunctionsPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowLockInfoPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowStorageGroupPlan;
@@ -131,6 +135,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StartTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopTriggerPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.dataset.AlignByDeviceDataSet;
@@ -208,9 +213,13 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_FUNCTION_TYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ITEM;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_LOCK_INFO;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE2PIPESINK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_ATTRIBUTES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_NAME;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPESINK_TYPE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_CREATE_TIME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_NAME;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PIPE_STATUS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PRIVILEGE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_PROGRESS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_ROLE;
@@ -406,6 +415,14 @@ public class PlanExecutor implements IPlanExecutor {
         return true;
       case DROP_PIPESINK:
         dropPipeSink((DropPipeSinkPlan) plan);
+        return true;
+      case CREATE_PIPE:
+        createPipe((CreatePipePlan) plan);
+        return true;
+      case STOP_PIPE:
+      case START_PIPE:
+      case DROP_PIPE:
+        operatePipe((OperatePipePlan) plan);
         return true;
       default:
         throw new UnsupportedOperationException(
@@ -695,6 +712,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowPipeSink((ShowPipeSinkPlan) showPlan);
       case PIPESINKTYPE:
         return processShowPipeSinkType();
+      case PIPE:
+        return processShowPipes((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -1136,6 +1155,28 @@ public class PlanExecutor implements IPlanExecutor {
       record.addField(Binary.valueOf(type.name()), TSDataType.TEXT);
       listDataSet.putRecord(record);
     }
+    return listDataSet;
+  }
+
+  private QueryDataSet processShowPipes(ShowPipePlan plan) {
+    ListDataSet listDataSet =
+        new ListDataSet(
+            Arrays.asList(
+                new PartialPath(COLUMN_PIPE_CREATE_TIME, false),
+                new PartialPath(COLUMN_PIPE_NAME, false),
+                new PartialPath(COLUMN_PIPE2PIPESINK_NAME, false),
+                new PartialPath(COLUMN_PIPE_STATUS, false)),
+            Arrays.asList(TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+    boolean showAll = "".equals(plan.getPipeName());
+    for (Pipe pipe : SenderService.getInstance().getAllPipes())
+      if (showAll || plan.getPipeName().equals(pipe.getName())) {
+        RowRecord record = new RowRecord(0);
+        record.addField(Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
+        record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
+        listDataSet.putRecord(record);
+      }
     return listDataSet;
   }
 
@@ -2233,10 +2274,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void createPipeSink(CreatePipeSinkPlan plan) throws QueryProcessException {
-    if (SenderService.getInstance().isPipeSinkExist(plan.getPipeSinkName())) {
-      throw new QueryProcessException(
-          "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please delete it.");
-    }
     try {
       SenderService.getInstance().addPipeSink(plan);
     } catch (PipeSinkException e) {
@@ -2247,9 +2284,6 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private void dropPipeSink(DropPipeSinkPlan plan) throws QueryProcessException {
-    if (!SenderService.getInstance().isPipeSinkExist(plan.getPipeSinkName())) {
-      throw new QueryProcessException("pipeSink " + plan.getPipeSinkName() + " is not exist.");
-    }
     try {
       SenderService.getInstance().dropPipeSink(plan.getPipeSinkName());
     } catch (Exception e) {
@@ -2257,5 +2291,30 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  private void createPipe(CreatePipePlan plan) {}
+  private void createPipe(CreatePipePlan plan) throws QueryProcessException {
+    try {
+      SenderService.getInstance().addPipe(plan);
+      SenderService.getInstance().startPipe(plan.getPipeName());
+    } catch (PipeException e) {
+      throw new QueryProcessException("Create pipe error.", e);
+    }
+  }
+
+  private void operatePipe(OperatePipePlan plan) throws QueryProcessException {
+    try {
+      if (OperatorType.STOP_PIPE.equals(plan.getOperatorType())) {
+        SenderService.getInstance().stopPipe(plan.getPipeName());
+      } else if (OperatorType.START_PIPE.equals(plan.getOperatorType())) {
+        SenderService.getInstance().startPipe(plan.getPipeName());
+      } else if (OperatorType.DROP_PIPE.equals(plan.getOperatorType())) {
+        SenderService.getInstance().dropPipe(plan.getPipeName());
+      } else {
+        throw new QueryProcessException(
+            String.format("Error operator type %s", plan.getOperatorType()),
+            INTERNAL_SERVER_ERROR.getStatusCode());
+      }
+    } catch (PipeException e) {
+      throw new QueryProcessException("Operate pipe error.", e);
+    }
+  }
 }

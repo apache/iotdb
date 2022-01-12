@@ -185,7 +185,7 @@ public abstract class Operator {
     SHOW_PIPESINKTYPE,
     CREATE_PIPE,
     SHOW_PIPE,
-    PAUSE_PIPE,
+    STOP_PIPE,
     START_PIPE,
     DROP_PIPE
   }

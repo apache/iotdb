@@ -26,4 +26,8 @@ public class ShowPipePlan extends ShowPlan {
     super(ShowContentType.PIPE);
     this.pipeName = pipeName;
   }
+
+  public String getPipeName() {
+    return pipeName;
+  }
 }
