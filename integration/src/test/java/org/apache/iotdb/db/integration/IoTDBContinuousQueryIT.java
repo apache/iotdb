@@ -27,7 +27,6 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -41,12 +40,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Ignore
 @Category({LocalStandaloneTest.class})
 public class IoTDBContinuousQueryIT {
+
+  private static final int EXPECTED_TEST_SIZE = 3;
 
   private Statement statement;
   private Connection connection;
@@ -214,106 +215,53 @@ public class IoTDBContinuousQueryIT {
   }
 
   @Test
-  public void testContinuousQueryResult1() throws Exception {
+  public void testInterval1000() throws Exception {
     createTimeSeries();
     startDataGenerator();
-
-    Thread.sleep(500);
 
     statement.execute(
         "CREATE CQ cq1 "
             + "RESAMPLE EVERY 1s FOR 1s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=1,2 END");
-
-    final long creationTime = System.currentTimeMillis();
-
-    Thread.sleep(5500);
-
-    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
-    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
-
+    checkCQExecutionResult(1000);
     statement.execute("DROP CQ cq1");
+
     stopDataGenerator();
   }
 
   @Test
-  public void testContinuousQueryResult2() throws Exception {
+  public void testInterval2000() throws Exception {
     createTimeSeries();
     startDataGenerator();
-
-    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "RESAMPLE EVERY 2s "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=1,2 END");
-
-    final long creationTime = System.currentTimeMillis();
-
-    Thread.sleep(5500);
-
-    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
-    checkCQExecutionResult(creationTime, 0, 5000, 1000, 2000, 1000, 2);
-
+            + "GROUP BY time(2s), level=1,2 END");
+    checkCQExecutionResult(2000);
     statement.execute("DROP CQ cq1");
+
     stopDataGenerator();
   }
 
   @Test
-  public void testContinuousQueryResult3() throws Exception {
+  public void testInterval3000() throws Exception {
     createTimeSeries();
     startDataGenerator();
-
-    Thread.sleep(500);
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
             + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=1,2 END");
-
-    final long creationTime = System.currentTimeMillis();
-
-    Thread.sleep(5500);
-
-    Assert.assertTrue(statement.execute("select temperature_avg from root.ln.wf01"));
-    checkCQExecutionResult(creationTime, 0, 5000, 1000, 1000, 1000, 2);
-
+            + "GROUP BY time(3s), level=1,2 END");
+    checkCQExecutionResult(3000);
     statement.execute("DROP CQ cq1");
+
     stopDataGenerator();
   }
 
-  @Test
-  public void testContinuousQueryResult4() throws Exception {
-    statement.execute(
-        "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
-            + "GROUP BY time(1s), level=1,2 END");
-
-    final long creationTime = System.currentTimeMillis();
-
-    Thread.sleep(4500);
-
-    createTimeSeries();
-    startDataGenerator();
-
-    Thread.sleep(6000);
-
-    checkCQExecutionResult(creationTime, 5000, 5500, 1000, 1000, 1000, 2);
-
-    statement.execute("DROP CQ cq1");
-    stopDataGenerator();
-  }
-
-  private void checkCQExecutionResult(
-      long creationTime,
-      long delay,
-      long duration,
-      long forInterval,
-      long everyInterval,
-      long groupByInterval,
-      int level)
+  private void checkCQExecutionResult(long groupByInterval)
       throws SQLException, InterruptedException {
     // IOTDB-1821
     // ignore the check when the background data generation thread's connection is broken
@@ -321,41 +269,25 @@ public class IoTDBContinuousQueryIT {
       return;
     }
 
-    final long expectedSize = (duration / everyInterval + 1) * (forInterval / groupByInterval);
     long waitMillSeconds = 0;
-    List<Pair<Long, String>> result;
+    List<Pair<Long, String>> actualResult;
     do {
       Thread.sleep(waitMillSeconds);
       waitMillSeconds += 100;
 
       statement.execute("select temperature_avg from root.ln.wf01");
-      result = collectQueryResult();
-    } while (result.size() < expectedSize);
+      actualResult = collectQueryResult();
+    } while (actualResult.size() < EXPECTED_TEST_SIZE);
 
-    final long leftMost = result.get(0).left + forInterval;
-    for (int i = 0; i < expectedSize; i++) {
-      long left = result.get(i).left;
+    long actualWindowBegin = actualResult.get(0).left;
+    long actualWindowEnd = actualResult.get(actualResult.size() - 1).left;
+    statement.execute(
+        String.format(
+            "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=1,2 without null all",
+            actualWindowBegin, actualWindowEnd + groupByInterval, groupByInterval));
+    List<Pair<Long, String>> expectedResult = collectQueryResult();
 
-      if (i == 0) {
-        assertTrue(Math.abs(creationTime + delay - forInterval - left) < 2 * forInterval);
-      } else {
-        long pointNumPerForInterval = forInterval / groupByInterval;
-        Assert.assertEquals(
-            leftMost
-                + (i / pointNumPerForInterval) * everyInterval
-                - (pointNumPerForInterval - i % pointNumPerForInterval) * groupByInterval,
-            left);
-      }
-
-      statement.execute(
-          String.format(
-              "select avg(temperature) from root.ln.wf01.*.* GROUP BY ([%d, %d), %dms), level=%d",
-              left, left + groupByInterval, groupByInterval, level));
-
-      List<Pair<Long, String>> correctAnswer = collectQueryResult();
-      Assert.assertEquals(1, correctAnswer.size());
-      Assert.assertEquals(correctAnswer.get(0).right, result.get(i).right);
-    }
+    assertEquals(expectedResult, actualResult);
   }
 
   private List<Pair<Long, String>> collectQueryResult() {
