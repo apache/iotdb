@@ -35,8 +35,6 @@ import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
 import org.apache.commons.io.FileUtils;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,16 +60,14 @@ public class TsFileSelfCheckToolTest {
           .concat("0")
           .concat(File.separator)
           .concat("0")
-          .concat(File.separator)
-          .concat("1-0-0-1.tsfile");
+          .concat(File.separator);
   String device = "root.device_0";
 
   private static final Logger logger = LoggerFactory.getLogger(TsFileSelfCheckToolTest.class);
 
-  @Before
-  public void setUp() throws Exception {
+  public void setUp(String filePath) throws Exception {
     try {
-      File f = FSFactoryProducer.getFSFactory().getFile(path);
+      File f = FSFactoryProducer.getFSFactory().getFile(filePath);
       if (f.exists() && !f.delete()) {
         throw new RuntimeException("can not delete " + f.getAbsolutePath());
       }
@@ -127,35 +123,41 @@ public class TsFileSelfCheckToolTest {
         }
       }
     } catch (Exception e) {
-      logger.error(e.getMessage());
       throw new Exception("meet error in TsFileWrite with tablet", e);
     }
   }
 
   @Test
-  public void tsFileSelfCheckToolCompleteTest() {
+  public void tsFileSelfCheckToolCompleteTest() throws Exception {
+    String fileName = "1-0-0-1.tsfile";
+    String filePath = path.concat(fileName);
+    setUp(filePath);
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
-      tool.check(path, false);
+      tool.check(filePath, false);
     } catch (IOException
         | TsFileStatisticsMistakesException
         | TsFileTimeseriesMetadataException e) {
       fail(e.getMessage());
     }
+    tearDown(filePath);
   }
 
   @Test
   public void tsFileSelfCheckToolWithStatisticsModifiedTest()
-      throws IOException, TsFileTimeseriesMetadataException {
+      throws IOException, TsFileTimeseriesMetadataException, Exception {
+    String fileName = "1-0-0-2.tsfile";
+    String filePath = path.concat(fileName);
+    setUp(filePath);
     Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap =
-        new TsFileSelfCheckTool().getTimeseriesMetadataMapWithPath(path);
+        new TsFileSelfCheckTool().getTimeseriesMetadataMapWithPath(filePath);
     for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
       TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
       Long pos = entry.getKey();
       LongStatistics statistics = (LongStatistics) timeseriesMetadata.getStatistics();
       statistics.initializeStats(666, 1999999, 1000000, 1999999, 0);
 
-      RandomAccessFile raf = new RandomAccessFile(path, "rw");
+      RandomAccessFile raf = new RandomAccessFile(filePath, "rw");
       ByteArrayOutputStream bo = new ByteArrayOutputStream();
       int serialLength = ReadWriteIOUtils.write(timeseriesMetadata.getTimeSeriesMetadataType(), bo);
       serialLength += ReadWriteIOUtils.writeVar(timeseriesMetadata.getMeasurementId(), bo);
@@ -178,7 +180,7 @@ public class TsFileSelfCheckToolTest {
 
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
-      tool.check(path, false);
+      tool.check(filePath, false);
       fail("No exception thrown.");
     } catch (TsFileStatisticsMistakesException e) {
       // In fact, what we are modifying is the Statistics of TimeseriesMetadata. It should be
@@ -194,12 +196,17 @@ public class TsFileSelfCheckToolTest {
       // Therefore, Chunk's Statistics error will be reported.
       assertEquals("Chunk exists statistics mistakes at position 22", e.getMessage());
     }
+    tearDown(filePath);
   }
 
   @Test
-  public void tsFileSelfCheckToolWithRandomModifiedTest() throws IOException {
+  public void tsFileSelfCheckToolWithRandomModifiedTest() throws IOException, Exception {
 
-    RandomAccessFile raf = new RandomAccessFile(path, "rw");
+    String fileName = "1-0-0-3.tsfile";
+    String filePath = path.concat(fileName);
+    setUp(filePath);
+
+    RandomAccessFile raf = new RandomAccessFile(filePath, "rw");
     ByteArrayOutputStream bo = new ByteArrayOutputStream();
     ReadWriteIOUtils.write(100, bo);
     byte[] serialArr = bo.toByteArray();
@@ -212,19 +219,19 @@ public class TsFileSelfCheckToolTest {
 
     TsFileSelfCheckTool tool = new TsFileSelfCheckTool();
     try {
-      tool.check(path, false);
+      tool.check(filePath, false);
       fail("No exception thrown.");
     } catch (TsFileTimeseriesMetadataException e) {
       assertEquals(
           "Error occurred while getting all TimeseriesMetadata with offset in TsFile.",
           e.getMessage());
     }
+    tearDown(filePath);
   }
 
-  @After
-  public void tearDown() {
+  public void tearDown(String filePath) {
     try {
-      FileUtils.forceDelete(new File(path));
+      FileUtils.forceDelete(new File(filePath));
     } catch (IOException e) {
       fail(e.getMessage());
     }
