@@ -29,6 +29,7 @@ import org.apache.iotdb.db.query.dataset.ShowContinuousQueriesResult;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,7 +133,7 @@ public class ContinuousQueryService implements IService {
     acquireRegistrationLock();
     try {
       if (shouldWriteLog) {
-        IoTDB.metaManager.createContinuousQuery(plan);
+        IoTDB.metaManager.writeCreateContinuousQueryLog(plan);
       }
       doRegister(plan);
       return true;
@@ -161,13 +162,15 @@ public class ContinuousQueryService implements IService {
         plan.getContinuousQueryName(), plan.getCreationTimestamp() + plan.getEveryInterval());
   }
 
+  @TestOnly
   public void deregisterAll() throws ContinuousQueryException {
     for (String cqName : continuousQueryPlans.keySet()) {
-      deregister(new DropContinuousQueryPlan(cqName));
+      deregister(new DropContinuousQueryPlan(cqName), false);
     }
   }
 
-  public boolean deregister(DropContinuousQueryPlan plan) throws ContinuousQueryException {
+  public boolean deregister(DropContinuousQueryPlan plan, boolean shouldWriteLog)
+      throws ContinuousQueryException {
     if (!continuousQueryPlans.containsKey(plan.getContinuousQueryName())) {
       throw new ContinuousQueryException(
           String.format("Continuous Query [%s] does not exist", plan.getContinuousQueryName()));
@@ -175,7 +178,9 @@ public class ContinuousQueryService implements IService {
 
     acquireRegistrationLock();
     try {
-      IoTDB.metaManager.dropContinuousQuery(plan);
+      if (shouldWriteLog) {
+        IoTDB.metaManager.writeDropContinuousQueryLog(plan);
+      }
       doDeregister(plan);
       return true;
     } catch (Exception e) {

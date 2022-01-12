@@ -115,36 +115,33 @@ public class UDTFAlignByTimeDataSet extends UDTFDataSet implements DirectAlignBy
     while (rowCount < fetchSize
         && (rowLimit <= 0 || alreadyReturnedRowNum < rowLimit)
         && !timeHeap.isEmpty()) {
-
-      int nullFieldsCnt = 0;
       long minTime = timeHeap.pollFirst();
-
-      for (LayerPointReader reader : transformers) {
-        if (!reader.next() || reader.currentTime() != minTime) {
-          nullFieldsCnt++;
-          continue;
-        }
-        if (reader.isCurrentNull()) {
-          nullFieldsCnt++;
-        }
-      }
-      // In method QueryDataSetUtils.convertQueryDataSetByFetchSize(), we fetch a row and can easily
-      // use rowRecord.isAllNull() or rowRecord.hasNullField() to judge whether this row should be
-      // kept with clause 'with null'.
-      // Here we get a timestamp first and then construct the row column by column.
-      // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
-      // or nullFieldsCnt == columnNum and withoutAllNull == true
-      if ((nullFieldsCnt == columnsNum && withoutAllNull)
-          || (nullFieldsCnt > 0 && withoutAnyNull)) {
+      if (withoutAllNull || withoutAnyNull) {
+        int nullFieldsCnt = 0;
         for (LayerPointReader reader : transformers) {
-          // if reader.currentTime() == minTime, it means that the value at this timestamp should
-          // not be kept, thus we need to prepare next data point.
-          if (reader.next() && reader.currentTime() == minTime) {
-            reader.readyForNext();
-            iterateReaderToNextValid(reader);
+          if (!reader.next() || reader.currentTime() != minTime || reader.isCurrentNull()) {
+            nullFieldsCnt++;
           }
         }
-        continue;
+        // In method QueryDataSetUtils.convertQueryDataSetByFetchSize(), we fetch a row and can
+        // easily
+        // use rowRecord.isAllNull() or rowRecord.hasNullField() to judge whether this row should be
+        // kept with clause 'with null'.
+        // Here we get a timestamp first and then construct the row column by column.
+        // We don't record this row when nullFieldsCnt > 0 and withoutAnyNull == true
+        // or nullFieldsCnt == columnNum and withoutAllNull == true
+        if ((nullFieldsCnt == columnsNum && withoutAllNull)
+            || (nullFieldsCnt > 0 && withoutAnyNull)) {
+          for (LayerPointReader reader : transformers) {
+            // if reader.currentTime() == minTime, it means that the value at this timestamp should
+            // not be kept, thus we need to prepare next data point.
+            if (reader.next() && reader.currentTime() == minTime) {
+              reader.readyForNext();
+              iterateReaderToNextValid(reader);
+            }
+          }
+          continue;
+        }
       }
       if (rowOffset == 0) {
         timeBAOS.write(BytesUtils.longToBytes(minTime));
