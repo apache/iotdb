@@ -56,7 +56,7 @@ public class MicrometerPrometheusReporter implements Reporter {
             .filter(reporter -> reporter instanceof PrometheusMeterRegistry)
             .collect(Collectors.toSet());
     if (meterRegistrySet.size() != 1) {
-      LOGGER.error("Too less or too many prometheusReporters");
+      LOGGER.warn("Too less or too many prometheusReporters");
       return false;
     }
     PrometheusMeterRegistry prometheusMeterRegistry =
@@ -85,7 +85,6 @@ public class MicrometerPrometheusReporter implements Reporter {
   public boolean stop() {
     if (httpServer != null) {
       try {
-        Metrics.addRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
         Set<MeterRegistry> meterRegistrySet =
             Metrics.globalRegistry.getRegistries().stream()
                 .filter(reporter -> reporter instanceof PrometheusMeterRegistry)

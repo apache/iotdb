@@ -26,36 +26,22 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.db.utils.FileUtils;
-import org.apache.iotdb.metrics.CompositeReporter;
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.Reporter;
+import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
-import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
-import org.apache.iotdb.metrics.utils.ReporterType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.util.ServiceLoader;
 import java.util.stream.Stream;
 
-public class MetricsService implements MetricsServiceMBean, IService {
+public class MetricsService extends MetricService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
   private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
-
-  private MetricManager metricManager = new DoNothingMetricManager();
-
-  private CompositeReporter compositeReporter = new CompositeReporter();
-
-  private boolean isEnableMetric = metricConfig.getEnableMetric();
-
-  private int pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
 
   private MetricsService() {}
 
@@ -63,7 +49,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
   public void start() throws StartupException {
     try {
       if (isEnableMetric) {
-        logger.info("Start metric Service.");
+        logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
       }
@@ -84,91 +70,13 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  /** Start all reporter. if is disabled, do nothing */
-  public void startService() {
-    // load manager
-    loadManager();
-    // load reporter
-    loadReporter();
-    // do some init work
-    metricManager.init();
-    // start reporter
-    compositeReporter.startAll();
-
-    enablePredefinedMetric(PredefinedMetric.JVM);
-    enablePredefinedMetric(PredefinedMetric.LOGBACK);
-
-    collectFileSystemInfo();
+  public void restartService() throws StartupException {
+    stopService();
+    startService();
   }
 
   @Override
-  /** Stop metric service. if is disabled, do nothing */
-  public void stopService() {
-    metricManager.stop();
-    compositeReporter.stopAll();
-    metricManager = new DoNothingMetricManager();
-    compositeReporter = new CompositeReporter();
-  }
-
-  private void loadManager() {
-    logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
-    ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
-    int size = 0;
-    for (MetricManager mf : metricManagers) {
-      size++;
-      if (mf.getClass()
-          .getName()
-          .toLowerCase()
-          .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
-        metricManager = mf;
-        break;
-      }
-    }
-
-    // if no more implementations, we use nothingManager.
-    if (size == 0 || metricManager == null) {
-      metricManager = new DoNothingMetricManager();
-    } else if (size > 1) {
-      logger.warn(
-          "detect more than one MetricManager, will use {}", metricManager.getClass().getName());
-    }
-  }
-
-  private void loadReporter() {
-    logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-
-    ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
-    for (Reporter reporter : reporters) {
-      if (metricConfig.getMetricReporterList() != null
-          && metricConfig.getMetricReporterList().contains(reporter.getReporterType())
-          && reporter
-              .getClass()
-              .getName()
-              .toLowerCase()
-              .contains(metricConfig.getMonitorType().getName().toLowerCase())) {
-        reporter.setMetricManager(metricManager);
-        compositeReporter.addReporter(reporter);
-      }
-    }
-  }
-
-  /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public void start(ReporterType reporter) {
-    if (!isEnableMetric) {
-      return;
-    }
-    compositeReporter.start(reporter);
-  }
-
-  /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public void stop(ReporterType reporter) {
-    if (!isEnableMetric) {
-      return;
-    }
-    compositeReporter.stop(reporter);
-  }
-
-  private void collectFileSystemInfo() {
+  public void collectFileSystemInfo() {
     logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
     String walDir = DirectoryManager.getInstance().getWALFolder();
     metricManager.getOrCreateAutoGauge(
@@ -246,11 +154,6 @@ public class MetricsService implements MetricsServiceMBean, IService {
   }
 
   @Override
-  public void restartService() throws StartupException {
-    stopService();
-    startService();
-  }
-
   public void reloadProperties() {
     logger.info("Reload properties of metric service");
     synchronized (this) {
@@ -259,40 +162,24 @@ public class MetricsService implements MetricsServiceMBean, IService {
           if (metricConfig.getEnableMetric()) {
             isEnableMetric = true;
             start();
-            logger.info("Start metric Service, after reload");
+            logger.info("Finish start metric Service");
           } else {
             stop();
             isEnableMetric = false;
-            logger.info("Stop metric Service, after reload");
+            logger.info("Finish stop metric Service");
           }
         }
         if (isEnableMetric) {
           if (metricConfig.getPushPeriodInSecond() != pushPeriodInSecond) {
-            logger.info("Restart metric reporter, after reload");
             pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
             compositeReporter.restartAll();
+            logger.info("Finish restart metric reporters.");
           }
         }
       } catch (StartupException startupException) {
         logger.error("Failed to start metric when reload properties");
       }
     }
-  }
-
-  /**
-   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
-   * metrics are not supported
-   */
-  public void enablePredefinedMetric(PredefinedMetric metric) {
-    metricManager.enablePredefinedMetric(metric);
-  }
-
-  public MetricManager getMetricManager() {
-    return metricManager;
-  }
-
-  public boolean isEnable() {
-    return isEnableMetric;
   }
 
   @Override

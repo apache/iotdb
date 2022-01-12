@@ -33,12 +33,14 @@ public class CompositeReporter {
 
   /** Start all reporter */
   public boolean startAll() {
+    boolean result = true;
     for (Reporter reporter : reporters) {
       if (!reporter.start()) {
         LOGGER.warn("Failed to init {} reporter.", reporter.getReporterType());
+        result = false;
       }
     }
-    return true;
+    return result;
   }
 
   /** Start reporter by name name values in jmx, prometheus, iotdb, internal */
@@ -54,13 +56,14 @@ public class CompositeReporter {
 
   /** Stop all reporter */
   public boolean stopAll() {
+    boolean result = true;
     for (Reporter reporter : reporters) {
       if (!reporter.stop()) {
         LOGGER.error("Failed to stop {} reporter.", reporter.getReporterType());
-        return false;
+        result = false;
       }
     }
-    return true;
+    return result;
   }
 
   /** Stop reporter by name, values in jmx, prometheus, internal */

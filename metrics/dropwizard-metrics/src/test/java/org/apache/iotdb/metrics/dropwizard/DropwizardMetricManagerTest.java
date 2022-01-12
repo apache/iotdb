@@ -19,10 +19,13 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.*;
-import org.apache.iotdb.metrics.utils.PredefinedMetric;
+import org.apache.iotdb.metrics.utils.MonitorType;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -36,15 +39,16 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.Assert.*;
 
 public class DropwizardMetricManagerTest {
+  static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  static MetricService metricService = new DoNothingMetricService();
   static MetricManager metricManager;
 
   @BeforeClass
   public static void init() {
-    System.setProperty("line.separator", "\n");
-    // set up path of yml
-    System.setProperty("IOTDB_CONF", "src/test/resources");
-    MetricService.init();
-    metricManager = MetricService.getMetricManager();
+    metricConfig.setMonitorType(MonitorType.dropwizard);
+    metricConfig.setPredefinedMetrics(new ArrayList<>());
+    metricService.startService();
+    metricManager = metricService.getMetricManager();
   }
 
   @Test
@@ -277,11 +281,6 @@ public class DropwizardMetricManagerTest {
   @Test
   public void isEnable() {
     assertTrue(metricManager.isEnable());
-  }
-
-  @Test
-  public void enablePredefinedMetric() {
-    metricManager.enablePredefinedMetric(PredefinedMetric.JVM);
   }
 
   @AfterClass

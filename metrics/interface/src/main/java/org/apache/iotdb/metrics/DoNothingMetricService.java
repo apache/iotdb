@@ -17,9 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics;
 
-public enum PredefinedMetric {
-  jvm,
-  logback
+public class DoNothingMetricService extends MetricService {
+  @Override
+  protected void collectFileSystemInfo() {
+    // do nothing
+  }
+
+  @Override
+  protected void reloadProperties() {
+    // do nothing
+  }
 }

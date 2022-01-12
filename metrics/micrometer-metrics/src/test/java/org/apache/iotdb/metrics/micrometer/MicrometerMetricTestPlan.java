@@ -29,6 +29,7 @@ public class MicrometerMetricTestPlan {
   private static void test(Integer metric, Integer tag) {
     Long[] times = {0L, 0L, 0L};
     MicrometerMetricTest test = new MicrometerMetricTest(metric, tagTotalNumber, tag, searchNumber);
+    test.start();
     times[0] += test.createMetricInorder();
     for (int i = 0; i < LOOP; i++) {
       times[1] += test.searchMetricInorder();
@@ -52,10 +53,13 @@ public class MicrometerMetricTestPlan {
   }
 
   public static void main(String[] args) {
-    System.setProperty("IOTDB_CONF", "metrics/micrometer-metrics/src/test/resources");
     for (Integer metric : METRIC_NUMBERS) {
       for (Integer tag : TAG_NUMBERS) {
-        test(metric, tag);
+        try {
+          test(metric, tag);
+        } catch (Exception e) {
+          System.out.println(metric + " " + tag);
+        }
       }
     }
   }

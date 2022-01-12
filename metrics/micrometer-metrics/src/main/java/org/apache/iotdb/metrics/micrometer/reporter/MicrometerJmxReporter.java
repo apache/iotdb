@@ -60,7 +60,6 @@ public class MicrometerJmxReporter implements Reporter {
   @Override
   public boolean stop() {
     try {
-      Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
       Set<MeterRegistry> meterRegistrySet =
           Metrics.globalRegistry.getRegistries().stream()
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
@@ -68,6 +67,7 @@ public class MicrometerJmxReporter implements Reporter {
       for (MeterRegistry meterRegistry : meterRegistrySet) {
         if (!meterRegistry.isClosed()) {
           ((JmxMeterRegistry) meterRegistry).stop();
+          meterRegistry.close();
           Metrics.removeRegistry(meterRegistry);
         }
       }

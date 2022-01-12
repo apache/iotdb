@@ -19,21 +19,28 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Counter;
+import org.apache.iotdb.metrics.utils.MonitorType;
 
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 public class PrometheusRunTest {
-  public MetricManager metricManager = MetricService.getMetricManager();
+  static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  static MetricService metricService = new DoNothingMetricService();
+  static MetricManager metricManager;
 
   public static void main(String[] args) throws InterruptedException {
-    System.setProperty("line.separator", "\n");
-    System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
-    PrometheusRunTest prometheusRunTest = new PrometheusRunTest();
-    Counter counter = prometheusRunTest.metricManager.getOrCreateCounter("counter");
-    MetricService.startAll();
+    metricConfig.setMonitorType(MonitorType.dropwizard);
+    metricConfig.setPredefinedMetrics(new ArrayList<>());
+    metricService.startService();
+    metricManager = metricService.getMetricManager();
+    Counter counter = metricManager.getOrCreateCounter("counter");
     while (true) {
       counter.inc();
       TimeUnit.SECONDS.sleep(1);

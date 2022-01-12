@@ -19,8 +19,12 @@
 
 package org.apache.iotdb.metrics.dropwizard;
 
+import org.apache.iotdb.metrics.DoNothingMetricService;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.MetricService;
+import org.apache.iotdb.metrics.config.MetricConfig;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.utils.MonitorType;
 
 import java.util.*;
 
@@ -32,7 +36,9 @@ public class DropwizardMetricTest {
   private Integer searchNumber;
   private String[] TAGS;
   private static Random random = new Random(43);
-  private static MetricManager metricManager = MetricService.getMetricManager();
+  private static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  private static MetricService metricService;
+  private static MetricManager metricManager;
   private static Map<String, String[]> name2Tags = new HashMap<>();
 
   /**
@@ -174,8 +180,16 @@ public class DropwizardMetricTest {
     return metricNumberTotal + "," + tagTotalNumber + "," + tagSingleNumber + "," + searchNumber;
   }
 
+  public void start() {
+    metricConfig.setMonitorType(MonitorType.dropwizard);
+    metricConfig.setPredefinedMetrics(new ArrayList<>());
+    metricService = new DoNothingMetricService();
+    metricService.startService();
+    metricManager = metricService.getMetricManager();
+  }
+
   public void stop() {
     name2Tags.clear();
-    metricManager.stop();
+    metricService.stopService();
   }
 }

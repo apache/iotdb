@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.utils.MonitorType;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
@@ -38,6 +39,8 @@ public class MetricConfig {
   /** provide or push metric data to remote system, could be jmx, prometheus, iotdb, etc. */
   private List<ReporterType> metricReporterList =
       Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
+
+  private List<PredefinedMetric> predefinedMetrics = Arrays.asList(PredefinedMetric.jvm);
 
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
@@ -80,6 +83,14 @@ public class MetricConfig {
 
   public void setPrometheusReporterConfig(PrometheusReporterConfig prometheusReporterConfig) {
     this.prometheusReporterConfig = prometheusReporterConfig;
+  }
+
+  public List<PredefinedMetric> getPredefinedMetrics() {
+    return predefinedMetrics;
+  }
+
+  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
+    this.predefinedMetrics = predefinedMetrics;
   }
 
   /** the following is prometheus related config. */
