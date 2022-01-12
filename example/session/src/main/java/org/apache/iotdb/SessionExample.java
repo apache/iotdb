@@ -21,7 +21,6 @@ package org.apache.iotdb;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.session.Session;
 import org.apache.iotdb.session.SessionDataSet;
 import org.apache.iotdb.session.SessionDataSet.DataIterator;
@@ -55,27 +54,30 @@ public class SessionExample {
   private static final String LOCAL_HOST = "127.0.0.1";
 
   public static void main(String[] args)
-      throws IoTDBConnectionException, StatementExecutionException {
+      throws IoTDBConnectionException, StatementExecutionException, InterruptedException {
     session =
         new Session.Builder().host(LOCAL_HOST).port(6667).username("root").password("root").build();
     session.open(false);
-
-    // set session fetchSize
-    session.setFetchSize(10000);
-
-    try {
-      session.setStorageGroup("root.sg1");
-    } catch (StatementExecutionException e) {
-      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
-        throw e;
-      }
-    }
+    //
+    //    // set session fetchSize
+    //    session.setFetchSize(10000);
+    //
+    //    try {
+    //      session.setStorageGroup("root.sg1");
+    //    } catch (StatementExecutionException e) {
+    //      if (e.getStatusCode() != TSStatusCode.PATH_ALREADY_EXIST_ERROR.getStatusCode()) {
+    //        throw e;
+    //      }
+    //    }
 
     // createTemplate();
-    createTimeseries();
-    createMultiTimeseries();
-    insertRecord();
-    insertTablet();
+    //    createTimeseries();
+    //    createMultiTimeseries();
+    while (true) {
+      insertRecord();
+      Thread.sleep(1000);
+    }
+    //    insertTablet();
     //    insertTabletWithNullValues();
     //    insertTablets();
     //    insertRecords();
@@ -91,17 +93,17 @@ public class SessionExample {
     //    deleteTimeseries();
     //    setTimeout();
 
-    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
-    sessionEnableRedirect.setEnableQueryRedirection(true);
-    sessionEnableRedirect.open(false);
-
-    // set session fetchSize
-    sessionEnableRedirect.setFetchSize(10000);
-
-    insertRecord4Redirect();
-    query4Redirect();
-    sessionEnableRedirect.close();
-    session.close();
+    //    sessionEnableRedirect = new Session(LOCAL_HOST, 6667, "root", "root");
+    //    sessionEnableRedirect.setEnableQueryRedirection(true);
+    //    sessionEnableRedirect.open(false);
+    //
+    //    // set session fetchSize
+    //    sessionEnableRedirect.setFetchSize(10000);
+    //
+    //    insertRecord4Redirect();
+    //    query4Redirect();
+    //    sessionEnableRedirect.close();
+    //    session.close();
   }
 
   private static void createAndDropContinuousQueries()
@@ -253,7 +255,7 @@ public class SessionExample {
       values.add(1L);
       values.add(2L);
       values.add(3L);
-      session.insertRecord(deviceId, time, measurements, types, values);
+      session.insertRecord(deviceId, System.currentTimeMillis(), measurements, types, values);
     }
   }
 

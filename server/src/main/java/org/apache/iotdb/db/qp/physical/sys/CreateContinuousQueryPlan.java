@@ -33,11 +33,13 @@ import java.util.List;
 public class CreateContinuousQueryPlan extends PhysicalPlan {
 
   private String querySql;
+  private String querySqlWithoutGroupByClause;
   private String continuousQueryName;
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private long groupByTimeIntervalUnit;
+  private long groupByTimeInterval;
+  private String groupByTimeIntervalString;
   private long creationTimestamp;
 
   public CreateContinuousQueryPlan() {
@@ -50,19 +52,28 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       PartialPath targetPath,
       long everyInterval,
       long forInterval,
-      long groupByTimeIntervalUnit) {
+      long groupByTimeIntervalUnit,
+      String groupByTimeIntervalString) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     this.querySql = querySql;
+    int indexOfGroupBy = querySql.indexOf("group by");
+    this.querySqlWithoutGroupByClause =
+        indexOfGroupBy == -1 ? querySql : querySql.substring(0, indexOfGroupBy);
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
     this.everyInterval = everyInterval;
     this.forInterval = forInterval;
-    this.groupByTimeIntervalUnit = groupByTimeIntervalUnit;
+    this.groupByTimeInterval = groupByTimeIntervalUnit;
+    this.groupByTimeIntervalString = groupByTimeIntervalString;
     this.creationTimestamp = DatetimeUtils.currentTime();
   }
 
   public String getQuerySql() {
     return querySql;
+  }
+
+  public String getQuerySqlWithoutGroupByClause() {
+    return querySqlWithoutGroupByClause;
   }
 
   public String getContinuousQueryName() {
@@ -85,8 +96,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     return forInterval;
   }
 
-  public long getGroupByTimeIntervalUnit() {
-    return groupByTimeIntervalUnit;
+  public long getGroupByTimeInterval() {
+    return groupByTimeInterval;
+  }
+
+  public String getGroupByTimeIntervalString() {
+    return groupByTimeIntervalString;
   }
 
   public long getCreationTimestamp() {
@@ -103,10 +118,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
     ReadWriteIOUtils.write(continuousQueryName, buffer);
     ReadWriteIOUtils.write(querySql, buffer);
+    ReadWriteIOUtils.write(querySqlWithoutGroupByClause, buffer);
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     buffer.putLong(everyInterval);
     buffer.putLong(forInterval);
-    buffer.putLong(groupByTimeIntervalUnit);
+    buffer.putLong(groupByTimeInterval);
+    ReadWriteIOUtils.write(groupByTimeIntervalString, buffer);
     buffer.putLong(creationTimestamp);
   }
 
@@ -114,10 +131,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     continuousQueryName = ReadWriteIOUtils.readString(buffer);
     querySql = ReadWriteIOUtils.readString(buffer);
+    querySqlWithoutGroupByClause = ReadWriteIOUtils.readString(buffer);
     targetPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     everyInterval = ReadWriteIOUtils.readLong(buffer);
     forInterval = ReadWriteIOUtils.readLong(buffer);
-    groupByTimeIntervalUnit = ReadWriteIOUtils.readLong(buffer);
+    groupByTimeInterval = ReadWriteIOUtils.readLong(buffer);
+    groupByTimeIntervalString = ReadWriteIOUtils.readString(buffer);
     creationTimestamp = ReadWriteIOUtils.readLong(buffer);
   }
 }

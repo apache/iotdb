@@ -35,7 +35,8 @@ public class CreateContinuousQueryOperator extends Operator {
   private PartialPath targetPath;
   private long everyInterval;
   private long forInterval;
-  private long groupByTimeIntervalUnit;
+  private long groupByTimeInterval;
+  private String groupByTimeIntervalString;
 
   public CreateContinuousQueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -70,8 +71,12 @@ public class CreateContinuousQueryOperator extends Operator {
     return forInterval;
   }
 
-  public void setGroupByTimeIntervalUnit(long groupByTimeIntervalUnit) {
-    this.groupByTimeIntervalUnit = groupByTimeIntervalUnit;
+  public void setGroupByTimeInterval(long groupByTimeInterval) {
+    this.groupByTimeInterval = groupByTimeInterval;
+  }
+
+  public void setGroupByTimeIntervalString(String groupByTimeIntervalString) {
+    this.groupByTimeIntervalString = groupByTimeIntervalString;
   }
 
   public void setQueryOperator(QueryOperator queryOperator) {
@@ -91,6 +96,7 @@ public class CreateContinuousQueryOperator extends Operator {
         targetPath,
         everyInterval,
         forInterval,
-        groupByTimeIntervalUnit);
+        groupByTimeInterval,
+        groupByTimeIntervalString);
   }
 }
