@@ -43,6 +43,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
+import org.apache.thrift.transport.TTransportException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -89,7 +90,7 @@ public class RemoteSimpleSeriesReaderTest {
                       RaftNode header, long readerId, AsyncMethodCallback<ByteBuffer> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TApplicationException("Node down.");
+                      throw new TTransportException("Node down.");
                     }
 
                     new Thread(
@@ -115,7 +116,7 @@ public class RemoteSimpleSeriesReaderTest {
                       SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
                       throws TException {
                     if (failedNodes.contains(node)) {
-                      throw new TApplicationException("Node down.");
+                      throw new TTransportException("Node down.");
                     }
 
                     new Thread(() -> resultHandler.onComplete(1L)).start();
