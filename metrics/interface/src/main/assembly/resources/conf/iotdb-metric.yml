@@ -33,7 +33,7 @@ predefinedMetrics:
   - jvm
   - logback
 
-# Period time of push
+# Period time of push, only valid for dropwizard
 pushPeriodInSecond: 5
 
 ########################################################

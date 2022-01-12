@@ -84,7 +84,7 @@ public class MetricConfigDescriptor {
     metricConfig = new MetricConfig();
   }
 
-  public void loadHotProperties() {
+  public ReloadLevel loadHotProperties() {
     String url = getPropsUrl();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
@@ -99,10 +99,28 @@ public class MetricConfigDescriptor {
     } else {
       logger.warn("Fail to find config file, use default");
     }
-    if (newMetricConfig != null) {
-      metricConfig.setEnableMetric(newMetricConfig.getEnableMetric());
-      metricConfig.setPushPeriodInSecond(newMetricConfig.getPushPeriodInSecond());
+    ReloadLevel reloadLevel = ReloadLevel.NOTHING;
+    if (newMetricConfig != null && !metricConfig.equals(newMetricConfig)) {
+      if (!metricConfig.getEnableMetric().equals(newMetricConfig.getEnableMetric())) {
+        // start service or stop service.
+        reloadLevel =
+            (newMetricConfig.getEnableMetric())
+                ? ReloadLevel.START_METRIC
+                : ReloadLevel.STOP_METRIC;
+      } else if (metricConfig.getEnableMetric()) {
+        // restart reporters or restart service
+        if (!metricConfig.getMonitorType().equals(newMetricConfig.getMonitorType())
+            || !metricConfig
+                .getPredefinedMetrics()
+                .equals(newMetricConfig.getPredefinedMetrics())) {
+          reloadLevel = ReloadLevel.RESTART_METRIC;
+        } else {
+          reloadLevel = ReloadLevel.RESTART_REPORTER;
+        }
+      }
+      metricConfig.copy(newMetricConfig);
     }
+    return reloadLevel;
   }
 
   private static class MetricConfigDescriptorHolder {

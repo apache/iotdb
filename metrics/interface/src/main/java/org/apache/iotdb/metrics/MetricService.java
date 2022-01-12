@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -43,8 +44,6 @@ public abstract class MetricService {
   protected CompositeReporter compositeReporter = new CompositeReporter();
 
   protected boolean isEnableMetric = metricConfig.getEnableMetric();
-
-  protected int pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
 
   public MetricService() {}
 
@@ -133,9 +132,15 @@ public abstract class MetricService {
     compositeReporter.stop(reporter);
   }
 
+  /** collect file system info in metric way */
   protected abstract void collectFileSystemInfo();
 
-  protected abstract void reloadProperties();
+  /**
+   * support hot load of some properties
+   *
+   * @param reloadLevel
+   */
+  protected abstract void reloadProperties(ReloadLevel reloadLevel);
 
   /**
    * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback

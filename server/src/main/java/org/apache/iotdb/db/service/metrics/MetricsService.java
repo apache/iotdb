@@ -29,6 +29,7 @@ import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.MetricService;
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.config.ReloadLevel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
         logger.info("Start to start metric Service.");
         JMXService.registerMBean(getInstance(), mbeanName);
         startService();
+        logger.info("Finish start metric Service");
       }
     } catch (Exception e) {
       logger.error("Failed to start {} because: ", this.getID().getName(), e);
@@ -65,7 +67,7 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
       logger.info("Stop metric Service.");
       stopService();
       JMXService.deregisterMBean(mbeanName);
-      isEnableMetric = false;
+      logger.info("Finish stop metric Service");
     }
   }
 
@@ -154,27 +156,30 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
   }
 
   @Override
-  public void reloadProperties() {
+  public void reloadProperties(ReloadLevel reloadLevel) {
     logger.info("Reload properties of metric service");
     synchronized (this) {
       try {
-        if (metricConfig.getEnableMetric() != isEnableMetric) {
-          if (metricConfig.getEnableMetric()) {
+        switch (reloadLevel) {
+          case START_METRIC:
             isEnableMetric = true;
             start();
-            logger.info("Finish start metric Service");
-          } else {
+            break;
+          case STOP_METRIC:
             stop();
             isEnableMetric = false;
-            logger.info("Finish stop metric Service");
-          }
-        }
-        if (isEnableMetric) {
-          if (metricConfig.getPushPeriodInSecond() != pushPeriodInSecond) {
-            pushPeriodInSecond = metricConfig.getPushPeriodInSecond();
+            break;
+          case RESTART_METRIC:
+            stop();
+            isEnableMetric = true;
+            start();
+            break;
+          case RESTART_REPORTER:
             compositeReporter.restartAll();
             logger.info("Finish restart metric reporters.");
-          }
+            break;
+          default:
+            break;
         }
       } catch (StartupException startupException) {
         logger.error("Failed to start metric when reload properties");

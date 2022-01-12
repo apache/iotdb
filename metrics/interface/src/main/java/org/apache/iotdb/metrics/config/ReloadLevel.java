@@ -17,18 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics;
+package org.apache.iotdb.metrics.config;
 
-import org.apache.iotdb.metrics.config.ReloadLevel;
-
-public class DoNothingMetricService extends MetricService {
-  @Override
-  protected void collectFileSystemInfo() {
-    // do nothing
-  }
-
-  @Override
-  protected void reloadProperties(ReloadLevel reloadLevel) {
-    // do nothing
-  }
+public enum ReloadLevel {
+  START_METRIC,
+  STOP_METRIC,
+  RESTART_METRIC,
+  RESTART_REPORTER,
+  NOTHING
 }

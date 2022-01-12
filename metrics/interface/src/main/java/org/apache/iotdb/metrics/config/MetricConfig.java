@@ -45,6 +45,15 @@ public class MetricConfig {
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
 
+  public void copy(MetricConfig newMetricConfig) {
+    enableMetric = newMetricConfig.getEnableMetric();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    monitorType = newMetricConfig.getMonitorType();
+    metricReporterList = newMetricConfig.getMetricReporterList();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    prometheusReporterConfig = newMetricConfig.getPrometheusReporterConfig();
+  }
+
   public Boolean getEnableMetric() {
     return enableMetric;
   }
@@ -114,5 +123,31 @@ public class MetricConfig {
     public void setPrometheusExporterPort(String prometheusExporterPort) {
       this.prometheusExporterPort = prometheusExporterPort;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof PrometheusReporterConfig)) {
+        return false;
+      }
+      PrometheusReporterConfig anotherPrometheusReporterConfig = (PrometheusReporterConfig) obj;
+      return prometheusExporterUrl.equals(
+              anotherPrometheusReporterConfig.getPrometheusExporterPort())
+          && prometheusExporterPort.equals(
+              anotherPrometheusReporterConfig.getPrometheusExporterUrl());
+    }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof MetricConfig)) {
+      return false;
+    }
+    MetricConfig anotherMetricConfig = (MetricConfig) obj;
+    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
+        && pushPeriodInSecond.equals(anotherMetricConfig.getPushPeriodInSecond())
+        && monitorType.equals(anotherMetricConfig.getMonitorType())
+        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
+        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
+        && prometheusReporterConfig.equals(anotherMetricConfig.getPrometheusReporterConfig());
   }
 }

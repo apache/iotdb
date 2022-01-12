@@ -19,11 +19,11 @@
 
 -->
 
-## 什么是Metrics?
+## 1. 什么是Metrics?
 
 在IoTDB运行过程中，我们希望对IoTDB的状态进行观测，以便于排查系统问题或者及时发现系统潜在的风险。能**反映系统运行状态的一系列指标**就是metrics。
 
-## 什么场景下会使用到metrics?
+## 2. 什么场景下会使用到metrics?
 
 那么什么时候会用到metrics呢？下面列举一些常见的场景。
 
@@ -46,34 +46,35 @@
 
    此时我们可能需要通过错误日志的数量、集群节点的状态等指标来判断系统是否在正常运行。
 
-## 什么人需要使用metrics?
+## 3. 什么人需要使用metrics?
 
 所有关注系统状态的人员都可以使用，包括但不限于研发、测试、运维、DBA等等
 
-## IoTDB都有哪些metrics?
+## 4. IoTDB都有哪些metrics?
 
 目前，IoTDB对外提供一些主要模块的metrics，并且随着新功能的开发以及系统优化或者重构，metrics也会同步添加和更新。
 
-### 名词解释
+### 4.1. 名词解释
 
 在进一步了解这些指标之前，我们先来看几个名词解释：
 
 - Metric Name
 
-  指标名称唯，比如logback_events_total表示日志事件发生的总次数。
+  指标名称，比如logback_events_total表示日志事件发生的总次数。
 
 - Tag
 
   每个指标下面可以有0到多个分类，比如logback_events_total下有一个```level```的分类，用来表示特定级别下的日志数量。
-### 数据格式
+
+### 4.2. 数据格式
 
 IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通过```org.apache.iotdb.metrics```获取metrics指标。
 
-接下来我们以Prometheus格式为例对各个监控项进行说明。
+接下来我们以Prometheus格式为例对目前已有监控项进行说明。
 
-### IoTDB Metrics
+### 4.3. IoTDB Metrics
 
-### 接入层
+### 4.4. 接入层
 
 | Metric              | Tag             | 说明             | 示例                                         |
 | ------------------- | --------------- | ---------------- | -------------------------------------------- |
@@ -82,14 +83,14 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | entry_seconds_max   | name="接口名"   | 接口最大耗时(s)  | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn" | 系统累计写入点数 | quantity_total{name="pointsIn",} 1.0         |
 
-### 文件
+### 4.5. 文件
 
 | Metric     | Tag                  | 说明                                | 示例                        |
 | ---------- | -------------------- | ----------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | 当前时间wal/seq/unseq文件大小(byte) | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | 当前时间wal/seq/unseq文件个数       | file_count{name="seq",} 1.0 |
 
-### Flush
+### 4.6. Flush
 
 | Metric                  | Tag                                         | 说明                             | 示例                                                         |
 | ----------------------- | ------------------------------------------- | -------------------------------- | ------------------------------------------------------------ |
@@ -98,7 +99,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_max   | name="flush"                                | 到目前为止flush耗时(s)最大的一次 | cost_task_seconds_max{name="flush",} 0.363                   |
 | cost_task_seconds_sum   | name="flush"                                | flush累计耗时(s)                 | cost_task_seconds_sum{name="flush",} 0.363                   |
 
-### Compaction
+### 4.7. Compaction
 
 | Metric                  | Tag                                                          | 说明                                  | 示例                                                 |
 | ----------------------- | ------------------------------------------------------------ | ------------------------------------- | ---------------------------------------------------- |
@@ -107,25 +108,25 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cost_task_seconds_max   | name="compaction"                                            | 到目前为止compaction耗时(s)最大的一次 | cost_task_seconds_max{name="compaction",} 0.363      |
 | cost_task_seconds_sum   | name="compaction"                                            | compaction累计耗时(s)                 | cost_task_seconds_sum{name="compaction",} 0.363      |
 
-### 内存占用
+### 4.8. 内存占用
 
 | Metric | Tag                                     | 说明                                               | 示例                              |
 | ------ | --------------------------------------- | -------------------------------------------------- | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | chunkMetaData/storageGroup/mtree占用的内存（byte） | mem{name="chunkMetaData",} 2050.0 |
 
-### 缓存命中率
+### 4.9. 缓存命中率
 
 | Metric    | Tag                                     | 说明                                            | 示例                        |
 | --------- | --------------------------------------- | ----------------------------------------------- | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | chunk/timeSeriesMeta缓存命中率,bloomFilter拦截率 | cache_hit{name="chunk",} 80 |
 
-### 业务数据
+### 4.10. 业务数据
 
 | Metric   | Tag                                   | 说明                                         | 示例                             |
 | -------- | ------------------------------------- | -------------------------------------------- | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | 当前时间timeSeries/storageGroup/device的数量 | quantity{name="timeSeries",} 1.0 |
 
-### 集群
+### 4.11. 集群
 
 | Metric                    | Tag                             | 说明                                                         | 示例                                                         |
 | ------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -134,15 +135,15 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | cluster_node_status       | name="{{ip}}"                   | 节点状态，1=online  2=offline                                | cluster_node_status{name="127.0.0.1",} 1.0                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | 节点参与选举的次数及结果                                     | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
-### 日志
+### 4.12. 日志
 
 | Metric               | Tag                                    | 说明                                    | 示例                                    |
 | -------------------- | -------------------------------------- | --------------------------------------- | --------------------------------------- |
 | logback_events_total | {level="trace/debug/info/warn/error",} | trace/debug/info/warn/error日志累计数量 | logback_events_total{level="warn",} 0.0 |
 
-### JVM
+### 4.13. JVM
 
-#### 线程
+#### 4.13.1. 线程
 
 | Metric                     | Tag                                                          | 说明                     | 示例                                               |
 | -------------------------- | ------------------------------------------------------------ | ------------------------ | -------------------------------------------------- |
@@ -151,7 +152,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | jvm_threads_peak_threads   | 无                                                           | 峰值线程数               | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | 当前处于各种状态的线程数 | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-#### 垃圾回收
+#### 4.13.2. 垃圾回收
 
 | Metric                              | Tag                                                    | 说明                                         | 示例                                                         |
 | ----------------------------------- | ------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
@@ -164,7 +165,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | jvm_gc_live_data_size_bytes         | 无                                                     | GC后老年代内存的大小                         | jvm_gc_live_data_size_bytes 8450088.0                        |
 | jvm_gc_memory_allocated_bytes_total | 无                                                     | 在一个GC之后到下一个GC之前年轻代增加的内存   | jvm_gc_memory_allocated_bytes_total 4.2979144E7              |
 
-#### 内存
+#### 4.13.3. 内存
 
 | Metric                          | Tag                             | 说明                    | 示例                                                         |
 | ------------------------------- | ------------------------------- | ----------------------- | ------------------------------------------------------------ |
@@ -175,7 +176,7 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | JVM最大内存             | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9 |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | JVM已使用内存大小       | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/> |
 
-#### Classes
+#### 4.13.4. Classes
 
 | Metric                             | Tag                                           | 说明                   | 示例                                                         |
 | ---------------------------------- | --------------------------------------------- | ---------------------- | ------------------------------------------------------------ |
@@ -185,26 +186,31 @@ IoTDB对外提供JMX和Prometheus格式的监控指标，对于JMX，可以通�
 
 如果想自己在IoTDB中添加更多Metrics埋点，可以参考[IoTDB Metrics Framework](https://github.com/apache/iotdb/tree/master/metrics)使用说明
 
-## 怎样获取这些metrics？
+## 5. 怎样获取这些metrics？
 
-metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开
+metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开后启动server，目前也支持启动后，通过`load configuration`热加载。
 
-### 配置文件
+### 5.1. 配置文件
 
 ```yaml
-# 默认是false，改成true后启动iotdb，就可以获取到metrics数据了
-enableMetric: false            
+# 是否启动监控模块，默认为false
+enableMetric: false
 
-# 对外以jmx和prometheus协议提供metrics数据
-metricReporterList:						
-  - jmx                    
-  - prometheus
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[jmx, prometheus]
+metricReporterList:
+   - jmx
+   - prometheus
 
-# 底层采用的metric库，推荐使用micrometer
-monitorType: micrometer          
+# 底层使用的metric架构，可选参数：[micrometer, dropwizard]
+monitorType: micrometer
 
-# 该参数只对 monitorType=dropwizard生效
-pushPeriodInSecond: 5								
+# 预定义的指标集, 可选参数: [jvm, logback]
+predefinedMetrics:
+   - jvm
+   - logback
+
+# 数据推送时间，该参数只对 monitorType=dropwizard生效
+pushPeriodInSecond: 5
 
 ########################################################
 #                                                      #
@@ -213,10 +219,8 @@ pushPeriodInSecond: 5
 #                                                      #
 ########################################################
 prometheusReporterConfig:
-  prometheusExporterUrl: http://localhost
-
-# 通过这个端口可以以http协议获取到metric数据
-  prometheusExporterPort: 9091						
+   prometheusExporterUrl: http://localhost
+   prometheusExporterPort: 9091									
 ```
 
 然后按照下面的操作获取metrics数据
@@ -226,6 +230,7 @@ prometheusReporterConfig:
 4. 打开浏览器或者用```curl``` 访问 ```http://servier_ip:9091/metrics```, 就能看到metric数据了:
 
 ```
+...
 # HELP file_count
 # TYPE file_count gauge
 file_count{name="wal",} 0.0
@@ -256,9 +261,10 @@ logback_events_total{level="info",} 71.0
 # TYPE mem gauge
 mem{name="storageGroup",} 0.0
 mem{name="mtree",} 1328.0
+...
 ```
 
-### 对接Prometheus和Grafana
+### 5.2. 对接Prometheus和Grafana
 
 如上面所述，IoTDB对外透出标准Prometheus格式的metrics数据，可以直接和Prometheus以及Grafana集成。
 
