@@ -26,38 +26,38 @@ import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
-  // target fileIOWriter
+  // target fileIOWriters
   private List<TsFileIOWriter> fileWriterList = new ArrayList<>();
-  // old source tsfile
+
+  // source tsfiles
   private List<TsFileResource> seqTsFileResources;
 
   private int seqFileIndex;
 
-  // tsfile -> currenetDeviceEndTime
-  private Map<TsFileResource, Long> fileDeviceEndTime = new HashMap<>();
+  private final boolean[] isCurrentDeviceExist;
 
-  private long currentFileDeviceEndTime;
+  private final long[] currentDeviceEndTime;
 
-  private boolean[] isCurrentDeviceExist;
+  private final boolean[] isEmptyFile;
 
-  private long[] currentDeviceEndTime;
-
-  private TsFileSequenceReader sequenceReader;
+  private List<TsFileResource> targetResources;
 
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
-    for (TsFileResource resource : targetResources) {
-      this.fileWriterList.add(new RestorableTsFileIOWriter(resource.getTsFile()));
-    }
-    this.seqTsFileResources = seqFileResources;
     isCurrentDeviceExist = new boolean[seqFileResources.size()];
     currentDeviceEndTime = new long[seqFileResources.size()];
+    isEmptyFile = new boolean[seqFileResources.size()];
+    for (int i = 0; i < targetResources.size(); i++) {
+      this.fileWriterList.add(new RestorableTsFileIOWriter(targetResources.get(i).getTsFile()));
+      isEmptyFile[i] = true;
+    }
+    this.seqTsFileResources = seqFileResources;
+    this.targetResources = targetResources;
     seqFileIndex = 0;
   }
 
@@ -91,19 +91,14 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
     chunkWriter = null;
     seqFileIndex = 0;
-    updateDeviceEndTimeInCurrentFile();
   }
 
   @Override
   public void write(long timestamp, Object value) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp);
-    if (checkChunkSizeAndMayOpenANewChunk()) {
-      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
-      fileWriterList.get(seqFileIndex).endChunkGroup();
-      fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
-    }
+    checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndex));
     writeDataPoint(timestamp, value);
+    isEmptyFile[seqFileIndex] = false;
   }
 
   @Override
@@ -111,8 +106,12 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void endFile() throws IOException {
-    for (TsFileIOWriter targetWriter : fileWriterList) {
-      targetWriter.endFile();
+    for (int i = 0; i < isEmptyFile.length; i++) {
+      fileWriterList.get(i).endFile();
+      // delete empty target file
+      if (isEmptyFile[i]) {
+        fileWriterList.get(i).getFile().delete();
+      }
     }
   }
 
@@ -123,8 +122,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
         targetWriter.close();
       }
     }
-    // sequenceReader.close();
-    sequenceReader = null;
     fileWriterList = null;
     seqTsFileResources = null;
     chunkWriter = null;
@@ -139,11 +136,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     while (timestamp > currentDeviceEndTime[seqFileIndex]) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
-      updateDeviceEndTimeInCurrentFile();
     }
   }
-
-  private void checkIsDeviceExistInCurrentFile() {}
 
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
     while (seqFileIndex < seqTsFileResources.size()) {
@@ -174,33 +168,5 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     }
     // reset
     seqFileIndex = 0;
-  }
-
-  private void updateDeviceEndTimeInCurrentFile() throws IOException {
-    if (seqTsFileResources.get(seqFileIndex).getTimeIndexType() == 1) {
-      currentFileDeviceEndTime = seqTsFileResources.get(seqFileIndex).getEndTime(deviceId);
-    } else {
-      try (TsFileSequenceReader sequenceReader =
-          new TsFileSequenceReader(seqTsFileResources.get(seqFileIndex).getTsFilePath())) {
-        long endTime = Long.MIN_VALUE;
-        for (Map.Entry<String, TimeseriesMetadata> entry :
-            sequenceReader.readDeviceMetadata(deviceId).entrySet()) {
-          long tmpStartTime = entry.getValue().getStatistics().getStartTime();
-          long tmpEndTime = entry.getValue().getStatistics().getEndTime();
-          if (tmpEndTime >= tmpStartTime && endTime < tmpEndTime) {
-            endTime = tmpEndTime;
-          }
-        }
-        currentFileDeviceEndTime = endTime;
-      }
-    }
-  }
-
-  private void getNextSequenceReader() throws IOException {
-    if (sequenceReader != null) {
-      // close last sequenceReader
-      sequenceReader.close();
-    }
-    sequenceReader = new TsFileSequenceReader(seqTsFileResources.get(seqFileIndex).getTsFilePath());
   }
 }

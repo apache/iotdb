@@ -463,10 +463,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   public void testRecoverWithAllSourcesFileAndCompactonModFileExist() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
         new File(
             targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
@@ -547,10 +545,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
   public void testRecoverWithoutAllSourceFilesExistAndModFiles() throws Exception {
     tsFileManager.addAll(seqResources, true);
     tsFileManager.addAll(unseqResources, false);
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(seqResources, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(seqResources.get(0).getTsFile().getParent(), targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(seqResources, true);
     File logFile =
         new File(
             targetResource.getTsFile().getPath() + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);

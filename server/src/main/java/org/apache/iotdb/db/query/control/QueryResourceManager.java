@@ -90,8 +90,15 @@ public class QueryResourceManager {
     return queryId;
   }
 
-  public long assignCompactionQueryId(long threadNum) {
-    long queryId = Long.MAX_VALUE + threadNum;
+  public long assignCompactionQueryId() {
+    long threadNum;
+    try {
+      threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[3]);
+    } catch (ArrayIndexOutOfBoundsException e) {
+      // for test
+      threadNum = 0;
+    }
+    long queryId = Long.MIN_VALUE + threadNum;
     filePathsManager.addQueryId(queryId);
     return queryId;
   }

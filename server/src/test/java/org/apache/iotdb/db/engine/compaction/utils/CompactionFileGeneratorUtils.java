@@ -66,18 +66,14 @@ public class CompactionFileGeneratorUtils {
       List<TsFileResource> fileResources, boolean seq) throws IOException {
     List<TsFileResource> resources = new ArrayList<>();
     resources.add(
-        new TsFileResource(TsFileNameGenerator.getInnerCompactionTargetFile(fileResources, seq)));
+        new TsFileResource(
+            TsFileNameGenerator.getInnerCompactionTargetFileResource(fileResources, seq)));
     return resources;
   }
 
   public static List<TsFileResource> getCrossCompactionTargetTsFileResources(
       List<TsFileResource> seqFileResources) throws IOException {
-    List<File> targetFiles = TsFileNameGenerator.getCrossCompactionTargetFile(seqFileResources);
-    List<TsFileResource> targetResources = new ArrayList<>();
-    for (File f : targetFiles) {
-      targetResources.add(new TsFileResource(f));
-    }
-    return targetResources;
+    return TsFileNameGenerator.getCrossCompactionTargetFileResources(seqFileResources);
   }
 
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {

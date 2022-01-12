@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -33,6 +32,8 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
+
+import org.apache.commons.io.FileUtils;
 import org.junit.Assert;
 
 import java.io.File;
@@ -183,7 +184,7 @@ public class AbstractCompactionTest {
     }
     resource.updatePlanIndexes(fileVersion);
     resource.setClosed(true);
-    resource.setTimeIndexType((byte) 0);
+    // resource.setTimeIndexType((byte) 0);
     if (isSeq) {
       seqResources.add(resource);
     } else {

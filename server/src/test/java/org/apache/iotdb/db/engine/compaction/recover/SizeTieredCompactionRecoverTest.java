@@ -222,10 +222,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -276,10 +274,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -335,10 +331,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -389,10 +383,8 @@ public class SizeTieredCompactionRecoverTest {
           fullPath, chunkPagePointsNum, 100 * i + 100, tsFileResource);
       sourceFiles.add(tsFileResource);
     }
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
     TsFileResource targetResource =
-        new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
     SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
     for (TsFileResource resource : sourceFiles) {
       logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -451,10 +443,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -503,8 +493,12 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName.replace(
-                  IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
       Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -547,10 +541,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFileInfo(SizeTieredCompactionLogger.SOURCE_INFO, resource.getTsFile());
@@ -602,7 +594,7 @@ public class SizeTieredCompactionRecoverTest {
                       + "0"
                       + File.separator
                       + "0",
-                  targetFileName)
+                  targetResource.getTsFile().getName())
               .exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -644,10 +636,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -696,8 +686,12 @@ public class SizeTieredCompactionRecoverTest {
                   + "0"
                   + File.separator
                   + "0",
-              targetFileName.replace(
-                  IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
+              targetResource
+                  .getTsFile()
+                  .getName()
+                  .replace(
+                      IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
       Assert.assertFalse(targetFileAfterMoved.exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));
@@ -740,10 +734,8 @@ public class SizeTieredCompactionRecoverTest {
         sourceFiles.add(tsFileResource);
         sourceFileNames.add(tsFileResource.getTsFile().getName());
       }
-      String targetFileName =
-          TsFileNameGenerator.getInnerCompactionTargetFile(sourceFiles, true).getName();
       TsFileResource targetResource =
-          new TsFileResource(new File(SEQ_FILE_DIR + File.separator + targetFileName));
+          TsFileNameGenerator.getInnerCompactionTargetFileResource(sourceFiles, true);
       SizeTieredCompactionLogger logger = new SizeTieredCompactionLogger(logFilePath);
       for (TsFileResource resource : sourceFiles) {
         logger.logFile(SizeTieredCompactionLogger.SOURCE_NAME, resource.getTsFile());
@@ -795,7 +787,7 @@ public class SizeTieredCompactionRecoverTest {
                       + "0"
                       + File.separator
                       + "0",
-                  targetFileName)
+                  targetResource.getTsFile().getName())
               .exists());
     } finally {
       FileUtils.deleteDirectory(new File(TestConstant.BASE_OUTPUT_PATH + File.separator + "data1"));

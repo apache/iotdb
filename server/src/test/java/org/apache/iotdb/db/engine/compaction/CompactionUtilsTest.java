@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -38,6 +39,7 @@ import org.apache.iotdb.tsfile.utils.TsFileGeneratorUtils;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,6 +59,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
   }
 
   @After
@@ -678,6 +681,100 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
         } else {
           assertEquals(600, count);
         }
+      }
+    }
+  }
+
+  /*
+  Total 6 unseq files, each file has different nonAligned timeseries.
+  First and Second file: d0 ~ d1 and s0 ~ s2, time range is 0 ~ 299 and 300 ~ 599 , value range is  0 ~ 299 and 300 ~ 599.
+  Third and Forth file: d0 ~ d2 and s0 ~ s4, time range is 200 ~ 499 and 550 ~ 849, value range is 300 ~ 599 and 650 ~ 949.
+  Fifth and Sixth file: d0 ~ d4 and s0 ~ s6, time range is 900 ~ 1199 and 1250 ~ 1549, value range is 1100 ~ 1399 and 1450 ~ 1749.
+  The data of device d0 ~ d4 is deleted in each file.
+  */
+  @Test
+  public void testUnSeqInnerSpaceCompactionWithAllDataDeletedInTargetFile()
+      throws IOException, WriteProcessException, MetadataException, StorageEngineException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(30);
+    registerTimeseriesInMManger(5, 7, false);
+    createFiles(2, 2, 3, 300, 0, 0, 0, 0, false, false);
+    createFiles(2, 3, 5, 300, 200, 300, 50, 50, false, false);
+    createFiles(2, 5, 7, 300, 900, 1100, 50, 50, false, false);
+
+    // generate mods file
+    for (int i = 0; i < unseqResources.size(); i++) {
+      Map<String, Pair<Long, Long>> deleteMap = new HashMap<>();
+      for (int d = 0; d < 5; d++) {
+        for (int j = 0; j < 7; j++) {
+          deleteMap.put(
+              COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + d + PATH_SEPARATOR + "s" + j,
+              new Pair<>(Long.MIN_VALUE, Long.MAX_VALUE));
+        }
+      }
+      CompactionFileGeneratorUtils.generateMods(deleteMap, unseqResources.get(i), false);
+    }
+
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 7; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                seqResources,
+                unseqResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        assertEquals(0, count);
+      }
+    }
+    List<TsFileResource> targetResources =
+        CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
+    CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
+    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+
+    for (int i = 0; i < 5; i++) {
+      for (int j = 0; j < 7; j++) {
+        PartialPath path =
+            new MeasurementPath(
+                COMPACTION_TEST_SG + PATH_SEPARATOR + "d" + i,
+                "s" + j,
+                new MeasurementSchema("s" + j, TSDataType.INT64));
+        IBatchReader tsFilesReader =
+            new SeriesRawDataBatchReader(
+                path,
+                TSDataType.INT64,
+                EnvironmentUtils.TEST_QUERY_CONTEXT,
+                new ArrayList<>(),
+                targetResources,
+                null,
+                null,
+                true);
+        int count = 0;
+        while (tsFilesReader.hasNextBatch()) {
+          BatchData batchData = tsFilesReader.nextBatch();
+          while (batchData.hasCurrent()) {
+            count++;
+            batchData.next();
+          }
+        }
+        tsFilesReader.close();
+        assertEquals(0, count);
       }
     }
   }

@@ -89,11 +89,9 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
     // get resource of target file
     String dataDirectory = selectedTsFileResourceList.get(0).getTsFile().getParent();
     // Here is tmpTargetFile, which is xxx.target
-    String targetFileName =
-        TsFileNameGenerator.getInnerCompactionTargetFile(selectedTsFileResourceList, sequence)
-            .getName();
     TsFileResource targetTsFileResource =
-        new TsFileResource(new File(dataDirectory + File.separator + targetFileName));
+        TsFileNameGenerator.getInnerCompactionTargetFileResource(
+            selectedTsFileResourceList, sequence);
     LOGGER.info(
         "{} [Compaction] starting compaction task with {} files",
         fullStorageGroupName,
@@ -105,7 +103,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           new File(
               dataDirectory
                   + File.separator
-                  + targetFileName
+                  + targetTsFileResource.getTsFile().getName()
                   + SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
       sizeTieredCompactionLogger = new SizeTieredCompactionLogger(logFile.getPath());
 
@@ -191,7 +189,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           "{} [SizeTiredCompactionTask] all compaction task finish, target file is {},"
               + "time cost is {} s",
           fullStorageGroupName,
-          targetFileName,
+          targetTsFileResource.getTsFile().getName(),
           costTime / 1000);
       if (logFile.exists()) {
         logFile.delete();

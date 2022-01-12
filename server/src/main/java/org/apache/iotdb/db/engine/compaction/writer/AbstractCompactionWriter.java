@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.writer;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -27,6 +28,7 @@ import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
 import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.List;
@@ -37,6 +39,9 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected boolean isAlign;
 
   protected String deviceId;
+
+  private long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -119,21 +124,30 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     }
   }
 
-  protected boolean checkChunkSizeAndMayOpenANewChunk() { // Todo:
+  protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
+    if (checkChunkSize()) {
+      writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
+      chunkWriter.writeToFileWriter(fileWriter);
+      fileWriter.endChunkGroup();
+      fileWriter.startChunkGroup(deviceId);
+    }
+  }
+
+  private boolean checkChunkSize() {
     if (chunkWriter instanceof AlignedChunkWriterImpl) {
       if (((AlignedChunkWriterImpl) chunkWriter).getTimeChunkWriter().estimateMaxSeriesMemSize()
-          > 2 * 1024) {
+          > targetChunkSize) {
         return true;
       }
       for (ValueChunkWriter valueChunkWriter :
           ((AlignedChunkWriterImpl) chunkWriter).getValueChunkWriterList()) {
-        if (valueChunkWriter.estimateMaxSeriesMemSize() > 2 * 1024) {
+        if (valueChunkWriter.estimateMaxSeriesMemSize() > targetChunkSize) {
           return true;
         }
       }
       return false;
     } else {
-      return chunkWriter.estimateMaxSeriesMemSize() > 2 * 1024;
+      return chunkWriter.estimateMaxSeriesMemSize() > targetChunkSize;
     }
   }
 

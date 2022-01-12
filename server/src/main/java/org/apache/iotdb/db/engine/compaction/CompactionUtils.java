@@ -40,6 +40,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
@@ -69,9 +70,7 @@ public class CompactionUtils {
       List<TsFileResource> targetFileResources,
       String fullStorageGroupName)
       throws IOException, MetadataException, StorageEngineException {
-    long queryId =
-        QueryResourceManager.getInstance()
-            .assignCompactionQueryId(1); // Todo:Thread.currentThread().getName()
+    long queryId = QueryResourceManager.getInstance().assignCompactionQueryId();
     QueryContext queryContext = new QueryContext(queryId);
     QueryDataSource queryDataSource = new QueryDataSource(seqFileResources, unseqFileResources);
     QueryResourceManager.getInstance()
@@ -88,7 +87,6 @@ public class CompactionUtils {
       Set<String> tsFileDevicesSet = deviceIterator.getDevices();
 
       for (String device : tsFileDevicesSet) {
-        // calculate the read order of unseqResources
         QueryUtils.fillOrderIndexes(queryDataSource, device, true);
         // Todo: use iterator to get measurements
         boolean isAligned =
@@ -219,12 +217,9 @@ public class CompactionUtils {
       String device, List<TsFileResource> seqFileResources, List<TsFileResource> unseqFileResources)
       throws IOException {
     Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
-    // Todo:省内存or省时间？
-    // 省内存：迭代地获取所有顺序、乱序源文件该设备下的一个Timesermetadata节点上的所有Timesermetadata，以获取measurementId，但没有缓存，后续还要再次获取该设备下的某文件的该设备的所有TimeseriesMetadata来判断该设备的结束时间
-    // 省时间：一次获取所有顺序、乱序源文件该设备下的所有TimeseriesMetadata有缓存，然后获取某文件该设备的结束时间和所有measurementId
     for (TsFileResource seqResource : seqFileResources) {
       deviceMeasurementsMap.putAll(
-          FileReaderManager.getInstance() // Todo:这里很有用，共享TsFileSequenceReader
+          FileReaderManager.getInstance()
               .get(seqResource.getTsFilePath(), true)
               .readDeviceMetadata(device));
     }
@@ -292,42 +287,52 @@ public class CompactionUtils {
    */
   public static void moveToTargetFile(
       List<TsFileResource> targetResources, boolean isInnerSpace, String fullStorageGroupName)
-      throws IOException {
+      throws IOException, WriteProcessException {
+    String fileSuffix;
     if (isInnerSpace) {
-      TsFileResource targetResource = targetResources.get(0);
-      if (!targetResource
-          .getTsFilePath()
-          .endsWith(IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX)) {
-        logger.warn(
-            "{} [Compaction] Tmp target tsfile {} should be end with {}",
-            fullStorageGroupName,
-            targetResource.getTsFilePath(),
-            IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
-        return;
-      }
-      moveOneTargetFile(targetResource, IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
+      fileSuffix = IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX;
     } else {
-      for (TsFileResource targetResource : targetResources) {
-        if (!targetResource
-            .getTsFilePath()
-            .endsWith(IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX)) {
-          logger.warn(
-              "{} [Compaction] Tmp target tsfile {} should be end with {}",
-              fullStorageGroupName,
-              targetResource.getTsFilePath(),
-              IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
-          return;
-        }
+      fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
+    }
+    checkAndUpdateTargetFileResources(targetResources, fileSuffix);
+    for (TsFileResource targetResource : targetResources) {
+      moveOneTargetFile(
+          targetResource, IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, fullStorageGroupName);
+    }
+  }
+
+  /**
+   * Check whether all target files is end with correct file suffix and remove target resource whose
+   * tsfile is deleted from list.
+   */
+  private static void checkAndUpdateTargetFileResources(
+      List<TsFileResource> targetResources, String tmpFileSuffix) throws WriteProcessException {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      if (!targetResource.getTsFilePath().endsWith(tmpFileSuffix)) {
+        throw new WriteProcessException(
+            "Tmp target tsfile "
+                + targetResource.getTsFilePath()
+                + " should be end with "
+                + tmpFileSuffix);
       }
-      for (TsFileResource targetResource : targetResources) {
-        moveOneTargetFile(targetResource, IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
+      if (!targetResource.getTsFile().exists()) {
+        targetResources.remove(i--);
       }
     }
   }
 
-  private static void moveOneTargetFile(TsFileResource targetResource, String tmpFileSuffix)
+  private static void moveOneTargetFile(
+      TsFileResource targetResource, String tmpFileSuffix, String fullStorageGroupName)
       throws IOException {
     // move to target file and delete old tmp target file
+    if (!targetResource.getTsFile().exists()) {
+      logger.info(
+          "{} [Compaction] Tmp target tsfile {} may be deleted after compaction.",
+          fullStorageGroupName,
+          targetResource.getTsFilePath());
+      return;
+    }
     File newFile =
         new File(
             targetResource.getTsFilePath().replace(tmpFileSuffix, TsFileConstant.TSFILE_SUFFIX));
