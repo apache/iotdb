@@ -21,6 +21,7 @@ package org.apache.iotdb.cluster.utils;
 
 import org.apache.iotdb.cluster.config.ClusterConfig;
 import org.apache.iotdb.cluster.config.ClusterConstant;
+import org.apache.iotdb.cluster.config.ClusterDescriptor;
 import org.apache.iotdb.cluster.exception.CheckConsistencyException;
 import org.apache.iotdb.cluster.exception.ConfigInconsistentException;
 import org.apache.iotdb.cluster.partition.PartitionGroup;
@@ -372,5 +373,25 @@ public class ClusterUtils {
     ClusterNode clusterNode1 = new ClusterNode(node1);
     ClusterNode clusterNode2 = new ClusterNode(node2);
     return clusterNode1.equals(clusterNode2);
+  }
+
+  public static boolean waitUntilMetaReady(MetaGroupMember metaGroupMember) {
+    long waitStart = System.currentTimeMillis();
+    long alreadyWait = 0;
+    long maxWait = ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
+    while (!metaGroupMember.isReady()
+        && metaGroupMember.getPartitionTable() == null
+        && alreadyWait < maxWait) {
+      try {
+        Thread.sleep(ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        return false;
+      }
+
+      alreadyWait = System.currentTimeMillis() - waitStart;
+    }
+
+    return metaGroupMember.isReady();
   }
 }

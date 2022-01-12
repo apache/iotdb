@@ -64,18 +64,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
   public long appendEntry(AppendEntryRequest request) throws TException {
     // if the metaGroupMember is not ready (e.g., as a follower the PartitionTable is loaded
     // locally, but the partition table is not verified), we do not handle the RPC requests.
-    if (!metaGroupMember.isReady()) {
-      // the only special case is that the leader will send an empty entry for letting followers
-      // submit  previous log
-      // at this time, the partitionTable has been loaded but is not verified. So the PRC is not
-      // ready.
-      if (metaGroupMember.getPartitionTable() == null) {
-        // this node lacks information of the cluster and refuse to work
-        logger.debug("This node is blind to the cluster and cannot accept logs, {}", request);
-        return Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
-      } else {
-        // do nothing because we consider if the partitionTable is loaded, then it is corrected.
-      }
+    if (!ClusterUtils.waitUntilMetaReady(metaGroupMember)) {
+      logger.debug("This node is blind to the cluster and cannot accept logs, {}", request);
+      return Response.RESPONSE_PARTITION_TABLE_UNAVAILABLE;
     }
 
     return super.appendEntry(request);
