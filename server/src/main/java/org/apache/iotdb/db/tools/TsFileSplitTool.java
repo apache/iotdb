@@ -91,6 +91,9 @@ public class TsFileSplitTool {
       Set<String> devices = new HashSet<>();
       String[] filePathSplit = filename.split(IoTDBConstant.FILE_NAME_SEPARATOR);
       int versionIndex = Integer.parseInt(filePathSplit[filePathSplit.length - 3]) + 1;
+      filePathSplit[filePathSplit.length - 2] =
+          "100"; // to avoid compaction after restarting. NOTICE: This will take effect only in
+                 // server v0.12
       TsFileIOWriter writer = null;
 
       while (pathIterator.hasNext()) {
