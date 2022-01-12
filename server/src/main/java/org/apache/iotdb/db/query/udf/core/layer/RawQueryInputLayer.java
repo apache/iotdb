@@ -21,6 +21,7 @@ package org.apache.iotdb.db.query.udf.core.layer;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.dataset.IUDFInputDataSet;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter;
 import org.apache.iotdb.db.query.dataset.UDFRawQueryInputDataSetWithoutValueFilter;
@@ -47,16 +48,12 @@ public class RawQueryInputLayer {
 
   /** InputLayerWithoutValueFilter */
   public RawQueryInputLayer(
-      long queryId,
-      float memoryBudgetInMB,
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers)
+      long queryId, float memoryBudgetInMB, UDTFPlan queryPlan, List<ManagedSeriesReader> readers)
       throws QueryProcessException, IOException, InterruptedException {
     construct(
         queryId,
         memoryBudgetInMB,
-        new UDFRawQueryInputDataSetWithoutValueFilter(queryId, paths, dataTypes, readers, true));
+        new UDFRawQueryInputDataSetWithoutValueFilter(queryId, queryPlan, readers));
   }
 
   /** InputLayerWithValueFilter */

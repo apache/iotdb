@@ -50,7 +50,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
   private List<String> aliasList;
 
   public CreateAlignedTimeSeriesPlan() {
-    super(false, Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
+    super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
     canBeSplit = false;
   }
 
@@ -61,7 +61,7 @@ public class CreateAlignedTimeSeriesPlan extends PhysicalPlan {
       List<TSEncoding> encodings,
       List<CompressionType> compressors,
       List<String> aliasList) {
-    super(false, Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
+    super(Operator.OperatorType.CREATE_ALIGNED_TIMESERIES);
     this.prefixPath = prefixPath;
     this.measurements = measurements;
     this.dataTypes = dataTypes;

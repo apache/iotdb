@@ -190,9 +190,18 @@ public class SQLConstant {
   public static final int TOK_SCHEMA_TEMPLATE_ACTIVATE = 114;
   public static final int TOK_SCHEMA_TEMPLATE_UNSET = 115;
 
-  public static final int TOK_SHOW_PIPE = 116;
-  public static final int TOK_PIPE_SERVER_START = 117;
-  public static final int TOK_PIPE_SERVER_STOP = 118;
+  public static final int TOK_CREATE_PIPESINK = 116;
+  public static final int TOK_DROP_PIPESINK = 117;
+  public static final int TOK_SHOW_PIPESINK = 118;
+  public static final int TOK_SHOW_PIPESINKTYPE = 119;
+  public static final int TOK_CREATE_PIPE = 120;
+  public static final int TOK_SHOW_PIPE = 121;
+  public static final int TOK_PAUSE_PIPE = 122;
+  public static final int TOK_START_PIPE = 123;
+  public static final int TOK_DROP_PIPE = 124;
+  public static final int TOK_SHOW_PIPE_SERVER = 125;
+  public static final int TOK_PIPE_SERVER_START = 126;
+  public static final int TOK_PIPE_SERVER_STOP = 127;
 
   public static final Map<Integer, String> tokenNames = new HashMap<>();
 
@@ -272,7 +281,16 @@ public class SQLConstant {
     tokenNames.put(TOK_SCHEMA_TEMPLATE_ACTIVATE, "TOK_SCHEMA_TEMPLATE_ACTIVATE");
     tokenNames.put(TOK_SCHEMA_TEMPLATE_UNSET, "TOK_SCHEMA_TEMPLATE_UNSET");
 
+    tokenNames.put(TOK_CREATE_PIPESINK, "TOK_CREATE_PIPESINK");
+    tokenNames.put(TOK_DROP_PIPESINK, "TOK_DROP_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINK, "TOK_SHOW_PIPESINK");
+    tokenNames.put(TOK_SHOW_PIPESINKTYPE, "TOK_SHOW_PIPESINKTYPE");
+    tokenNames.put(TOK_CREATE_PIPE, "TOK_CREATE_PIPE");
     tokenNames.put(TOK_SHOW_PIPE, "TOK_SHOW_PIPE");
+    tokenNames.put(TOK_PAUSE_PIPE, "TOK_PAUSE_PIPE");
+    tokenNames.put(TOK_START_PIPE, "TOK_START_PIPE");
+    tokenNames.put(TOK_DROP_PIPE, "TOK_DROP_PIPE");
+    tokenNames.put(TOK_SHOW_PIPE_SERVER, "TOK_SHOW_PIPE_SERVER");
     tokenNames.put(TOK_PIPE_SERVER_START, "TOK_PIPE_SERVER_START");
     tokenNames.put(TOK_PIPE_SERVER_STOP, "TOK_PIPE_SERVER_STOP");
   }

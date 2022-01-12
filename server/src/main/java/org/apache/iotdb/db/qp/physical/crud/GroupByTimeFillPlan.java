@@ -24,7 +24,12 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.Map;
 
+import static org.apache.iotdb.db.query.dataset.groupby.GroupByEngineDataSet.calcIntervalByMonth;
+
 public class GroupByTimeFillPlan extends GroupByTimePlan {
+
+  private long queryStartTime;
+  private long queryEndTime;
 
   private Map<TSDataType, IFill> fillTypes;
   private IFill singleFill;
@@ -48,5 +53,59 @@ public class GroupByTimeFillPlan extends GroupByTimePlan {
 
   public void setFillType(Map<TSDataType, IFill> fillTypes) {
     this.fillTypes = fillTypes;
+  }
+
+  public long getQueryStartTime() {
+    return queryStartTime;
+  }
+
+  public long getQueryEndTime() {
+    return queryEndTime;
+  }
+
+  /** union the query time range with the extra fill range */
+  public void initFillRange() {
+    long minQueryStartTime = startTime;
+    long maxQueryEndTime = endTime;
+    if (fillTypes != null) {
+      // old type fill logic
+      for (Map.Entry<TSDataType, IFill> IFillEntry : fillTypes.entrySet()) {
+        IFill fill = IFillEntry.getValue();
+        fill.convertRange(startTime, endTime);
+        minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+        maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
+      }
+    } else {
+      IFill fill = singleFill;
+      fill.convertRange(startTime, endTime);
+      minQueryStartTime = Math.min(minQueryStartTime, fill.getQueryStartTime());
+      maxQueryEndTime = Math.max(maxQueryEndTime, fill.getQueryEndTime());
+    }
+
+    if (minQueryStartTime < startTime) {
+      long queryRange = minQueryStartTime - startTime;
+      long extraStartTime, intervalNum;
+      if (isSlidingStepByMonth) {
+        intervalNum = (long) Math.ceil(queryRange / (double) (slidingStep));
+        extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+        while (extraStartTime < minQueryStartTime) {
+          intervalNum += 1;
+          extraStartTime = calcIntervalByMonth(startTime, intervalNum);
+        }
+      } else {
+        intervalNum = (long) Math.ceil(queryRange / (double) slidingStep);
+        extraStartTime = slidingStep * intervalNum + startTime;
+      }
+      minQueryStartTime = Math.min(extraStartTime, startTime);
+    }
+
+    maxQueryEndTime = Math.max(maxQueryEndTime, endTime);
+
+    // save origin query range
+    queryStartTime = startTime;
+    queryEndTime = endTime;
+
+    startTime = minQueryStartTime;
+    endTime = maxQueryEndTime;
   }
 }

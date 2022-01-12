@@ -276,12 +276,22 @@ public class IoTDBAggregationByLevelIT {
 
   @Test
   public void countStarGroupByLevelTest() throws Exception {
-    String[] retArray = new String[] {"17", "8"};
+    String[] retArray = new String[] {"17", "17", "8"};
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("select count(*) from root.*.* GROUP BY level=0");
 
       int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          String ans = resultSet.getString(TestConstant.count("root.*.*.*"));
+          Assert.assertEquals(retArray[cnt], ans);
+          cnt++;
+        }
+      }
+
+      statement.execute("select count(**) from root GROUP BY level=0");
+
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           String ans = resultSet.getString(TestConstant.count("root.*.*.*"));

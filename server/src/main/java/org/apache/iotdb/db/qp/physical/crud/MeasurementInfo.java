@@ -18,28 +18,31 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
-import org.apache.iotdb.db.qp.physical.crud.AlignByDevicePlan.MeasurementType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 public class MeasurementInfo {
 
   public MeasurementInfo() {}
 
-  public MeasurementInfo(MeasurementType measurementType) {
-    this.measurementType = measurementType;
+  public MeasurementInfo(String measurement) {
+    this.measurement = measurement;
   }
+
+  private String measurement;
 
   // select s1, s2 as speed from root, then s2 -> speed
   private String measurementAlias;
 
-  // to record different kinds of measurement
-  private MeasurementType measurementType;
-
-  // to record the real type of the measurement, used for actual query
-  private TSDataType measurementDataType;
-
   // to record the datatype of the column in the result set
   private TSDataType columnDataType;
+
+  public void setMeasurement(String measurement) {
+    this.measurement = measurement;
+  }
+
+  public String getMeasurement() {
+    return measurement;
+  }
 
   public void setMeasurementAlias(String measurementAlias) {
     this.measurementAlias = measurementAlias;
@@ -47,22 +50,6 @@ public class MeasurementInfo {
 
   public String getMeasurementAlias() {
     return measurementAlias;
-  }
-
-  public void setMeasurementType(MeasurementType measurementType) {
-    this.measurementType = measurementType;
-  }
-
-  public MeasurementType getMeasurementType() {
-    return measurementType;
-  }
-
-  public void setMeasurementDataType(TSDataType measurementDataType) {
-    this.measurementDataType = measurementDataType;
-  }
-
-  public TSDataType getMeasurementDataType() {
-    return measurementDataType;
   }
 
   public void setColumnDataType(TSDataType columnDataType) {

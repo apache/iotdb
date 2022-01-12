@@ -19,10 +19,13 @@
 package org.apache.iotdb.db.service.metrics;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.db.utils.FileUtils;
 import org.apache.iotdb.metrics.CompositeReporter;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.Reporter;
@@ -35,23 +38,28 @@ import org.apache.iotdb.metrics.utils.ReporterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ServiceLoader;
+import java.util.stream.Stream;
 
 public class MetricsService implements MetricsServiceMBean, IService {
   private static final Logger logger = LoggerFactory.getLogger(MetricsService.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
   private final String mbeanName =
       String.format(
           "%s:%s=%s", IoTDBConstant.IOTDB_PACKAGE, IoTDBConstant.JMX_TYPE, getID().getJmxName());
 
-  private static MetricManager metricManager;
+  private MetricManager metricManager;
 
-  private static CompositeReporter compositeReporter;
+  private CompositeReporter compositeReporter;
 
-  private MetricsService() {}
+  private MetricsService() {
+    logger.info("Init metric service");
+    // load manager
+    loadManager();
+  }
 
-  public static void loadManager() {
+  private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -75,7 +83,7 @@ public class MetricsService implements MetricsServiceMBean, IService {
     }
   }
 
-  public static void loadReporter() {
+  private void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
     compositeReporter = new CompositeReporter();
 
@@ -134,15 +142,94 @@ public class MetricsService implements MetricsServiceMBean, IService {
   @Override
   /** Start all reporter. if is disabled, do nothing */
   public void startService() {
-    logger.info("Init metric service");
-    // load manager
-    loadManager();
     // load reporter
     loadReporter();
     // do some init work
     metricManager.init();
     // start reporter
     compositeReporter.startAll();
+
+    enablePredefinedMetric(PredefinedMetric.JVM);
+    enablePredefinedMetric(PredefinedMetric.LOGBACK);
+
+    collectFileSystemInfo();
+  }
+
+  private void collectFileSystemInfo() {
+    logger.info("start collecting fileSize and fileCount of wal/seq/unseq");
+    String walDir = DirectoryManager.getInstance().getWALFolder();
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_SIZE.toString(), walDir, FileUtils::getDirSize, Tag.NAME.toString(), "wal");
+
+    String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        dataDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+                      return FileUtils.getDirSize(dir);
+                    })
+                .sum(),
+        Tag.NAME.toString(),
+        "seq");
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_SIZE.toString(),
+        dataDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+                      return FileUtils.getDirSize(dir);
+                    })
+                .sum(),
+        Tag.NAME.toString(),
+        "unseq");
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        walDir,
+        value -> {
+          File walFolder = new File(value);
+          if (walFolder.exists() && walFolder.isDirectory()) {
+            return org.apache.commons.io.FileUtils.listFiles(new File(value), null, true).size();
+          }
+          return 0L;
+        },
+        Tag.NAME.toString(),
+        "wal");
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        dataDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      dir += File.separator + IoTDBConstant.SEQUENCE_FLODER_NAME;
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
+                          .size();
+                    })
+                .sum(),
+        Tag.NAME.toString(),
+        "seq");
+    metricManager.getOrCreateAutoGauge(
+        Metric.FILE_COUNT.toString(),
+        dataDirs,
+        value ->
+            Stream.of(value)
+                .mapToLong(
+                    dir -> {
+                      dir += File.separator + IoTDBConstant.UNSEQUENCE_FLODER_NAME;
+                      return org.apache.commons.io.FileUtils.listFiles(
+                              new File(dir), new String[] {"tsfile"}, true)
+                          .size();
+                    })
+                .sum(),
+        Tag.NAME.toString(),
+        "unseq");
   }
 
   @Override
@@ -157,7 +244,10 @@ public class MetricsService implements MetricsServiceMBean, IService {
     compositeReporter.stopAll();
   }
 
-  /** Enable some predefined metric, now support jvm */
+  /**
+   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
+   * metrics are not supported
+   */
   public void enablePredefinedMetric(PredefinedMetric metric) {
     metricManager.enablePredefinedMetric(metric);
   }

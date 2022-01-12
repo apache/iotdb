@@ -20,10 +20,10 @@ package org.apache.iotdb.db.newsync.receiver;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
-import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
+import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -65,23 +65,23 @@ public class ReceiverService {
   }
 
   /** create and start a new pipe named pipeName */
-  public void createPipe(String pipeName,String remoteIp,long startTime) throws IOException {
-    receiverManager.createPipe(pipeName,remoteIp,startTime);
+  public void createPipe(String pipeName, String remoteIp, long startTime) throws IOException {
+    receiverManager.createPipe(pipeName, remoteIp, startTime);
   }
 
   /** start an existed pipe named pipeName */
-  public void startPipe(String pipeName,String remoteIp) throws IOException {
-    receiverManager.startPipe(pipeName,remoteIp);
+  public void startPipe(String pipeName, String remoteIp) throws IOException {
+    receiverManager.startPipe(pipeName, remoteIp);
   }
 
   /** stop an existed pipe named pipeName */
-  public void stopPipe(String pipeName,String remoteIp) throws IOException {
-    receiverManager.stopPipe(pipeName,remoteIp);
+  public void stopPipe(String pipeName, String remoteIp) throws IOException {
+    receiverManager.stopPipe(pipeName, remoteIp);
   }
 
   /** drop an existed pipe named pipeName */
-  public void dropPipe(String pipeName,String remoteIp) throws IOException {
-    receiverManager.dropPipe(pipeName,remoteIp);
+  public void dropPipe(String pipeName, String remoteIp) throws IOException {
+    receiverManager.dropPipe(pipeName, remoteIp);
   }
 
   /**
@@ -89,7 +89,7 @@ public class ReceiverService {
    *
    * @return QueryDataSet contained three columns: pipe name, status and start time
    */
-  public QueryDataSet showPipe(ShowPipePlan plan) {
+  public QueryDataSet showPipe(ShowPipeServerPlan plan) {
     ListDataSet dataSet =
         new ListDataSet(
             Arrays.asList(
@@ -98,21 +98,25 @@ public class ReceiverService {
                 new PartialPath(COLUMN_PIPE_STATUS, false),
                 new PartialPath(COLUMN_PIPE_ROLE, false),
                 new PartialPath(COLUMN_CREATED_TIME, false)),
-            Arrays.asList(TSDataType.TEXT,  TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT));
+            Arrays.asList(
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT,
+                TSDataType.TEXT));
     List<PipeInfo> pipeInfos;
     if (!StringUtils.isEmpty(plan.getPipeName())) {
       pipeInfos = receiverManager.getAllPipeInfos(plan.getPipeName());
     } else {
       pipeInfos = receiverManager.getAllPipeInfos();
     }
-    for(PipeInfo pipeInfo:pipeInfos){
-      putPipeRecord(dataSet,pipeInfo);
+    for (PipeInfo pipeInfo : pipeInfos) {
+      putPipeRecord(dataSet, pipeInfo);
     }
     return dataSet;
   }
 
-  private void putPipeRecord(
-      ListDataSet dataSet, PipeInfo pipeInfo) {
+  private void putPipeRecord(ListDataSet dataSet, PipeInfo pipeInfo) {
     RowRecord rowRecord = new RowRecord(0);
     Field pipeNameField = new Field(TSDataType.TEXT);
     Field pipeRemoteIp = new Field(TSDataType.TEXT);
@@ -132,9 +136,7 @@ public class ReceiverService {
     dataSet.putRecord(rowRecord);
   }
 
-
-  private ReceiverService(){
-  }
+  private ReceiverService() {}
 
   public static ReceiverService getInstance() {
     return ReceiverServiceHolder.INSTANCE;

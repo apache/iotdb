@@ -54,7 +54,7 @@ import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -1189,7 +1189,7 @@ public class Session {
    *
    * <p>Each row could have same deviceId but different time, number of measurements
    *
-   * @param haveSorted whether the times have been sorted
+   * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
   public void insertRecordsOfOneDevice(
@@ -1242,7 +1242,7 @@ public class Session {
    *
    * <p>Each row could have same prefixPath but different time, number of measurements
    *
-   * @param haveSorted whether the times have been sorted
+   * @param haveSorted deprecated, whether the times have been sorted
    * @see Session#insertTablet(Tablet)
    */
   public void insertAlignedRecordsOfOneDevice(
@@ -1290,12 +1290,7 @@ public class Session {
           "times, measurementsList and valuesList's size should be equal");
     }
 
-    if (haveSorted) {
-      if (!checkSorted(times)) {
-        throw new BatchExecutionException(
-            "Times in InsertOneDeviceRecords are not in ascending order");
-      }
-    } else {
+    if (!checkSorted(times)) {
       // sort
       Integer[] index = new Integer[times.size()];
       for (int i = 0; i < times.size(); i++) {
@@ -1422,7 +1417,7 @@ public class Session {
    * insert a Tablet
    *
    * @param tablet data batch
-   * @param sorted whether times in Tablet are in ascending order
+   * @param sorted deprecated, whether times in Tablet are in ascending order
    */
   public void insertTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1454,7 +1449,7 @@ public class Session {
    * insert the aligned timeseries data of a device.
    *
    * @param tablet data batch
-   * @param sorted whether times in Tablet are in ascending order
+   * @param sorted deprecated, whether times in Tablet are in ascending order
    */
   public void insertAlignedTablet(Tablet tablet, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1464,9 +1459,7 @@ public class Session {
 
   private TSInsertTabletReq genTSInsertTabletReq(Tablet tablet, boolean sorted)
       throws BatchExecutionException {
-    if (sorted) {
-      checkSortedThrowable(tablet);
-    } else {
+    if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
 
@@ -1503,7 +1496,7 @@ public class Session {
    * measurements is the same.
    *
    * @param tablets data batch in multiple device
-   * @param sorted whether times in each Tablet are in ascending order
+   * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
   public void insertTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1540,7 +1533,7 @@ public class Session {
    * measurements is the same.
    *
    * @param tablets data batch in multiple device
-   * @param sorted whether times in each Tablet are in ascending order
+   * @param sorted deprecated, whether times in each Tablet are in ascending order
    */
   public void insertAlignedTablets(Map<String, Tablet> tablets, boolean sorted)
       throws IoTDBConnectionException, StatementExecutionException {
@@ -1581,9 +1574,7 @@ public class Session {
 
   private void updateTSInsertTabletsReq(TSInsertTabletsReq request, Tablet tablet, boolean sorted)
       throws BatchExecutionException {
-    if (sorted) {
-      checkSortedThrowable(tablet);
-    } else {
+    if (!checkSorted(tablet)) {
       sortTablet(tablet);
     }
     request.addToPrefixPaths(tablet.prefixPath);
@@ -1808,7 +1799,7 @@ public class Session {
     int columnIndex = 0;
     for (int i = 0; i < tablet.getSchemas().size(); i++) {
       IMeasurementSchema schema = tablet.getSchemas().get(i);
-      if (schema instanceof UnaryMeasurementSchema) {
+      if (schema instanceof MeasurementSchema) {
         tablet.values[columnIndex] = sortList(tablet.values[columnIndex], schema.getType(), index);
         if (tablet.bitMaps != null && tablet.bitMaps[columnIndex] != null) {
           tablet.bitMaps[columnIndex] = sortBitMap(tablet.bitMaps[columnIndex], index);

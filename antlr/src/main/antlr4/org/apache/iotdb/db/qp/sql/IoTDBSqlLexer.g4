@@ -354,12 +354,24 @@ PATHS
     : P A T H S
     ;
 
+PAUSE
+    : P A U S E
+    ;
+
 PIPE
     : P I P E
     ;
 
 PIPESERVER
     : P I P E S E R V E R
+    ;
+
+PIPESINK
+    : P I P E S I N K
+    ;
+
+PIPESINKTYPE
+    : P I P E S I N K T Y P E
     ;
 
 PREVIOUS

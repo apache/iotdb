@@ -63,8 +63,9 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : startPipeServer | stopPipeServer | showPipe
-    ;
+    : startPipeServer | stopPipeServer | showPipeServer
+    | createPipeSink | showPipeSinkType | showPipeSink | dropPipeSink
+    | createPipe | showPipe | pausePipe | startPipe | dropPipe;
 /**
  * 2. Data Definition Language (DDL)
  */
@@ -668,9 +669,68 @@ unloadFile
     : UNLOAD srcFileName=STRING_LITERAL dstFileDir=STRING_LITERAL
     ;
 
+/**
+ * 6. syncStatement
+ */
+
+// pipesink statement
+createPipeSink
+    : CREATE PIPESINK pipeSinkType=ID (LR_BRACKET syncAttributeClauses RR_BRACKET)? AS pipeSinkName=ID
+    ;
+
+showPipeSinkType
+    : SHOW PIPESINKTYPE
+    ;
+
+showPipeSink
+    : SHOW PIPESINK (pipeSinkName=ID)?
+    ;
+
+dropPipeSink
+    : DROP PIPESINK pipeSinkName=ID
+    ;
+
+// pipe statement
+createPipe
+    : CREATE PIPE pipeName=ID TO pipeSinkName=ID FROM LR_BRACKET selectStatement RR_BRACKET WITH (syncAttributeClauses)?
+    ;
+
+showPipe
+    : SHOW PIPE (pipeName=ID)?
+    ;
+
+pausePipe
+    : PAUSE PIPE pipeName=ID
+    ;
+
+startPipe
+    : START PIPE pipeName=ID
+    ;
+
+dropPipe
+    : DROP PIPE pipeName=ID
+    ;
+
+// attribute clauses
+syncAttributeClauses
+    : propertyClause (COMMA propertyClause)*
+    ;
+
+// sync receiver
+startPipeServer
+    : START PIPESERVER
+    ;
+
+stopPipeServer
+    : STOP PIPESERVER
+    ;
+
+showPipeServer
+    : SHOW PIPESERVER (pipeName=ID)?
+    ;
 
 /**
- * 6. Common Clauses
+ * 7. Common Clauses
  */
 
 // IoTDB Objects
@@ -849,9 +909,7 @@ propertyClause
     ;
 
 propertyValue
-    : INTEGER_LITERAL
-    | ID
-    | STRING_LITERAL
+    : ID
     | constant
     ;
 
@@ -877,17 +935,4 @@ slimitClause
 
 soffsetClause
     : SOFFSET INTEGER_LITERAL
-    ;
-
-// sync receiver
-startPipeServer
-    : START PIPESERVER
-    ;
-
-stopPipeServer
-    : STOP PIPESERVER
-    ;
-
-showPipe
-    : SHOW PIPE (pipeName=ID)?
     ;

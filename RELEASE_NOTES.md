@@ -703,7 +703,7 @@ If you use the previous unofficial version 0.7.0. It is incompatible with 0.8.0.
 * IOTDB-121 A bug of query on value columns
 * IOTDB-128 Probably a bug in iotdb official website
 * IOTDB-129 A bug in restoring incomplete tsfile when system restart
-* IOTDB-131 IoTDB-Grafana module error when getting the timeseries list from Grafana
+* IOTDB-131 IoTDB-Grafana-Connector module error when getting the timeseries list from Grafana
 * IOTDB-133 Some content is mistaken for links
 * System memory check failure in iotdb-env.sh
 * Time zone bug in different region

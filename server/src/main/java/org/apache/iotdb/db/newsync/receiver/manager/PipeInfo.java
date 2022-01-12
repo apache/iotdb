@@ -26,7 +26,7 @@ public class PipeInfo {
   private String remoteIp;
   private long createTime;
 
-  public PipeInfo(String pipeName, String remoteIp, PipeStatus status,long createTime) {
+  public PipeInfo(String pipeName, String remoteIp, PipeStatus status, long createTime) {
     this.pipeName = pipeName;
     this.remoteIp = remoteIp;
     this.status = status;
@@ -70,7 +70,10 @@ public class PipeInfo {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
     PipeInfo pipeInfo = (PipeInfo) o;
-    return createTime == pipeInfo.createTime && Objects.equals(pipeName, pipeInfo.pipeName) && status == pipeInfo.status && Objects.equals(remoteIp, pipeInfo.remoteIp);
+    return createTime == pipeInfo.createTime
+        && Objects.equals(pipeName, pipeInfo.pipeName)
+        && status == pipeInfo.status
+        && Objects.equals(remoteIp, pipeInfo.remoteIp);
   }
 
   @Override

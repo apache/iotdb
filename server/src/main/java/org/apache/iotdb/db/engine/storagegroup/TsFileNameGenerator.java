@@ -184,7 +184,7 @@ public class TsFileNameGenerator {
                 + (maxInnerMergeCount + 1)
                 + FILE_NAME_SEPARATOR
                 + maxCrossMergeCount
-                + TSFILE_SUFFIX)
+                + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)
         : new File(
             tsFileResources.get(0).getTsFile().getParent(),
             maxTime
@@ -194,7 +194,7 @@ public class TsFileNameGenerator {
                 + (maxInnerMergeCount + 1)
                 + FILE_NAME_SEPARATOR
                 + maxCrossMergeCount
-                + TSFILE_SUFFIX);
+                + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX);
   }
 
   public static class TsFileName {

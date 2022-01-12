@@ -121,6 +121,16 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
+  public static final String COLUMN_PIPESINK_NAME = "name";
+  public static final String COLUMN_PIPESINK_TYPE = "type";
+  public static final String COLUMN_PIPESINK_ATTRIBUTES = "attributes";
+
+  // sync receiver
+  public static final String COLUMN_PIPE_NAME = "pipe name";
+  public static final String COLUMN_PIPE_REMOTE_IP = "remote ip";
+  public static final String COLUMN_PIPE_STATUS = "status";
+  public static final String COLUMN_PIPE_ROLE = "role";
+
   public static final String ONE_LEVEL_PATH_WILDCARD = "*";
   public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
@@ -170,10 +180,6 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
-  // sync receiver
-  public static final String COLUMN_PIPE_NAME = "pipe name";
-  public static final String COLUMN_PIPE_REMOTE_IP = "remote ip";
-  public static final String COLUMN_PIPE_STATUS = "status";
-  public static final String COLUMN_PIPE_CREATE_TIME = "create time";
-  public static final String COLUMN_PIPE_ROLE = "role";
+  // compaction
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
 }

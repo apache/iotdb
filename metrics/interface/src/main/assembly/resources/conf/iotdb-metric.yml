@@ -23,6 +23,7 @@ enableMetric: false
 # can be multiple reporter, e.g., jmx, prometheus
 metricReporterList:
   - jmx
+  - prometheus
 
 # you can check choose one type of monitor frame, such as dropwizard, micrometer
 monitorType: micrometer

@@ -18,14 +18,14 @@
  */
 package org.apache.iotdb.db.engine.compaction.inner;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
-import org.apache.iotdb.db.engine.modification.Modification;
-import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.utils.TsFileUtils;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -71,7 +70,7 @@ public class InnerSpaceCompactionExceptionHandler {
     if (allSourceFileExist) {
       handleSuccess =
           handleWhenAllSourceFilesExist(
-              fullStorageGroupName, targetTsFile, selectedTsFileResourceList, tsFileResourceList);
+              fullStorageGroupName, targetTsFile, selectedTsFileResourceList);
     } else {
       // some source file does not exists
       // it means we start to delete source file
@@ -134,17 +133,44 @@ public class InnerSpaceCompactionExceptionHandler {
     return allSourceFileExist;
   }
 
-  private static boolean handleWhenAllSourceFilesExist(
+  public static boolean handleWhenAllSourceFilesExist(
       String fullStorageGroupName,
       TsFileResource targetTsFile,
-      List<TsFileResource> selectedTsFileResourceList,
-      TsFileResourceList tsFileResourceList) {
+      List<TsFileResource> selectedTsFileResourceList) {
     // all source file exists, delete the target file
     LOGGER.info(
         "{} [Compaction][ExceptionHandler] all source files {} exists, delete target file {}",
         fullStorageGroupName,
         selectedTsFileResourceList,
         targetTsFile);
+    TsFileResource tmpTargetTsFile;
+    if (targetTsFile.getTsFilePath().endsWith(IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)) {
+      tmpTargetTsFile = targetTsFile;
+      targetTsFile =
+          new TsFileResource(
+              new File(
+                  tmpTargetTsFile
+                      .getTsFilePath()
+                      .replace(
+                          IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX)));
+    } else {
+      tmpTargetTsFile =
+          new TsFileResource(
+              new File(
+                  targetTsFile
+                      .getTsFilePath()
+                      .replace(
+                          TsFileConstant.TSFILE_SUFFIX, IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
+    }
+    if (!tmpTargetTsFile.remove()) {
+      // failed to remove tmp target tsfile
+      // system should not carry out the subsequent compaction in case of data redundant
+      LOGGER.warn(
+          "{} [Compaction][ExceptionHandler] failed to remove target file {}",
+          fullStorageGroupName,
+          tmpTargetTsFile);
+      return false;
+    }
     if (!targetTsFile.remove()) {
       // failed to remove target tsfile
       // system should not carry out the subsequent compaction in case of data redundant
@@ -156,22 +182,7 @@ public class InnerSpaceCompactionExceptionHandler {
     }
     // deal with compaction modification
     try {
-      for (TsFileResource sourceFile : selectedTsFileResourceList) {
-        if (sourceFile.getCompactionModFile().exists()) {
-          ModificationFile compactionModificationFile =
-              ModificationFile.getCompactionMods(sourceFile);
-          Collection<Modification> newModification = compactionModificationFile.getModifications();
-          compactionModificationFile.close();
-          // write the modifications to a new modification file
-          sourceFile.resetModFile();
-          try (ModificationFile newModificationFile = sourceFile.getModFile()) {
-            for (Modification modification : newModification) {
-              newModificationFile.write(modification);
-            }
-          }
-          FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
-        }
-      }
+      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(selectedTsFileResourceList);
     } catch (Throwable e) {
       LOGGER.error(
           "{} Exception occurs while handling exception, set allowCompaction to false",
@@ -190,9 +201,7 @@ public class InnerSpaceCompactionExceptionHandler {
       List<TsFileResource> lostSourceFiles) {
     boolean handleSuccess = true;
     try {
-      RestorableTsFileIOWriter writer = new RestorableTsFileIOWriter(targetTsFile.getTsFile());
-      writer.close();
-      if (!writer.hasCrashed()) {
+      if (TsFileUtils.isTsFileComplete(targetTsFile.getTsFile())) {
         // target file is complete, delete source files
         LOGGER.info(
             "{} [Compaction][ExceptionHandler] target file {} is complete, delete remaining source files",
@@ -210,12 +219,6 @@ public class InnerSpaceCompactionExceptionHandler {
           }
         }
 
-        if (targetTsFile.getModFile().exists()) {
-          // if origin mods file exists, remove it, and generate a new mods file
-          FileUtils.delete(new File(targetTsFile.getModFile().getFilePath()));
-        }
-
-        InnerSpaceCompactionUtils.combineModsInCompaction(selectedTsFileResourceList, targetTsFile);
         InnerSpaceCompactionUtils.deleteModificationForSourceFile(
             selectedTsFileResourceList, fullStorageGroupName);
 

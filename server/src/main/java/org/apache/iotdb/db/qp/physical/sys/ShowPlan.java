@@ -35,9 +35,9 @@ public class ShowPlan extends PhysicalPlan {
   private boolean hasLimit;
 
   public ShowPlan(ShowContentType showContentType) {
-    super(true);
+    super(OperatorType.SHOW);
+    setQuery(true);
     this.showContentType = showContentType;
-    setOperatorType(OperatorType.SHOW);
   }
 
   public ShowPlan(ShowContentType showContentType, PartialPath path) {
@@ -118,6 +118,9 @@ public class ShowPlan extends PhysicalPlan {
     TRIGGERS,
     LOCK_INFO,
     CONTINUOUS_QUERY,
-    PIPE
+    PIPESINK,
+    PIPESINKTYPE,
+    PIPE,
+    PIPESERVER
   }
 }

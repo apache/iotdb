@@ -22,13 +22,13 @@
 # DML (Data Manipulation Language)
 
 ## INSERT
-### Insert Real-time Data
 
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Appendix/SQL-Reference.md) in [Client/Shell tools](../CLI/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Appendix/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Appendix/SQL-Reference.md) for real-time data import in the scenario.
 
-#### Use of INSERT Statements
+### Use of INSERT Statements
+
 The [INSERT SQL statement](../Appendix/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
@@ -58,7 +58,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
@@ -73,7 +73,34 @@ The result is shown below. The query result shows that the insertion statements 
 |1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
 Total line number = 4
-It costs 0.170s
+It costs 0.004s
+```
+
+### Insert Data Into Aligned Timeseries
+
+To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
+
+The sample code is as follows:
+
+```sql
+IoTDB > create aligned timeseries root.sg1.d1(s1 INT32, s2 DOUBLE)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(2, 2, 2), (3, 3, 3)
+IoTDB > select * from root.sg1.d1
+```
+
+The result is shown below. The query result shows that the insertion statements are performed correctly.
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d2.s1|root.sg1.d2.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|             1|           1.0|
+|1970-01-01T08:00:00.002+08:00|             2|           2.0|
+|1970-01-01T08:00:00.003+08:00|             3|           3.0|
++-----------------------------+--------------+--------------+
+Total line number = 3
+It costs 0.004s
 ```
 
 ## SELECT
@@ -566,6 +593,199 @@ Total line number = 3
 It costs 0.170s
 ```
 
+### Fill Null Value
+
+In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be filled. Therefore, the IoTDB system introduces fill methods.
+
+Fill methods refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
+
+#### Fill Methods
+
+IoTDB supports previous, linear, and value fill methods. Table 3-1 lists the data types and supported fill methods.
+
+<center>
+
+**Table 3-1 Data types and the supported fill methods**
+
+|Data Type|Supported Fill Methods|
+|:---|:---|
+|boolean|previous, value|
+|int32|previous, linear, value|
+|int64|previous, linear, value|
+|float|previous, linear, value|
+|double|previous, linear, value|
+|text|previous|
+</center>
+
+> Note: Only one Fill method can be specified in a Fill statement. Null value fill is compatible with version 0.12 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)), but the old syntax could not specify multiple fill methods at the same time
+
+#### Single Fill Query
+
+When data for a particular timestamp is null, the null values can be filled using single fill, as described below:
+
+* Previous Function
+
+When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
+```
+
+Detailed descriptions of all parameters are given in Table 3-2.
+
+<center>
+
+**Table 3-2 Previous fill paramter list**
+
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
+</center>
+
+Here we give an example of filling null values using the previous method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1s) 
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                          21.93|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.016s
+```
+
+It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
+
+```
+IoTDB> select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                           null|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.004s
+```
+
+* Linear Method
+
+When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
+```
+Detailed descriptions of all parameters are given in Table 3-3.
+
+<center>
+
+**Table 3-3 Linear fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
+Otherwise, if there is no valid fill value in either range [T - before_range, T] or [T, T + after_range], linear fill method will return null.
+
+Here we give an example of filling null values using the linear method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(linear, 1m, 1m)
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                      24.746666|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.017s
+```
+
+* Value Method
+
+When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(constant)
+```
+Detailed descriptions of all parameters are given in Table 3-4.
+
+<center>
+
+**Table 3-4 Specific value fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|constant|represents given fill value|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
+
+Here we give an example of filling null values using the value method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(2.0)
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
+When using the ValueFill, note that IoTDB will not fill the query result if the data type is different from the input constant
+
+example:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill('test')
+```
+
+result:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                          null |
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
 ### Aggregate Query
 
 This section mainly introduces the related examples of aggregate query.
@@ -589,69 +809,112 @@ It costs 0.016s
 
 #### Aggregation By Level
 
-**Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
-For all timeseries paths, by convention, "level=0" represents *root* level. 
-That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
+Aggregation by level statement is used to group the query result whose name is the same at the given level. Keyword `LEVEL` is used to specify the level that need to be grouped.  By convention, `level=0` represents *root* level. 
 
-For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
-To count the number of "status" points of all these series, use query:
+For example：there are multiple series named `status` under different storage groups， like "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", and "root.sgcc.wf03.wt01.status". If you need to count the number of data points of the `status` sequence under different storage groups, use the following query:
 
 ```sql
-select count(status) from root.ln.wf01.* group by level=2
+select count(status)
+from root.**
+group by level = 1
 ```
-Result:
+
+Result：
 
 ```
-+----------------------------+
-|COUNT(root.ln.wf01.*.status)|
-+----------------------------+
-|                       10080|
-+----------------------------+
++-------------------------+---------------------------+
+|count(root.ln.*.*.status)|count(root.sgcc.*.*.status)|
++-------------------------+---------------------------+
+|                    20160|                      10080|
++-------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Similarly，if you need to count the number of data points under different devices, you can specify level = 3,
+
+```sql
+select count(status)
+from root.**
+group by level = 3
+```
+
+Result：
+
+```
++---------------------------+---------------------------+
+|count(root.*.*.wt01.status)|count(root.*.*.wt02.status)|
++---------------------------+---------------------------+
+|                      20160|                      10080|
++---------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Attention，the devices named `wt01` under storage groups `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different storage groups, you can use the following query:
+
+```sql
+select count(status)
+from root.**
+group by level = 1, 3
+```
+
+Result：
+
+```
++----------------------------+----------------------------+------------------------------+
+|count(root.ln.*.wt01.status)|count(root.ln.*.wt02.status)|count(root.sgcc.*.wt01.status)|
++----------------------------+----------------------------+------------------------------+
+|                       10080|                       10080|                         10080|
++----------------------------+----------------------------+------------------------------+
 Total line number = 1
 It costs 0.003s
 ```
 
 
-Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature".
-To query the count and the sum of "temperature" under path "root.ln.*.*", 
-aggregating on level=2, use following statement:
+
+Assuming that you want to query the maximum value of temperature sensor under all time series, you can use the following query statement:
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=2
+select max_value(temperature)
+from root.**
+group by level = 0
 ```
+
 Result：
 
 ```
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|                                8|                                4|                          228.0|              91.83000183105469|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
++---------------------------------+
+|max_value(root.*.*.*.temperature)|
++---------------------------------+
+|                             26.0|
++---------------------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
-To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
-simply set level=1
+The above queries are for a certain sensor. In particular, **if you want to query the total data points owned by all sensors at a certain level**, you need to explicitly specify `*` is selected.
 
 ```sql
-select count(temperature), sum(temperature) from root.ln.*.* group by level=1
+select count(*)
+from root.ln.**
+group by level = 2
 ```
+
 Result：
 
 ```
-+------------------------------+----------------------------+
-|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
-+------------------------------+----------------------------+
-|                            12|           319.8300018310547|
-+------------------------------+----------------------------+
++----------------------+----------------------+
+|count(root.*.wf01.*.*)|count(root.*.wf02.*.*)|
++----------------------+----------------------+
+|                 20160|                 20160|
++----------------------+----------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
-When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
-Otherwise, it will generate a syntax error.
+When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type. Otherwise, it will generate a syntax error.
 
 #### Down-Frequency Aggregate Query
 
@@ -871,11 +1134,13 @@ It costs 0.004s
 ```
 
 #### Down-Frequency Aggregate Query with Fill Clause
-All aggregation operators can use a uniform filling method to fill the null values
+IoTDB supports null value filling of original down-frequency aggregate results. Previous, Linear, and Value fill methods can be used in any aggregation operator in a query statement, but only one fill method can be used in a query statement. In addition, the following two points should be paid attention to when using:
+- GroupByFill will not fill the aggregate result of count in any case, because in IoTDB, if there is no data in a time range, the aggregate result of count is 0
+- GroupByFill will classify sum aggregation results. In IoTDB, if a query interval does not contain any data, sum aggregation result is null, and GroupByFill will fill sum. If the sum of a time range happens to be 0, GroupByFill will not fill the value
 
-In group by fill, sliding step is not supported in group by clause
+The syntax of down-frequency aggregate query is similar to that of single fill query. Simple examples and usage details are listed below:
 
-Difference Between PREVIOUSUNTILLAST And PREVIOUS:
+##### Difference Between PREVIOUSUNTILLAST And PREVIOUS:
 
 * PREVIOUS will fill any null value as long as there exist value is not null before it.
 * PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
@@ -898,7 +1163,7 @@ Total line number = 6
 It costs 0.010s
 ```
 
-we will find that in root.ln.wf01.wt01.temperature the first time and value are 2017-11-07T23:49:00 and 23.7 and the last time and value are 2017-11-08T00:00:00 and 21.07 respectively. 
+we will find that in root.ln.wf01.wt01.temperature the first time and value are 2017-11-07T23:49:00 and 23.7 and the last time and value are 2017-11-08T00:00:00 and 21.07 respectively.
 
 Then execute SQL statements:
 
@@ -949,14 +1214,17 @@ which means:
 
 using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:57.
 
-In addition, there is no data in the first time interval [2017-11-07T23:50:00, 2017-11-07T23:51:00). The last time interval with data is [2017-11-01T23:49:00, 2017-11-07T23:50:00). The first interval can be filled by setting the forward query parameter beforeRange of PreviousFill as shown in the following example:
+##### Fill The First And Last Null Value
+
+The fill methods of IoTDB can be divided into three categories: PreviousFill, LinearFill and ValueFill. Where PreviousFill needs to know the first not-null value before the null value, LinearFill needs to know the first not-null value before and after the null value to fill. If the first or last value in the result returned by a query statement is null, a sequence of null values may exist at the beginning or the end of the result set, which does not meet GroupByFill's expectations.
+
+In the above example, there is no data in the first time interval [2017-11-07T23:50:00, 2017-11-07T23:51:00). The previous time interval with data is [2017-11-01T23:49:00, 2017-11-07T23:50:00). The first interval can be filled by setting PREVIOUS to fill the forward query parameter before_range as shown in the following example:
 
 ```sql
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
 ```
 
 result:
-
 ```
 IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
 +-----------------------------+-----------------------------------------+
@@ -978,35 +1246,19 @@ It costs 0.005s
 
 explain:
 
-Because the beforeRange parameter sets the maximum value of forward query at the same time, and there is no data within the time interval [2017-11-07T23:55:00, 2017-11-07T23:57:00), [2017-11-07T23:56:00, 2017-11-07T23:57:00]. If beforeRange is not specified, PreviousFill will use the previous not null value in the query range by default
+In order not to conflict with the original semantics, when before_range and after_range parameters are not set, the null value of GroupByFill is filled with the first/next not-null value of the null value. When setting before_range, after_range parameters, and the timestamp of the null record is set to T. GroupByFill takes the previous/last not-null value in [t-before_range, t+after_range) to complete the fill.
 
-Time range group aggregation query results can also be filled using VALUE and LINEAR, as shown in the following example:
+Because there is no data in the time interval [2017-11-07T23:55:00, 2017-11-07T23:57:00), Therefore, although this example fills the data of [2017-11-07T23:50:00, 2017-11-07T23:51:00) by setting before_range, due to the small before_range, [2017-11-07T23:56:00, 2017-11-07T23:57:00) data cannot be filled.
+
+Before_range and after_range parameters can also be filled with LINEAR, as shown in the following example:
 
 ```sql
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (10.0);
 SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
 ```
 
 result：
 
 ```
-IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (10.0);
-+-----------------------------+-----------------------------------------+
-|                         Time|last_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     10.0|
-|2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                     10.0|
-|2017-11-07T23:53:00.000+08:00|                                    24.58|
-|2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     10.0|
-|2017-11-07T23:56:00.000+08:00|                                     10.0|
-|2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                     10.0|
-+-----------------------------+-----------------------------------------+
-Total line number = 9
-It costs 0.018s
-
 IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
 +-----------------------------+-----------------------------------------+
 |                         Time|last_value(root.ln.wf01.wt01.temperature)|
@@ -1025,9 +1277,52 @@ Total line number = 9
 It costs 0.008s
 ```
 
-explain：
+> Note: Set the initial down-frequency query interval to [start_time, end_time). The query result will keep the same as not setting before_range and after_range parameters. However, the query interval is changed to [start_time - before_range, end_time + after_range). Therefore, the efficiency will be affected when these two parameters are set too large. Please pay attention to them when using.
 
-Similar to PREVIOUS, LINEAR has two parameters, beforeRange and afterRange, which can be filled with data outside the query interval
+##### ValueFill
+The ValueFill method parses the input constant value into a string. During fill, the string constant is converted to the corresponding type of data. If the conversion succeeds, the null record will be filled; otherwise, it is not filled. Examples are as follows:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (20.0)
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL ('temperature')
+```
+
+result:
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (20.0);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     20.0|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                     20.0|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     20.0|
+|2017-11-07T23:56:00.000+08:00|                                     20.0|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     20.0|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.007s
+
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL ('temperature');
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     null|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                     null|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     null|
+|2017-11-07T23:56:00.000+08:00|                                     null|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     null|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.005s
+```
 
 #### Down-Frequency Aggregate Query with Level Clause
 
@@ -1180,215 +1475,8 @@ It costs 0.012s
 > ```sql
 > SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
 > SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
-> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(double [previous]); -- Automated fill
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(previous); -- Automated fill
 > ```
-
-### Automated Fill
-
-In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
-
-Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
-
-#### Fill Function
-
-* Previous Function
-
-When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
-
-```sql
-select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
-```
-
-Detailed descriptions of all parameters are given in Table 3-4.
-
-<center>
-
-**Table 3-4 Previous fill paramter list**
-
-
-|Parameter name (case insensitive)|Interpretation|
-|:---|:---|
-|path, prefixPath|query path; mandatory field|
-|T|query timestamp (only one can be specified); mandatory field|
-|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
-</center>
-
-Here we give an example of filling null values using the previous method. The SQL statement is as follows:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1s) 
-```
-which means:
-
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
-
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                          21.93|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.016s
-```
-
-It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
-
-```
-IoTDB> select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                           null|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.004s
-```
-
-* Linear Method
-
-When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
-
-```sql
-select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
-```
-Detailed descriptions of all parameters are given in Table 3-5.
-
-<center>
-
-**Table 3-5 Linear fill paramter list**
-
-|Parameter name (case insensitive)|Interpretation|
-|:---|:---|
-|path, prefixPath|query path; mandatory field|
-|T|query timestamp (only one can be specified); mandatory field|
-|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
-</center>
-
-**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
-Otherwise, if there is no valid fill value in either range [T-before_range，T] or [T, T + after_range], linear fill method will return null.
-
-Here we give an example of filling null values using the linear method. The SQL statement is as follows:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(linear, 1m, 1m)
-```
-which means:
-
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
-
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                      24.746666|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.017s
-```
-
-* Value Method
-
-When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
-
-```sql
-select <path> from <prefixPath> where time = <T> fill(constant)
-```
-Detailed descriptions of all parameters are given in Table 3-6.
-
-<center>
-
-**Table 3-6 Specific value fill paramter list**
-
-|Parameter name (case insensitive)|Interpretation|
-|:---|:---|
-|path, prefixPath|query path; mandatory field|
-|T|query timestamp (only one can be specified); mandatory field|
-|constant|represents given fill value|
-</center>
-
-**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
-
-Here we give an example of filling null values using the value method. The SQL statement is as follows:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(2.0)
-```
-which means:
-
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
-
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                            2.0|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.007s
-```
-
-When using the ValueFill, note that IoTDB will not fill the query result if the data type is different from the input constant
-
-example:
-
-```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill('test')
-```
-
-result:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                          null |
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.007s
-```
-
-#### Correspondence between Data Type and Fill Method
-
-Data types and the supported fill methods are shown in Table 3-6.
-
-<center>
-
-**Table 3-6 Data types and the supported fill methods**
-
-|Data Type|Supported Fill Methods|
-|:---|:---|
-|boolean|previous, value|
-|int32|previous, linear, value|
-|int64|previous, linear, value|
-|float|previous, linear, value|
-|double|previous, linear, value|
-|text|previous|
-</center>
-
-When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
-
-<center>
-
-**Table 3-7 Default fill methods and parameters for various data types**
-
-|Data Type|Default Fill Methods and Parameters|
-|:---|:---|
-|boolean|previous, 600000|
-|int32|previous, 600000|
-|int64|previous, 600000|
-|float|previous, 600000|
-|double|previous, 600000|
-|text|previous, 600000|
-</center>
-
-> Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
 
 ### Last point Query
 
@@ -1667,7 +1755,7 @@ It costs 0.016s
 It is worth noting that because the current FILL clause can only fill in the missing value of timeseries at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
 
 ```sql
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) limit 10
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) limit 10
 ```
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
@@ -1767,7 +1855,7 @@ It costs 0.000s
 The SQL statement is:
 
 ```sql
-select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(float[previous, 1m]) slimit 1 soffset 1
+select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(previous, 1m) slimit 1 soffset 1
 ```
 which means:
 
@@ -1902,13 +1990,13 @@ Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or e
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
 ### Other ResultSet Formats
@@ -1922,7 +2010,7 @@ The 'align by device' indicates that the deviceId is considered as a column. The
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 The result shows below:
@@ -1951,7 +2039,7 @@ The 'disable align' indicates that there are 2 columns for each time series in t
 The SQL statement is:
 
 ```sql
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 The result shows below:

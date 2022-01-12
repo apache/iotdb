@@ -201,6 +201,9 @@ public class StatusUtils {
       case PARSE_LOG_ERROR:
         status.setMessage("Parse log error.");
         break;
+      case PIPESINK_ERROR:
+        status.setMessage("PipeSink error.");
+        break;
       default:
         status.setMessage("");
         break;

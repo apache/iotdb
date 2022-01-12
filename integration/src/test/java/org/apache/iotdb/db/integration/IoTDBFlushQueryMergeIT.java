@@ -18,12 +18,10 @@
  */
 package org.apache.iotdb.db.integration;
 
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
-import org.apache.iotdb.rpc.TSStatusCode;
 
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -186,14 +184,10 @@ public class IoTDBFlushQueryMergeIT {
         statement.execute(
             "FLUSH root.noexist.nodatagroup1,root.notExistGroup1,root.notExistGroup2");
       } catch (SQLException sqe) {
-        StorageGroupNotSetException tmpsgnse =
-            new StorageGroupNotSetException("root.notExistGroup1,root.notExistGroup2");
-        SQLException sqlException =
-            new SQLException(
-                TSStatusCode.STORAGE_GROUP_NOT_EXIST.getStatusCode()
-                    + ": "
-                    + tmpsgnse.getMessage());
-        assertEquals(sqlException.getMessage(), sqe.getMessage());
+        String expectedMsg =
+            "Storage group is not set for current seriesPath: [root.notExistGroup1,root.notExistGroup2]";
+        sqe.printStackTrace();
+        Assert.assertTrue(sqe.getMessage().contains(expectedMsg));
       }
     } catch (Exception e) {
       logger.error("testFlushNotExistGroupNoData failed", e);

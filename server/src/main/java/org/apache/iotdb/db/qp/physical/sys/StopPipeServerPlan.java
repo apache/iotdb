@@ -32,7 +32,7 @@ import java.util.List;
 public class StopPipeServerPlan extends PhysicalPlan {
 
   public StopPipeServerPlan() {
-    super(false, Operator.OperatorType.STOP_PIPE_SERVER);
+    super(Operator.OperatorType.STOP_PIPE_SERVER);
     canBeSplit = false;
   }
 

@@ -35,12 +35,12 @@ public class StartTriggerPlan extends PhysicalPlan {
   private String triggerName;
 
   public StartTriggerPlan() {
-    super(false, OperatorType.START_TRIGGER);
+    super(OperatorType.START_TRIGGER);
     canBeSplit = false;
   }
 
   public StartTriggerPlan(String triggerName) {
-    super(false, OperatorType.START_TRIGGER);
+    super(OperatorType.START_TRIGGER);
     this.triggerName = triggerName;
     canBeSplit = false;
   }

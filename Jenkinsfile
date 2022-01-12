@@ -106,7 +106,7 @@ pipeline {
                 sh 'mvn clean'
                 // We'll deploy to a relative directory so we can
                 // deploy new versions only if the entire build succeeds
-                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir -P client-cpp clean deploy -P get-jar-with-dependencies'
+                sh 'mvn ${MVN_TEST_FAIL_IGNORE} -DaltDeploymentRepository=snapshot-repo::default::file:./local-snapshots-dir -P client-cpp clean deploy -P get-jar-with-dependencies -P !testcontainer'
             }
             post {
                 always {

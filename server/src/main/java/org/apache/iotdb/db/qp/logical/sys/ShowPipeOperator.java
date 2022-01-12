@@ -19,31 +19,26 @@
 package org.apache.iotdb.db.qp.logical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import org.apache.commons.lang3.StringUtils;
-
 public class ShowPipeOperator extends ShowOperator {
   private String pipeName;
 
-  public ShowPipeOperator(String pipeName, int tokenIntType) {
-    this(tokenIntType);
-    this.pipeName = pipeName;
+  public ShowPipeOperator() {
+    super(SQLConstant.TOK_SHOW_PIPE, OperatorType.SHOW_PIPE);
+    pipeName = "";
   }
 
-  public ShowPipeOperator(int tokenIntType) {
-    super(tokenIntType);
+  public void setPipeName(String pipeName) {
+    this.pipeName = pipeName;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    if (StringUtils.isEmpty(pipeName)) {
-      return new ShowPipePlan();
-    } else {
-      return new ShowPipePlan(pipeName);
-    }
+    return new ShowPipePlan(pipeName);
   }
 }

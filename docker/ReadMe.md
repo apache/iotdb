@@ -112,7 +112,7 @@ docker exec -it c82321c70137 start-cli.sh
 1. First way: use config file:
 
 ```
-docker run -it -v /your_application.properties_folder:/iotdb-grafana/config -p 8888:8888 apache/iotdb:<version>-grafana
+docker run -it -v /your_application.properties_folder:/iotdb-grafana-connector/config -p 8888:8888 apache/iotdb:<version>-grafana
 ```
 
 2. Second way: use environment(take `SPRING_DATASOURCE_URL` for example)

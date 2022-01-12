@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.newsync.receiver.manager;
 
 import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
-import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLogAnalyzer;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,46 +33,48 @@ public class ReceiverManager {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, pipeInfo>>
-  private Map<String, Map<String,PipeInfo>> pipeInfoMap;
+  private Map<String, Map<String, PipeInfo>> pipeInfoMap;
   private ReceiverLog log;
 
   public void startServer() throws DiskSpaceInsufficientException, IOException {
     pipeServerEnable = true;
   }
 
-  public void stopServer(){
+  public void stopServer() {
     pipeServerEnable = false;
   }
 
-  public void createPipe(String pipeName,String remoteIp,long startTime) throws IOException {
+  public void createPipe(String pipeName, String remoteIp, long startTime) throws IOException {
     if (log != null) {
       log.createPipe(pipeName, remoteIp, startTime);
     }
     if (!pipeInfoMap.containsKey(pipeName)) {
-      pipeInfoMap.put(pipeName,new HashMap<>());
+      pipeInfoMap.put(pipeName, new HashMap<>());
     }
-    pipeInfoMap.get(pipeName).put(remoteIp,new PipeInfo(pipeName,remoteIp,PipeStatus.RUNNING,startTime));
+    pipeInfoMap
+        .get(pipeName)
+        .put(remoteIp, new PipeInfo(pipeName, remoteIp, PipeStatus.RUNNING, startTime));
   }
 
-  public void startPipe(String pipeName,String remoteIp) throws IOException {
-      if (log != null) {
-        log.startPipe(pipeName, remoteIp);
-      }
-      pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.RUNNING);
+  public void startPipe(String pipeName, String remoteIp) throws IOException {
+    if (log != null) {
+      log.startPipe(pipeName, remoteIp);
+    }
+    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.RUNNING);
   }
 
-  public void stopPipe(String pipeName,String remoteIp) throws IOException {
-      if (log != null) {
-        log.pausePipe(pipeName, remoteIp);
-      }
-      pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
+  public void stopPipe(String pipeName, String remoteIp) throws IOException {
+    if (log != null) {
+      log.pausePipe(pipeName, remoteIp);
+    }
+    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
   }
 
-  public void dropPipe(String pipeName,String remoteIp) throws IOException {
-      if (log != null) {
-        log.dropPipe(pipeName, remoteIp);
-      }
-      pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.DROP);
+  public void dropPipe(String pipeName, String remoteIp) throws IOException {
+    if (log != null) {
+      log.dropPipe(pipeName, remoteIp);
+    }
+    pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.DROP);
   }
 
   public List<PipeInfo> getAllPipeInfos(String pipeName) {
@@ -81,7 +83,7 @@ public class ReceiverManager {
 
   public List<PipeInfo> getAllPipeInfos() {
     List<PipeInfo> res = new ArrayList<>();
-    for(String pipeName:pipeInfoMap.keySet()){
+    for (String pipeName : pipeInfoMap.keySet()) {
       res.addAll(pipeInfoMap.get(pipeName).values());
     }
     return res;
@@ -106,8 +108,8 @@ public class ReceiverManager {
     } catch (Exception e) {
       logger.error("Can not create log for ReceiverManager ", e);
     }
-    Map<String, Map<String,PipeInfo>> recoverMap = ReceiverLogAnalyzer.recover();
-    if(recoverMap!=null){
+    Map<String, Map<String, PipeInfo>> recoverMap = ReceiverLogAnalyzer.recover();
+    if (recoverMap != null) {
       pipeInfoMap = recoverMap;
     }
   }

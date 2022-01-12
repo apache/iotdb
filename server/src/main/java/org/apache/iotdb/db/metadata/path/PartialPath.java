@@ -34,6 +34,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesReader;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.ITimeSeriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
@@ -41,6 +42,7 @@ import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
+import org.apache.commons.lang3.Validate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,6 +53,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
@@ -145,27 +148,104 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
   }
 
   /**
-   * Construct a new PartialPath by resetting the prefix nodes with prefixPath. If the prefix nodes
-   * contains **, then the prefixPath will be set before **. For example, give this = root.**.d and
-   * prefixPath = root.a.sg, then the result will be root.a.sg.**.d
+   * Return the intersection of paths starting with the given prefix and paths matching this path
+   * pattern.
    *
-   * @param prefixPath the prefix path used to replace current nodes
-   * @return A new PartialPath with altered prefix
+   * <p>For example, minimizing "root.**.b.c" with prefix "root.a.b" produces "root.a.b.c",
+   * "root.a.b.b.c", "root.a.b.**.b.c", since the multi-level wildcard can match 'a', 'a.b', and any
+   * other sub paths start with 'a.b'.
+   *
+   * <p>The goal of this method is to reduce the search space when querying a storage group with a
+   * path with wildcard.
+   *
+   * @param prefix The prefix. Cannot be null and cannot contain any wildcard.
    */
-  public PartialPath alterPrefixPath(PartialPath prefixPath) {
-    int newLength = Math.max(nodes.length, prefixPath.getNodeLength());
-    int startIndex = Math.min(nodes.length, prefixPath.getNodeLength());
-    for (int i = 0; i < startIndex; i++) {
-      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
-        newLength += startIndex - i;
-        startIndex = i;
-        break;
+  public List<PartialPath> alterPrefixPath(PartialPath prefix) {
+    Validate.notNull(prefix);
+
+    // Make sure the prefix path doesn't contain any wildcard.
+    for (String node : prefix.getNodes()) {
+      if (MULTI_LEVEL_PATH_WILDCARD.equals(node) || ONE_LEVEL_PATH_WILDCARD.equals(node)) {
+        throw new IllegalArgumentException(
+            "Wildcards are not allowed in the prefix path: " + prefix.getFullPath());
       }
     }
-    String[] newNodes = Arrays.copyOf(prefixPath.getNodes(), newLength);
-    System.arraycopy(
-        nodes, startIndex, newNodes, prefixPath.getNodeLength(), nodes.length - startIndex);
-    return new PartialPath(newNodes);
+
+    List<List<String>> results = new ArrayList<>();
+    alterPrefixPathInternal(
+        Arrays.asList(prefix.getNodes()), Arrays.asList(nodes), new ArrayList<>(), results);
+    return results.stream()
+        .map(r -> new PartialPath(r.toArray(new String[0])))
+        .collect(Collectors.toList());
+  }
+
+  /**
+   * Let PRE stands for the remaining prefix nodes, PATH for the remaining path nodes, and C for the
+   * path being processed. And assume the size of the prefix is i and that of this path is j.
+   *
+   * <p>If the first node of the path is not '**' and it matches the first node of the path. The
+   * optimality equation is,
+   *
+   * <p>O(PRE(0, i), PATH(0, j), C) = O(PRE(1, i), PATH(1, j), [PRE(0)])
+   *
+   * <p>If the first node of the path is '**', it may match the first 1, 2, ... i nodes of the
+   * prefix. '**' may match the all the remaining nodes of the prefix, as well as some additional
+   * levels. Thus, the optimality equation is,
+   *
+   * <p>O(PRE(0, i), PATH(0, j), C) = { O(PRE(1, i), PATH(1, j), [PRE(0)]), ... , O([], PATH(1, j),
+   * C + PRE(0) + ... + PRE(i-1)), O([], PATH(0, j), C + PRE(0) + ... + PRE(i-1))}
+   *
+   * <p>And when all the prefix nodes are matched,
+   *
+   * <p>O([], PATH, C) = C + PATH
+   *
+   * <p>The algorithm above takes all the possible matches of a multi-level wildcard into account.
+   * Thus, it produces the correct result.
+   *
+   * <p>To prevent overlapping among the final results, this algorithm stops when the prefix has no
+   * remaining node and the first remaining node of the path is '**'. This strategy works because
+   * this algorithm will always find the path with the least levels in the search space.
+   *
+   * @param prefix The remaining nodes of the prefix.
+   * @param path The remaining nodes of the path.
+   * @param current The path being processed.
+   * @param results The final results.
+   * @return True if the search should be stopped, else false.
+   */
+  private boolean alterPrefixPathInternal(
+      List<String> prefix, List<String> path, List<String> current, List<List<String>> results) {
+    if (prefix.isEmpty()) {
+      current.addAll(path);
+      results.add(current);
+      return !path.isEmpty() && MULTI_LEVEL_PATH_WILDCARD.equals(path.get(0));
+    }
+    if (path.isEmpty()) {
+      return false;
+    }
+
+    if (MULTI_LEVEL_PATH_WILDCARD.equals(path.get(0))) {
+      // Wildcard matches part of or the whole the prefix.
+      for (int j = 1; j <= prefix.size(); j++) {
+        List<String> copy = new ArrayList<>(current);
+        copy.addAll(prefix.subList(0, j));
+        if (alterPrefixPathInternal(
+            prefix.subList(j, prefix.size()), path.subList(1, path.size()), copy, results)) {
+          return true;
+        }
+      }
+      // Wildcard matches the prefix and some more levels.
+      List<String> copy = new ArrayList<>(current);
+      copy.addAll(prefix);
+      return alterPrefixPathInternal(
+          Collections.emptyList(), path.subList(0, path.size()), copy, results);
+    } else if (ONE_LEVEL_PATH_WILDCARD.equals(path.get(0)) || prefix.get(0).equals(path.get(0))) {
+      // No need to make a copy.
+      current.add(prefix.get(0));
+      return alterPrefixPathInternal(
+          prefix.subList(1, prefix.size()), path.subList(1, path.size()), current, results);
+    }
+
+    return false;
   }
 
   /**
@@ -413,6 +493,12 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
+      throws IOException {
+    throw new UnsupportedOperationException("Should call exact sub class!");
+  }
+
+  public ITimeSeriesMetadata generateTimeSeriesMetadata(
+      List<ReadOnlyMemChunk> readOnlyMemChunk, List<IChunkMetadata> chunkMetadataList)
       throws IOException {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }

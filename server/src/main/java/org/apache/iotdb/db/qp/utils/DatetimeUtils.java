@@ -679,4 +679,23 @@ public class DatetimeUtils {
     us,
     ns
   }
+
+  public static TimeUnit toTimeUnit(String t) {
+    switch (t) {
+      case "h":
+        return TimeUnit.HOURS;
+      case "m":
+        return TimeUnit.MINUTES;
+      case "s":
+        return TimeUnit.SECONDS;
+      case "ms":
+        return TimeUnit.MILLISECONDS;
+      case "u":
+        return TimeUnit.MICROSECONDS;
+      case "n":
+        return TimeUnit.NANOSECONDS;
+      default:
+        throw new IllegalArgumentException("time precision must be one of: h,m,s,ms,u,n");
+    }
+  }
 }

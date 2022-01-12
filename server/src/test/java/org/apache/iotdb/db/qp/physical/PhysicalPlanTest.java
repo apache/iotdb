@@ -1193,16 +1193,16 @@ public class PhysicalPlanTest {
   }
 
   @Test
-  public void testShowPipe() throws QueryProcessException {
-    String sql1 = "SHOW PIPE abc";
-    ShowPipePlan plan1 = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql1);
+  public void testShowPipeServer() throws QueryProcessException {
+    String sql1 = "SHOW PIPESERVER abc";
+    ShowPipeServerPlan plan1 = (ShowPipeServerPlan) processor.parseSQLToPhysicalPlan(sql1);
     Assert.assertTrue(plan1.isQuery());
-    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan1.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPESERVER, plan1.getShowContentType());
     Assert.assertNotNull(plan1.getPipeName());
-    String sql2 = "SHOW PIPE";
-    ShowPipePlan plan2 = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql2);
+    String sql2 = "SHOW PIPESERVER";
+    ShowPipeServerPlan plan2 = (ShowPipeServerPlan) processor.parseSQLToPhysicalPlan(sql2);
     Assert.assertTrue(plan2.isQuery());
-    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan2.getShowContentType());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPESERVER, plan2.getShowContentType());
     Assert.assertNull(plan2.getPipeName());
   }
 

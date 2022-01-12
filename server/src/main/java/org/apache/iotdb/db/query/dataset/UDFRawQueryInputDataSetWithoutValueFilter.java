@@ -19,9 +19,8 @@
 
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.crud.UDTFPlan;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.io.IOException;
 import java.util.List;
@@ -30,13 +29,9 @@ public class UDFRawQueryInputDataSetWithoutValueFilter extends RawQueryDataSetWi
     implements IUDFInputDataSet {
 
   public UDFRawQueryInputDataSetWithoutValueFilter(
-      long queryId,
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      List<ManagedSeriesReader> readers,
-      boolean ascending)
+      long queryId, UDTFPlan queryPlan, List<ManagedSeriesReader> readers)
       throws IOException, InterruptedException {
-    super(queryId, paths, dataTypes, readers, ascending);
+    super(queryId, queryPlan, readers);
   }
 
   @Override

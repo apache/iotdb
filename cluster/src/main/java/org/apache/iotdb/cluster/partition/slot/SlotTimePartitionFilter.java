@@ -20,7 +20,7 @@
 package org.apache.iotdb.cluster.partition.slot;
 
 import org.apache.iotdb.cluster.config.ClusterConstant;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 
 import java.util.Objects;
 import java.util.Set;

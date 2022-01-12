@@ -33,11 +33,11 @@ public class DropContinuousQueryPlan extends PhysicalPlan {
   private String continuousQueryName;
 
   public DropContinuousQueryPlan() {
-    super(false, Operator.OperatorType.DROP_CONTINUOUS_QUERY);
+    super(Operator.OperatorType.DROP_CONTINUOUS_QUERY);
   }
 
   public DropContinuousQueryPlan(String continuousQueryName) {
-    super(false, Operator.OperatorType.DROP_CONTINUOUS_QUERY);
+    super(Operator.OperatorType.DROP_CONTINUOUS_QUERY);
     this.continuousQueryName = continuousQueryName;
   }
 

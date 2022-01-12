@@ -38,6 +38,7 @@ public enum ServiceType {
   SYNC_SERVICE("SYNC ServerService", ""),
   UPGRADE_SERVICE("UPGRADE DataService", ""),
   SETTLE_SERVICE("SETTLE DataService", ""),
+  SENDER_SERVICE("Sync Sender service", ""),
   MERGE_SERVICE("Merge Manager", "Merge Manager"),
   COMPACTION_SERVICE("Compaction Manager", "Compaction Manager"),
   PERFORMANCE_STATISTIC_SERVICE("PERFORMANCE_STATISTIC_SERVICE", "PERFORMANCE_STATISTIC_SERVICE"),

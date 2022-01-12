@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.ConfigurationException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.monitor.StatMonitor;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.protocol.rest.RestService;
 import org.apache.iotdb.db.query.udf.service.TemporaryQueryDataFileService;
 import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
@@ -43,7 +44,6 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
-import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
 import org.slf4j.Logger;
@@ -77,10 +77,10 @@ public class IoTDB implements IoTDBMBean {
     }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
-    ReceiverService.getInstance().start();
-    ReceiverService.getInstance().createPipe("pipe1","192.168.1.11",1);
-    ReceiverService.getInstance().createPipe("pipeB","192.168.2.22",2);
-    ReceiverService.getInstance().createPipe("pipe1","192.168.2.22",3);
+//    ReceiverService.getInstance().start();
+//    ReceiverService.getInstance().createPipe("pipe1", "192.168.1.11", 1);
+//    ReceiverService.getInstance().createPipe("pipeB", "192.168.2.22", 2);
+//    ReceiverService.getInstance().createPipe("pipe1", "192.168.2.22", 3);
   }
 
   public static void setMetaManager(MManager metaManager) {
@@ -121,6 +121,7 @@ public class IoTDB implements IoTDBMBean {
 
     Runtime.getRuntime().addShutdownHook(new IoTDBShutdownHook());
     setUncaughtExceptionHandler();
+    registerManager.register(MetricsService.getInstance());
     logger.info("recover the schema...");
     initMManager();
     registerManager.register(JMXService.getInstance());
@@ -136,7 +137,6 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UDFRegistrationService.getInstance());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
-    registerManager.register(MetricsService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {

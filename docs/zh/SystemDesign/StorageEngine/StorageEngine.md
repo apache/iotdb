@@ -39,7 +39,7 @@
 
 	负责一个 IoTDB 实例的写入和访问，管理所有的 StorageGroupProsessor。
 	
-* org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor
+* org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor
 
 	负责一个存储组一个时间分区内的数据写入和访问。管理所有分区的 TsFileProcessor。
 

@@ -94,11 +94,7 @@ public abstract class UDTFDataSet extends QueryDataSet {
     this.udtfPlan = udtfPlan;
     rawQueryInputLayer =
         new RawQueryInputLayer(
-            queryId,
-            UDF_READER_MEMORY_BUDGET_IN_MB,
-            deduplicatedPaths,
-            deduplicatedDataTypes,
-            readersOfSelectedSeries);
+            queryId, UDF_READER_MEMORY_BUDGET_IN_MB, udtfPlan, readersOfSelectedSeries);
 
     initTransformers();
     initDataSetFields();

@@ -63,18 +63,9 @@ public class WildcardsRemover {
     try {
       Pair<List<MeasurementPath>, Integer> pair =
           IoTDB.metaManager.getMeasurementPathsWithAlias(path, currentLimit, currentOffset);
-
       consumed += pair.right;
-      if (currentOffset != 0) {
-        int delta = currentOffset - pair.right;
-        currentOffset = Math.max(delta, 0);
-        if (delta < 0) {
-          currentLimit += delta;
-        }
-      } else {
-        currentLimit -= pair.right;
-      }
-
+      currentOffset -= Math.min(currentOffset, pair.right);
+      currentLimit -= pair.left.size();
       return pair.left;
     } catch (MetadataException e) {
       throw new LogicalOptimizeException("error occurred when removing star: " + e.getMessage());

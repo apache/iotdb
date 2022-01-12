@@ -41,29 +41,31 @@ public class ReceiverLog {
     bw = new BufferedWriter(new FileWriter(logFile, true));
   }
 
-  public void createPipe(String pipeName,String remoteIp ,long time) throws IOException {
-    writeLog(pipeName,remoteIp,PipeStatus.RUNNING, time);
+  public void createPipe(String pipeName, String remoteIp, long time) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.RUNNING, time);
   }
 
-  public void startPipe(String pipeName,String remoteIp) throws IOException {
-    writeLog(pipeName,remoteIp, PipeStatus.RUNNING);
+  public void startPipe(String pipeName, String remoteIp) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.RUNNING);
   }
 
-  public void pausePipe(String pipeName,String remoteIp) throws IOException {
-    writeLog(pipeName,remoteIp, PipeStatus.PAUSE);
+  public void pausePipe(String pipeName, String remoteIp) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.PAUSE);
   }
 
-  public void dropPipe(String pipeName,String remoteIp) throws IOException {
-    writeLog(pipeName,remoteIp, PipeStatus.DROP);
+  public void dropPipe(String pipeName, String remoteIp) throws IOException {
+    writeLog(pipeName, remoteIp, PipeStatus.DROP);
   }
 
-  private void writeLog(String pipeName,String remoteIp, PipeStatus status, long time) throws IOException {
-    bw.write(String.format("%s,%s,%s,%d", pipeName,remoteIp, status, time));
+  private void writeLog(String pipeName, String remoteIp, PipeStatus status, long time)
+      throws IOException {
+    bw.write(String.format("%s,%s,%s,%d", pipeName, remoteIp, status, time));
     bw.newLine();
     bw.flush();
   }
-  private void writeLog(String pipeName,String remoteIp, PipeStatus status) throws IOException {
-    bw.write(String.format("%s,%s,%s", pipeName,remoteIp, status));
+
+  private void writeLog(String pipeName, String remoteIp, PipeStatus status) throws IOException {
+    bw.write(String.format("%s,%s,%s", pipeName, remoteIp, status));
     bw.newLine();
     bw.flush();
   }

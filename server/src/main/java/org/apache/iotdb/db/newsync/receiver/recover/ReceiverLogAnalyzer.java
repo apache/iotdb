@@ -33,9 +33,9 @@ import java.util.Map;
 public class ReceiverLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverLogAnalyzer.class);
 
-  public static Map<String, Map<String,PipeInfo>> recover() {
+  public static Map<String, Map<String, PipeInfo>> recover() {
     logger.info("Start to recover all sync state for sync receiver.");
-    Map<String, Map<String,PipeInfo>> res = new HashMap<>();
+    Map<String, Map<String, PipeInfo>> res = new HashMap<>();
     String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
     File logFile = new File(syncSystemDir, SyncConstant.RECEIVER_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(logFile))) {
@@ -46,7 +46,7 @@ public class ReceiverLogAnalyzer {
         try {
           analyzeLog(line, res);
         } catch (Exception e) {
-          logger.error("Receiver log recovery error: log file parse error at line "+lineNum);
+          logger.error("Receiver log recovery error: log file parse error at line " + lineNum);
           return null;
         }
       }
@@ -63,19 +63,20 @@ public class ReceiverLogAnalyzer {
    * @param logLine log line
    * @param map map
    */
-  private static void analyzeLog(String logLine, Map<String, Map<String,PipeInfo>> map) {
+  private static void analyzeLog(String logLine, Map<String, Map<String, PipeInfo>> map) {
     String[] items = logLine.split(",");
     String pipeName = items[0];
     String remoteIp = items[1];
     PipeStatus status = PipeStatus.valueOf(items[2]);
     if (status == PipeStatus.RUNNING) {
-      if(!map.containsKey(pipeName)){
-        map.put(pipeName,new HashMap<>());
+      if (!map.containsKey(pipeName)) {
+        map.put(pipeName, new HashMap<>());
       }
-      if(items.length==4){
+      if (items.length == 4) {
         // create
-        map.get(pipeName).put(remoteIp, new PipeInfo(pipeName,remoteIp,status, Long.parseLong(items[3])));
-      }else{
+        map.get(pipeName)
+            .put(remoteIp, new PipeInfo(pipeName, remoteIp, status, Long.parseLong(items[3])));
+      } else {
         map.get(pipeName).get(remoteIp).setStatus(status);
       }
     } else {

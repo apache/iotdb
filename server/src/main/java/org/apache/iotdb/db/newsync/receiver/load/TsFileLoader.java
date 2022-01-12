@@ -18,17 +18,11 @@
  */
 package org.apache.iotdb.db.newsync.receiver.load;
 
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.tools.TsFileRewriteTool;
-import org.apache.iotdb.db.utils.FileLoaderUtils;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
 
 /** This loader is used to load tsFiles. */
 public class TsFileLoader implements ILoader {

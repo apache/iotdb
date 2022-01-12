@@ -36,7 +36,7 @@ import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.FloatDataPoint;
 import org.apache.iotdb.tsfile.write.record.datapoint.IntDataPoint;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -93,8 +93,7 @@ public class TsFileWriterTest {
     try {
       writer.registerTimeseries(
           new Path("d1"),
-          new UnaryMeasurementSchema(
-              "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
@@ -102,42 +101,40 @@ public class TsFileWriterTest {
     try {
       writer.registerTimeseries(
           new Path("d1"),
-          new UnaryMeasurementSchema(
-              "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       Assert.assertEquals("given nonAligned timeseries d1.s1 has been registered.", e.getMessage());
     }
     try {
-      List<UnaryMeasurementSchema> schemas = new ArrayList<>();
+      List<MeasurementSchema> schemas = new ArrayList<>();
       schemas.add(
-          new UnaryMeasurementSchema(
-              "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
+          new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
       writer.registerAlignedTimeseries(new Path("d1"), schemas);
     } catch (WriteProcessException e) {
       Assert.assertEquals(
           "given device d1 has been registered for nonAligned timeseries.", e.getMessage());
     }
-    List<UnaryMeasurementSchema> schemas = new ArrayList<>();
+    List<MeasurementSchema> schemas = new ArrayList<>();
     schemas.add(
-        new UnaryMeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+        new MeasurementSchema("s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     schemas.add(
-        new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+        new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     writer.registerTimeseries(new Path("d1"), schemas);
 
     // Register aligned timeseries "d2.s1" , "d2.s2", "d2.s3"
     try {
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
-      measurementSchemas.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s1", TSDataType.TEXT, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s2", TSDataType.TEXT, TSEncoding.PLAIN));
+      measurementSchemas.add(new MeasurementSchema("s3", TSDataType.TEXT, TSEncoding.PLAIN));
       writer.registerAlignedTimeseries(new Path("d2"), measurementSchemas);
     } catch (WriteProcessException e) {
       e.printStackTrace();
       fail(e.getMessage());
     }
     try {
-      List<UnaryMeasurementSchema> measurementSchemas = new ArrayList<>();
-      measurementSchemas.add(new UnaryMeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
+      List<MeasurementSchema> measurementSchemas = new ArrayList<>();
+      measurementSchemas.add(new MeasurementSchema("s4", TSDataType.TEXT, TSEncoding.PLAIN));
       writer.registerAlignedTimeseries(new Path("d2"), measurementSchemas);
     } catch (WriteProcessException e) {
       Assert.assertEquals(
@@ -147,8 +144,7 @@ public class TsFileWriterTest {
     try {
       writer.registerTimeseries(
           new Path("d2"),
-          new UnaryMeasurementSchema(
-              "s5", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
+          new MeasurementSchema("s5", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY));
     } catch (WriteProcessException e) {
       Assert.assertEquals(
           "given device d2 has been registered for aligned timeseries.", e.getMessage());
@@ -158,7 +154,7 @@ public class TsFileWriterTest {
       for (int i = 2; i < 3; i++) {
         writer.registerTimeseries(
             new Path("d" + i, "s1"),
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY));
       }
     } catch (WriteProcessException e) {
@@ -257,9 +253,9 @@ public class TsFileWriterTest {
         new Tablet(
             "d1",
             Arrays.asList(
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
     tablet.timestamps[0] = 10000;
     ((float[]) tablet.values[0])[0] = 5.0f;
@@ -276,9 +272,9 @@ public class TsFileWriterTest {
         new Tablet(
             "d1",
             Arrays.asList(
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "s1", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY),
-                new UnaryMeasurementSchema(
+                new MeasurementSchema(
                     "s2", TSDataType.INT32, TSEncoding.RLE, CompressionType.SNAPPY)));
     tablet.timestamps[0] = 10000;
     ((float[]) tablet.values[0])[0] = 5.0f;
