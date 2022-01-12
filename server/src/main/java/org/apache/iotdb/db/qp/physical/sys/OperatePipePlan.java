@@ -17,41 +17,25 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
-import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
 
-public interface Pipe {
-  void start();
+public class OperatePipePlan extends PhysicalPlan {
+  private String pipeName;
 
-  void pause();
-
-  void drop();
-
-  String getName();
-
-  PipeSink getPipeSink();
-
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  String serialize();
-
-  enum PipeStatus {
-    RUNNING,
-    PAUSED,
-    DROP
+  public OperatePipePlan(String pipeName, Operator.OperatorType type) {
+    super(type);
+    this.pipeName = pipeName;
   }
 
-  class PipeFactory {
-    // when adding a new type pipe, should write a factory method to build it from bytebuffer
-    public static Pipe createPipe(String className, String serializationString) throws PipeException {
-      if (TsFilePipe.class.getName().equals(className)) {
-      }
-      throw new UnsupportedOperationException("Not support for pipe type " + className);
-    }
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
   }
 }

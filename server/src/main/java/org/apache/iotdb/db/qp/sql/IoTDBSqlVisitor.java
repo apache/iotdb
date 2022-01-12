@@ -62,6 +62,7 @@ import org.apache.iotdb.db.qp.logical.sys.CountOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateAlignedTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateFunctionOperator;
+import org.apache.iotdb.db.qp.logical.sys.CreatePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreatePipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateSnapshotOperator;
 import org.apache.iotdb.db.qp.logical.sys.CreateTemplateOperator;
@@ -73,6 +74,7 @@ import org.apache.iotdb.db.qp.logical.sys.DeleteStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.DeleteTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropContinuousQueryOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropFunctionOperator;
+import org.apache.iotdb.db.qp.logical.sys.DropPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.DropTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.FlushOperator;
@@ -82,6 +84,7 @@ import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigur
 import org.apache.iotdb.db.qp.logical.sys.LoadDataOperator;
 import org.apache.iotdb.db.qp.logical.sys.LoadFilesOperator;
 import org.apache.iotdb.db.qp.logical.sys.MergeOperator;
+import org.apache.iotdb.db.qp.logical.sys.PausePipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.RemoveFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.SetSystemModeOperator;
@@ -96,12 +99,14 @@ import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
+import org.apache.iotdb.db.qp.logical.sys.ShowPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowPipeSinkTypeOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTimeSeriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTriggersOperator;
+import org.apache.iotdb.db.qp.logical.sys.StartPipeOperator;
 import org.apache.iotdb.db.qp.logical.sys.StartTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.StopTriggerOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
@@ -2131,15 +2136,21 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     CreatePipeSinkOperator operator =
         new CreatePipeSinkOperator(ctx.pipeSinkName.getText(), ctx.pipeSinkType.getText());
     if (ctx.syncAttributeClauses() != null) {
-      Iterator<IoTDBSqlParser.PropertyClauseContext> propertyClauseIterator =
-          ctx.syncAttributeClauses().propertyClause().iterator();
-      while (propertyClauseIterator.hasNext()) {
-        IoTDBSqlParser.PropertyClauseContext propertyClause = propertyClauseIterator.next();
-        operator.putPipeSinkAttribute(
-            propertyClause.name.getText(), propertyClause.value.getText());
-      }
+      operator.setPipeSinkAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
     }
     return operator;
+  }
+
+  private Map<String, String> parseSyncAttributeClauses(
+      IoTDBSqlParser.SyncAttributeClausesContext ctx) {
+    Map<String, String> attributes = new HashMap<>();
+    Iterator<IoTDBSqlParser.PropertyClauseContext> propertyClauseIterator =
+        ctx.propertyClause().iterator();
+    while (propertyClauseIterator.hasNext()) {
+      IoTDBSqlParser.PropertyClauseContext propertyClause = propertyClauseIterator.next();
+      attributes.put(propertyClause.name.getText(), propertyClause.value.getText());
+    }
+    return attributes;
   }
 
   @Override
@@ -2161,6 +2172,99 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitShowPipeSinkType(IoTDBSqlParser.ShowPipeSinkTypeContext ctx) {
     ShowPipeSinkTypeOperator operator = new ShowPipeSinkTypeOperator();
     return operator;
+  }
+
+  @Override
+  public Operator visitCreatePipe(IoTDBSqlParser.CreatePipeContext ctx) throws SQLParserException {
+    CreatePipeOperator operator =
+        new CreatePipeOperator(ctx.pipeName.getText(), ctx.pipeSinkName.getText());
+
+    parseSelectStatementForPipe(ctx.selectStatement(), operator);
+    if (ctx.syncAttributeClauses() != null) {
+      operator.setPipeAttributes(parseSyncAttributeClauses(ctx.syncAttributeClauses()));
+    }
+    return operator;
+  }
+
+  @Override
+  public Operator visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
+    ShowPipeOperator operator = new ShowPipeOperator();
+    if (ctx.pipeName != null) {
+      operator.setPipeName(ctx.pipeName.getText());
+    }
+    return operator;
+  }
+
+  @Override
+  public Operator visitPausePipe(IoTDBSqlParser.PausePipeContext ctx) {
+    return new PausePipeOperator(ctx.pipeName.getText());
+  }
+
+  @Override
+  public Operator visitStartPipe(IoTDBSqlParser.StartPipeContext ctx) {
+    return new StartPipeOperator(ctx.pipeName.getText());
+  }
+
+  @Override
+  public Operator visitDropPipe(IoTDBSqlParser.DropPipeContext ctx) {
+    return new DropPipeOperator(ctx.pipeName.getText());
+  }
+
+  private void parseSelectStatementForPipe(
+      IoTDBSqlParser.SelectStatementContext ctx, CreatePipeOperator operator)
+      throws SQLParserException {
+    if (ctx.TRACING() != null || ctx.intoClause() != null || ctx.specialClause() != null) {
+      throw new SQLParserException("Not support for this sql in pipe.");
+    }
+
+    // parse select
+    IoTDBSqlParser.SelectClauseContext selectCtx = ctx.selectClause();
+    if (selectCtx.LAST() != null
+        || selectCtx.topClause() != null
+        || selectCtx.resultColumn().size() != 1) {
+      throw new SQLParserException("Not support for this sql in pipe.");
+    }
+    IoTDBSqlParser.ResultColumnContext resultColumnCtx = selectCtx.resultColumn(0);
+    if (resultColumnCtx.AS() != null
+        || !IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD.equals(
+            resultColumnCtx.expression().getText())) {
+      throw new SQLParserException("Not support for this sql in pipe.");
+    }
+
+    // parse from
+    IoTDBSqlParser.FromClauseContext fromCtx = ctx.fromClause();
+    if (fromCtx.prefixPath().size() != 1
+        || !IoTDBConstant.PATH_ROOT.equals(fromCtx.prefixPath(0).getText())) {
+      throw new SQLParserException("Not support for this sql in pipe.");
+    }
+
+    // parse where
+    IoTDBSqlParser.WhereClauseContext whereCtx = ctx.whereClause();
+    if (whereCtx != null) {
+      if (whereCtx.orExpression() == null || whereCtx.indexPredicateClause() != null) {
+        throw new SQLParserException("Not support for this sql in pipe.");
+      }
+      IoTDBSqlParser.OrExpressionContext orExpressionCtx = whereCtx.orExpression();
+      if (orExpressionCtx.andExpression().size() != 1) {
+        throw new SQLParserException("Not support for this sql in pipe.");
+      }
+      IoTDBSqlParser.AndExpressionContext andExpressionCtx = orExpressionCtx.andExpression(0);
+      if (andExpressionCtx.predicate().size() != 1) {
+        throw new SQLParserException("Not support for this sql in pipe.");
+      }
+      IoTDBSqlParser.PredicateContext predicateCtx = andExpressionCtx.predicate(0);
+      if (predicateCtx.comparisonOperator() == null
+          || predicateCtx.comparisonOperator().OPERATOR_GTE() == null
+          || predicateCtx.suffixPath() != null
+          || predicateCtx.fullPath() != null) {
+        throw new SQLParserException("Not support for this sql in pipe.");
+      }
+      IoTDBSqlParser.ConstantContext constantCtx = predicateCtx.constant();
+      if (constantCtx.dateExpression() == null) {
+        throw new SQLParserException("data type error for time limit");
+      }
+      operator.setStartTime(parseDateExpression(constantCtx.dateExpression()));
+    }
   }
 
   /** 7. Common Clauses */

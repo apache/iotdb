@@ -23,38 +23,46 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class CreatePipeSinkOperator extends Operator {
+public class CreatePipeOperator extends Operator {
+  private String pipeName;
   private String pipeSinkName;
-  private String pipeSinkType;
-  private Map<String, String> pipeSinkAttributes;
+  private long startTime;
+  private Map<String, String> pipeAttributes;
 
-  public CreatePipeSinkOperator(String pipeSinkName, String pipeSinkType) {
-    super(SQLConstant.TOK_CREATE_PIPESINK);
+  public CreatePipeOperator(String pipeName, String pipeSinkName) {
+    super(SQLConstant.TOK_CREATE_PIPE);
+    this.operatorType = OperatorType.CREATE_PIPE;
+
+    this.pipeName = pipeName;
     this.pipeSinkName = pipeSinkName;
-    this.pipeSinkType = pipeSinkType;
-    pipeSinkAttributes = new HashMap<>();
-    this.operatorType = OperatorType.CREATE_PIPESINK;
+    this.startTime = 0;
+    this.pipeAttributes = new HashMap<>();
   }
 
-  public void setPipeSinkAttributes(Map<String, String> pipeSinkAttributes) {
-    this.pipeSinkAttributes = pipeSinkAttributes;
+  public void setStartTime(long startTime) {
+    this.startTime = startTime;
+  }
+
+  public void setPipeAttributes(Map<String, String> pipeAttributes) {
+    this.pipeAttributes = pipeAttributes;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    CreatePipeSinkPlan plan = new CreatePipeSinkPlan(pipeSinkName, pipeSinkType);
-    Iterator<Map.Entry<String, String>> iterator = pipeSinkAttributes.entrySet().iterator();
+    CreatePipePlan plan = new CreatePipePlan(pipeName, pipeSinkName);
+    plan.setStartTime(startTime);
+    Iterator<Map.Entry<String, String>> iterator = pipeAttributes.entrySet().iterator();
     while (iterator.hasNext()) {
       Map.Entry<String, String> entry = iterator.next();
-      plan.addPipeSinkAttribute(entry.getKey(), entry.getValue());
+      plan.addPipeAttribute(entry.getKey(), entry.getValue());
     }
     return plan;
   }

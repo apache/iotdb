@@ -119,6 +119,7 @@ public class ShowPlan extends PhysicalPlan {
     LOCK_INFO,
     CONTINUOUS_QUERY,
     PIPESINK,
-    PIPESINKTYPE
+    PIPESINKTYPE,
+    PIPE
   }
 }

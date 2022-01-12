@@ -61,7 +61,6 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.utils.MetaUtils;
 import org.apache.iotdb.db.monitor.StatMonitor;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
-import org.apache.iotdb.db.newsync.sender.service.SenderFactory;
 import org.apache.iotdb.db.newsync.sender.service.SenderService;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
@@ -96,6 +95,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateAlignedTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateMultiTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
@@ -2238,13 +2238,7 @@ public class PlanExecutor implements IPlanExecutor {
           "There is a pipeSink named " + plan.getPipeSinkName() + " in IoTDB, please delete it.");
     }
     try {
-      PipeSink pipeSink =
-          SenderFactory.createPipeSink(
-              PipeSink.Type.valueOf(plan.getPipeSinkType()), plan.getPipeSinkName());
-      for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
-        pipeSink.setAttribute(pair.left, pair.right);
-      }
-      SenderService.getInstance().addPipeSink(pipeSink);
+      SenderService.getInstance().addPipeSink(plan);
     } catch (PipeSinkException e) {
       throw new QueryProcessException("Create pipeSink error.", e); // e will override the message
     } catch (IllegalArgumentException e) {
@@ -2262,4 +2256,6 @@ public class PlanExecutor implements IPlanExecutor {
       throw new QueryProcessException("Can not drop pipeSink.", e);
     }
   }
+
+  private void createPipe(CreatePipePlan plan) {}
 }

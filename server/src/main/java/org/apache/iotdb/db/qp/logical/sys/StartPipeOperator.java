@@ -17,41 +17,28 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-import java.nio.ByteBuffer;
+public class StartPipeOperator extends Operator {
+  private String pipeName;
 
-public interface Pipe {
-  void start();
+  public StartPipeOperator(String pipeName) {
+    super(SQLConstant.TOK_START_PIPE);
+    this.operatorType = OperatorType.START_PIPE;
 
-  void pause();
-
-  void drop();
-
-  String getName();
-
-  PipeSink getPipeSink();
-
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  String serialize();
-
-  enum PipeStatus {
-    RUNNING,
-    PAUSED,
-    DROP
+    this.pipeName = pipeName;
   }
 
-  class PipeFactory {
-    // when adding a new type pipe, should write a factory method to build it from bytebuffer
-    public static Pipe createPipe(String className, String serializationString) throws PipeException {
-      if (TsFilePipe.class.getName().equals(className)) {
-      }
-      throw new UnsupportedOperationException("Not support for pipe type " + className);
-    }
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new OperatePipePlan(pipeName, operatorType);
   }
 }

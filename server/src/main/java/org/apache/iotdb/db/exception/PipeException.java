@@ -17,41 +17,19 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.exception;
 
-import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-import java.nio.ByteBuffer;
+public class PipeException extends IoTDBException {
 
-public interface Pipe {
-  void start();
+  private static final long serialVersionUID = -7312720445194413492L;
 
-  void pause();
-
-  void drop();
-
-  String getName();
-
-  PipeSink getPipeSink();
-
-  long getCreateTime();
-
-  PipeStatus getStatus();
-
-  String serialize();
-
-  enum PipeStatus {
-    RUNNING,
-    PAUSED,
-    DROP
+  public PipeException(String message, int errorCode) {
+    super(message, errorCode);
   }
 
-  class PipeFactory {
-    // when adding a new type pipe, should write a factory method to build it from bytebuffer
-    public static Pipe createPipe(String className, String serializationString) throws PipeException {
-      if (TsFilePipe.class.getName().equals(className)) {
-      }
-      throw new UnsupportedOperationException("Not support for pipe type " + className);
-    }
+  public PipeException(String message) {
+    super(message, TSStatusCode.PIPE_ERROR.getStatusCode());
   }
 }

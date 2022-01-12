@@ -692,7 +692,7 @@ dropPipeSink
 
 // pipe statement
 createPipe
-    : CREATE PIPE pipeName=ID TO pipeSinkName=ID FROM LR_BRACKET selectStatement RR_BRACKET WITH syncAttributeClauses
+    : CREATE PIPE pipeName=ID TO pipeSinkName=ID FROM LR_BRACKET selectStatement RR_BRACKET WITH (syncAttributeClauses)?
     ;
 
 showPipe

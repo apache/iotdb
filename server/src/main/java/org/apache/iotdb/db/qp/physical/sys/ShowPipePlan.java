@@ -17,16 +17,13 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.pipe;
+package org.apache.iotdb.db.qp.physical.sys;
 
-public class PipeConfig {
-  private boolean syncDelOp;
+public class ShowPipePlan extends ShowPlan {
+  private String pipeName;
 
-  public void setSyncDelOp(boolean syncDelOp) {
-    this.syncDelOp = syncDelOp;
-  }
-
-  public boolean getSyncDelOp() {
-    return syncDelOp;
+  public ShowPipePlan(String pipeName) {
+    super(ShowContentType.PIPE);
+    this.pipeName = pipeName;
   }
 }

@@ -17,21 +17,28 @@
  * under the License.
  *
  */
-package org.apache.iotdb.db.newsync.sender.service;
+package org.apache.iotdb.db.qp.logical.sys;
 
-import org.apache.iotdb.db.newsync.sender.pipe.IoTDBPipeSink;
-import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
-import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.exception.query.QueryProcessException;
+import org.apache.iotdb.db.qp.constant.SQLConstant;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.sys.OperatePipePlan;
+import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
-public class SenderFactory {
-  public static PipeSink createPipeSink(PipeSink.Type type, String name) {
-    if (type == PipeSink.Type.IoTDB) {
-      return new IoTDBPipeSink(name);
-    }
-    throw new UnsupportedOperationException("do not support for " + type + " pipeSink");
+public class PausePipeOperator extends Operator {
+  private String pipeName;
+
+  public PausePipeOperator(String pipeName) {
+    super(SQLConstant.TOK_PAUSE_PIPE);
+    this.operatorType = OperatorType.PAUSE_PIPE;
+
+    this.pipeName = pipeName;
   }
 
-  public static Pipe createPipe(String type) {
-    return null;
+  @Override
+  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
+      throws QueryProcessException {
+    return new OperatePipePlan(pipeName, operatorType);
   }
 }

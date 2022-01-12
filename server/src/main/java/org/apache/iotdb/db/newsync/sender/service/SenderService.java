@@ -19,11 +19,16 @@
  */
 package org.apache.iotdb.db.newsync.sender.service;
 
+import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreatePipeSinkPlan;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,23 +59,42 @@ public class SenderService implements IService {
     return senderService;
   }
 
-  public synchronized PipeSink getPipeSink(String name) {
+  /** pipesink * */
+  public PipeSink getPipeSink(String name) {
     return pipeSinks.getOrDefault(name, null);
   }
 
-  public synchronized boolean isPipeSinkExist(String name) {
+  public boolean isPipeSinkExist(String name) {
     return pipeSinks.containsKey(name);
   }
 
-  public synchronized void addPipeSink(PipeSink pipeSink) {
+  // should guarantee the adding pipesink is not exist.
+  public void addPipeSink(PipeSink pipeSink) {
     pipeSinks.put(pipeSink.getName(), pipeSink);
   }
 
-  public synchronized void dropPipeSink(String name) {
+  public void addPipeSink(CreatePipeSinkPlan plan) throws PipeSinkException {
+    PipeSink pipeSink =
+        PipeSink.PipeSinkFactory.createPipeSink(plan.getPipeSinkType(), plan.getPipeSinkName());
+    for (Pair<String, String> pair : plan.getPipeSinkAttributes()) {
+      pipeSink.setAttribute(pair.left, pair.right);
+    }
+    addPipeSink(pipeSink);
+  }
+
+  public void dropPipeSink(String name) throws PipeSinkException {
+    if (runningPipe != null
+        && runningPipe.getStatus() != Pipe.PipeStatus.DROP
+        && runningPipe.getPipeSink().getName().equals(name)) {
+      throw new PipeSinkException(
+          String.format(
+              "Can not drop pipeSink %s, because pipe %s is using it.",
+              name, runningPipe.getName()));
+    }
     pipeSinks.remove(name);
   }
 
-  public synchronized List<PipeSink> getAllPipeSink() {
+  public List<PipeSink> getAllPipeSink() {
     List<PipeSink> allPipeSinks = new ArrayList<>();
     for (Map.Entry<String, PipeSink> entry : pipeSinks.entrySet()) {
       allPipeSinks.add(entry.getValue());
@@ -78,6 +102,19 @@ public class SenderService implements IService {
     return allPipeSinks;
   }
 
+  /** pipe * */
+  public void addPipe(CreatePipePlan plan) throws PipeException {
+    checkPipeIsRunning();
+  }
+
+  private void checkPipeIsRunning() throws PipeException {
+    if (runningPipe != null && runningPipe.getStatus() == Pipe.PipeStatus.RUNNING) {
+      throw new PipeException(
+          String.format("Pipe %s is running, please retry after drop it.", runningPipe.getName()));
+    }
+  }
+
+  /** IService * */
   @Override
   public void start() throws StartupException {}
 
