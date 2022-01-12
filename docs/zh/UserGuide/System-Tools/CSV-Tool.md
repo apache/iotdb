@@ -23,7 +23,7 @@
 
 CSV 工具可帮您将 CSV 格式的数据导入到 IoTDB 或者将数据从 IoTDB 导出到 CSV 文件。
 
-### 使用 export-csv.sh
+## 使用 export-csv.sh
 
 #### 运行方法
 
@@ -113,7 +113,7 @@ Time,Device,hardware(TEXT),status(BOOLEAN)
 
 注意，如果导出字段存在如下特殊字符:
 
-1. `,`: 需要在字符前加`\`来进行转义。
+1. `,`: 导出程序会在`,`字符前加`\`来进行转义。
 
 ## 使用import-csv.sh
 
@@ -132,7 +132,7 @@ CREATE TIMESERIES root.fit.p.s1 WITH DATATYPE=INT32,ENCODING=RLE;
 
 IoTDB 具有类型推断的能力，因此在数据导入前创建元数据不是必须的。但我们仍然推荐在使用 CSV 导入工具导入数据前创建元数据，因为这可以避免不必要的类型转换错误。
 
-#### 待导入 CSV 文件示例
+### 待导入 CSV 文件示例
 
 通过时间对齐，并且header中不包含数据类型的数据。
 
@@ -172,9 +172,9 @@ Time,Device,str(TEXT),int(INT32)
 
 ```shell
 # Unix/OS X
->tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+>tools/import-csv.sh -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 # Windows
->tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>]
+>tools\import-csv.bat -h <ip> -p <port> -u <username> -pw <password> -f <xxx.csv> [-fd <./failedDirectory>] [-aligned <true>]
 ```
 
 参数:
@@ -186,6 +186,10 @@ Time,Device,str(TEXT),int(INT32)
 * `-fd`:
   - 指定一个目录来存放保存失败的行的文件，如果你没有指定这个参数，失败的文件将会被保存到源数据的目录中，然后文件名是源文件名加上`.failed`的后缀。
   - example: `-fd ./failed/`
+
+* `-aligned`:
+  - 是否使用`aligned`接口？ 默认参数为`false`。
+  - example: `-aligned true`
 
 ### 运行示例
 

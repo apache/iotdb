@@ -227,12 +227,53 @@ void insertTablets() {
     }
 }
 
+void insertTabletWithNullValues() {
+    /*
+     * A Tablet example:
+     *      device1
+     * time s1,   s2,   s3
+     * 1,   null, 1,    1
+     * 2,   2,    null, 2
+     * 3,   3,    3,    null
+     */
+    pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT64);
+    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::INT64);
+    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::INT64);
+    vector<pair<string, TSDataType::TSDataType>> schemas;
+    schemas.push_back(pairA);
+    schemas.push_back(pairB);
+    schemas.push_back(pairC);
+
+    Tablet tablet("root.sg1.d1", schemas, 10);
+
+    for (int64_t time = 40; time < 50; time++) {
+        int row = tablet.rowSize++;
+        tablet.timestamps[row] = time;
+        for (int i = 0; i < 3; i++) {
+            tablet.values[i][row] = to_string(i);
+            // mark null value
+            if (row % 3 == i) {
+                tablet.bitMaps[i]->mark(row);
+            }
+        }
+        if (tablet.rowSize == tablet.maxRowNumber) {
+            session->insertTablet(tablet, true);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session->insertTablet(tablet);
+        tablet.reset();
+    }
+}
+
 void nonQuery() {
-    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(50, 1);");
+    session->executeNonQueryStatement("insert into root.sg1.d1(timestamp,s1) values(100, 1);");
 }
 
 void query() {
-    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select s1, s2, s3 from root.sg1.d1");
     cout << "timestamp" << "  ";
     for (const string &name: dataSet->getColumnNames()) {
         cout << name << "  ";
@@ -322,6 +363,9 @@ int main() {
 
     cout << "insertTablets\n" << endl;
     insertTablets();
+
+    cout << "insertTabletWithNullValues\n" << endl;
+    insertTabletWithNullValues();
 
     cout << "nonQuery\n" << endl;
     nonQuery();

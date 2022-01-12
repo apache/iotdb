@@ -190,6 +190,46 @@ void insertAlignedTablets() {
     }
 }
 
+void insertNullableTabletWithAlignedTimeseries() {
+    pair<string, TSDataType::TSDataType> pairA("s1", TSDataType::INT32);
+    pair<string, TSDataType::TSDataType> pairB("s2", TSDataType::DOUBLE);
+    pair<string, TSDataType::TSDataType> pairC("s3", TSDataType::BOOLEAN);
+    vector<pair<string, TSDataType::TSDataType>> schemas;
+    schemas.push_back(pairA);
+    schemas.push_back(pairB);
+    schemas.push_back(pairC);
+
+    Tablet tablet("root.sg1.d1", schemas, 10);
+    tablet.setAligned(true);
+
+    for (int64_t time = 40; time < 50; time++) {
+        int row = tablet.rowSize++;
+        tablet.timestamps[row] = time;
+        for (int i = 0; i < 3; i++) {
+            if (i == 0) {
+                tablet.values[i][row] = "1";
+            } else if (i == 1) {
+                tablet.values[i][row] = "1.0";
+            } else {
+                tablet.values[i][row] = "true";
+            }
+            // mark null value
+            if (row % 3 == i) {
+                tablet.bitMaps[i]->mark(row);
+            }
+        }
+        if (tablet.rowSize == tablet.maxRowNumber) {
+            session->insertTablet(tablet, true);
+            tablet.reset();
+        }
+    }
+
+    if (tablet.rowSize != 0) {
+        session->insertTablet(tablet);
+        tablet.reset();
+    }
+}
+
 void query() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("select * from root.sg1.d1");
     cout << "timestamp" << "  ";
@@ -209,7 +249,7 @@ void query() {
 
 void deleteData() {
     string path = "root.sg1.d1.s1";
-    int64_t deleteTime = 39;
+    int64_t deleteTime = 49;
     session->deleteData(path, deleteTime);
 }
 
@@ -259,6 +299,9 @@ int main() {
 
     cout << "insertAlignedTablets\n" << endl;
     insertAlignedTablets();
+
+    cout << "insertNullableTabletWithAlignedTimeseries\n" << endl;
+    insertNullableTabletWithAlignedTimeseries();
 
     cout << "query\n" << endl;
     query();

@@ -127,12 +127,12 @@ public class IoTDBContinuousQueryIT {
             + "GROUP BY time(1s) END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq2 "
-            + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT avg(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
             + " GROUP BY time(1s), level=3 END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq3 "
             + "RESAMPLE EVERY 2s FOR 2s "
-            + "BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT min_value(temperature) INTO temperature_avg FROM root.ln.wf01.*.* "
             + "GROUP BY time(1s), level=2 END");
 
     statement.execute("DROP CONTINUOUS QUERY cq1");
@@ -166,11 +166,11 @@ public class IoTDBContinuousQueryIT {
 
     statement.execute(
         "CREATE CONTINUOUS QUERY cq1 "
-            + "BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.*.* "
+            + "BEGIN SELECT sum(temperature) INTO temperature_max FROM root.ln.*.*.* "
             + "GROUP BY time(1s) END");
     statement.execute(
         "CREATE CONTINUOUS QUERY cq2 "
-            + "BEGIN SELECT count(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
+            + "BEGIN SELECT avg(temperature) INTO temperature_cnt FROM root.ln.wf01.*.* "
             + " GROUP BY time(1s), level=3 END");
 
     checkShowContinuousQueriesResult(new String[] {"cq3", "cq1", "cq2"});
