@@ -297,4 +297,12 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
     childCache.putAll(children);
   }
+
+  @Override
+  public void updateMNode(String name) {
+    IMNode node = childCache.remove(name);
+    if (node != null) {
+      updatedChildBuffer.put(name, node);
+    }
+  }
 }

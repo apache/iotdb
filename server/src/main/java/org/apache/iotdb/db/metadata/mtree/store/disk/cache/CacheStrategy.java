@@ -19,25 +19,69 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class CacheStrategy implements ICacheStrategy {
-  @Override
-  public void updateCacheStatusAfterRead(IMNode node) {}
+
+  Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
+
+  Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
 
   @Override
-  public void updateCacheStatusAfterAppend(IMNode node) {}
+  public void updateCacheStatusAfterRead(IMNode node) {
+    if (node.getCacheEntry() != null) {
+      return;
+    }
+
+    CacheEntry cacheEntry = new CacheEntry();
+    node.setCacheEntry(new CacheEntry());
+    nodeCache.put(cacheEntry, node);
+  }
 
   @Override
-  public void updateCacheStatusAfterUpdate(IMNode node) {}
+  public void updateCacheStatusAfterAppend(IMNode node) {
+    CacheEntry cacheEntry = new CacheEntry();
+    node.setCacheEntry(new CacheEntry());
+    nodeBuffer.put(cacheEntry, node);
+  }
 
   @Override
-  public void remove(IMNode node) {}
+  public void updateCacheStatusAfterUpdate(IMNode node) {
+    CacheEntry cacheEntry = new CacheEntry();
+    node.setCacheEntry(new CacheEntry());
+    nodeBuffer.put(cacheEntry, node);
+    getBelongedContainer(node).updateMNode(node.getName());
+  }
+
+  @Override
+  public void remove(IMNode node) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    if (cacheEntry.isVolatile()) {
+      nodeBuffer.remove(cacheEntry);
+    } else {
+      nodeCache.remove(cacheEntry);
+    }
+  }
 
   @Override
   public List<IMNode> evict() {
-    return null;
+    IMNode node = null;
+    List<IMNode> nodesToPersist = new ArrayList<>();
+    if (!nodeCache.isEmpty()) {
+      node = nodeCache.values().stream().findFirst().get();
+    } else if (!nodeBuffer.isEmpty()) {
+      node = nodeBuffer.values().stream().findFirst().get();
+      nodesToPersist.add(node);
+    }
+    if (node != null) {
+      collectVolatileNodes(node, nodesToPersist);
+    }
+    return nodesToPersist;
   }
 
   @Override
@@ -48,4 +92,19 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void clear() {}
+
+  private CachedMNodeContainer getBelongedContainer(IMNode node) {
+    return (CachedMNodeContainer) node.getParent().getChildren();
+  }
+
+  private void collectVolatileNodes(IMNode node, List<IMNode> nodesToPersist) {
+    CacheEntry cacheEntry;
+    for (IMNode child : node.getChildren().values()) {
+      cacheEntry = child.getCacheEntry();
+      if (cacheEntry != null && cacheEntry.isVolatile()) {
+        nodesToPersist.add(child);
+        collectVolatileNodes(child, nodesToPersist);
+      }
+    }
+  }
 }

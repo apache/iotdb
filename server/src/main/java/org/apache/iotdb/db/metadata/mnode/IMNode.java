@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheEntry;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
@@ -85,4 +86,8 @@ public interface IMNode extends Serializable {
   IMeasurementMNode getAsMeasurementMNode();
 
   void serializeTo(MLogWriter logWriter) throws IOException;
+
+  CacheEntry getCacheEntry();
+
+  void setCacheEntry(CacheEntry cacheEntry);
 }
