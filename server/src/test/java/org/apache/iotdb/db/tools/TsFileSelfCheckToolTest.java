@@ -127,6 +127,7 @@ public class TsFileSelfCheckToolTest {
         }
       }
     } catch (Exception e) {
+      logger.error(e.getMessage());
       throw new Exception("meet error in TsFileWrite with tablet", e);
     }
   }
