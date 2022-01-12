@@ -146,26 +146,26 @@ public class ElasticSerializableRowRecordList {
         .getRowRecord(index % internalRowRecordListCapacity);
   }
 
-  /** true if all fields except the timestamp in the current row are null */
-  public boolean fieldsAllNull(int index) {
+  /** true if any field except the timestamp in the current row is null */
+  public boolean fieldsHasAnyNull(int index) {
     return bitMaps
         .get(index / internalRowRecordListCapacity)
         .isMarked(index % internalRowRecordListCapacity);
   }
 
   public void put(Object[] rowRecord) throws IOException, QueryProcessException {
-    put(rowRecord, InputRowUtils.isAllNull(rowRecord));
+    put(rowRecord, InputRowUtils.hasAnyNull(rowRecord));
   }
 
   /**
-   * Put the row in the list with an all-fields-null marker, this method is faster than calling put
+   * Put the row in the list with an any-field-null marker, this method is faster than calling put
    * directly
    */
-  private void put(Object[] rowRecord, boolean fieldsAllNull)
+  private void put(Object[] rowRecord, boolean fieldsHasAnyNull)
       throws IOException, QueryProcessException {
     checkExpansion();
     cache.get(size / internalRowRecordListCapacity).put(rowRecord);
-    if (fieldsAllNull) {
+    if (fieldsHasAnyNull) {
       bitMaps.get(size / internalRowRecordListCapacity).mark(size % internalRowRecordListCapacity);
     }
     ++size;
@@ -256,7 +256,7 @@ public class ElasticSerializableRowRecordList {
       newElasticSerializableRowRecordList.put(null);
     }
     for (int i = evictionUpperBound; i < size; ++i) {
-      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsAllNull(i));
+      newElasticSerializableRowRecordList.put(getRowRecord(i), fieldsHasAnyNull(i));
     }
 
     internalRowRecordListCapacity = newInternalRowRecordListCapacity;
