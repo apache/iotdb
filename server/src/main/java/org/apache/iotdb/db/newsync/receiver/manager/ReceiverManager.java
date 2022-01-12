@@ -46,6 +46,10 @@ public class ReceiverManager {
     pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
   }
 
+  public void close() throws IOException {
+    log.close();
+  }
+
   public void startServer() throws IOException {
     log.startPipeServer();
     ;

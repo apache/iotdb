@@ -80,4 +80,8 @@ public class ReceiverLog {
     bw.newLine();
     bw.flush();
   }
+
+  public void close() throws IOException {
+    bw.close();
+  }
 }
