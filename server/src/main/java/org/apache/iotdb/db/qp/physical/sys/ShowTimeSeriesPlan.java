@@ -121,6 +121,12 @@ public class ShowTimeSeriesPlan extends ShowPlan {
     this.index = buffer.getLong();
   }
 
+  /**
+   * Copy this plan, which can be used to create sub-queries and minimize fields that need manual
+   * setting.
+   *
+   * @return a copy of this plan.
+   */
   public ShowTimeSeriesPlan copy() {
     ShowTimeSeriesPlan showTimeSeriesPlan = new ShowTimeSeriesPlan();
     showTimeSeriesPlan.isContains = this.isContains;

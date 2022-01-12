@@ -89,6 +89,14 @@ public class ClusterQueryUtils {
     }
   }
 
+  /**
+   * Find the partition group of each storage group, and group the associated paths by the partition
+   * groups.
+   *
+   * @param sgPathMap
+   * @param partitionTable
+   * @return partition group -> paths belonging to the partition group
+   */
   public static Map<PartitionGroup, List<String>> groupPathByPartitionGroup(
       Map<String, List<PartialPath>> sgPathMap, PartitionTable partitionTable) {
     Map<PartitionGroup, List<String>> groupPathMap = new HashMap<>();

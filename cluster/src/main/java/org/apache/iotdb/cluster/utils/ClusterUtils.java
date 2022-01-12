@@ -375,6 +375,13 @@ public class ClusterUtils {
     return clusterNode1.equals(clusterNode2);
   }
 
+  /**
+   * Wait until the MetaGroupMember is ready (receives or creates a partition table), the maximum
+   * wait time is ConnectionTimeoutInMS.
+   *
+   * @param metaGroupMember
+   * @return whether metaGroupMember is ready after wait
+   */
   public static boolean waitUntilMetaReady(MetaGroupMember metaGroupMember) {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;

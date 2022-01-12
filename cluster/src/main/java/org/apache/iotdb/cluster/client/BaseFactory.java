@@ -47,11 +47,12 @@ public abstract class BaseFactory<K, T> implements KeyedPooledObjectFactory<K, T
   }
 
   @Override
-  public void activateObject(K node, PooledObject<T> pooledObject) throws Exception {}
+  public void activateObject(K node, PooledObject<T> pooledObject) {}
 
   @Override
-  public void passivateObject(K node, PooledObject<T> pooledObject) throws Exception {}
+  public void passivateObject(K node, PooledObject<T> pooledObject) {}
 
+  /** Stop all TAsyncClientManagers if async mode is used. */
   public void close() {
     if (managers == null) {
       return;

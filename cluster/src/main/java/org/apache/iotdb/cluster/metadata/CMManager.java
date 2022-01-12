@@ -1015,6 +1015,24 @@ public class CMManager extends MManager {
     }
   }
 
+  /**
+   * Get all paths after removing wildcards in the path.
+   *
+   * <p>Please note that for a returned measurement path, the name, alias and datatype are
+   * guaranteed to be accurate, while the compression type, encoding and other fields are not. See
+   * {@link GetAllPathsResult}.
+   *
+   * @param originPath a path potentially with wildcard
+   * @return all paths after removing wildcards in the path
+   */
+  public List<MeasurementPath> getMatchedPaths(PartialPath originPath)
+      throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
+    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
+    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false);
+    logger.debug("The paths of path {} are {}", originPath, ret);
+    return ret;
+  }
+
   private List<MeasurementPath> getMatchedPaths(
       PartitionGroup partitionGroup, List<String> pathsToQuery, boolean withAlias)
       throws MetadataException {
@@ -1049,6 +1067,32 @@ public class CMManager extends MManager {
     return Collections.emptyList();
   }
 
+  @SuppressWarnings("java:S1168") // null and empty list are different
+  private List<MeasurementPath> getMatchedPaths(
+      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
+      throws IOException, TException, InterruptedException {
+    GetAllPathsResult result = getMatchedPathsRemotely(node, header, pathsToQuery, withAlias);
+
+    if (result != null) {
+      // paths may be empty, implying that the group does not contain matched paths, so we do not
+      // need to query other nodes in the group
+      List<MeasurementPath> measurementPaths = new ArrayList<>();
+      for (int i = 0; i < result.paths.size(); i++) {
+        MeasurementPath matchedPath =
+            ClusterQueryUtils.getAssembledPathFromRequest(
+                result.getPaths().get(i), result.getDataTypes().get(i));
+        measurementPaths.add(matchedPath);
+        if (withAlias && matchedPath != null) {
+          matchedPath.setMeasurementAlias(result.aliasList.get(i));
+        }
+      }
+      return measurementPaths;
+    } else {
+      // a null implies a network failure, so we have to query other nodes in the group
+      return null;
+    }
+  }
+
   private GetAllPathsResult getMatchedPathsRemotely(
       Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
       throws IOException, TException, InterruptedException {
@@ -1078,32 +1122,6 @@ public class CMManager extends MManager {
       }
     }
     return result;
-  }
-
-  @SuppressWarnings("java:S1168") // null and empty list are different
-  private List<MeasurementPath> getMatchedPaths(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
-      throws IOException, TException, InterruptedException {
-    GetAllPathsResult result = getMatchedPathsRemotely(node, header, pathsToQuery, withAlias);
-
-    if (result != null) {
-      // paths may be empty, implying that the group does not contain matched paths, so we do not
-      // need to query other nodes in the group
-      List<MeasurementPath> measurementPaths = new ArrayList<>();
-      for (int i = 0; i < result.paths.size(); i++) {
-        MeasurementPath matchedPath =
-            ClusterQueryUtils.getAssembledPathFromRequest(
-                result.getPaths().get(i), result.getDataTypes().get(i));
-        measurementPaths.add(matchedPath);
-        if (withAlias && matchedPath != null) {
-          matchedPath.setMeasurementAlias(result.aliasList.get(i));
-        }
-      }
-      return measurementPaths;
-    } else {
-      // a null implies a network failure, so we have to query other nodes in the group
-      return null;
-    }
   }
 
   /**
@@ -1265,24 +1283,6 @@ public class CMManager extends MManager {
     return new Pair<>(result, skippedOffset);
   }
 
-  /**
-   * Get all paths after removing wildcards in the path.
-   *
-   * <p>Please note that for a returned measurement path, the name, alias and datatype are
-   * guaranteed to be accurate, while the compression type, encoding and other fields are not. See
-   * {@link GetAllPathsResult}.
-   *
-   * @param originPath a path potentially with wildcard
-   * @return all paths after removing wildcards in the path
-   */
-  public List<MeasurementPath> getMatchedPaths(PartialPath originPath)
-      throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
-    Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
-    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false);
-    logger.debug("The paths of path {} are {}", originPath, ret);
-    return ret;
-  }
-
   @SuppressWarnings("java:S3457") // exception is printed
   /**
    * Get all paths after removing wildcards in the path
@@ -1400,6 +1400,16 @@ public class CMManager extends MManager {
     return super.showTimeseries(plan, context);
   }
 
+  private List<ShowTimeSeriesResult> showLocalTimeseries(
+      PartitionGroup group, ShowTimeSeriesPlan plan, QueryContext context)
+      throws CheckConsistencyException, MetadataException, PartitionTableUnavailableException,
+          NotInSameGroupException {
+    DataGroupMember localDataMember =
+        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
+    localDataMember.syncLeaderWithConsistencyCheck(false);
+    return super.showTimeseries(plan, context);
+  }
+
   public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
     return super.getMatchedDevices(plan);
   }
@@ -1419,6 +1429,7 @@ public class CMManager extends MManager {
     }
   }
 
+  @SuppressWarnings("checkstyle:coding.VariableDeclarationUsageDistanceCheck")
   @Override
   public List<ShowDevicesResult> getMatchedDevices(ShowDevicesPlan plan) throws MetadataException {
     ConcurrentSkipListSet<ShowDevicesResult> resultSet = new ConcurrentSkipListSet<>();
@@ -1457,6 +1468,7 @@ public class CMManager extends MManager {
     return showDevicesResults;
   }
 
+  @SuppressWarnings("checkstyle:coding.VariableDeclarationUsageDistanceCheck")
   @Override
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
       throws MetadataException {
@@ -1595,16 +1607,6 @@ public class CMManager extends MManager {
       logger.error("Cannot execute show devices plan {} from {} locally.", plan, group);
       throw e;
     }
-  }
-
-  private List<ShowTimeSeriesResult> showLocalTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, QueryContext context)
-      throws CheckConsistencyException, MetadataException, PartitionTableUnavailableException,
-          NotInSameGroupException {
-    DataGroupMember localDataMember =
-        metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
-    localDataMember.syncLeaderWithConsistencyCheck(false);
-    return super.showTimeseries(plan, context);
   }
 
   private List<ShowTimeSeriesResult> showRemoteTimeseries(

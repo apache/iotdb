@@ -775,6 +775,17 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     return cause instanceof PathNotExistException;
   }
 
+  private boolean isCausedByNoTimeseries(TSStatus status) {
+    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
+      for (TSStatus tmpStatus : status.getSubStatus()) {
+        if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
+          return true;
+        }
+      }
+    }
+    return status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode();
+  }
+
   @Override
   ClientCategory getClientCategory() {
     return ClientCategory.DATA;
@@ -805,17 +816,6 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     } else {
       logger.error("Unsupported log: {}", log);
     }
-  }
-
-  private boolean isCausedByNoTimeseries(TSStatus status) {
-    if (status.getCode() == TSStatusCode.MULTIPLE_ERROR.getStatusCode()) {
-      for (TSStatus tmpStatus : status.getSubStatus()) {
-        if (tmpStatus.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode()) {
-          return true;
-        }
-      }
-    }
-    return status.getCode() == TSStatusCode.TIMESERIES_NOT_EXIST.getStatusCode();
   }
 
   private TSStatus executeNonQueryPlanLocally(PhysicalPlan plan) {

@@ -182,6 +182,7 @@ public class RemoteMultSeriesReader extends AbstractMultPointReader {
     return fetchResult.get();
   }
 
+  @SuppressWarnings("java:S1168") // null differs from empty map
   private Map<String, ByteBuffer> fetchResultSync(List<String> paths) throws IOException {
     SyncDataClient curSyncClient = null;
     try {

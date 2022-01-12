@@ -599,6 +599,11 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     }
   }
 
+  /**
+   * Replace the ClientManager with the new one, the old ClientManager will be closed.
+   *
+   * @param clientManager the new ClientManager
+   */
   @TestOnly
   public void setClientManager(IClientManager clientManager) {
     if (this.clientManager != null) {
@@ -607,6 +612,11 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     this.clientManager = clientManager;
   }
 
+  /**
+   * The current ClientManager
+   *
+   * @return the current ClientManager
+   */
   @TestOnly
   public IClientManager getClientManager() {
     return this.clientManager;

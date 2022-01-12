@@ -156,6 +156,11 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
    */
   private static final int DEFAULT_JOIN_RETRY = 10;
 
+  public static final String FAILED_SEND_HANDSHAKE_TO_NODE = "failed send handshake to node: {}";
+  public static final String ERROR_OCCURS_WHEN_CHECK_STATUS_ON_NODE =
+      "Error occurs when check status on node : {}";
+  public static final String CANNOT_INFORM_ITS_REMOVAL = "Cannot inform {} its removal";
+
   /**
    * blind nodes are nodes that do not have the partition table, and if this node is the leader, the
    * partition table should be sent to them at the next heartbeat
@@ -394,27 +399,8 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
 
     int retry = DEFAULT_JOIN_RETRY;
     while (retry > 0) {
-      // randomly pick up a node to try
-      Node node = allNodes.get(random.nextInt(allNodes.size()));
-      if (node.equals(thisNode)) {
-        continue;
-      }
-      logger.info("start joining the cluster with the help of {}", node);
-      try {
-        if (joinCluster(node, startUpStatus)) {
-          logger.info("Joined a cluster, starting the heartbeat thread");
-          setCharacter(NodeCharacter.FOLLOWER);
-          setLastHeartbeatReceivedTime(System.currentTimeMillis());
-          threadTaskInit();
-          return;
-        }
-        // wait 5s to start the next try
-        Thread.sleep(ClusterDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
-      } catch (TException e) {
-        logger.warn("Cannot join the cluster from {}, because:", node, e);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        logger.warn("Unexpected interruption when waiting to join a cluster", e);
+      if (tryJoinCluster()) {
+        break;
       }
       // start the next try
       retry--;
@@ -422,6 +408,33 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
     // all tries failed
     logger.error("Cannot join the cluster after {} retries", DEFAULT_JOIN_RETRY);
     throw new StartUpCheckFailureException();
+  }
+
+  private boolean tryJoinCluster() throws ConfigInconsistentException {
+    // randomly pick up a node to try
+    int nodeIndex = random.nextInt(allNodes.size());
+    Node node = allNodes.get(nodeIndex);
+    if (node.equals(thisNode)) {
+      node = allNodes.get((nodeIndex + 1) % allNodes.size());
+    }
+    logger.info("start joining the cluster with the help of {}", node);
+    try {
+      if (joinCluster(node, startUpStatus)) {
+        logger.info("Joined a cluster, starting the heartbeat thread");
+        setCharacter(NodeCharacter.FOLLOWER);
+        setLastHeartbeatReceivedTime(System.currentTimeMillis());
+        threadTaskInit();
+        return true;
+      }
+      // wait 5s to start the next try
+      Thread.sleep(ClusterDescriptor.getInstance().getConfig().getJoinClusterTimeOutMs());
+    } catch (TException e) {
+      logger.warn("Cannot join the cluster from {}, because:", node, e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      logger.warn("Unexpected interruption when waiting to join a cluster", e);
+    }
+    return false;
   }
 
   public StartUpStatus getNewStartUpStatus() {
@@ -775,30 +788,32 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   private void sendHandshakeForOneNode(Node node) {
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncMetaClient asyncClient = (AsyncMetaClient) getAsyncClient(node);
-      if (asyncClient != null) {
-        try {
-          asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
-        } catch (TException e) {
-          logger.error("failed send handshake to node: {}", node, e);
-        }
-      } else {
+      if (asyncClient == null) {
         logger.error("send handshake fail as get empty async client");
+        return;
+      }
+
+      try {
+        asyncClient.handshake(thisNode, new GenericHandler<>(node, null));
+      } catch (TException e) {
+        logger.error(FAILED_SEND_HANDSHAKE_TO_NODE, node, e);
       }
     } else {
       SyncMetaClient syncClient = (SyncMetaClient) getSyncClient(node);
-      if (syncClient != null) {
-        try {
-          syncClient.handshake(thisNode);
-        } catch (TApplicationException e) {
-          logger.error("failed send handshake to node: {}", node, e);
-        } catch (TException e) {
-          syncClient.close();
-          logger.error("failed send handshake to node: {}", node, e);
-        } finally {
-          syncClient.returnSelf();
-        }
-      } else {
+      if (syncClient == null) {
         logger.error("send handshake fail as get empty sync client");
+        return;
+      }
+
+      try {
+        syncClient.handshake(thisNode);
+      } catch (TApplicationException e) {
+        logger.error(FAILED_SEND_HANDSHAKE_TO_NODE, node, e);
+      } catch (TException e) {
+        syncClient.close();
+        logger.error(FAILED_SEND_HANDSHAKE_TO_NODE, node, e);
+      } finally {
+        syncClient.returnSelf();
       }
     }
   }
@@ -1174,7 +1189,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         return SyncClientAdaptor.checkStatus(client, getStartUpStatus());
       } catch (TException e) {
-        logger.warn("Error occurs when check status on node : {}", seedNode);
+        logger.warn(ERROR_OCCURS_WHEN_CHECK_STATUS_ON_NODE, seedNode);
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
         logger.warn("Current thread is interrupted.");
@@ -1187,10 +1202,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         return client.checkStatus(getStartUpStatus());
       } catch (TApplicationException e) {
-        logger.warn("Error occurs when check status on node : {}", seedNode);
+        logger.warn(ERROR_OCCURS_WHEN_CHECK_STATUS_ON_NODE, seedNode);
       } catch (TException e) {
         client.close();
-        logger.warn("Error occurs when check status on node : {}", seedNode);
+        logger.warn(ERROR_OCCURS_WHEN_CHECK_STATUS_ON_NODE, seedNode);
       } finally {
         client.returnSelf();
       }
@@ -1806,7 +1821,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
         try {
           asyncMetaClient.exile(removeNodeLog.serialize(), new GenericHandler<>(node, null));
         } catch (TException e) {
-          logger.warn("Cannot inform {} its removal", node, e);
+          logger.warn(CANNOT_INFORM_ITS_REMOVAL, node, e);
         }
       } else {
         logger.error("exile node fail for node: {} as empty client", node);
@@ -1819,10 +1834,10 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
       try {
         client.exile(removeNodeLog.serialize());
       } catch (TApplicationException e) {
-        logger.warn("Cannot inform {} its removal", node, e);
+        logger.warn(CANNOT_INFORM_ITS_REMOVAL, node, e);
       } catch (TException e) {
         client.close();
-        logger.warn("Cannot inform {} its removal", node, e);
+        logger.warn(CANNOT_INFORM_ITS_REMOVAL, node, e);
       } finally {
         client.returnSelf();
       }

@@ -341,9 +341,9 @@ public class MetaPuller {
             .getLocalDataMember(partitionGroup.getHeader(), "Pull timeseries of " + prefixPaths)
             .syncLeader(null);
       } catch (CheckConsistencyException e) {
-        logger.warn("Failed to check consistency.", e);
+        logger.warn("Failed to check consistency: {}", e.getMessage());
       } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
-        e.printStackTrace();
+        logger.warn("Failed to get associated data member: {}", e.getMessage());
       }
       return;
     }

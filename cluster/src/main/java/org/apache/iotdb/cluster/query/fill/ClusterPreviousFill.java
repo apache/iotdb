@@ -44,7 +44,6 @@ import org.apache.iotdb.db.utils.TimeValuePairUtils.Intervals;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 
-import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -253,13 +252,6 @@ public class ClusterPreviousFill extends PreviousFill {
               .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
       byteBuffer = syncDataClient.previousFill(request);
 
-    } catch (TApplicationException e) {
-      logger.error(
-          PREVIOUS_FILL_EXCEPTION_LOGGER_FORMAT,
-          metaGroupMember.getName(),
-          arguments.getPath(),
-          node,
-          e);
     } catch (TException e) {
       // the connection may be broken, close it to avoid it being reused
       syncDataClient.close();

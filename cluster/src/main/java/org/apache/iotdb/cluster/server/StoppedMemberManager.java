@@ -64,6 +64,7 @@ public class StoppedMemberManager {
     recover();
   }
 
+  /** Fully stop all members. */
   public void stop() {
     for (DataGroupMember value : removedMemberMap.values()) {
       value.stop();

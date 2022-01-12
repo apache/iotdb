@@ -258,13 +258,13 @@ public class Coordinator {
 
     // the storage group is not found locally
     if (planGroupMap == null || planGroupMap.isEmpty()) {
-      return createSGAndRetryPlan(plan);
+      return retryPlanWithSchemaCreation(plan);
     }
     logger.debug("{}: The data groups of {} are {}", name, plan, planGroupMap);
     return forwardPlan(planGroupMap, plan);
   }
 
-  private TSStatus createSGAndRetryPlan(PhysicalPlan plan) throws UnsupportedPlanException {
+  private TSStatus retryPlanWithSchemaCreation(PhysicalPlan plan) throws UnsupportedPlanException {
     if ((plan instanceof InsertPlan
             || plan instanceof CreateTimeSeriesPlan
             || plan instanceof CreateAlignedTimeSeriesPlan

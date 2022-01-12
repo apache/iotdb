@@ -24,12 +24,24 @@ public class StartupException extends IoTDBException {
 
   private static final long serialVersionUID = -8591716406230730147L;
 
+  /**
+   * Construct a StartupException to report a failure during starting `name`.
+   *
+   * @param name
+   * @param message
+   */
   public StartupException(String name, String message) {
     super(
         String.format("Failed to start [%s], because [%s]", name, message),
         TSStatusCode.START_UP_ERROR.getStatusCode());
   }
 
+  /**
+   * Construct a StartupException to report a failure during starting `name`.
+   *
+   * @param name
+   * @param throwable
+   */
   public StartupException(String name, Throwable throwable) {
     super(
         String.format(

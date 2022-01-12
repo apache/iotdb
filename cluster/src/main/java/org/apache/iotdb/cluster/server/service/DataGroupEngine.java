@@ -149,6 +149,15 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
     return dataAsyncService;
   }
 
+  /**
+   * Get the DataSyncService that belongs to the data group identified by header.
+   *
+   * @param header
+   * @return
+   * @throws PartitionTableUnavailableException
+   * @throws CheckConsistencyException
+   * @throws NotInSameGroupException
+   */
   public DataSyncService getDataSyncService(RaftNode header)
       throws PartitionTableUnavailableException, CheckConsistencyException,
           NotInSameGroupException {

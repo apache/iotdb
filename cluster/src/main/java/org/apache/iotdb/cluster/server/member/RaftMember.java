@@ -87,6 +87,7 @@ import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
+import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1910,9 +1911,7 @@ public abstract class RaftMember implements RaftMemberMBean {
         logger.debug("{} sending a log to {}: {}", name, node, log);
         long result = client.appendEntry(request);
         handler.onComplete(result);
-      } catch (TApplicationException e) {
-        handler.onError(e);
-      } catch (TException e) {
+      } catch (TTransportException e) {
         client.getInputProtocol().getTransport().close();
         handler.onError(e);
       } catch (Exception e) {
