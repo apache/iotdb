@@ -164,7 +164,7 @@ metadata:
   name: tcp-services
   namespace: <namespace_of_nginx_ingress_controller>
 data:
-  6667: "<same with the namespace parameter in values.yaml>/iotdb:6667"
+  6667: "<same with the namespace parameter in values.yaml>/iotdb-service:6667"
 ```
 2. Edit the nginx-service(when install nginx-ingress-controller, this service will be created in the same namespace) to add an 6667 port.
 

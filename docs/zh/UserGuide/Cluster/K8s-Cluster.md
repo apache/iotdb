@@ -178,7 +178,7 @@ metadata:
   name: tcp-services
   namespace: <namespace_of_nginx_ingress_controller>
 data:
-  6667: "<values.yaml文件中的namespace参数>/iotdb:6667"
+  6667: "<values.yaml文件中的namespace参数>/iotdb-service:6667"
 ```
 
 2. 修改nginx-service(安装```nginx-ingress-controller```时会创建这个service，和```nginx-ingress-controller```在同一个namespace下)，添加6667端口。
