@@ -31,26 +31,26 @@ import java.util.List;
 
 public class StopPipeServerPlan extends PhysicalPlan {
 
-    public StopPipeServerPlan() {
-        super(false, Operator.OperatorType.STOP_PIPE_SERVER);
-        canBeSplit = false;
-    }
+  public StopPipeServerPlan() {
+    super(false, Operator.OperatorType.STOP_PIPE_SERVER);
+    canBeSplit = false;
+  }
 
-    @Override
-    public List<? extends PartialPath> getPaths() {
-        return Collections.emptyList();
-    }
-    @Override
-    public void serialize(DataOutputStream stream) throws IOException {
-        stream.writeByte((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
-    }
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
 
-    @Override
-    public void serializeImpl(ByteBuffer buffer) {
-        buffer.put((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
-    }
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+  }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    }
+  @Override
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
 }

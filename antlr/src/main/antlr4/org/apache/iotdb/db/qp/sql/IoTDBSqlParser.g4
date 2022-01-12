@@ -63,7 +63,7 @@ utilityStatement
     | loadConfiguration | loadTimeseries | loadFile | removeFile | unloadFile;
 
 syncStatement
-    : showPipeServer | startPipeServer | stopPipeServer | showPipes
+    : startPipeServer | stopPipeServer | showPipe
     ;
 /**
  * 2. Data Definition Language (DDL)
@@ -880,18 +880,14 @@ soffsetClause
     ;
 
 // sync receiver
-showPipeServer
-    : SHOW SERVICE PIPESERVER
-    ;
-
 startPipeServer
-    : START SERVICE PIPESERVER
+    : START PIPESERVER
     ;
 
 stopPipeServer
-    : STOP SERVICE PIPESERVER
+    : STOP PIPESERVER
     ;
 
-showPipes
-    : SHOW PIPES
+showPipe
+    : SHOW PIPE (pipeName=ID)?
     ;

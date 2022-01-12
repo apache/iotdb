@@ -56,7 +56,6 @@ import org.apache.iotdb.db.qp.logical.sys.*;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator.AlterType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.logical.sys.LoadConfigurationOperator.LoadConfigurationOperatorType;
-import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
@@ -2763,11 +2762,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitShowPipeServer(IoTDBSqlParser.ShowPipeServerContext ctx) {
-    return new ShowPipeServerOperator(SQLConstant.TOK_SHOW_PIPE_SERVER);
-  }
-
-  @Override
   public Operator visitStartPipeServer(IoTDBSqlParser.StartPipeServerContext ctx) {
     return new StartPipeServerOperator(SQLConstant.TOK_PIPE_SERVER_START);
   }
@@ -2778,7 +2772,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   @Override
-  public Operator visitShowPipes(IoTDBSqlParser.ShowPipesContext ctx) {
-    return new ShowPipeOperator(SQLConstant.TOK_SHOW_PIPE);
+  public Operator visitShowPipe(IoTDBSqlParser.ShowPipeContext ctx) {
+    if (ctx.pipeName != null) {
+      return new ShowPipeOperator(ctx.pipeName.getText(), SQLConstant.TOK_SHOW_PIPE);
+    } else {
+      return new ShowPipeOperator(SQLConstant.TOK_SHOW_PIPE);
+    }
   }
 }

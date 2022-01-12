@@ -16,21 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.newsync.receiver.load;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
 
-public class ShowPipeServerOperator extends ShowOperator {
-  public ShowPipeServerOperator(int tokenIntType) {
-    super(tokenIntType);
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new ShowPipeServerPlan();
-  }
+/**
+ * This interface is used to load files, including tsFile, syncTask, schema, modsFile and
+ * deletePlan.
+ */
+public interface ILoader {
+  boolean load() throws StorageEngineException, LoadFileException, MetadataException;
 }

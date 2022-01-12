@@ -21,7 +21,6 @@ package org.apache.iotdb.db.qp.logical.sys;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.StartPipeServerPlan;
 import org.apache.iotdb.db.qp.physical.sys.StopPipeServerPlan;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
@@ -30,9 +29,10 @@ public class StopPipeServerOperator extends Operator {
     super(tokenIntType);
     operatorType = OperatorType.START_PIPE_SERVER;
   }
+
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-          throws QueryProcessException {
+      throws QueryProcessException {
     return new StopPipeServerPlan();
   }
 }

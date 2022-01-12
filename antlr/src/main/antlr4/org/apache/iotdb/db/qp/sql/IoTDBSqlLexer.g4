@@ -358,10 +358,6 @@ PIPE
     : P I P E
     ;
 
-PIPES
-    : P I P E S
-    ;
-
 PIPESERVER
     : P I P E S E R V E R
     ;
@@ -460,10 +456,6 @@ SNAPSHOT
 
 SOFFSET
     : S O F F S E T
-    ;
-
-SERVICE
-    : S E R V I C E
     ;
 
 STORAGE

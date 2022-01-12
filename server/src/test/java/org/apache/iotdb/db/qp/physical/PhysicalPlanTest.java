@@ -1194,23 +1194,21 @@ public class PhysicalPlanTest {
 
   @Test
   public void testShowPipe() throws QueryProcessException {
-    String sql = "SHOW PIPES";
-    ShowPipePlan plan = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql);
-    Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan.getShowContentType());
-  }
-
-  @Test
-  public void testShowPipeServer() throws QueryProcessException {
-    String sql = "SHOW SERVICE PIPESERVER";
-    ShowPipeServerPlan plan = (ShowPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
-    Assert.assertTrue(plan.isQuery());
-    Assert.assertEquals(ShowPlan.ShowContentType.PIPESERVER, plan.getShowContentType());
+    String sql1 = "SHOW PIPE abc";
+    ShowPipePlan plan1 = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql1);
+    Assert.assertTrue(plan1.isQuery());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan1.getShowContentType());
+    Assert.assertNotNull(plan1.getPipeName());
+    String sql2 = "SHOW PIPE";
+    ShowPipePlan plan2 = (ShowPipePlan) processor.parseSQLToPhysicalPlan(sql2);
+    Assert.assertTrue(plan2.isQuery());
+    Assert.assertEquals(ShowPlan.ShowContentType.PIPE, plan2.getShowContentType());
+    Assert.assertNull(plan2.getPipeName());
   }
 
   @Test
   public void testStartPipeServer() throws QueryProcessException {
-    String sql = "START SERVICE PIPESERVER";
+    String sql = "START PIPESERVER";
     StartPipeServerPlan plan = (StartPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals(Operator.OperatorType.START_PIPE_SERVER, plan.getOperatorType());
@@ -1218,13 +1216,11 @@ public class PhysicalPlanTest {
 
   @Test
   public void testStopPipeServer() throws QueryProcessException {
-    String sql = "STOP SERVICE PIPESERVER";
+    String sql = "STOP PIPESERVER";
     StopPipeServerPlan plan = (StopPipeServerPlan) processor.parseSQLToPhysicalPlan(sql);
     Assert.assertFalse(plan.isQuery());
     Assert.assertEquals(OperatorType.STOP_PIPE_SERVER, plan.getOperatorType());
   }
-
-
 
   @Test
   public void testCreateCQ1() throws QueryProcessException {

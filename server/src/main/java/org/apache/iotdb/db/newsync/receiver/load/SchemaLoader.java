@@ -16,10 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.qp.physical.sys;
+package org.apache.iotdb.db.newsync.receiver.load;
 
-public class ShowPipeServerPlan extends ShowPlan {
-  public ShowPipeServerPlan() {
-    super(ShowContentType.PIPESERVER);
+import org.apache.iotdb.db.exception.LoadFileException;
+import org.apache.iotdb.db.exception.StorageEngineException;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+
+public class SchemaLoader implements ILoader {
+  @Override
+  public boolean load() throws StorageEngineException, LoadFileException, MetadataException {
+    return false;
   }
 }

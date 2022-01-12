@@ -97,7 +97,7 @@ import org.apache.iotdb.db.query.udf.service.UDFRegistrationInformation;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.SettleService;
-import org.apache.iotdb.db.syncnew.receiver.ReceiverService;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.tools.TsFileRewriteTool;
 import org.apache.iotdb.db.utils.AuthUtils;
 import org.apache.iotdb.db.utils.FileLoaderUtils;
@@ -346,21 +346,21 @@ public class PlanExecutor implements IPlanExecutor {
         settle((SettlePlan) plan);
         return true;
       case START_PIPE_SERVER:
-        return operateStartPipeServer((StartPipeServerPlan)plan);
+        return operateStartPipeServer();
       case STOP_PIPE_SERVER:
-        return operateStopPipeServer((StopPipeServerPlan)plan);
+        return operateStopPipeServer();
       default:
         throw new UnsupportedOperationException(
             String.format("operation %s is not supported", plan.getOperatorType()));
     }
   }
 
-  private boolean operateStopPipeServer(StopPipeServerPlan plan) {
-    return ReceiverService.getInstance().stop(plan);
+  private boolean operateStopPipeServer() {
+    return ReceiverService.getInstance().stop();
   }
 
-  private boolean operateStartPipeServer(StartPipeServerPlan plan) {
-    return ReceiverService.getInstance().start(plan);
+  private boolean operateStartPipeServer() {
+    return ReceiverService.getInstance().start();
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)
@@ -641,10 +641,8 @@ public class PlanExecutor implements IPlanExecutor {
         return processShowTriggers();
       case CONTINUOUS_QUERY:
         return processShowContinuousQueries();
-      case PIPESERVER:
-        return processShowPipeServer();
       case PIPE:
-        return processShowPipe((ShowPipePlan)showPlan);
+        return processShowPipe((ShowPipePlan) showPlan);
       default:
         throw new QueryProcessException(String.format("Unrecognized show plan %s", showPlan));
     }
@@ -653,11 +651,6 @@ public class PlanExecutor implements IPlanExecutor {
   private QueryDataSet processShowPipe(ShowPipePlan plan) {
     return ReceiverService.getInstance().showPipe(plan);
     // TODO: merge sender dataset
-    // TODO: 根据plan过滤pipe
-  }
-
-  private QueryDataSet processShowPipeServer() {
-    return ReceiverService.getInstance().showPipeServer();
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {

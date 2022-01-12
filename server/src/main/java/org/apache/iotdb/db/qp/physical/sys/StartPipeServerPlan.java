@@ -13,26 +13,26 @@ import java.util.List;
 
 public class StartPipeServerPlan extends PhysicalPlan {
 
-    public StartPipeServerPlan() {
-        super(false, Operator.OperatorType.START_PIPE_SERVER);
-        canBeSplit = false;
-    }
+  public StartPipeServerPlan() {
+    super(false, Operator.OperatorType.START_PIPE_SERVER);
+    canBeSplit = false;
+  }
 
-    @Override
-    public List<? extends PartialPath> getPaths() {
-        return Collections.emptyList();
-    }
-    @Override
-    public void serialize(DataOutputStream stream) throws IOException {
-        stream.writeByte((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
-    }
+  @Override
+  public List<? extends PartialPath> getPaths() {
+    return Collections.emptyList();
+  }
 
-    @Override
-    public void serializeImpl(ByteBuffer buffer) {
-        buffer.put((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
-    }
+  @Override
+  public void serialize(DataOutputStream stream) throws IOException {
+    stream.writeByte((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+  }
 
-    @Override
-    public void deserialize(ByteBuffer buffer) throws IllegalPathException {
-    }
+  @Override
+  public void serializeImpl(ByteBuffer buffer) {
+    buffer.put((byte) PhysicalPlanType.START_PIPE_SERVER.ordinal());
+  }
+
+  @Override
+  public void deserialize(ByteBuffer buffer) throws IllegalPathException {}
 }

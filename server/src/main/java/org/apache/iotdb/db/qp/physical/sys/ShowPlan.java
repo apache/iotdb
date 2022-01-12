@@ -118,7 +118,6 @@ public class ShowPlan extends PhysicalPlan {
     TRIGGERS,
     LOCK_INFO,
     CONTINUOUS_QUERY,
-    PIPESERVER,
     PIPE
   }
 }

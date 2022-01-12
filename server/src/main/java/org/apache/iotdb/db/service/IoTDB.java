@@ -43,6 +43,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
+import org.apache.iotdb.db.newsync.receiver.ReceiverService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 
 import org.slf4j.Logger;
@@ -63,8 +64,11 @@ public class IoTDB implements IoTDBMBean {
     return IoTDBHolder.INSTANCE;
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws Exception {
     try {
+      IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableCrossSpaceCompaction(false);
+      IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(false);
       IoTDBConfigCheck.getInstance().checkConfig();
       IoTDBRestServiceCheck.getInstance().checkConfig();
     } catch (ConfigurationException | IOException e) {
@@ -73,6 +77,10 @@ public class IoTDB implements IoTDBMBean {
     }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
+    ReceiverService.getInstance().start();
+    ReceiverService.getInstance().createPipe("pipe1","192.168.1.11",1);
+    ReceiverService.getInstance().createPipe("pipeB","192.168.2.22",2);
+    ReceiverService.getInstance().createPipe("pipe1","192.168.2.22",3);
   }
 
   public static void setMetaManager(MManager metaManager) {
