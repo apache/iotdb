@@ -33,7 +33,7 @@
             <level>DEBUG</level>
         </filter>
     </appender>
-    <root level="INFO">
+    <root level="debug">
         <appender-ref ref="stdout"/>
     </root>
 </configuration>

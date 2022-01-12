@@ -244,8 +244,7 @@ public class HeartbeatThread implements Runnable {
                   }
                   client.getInputProtocol().getTransport().close();
                 } catch (Exception e) {
-                  logger.warn(
-                      memberName + ": Cannot send heart beat to node " + node.toString(), e);
+                  logger.warn("{}: Cannot send heart beat to node {}", memberName, node, e);
                 } finally {
                   localMember.returnSyncClient(client);
                 }
@@ -426,20 +425,12 @@ public class HeartbeatThread implements Runnable {
                   handler.onComplete(result);
                 } catch (TApplicationException e) {
                   logger.warn(
-                      memberName
-                          + ": Cannot request a vote from "
-                          + node.toString()
-                          + " due to network",
-                      e);
+                      "{}: Cannot request a vote from {} due to node error", memberName, node, e);
                   handler.onError(e);
                 } catch (TException e) {
                   client.getInputProtocol().getTransport().close();
                   logger.warn(
-                      memberName
-                          + ": Cannot request a vote from "
-                          + node.toString()
-                          + " due to network",
-                      e);
+                      "{}: Cannot request a vote from {} due to network", memberName, node, e);
                   handler.onError(e);
                 } catch (Exception e) {
                   handler.onError(e);

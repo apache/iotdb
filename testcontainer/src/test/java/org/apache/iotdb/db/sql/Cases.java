@@ -107,7 +107,7 @@ public abstract class Cases {
   // but if you want to avoid other cases' impact, use a seperate test() method.
   @Test
   public void multiCasesTest() throws SQLException {
-
+    System.out.println("Testing multiCasesTest");
     String[] timeSeriesArray = {"root.sg1.aa.bb", "root.sg1.aa.bb.cc", "root.sg1.aa"};
 
     for (String timeSeries : timeSeriesArray) {
@@ -287,7 +287,7 @@ public abstract class Cases {
   // test https://issues.apache.org/jira/browse/IOTDB-1266
   @Test
   public void showTimeseriesRowsTest() throws SQLException {
-
+    System.out.println("Testing showTimeseriesRowsTest");
     int n = 3000;
     String timeSeriesPrefix = "root.ln.wf01.wt";
     String timeSeriesSuffix = ".temperature WITH DATATYPE=DOUBLE, ENCODING=RLE";
@@ -319,7 +319,7 @@ public abstract class Cases {
 
   @Test
   public void clusterLastQueryTest() throws IoTDBConnectionException, StatementExecutionException {
-
+    System.out.println("Testing clusterLastQueryTest");
     session.setStorageGroup("root.sg1");
     session.createTimeseries(
         "root.sg1.d1.s1", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
@@ -385,6 +385,7 @@ public abstract class Cases {
 
   @Test
   public void testCreateFunctionPlan() {
+    System.out.println("Testing testCreateFunctionPlan");
     try {
       PhysicalPlan plan =
           processor.parseSQLToPhysicalPlan(
@@ -403,6 +404,7 @@ public abstract class Cases {
 
   @Test
   public void testDropFunctionPlan() { // drop function
+    System.out.println("Testing testDropFunctionPlan");
     try {
       DropFunctionPlan dropFunctionPlan =
           (DropFunctionPlan) processor.parseSQLToPhysicalPlan("drop function udf");
@@ -414,6 +416,7 @@ public abstract class Cases {
 
   @Test
   public void testShowFunction() throws QueryProcessException {
+    System.out.println("Testing testShowFunction");
     String sql = "SHOW FUNCTIONS";
 
     ShowFunctionsPlan plan = (ShowFunctionsPlan) processor.parseSQLToPhysicalPlan(sql);
@@ -424,6 +427,7 @@ public abstract class Cases {
   // test https://issues.apache.org/jira/browse/IOTDB-1407
   @Test
   public void showTimeseriesTagsTest() throws SQLException {
+    System.out.println("Testing showTimeseriesTagsTest");
     String createTimeSeries1 =
         "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
     String createTimeSeries2 =
@@ -507,6 +511,7 @@ public abstract class Cases {
 
   @Test
   public void clusterUDTFQueryTest() throws SQLException {
+    System.out.println("Testing clusterUDTFQueryTest");
     // Prepare data.
     writeStatement.execute(
         "CREATE timeseries root.sg.d.s WITH datatype=DOUBLE, encoding=RLE, compression=SNAPPY");
@@ -549,6 +554,7 @@ public abstract class Cases {
 
   @Test
   public void testSelectInto() throws SQLException {
+    System.out.println("Testing testSelectInto");
     for (int i = 0; i < 10; i++) {
       writeStatement.execute(
           String.format(
@@ -608,7 +614,7 @@ public abstract class Cases {
 
   @Test
   public void SetSystemReadOnlyWritableTest() throws SQLException {
-
+    System.out.println("Testing SetSystemReadOnlyWritableTest");
     String setReadOnly = "SET SYSTEM TO READONLY";
     String createTimeSeries =
         "create timeseries root.ln.wf01.wt1 WITH DATATYPE=DOUBLE, ENCODING=RLE, compression=SNAPPY tags(tag1=v1, tag2=v2)";
@@ -631,6 +637,7 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaInClusterMode()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    System.out.println("Testing testAutoCreateSchemaInClusterMode");
     List<String> measurementList = new ArrayList<>();
     measurementList.add("s1");
     measurementList.add("s2");
@@ -848,6 +855,7 @@ public abstract class Cases {
   @Test
   public void testAutoCreateSchemaForAlignedTimeseries()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    System.out.println("Testing testAutoCreateSchemaForAlignedTimeseries");
     List<String> multiMeasurementComponents = new ArrayList<>();
     multiMeasurementComponents.add("s1");
     multiMeasurementComponents.add("s2");
@@ -979,6 +987,7 @@ public abstract class Cases {
   @Test
   public void testInsertTabletWithNullValues()
       throws IoTDBConnectionException, StatementExecutionException, SQLException {
+    System.out.println("Testing testInsertTabletWithNullValues");
     List<MeasurementSchema> schemaList = new ArrayList<>();
     schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
     schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
