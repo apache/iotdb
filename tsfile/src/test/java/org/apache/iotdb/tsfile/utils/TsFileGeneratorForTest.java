@@ -116,10 +116,9 @@ public class TsFileGeneratorForTest {
       Assert.assertTrue(file.delete());
     }
     file.getParentFile().mkdirs();
-    FileWriter fw = new FileWriter(file);
 
-    long startTime = START_TIMESTAMP;
-    try {
+    try (FileWriter fw = new FileWriter(file)) {
+      long startTime = START_TIMESTAMP;
       for (int i = 0; i < maxRowCount; i++) {
         // write d1
         String d1 = "d1," + (startTime + i) + ",s1," + (i * 10 + 1) + ",s2," + (i * 10 + 2);
@@ -150,7 +149,7 @@ public class TsFileGeneratorForTest {
           d2 += ",s1," + (i * 10 + 1);
         }
         if (i % 8 == 0) {
-          d2 += ",s4," + "dog" + i % 4;
+          d2 += ",s4," + "dog" + 0;
         }
         fw.write(d2 + "\r\n");
       }
@@ -165,8 +164,6 @@ public class TsFileGeneratorForTest {
       fw.write(d + "\r\n");
       d = "d2," + (startTime + rowCount + 1) + ",2,s-1," + (rowCount * 10 + 2);
       fw.write(d + "\r\n");
-    } finally {
-      fw.close();
     }
   }
 

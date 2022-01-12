@@ -36,6 +36,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.UnsetTemplatePlan;
+import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -56,8 +57,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
@@ -2044,6 +2047,51 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testAutoCreateAlignedTimeseriesWhileInsert() {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      long time = 1L;
+      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT32};
+
+      String[] columns = new String[2];
+      columns[0] = "1";
+      columns[1] = "2";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1.aligned_device"),
+              time,
+              new String[] {"s1", "s2"},
+              dataTypes,
+              columns,
+              true);
+      insertRowPlan.setMeasurementMNodes(
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+
+      insertRowPlan.setMeasurements(new String[] {"s3", "s4"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
+
+      insertRowPlan.setMeasurements(new String[] {"s2", "s5"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s5")));
+
+      insertRowPlan.setMeasurements(new String[] {"s2", "s3"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+
+    } catch (MetadataException | IOException e) {
+      fail();
+    }
+  }
+
+  @Test
   public void testGetStorageGroupNodeByPath() {
     MManager manager = IoTDB.metaManager;
     PartialPath partialPath = null;
@@ -2197,5 +2245,64 @@ public class MManagerBasicTest {
         Collections.emptyMap());
     manager.deleteTimeseries(new PartialPath("root.sg.d2.s2"));
     assertFalse(manager.isPathExist(new PartialPath("root.sg.d2")));
+  }
+
+  @Test
+  public void testTagIndexRecovery() throws Exception {
+    MManager manager = IoTDB.metaManager;
+    PartialPath path = new PartialPath("root.sg.d.s");
+    Map<String, String> tags = new HashMap<>();
+    tags.put("description", "oldValue");
+    manager.createTimeseries(
+        new CreateTimeSeriesPlan(
+            path,
+            TSDataType.valueOf("INT32"),
+            TSEncoding.valueOf("RLE"),
+            compressionType,
+            null,
+            tags,
+            null,
+            null));
+
+    ShowTimeSeriesPlan showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    List<ShowTimeSeriesResult> results =
+        manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    Map<String, String> resultTag = results.get(0).getTag();
+    assertEquals("oldValue", resultTag.get("description"));
+
+    tags.put("description", "newValue");
+    manager.upsertTagsAndAttributes(null, tags, null, path);
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
+
+    manager.clear();
+    manager.init();
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "oldValue", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(0, results.size());
+
+    showTimeSeriesPlan =
+        new ShowTimeSeriesPlan(
+            new PartialPath("root.sg.d.s"), true, "description", "Value", 0, 0, false);
+    results = manager.showTimeseries(showTimeSeriesPlan, new QueryContext());
+
+    assertEquals(1, results.size());
+    resultTag = results.get(0).getTag();
+    assertEquals("newValue", resultTag.get("description"));
   }
 }

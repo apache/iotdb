@@ -1039,6 +1039,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
+    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
     return selectIntoOperator;
   }
 
@@ -1387,25 +1388,9 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseTimeInterval(
       IoTDBSqlParser.TimeIntervalContext timeInterval,
       GroupByClauseComponent groupByClauseComponent) {
-    long startTime;
-    long endTime;
     long currentTime = DatetimeUtils.currentTime();
-    if (timeInterval.timeValue(0).INTEGER_LITERAL() != null) {
-      startTime = Long.parseLong(timeInterval.timeValue(0).INTEGER_LITERAL().getText());
-    } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
-    } else {
-      startTime =
-          parseDateFormat(timeInterval.timeValue(0).datetimeLiteral().getText(), currentTime);
-    }
-    if (timeInterval.timeValue(1).INTEGER_LITERAL() != null) {
-      endTime = Long.parseLong(timeInterval.timeValue(1).INTEGER_LITERAL().getText());
-    } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
-    } else {
-      endTime = parseDateFormat(timeInterval.timeValue(1).datetimeLiteral().getText(), currentTime);
-    }
-
+    long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
+    long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
     groupByClauseComponent.setEndTime(endTime);
     if (startTime >= endTime) {
@@ -1578,38 +1563,51 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     insertOp.setDevice(parsePrefixPath(ctx.prefixPath()));
-    parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
-    parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp);
+    boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
+    parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp, isTimeDefault);
     insertOp.setAligned(ctx.ALIGNED() != null);
     return insertOp;
   }
 
-  private void parseInsertColumnSpec(
+  private boolean parseInsertColumnSpec(
       IoTDBSqlParser.InsertColumnsSpecContext ctx, InsertOperator insertOp) {
     List<String> measurementList = new ArrayList<>();
     for (IoTDBSqlParser.MeasurementNameContext measurementName : ctx.measurementName()) {
       measurementList.add(parseStringWithQuotes(measurementName.getText()));
     }
     insertOp.setMeasurementList(measurementList.toArray(new String[0]));
+    return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
   }
 
   private void parseInsertValuesSpec(
-      IoTDBSqlParser.InsertValuesSpecContext ctx, InsertOperator insertOp) {
+      IoTDBSqlParser.InsertValuesSpecContext ctx, InsertOperator insertOp, boolean isTimeDefault) {
     List<IoTDBSqlParser.InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
-    List<String> valueList = new ArrayList<>();
+    List<String[]> valueLists = new ArrayList<>();
     long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
+      // parse timestamp
       long timestamp;
-      if (insertMultiValues.get(i).datetimeLiteral() != null) {
-        timestamp = parseDateFormat(insertMultiValues.get(i).datetimeLiteral().getText());
-      } else if (insertMultiValues.get(i).INTEGER_LITERAL() != null) {
-        timestamp = Long.parseLong(insertMultiValues.get(i).INTEGER_LITERAL().getText());
-      } else if (insertMultiValues.size() != 1) {
-        throw new SQLParserException("need timestamps when insert multi rows");
+      if (insertMultiValues.get(i).timeValue() != null) {
+        if (isTimeDefault) {
+          throw new SQLParserException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        timestamp =
+            parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
       } else {
+        if (!isTimeDefault) {
+          throw new SQLParserException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        if (insertMultiValues.size() != 1) {
+          throw new SQLParserException("need timestamps when insert multi rows");
+        }
         timestamp = parseDateFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
+
+      // parse values
+      List<String> valueList = new ArrayList<>();
       List<IoTDBSqlParser.MeasurementValueContext> values =
           insertMultiValues.get(i).measurementValue();
       for (IoTDBSqlParser.MeasurementValueContext value : values) {
@@ -1617,9 +1615,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           valueList.add(constant.getText());
         }
       }
+      valueLists.add(valueList.toArray(new String[0]));
     }
     insertOp.setTimes(timeArray);
-    insertOp.setValueList(valueList.toArray(new String[0]));
+    insertOp.setValueLists(valueLists);
   }
 
   // Delete Statement
@@ -2229,6 +2228,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
     }
     return time;
+  }
+
+  private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
+    if (ctx.INTEGER_LITERAL() != null) {
+      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+    } else if (ctx.dateExpression() != null) {
+      return parseDateExpression(ctx.dateExpression(), currentTime);
+    } else {
+      return parseDateFormat(ctx.datetimeLiteral().getText(), currentTime);
+    }
   }
 
   @SuppressWarnings("squid:S3776")

@@ -118,7 +118,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -548,14 +547,13 @@ public class MManager {
       mNodeCache.invalidate(path.getDevicePath());
 
       // update tag index
-      if (plan.getTags() != null) {
+
+      if (offset != -1) {
+        // offset != -1 means the timeseries has already been created and now system is recovering
+        tagManager.recoverIndex(offset, leafMNode);
+      } else if (plan.getTags() != null) {
         // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          if (entry.getKey() == null || entry.getValue() == null) {
-            continue;
-          }
-          tagManager.addIndex(entry.getKey(), entry.getValue(), leafMNode);
-        }
+        tagManager.addIndex(plan.getTags(), leafMNode);
       }
 
       // update statistics and schemaDataTypeNumMap
@@ -976,6 +974,11 @@ public class MManager {
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
     return mtree.getNodesCountInGivenLevel(pathPattern, level);
+  }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level);
   }
 
   // endregion
@@ -1944,7 +1947,9 @@ public class MManager {
             internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
           } else {
             internalAlignedCreateTimeseries(
-                devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                devicePath,
+                Collections.singletonList(measurement),
+                Collections.singletonList(plan.getDataTypes()[loc]));
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);
