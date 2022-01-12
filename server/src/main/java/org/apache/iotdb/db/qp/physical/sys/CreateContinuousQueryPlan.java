@@ -57,6 +57,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       String groupByTimeIntervalString) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     querySql = querySql.toLowerCase();
+    this.querySql = querySql;
     int indexOfGroupBy = querySql.indexOf("group by");
     this.querySqlBeforeGroupByClause =
         indexOfGroupBy == -1 ? querySql : querySql.substring(0, indexOfGroupBy);
