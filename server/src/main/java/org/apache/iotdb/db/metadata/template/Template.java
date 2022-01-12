@@ -479,7 +479,8 @@ public class Template {
     pathNode = MetaUtils.splitPathToDetachedPath(measurements[0]);
     prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
     IMNode targetNode = getPathNodeInTemplate(prefix);
-    if (targetNode != null && !targetNode.getAsEntityMNode().isAligned()) {
+    if ((targetNode != null && !targetNode.getAsEntityMNode().isAligned())
+        || (prefix.equals("") && !this.isDirectAligned())) {
       throw new IllegalPathException(prefix, "path already exists but not aligned");
     }
 
@@ -513,7 +514,7 @@ public class Template {
       prefix = joinBySeparator(Arrays.copyOf(pathNode, pathNode.length - 1));
       IMNode parNode = getPathNodeInTemplate(prefix);
       if ((parNode != null && parNode.getAsEntityMNode().isAligned())
-          || prefix.equals("") && this.isDirectAligned()) {
+          || (prefix.equals("") && this.isDirectAligned())) {
         throw new IllegalPathException(measurements[i], "path already exists and aligned");
       }
 

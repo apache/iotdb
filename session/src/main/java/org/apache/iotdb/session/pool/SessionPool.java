@@ -1417,6 +1417,51 @@ public class SessionPool {
     }
   }
 
+  /**
+   * Compatible for rel/0.12, this method will create an unaligned flat template as a result. Notice
+   * that there is no aligned concept in 0.12, so only the first measurement in each nested list
+   * matters.
+   *
+   * @param name name of the template
+   * @param schemaNames it works as a virtual layer inside template in 0.12, and makes no difference
+   *     after 0.13
+   * @param measurements the first measurement in each nested list will constitute the final flat
+   *     template
+   * @param dataTypes the data type of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param encodings the encoding of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param compressors the compressor of each measurement
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  @Deprecated
+  public void createSchemaTemplate(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.createSchemaTemplate(
+            name, schemaNames, measurements, dataTypes, encodings, compressors);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("createSchemaTemplate failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
   public void addAlignedMeasurementsInTemplate(
       String templateName,
       List<String> measurementsPath,

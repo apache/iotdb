@@ -44,6 +44,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -318,6 +319,60 @@ public class SessionTest {
 
     session.deleteNodeInTemplate("flatTemplate", "turbine");
     assertEquals(3, session.countMeasurementsInTemplate("flatTemplate"));
+  }
+
+  @Test
+  public void testCompatibleInterfaceCreateSchemaTemplate()
+      throws IoTDBConnectionException, StatementExecutionException, IOException {
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
+
+    List<List<String>> measurementList = new ArrayList<>();
+    measurementList.add(Arrays.asList("s1", "s11", "s12"));
+    measurementList.add(Collections.singletonList("s2"));
+    measurementList.add(Collections.singletonList("s3"));
+
+    List<List<TSDataType>> dataTypeList = new ArrayList<>();
+    dataTypeList.add(Arrays.asList(TSDataType.FLOAT, TSDataType.DOUBLE, TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+    dataTypeList.add(Collections.singletonList(TSDataType.INT64));
+
+    List<List<TSEncoding>> encodingList = new ArrayList<>();
+    encodingList.add(Arrays.asList(TSEncoding.GORILLA, TSEncoding.RLE, TSEncoding.GORILLA_V1));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+    encodingList.add(Collections.singletonList(TSEncoding.RLE));
+
+    List<CompressionType> compressionTypes = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      compressionTypes.add(CompressionType.SNAPPY);
+    }
+    List<String> schemaNames = new ArrayList<>();
+    schemaNames.add("s1");
+    schemaNames.add("s2");
+    schemaNames.add("s3");
+
+    session.createSchemaTemplate(
+        "cptTemplate", schemaNames, measurementList, dataTypeList, encodingList, compressionTypes);
+    session.setSchemaTemplate("cptTemplate", "root.sg1");
+
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
+    try {
+      session.addAlignedMeasurementsInTemplate(
+          "cptTemplate", Arrays.asList("temp", "x", "humidity"), dataTypes, encodings, compressors);
+      // fail();
+    } catch (Exception e) {
+      assertEquals(
+          "315:  is not a legal path, because path already exists but not aligned", e.getMessage());
+    }
+
+    assertEquals(3, session.countMeasurementsInTemplate("cptTemplate"));
+    assertEquals(false, session.isPathExistInTemplate("cptTemplate", "s11"));
+    assertEquals(false, session.isPathExistInTemplate("cptTemplate", "s12"));
+    assertEquals(true, session.isMeasurementInTemplate("cptTemplate", "s1"));
   }
 
   @Test
