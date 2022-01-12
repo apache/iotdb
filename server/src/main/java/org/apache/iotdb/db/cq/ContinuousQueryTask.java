@@ -124,14 +124,16 @@ public class ContinuousQueryTask extends WrappedRunnable {
   }
 
   private String generateSQL() {
-    return continuousQueryPlan.getQuerySqlWithoutGroupByClause()
+    return continuousQueryPlan.getQuerySqlBeforeGroupByClause()
         + "group by (["
         + (windowEndTimestamp - continuousQueryPlan.getForInterval())
         + ','
         + windowEndTimestamp
         + "),"
         + continuousQueryPlan.getGroupByTimeIntervalString()
-        + ')';
+        + ") "
+        + (continuousQueryPlan.getQuerySqlAfterGroupByClause().equals("") ? "" : ", ")
+        + continuousQueryPlan.getQuerySqlAfterGroupByClause();
   }
 
   private void doInsert(QueryDataSet queryDataSet, GroupByTimePlan queryPlan)

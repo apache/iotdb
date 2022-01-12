@@ -33,7 +33,8 @@ import java.util.List;
 public class CreateContinuousQueryPlan extends PhysicalPlan {
 
   private String querySql;
-  private String querySqlWithoutGroupByClause;
+  private String querySqlBeforeGroupByClause;
+  private String querySqlAfterGroupByClause;
   private String continuousQueryName;
   private PartialPath targetPath;
   private long everyInterval;
@@ -55,10 +56,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       long groupByTimeIntervalUnit,
       String groupByTimeIntervalString) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
-    this.querySql = querySql;
+    this.querySql = querySql.toLowerCase();
     int indexOfGroupBy = querySql.indexOf("group by");
-    this.querySqlWithoutGroupByClause =
+    this.querySqlBeforeGroupByClause =
         indexOfGroupBy == -1 ? querySql : querySql.substring(0, indexOfGroupBy);
+    int indexOfLevel = querySql.indexOf("level");
+    this.querySqlAfterGroupByClause = indexOfLevel == -1 ? "" : querySql.substring(indexOfLevel);
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
     this.everyInterval = everyInterval;
@@ -72,8 +75,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     return querySql;
   }
 
-  public String getQuerySqlWithoutGroupByClause() {
-    return querySqlWithoutGroupByClause;
+  public String getQuerySqlBeforeGroupByClause() {
+    return querySqlBeforeGroupByClause;
+  }
+
+  public String getQuerySqlAfterGroupByClause() {
+    return querySqlAfterGroupByClause;
   }
 
   public String getContinuousQueryName() {
@@ -118,7 +125,8 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     buffer.put((byte) PhysicalPlanType.CREATE_CONTINUOUS_QUERY.ordinal());
     ReadWriteIOUtils.write(continuousQueryName, buffer);
     ReadWriteIOUtils.write(querySql, buffer);
-    ReadWriteIOUtils.write(querySqlWithoutGroupByClause, buffer);
+    ReadWriteIOUtils.write(querySqlBeforeGroupByClause, buffer);
+    ReadWriteIOUtils.write(querySqlAfterGroupByClause, buffer);
     ReadWriteIOUtils.write(targetPath.getFullPath(), buffer);
     buffer.putLong(everyInterval);
     buffer.putLong(forInterval);
@@ -131,7 +139,8 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   public void deserialize(ByteBuffer buffer) throws IllegalPathException {
     continuousQueryName = ReadWriteIOUtils.readString(buffer);
     querySql = ReadWriteIOUtils.readString(buffer);
-    querySqlWithoutGroupByClause = ReadWriteIOUtils.readString(buffer);
+    querySqlBeforeGroupByClause = ReadWriteIOUtils.readString(buffer);
+    querySqlAfterGroupByClause = ReadWriteIOUtils.readString(buffer);
     targetPath = new PartialPath(ReadWriteIOUtils.readString(buffer));
     everyInterval = ReadWriteIOUtils.readLong(buffer);
     forInterval = ReadWriteIOUtils.readLong(buffer);
