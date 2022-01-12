@@ -254,11 +254,11 @@ public class BaseMember {
         };
     newMember.setThisNode(raftNode.getNode());
     newMember.setMetaGroupMember(testMetaMember);
-    newMember.setLeader(raftNode.getNode());
-    newMember.setCharacter(NodeCharacter.LEADER);
     newMember.setLogManager(
         getLogManager(
             partitionTable.getPartitionGroup(new RaftNode(TestUtils.getNode(0), 0)), newMember));
+    newMember.setLeader(raftNode.getNode());
+    newMember.setCharacter(NodeCharacter.LEADER);
 
     newMember.setAppendLogThreadPool(testThreadPool);
     return newMember;

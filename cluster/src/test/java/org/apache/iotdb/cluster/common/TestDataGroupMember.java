@@ -34,6 +34,7 @@ public class TestDataGroupMember extends DataGroupMember {
     super(new PartitionGroup(Collections.singletonList(TestUtils.getNode(0))));
     setQueryManager(new ClusterQueryManager());
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
+    this.setLogManager(new TestLogManager(0));
   }
 
   public TestDataGroupMember(Node thisNode, PartitionGroup allNodes) {
@@ -41,5 +42,6 @@ public class TestDataGroupMember extends DataGroupMember {
     this.thisNode = thisNode;
     this.slotManager = new SlotManager(ClusterConstant.SLOT_NUM, null, "");
     setQueryManager(new ClusterQueryManager());
+    this.setLogManager(new TestLogManager(thisNode.nodeIdentifier));
   }
 }
