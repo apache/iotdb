@@ -190,22 +190,12 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(int delta, String metric, String... tags) {
-    this.count((long) delta, metric, tags);
-  }
-
-  @Override
   public void count(long delta, String metric, String... tags) {
     if (!isEnable) {
       return;
     }
     io.micrometer.core.instrument.Counter innerCounter = meterRegistry.counter(metric, tags);
     innerCounter.increment(delta);
-  }
-
-  @Override
-  public void histogram(int value, String metric, String... tags) {
-    this.histogram((long) value, metric, tags);
   }
 
   @Override
@@ -234,11 +224,6 @@ public class MicrometerMetricManager implements MetricManager {
   }
 
   @Override
-  public void gauge(int value, String metric, String... tags) {
-    this.gauge((long) value, metric, tags);
-  }
-
-  @Override
   public void gauge(long value, String metric, String... tags) {
     if (!isEnable) {
       return;
@@ -252,11 +237,6 @@ public class MicrometerMetricManager implements MetricManager {
       return;
     }
     throw new IllegalArgumentException(id + " is already used for a different type of metric");
-  }
-
-  @Override
-  public void rate(int value, String metric, String... tags) {
-    this.rate((long) value, metric, tags);
   }
 
   @Override

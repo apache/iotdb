@@ -164,11 +164,6 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void count(int delta, String metric, String... tags) {
-    this.count((long) delta, metric, tags);
-  }
-
-  @Override
   public void count(long delta, String metric, String... tags) {
     if (!isEnable) {
       return;
@@ -182,11 +177,6 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
-  }
-
-  @Override
-  public void gauge(int value, String metric, String... tags) {
-    this.gauge((long) value, metric, tags);
   }
 
   @Override
@@ -212,11 +202,6 @@ public class DropwizardMetricManager implements MetricManager {
   }
 
   @Override
-  public void rate(int value, String metric, String... tags) {
-    this.rate((long) value, metric, tags);
-  }
-
-  @Override
   public void rate(long value, String metric, String... tags) {
     if (!isEnable) {
       return;
@@ -230,11 +215,6 @@ public class DropwizardMetricManager implements MetricManager {
       return;
     }
     throw new IllegalArgumentException(name + " is already used for a different type of metric");
-  }
-
-  @Override
-  public void histogram(int value, String metric, String... tags) {
-    this.histogram((long) value, metric, tags);
   }
 
   @Override
