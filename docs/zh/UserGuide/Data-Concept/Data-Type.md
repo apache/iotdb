@@ -21,6 +21,8 @@
 
 # 数据类型
 
+## 基本数据类型
+
 IoTDB 支持：
 
 * BOOLEAN（布尔值）
@@ -41,13 +43,11 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-
-
-时间戳类型
+## 时间戳类型
 
 时间戳是一个数据到来的时间点，其中包括绝对时间戳和相对时间戳。
 
-* 绝对时间戳
+### 绝对时间戳
 
 IOTDB 中绝对时间戳分为二种，一种为 LONG 类型，一种为 DATETIME 类型（包含 DATETIME-INPUT, DATETIME-DISPLAY 两个小类）。
 
@@ -119,7 +119,7 @@ IoTDB 在显示时间戳时可以支持 LONG 类型以及 DATETIME-DISPLAY 类�
 
 </div>
 
-* 相对时间戳
+### 相对时间戳
 
   相对时间是指与服务器时间```now()```和```DATETIME```类型时间相差一定时间间隔的时间。
   形式化定义为：

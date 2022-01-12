@@ -76,6 +76,12 @@ Total line number = 4
 It costs 0.004s
 ```
 
+In addition, we can omit the timestamp column, and the system will use the current system timestamp as the timestamp of the data point. The sample code is as follows:
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
+
 ### Insert Data Into Aligned Timeseries
 
 To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
