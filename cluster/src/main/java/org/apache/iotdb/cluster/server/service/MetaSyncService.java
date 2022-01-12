@@ -177,11 +177,9 @@ public class MetaSyncService extends BaseSyncService implements TSMetaService.If
     } catch (PartitionTableUnavailableException
         | LogExecutionException
         | CheckConsistencyException e) {
-      logger.error("Can not remove node {}", node, e);
       throw new TApplicationException(e.getMessage());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      logger.error("Can not remove node {}", node, e);
       throw new TApplicationException(e.getMessage());
     }
 
