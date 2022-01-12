@@ -93,6 +93,7 @@ public class AggregationQueryOperator extends QueryOperator {
         isAlignByDevice()
             ? this.generateAlignByDevicePlan(generator)
             : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+
     if (!verifyAllAggregationDataTypesMatched(
         isAlignByDevice()
             ? ((AlignByDevicePlan) plan).getAggregationPlan()
@@ -100,6 +101,7 @@ public class AggregationQueryOperator extends QueryOperator {
       throw new LogicalOperatorException(
           "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
     }
+
     return plan;
   }
 
