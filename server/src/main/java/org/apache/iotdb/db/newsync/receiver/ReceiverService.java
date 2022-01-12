@@ -153,7 +153,7 @@ public class ReceiverService implements IService {
   @Override
   public void start() throws StartupException {
     receiverManager.init();
-    if(receiverManager.isPipeServerEnable()){
+    if (receiverManager.isPipeServerEnable()) {
       // TODO: start collector
     }
   }
