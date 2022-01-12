@@ -44,8 +44,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private final boolean[] isEmptyFile;
 
-  private List<TsFileResource> targetResources;
-
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
@@ -57,7 +55,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
-    this.targetResources = targetResources;
     seqFileIndex = 0;
   }
 
