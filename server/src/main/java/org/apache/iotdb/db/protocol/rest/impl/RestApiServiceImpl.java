@@ -23,14 +23,18 @@ import org.apache.iotdb.db.protocol.rest.RestApiService;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
 import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanConstructionHandler;
+import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanValidationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
@@ -39,6 +43,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+
+import java.time.ZoneId;
 
 public class RestApiServiceImpl extends RestApiService {
 
@@ -82,6 +88,9 @@ public class RestApiServiceImpl extends RestApiService {
   public Response executeQueryStatement(SQL sql, SecurityContext securityContext) {
     try {
       RequestValidationHandler.validateSQL(sql);
+
+      Operator operator = LogicalGenerator.generate(sql.getSql(), ZoneId.systemDefault());
+      PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
 
       PhysicalPlan physicalPlan =
           basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());

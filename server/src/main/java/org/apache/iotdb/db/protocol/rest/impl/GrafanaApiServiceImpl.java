@@ -24,14 +24,18 @@ import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
 import org.apache.iotdb.db.protocol.rest.NotFoundException;
 import org.apache.iotdb.db.protocol.rest.handler.AuthorizationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.ExceptionHandler;
+import org.apache.iotdb.db.protocol.rest.handler.PhysicalPlanValidationHandler;
 import org.apache.iotdb.db.protocol.rest.handler.QueryDataSetHandler;
 import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
+import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
@@ -43,6 +47,8 @@ import org.apache.commons.lang3.StringUtils;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
+
+import java.time.ZoneId;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
@@ -138,6 +144,9 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (StringUtils.isNotEmpty(expressionRequest.getControl())) {
         sql += " " + expressionRequest.getControl();
       }
+
+      Operator operator = LogicalGenerator.generate(sql, ZoneId.systemDefault());
+      PhysicalPlanValidationHandler.checkGrafanaExp((QueryOperator) operator);
 
       PhysicalPlan physicalPlan = basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
 
