@@ -281,7 +281,7 @@ public class SingleSeriesCompactionExecutor {
     } catch (Exception e) {
 
     }
-    //    fileWriter.writeChunk(chunk, chunkMetadata);
+    fileWriter.writeChunk(chunk, chunkMetadata);
   }
 
   private void flushChunkWriterIfLargeEnough() throws IOException {
@@ -297,7 +297,7 @@ public class SingleSeriesCompactionExecutor {
       } catch (Exception e) {
 
       }
-      //      chunkWriter.writeToFileWriter(fileWriter);
+      chunkWriter.writeToFileWriter(fileWriter);
       pointCountInChunkWriter = 0L;
     }
   }
@@ -323,7 +323,7 @@ public class SingleSeriesCompactionExecutor {
     } catch (Exception e) {
 
     }
-    //    chunkWriter.writeToFileWriter(fileWriter);
+    chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }
 

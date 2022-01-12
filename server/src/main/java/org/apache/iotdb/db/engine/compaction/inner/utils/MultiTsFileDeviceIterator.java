@@ -47,12 +47,12 @@ import java.util.stream.Collectors;
 public class MultiTsFileDeviceIterator implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private List<TsFileResource> tsFileResources;
-  private Map<TsFileResource, TsFileSequenceReader> readerMap =
-      new TreeMap<>((o1, o2) -> TsFileResource.compareFileName(o1.getTsFile(), o2.getTsFile()));
+  private Map<TsFileResource, TsFileSequenceReader> readerMap = new HashMap<>();
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
 
   public MultiTsFileDeviceIterator(List<TsFileResource> tsFileResources) throws IOException {
     this.tsFileResources = new ArrayList<>(tsFileResources);
+    Collections.sort(this.tsFileResources, TsFileResource::compareFileName);
     try {
       for (TsFileResource tsFileResource : this.tsFileResources) {
         TsFileSequenceReader reader = new TsFileSequenceReader(tsFileResource.getTsFilePath());
@@ -95,20 +95,20 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private LinkedList<String> seriesInThisIteration = new LinkedList<>();
     // tsfile sequence reader -> series -> list<ChunkMetadata>
     private Map<TsFileSequenceReader, Map<String, List<ChunkMetadata>>> chunkMetadataCacheMap =
-        new TreeMap<>(new InnerSpaceCompactionUtils.TsFileNameComparator());
+        new HashMap<>();
     // this map cache the chunk metadata list iterator for each tsfile
     // the iterator return a batch of series and all chunk metadata of these series in this tsfile
-    private Map<TsFileSequenceReader, Iterator<Map<String, List<ChunkMetadata>>>>
-        chunkMetadataIteratorMap =
-            new TreeMap<>(new InnerSpaceCompactionUtils.TsFileNameComparator());
+    private Map<TsFileResource, Iterator<Map<String, List<ChunkMetadata>>>>
+        chunkMetadataIteratorMap = new HashMap<>();
 
     private MeasurementIterator(Map<TsFileResource, TsFileSequenceReader> readerMap, String device)
         throws IOException {
       this.readerMap = readerMap;
       this.device = device;
-      for (TsFileSequenceReader reader : readerMap.values()) {
+      for (TsFileResource resource : tsFileResources) {
+        TsFileSequenceReader reader = readerMap.get(resource);
         chunkMetadataIteratorMap.put(
-            reader, reader.getMeasurementChunkMetadataListMapIterator(device));
+            resource, reader.getMeasurementChunkMetadataListMapIterator(device));
         chunkMetadataCacheMap.put(reader, new TreeMap<>());
       }
     }
@@ -128,14 +128,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     private boolean collectSeries() {
       String lastSeries = null;
       List<String> tempCollectedSeries = new ArrayList<>();
-      for (Map.Entry<TsFileSequenceReader, Map<String, List<ChunkMetadata>>>
-          chunkMetadataListCacheForMergeEntry : chunkMetadataCacheMap.entrySet()) {
-        TsFileSequenceReader reader = chunkMetadataListCacheForMergeEntry.getKey();
-        Map<String, List<ChunkMetadata>> chunkMetadataListMap =
-            chunkMetadataListCacheForMergeEntry.getValue();
+      for (TsFileResource resource : tsFileResources) {
+        TsFileSequenceReader reader = readerMap.get(resource);
+        Map<String, List<ChunkMetadata>> chunkMetadataListMap = chunkMetadataCacheMap.get(reader);
         if (chunkMetadataListMap.size() == 0) {
-          if (chunkMetadataIteratorMap.get(reader).hasNext()) {
-            chunkMetadataListMap = chunkMetadataIteratorMap.get(reader).next();
+          if (chunkMetadataIteratorMap.get(resource).hasNext()) {
+            chunkMetadataListMap = chunkMetadataIteratorMap.get(resource).next();
             chunkMetadataCacheMap.put(reader, chunkMetadataListMap);
           } else {
             continue;
