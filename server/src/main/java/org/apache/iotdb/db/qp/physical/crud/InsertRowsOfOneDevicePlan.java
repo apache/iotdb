@@ -68,34 +68,34 @@ public class InsertRowsOfOneDevicePlan extends InsertPlan implements BatchPlan {
   }
 
   public InsertRowsOfOneDevicePlan(
-      PartialPath prefixPath,
-      Long[] insertTimes,
-      List<List<String>> measurements,
-      ByteBuffer[] insertValues,
-      boolean isAligned)
-      throws QueryProcessException {
+          PartialPath prefixPath,
+          List<Long> insertTimes,
+          List<List<String>> measurements,
+          List<ByteBuffer> insertValues,
+          boolean isAligned)
+          throws QueryProcessException {
     this();
     this.devicePath = prefixPath;
-    rowPlans = new InsertRowPlan[insertTimes.length];
-    rowPlanIndexList = new int[insertTimes.length];
-    for (int i = 0; i < insertTimes.length; i++) {
+    rowPlans = new InsertRowPlan[insertTimes.size()];
+    rowPlanIndexList = new int[insertTimes.size()];
+    for (int i = 0; i < insertTimes.size(); i++) {
       rowPlans[i] =
-          new InsertRowPlan(
-              prefixPath,
-              insertTimes[i],
-              measurements.get(i).toArray(new String[0]),
-              insertValues[i],
-              isAligned);
+              new InsertRowPlan(
+                      prefixPath,
+                      insertTimes.get(i),
+                      measurements.get(i).toArray(new String[0]),
+                      insertValues.get(i),
+                      isAligned);
       if (rowPlans[i].getMeasurements().length == 0) {
         throw new QueryProcessException(
-            "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes[i]);
+                "The measurements are null, deviceId:" + prefixPath + ", time:" + insertTimes.get(i));
       }
       if (rowPlans[i].getValues().length == 0) {
         throw new QueryProcessException(
-            "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
-                + prefixPath
-                + ", time:"
-                + insertTimes[i]);
+                "The size of values in InsertRowsOfOneDevicePlan is 0, deviceId:"
+                        + prefixPath
+                        + ", time:"
+                        + insertTimes.get(i));
       }
       rowPlanIndexList[i] = i;
     }
