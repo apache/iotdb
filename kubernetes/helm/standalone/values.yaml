@@ -1,0 +1,60 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Default values for iotdb.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# In which kubernetes namespace iotdb will run, if not set, use default namespace
+namespace: "iotdb"
+
+ports:
+- name: rpc
+  port: 6667
+
+# The iotdb image version
+#image: "<image_name>:<image_version>"
+
+# The imagePullPolicy, should be one of IfNotPresent, Always, Never
+imagePullPolicy: Always
+
+# If pulling from private docker registry, you should set the secret of the registry.
+# You can run the following command to get the final secret string
+#  "kubectl create secret docker-registry regsecret --docker-server=<your-registry-server> --docker-username=<your-name> --docker-password=<your-pword> --dry-run -o yaml"
+#imagePullSecrets: ""
+
+# When deleting, it will wait some sconds before execute terminal operation, if not set, use default (0).
+terminationGracePeriodSeconds: 10
+
+
+# The resource limitation for each pod
+cpu: 4
+memory: 8Gi
+disk: 20Gi
+
+# The storageClassName for PersistenceVolume, it depends on your kubernetes provisioner
+# If not set, you should create pvs for iotdb manually, more detail about pv see:
+# https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+#storageClassName: alicloud-disk-ssd
+
+# If you want to expose service to outside of kubernetes, you can set this parameter to either "LoadBalancer" or "NodePort"
+# For LoadBalancer, you must ensure that your kubernetes provisioner has the ability to provide LoadBalancer for k8s.
+# The NodePort could work but is not recommended.
+# More details see https://kubernetes.io/docs/concepts/services-networking/service/#publishing-services-service-types
+#exposeService: LoadBalancer

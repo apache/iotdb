@@ -660,6 +660,7 @@ var config = {
 							['QuickStart/QuickStart','QuickStart'],
 							['QuickStart/Files','Storage Path Setting'],
 							['QuickStart/WayToGetIoTDB','Get IoTDB Binary files']
+							['QuickStart/K8sStandalone','IoTDB on Kubernetes']
 						]
 					},
 					{
@@ -774,6 +775,7 @@ var config = {
 						children: [
 							['Cluster/Cluster-Setup','Cluster Setup'],
 							['Cluster/Cluster-Setup-Example','Cluster Setup Example']
+							['Cluster/K8s-Cluster','IoTDB on Kubernetes']
 						]
 					},
 					{
@@ -1465,6 +1467,7 @@ var config = {
 							['QuickStart/QuickStart','快速上手'],
 							['QuickStart/Files','存储路径设置'],
 							['QuickStart/WayToGetIoTDB','获取IoTDB二进制文件途径']
+							['QuickStart/K8sStandalone','在Kubernetes上部署IoTDB']
 						]
 					},
 					{
@@ -1583,6 +1586,7 @@ var config = {
 						children: [
 							['Cluster/Cluster-Setup','集群搭建'],
 							['Cluster/Cluster-Setup-Example','集群搭建示例']
+							['Cluster/K8s-Cluster','在Kubernetes上部署IoTDB集群']
 						]
 					},
 					{

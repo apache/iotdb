@@ -1,0 +1,128 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  {{- if .Values.namespace }}
+  namespace: {{ .Values.namespace }}
+  {{- end }}
+  name: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+  serviceName: {{ .Release.Name }}
+  replicas: {{ .Values.scale }}
+  {{- if ge .Values.k8sVersion 1.23 }}
+  minReadySeconds: 5
+  {{- end }}
+  podManagementPolicy: Parallel
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print .Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Release.Name }}
+            topologyKey: "kubernetes.io/hostname"
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      - name: {{ .Release.Name }}
+      {{- end }}
+      containers:
+      - name: {{ .Release.Name }}
+        image: {{ .Values.image }}
+        imagePullPolicy: {{ .Values.imagePullPolicy }}
+        readinessProbe:
+          tcpSocket:
+            port: 9003
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        livenessProbe:
+          tcpSocket:
+            port: 9003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: {{ .Values.cpu }}
+            memory: {{ .Values.memory }}
+        command: ["/bin/bash","-c"]
+        args:
+          - |
+            ls -l /iotdb/
+            conf_dir=/iotdb/conf
+            conf_dir_tmp=/conf
+            cp -rf $conf_dir_tmp /iotdb/
+            node_count={{ .Values.scale }}
+            sts={{ .Release.Name }}
+            service={{ .Release.Name }}
+            namespace={{ .Values.namespace }}
+            seed_nodes=""
+            for ((i=0;i<node_count;i++)) do
+                seed_nodes=$seed_nodes$sts-$i.$service.$namespace.svc.cluster.local:9003,
+            done
+            sed -i "s/^seed_nodes.*/seed_nodes=$seed_nodes/" $conf_dir/iotdb-cluster.properties
+            replica={{ .Values.replica }}
+            sed -i "s/^default_replica_num.*/default_replica_num=$replica/" $conf_dir/iotdb-cluster.properties
+            sed -i "s/^internal_ip.*/#internal_ip/" $conf_dir/iotdb-cluster.properties
+            /iotdb/sbin/start-node.sh
+        ports:
+        {{- range .Values.ports }}
+        {{- range $k, $v := . }}
+        {{- if eq $k "name" }}
+        - {{ $k }}: {{ $v }}
+        {{- else }}
+          containerPort: {{ $v }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        volumeMounts:
+        - name: {{ .Release.Name }}-data
+          mountPath: /iotdb/data
+        - name: {{ .Release.Name }}-data
+          mountPath: /iotdb/logs
+        - name: {{ .Release.Name }}-config
+          mountPath: /conf
+      volumes:
+        - name: {{ .Release.Name }}-config
+          configMap:
+            name: {{ .Release.Name }}
+  volumeClaimTemplates:
+  - metadata:
+      name: {{ .Release.Name }}-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      {{- if .Values.storageClassName }}
+      storageClassName: {{ .Values.storageClassName }}
+      {{- end }}
+      resources:
+        requests:
+          storage: {{ .Values.disk }}

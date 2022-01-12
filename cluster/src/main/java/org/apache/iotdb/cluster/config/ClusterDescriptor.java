@@ -24,7 +24,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 
-import com.google.common.net.InetAddresses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,24 +90,13 @@ public class ClusterDescriptor {
   }
 
   public void replaceHostnameWithIp() throws UnknownHostException, BadSeedUrlFormatException {
-    boolean isInvalidClusterInternalIp = InetAddresses.isInetAddress(config.getInternalIp());
-    if (!isInvalidClusterInternalIp) {
-      config.setInternalIp(hostnameToIP(config.getInternalIp()));
-    }
     List<String> newSeedUrls = new ArrayList<>();
     for (String seedUrl : config.getSeedNodeUrls()) {
       String[] splits = seedUrl.split(":");
       if (splits.length != 2) {
         throw new BadSeedUrlFormatException(seedUrl);
       }
-      String seedIP = splits[0];
-      boolean isInvalidSeedIp = InetAddresses.isInetAddress(seedIP);
-      if (!isInvalidSeedIp) {
-        String newSeedIP = hostnameToIP(seedIP);
-        newSeedUrls.add(newSeedIP + ":" + splits[1]);
-      } else {
-        newSeedUrls.add(seedUrl);
-      }
+      newSeedUrls.add(seedUrl);
     }
     config.setSeedNodeUrls(newSeedUrls);
     logger.debug(

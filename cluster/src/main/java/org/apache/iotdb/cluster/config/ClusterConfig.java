@@ -187,7 +187,7 @@ public class ClusterConfig {
    */
   public ClusterConfig() {
     try {
-      internalIp = InetAddress.getLocalHost().getHostAddress();
+      internalIp = InetAddress.getLocalHost().getCanonicalHostName();
     } catch (UnknownHostException e) {
       logger.error(e.getMessage());
       internalIp = "127.0.0.1";
