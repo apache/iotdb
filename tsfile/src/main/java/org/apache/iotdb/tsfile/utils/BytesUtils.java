@@ -79,7 +79,7 @@ public class BytesUtils {
    * convert an integer to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input integer variable. All but the lowest {@code width} bits are 0. 
+   * @param srcNum input integer variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
@@ -509,7 +509,7 @@ public class BytesUtils {
    * convert a long to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input long variable. All but the lowest {@code width} bits are 0. 
+   * @param srcNum input long variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
