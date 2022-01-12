@@ -29,6 +29,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -148,7 +149,9 @@ public class InnerSpaceCompactionUtilsNoAlignedTest {
             schema.getCompressor(),
             Collections.emptyMap());
         fullPathSet.add(device.getFullPath() + "." + schema.getMeasurementId());
-        paths.add(new PartialPath(device.getFullPath() + "." + schema.getMeasurementId()));
+        paths.add(
+            new MeasurementPath(
+                new PartialPath(device.getFullPath() + "." + schema.getMeasurementId()), schema));
         schemaList.add(schema);
       }
     }
