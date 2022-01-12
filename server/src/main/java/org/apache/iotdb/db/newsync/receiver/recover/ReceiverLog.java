@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.newsync.receiver.recover;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
 
@@ -31,7 +30,7 @@ import java.io.IOException;
 public class ReceiverLog {
   private BufferedWriter bw;
 
-  public ReceiverLog() throws DiskSpaceInsufficientException, IOException {
+  public ReceiverLog() throws IOException {
     String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
     // TODO: set new sync dir
     File logFile = new File(syncSystemDir, SyncConstant.RECEIVER_LOG_NAME);
@@ -39,6 +38,18 @@ public class ReceiverLog {
       logFile.getParentFile().mkdirs();
     }
     bw = new BufferedWriter(new FileWriter(logFile, true));
+  }
+
+  public void startPipeServer() throws IOException {
+    bw.write("on");
+    bw.newLine();
+    bw.flush();
+  }
+
+  public void stopPipeServer() throws IOException {
+    bw.write("off");
+    bw.newLine();
+    bw.flush();
   }
 
   public void createPipe(String pipeName, String remoteIp, long time) throws IOException {
@@ -49,7 +60,7 @@ public class ReceiverLog {
     writeLog(pipeName, remoteIp, PipeStatus.RUNNING);
   }
 
-  public void pausePipe(String pipeName, String remoteIp) throws IOException {
+  public void stopPipe(String pipeName, String remoteIp) throws IOException {
     writeLog(pipeName, remoteIp, PipeStatus.PAUSE);
   }
 

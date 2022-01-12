@@ -375,11 +375,11 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private boolean operateStopPipeServer() {
-    return ReceiverService.getInstance().stop();
+    return ReceiverService.getInstance().stopPipeServer();
   }
 
   private boolean operateStartPipeServer() {
-    return ReceiverService.getInstance().start();
+    return ReceiverService.getInstance().startPipeServer();
   }
 
   private boolean createTemplate(CreateTemplatePlan createTemplatePlan)

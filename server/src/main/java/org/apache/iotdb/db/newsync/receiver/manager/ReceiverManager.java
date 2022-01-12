@@ -18,29 +18,42 @@
  */
 package org.apache.iotdb.db.newsync.receiver.manager;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLog;
 import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLogAnalyzer;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.iotdb.db.service.ServiceType;
 
 import java.io.IOException;
 import java.util.*;
 
 public class ReceiverManager {
 
-  private static final Logger logger = LoggerFactory.getLogger(ReceiverManager.class);
   private boolean pipeServerEnable;
   // <pipeName, <remoteIp, pipeInfo>>
   private Map<String, Map<String, PipeInfo>> pipeInfoMap;
   private ReceiverLog log;
 
-  public void startServer() throws DiskSpaceInsufficientException, IOException {
+  public void init() throws StartupException {
+    try {
+      log = new ReceiverLog();
+    } catch (IOException e) {
+      e.printStackTrace();
+      throw new StartupException(
+          ServiceType.RECEIVER_SERVICE.getName(), "cannot create receiver log");
+    }
+    ReceiverLogAnalyzer.scan();
+    pipeInfoMap = ReceiverLogAnalyzer.getPipeInfoMap();
+    pipeServerEnable = ReceiverLogAnalyzer.isPipeServerEnable();
+  }
+
+  public void startServer() throws IOException {
+    log.startPipeServer();
+    ;
     pipeServerEnable = true;
   }
 
-  public void stopServer() {
+  public void stopServer() throws IOException {
+    log.stopPipeServer();
     pipeServerEnable = false;
   }
 
@@ -65,7 +78,7 @@ public class ReceiverManager {
 
   public void stopPipe(String pipeName, String remoteIp) throws IOException {
     if (log != null) {
-      log.pausePipe(pipeName, remoteIp);
+      log.stopPipe(pipeName, remoteIp);
     }
     pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.PAUSE);
   }
@@ -77,7 +90,7 @@ public class ReceiverManager {
     pipeInfoMap.get(pipeName).get(remoteIp).setStatus(PipeStatus.DROP);
   }
 
-  public List<PipeInfo> getAllPipeInfos(String pipeName) {
+  public List<PipeInfo> getPipeInfos(String pipeName) {
     return new ArrayList<>(pipeInfoMap.get(pipeName).values());
   }
 
@@ -101,18 +114,7 @@ public class ReceiverManager {
     return ReceiverMonitorHolder.INSTANCE;
   }
 
-  private ReceiverManager() {
-    pipeInfoMap = new HashMap<>();
-    try {
-      log = new ReceiverLog();
-    } catch (Exception e) {
-      logger.error("Can not create log for ReceiverManager ", e);
-    }
-    Map<String, Map<String, PipeInfo>> recoverMap = ReceiverLogAnalyzer.recover();
-    if (recoverMap != null) {
-      pipeInfoMap = recoverMap;
-    }
-  }
+  private ReceiverManager() {}
 
   private static class ReceiverMonitorHolder {
     private static final ReceiverManager INSTANCE = new ReceiverManager();

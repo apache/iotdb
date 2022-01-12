@@ -19,9 +19,11 @@
 package org.apache.iotdb.db.newsync.receiver.recover;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.newsync.conf.SyncConstant;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
+import org.apache.iotdb.db.service.ServiceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +34,15 @@ import java.util.Map;
 
 public class ReceiverLogAnalyzer {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverLogAnalyzer.class);
+  private static boolean pipeServerEnable =
+      false; // record recovery result of receiver server status
+  private static Map<String, Map<String, PipeInfo>> pipeInfoMap =
+      new HashMap<>(); // record recovery result of receiver server status
 
-  public static Map<String, Map<String, PipeInfo>> recover() {
+  public static void scan() throws StartupException {
     logger.info("Start to recover all sync state for sync receiver.");
-    Map<String, Map<String, PipeInfo>> res = new HashMap<>();
+    pipeInfoMap = new HashMap<>();
+    pipeServerEnable = false;
     String syncSystemDir = IoTDBDescriptor.getInstance().getConfig().getSyncDir();
     File logFile = new File(syncSystemDir, SyncConstant.RECEIVER_LOG_NAME);
     try (BufferedReader loadReader = new BufferedReader(new FileReader(logFile))) {
@@ -44,43 +51,57 @@ public class ReceiverLogAnalyzer {
       while ((line = loadReader.readLine()) != null) {
         lineNum++;
         try {
-          analyzeLog(line, res);
+          analyzeLog(line);
         } catch (Exception e) {
           logger.error("Receiver log recovery error: log file parse error at line " + lineNum);
-          return null;
+          e.printStackTrace();
+          throw new StartupException(
+              ServiceType.RECEIVER_SERVICE.getName(), "log file recover error at line " + lineNum);
         }
       }
     } catch (IOException e) {
-      logger.error("Receiver log recovery error: log file not found");
-      return null;
+      logger.info("Receiver log file not found");
     }
-    return res;
+  }
+
+  public static boolean isPipeServerEnable() {
+    return pipeServerEnable;
+  }
+
+  public static Map<String, Map<String, PipeInfo>> getPipeInfoMap() {
+    return pipeInfoMap;
   }
 
   /**
-   * parse log line and load result into map
+   * parse log line and load result
    *
    * @param logLine log line
-   * @param map map
    */
-  private static void analyzeLog(String logLine, Map<String, Map<String, PipeInfo>> map) {
-    String[] items = logLine.split(",");
-    String pipeName = items[0];
-    String remoteIp = items[1];
-    PipeStatus status = PipeStatus.valueOf(items[2]);
-    if (status == PipeStatus.RUNNING) {
-      if (!map.containsKey(pipeName)) {
-        map.put(pipeName, new HashMap<>());
-      }
-      if (items.length == 4) {
-        // create
-        map.get(pipeName)
-            .put(remoteIp, new PipeInfo(pipeName, remoteIp, status, Long.parseLong(items[3])));
-      } else {
-        map.get(pipeName).get(remoteIp).setStatus(status);
-      }
+  private static void analyzeLog(String logLine) {
+    if (logLine.equals("on")) {
+      pipeServerEnable = true;
+    } else if (logLine.equals("off")) {
+      pipeServerEnable = false;
     } else {
-      map.get(pipeName).get(remoteIp).setStatus(status);
+      String[] items = logLine.split(",");
+      String pipeName = items[0];
+      String remoteIp = items[1];
+      PipeStatus status = PipeStatus.valueOf(items[2]);
+      if (status == PipeStatus.RUNNING) {
+        if (!pipeInfoMap.containsKey(pipeName)) {
+          pipeInfoMap.put(pipeName, new HashMap<>());
+        }
+        if (items.length == 4) {
+          // create
+          pipeInfoMap
+              .get(pipeName)
+              .put(remoteIp, new PipeInfo(pipeName, remoteIp, status, Long.parseLong(items[3])));
+        } else {
+          pipeInfoMap.get(pipeName).get(remoteIp).setStatus(status);
+        }
+      } else {
+        pipeInfoMap.get(pipeName).get(remoteIp).setStatus(status);
+      }
     }
   }
 }

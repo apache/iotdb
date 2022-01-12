@@ -77,10 +77,10 @@ public class IoTDB implements IoTDBMBean {
     }
     IoTDB daemon = IoTDB.getInstance();
     daemon.active();
-//    ReceiverService.getInstance().start();
-//    ReceiverService.getInstance().createPipe("pipe1", "192.168.1.11", 1);
-//    ReceiverService.getInstance().createPipe("pipeB", "192.168.2.22", 2);
-//    ReceiverService.getInstance().createPipe("pipe1", "192.168.2.22", 3);
+    //    ReceiverService.getInstance().start();
+    ReceiverService.getInstance().createPipe("pipe1", "192.168.1.11", 1);
+    ReceiverService.getInstance().createPipe("pipeB", "192.168.2.22", 2);
+    ReceiverService.getInstance().createPipe("pipe1", "192.168.2.22", 3);
   }
 
   public static void setMetaManager(MManager metaManager) {
@@ -137,6 +137,7 @@ public class IoTDB implements IoTDBMBean {
     registerManager.register(UDFRegistrationService.getInstance());
     registerManager.register(TriggerRegistrationService.getInstance());
     registerManager.register(ContinuousQueryService.getInstance());
+    registerManager.register(ReceiverService.getInstance());
 
     // in cluster mode, RPC service is not enabled.
     if (IoTDBDescriptor.getInstance().getConfig().isEnableRpcService()) {

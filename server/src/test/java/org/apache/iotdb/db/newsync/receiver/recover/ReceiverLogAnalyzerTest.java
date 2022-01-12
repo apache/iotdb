@@ -1,10 +1,26 @@
-package org.apache.iotdb.db.newsync.receiver;
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iotdb.db.newsync.receiver.recover;
 
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeStatus;
-import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLog;
-import org.apache.iotdb.db.newsync.receiver.recover.ReceiverLogAnalyzer;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 
 import org.junit.After;
@@ -38,14 +54,19 @@ public class ReceiverLogAnalyzerTest {
   public void test() {
     try {
       ReceiverLog log = new ReceiverLog();
+      log.startPipeServer();
       log.createPipe(pipe1, ip1, 1);
       log.createPipe(pipe2, ip2, 2);
       log.createPipe(pipe1, ip2, 3);
-      log.pausePipe(pipe1, ip1);
-      log.pausePipe(pipe2, ip2);
+      log.stopPipe(pipe1, ip1);
+      log.stopPipeServer();
+      log.startPipeServer();
+      log.stopPipe(pipe2, ip2);
       log.dropPipe(pipe1, ip2);
       log.startPipe(pipe1, ip1);
-      Map<String, Map<String, PipeInfo>> map = ReceiverLogAnalyzer.recover();
+      ReceiverLogAnalyzer.scan();
+      Map<String, Map<String, PipeInfo>> map = ReceiverLogAnalyzer.getPipeInfoMap();
+      Assert.assertTrue(ReceiverLogAnalyzer.isPipeServerEnable());
       Assert.assertNotNull(map);
       Assert.assertEquals(2, map.get(pipe1).size());
       Assert.assertEquals(1, map.get(pipe2).size());

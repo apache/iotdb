@@ -18,12 +18,14 @@
  */
 package org.apache.iotdb.db.newsync.receiver;
 
-import org.apache.iotdb.db.exception.DiskSpaceInsufficientException;
+import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.newsync.receiver.manager.PipeInfo;
 import org.apache.iotdb.db.newsync.receiver.manager.ReceiverManager;
 import org.apache.iotdb.db.qp.physical.sys.ShowPipeServerPlan;
 import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.service.IService;
+import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -41,26 +43,31 @@ import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.*;
 
-public class ReceiverService {
+public class ReceiverService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(ReceiverService.class);
   private final SimpleDateFormat dateformat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
   private static final ReceiverManager receiverManager = ReceiverManager.getInstance();
 
   /** start receiver service */
   // TODO: return value no use
-  public boolean start() {
+  public boolean startPipeServer() {
     try {
       receiverManager.startServer();
-    } catch (DiskSpaceInsufficientException | IOException e) {
-      logger.error("Can not start receiver server", e);
+    } catch (IOException e) {
+      e.printStackTrace();
       return false;
     }
     return true;
   }
 
   /** stop receiver service */
-  public boolean stop() {
-    receiverManager.stopServer();
+  public boolean stopPipeServer() {
+    try {
+      receiverManager.stopServer();
+    } catch (IOException e) {
+      e.printStackTrace();
+      return false;
+    }
     return true;
   }
 
@@ -106,7 +113,7 @@ public class ReceiverService {
                 TSDataType.TEXT));
     List<PipeInfo> pipeInfos;
     if (!StringUtils.isEmpty(plan.getPipeName())) {
-      pipeInfos = receiverManager.getAllPipeInfos(plan.getPipeName());
+      pipeInfos = receiverManager.getPipeInfos(plan.getPipeName());
     } else {
       pipeInfos = receiverManager.getAllPipeInfos();
     }
@@ -140,6 +147,20 @@ public class ReceiverService {
 
   public static ReceiverService getInstance() {
     return ReceiverServiceHolder.INSTANCE;
+  }
+
+  /** IService * */
+  @Override
+  public void start() throws StartupException {
+    ReceiverManager.getInstance().init();
+  }
+
+  @Override
+  public void stop() {}
+
+  @Override
+  public ServiceType getID() {
+    return ServiceType.RECEIVER_SERVICE;
   }
 
   private static class ReceiverServiceHolder {
