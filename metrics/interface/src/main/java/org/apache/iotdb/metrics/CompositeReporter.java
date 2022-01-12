@@ -29,7 +29,7 @@ import java.util.List;
 
 public class CompositeReporter {
   private static final Logger LOGGER = LoggerFactory.getLogger(CompositeReporter.class);
-  private static List<Reporter> reporters = new ArrayList<>();
+  private List<Reporter> reporters = new ArrayList<>();
 
   /** Start all reporter */
   public boolean startAll() {
@@ -43,7 +43,7 @@ public class CompositeReporter {
     return result;
   }
 
-  /** Start reporter by name name values in jmx, prometheus, iotdb, internal */
+  /** Start reporter by name values in jmx, prometheus, iotdb, internal */
   public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {

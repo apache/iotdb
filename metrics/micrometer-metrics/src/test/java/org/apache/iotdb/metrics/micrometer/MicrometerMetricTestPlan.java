@@ -55,11 +55,7 @@ public class MicrometerMetricTestPlan {
   public static void main(String[] args) {
     for (Integer metric : METRIC_NUMBERS) {
       for (Integer tag : TAG_NUMBERS) {
-        try {
-          test(metric, tag);
-        } catch (Exception e) {
-          System.out.println(metric + " " + tag);
-        }
+        test(metric, tag);
       }
     }
   }
