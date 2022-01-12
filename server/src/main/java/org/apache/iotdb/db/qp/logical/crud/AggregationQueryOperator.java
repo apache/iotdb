@@ -89,14 +89,23 @@ public class AggregationQueryOperator extends QueryOperator {
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return isAlignByDevice()
-        ? this.generateAlignByDevicePlan(generator)
-        : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+    PhysicalPlan plan =
+        isAlignByDevice()
+            ? this.generateAlignByDevicePlan(generator)
+            : super.generateRawDataQueryPlan(generator, initAggregationPlan(new AggregationPlan()));
+    if (!verifyAllAggregationDataTypesMatched(
+        isAlignByDevice()
+            ? ((AlignByDevicePlan) plan).getAggregationPlan()
+            : (AggregationPlan) plan)) {
+      throw new LogicalOperatorException(
+          "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
+    }
+    return plan;
   }
 
-  private boolean verifyAllAggregationDataTypesMatched() {
-    List<String> aggregations = selectComponent.getAggregationFunctions();
-    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(selectComponent.getPaths());
+  private boolean verifyAllAggregationDataTypesMatched(AggregationPlan plan) {
+    List<String> aggregations = plan.getDeduplicatedAggregations();
+    List<TSDataType> dataTypes = SchemaUtils.getSeriesTypesByPaths(plan.getDeduplicatedPaths());
 
     for (int i = 0; i < aggregations.size(); i++) {
       if (!verifyIsAggregationDataTypeMatched(aggregations.get(i), dataTypes.get(i))) {
@@ -156,10 +165,6 @@ public class AggregationQueryOperator extends QueryOperator {
   protected AggregationPlan initAggregationPlan(QueryPlan queryPlan) throws QueryProcessException {
     AggregationPlan aggregationPlan = (AggregationPlan) queryPlan;
     aggregationPlan.setAggregations(selectComponent.getAggregationFunctions());
-    if (!verifyAllAggregationDataTypesMatched()) {
-      throw new LogicalOperatorException(
-          "Aggregate [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]");
-    }
     if (isGroupByLevel()) {
       initGroupByLevel(aggregationPlan);
     }
