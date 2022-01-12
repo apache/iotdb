@@ -26,12 +26,14 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
+import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileDeviceIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -107,11 +109,12 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
   }
 
   public LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
-      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException {
+      getReaderAndChunkMetadataForCurrentAlignedSeries() throws IOException, IllegalPathException {
     if (currentDevice == null || !currentDevice.right) {
       return null;
     }
 
+    PartialPath pathForCurrDevice = new PartialPath(currentDevice.left);
     LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
         new LinkedList<>();
     for (TsFileResource tsFileResource : tsFileResources) {
@@ -125,6 +128,27 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       TsFileSequenceReader reader = readerMap.get(tsFileResource);
       List<AlignedChunkMetadata> alignedChunkMetadataList =
           reader.getAlignedChunkMetadata(currentDevice.left);
+      ModificationFile modificationFile = ModificationFile.getNormalMods(tsFileResource);
+      Collection<Modification> modifications = modificationFile.getModifications();
+      AlignedChunkMetadata alignedChunkMetadata = alignedChunkMetadataList.get(0);
+      List<IChunkMetadata> valueChunkMetadataList =
+          alignedChunkMetadata.getValueChunkMetadataList();
+      List<List<Modification>> modificationForCurDevice =
+          new ArrayList<>(valueChunkMetadataList.size());
+      for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+        modificationForCurDevice.add(new ArrayList<>());
+      }
+      for (Modification modification : modifications) {
+        if (modification.getDevice().equals(currentDevice.left)) {
+          for (int i = 0; i < valueChunkMetadataList.size(); ++i) {
+            IChunkMetadata chunkMetadata = valueChunkMetadataList.get(i);
+            if (modification.getMeasurement().equals(chunkMetadata.getMeasurementUid())) {
+              modificationForCurDevice.get(i).add(modification);
+            }
+          }
+        }
+      }
+      QueryUtils.modifyAlignedChunkMetaData(alignedChunkMetadataList, modificationForCurDevice);
       readerAndChunkMetadataList.add(new Pair<>(reader, alignedChunkMetadataList));
     }
 
