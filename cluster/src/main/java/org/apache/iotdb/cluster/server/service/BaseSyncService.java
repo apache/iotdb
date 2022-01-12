@@ -155,6 +155,7 @@ public abstract class BaseSyncService implements RaftService.Iface {
 
   @Override
   public TSStatus executeNonQueryPlan(ExecutNonQueryReq request) throws TException {
+    member.waitLeader();
     if (member.getCharacter() != NodeCharacter.LEADER) {
       // forward the plan to the leader
       Client client = member.getSyncClient(member.getLeader());
