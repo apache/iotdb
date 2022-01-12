@@ -1542,13 +1542,11 @@ public class VirtualStorageGroupProcessor {
         // try to delete physical data file
         resource.remove();
         tsFileManager.remove(resource, isSeq);
-        if (logger.isInfoEnabled()) {
-          logger.info(
-              "Removed a file {} before {} by ttl ({}ms)",
-              resource.getTsFilePath(),
-              new Date(ttlLowerBound),
-              dataTTL);
-        }
+        logger.info(
+            "Removed a file {} before {} by ttl ({}ms)",
+            resource.getTsFilePath(),
+            new Date(ttlLowerBound),
+            dataTTL);
       } finally {
         resource.writeUnlock();
       }
