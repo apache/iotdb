@@ -829,6 +829,9 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
         && isCausedByNoTimeseries) {
       try {
         if (createTimeseriesForFailedInsertion(((InsertPlan) plan))) {
+          if (plan instanceof BatchPlan) {
+            ((BatchPlan) plan).getResults().clear();
+          }
           status = processPlanLocally(plan);
         }
       } catch (MetadataException
