@@ -1509,12 +1509,10 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: TTL removing files before {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          new Date(ttlLowerBound));
-    }
+    logger.debug(
+        "{}: TTL removing files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
