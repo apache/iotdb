@@ -617,6 +617,93 @@ public class IoTDBUDFNestAggregationIT {
       fail(e.getMessage());
     }
   }
+  // test whether row number is right with function count()'
+  @Test
+  public void rowNumberWithFunctionCountTest() {
+    Object[][] retArray1 = {
+      {10L, 11.0, 11.0, 3.0},
+      {20L, 21.0, 21.0, 3.0},
+      {30L, 31.0, 31.0, 3.0},
+      {40L, 41.0, 41.0, 3.0},
+      {50L, 51.0, 51.0, 3.0},
+      {60L, 61.0, 61.0, 3.0},
+      {70L, 71.0, 71.0, 3.0},
+      {80L, null, null, 1.0},
+      {90L, null, null, 1.0},
+    };
+
+    Object[][] retArray2 = {
+      {10L, 11.0},
+      {20L, 21.0},
+      {30L, 31.0},
+      {40L, 41.0},
+      {50L, 51.0},
+      {60L, 61.0},
+      {70L, 71.0},
+      {80L, null},
+      {90L, null},
+    };
+
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      // multi columns
+      String query =
+          "SELECT avg(a)+1, count(a)+avg(a),count(a)*2+1"
+              + "FROM root.st GROUP BY([10, 100), 10ms)";
+      boolean hasResultSet = statement.execute(query);
+
+      Assert.assertTrue(hasResultSet);
+      int cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals((long) retArray1[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          for (int i = 2; i <= 4; ++i) {
+            if (retArray1[cnt][i - 1] == null) {
+              Assert.assertNull(resultSet.getMetaData().getColumnName(i), resultSet.getObject(i));
+            } else {
+              Assert.assertEquals(
+                  resultSet.getMetaData().getColumnName(i),
+                  (double) retArray1[cnt][i - 1],
+                  resultSet.getDouble(i),
+                  E);
+            }
+          }
+          cnt++;
+        }
+      }
+      // row num should be 9 instead of 7.
+      Assert.assertEquals(retArray1.length, cnt);
+
+      // only one column
+      query = "SELECT count(a)+avg(a)" + "FROM root.st GROUP BY([10, 100), 10ms)";
+      hasResultSet = statement.execute(query);
+
+      Assert.assertTrue(hasResultSet);
+      cnt = 0;
+      try (ResultSet resultSet = statement.getResultSet()) {
+        while (resultSet.next()) {
+          Assert.assertEquals((long) retArray2[cnt][0], resultSet.getLong(TIMESTAMP_STR));
+          for (int i = 2; i <= 2; ++i) {
+            if (retArray2[cnt][i - 1] == null) {
+              Assert.assertNull(resultSet.getMetaData().getColumnName(i), resultSet.getObject(i));
+            } else {
+              Assert.assertEquals(
+                  resultSet.getMetaData().getColumnName(i),
+                  (double) retArray2[cnt][i - 1],
+                  resultSet.getDouble(i),
+                  E);
+            }
+          }
+          cnt++;
+        }
+      }
+      Assert.assertEquals(retArray2.length, cnt);
+
+    } catch (Exception e) {
+      e.printStackTrace();
+      fail(e.getMessage());
+    }
+  }
 
   private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
