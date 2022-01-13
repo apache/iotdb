@@ -287,12 +287,17 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       logger.error(checkResult);
       return false;
     }
+    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
     // if client ip is the default address, set it same with internal ip
     if (IoTDBDescriptor.getInstance().getConfig().getRpcAddress().equals("0.0.0.0")) {
-      IoTDBDescriptor.getInstance()
-          .getConfig()
-          .setRpcAddress(ClusterDescriptor.getInstance().getConfig().getInternalIp());
+      IoTDBDescriptor.getInstance().getConfig().setRpcAddress(config.getInternalIp());
     }
+    // set the memory allocated for raft log of each raft log manager
+    config.setMaxMemorySizeForRaftLog(
+        (long)
+            (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForWrite()
+                * config.getRaftLogMemoryProportion()
+                / config.getReplicationNum()));
     return true;
   }
 

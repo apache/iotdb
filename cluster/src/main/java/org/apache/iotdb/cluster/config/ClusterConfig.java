@@ -78,6 +78,9 @@ public class ClusterConfig {
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
 
+  /** Ratio of write memory allocated for raft log */
+  private double RaftLogMemoryProportion = 0.2;
+
   /** deletion check period of the submitted log */
   private int logDeleteCheckIntervalSecond = -1;
 
@@ -136,6 +139,8 @@ public class ClusterConfig {
    */
   private int maxRaftLogIndexSizeInMemory = 10000;
 
+  /** */
+  private int UnCommittedRaftLogNumForBlock = 500;
   /**
    * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The
    * default size is 1GB
@@ -375,6 +380,14 @@ public class ClusterConfig {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 
+  public int getUnCommittedRaftLogNumForBlock() {
+    return UnCommittedRaftLogNumForBlock;
+  }
+
+  public void setUnCommittedRaftLogNumForBlock(int unCommittedRaftLogNumForBlock) {
+    UnCommittedRaftLogNumForBlock = unCommittedRaftLogNumForBlock;
+  }
+
   public int getRaftLogBufferSize() {
     return raftLogBufferSize;
   }
@@ -421,6 +434,14 @@ public class ClusterConfig {
 
   public void setMaxMemorySizeForRaftLog(long maxMemorySizeForRaftLog) {
     this.maxMemorySizeForRaftLog = maxMemorySizeForRaftLog;
+  }
+
+  public double getRaftLogMemoryProportion() {
+    return RaftLogMemoryProportion;
+  }
+
+  public void setRaftLogMemoryProportion(double raftLogMemoryProportion) {
+    RaftLogMemoryProportion = raftLogMemoryProportion;
   }
 
   public int getMaxRaftLogPersistDataSizePerFile() {

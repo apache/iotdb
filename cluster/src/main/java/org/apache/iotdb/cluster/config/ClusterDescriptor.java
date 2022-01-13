@@ -215,11 +215,11 @@ public class ClusterDescriptor {
             properties.getProperty(
                 "max_num_of_logs_in_mem", String.valueOf(config.getMaxNumOfLogsInMem()))));
 
-    config.setMaxMemorySizeForRaftLog(
-        Long.parseLong(
+    config.setRaftLogMemoryProportion(
+        Double.parseDouble(
             properties.getProperty(
-                "max_memory_size_for_raft_log",
-                String.valueOf(config.getMaxMemorySizeForRaftLog()))));
+                "raft_log_memory_proportion",
+                String.valueOf(config.getRaftLogMemoryProportion()))));
 
     config.setLogDeleteCheckIntervalSecond(
         Integer.parseInt(

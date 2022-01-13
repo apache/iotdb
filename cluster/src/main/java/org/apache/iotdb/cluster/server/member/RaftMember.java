@@ -68,8 +68,11 @@ import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
+import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -80,6 +83,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
+import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -991,16 +995,30 @@ public abstract class RaftMember implements RaftMemberMBean {
       return StatusUtils.INTERNAL_ERROR;
     }
 
-    // assign term and index to the new log and append it
-    synchronized (logManager) {
-      if (!(plan instanceof LogPlan)) {
-        plan.setIndex(logManager.getLastLogIndex() + 1);
+    while(true) {
+      // assign term and index to the new log and append it
+      synchronized (logManager) {
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl() || (logManager.getLastLogIndex()-logManager.getCommitLogIndex()<=config.getUnCommittedRaftLogNumForBlock())) {
+          if (!(plan instanceof LogPlan)) {
+            plan.setIndex(logManager.getLastLogIndex() + 1);
+          }
+          log.setCurrLogTerm(getTerm().get());
+          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+          logManager.append(log);
+          break;
+        }
       }
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-      logManager.append(log);
+      try {
+        TimeUnit.MILLISECONDS.sleep(IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          return StatusUtils.INTERNAL_ERROR;
+//          throw new WriteProcessRejectException(
+//                  "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
-
     Timer.Statistic.RAFT_SENDER_APPEND_LOG.calOperationCostTimeFromStart(startTime);
 
     try {
@@ -1011,6 +1029,26 @@ public abstract class RaftMember implements RaftMemberMBean {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
+  }
+
+  /** block insertion if the insertion is rejected by memory control */
+  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
+          throws WriteProcessRejectException {
+    long startTime = System.currentTimeMillis();
+    while (SystemInfo.getInstance().isRejected()) {
+//      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
+//        break;
+//      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          throw new WriteProcessRejectException(
+                  "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
   }
 
   private TSStatus processPlanLocallyV2(PhysicalPlan plan) {
@@ -1046,22 +1084,36 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
-    synchronized (logManager) {
-      Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
-          startTime);
 
-      if (!(plan instanceof LogPlan)) {
-        plan.setIndex(logManager.getLastLogIndex() + 1);
+    while (true) {
+      synchronized (logManager) {
+        Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.calOperationCostTimeFromStart(
+                startTime);
+        if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl() || (logManager.getLastLogIndex()-logManager.getCommitLogIndex()<=config.getUnCommittedRaftLogNumForBlock())) {
+          if (!(plan instanceof LogPlan)) {
+            plan.setIndex(logManager.getLastLogIndex() + 1);
+          }
+          log.setCurrLogTerm(getTerm().get());
+          log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
+          startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
+          logManager.append(log);
+          Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
+          startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
+          sendLogRequest = buildSendLogRequest(log);
+          Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
+          break;
+        }
       }
-      log.setCurrLogTerm(getTerm().get());
-      log.setCurrLogIndex(logManager.getLastLogIndex() + 1);
-
-      startTime = Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.getOperationStartTime();
-      logManager.append(log);
-      Timer.Statistic.RAFT_SENDER_APPEND_LOG_V2.calOperationCostTimeFromStart(startTime);
-      startTime = Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.getOperationStartTime();
-      sendLogRequest = buildSendLogRequest(log);
-      Statistic.RAFT_SENDER_BUILD_LOG_REQUEST.calOperationCostTimeFromStart(startTime);
+      try {
+        TimeUnit.MILLISECONDS.sleep(IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startTime > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          return StatusUtils.INTERNAL_ERROR;
+//          throw new WriteProcessRejectException(
+//                  "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
     }
 
     startTime = Statistic.RAFT_SENDER_OFFER_LOG.getOperationStartTime();
