@@ -84,6 +84,11 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
+  public IMNode getPinnedChild(IMNode parent, String name) {
+    return null;
+  }
+
+  @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
     return new CachedMNodeIterator(parent);
   }
@@ -130,6 +135,11 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   @Override
+  public void unPin(IMNode node) {
+    cacheStrategy.unPinMNode(node);
+  }
+
+  @Override
   public void createSnapshot() throws IOException {}
 
   @Override
@@ -155,6 +165,7 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void executeMemoryRelease() {
+
     flushVolatileNodes();
     List<IMNode> evictedMNodes;
     while (!memManager.isUnderThreshold()) {
@@ -169,7 +180,7 @@ public class CachedMTreeStore implements IMTreeStore {
     List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
     for (IMNode volatileNode : nodesToPersist) {
       file.writeMNode(volatileNode);
-      if(cacheStrategy.isCached(volatileNode)){
+      if (cacheStrategy.isCached(volatileNode)) {
         cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
       }
     }

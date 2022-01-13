@@ -40,6 +40,8 @@ public interface IMTreeStore {
 
   IMNode getChild(IMNode parent, String name);
 
+  IMNode getPinnedChild(IMNode parent, String name);
+
   Iterator<IMNode> getChildrenIterator(IMNode parent);
 
   void addChild(IMNode parent, String childName, IMNode child);
@@ -51,6 +53,8 @@ public interface IMTreeStore {
   void deleteAliasChild(IEntityMNode parent, String alias);
 
   void updateMNode(IMNode node);
+
+  void unPin(IMNode node);
 
   void createSnapshot() throws IOException;
 
