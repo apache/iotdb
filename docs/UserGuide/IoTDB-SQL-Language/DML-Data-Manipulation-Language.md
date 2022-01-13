@@ -76,6 +76,12 @@ Total line number = 4
 It costs 0.004s
 ```
 
+In addition, we can omit the timestamp column, and the system will use the current system timestamp as the timestamp of the data point. The sample code is as follows:
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
+
 ### Insert Data Into Aligned Timeseries
 
 To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
@@ -621,11 +627,11 @@ IoTDB supports previous, linear, and value fill methods. Table 3-1 lists the dat
 
 #### Single Fill Query
 
-When data for a particular timestamp is null, the null values can be filled using single fill, as described below:
+When data in a particular timestamp is null, the null values can be filled using single fill, as described below:
 
 * Previous Function
 
-When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+When the value in the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -681,7 +687,7 @@ It costs 0.004s
 
 * Linear Method
 
-When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+When the value in the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -725,7 +731,7 @@ It costs 0.017s
 
 * Value Method
 
-When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+When the value in the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)
@@ -1536,32 +1542,31 @@ Fuzzy query is divided into Like statement and Regexp statement, both of which c
 
 Like statement:
 
-Example 1: Query data containing `'cc'` in `value` under `root.sg.device`. 
+Example 1: Query data containing `'cc'` in `value` under `root.sg.d1`. 
 The percentage (`%`) wildcard matches any string of zero or more characters.
 
-
 ```
-IoTDB> select * from root.sg.device where value like '%cc%'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value like '%cc%'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.device`.
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.d1`.
 The underscore (`_`) wildcard matches any single character.
 
 ```
 IoTDB> select * from root.sg.device where value like '_b_'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|                 abc| 
-+-----------------------------+--------------------+
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:02.000+08:00|             abc| 
++-----------------------------+----------------+
 Total line number = 1
 It costs 0.002s
 ```
@@ -1570,30 +1575,30 @@ Regexp statement：
 
 The filter conditions that need to be passed in are regular expressions in the Java standard library style
 
-Example 1: Query a string composed of 26 English characters for the value under root.sg.device
+Example 1: Query a string composed of 26 English characters for the value under root.sg.d1
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[A-Za-z]+$'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-Example 2: Query root.sg.device where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
+Example 2: Query root.sg.d1 where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[a-z]+$' and time > 100
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
