@@ -20,29 +20,30 @@ package org.apache.iotdb.tsfile.encoding.decoder;
 
 import org.apache.iotdb.tsfile.encoding.encoder.FreqEncoder;
 
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.jtransforms.fft.DoubleFFT_1D;
 import org.junit.Before;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
-import java.util.stream.Stream;
+import java.util.Scanner;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertEquals;
 
 public class FreqDecoderTest {
 
-  private static int ROW_NUM = 1024;
-  private final double BASIC_FACTOR = 1;
+  private static final int ROW_NUM = 10000;
   ByteArrayOutputStream out;
   private FreqEncoder writer;
   private FreqDecoder reader;
-  private Random ran = new Random();
+  private final Random ran = new Random();
   private ByteBuffer buffer;
 
   @Before
@@ -56,120 +57,112 @@ public class FreqDecoderTest {
     reader.reset();
     double[] data = new double[ROW_NUM];
     for (int i = 0; i < ROW_NUM; i++) {
-      data[i] = Math.sin(i) * BASIC_FACTOR;
+      data[i] = Math.sin(0.25 * Math.PI * i);
     }
     double[] recover = shouldReadAndWrite(data, ROW_NUM);
-    assertEquals(0, rmse(data, recover, ROW_NUM), 0.01);
+    assertEquals(0, rmse(data, recover, ROW_NUM), 1e-10);
   }
 
-  //    @Test
-  //    public void testBoundInt() throws IOException {
-  //        reader.reset();
-  //        long[] data = new long[ROW_NUM];
-  //        for (int i = 2; i < 21; i++) {
-  //            boundInt(i, data);
-  //        }
-  //    }
-  //
-  //    private void boundInt(int power, long[] data) throws IOException {
-  //        reader.reset();
-  //        for (int i = 0; i < ROW_NUM; i++) {
-  //            data[i] = ran.nextInt((int) Math.pow(2, power)) * BASIC_FACTOR;
-  //        }
-  //        shouldReadAndWrite(data, ROW_NUM);
-  //    }
-  //    @Test
-  //    public void testRandom() throws IOException {
-  //        reader.reset();
-  //        long[] data = new long[ROW_NUM];
-  //        for (int i = 0; i < ROW_NUM; i++) {
-  //            data[i] = ran.nextLong();
-  //        }
-  //        shouldReadAndWrite(data, ROW_NUM);
-  //    }
-  //    @Test
-  //    public void testMaxMin() throws IOException {
-  //        reader.reset();
-  //        long[] data = new long[ROW_NUM];
-  //        for (int i = 0; i < ROW_NUM; i++) {
-  //            data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
-  //        }
-  //        shouldReadAndWrite(data, ROW_NUM);
-  //    }
-  //    @Test
-  //    public void testRegularEncoding() throws IOException {
-  //        reader.reset();
-  //        List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
-  //
-  //        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-  //
-  //        ROW_NUM = dates.size();
-  //
-  //        long[] data = new long[ROW_NUM];
-  //        for (int i = 0; i < dates.size(); i++) {
-  //            try {
-  //                Date date = dateFormat.parse(dates.get(i));
-  //                data[i] = date.getTime();
-  //            } catch (ParseException e) {
-  //                e.printStackTrace();
-  //            }
-  //        }
-  //
-  //        shouldReadAndWrite(data, ROW_NUM);
-  //    }
-  //    @Test
-  //    public void testRegularWithMissingPoints() throws IOException {
-  //        reader.reset();
-  //        List<String> dates = getBetweenDate("1970-01-08", "1978-01-08");
-  //
-  //        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
-  //
-  //        int kong = 0;
-  //        for (int i = 0; i < dates.size(); i++) {
-  //            if (i % 500 == 0) {
-  //                kong++;
-  //            }
-  //        }
-  //
-  //        ROW_NUM = dates.size() - kong;
-  //
-  //        long[] data = new long[ROW_NUM];
-  //        int j = 0;
-  //        for (int i = 0; i < dates.size(); i++) {
-  //            if (i % 500 == 0) {
-  //                continue;
-  //            }
-  //
-  //            try {
-  //                Date date = dateFormat.parse(dates.get(i));
-  //                data[j++] = date.getTime();
-  //            } catch (ParseException e) {
-  //                e.printStackTrace();
-  //            }
-  //        }
-  //
-  //        shouldReadAndWrite(data, ROW_NUM);
-  //    }
-  private List<String> getBetweenDate(String start, String end) {
-    List<String> list = new ArrayList<>();
-    LocalDate startDate = LocalDate.parse(start);
-    LocalDate endDate = LocalDate.parse(end);
-
-    long distance = ChronoUnit.DAYS.between(startDate, endDate);
-    if (distance < 1) {
-      return list;
+  @Test
+  public void testBoundInt() throws IOException {
+    reader.reset();
+    double[] data = new double[ROW_NUM];
+    for (int i = 2; i < 21; i++) {
+      boundInt(i, data);
     }
-    Stream.iterate(
-            startDate,
-            d -> {
-              return d.plusDays(1);
-            })
-        .limit(distance + 1)
-        .forEach(
-            f -> {
-              list.add(f.toString());
-            });
-    return list;
+  }
+
+  @Test
+  public void testLongTail() throws IOException {
+    reader.reset();
+    double[] a = new double[ROW_NUM * 2];
+    for (int i = 0; i < ROW_NUM; i++) {
+      double amp = Math.exp(-i);
+      double theta = ran.nextDouble() * 2 * Math.PI;
+      a[i * 2] = amp * Math.cos(theta);
+      a[i * 2 + 1] = amp * Math.sin(theta);
+    }
+    DoubleFFT_1D fft = new DoubleFFT_1D(ROW_NUM);
+    fft.complexInverse(a, false);
+    double data[] = new double[ROW_NUM];
+    for (int i = 0; i < ROW_NUM; i++) {
+      data[i] = a[i * 2];
+    }
+    double[] recover = shouldReadAndWrite(data, ROW_NUM);
+    assertEquals(0, rmse(data, recover, ROW_NUM), 0.02);
+  }
+
+  @Test
+  public void testMaxMin() throws IOException {
+    reader.reset();
+    double[] data = new double[ROW_NUM];
+    for (int i = 0; i < ROW_NUM; i++) {
+      data[i] = (i & 1) == 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
+    }
+    double[] recover = shouldReadAndWrite(data, ROW_NUM);
+    assertEquals(0, rmse(data, recover, ROW_NUM), 0.01 * Long.MAX_VALUE);
+  }
+
+  @Test
+  public void testConstantInt() throws IOException {
+    reader.reset();
+    double[] data = new double[ROW_NUM];
+    for (int i = 0; i < 10; i++) {
+      constantInt(i, data);
+    }
+  }
+
+  @Test
+  public void testRealData() throws IOException {
+    reader.reset();
+    for (int len = 10_0000; len <= 100_0000; len += 10_0000) {
+      double data[] = readFromFile("D:\\科研_THU\\Tools\\MavenTool\\data3.csv", len);
+      double[] recover = shouldReadAndWrite(data, len);
+      assertEquals(0, rmse(data, recover, len), 0.25);
+    }
+  }
+
+  private double[] readFromFile(String name, int totalNum) {
+    DoubleArrayList origin = new DoubleArrayList(totalNum);
+    try {
+      Scanner sc = new Scanner(new File(name));
+      sc.useDelimiter("\\s*(,|\\r|\\n)\\s*"); // 设置分隔符，以逗号或回车分隔，前后可以有若干个空白符
+      while (sc.hasNext()) {
+        double x = sc.nextDouble();
+        origin.add(x);
+        if (origin.size() >= totalNum) {
+          break;
+        }
+      }
+      int m = origin.size();
+      Random random = new Random();
+      for (int i = m; i < totalNum; i++) {
+        origin.add(origin.get(i % m) + random.nextGaussian());
+      }
+      sc.close();
+    } catch (FileNotFoundException ex) {
+      Logger.getLogger(FreqDecoderTest.class.getName()).log(Level.SEVERE, null, ex);
+    }
+    return origin.toArray();
+  }
+
+  private void boundInt(int power, double[] data) throws IOException {
+    reader.reset();
+    double maxn = 1 << power;
+    for (int i = 0; i < ROW_NUM; i++) {
+      data[i] = ran.nextDouble() * maxn;
+    }
+    double[] recover = shouldReadAndWrite(data, ROW_NUM);
+    assertEquals(0, rmse(data, recover, ROW_NUM), 0.02 * maxn);
+  }
+
+  private void constantInt(int value, double[] data) throws IOException {
+    reader.reset();
+    for (int i = 0; i < ROW_NUM; i++) {
+      data[i] = value;
+    }
+    double[] recover = shouldReadAndWrite(data, ROW_NUM);
+    assertEquals(0, rmse(data, recover, ROW_NUM), 1e-10);
   }
 
   private void writeData(double[] data, int length) {

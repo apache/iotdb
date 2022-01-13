@@ -112,6 +112,8 @@ public abstract class Decoder {
         }
       case DICTIONARY:
         return new DictionaryDecoder();
+      case FREQ:
+        return new FreqDecoder();
       default:
         throw new TsFileDecodingException(String.format(ERROR_MSG, encoding, dataType));
     }

@@ -31,11 +31,11 @@ import java.util.PriorityQueue;
 public class FreqEncoder extends Encoder {
 
   protected static final int BLOCK_DEFAULT_SIZE = 1024;
-  private static final Logger logger = LoggerFactory.getLogger(DeltaBinaryEncoder.class);
+  private static final Logger logger = LoggerFactory.getLogger(FreqEncoder.class);
   private ByteArrayOutputStream out;
   private int blockSize;
   private int writeIndex = 0;
-  private double threshold = 1 - 1e-6;
+  private double threshold = 1 - 1e-4;
   private int base;
   private double[] dataBuffer;
   private DoubleFFT_1D transformer;
@@ -62,6 +62,21 @@ public class FreqEncoder extends Encoder {
   }
 
   @Override
+  public void encode(float value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
+  public void encode(int value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
+  public void encode(long value, ByteArrayOutputStream out) {
+    encode((double) value, out);
+  }
+
+  @Override
   public void flush(ByteArrayOutputStream out) {
     try {
       flushBlock(out);
@@ -84,7 +99,7 @@ public class FreqEncoder extends Encoder {
     if (writeIndex > 0) {
       fft();
       ArrayList<Point> list = selectPoints();
-      //            System.out.println(list.size());
+      //                        System.out.println(list.size());
       byte[] data = encodeBlock(list);
       //            System.out.println(data.length);
       out.write(data);
@@ -97,13 +112,14 @@ public class FreqEncoder extends Encoder {
     int m = list.size();
     int[] index = new int[m];
     int[] amptitude = new int[m];
-    byte[] angle = new byte[m];
-    double eps1 = Math.pow(2, base), eps2 = Math.PI / 128;
+    double[] angle = new double[m];
+    double eps1 = Math.pow(2, base); // eps2 = Math.PI / 128;
     for (int i = 0; i < m; i++) {
       Point p = list.get(i);
       index[i] = p.getIndex();
-      amptitude[i] = (int) Math.round(p.getSquareModulus() / eps1);
-      angle[i] = (byte) (Math.round(p.getAngle() / eps2) + 128);
+      amptitude[i] = (int) Math.round(p.getAmp() / eps1);
+      angle[i] = p.getAngle();
+      //            angle[i] = (byte) (Math.round(p.getAngle() / eps2) + 128);
     }
     BitConstructor constructor = new BitConstructor(8 + 13 * m);
     // 16位原始数据长度
@@ -117,17 +133,20 @@ public class FreqEncoder extends Encoder {
     constructor.pad();
     //        System.out.println(constructor.sizeInBytes());
     // 以降序格式编码amplitude序列
-    encodeDescend(amptitude, constructor);
+    encodeDescend(amptitude, angle, constructor);
     constructor.pad();
     //        System.out.println(constructor.sizeInBytes());
     // 以原始格式编码angle序列
-    constructor.add(angle);
-    //        System.out.println(constructor.sizeInBytes());
+    //        constructor.add(angle);
+    //            System.out.println(constructor.sizeInBytes());
     // 返回编码后的字节流
     return constructor.toByteArray();
   }
 
-  private void encodeDescend(int[] value, BitConstructor constructor) {
+  private void encodeDescend(int[] value, double[] angle, BitConstructor constructor) {
+    if (value.length == 0) {
+      return;
+    }
     // 8位，第一个数的位数
     int bits = getValueWidth(value[0]);
     constructor.add(bits, 8);
@@ -135,11 +154,16 @@ public class FreqEncoder extends Encoder {
     // 存储所有数据
     for (int i = 0; i < value.length; i++) {
       constructor.add(value[i], bits);
+      int a = (int) Math.round((angle[i] + Math.PI) / (2 * Math.PI) * (1 << bits));
+      constructor.add(a, bits);
       bits = getValueWidth(value[i]);
     }
   }
 
   private void encodeTS2DIFF(int[] value, BitConstructor constructor) {
+    if (value.length == 0) {
+      return;
+    }
     // 差分
     int diff[] = new int[value.length];
     diff[0] = value[0];
@@ -177,8 +201,8 @@ public class FreqEncoder extends Encoder {
     return 64 - Long.numberOfLeadingZeros(x);
   }
 
-  private int getBase(int n, double sum2) {
-    double temp = (1 - threshold) * sum2 / n;
+  private int getBase(double sum1, double sum2) {
+    double temp = (1 - threshold) * sum2 / sum1;
     return max2Power(temp);
   }
 
@@ -208,15 +232,16 @@ public class FreqEncoder extends Encoder {
   private ArrayList<Point> selectPoints() {
     int n = this.writeIndex;
     // 利用优先队列（堆）来维护信息量大的数据点
-    double temp = 0, sum2 = 0;
+    double temp = 0, sum1 = 0, sum2 = 0;
     Point point;
     PriorityQueue<Point> queue = new PriorityQueue<>(n / 2);
-    for (int i = 0; i < n / 2; i++) {
+    for (int i = 0; i <= n / 2; i++) {
       point = new Point(i, dataBuffer[2 * i], dataBuffer[2 * i + 1]);
       queue.add(point);
+      sum1 += point.getModulus();
       sum2 += point.getPower();
     }
-    this.base = getBase(n, sum2);
+    this.base = getBase(sum1, sum2);
     // 挑选数据量大的数据点加入keepList
     ArrayList<Point> keepList = new ArrayList<>();
     while (temp < threshold * sum2) {
@@ -256,9 +281,13 @@ public class FreqEncoder extends Encoder {
       return this.squareModulus * (index == 0 ? 1 : 2);
     }
 
+    public double getModulus() {
+      return getAmp() * (index == 0 ? 1 : 2);
+    }
+
     /** @return the amp */
-    public double getSquareModulus() {
-      return this.squareModulus;
+    public double getAmp() {
+      return Math.sqrt(this.squareModulus);
     }
 
     /** @return the angle */

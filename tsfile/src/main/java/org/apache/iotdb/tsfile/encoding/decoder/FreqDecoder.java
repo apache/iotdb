@@ -46,6 +46,21 @@ public class FreqDecoder extends Decoder {
   }
 
   @Override
+  public float readFloat(ByteBuffer buffer) {
+    return (float) readDouble(buffer);
+  }
+
+  @Override
+  public int readInt(ByteBuffer buffer) {
+    return (int) Math.round(readDouble(buffer));
+  }
+
+  @Override
+  public long readLong(ByteBuffer buffer) {
+    return (long) Math.round(readDouble(buffer));
+  }
+
+  @Override
   public boolean hasNext(ByteBuffer buffer) throws IOException {
     return (nextReadIndex < readTotalCount) || buffer.hasRemaining();
   }
@@ -60,29 +75,25 @@ public class FreqDecoder extends Decoder {
     BitReader reader = new BitReader(buffer);
     // 16位原始数据长度
     this.readTotalCount = (int) reader.next(16);
-    //            System.out.println(readTotalCount);
     // 16位数据点个数
     int m = (int) reader.next(16);
-    //            System.out.println(m);
     // 32位基底
     int base = (int) reader.next(32);
     // 以TS_2DIFF格式解码index序列
-    int[] index = decodeTS2DIFF(m, reader);
+    int[] index = new int[m];
+    decodeTS2DIFF(index, reader);
     reader.skip();
-    //             System.out.println(buffer.remaining());
-    // 以降序格式解码amplitude序列
-    int[] amplitude = decodeDescend(m, reader);
+    // 以降序格式解码amplitude和angle序列
+    int amplitude[] = new int[m];
+    double angle[] = new double[m];
+    decodeDescend(amplitude, angle, reader);
     reader.skip();
-    //             System.out.println(buffer.remaining());
-    // 以原始格式解码angle序列
-    byte[] angle = reader.nextBytes(m);
-    //            System.out.println(buffer.remaining());
     // 序列反离散化
     double a[] = new double[readTotalCount * 2];
-    double eps1 = Math.pow(2, base), eps2 = Math.PI / 128;
+    double eps1 = Math.pow(2, base);
     for (int i = 0; i < m; i++) {
-      double amp = Math.sqrt(amplitude[i] * eps1);
-      double theta = (angle[i] - 128) * eps2;
+      double amp = amplitude[i] * eps1;
+      double theta = angle[i];
       int k = index[i];
       a[k * 2] = amp * Math.cos(theta);
       a[k * 2 + 1] = amp * Math.sin(theta);
@@ -100,7 +111,11 @@ public class FreqDecoder extends Decoder {
     }
   }
 
-  private int[] decodeTS2DIFF(int m, BitReader reader) {
+  private void decodeTS2DIFF(int value[], BitReader reader) {
+    if (value.length == 0) {
+      return;
+    }
+    int m = value.length;
     int minDiff = (int) reader.next(32); // 32位最小差分
     int bits = (int) reader.next(8); // 8位数据宽度
     // 读取所有差值
@@ -109,24 +124,25 @@ public class FreqDecoder extends Decoder {
       diff[i] = (int) (reader.next(bits) + minDiff);
     }
     // 去差分
-    int value[] = new int[m];
     value[0] = diff[0];
     for (int i = 1; i < m; i++) {
       value[i] = value[i - 1] + diff[i];
     }
-    return value;
   }
 
-  private int[] decodeDescend(int m, BitReader reader) {
+  private void decodeDescend(int amp[], double angle[], BitReader reader) {
+    if (amp.length == 0) {
+      return;
+    }
     // 8位，第一个数的位数
     int bits = (int) reader.next(8);
     // 读取所有数据
-    int value[] = new int[m];
-    for (int i = 0; i < m; i++) {
-      value[i] = (int) reader.next(bits);
-      bits = getValueWidth(value[i]);
+    for (int i = 0; i < amp.length; i++) {
+      amp[i] = (int) reader.next(bits);
+      int a = (int) reader.next(bits);
+      angle[i] = a * 1.0 / (1 << bits) * 2 * Math.PI - Math.PI;
+      bits = getValueWidth(amp[i]);
     }
-    return value;
   }
 
   /**

@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.iotdb.tsfile.encoding.encoder;
 
 import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
@@ -70,6 +69,8 @@ public abstract class TSEncodingBuilder {
         return new GorillaV2();
       case DICTIONARY:
         return new Dictionary();
+      case FREQ:
+        return new Freq();
       default:
         throw new UnsupportedOperationException(type.toString());
     }
@@ -122,6 +123,28 @@ public abstract class TSEncodingBuilder {
               maxStringLength);
         }
       }
+    }
+  }
+
+  /** for INT32, INT64, FLOAT, DOUBLE. */
+  public static class Freq extends TSEncodingBuilder {
+
+    @Override
+    public Encoder getEncoder(TSDataType type) {
+      switch (type) {
+        case INT32:
+        case INT64:
+        case FLOAT:
+        case DOUBLE:
+          return new FreqEncoder();
+        default:
+          throw new UnSupportedDataTypeException("FREQ doesn't support data type: " + type);
+      }
+    }
+
+    @Override
+    public void initFromProps(Map<String, String> props) {
+      // do nothing temporally, todo in the future
     }
   }
 
