@@ -20,6 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
+import org.apache.iotdb.db.engine.cache.ChunkCache;
+import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTest;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -429,13 +431,13 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    System.out.println(tsFileManager.getTsFileList(true));
+
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true).subList(3, 6),
             new ArrayList<>(),
             null,
             null,
@@ -698,13 +700,14 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             deviceIds[0]
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
-    System.out.println(tsFileManager.getTsFileList(true));
+    TimeSeriesMetadataCache.getInstance().clear();
+    ChunkCache.getInstance().clear();
     tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
             measurementSchemas[0].getType(),
             EnvironmentUtils.TEST_QUERY_CONTEXT,
-            tsFileManager.getTsFileList(true),
+            tsFileManager.getTsFileList(true).subList(0, 5),
             new ArrayList<>(),
             null,
             null,
