@@ -22,19 +22,20 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
-import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
+import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
 
 public class MockSchemaFile implements ISchemaFile {
 
@@ -51,14 +52,30 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public IMNode getChildNode(IMNode parent, String childName) {
-    return cloneMNode(mockFile.get(getSegmentAddress(parent)).get(childName));
+    Map<String, IMNode> segment = getSegment(parent);
+    IMNode result = null;
+    if (segment != null) {
+      result = cloneMNode(segment.get(childName));
+    }
+    if (result != null) {
+      result.setParent(parent);
+    }
+    return result;
   }
 
   @Override
   public Iterator<IMNode> getChildren(IMNode parent) {
+
+    Map<String, IMNode> segment = getSegment(parent);
+    if (segment == null) {
+      return Collections.emptyIterator();
+    }
     Map<String, IMNode> map = new HashMap<>();
-    for (IMNode node : mockFile.get(getSegmentAddress(parent)).values()) {
-      map.put(node.getName(), cloneMNode(node));
+    IMNode cloned;
+    for (IMNode node : getSegment(parent).values()) {
+      cloned = cloneMNode(node);
+      cloned.setParent(parent);
+      map.put(node.getName(), cloned);
     }
     return map.values().iterator();
   }
@@ -68,9 +85,8 @@ public class MockSchemaFile implements ISchemaFile {
     ICachedMNodeContainer container = getCachedMNodeContainer(parent);
     long address = container.getSegmentAddress();
     if (container.isVolatile()) {
-      address = fileTail++;
+      address = allocateSegment();
       container.setSegmentAddress(address);
-      mockFile.put(address, new HashMap<>());
     }
     write(address, container.getUpdatedChildBuffer());
     write(address, container.getNewChildBuffer());
@@ -108,17 +124,18 @@ public class MockSchemaFile implements ISchemaFile {
     mockFile.clear();
   }
 
-  private ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
-    IMNodeContainer container = node.getChildren();
-    if (container.equals(MNodeContainers.emptyMNodeContainer())) {
-      container = new CachedMNodeContainer();
-      node.setChildren(container);
-    }
-    return (ICachedMNodeContainer) container;
-  }
-
   private long getSegmentAddress(IMNode node) {
     return getCachedMNodeContainer(node).getSegmentAddress();
+  }
+
+  private Map<String, IMNode> getSegment(IMNode node) {
+    return mockFile.get(getSegmentAddress(node));
+  }
+
+  private long allocateSegment() {
+    long address = fileTail++;
+    mockFile.put(address, new HashMap<>());
+    return address;
   }
 
   private IMNode cloneMNode(IMNode node) {
@@ -138,23 +155,22 @@ public class MockSchemaFile implements ISchemaFile {
     } else if (node.isStorageGroup() && node.isEntity()) {
       StorageGroupEntityMNode result =
           new StorageGroupEntityMNode(
-              node.getParent(), node.getName(), node.getAsStorageGroupMNode().getDataTTL());
+              null, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
       result.setAligned(node.getAsEntityMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isEntity()) {
-      IEntityMNode result = new EntityMNode(node.getParent(), node.getName());
+      IEntityMNode result = new EntityMNode(null, node.getName());
       result.setAligned(node.getAsEntityMNode().isAligned());
       cloneInternalMNodeData(node, result);
       return result;
     } else if (node.isStorageGroup()) {
       StorageGroupMNode result =
-          new StorageGroupMNode(
-              node.getParent(), node.getName(), node.getAsStorageGroupMNode().getDataTTL());
+          new StorageGroupMNode(null, node.getName(), node.getAsStorageGroupMNode().getDataTTL());
       cloneInternalMNodeData(node, result);
       return result;
     } else {
-      InternalMNode result = new InternalMNode(node.getParent(), node.getName());
+      InternalMNode result = new InternalMNode(null, node.getName());
       cloneInternalMNodeData(node, result);
       return result;
     }

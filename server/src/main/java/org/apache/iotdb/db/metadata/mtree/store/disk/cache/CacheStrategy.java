@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mtree.store.disk.CachedMNodeContainer;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
 import java.util.ArrayList;
@@ -27,11 +26,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getBelongedContainer;
+import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
+
 public class CacheStrategy implements ICacheStrategy {
 
   Map<CacheEntry, IMNode> nodeCache = new ConcurrentHashMap<>();
 
   Map<CacheEntry, IMNode> nodeBuffer = new ConcurrentHashMap<>();
+
+  @Override
+  public boolean isCached(IMNode node) {
+    return node.getCacheEntry() != null;
+  }
 
   @Override
   public void updateCacheStatusAfterRead(IMNode node) {
@@ -61,7 +68,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
-    ICachedMNodeContainer container = (ICachedMNodeContainer) node.getChildren();
+    ICachedMNodeContainer container = getCachedMNodeContainer(node);
     CacheEntry cacheEntry;
     for (IMNode child : container.values()) {
       cacheEntry = child.getCacheEntry();
@@ -114,6 +121,7 @@ public class CacheStrategy implements ICacheStrategy {
       evictedMNodes.add(node);
     }
     if (node != null) {
+      node.getParent().deleteChild(node.getName());
       remove(node);
       collectEvictedMNodes(node, evictedMNodes);
     }
@@ -122,8 +130,9 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void collectEvictedMNodes(IMNode node, List<IMNode> evictedMNodes) {
     for (IMNode child : node.getChildren().values()) {
+      node.deleteChild(child.getName());
       remove(child);
-      evictedMNodes.add(node);
+      evictedMNodes.add(child);
       collectVolatileNodes(child, evictedMNodes);
     }
   }
@@ -138,9 +147,5 @@ public class CacheStrategy implements ICacheStrategy {
   public void clear() {
     nodeCache.clear();
     nodeBuffer.clear();
-  }
-
-  private CachedMNodeContainer getBelongedContainer(IMNode node) {
-    return (CachedMNodeContainer) node.getParent().getChildren();
   }
 }

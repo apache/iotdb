@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -276,6 +277,11 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
   }
 
   @Override
+  public Iterator<IMNode> getChildrenIterator() {
+    return new CachedMNodeContainerIterator();
+  }
+
+  @Override
   public Map<String, IMNode> getChildCache() {
     return childCache == null ? Collections.emptyMap() : childCache;
   }
@@ -300,9 +306,58 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
 
   @Override
   public void updateMNode(String name) {
-    IMNode node = childCache.remove(name);
+    IMNode node = null;
+    if (childCache != null) {
+      node = childCache.remove(name);
+    }
     if (node != null) {
+      if (updatedChildBuffer == null) {
+        updatedChildBuffer = new ConcurrentHashMap<>();
+      }
       updatedChildBuffer.put(name, node);
+    }
+  }
+
+  private class CachedMNodeContainerIterator implements Iterator<IMNode> {
+
+    Iterator<IMNode> iterator;
+    byte status = 0;
+
+    CachedMNodeContainerIterator() {
+      iterator = getChildCache().values().iterator();
+    }
+
+    @Override
+    public boolean hasNext() {
+      if (iterator.hasNext()) {
+        return true;
+      }
+      while (!iterator.hasNext()) {
+        if (!changeStatus()) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    @Override
+    public IMNode next() {
+      return iterator.next();
+    }
+
+    private boolean changeStatus() {
+      switch (status) {
+        case 0:
+          iterator = getNewChildBuffer().values().iterator();
+          status = 1;
+          return true;
+        case 1:
+          iterator = getUpdatedChildBuffer().values().iterator();
+          status = 2;
+          return true;
+        default:
+          return false;
+      }
     }
   }
 }

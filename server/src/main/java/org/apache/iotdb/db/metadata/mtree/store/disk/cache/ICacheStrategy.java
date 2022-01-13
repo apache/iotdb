@@ -24,6 +24,8 @@ import java.util.List;
 
 public interface ICacheStrategy {
 
+  boolean isCached(IMNode node);
+
   void updateCacheStatusAfterRead(IMNode node);
 
   void updateCacheStatusAfterAppend(IMNode node);

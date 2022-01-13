@@ -34,6 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import static org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer.getCachedMNodeContainer;
+
 public class CachedMTreeStore implements IMTreeStore {
 
   private IMemManager memManager = new MemManager();
@@ -58,27 +60,31 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public boolean hasChild(IMNode parent, String name) {
-    return getChild(parent, name) == null;
+    return getChild(parent, name) != null;
   }
 
   @Override
   public IMNode getChild(IMNode parent, String name) {
     IMNode node = parent.getChild(name);
     if (node == null) {
-      node = file.getChildNode(parent, name);
-      if (node != null) {
-        cacheMNodeInMemory(node);
+      if (!getCachedMNodeContainer(parent).isVolatile()) {
+        node = file.getChildNode(parent, name);
+        if (node != null && cacheStrategy.isCached(parent)) {
+          cacheMNodeInMemory(node);
+          cacheStrategy.updateCacheStatusAfterRead(node);
+        }
       }
-    }
-    if (node != null) {
-      cacheStrategy.updateCacheStatusAfterRead(node);
+    } else {
+      if (cacheStrategy.isCached(node)) {
+        cacheStrategy.updateCacheStatusAfterRead(node);
+      }
     }
     return node;
   }
 
   @Override
   public Iterator<IMNode> getChildrenIterator(IMNode parent) {
-    return new CachedMNodeIterator(file.getChildren(parent));
+    return new CachedMNodeIterator(parent);
   }
 
   @Override
@@ -98,7 +104,9 @@ public class CachedMTreeStore implements IMTreeStore {
     IMNode node = parent.getChild(childName);
     parent.deleteChild(childName);
     cacheStrategy.remove(node);
-    file.deleteMNode(node);
+    if (!getCachedMNodeContainer(parent).isVolatile()) {
+      file.deleteMNode(node);
+    }
   }
 
   @Override
@@ -129,6 +137,7 @@ public class CachedMTreeStore implements IMTreeStore {
     if (!memManager.requestMemResource(node)) {
       executeMemoryRelease();
       memManager.requestMemResource(node);
+      node.getParent().addChild(node);
     }
   }
 
@@ -149,26 +158,64 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private class CachedMNodeIterator implements Iterator<IMNode> {
 
-    Iterator<IMNode> diskIterator;
+    IMNode parent;
+    Iterator<IMNode> iterator;
+    boolean isIteratingDisk = false;
+    IMNode nextNode;
 
-    CachedMNodeIterator(Iterator<IMNode> diskIterator) {
-      this.diskIterator = diskIterator;
+    CachedMNodeIterator(IMNode parent) {
+      this.parent = parent;
+      this.iterator = getCachedMNodeContainer(parent).getChildrenIterator();
     }
 
     @Override
     public boolean hasNext() {
-      return diskIterator.hasNext();
+      readNext();
+      return nextNode != null;
     }
 
+    // must invoke hasNext() first
     @Override
     public IMNode next() {
-      IMNode result = diskIterator.next();
-      if (result != null) {
-        cacheMNodeInMemory(result);
-        cacheStrategy.updateCacheStatusAfterRead(result);
-        return result;
+      if (nextNode == null) {
+        throw new NoSuchElementException();
       }
-      throw new NoSuchElementException();
+      if (!isIteratingDisk) {
+        if (cacheStrategy.isCached(nextNode)) {
+          cacheStrategy.updateCacheStatusAfterRead(nextNode);
+        }
+      } else {
+        if (cacheStrategy.isCached(parent)) {
+          cacheMNodeInMemory(nextNode);
+          cacheStrategy.updateCacheStatusAfterRead(nextNode);
+        }
+      }
+      IMNode result = nextNode;
+      nextNode = null;
+      return result;
+    }
+
+    private void readNext() {
+      if (!isIteratingDisk) {
+        if (iterator.hasNext()) {
+          nextNode = iterator.next();
+          return;
+        } else {
+          startIteratingDisk();
+        }
+      }
+
+      while (iterator.hasNext()) {
+        nextNode = iterator.next();
+        if (!parent.hasChild(nextNode.getName())) {
+          break;
+        }
+      }
+    }
+
+    private void startIteratingDisk() {
+      iterator = file.getChildren(parent);
+      isIteratingDisk = true;
     }
   }
 }

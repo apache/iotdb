@@ -20,7 +20,9 @@ package org.apache.iotdb.db.metadata.mtree.store.disk;
 
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
+import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 
+import java.util.Iterator;
 import java.util.Map;
 
 public interface ICachedMNodeContainer extends IMNodeContainer {
@@ -35,6 +37,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   boolean isExpelled();
 
+  Iterator<IMNode> getChildrenIterator();
+
   Map<String, IMNode> getChildCache();
 
   Map<String, IMNode> getNewChildBuffer();
@@ -44,4 +48,17 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
   void loadChildrenFromDisk(Map<String, IMNode> children);
 
   void updateMNode(String name);
+
+  static ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
+    IMNodeContainer container = node.getChildren();
+    if (container.equals(MNodeContainers.emptyMNodeContainer())) {
+      container = new CachedMNodeContainer();
+      node.setChildren(container);
+    }
+    return (ICachedMNodeContainer) container;
+  }
+
+  static ICachedMNodeContainer getBelongedContainer(IMNode node) {
+    return (ICachedMNodeContainer) node.getParent().getChildren();
+  }
 }
