@@ -45,6 +45,7 @@ public class InsertTabletPlansIterator {
 
   private final PartialPath fromPath;
   private final List<PartialPath> intoPaths;
+  private final boolean isIntoPathsAligned;
 
   private final int tabletRowLimit;
 
@@ -54,12 +55,14 @@ public class InsertTabletPlansIterator {
       QueryPlan queryPlan,
       QueryDataSet queryDataSet,
       PartialPath fromPath,
-      List<PartialPath> intoPaths)
+      List<PartialPath> intoPaths,
+      boolean isIntoPathsAligned)
       throws IllegalPathException {
     this.queryPlan = queryPlan;
     this.queryDataSet = queryDataSet;
     this.fromPath = fromPath;
     this.intoPaths = intoPaths;
+    this.isIntoPathsAligned = isIntoPathsAligned;
 
     tabletRowLimit =
         IoTDBDescriptor.getInstance().getConfig().getSelectIntoInsertTabletPlanRowLimit();
@@ -95,7 +98,8 @@ public class InsertTabletPlansIterator {
     for (int i = 0, intoPathsSize = intoPaths.size(); i < intoPathsSize; i++) {
       String device = intoPaths.get(i).getDevice();
       if (!deviceToPlanGeneratorMap.containsKey(device)) {
-        deviceToPlanGeneratorMap.put(device, new InsertTabletPlanGenerator(device, tabletRowLimit));
+        deviceToPlanGeneratorMap.put(
+            device, new InsertTabletPlanGenerator(device, tabletRowLimit, isIntoPathsAligned));
       }
       deviceToPlanGeneratorMap
           .get(device)

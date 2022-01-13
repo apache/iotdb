@@ -33,6 +33,9 @@ class TSDataType(Enum):
     def __eq__(self, other) -> bool:
         return self.value == other.value
 
+    def __hash__(self):
+        return self.value
+
 
 @unique
 class TSEncoding(Enum):
@@ -51,6 +54,9 @@ class TSEncoding(Enum):
     def __eq__(self, other) -> bool:
         return self.value == other.value
 
+    def __hash__(self):
+        return self.value
+
 
 @unique
 class Compressor(Enum):
@@ -67,3 +73,6 @@ class Compressor(Enum):
     # https://bugs.python.org/issue30545
     def __eq__(self, other) -> bool:
         return self.value == other.value
+
+    def __hash__(self):
+        return self.value
