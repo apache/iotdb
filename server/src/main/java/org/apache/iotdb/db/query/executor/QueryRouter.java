@@ -174,14 +174,17 @@ public class QueryRouter implements IQueryRouter {
               innerPlan.getDeduplicatedDataTypes().get(i)));
     }
     QueryDataSet innerQueryDataSet;
+    // We set keepNull to true when we want to keep the rows whose fields are all null except the
+    // timestamp field.
     boolean keepNull = false;
     if (innerPlan instanceof GroupByTimePlan) {
       innerQueryDataSet = groupBy((GroupByTimePlan) innerPlan, context);
+      // In GroupByTimePlan, we think it is better to keep the windows with null values, so we set
+      // keepNull to true.
       keepNull = true;
     } else {
       innerQueryDataSet = aggregate(innerPlan, context);
     }
-
     UDFQueryExecutor udfQueryExecutor = new UDFQueryExecutor(udafPlan);
     return udfQueryExecutor.executeFromAlignedDataSet(
         context, innerQueryDataSet, aggregationResultTypes, keepNull);

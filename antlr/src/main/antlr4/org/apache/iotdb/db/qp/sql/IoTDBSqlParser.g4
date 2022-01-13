@@ -97,8 +97,8 @@ createSchemaTemplate
     ;
 
 templateMeasurementClause
-    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
-    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
+    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
     (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
     ;
 
