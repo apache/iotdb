@@ -41,7 +41,8 @@ import org.apache.iotdb.db.query.dataset.ListDataSet;
 import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
 import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -94,9 +95,7 @@ public class RestApiServiceImpl extends RestApiService {
       RequestValidationHandler.validateSQL(sql);
 
       PhysicalPlan physicalPlan =
-          basicServiceProvider
-              .getPlanner()
-              .parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
+          planner.parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
       physicalPlan.setLoginUserName(securityContext.getUserPrincipal().getName());
       if (!(physicalPlan instanceof QueryPlan)
           && !(physicalPlan instanceof ShowPlan)

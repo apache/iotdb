@@ -141,7 +141,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
 
       PhysicalPlan physicalPlan =
-          basicServiceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
+          serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
