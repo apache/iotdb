@@ -181,7 +181,7 @@ public class SyncClient implements ISyncClient {
                         fileLock.release();
                         randomAccessFile2.close();
                       } catch (Exception e) {
-                        logger.error("Unable to remove lock file: {}", lockFile, e);
+                        // logger.error("Unable to remove lock file: {}", lockFile, e);
                       }
                     }));
         return true;
