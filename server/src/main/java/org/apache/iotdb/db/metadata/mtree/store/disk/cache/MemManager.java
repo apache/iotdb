@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public class MemManager implements IMemManager {
 
-  private int capacity = 1000;
+  private int capacity = 0;
 
   private int size;
 
@@ -38,7 +38,7 @@ public class MemManager implements IMemManager {
 
   @Override
   public boolean isUnderThreshold() {
-    return size < capacity * 0.6;
+    return size <= capacity * 0.6;
   }
 
   @Override

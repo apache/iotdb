@@ -318,6 +318,18 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     }
   }
 
+  @Override
+  public void moveChildToCache(String name) {
+    IMNode node = newChildBuffer.remove(name);
+    if (node == null) {
+      node = updatedChildBuffer.remove(name);
+    }
+    if (childCache == null) {
+      childCache = new ConcurrentHashMap<>();
+    }
+    childCache.put(name, node);
+  }
+
   private class CachedMNodeContainerIterator implements Iterator<IMNode> {
 
     Iterator<IMNode> iterator;

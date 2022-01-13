@@ -100,16 +100,17 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public void deleteMNode(IMNode targetNode) {
-    ICachedMNodeContainer segment = getCachedMNodeContainer(targetNode.getParent());
-    mockFile.get(segment.getSegmentAddress()).remove(targetNode.getName());
-    deleteMNodeRecursively(targetNode);
+    IMNode removedNode = getSegment(targetNode.getParent()).remove(targetNode.getName());
+    deleteMNodeRecursively(removedNode);
   }
 
   private void deleteMNodeRecursively(IMNode node) {
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    mockFile.remove(container.getSegmentAddress());
-    for (IMNode child : container.values()) {
-      deleteMNodeRecursively(child);
+    Map<String, IMNode> removedSegment = mockFile.remove(container.getSegmentAddress());
+    if (removedSegment != null) {
+      for (IMNode child : removedSegment.values()) {
+        deleteMNodeRecursively(child);
+      }
     }
   }
 

@@ -60,22 +60,34 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterUpdate(IMNode node) {
-    CacheEntry cacheEntry = new CacheEntry();
-    node.setCacheEntry(new CacheEntry());
-    nodeBuffer.put(cacheEntry, node);
-    getBelongedContainer(node).updateMNode(node.getName());
+    CacheEntry cacheEntry = node.getCacheEntry();
+    if (!cacheEntry.isVolatile()) {
+      cacheEntry.setVolatile(true);
+      nodeBuffer.put(cacheEntry, node);
+      getBelongedContainer(node).updateMNode(node.getName());
+    }
   }
 
   @Override
   public void updateCacheStatusAfterPersist(IMNode node) {
     ICachedMNodeContainer container = getCachedMNodeContainer(node);
-    CacheEntry cacheEntry;
-    for (IMNode child : container.values()) {
-      cacheEntry = child.getCacheEntry();
-      cacheEntry.setVolatile(false);
-      nodeBuffer.remove(cacheEntry);
-      nodeCache.put(cacheEntry, node);
+    Map<String, IMNode> persistedChildren = container.getNewChildBuffer();
+    for (IMNode child : persistedChildren.values()) {
+      updateCacheStatusAfterPersist(child, container);
     }
+
+    persistedChildren = container.getUpdatedChildBuffer();
+    for (IMNode child : persistedChildren.values()) {
+      updateCacheStatusAfterPersist(child, container);
+    }
+  }
+
+  private void updateCacheStatusAfterPersist(IMNode node, ICachedMNodeContainer container) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    cacheEntry.setVolatile(false);
+    container.moveChildToCache(node.getName());
+    nodeBuffer.remove(cacheEntry);
+    nodeCache.put(cacheEntry, node);
   }
 
   @Override
@@ -115,14 +127,24 @@ public class CacheStrategy implements ICacheStrategy {
     IMNode node = null;
     List<IMNode> evictedMNodes = new ArrayList<>();
     if (!nodeCache.isEmpty()) {
-      node = nodeCache.values().stream().findFirst().get();
+      for (CacheEntry cacheEntry : nodeCache.keySet()) {
+        if (!cacheEntry.isPinned()) {
+          node = nodeCache.get(cacheEntry);
+          break;
+        }
+      }
     } else if (!nodeBuffer.isEmpty()) {
-      node = nodeBuffer.values().stream().findFirst().get();
-      evictedMNodes.add(node);
+      for (CacheEntry cacheEntry : nodeBuffer.keySet()) {
+        if (!cacheEntry.isPinned()) {
+          node = nodeBuffer.get(cacheEntry);
+          break;
+        }
+      }
     }
     if (node != null) {
       node.getParent().deleteChild(node.getName());
       remove(node);
+      evictedMNodes.add(node);
       collectEvictedMNodes(node, evictedMNodes);
     }
     return evictedMNodes;
@@ -138,10 +160,16 @@ public class CacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public void pinMNode(IMNode node) {}
+  public void pinMNode(IMNode node) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    cacheEntry.pin();
+  }
 
   @Override
-  public void unPinMNode(IMNode node) {}
+  public void unPinMNode(IMNode node) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    cacheEntry.unPin();
+  }
 
   @Override
   public void clear() {

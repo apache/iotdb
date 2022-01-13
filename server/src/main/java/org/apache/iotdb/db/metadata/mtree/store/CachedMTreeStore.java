@@ -70,8 +70,9 @@ public class CachedMTreeStore implements IMTreeStore {
       if (!getCachedMNodeContainer(parent).isVolatile()) {
         node = file.getChildNode(parent, name);
         if (node != null && cacheStrategy.isCached(parent)) {
-          cacheMNodeInMemory(node);
-          cacheStrategy.updateCacheStatusAfterRead(node);
+          if (cacheMNodeInMemory(node)) {
+            cacheStrategy.updateCacheStatusAfterRead(node);
+          }
         }
       }
     } else {
@@ -89,9 +90,12 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void addChild(IMNode parent, String childName, IMNode child) {
-    parent.addChild(childName, child);
-    cacheMNodeInMemory(child);
-    cacheStrategy.updateCacheStatusAfterAppend(child);
+    if (cacheMNodeInMemory(child)) {
+      cacheStrategy.updateCacheStatusAfterAppend(child);
+    } else {
+      parent.addChild(childName, child);
+      file.writeMNode(parent);
+    }
   }
 
   @Override
@@ -103,7 +107,9 @@ public class CachedMTreeStore implements IMTreeStore {
   public void deleteChild(IMNode parent, String childName) {
     IMNode node = parent.getChild(childName);
     parent.deleteChild(childName);
-    cacheStrategy.remove(node);
+    if (cacheStrategy.isCached(node)) {
+      cacheStrategy.remove(node);
+    }
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       file.deleteMNode(node);
     }
@@ -116,7 +122,11 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void updateMNode(IMNode node) {
-    cacheStrategy.updateCacheStatusAfterUpdate(node);
+    if (cacheStrategy.isCached(node)) {
+      cacheStrategy.updateCacheStatusAfterUpdate(node);
+    } else {
+      file.writeMNode(node.getParent());
+    }
   }
 
   @Override
@@ -133,25 +143,34 @@ public class CachedMTreeStore implements IMTreeStore {
     file = null;
   }
 
-  private void cacheMNodeInMemory(IMNode node) {
+  private boolean cacheMNodeInMemory(IMNode node) {
     if (!memManager.requestMemResource(node)) {
       executeMemoryRelease();
-      memManager.requestMemResource(node);
-      node.getParent().addChild(node);
+      if (cacheStrategy.isCached(node.getParent())) {
+        memManager.requestMemResource(node);
+        return true;
+      }
     }
+    return false;
   }
 
   private void executeMemoryRelease() {
-    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
-    for (IMNode volatileNode : nodesToPersist) {
-      file.writeMNode(volatileNode);
-      cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
-    }
+    flushVolatileNodes();
     List<IMNode> evictedMNodes;
     while (!memManager.isUnderThreshold()) {
       evictedMNodes = cacheStrategy.evict();
       for (IMNode evictedMNode : evictedMNodes) {
         memManager.releaseMemResource(evictedMNode);
+      }
+    }
+  }
+
+  private void flushVolatileNodes() {
+    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
+    for (IMNode volatileNode : nodesToPersist) {
+      file.writeMNode(volatileNode);
+      if(cacheStrategy.isCached(volatileNode)){
+        cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
       }
     }
   }
@@ -186,8 +205,9 @@ public class CachedMTreeStore implements IMTreeStore {
         }
       } else {
         if (cacheStrategy.isCached(parent)) {
-          cacheMNodeInMemory(nextNode);
-          cacheStrategy.updateCacheStatusAfterRead(nextNode);
+          if (cacheMNodeInMemory(nextNode)) {
+            cacheStrategy.updateCacheStatusAfterRead(nextNode);
+          }
         }
       }
       IMNode result = nextNode;

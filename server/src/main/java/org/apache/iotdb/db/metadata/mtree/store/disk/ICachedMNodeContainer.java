@@ -49,6 +49,8 @@ public interface ICachedMNodeContainer extends IMNodeContainer {
 
   void updateMNode(String name);
 
+  void moveChildToCache(String name);
+
   static ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
     IMNodeContainer container = node.getChildren();
     if (container.equals(MNodeContainers.emptyMNodeContainer())) {

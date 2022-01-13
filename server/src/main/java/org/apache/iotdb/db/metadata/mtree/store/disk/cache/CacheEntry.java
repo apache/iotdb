@@ -18,9 +18,13 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 public class CacheEntry {
 
-  protected boolean isVolatile = true;
+  protected volatile boolean isVolatile = true;
+
+  protected volatile AtomicInteger semaphore;
 
   public boolean isVolatile() {
     return isVolatile;
@@ -28,5 +32,24 @@ public class CacheEntry {
 
   public void setVolatile(boolean aVolatile) {
     isVolatile = aVolatile;
+  }
+
+  public void pin() {
+    if (semaphore == null) {
+      synchronized (this) {
+        if (semaphore == null) {
+          semaphore = new AtomicInteger();
+        }
+      }
+    }
+    semaphore.getAndIncrement();
+  }
+
+  public void unPin() {
+    semaphore.getAndDecrement();
+  }
+
+  public boolean isPinned() {
+    return semaphore != null && semaphore.get() > 0;
   }
 }
