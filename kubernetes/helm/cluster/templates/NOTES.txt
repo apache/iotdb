@@ -28,5 +28,5 @@ To learn more about the release, try:
 
 To connect to iotdb server, use the address:
 
-  {{ .Release.Name }}-client.{{ .Release.Name }}.svc.cluster.local
+  {{ .Release.Name }}.{{ .Release.Name }}.svc.cluster.local
 

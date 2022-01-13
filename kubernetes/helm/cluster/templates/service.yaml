@@ -27,7 +27,9 @@ metadata:
   labels:
     app: {{ .Release.Name }}
 spec:
-  clusterIP: None
+  {{- if .Values.exposeService }}
+  type: {{ .Values.exposeService }}
+  {{- end }}
   selector:
     app: {{ .Release.Name }}
   ports:
