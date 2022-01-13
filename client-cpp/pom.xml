@@ -50,6 +50,11 @@
             <artifactId>client-cpp-tools-thrift</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.bazaarvoice.maven.plugins</groupId>
+            <artifactId>process-exec-maven-plugin</artifactId>
+            <version>0.9</version>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
