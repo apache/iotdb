@@ -729,4 +729,37 @@ public class IoTDBSelectIntoIT {
       }
     }
   }
+
+  // This case tests whether select into clause functions correctly when multiple columns are
+  // selected.
+  // It is possible that in the first few rows, some columns are null.
+  @Test
+  public void testSelectMultiColumnsWithTopKCase() throws SQLException {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "select -s1, sin(cos(tan(s1+s1*s2))) + cos(s1), top_k(s1,'k'='1') "
+              + "into k1,k2,k3 from root.sg.d1;");
+
+      try (ResultSet resultSet = statement.executeQuery("select k1 from root.sg.d1")) {
+        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+        for (int i = 1; i <= 6; ++i) {
+          assertTrue(resultSet.next());
+        }
+        assertFalse(resultSet.next());
+      }
+
+      // verify that only one row is selected into k3.
+      try (ResultSet resultSet = statement.executeQuery("select k3 from root.sg.d1")) {
+        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+        assertTrue(resultSet.next());
+        assertFalse(resultSet.next());
+      }
+
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
 }
