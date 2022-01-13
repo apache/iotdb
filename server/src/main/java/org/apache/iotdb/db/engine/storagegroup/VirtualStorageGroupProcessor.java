@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -113,7 +115,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -271,7 +272,8 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask =
-      Executors.newSingleThreadScheduledExecutor();
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.COMPACTION_SCHEDULE.getName());
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -401,7 +403,8 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    ScheduledExecutorService executorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
