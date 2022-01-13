@@ -1151,7 +1151,7 @@ public class IoTDBSimpleQueryIT {
       }
 
     } catch (SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
   }
 
@@ -1182,7 +1182,7 @@ public class IoTDBSimpleQueryIT {
         }
       }
     } catch (SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
   }
 
@@ -1250,7 +1250,7 @@ public class IoTDBSimpleQueryIT {
       }
 
     } catch (SQLException e) {
-      fail();
+      fail(e.getMessage());
     }
   }
 }

@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -121,8 +122,9 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
       try (IoTDBConnection connection = getConnection(60);
           Statement statement = connection.createStatement()) {
+        ResultSet resultSet = statement.executeQuery("SHOW TIMESERIES");
+        resultSet.close();
         break;
-
       } catch (SQLException e) {
         logger.debug(++counter + " time(s) connect to cluster failed!");
         logger.debug(e.getMessage());
