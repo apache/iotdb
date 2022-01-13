@@ -1509,12 +1509,10 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: TTL removing files before {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          new Date(ttlLowerBound));
-    }
+    logger.debug(
+        "{}: TTL removing files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
@@ -1537,19 +1535,16 @@ public class VirtualStorageGroupProcessor {
     resource.setDeleted(true);
 
     // ensure that the file is not used by any queries
-    tsFileManager.remove(resource, isSeq);
-
-    // try to delete physical data file
     if (resource.tryWriteLock()) {
       try {
+        // try to delete physical data file
         resource.remove();
-        if (logger.isInfoEnabled()) {
-          logger.info(
-              "Removed a file {} before {} by ttl ({}ms)",
-              resource.getTsFilePath(),
-              new Date(ttlLowerBound),
-              dataTTL);
-        }
+        tsFileManager.remove(resource, isSeq);
+        logger.info(
+            "Removed a file {} before {} by ttl ({}ms)",
+            resource.getTsFilePath(),
+            new Date(ttlLowerBound),
+            dataTTL);
       } finally {
         resource.writeUnlock();
       }
