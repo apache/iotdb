@@ -187,9 +187,6 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
 
  * Re-run maven command like `mvn compile`
 
- * 
-
- * 
 
 ## Recommended Debug Tool 
 
