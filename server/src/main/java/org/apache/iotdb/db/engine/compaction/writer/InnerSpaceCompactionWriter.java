@@ -44,7 +44,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void endChunkGroup() throws IOException {
     fileWriter.endChunkGroup();
-    // checkFileSizeAndMayOpenANewTargetFile();
   }
 
   @Override
@@ -79,15 +78,6 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     }
     chunkWriter = null;
     fileWriter = null;
-  }
-
-  private void checkFileSizeAndMayOpenANewTargetFile() throws IOException {
-    if (fileWriter.getIOWriterOut().getPosition() < 1024) {
-      return;
-    }
-    fileWriter.endFile();
-    TsFileResource newTargetFileResource;
-    // fileWriter = new RestorableTsFileIOWriter(newTargetFileResource.getTsFile());
   }
 
   public TsFileIOWriter getFileWriter() {

@@ -390,8 +390,6 @@ public class IoTDBConfig {
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
 
-  private long targetFileDataSize = 1024 * 1024 * 1024 * 256;
-
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;
 

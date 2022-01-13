@@ -51,6 +51,8 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
+import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import org.apache.commons.io.FileUtils;
@@ -78,6 +80,7 @@ public class EnvironmentUtils {
   private static final Logger logger = LoggerFactory.getLogger(EnvironmentUtils.class);
 
   private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final TSFileConfig tsfileConfig = TSFileDescriptor.getInstance().getConfig();
   private static final DirectoryManager directoryManager = DirectoryManager.getInstance();
 
   public static long TEST_QUERY_JOB_ID = 1;
@@ -85,6 +88,8 @@ public class EnvironmentUtils {
 
   private static final long oldSeqTsFileSize = config.getSeqTsFileSize();
   private static final long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
+  private static final int oldPagePointNum = tsfileConfig.getMaxNumberOfPointsInPage();
+  private static final int oldTsFileGroupSizeInByte = tsfileConfig.getGroupSizeInByte();
 
   private static final long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -180,6 +185,8 @@ public class EnvironmentUtils {
     config.setSeqTsFileSize(oldSeqTsFileSize);
     config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
+    tsfileConfig.setMaxNumberOfPointsInPage(oldPagePointNum);
+    tsfileConfig.setGroupSizeInByte(oldTsFileGroupSizeInByte);
   }
 
   private static boolean examinePorts() {

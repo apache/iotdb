@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -52,7 +53,8 @@ public class AbstractCompactionTest {
   private int chunkGroupSize = 0;
   private int pageSize = 0;
   protected String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
-  private boolean needRegister = false;
+
+  private long oldTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   protected static File SEQ_DIRS =
       new File(
@@ -243,6 +245,7 @@ public class AbstractCompactionTest {
     if (UNSEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(UNSEQ_DIRS);
     }
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
   }
 
   private void removeFiles() throws IOException {
@@ -273,9 +276,5 @@ public class AbstractCompactionTest {
 
   public void setPageSize(int pageSize) {
     this.pageSize = pageSize;
-  }
-
-  public void setNeedRegister(boolean needRegister) {
-    this.needRegister = needRegister;
   }
 }
