@@ -129,6 +129,9 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       RaftNode header, AsyncMethodCallback<T> resultHandler, Object request)
       throws PartitionTableUnavailableException, CheckConsistencyException,
           NotInSameGroupException {
+    if (!ClusterUtils.waitUntilMetaReady(metaGroupMember)) {
+      throw new PartitionTableUnavailableException(thisNode);
+    }
     AtomicReference<Exception> ex = new AtomicReference<>();
     DataAsyncService dataAsyncService =
         asyncServiceMap.computeIfAbsent(
@@ -162,6 +165,9 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
   public DataSyncService getDataSyncService(RaftNode header)
       throws PartitionTableUnavailableException, CheckConsistencyException,
           NotInSameGroupException {
+    if (!ClusterUtils.waitUntilMetaReady(metaGroupMember)) {
+      throw new PartitionTableUnavailableException(thisNode);
+    }
     AtomicReference<Exception> ex = new AtomicReference<>();
     DataSyncService dataSyncService =
         syncServiceMap.computeIfAbsent(
@@ -253,7 +259,6 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       return member;
     }
     logger.info("Received a request \"{}\" from unregistered header {}", request, header);
-    ClusterUtils.waitUntilMetaReady(metaGroupMember);
     if (partitionTable != null) {
       try {
         member = createNewMember(header);

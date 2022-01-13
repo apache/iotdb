@@ -32,9 +32,12 @@ import org.junit.experimental.categories.Category;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
@@ -177,15 +180,13 @@ public class IoTDBInIT {
   /** Test for IOTDB-1540 */
   @Test
   public void selectWithAlignByDeviceTest() {
-    String[] retArray =
-        new String[] {
-          "1509465660000,root.sg.d1.s1,qrcode002,",
-          "1509465780000,root.sg.d1.s1,qrcode004,",
-          "1509465720000,root.sg.d1.s2,qrcode002,",
-          "1509465840000,root.sg.d1.s2,qrcode004,",
-          "1509465780000,root.sg.d2.s1,qrcode002,",
-          "1509465900000,root.sg.d2.s1,qrcode004,",
-        };
+    Set<String> retSet = new HashSet();
+    retSet.add("1509465660000,root.sg.d1.s1,qrcode002,");
+    retSet.add("1509465780000,root.sg.d1.s1,qrcode004,");
+    retSet.add("1509465720000,root.sg.d1.s2,qrcode002,");
+    retSet.add("1509465840000,root.sg.d1.s2,qrcode004,");
+    retSet.add("1509465780000,root.sg.d2.s1,qrcode002,");
+    retSet.add("1509465900000,root.sg.d2.s1,qrcode004,");
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -206,16 +207,11 @@ public class IoTDBInIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(6, cnt);
