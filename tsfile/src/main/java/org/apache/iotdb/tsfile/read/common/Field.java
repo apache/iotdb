@@ -218,7 +218,7 @@ public class Field {
         field.setBoolV((boolean) value);
         break;
       case TEXT:
-        field.setBinaryV((Binary) value);
+        field.setBinaryV((Binary) new Binary((String) value));
         break;
       default:
         throw new UnSupportedDataTypeException(dataType.toString());

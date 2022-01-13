@@ -21,7 +21,11 @@ package org.apache.iotdb.tsfile.read.common;
 
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class BatchDataFactory {
+
+  public static AtomicBoolean optimize = new AtomicBoolean(false);
 
   private BatchDataFactory() {
     throw new IllegalStateException("Factory class");
@@ -30,7 +34,11 @@ public class BatchDataFactory {
   public static BatchData createBatchData(
       TSDataType dataType, boolean ascending, boolean isWriteDesc) {
     if (ascending) {
-      return new BatchData(dataType);
+      if (optimize.get()) {
+        return new BatchData2(dataType);
+      } else {
+        return new BatchData(dataType);
+      }
     } else if (isWriteDesc) {
       return new DescReadWriteBatchData(dataType);
     } else {

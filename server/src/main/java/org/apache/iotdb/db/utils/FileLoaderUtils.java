@@ -91,8 +91,7 @@ public class FileLoaderUtils {
       TsFileResource resource,
       PartialPath seriesPath,
       QueryContext context,
-      Filter filter,
-      Set<String> allSensors)
+      Filter filter)
       throws IOException {
 
     // common path
@@ -109,7 +108,6 @@ public class FileLoaderUtils {
                       resource.getTsFilePath(),
                       seriesPath.getDevice(),
                       seriesPath.getMeasurement()),
-                  allSensors,
                   context.isDebug());
       if (timeSeriesMetadata != null) {
         timeSeriesMetadata.setChunkMetadataLoader(
@@ -168,7 +166,7 @@ public class FileLoaderUtils {
       String filePath = resource.getTsFilePath();
       String deviceId = vectorPath.getDevice();
       TimeseriesMetadata timeColumn =
-          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), allSensors, isDebug);
+          cache.get(new TimeSeriesMetadataCacheKey(filePath, deviceId, ""), isDebug);
       if (timeColumn != null) {
         List<TimeseriesMetadata> valueTimeSeriesMetadataList =
             new ArrayList<>(valueMeasurementList.size());
@@ -178,7 +176,6 @@ public class FileLoaderUtils {
           TimeseriesMetadata valueColumn =
               cache.get(
                   new TimeSeriesMetadataCacheKey(filePath, deviceId, valueMeasurement),
-                  allSensors,
                   isDebug);
           exist = (exist || (valueColumn != null));
           valueTimeSeriesMetadataList.add(valueColumn);

@@ -22,6 +22,7 @@ package org.apache.iotdb.tsfile.read.reader.chunk;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
+import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
 import org.apache.iotdb.tsfile.file.header.PageHeader;
@@ -35,6 +36,7 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.reader.IChunkReader;
 import org.apache.iotdb.tsfile.read.reader.IPageReader;
 import org.apache.iotdb.tsfile.read.reader.page.PageReader;
+import org.apache.iotdb.tsfile.read.reader.page.PageReader2;
 import org.apache.iotdb.tsfile.v2.file.header.PageHeaderV2;
 import org.apache.iotdb.tsfile.v2.read.reader.page.PageReaderV2;
 
@@ -42,8 +44,11 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ChunkReader implements IChunkReader {
+
+  public static AtomicBoolean optimize = new AtomicBoolean(false);
 
   private ChunkHeader chunkHeader;
   private ByteBuffer chunkDataBuffer;
@@ -63,7 +68,7 @@ public class ChunkReader implements IChunkReader {
   /**
    * constructor of ChunkReader.
    *
-   * @param chunk input Chunk object
+   * @param chunk  input Chunk object
    * @param filter filter
    */
   public ChunkReader(Chunk chunk, Filter filter) throws IOException {
@@ -168,15 +173,27 @@ public class ChunkReader implements IChunkReader {
     }
 
     ByteBuffer pageData = ByteBuffer.wrap(uncompressedPageData);
-    PageReader reader =
-        new PageReader(
-            pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+    PageReader reader;
+    if (optimize.get()) {
+      switch (chunkHeader.getDataType()) {
+        case INT64:
+          reader = new PageReader2(
+              pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+          break;
+        default:
+          throw new NotImplementedException();
+      }
+    } else {
+      reader = new PageReader(
+          pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, filter);
+    }
     reader.setDeleteIntervalList(deleteIntervalList);
     return reader;
   }
 
   @Override
-  public void close() {}
+  public void close() {
+  }
 
   public ChunkHeader getChunkHeader() {
     return chunkHeader;

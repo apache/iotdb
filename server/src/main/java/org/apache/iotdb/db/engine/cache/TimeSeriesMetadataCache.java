@@ -137,14 +137,14 @@ public class TimeSeriesMetadataCache {
     return TimeSeriesMetadataCache.TimeSeriesMetadataCacheHolder.INSTANCE;
   }
 
-  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key, Set<String> allSensors)
+  public TimeseriesMetadata get(TimeSeriesMetadataCacheKey key)
       throws IOException {
-    return get(key, allSensors, false);
+    return get(key, false);
   }
 
   @SuppressWarnings("squid:S1860") // Suppress synchronize warning
   public TimeseriesMetadata get(
-      TimeSeriesMetadataCacheKey key, Set<String> allSensors, boolean debug) throws IOException {
+      TimeSeriesMetadataCacheKey key, boolean debug) throws IOException {
     if (!CACHE_ENABLE) {
       // bloom filter part
       TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
@@ -162,7 +162,7 @@ public class TimeSeriesMetadataCache {
       if (debug) {
         DEBUG_LOGGER.info(
             "Cache miss: {}.{} in file: {}", key.device, key.measurement, key.filePath);
-        DEBUG_LOGGER.info("Device: {}, all sensors: {}", key.device, allSensors);
+        DEBUG_LOGGER.info("Device: {}", key.device);
       }
       // allow for the parallelism of different devices
       synchronized (
@@ -187,7 +187,7 @@ public class TimeSeriesMetadataCache {
           }
           TsFileSequenceReader reader = FileReaderManager.getInstance().get(key.filePath, true);
           List<TimeseriesMetadata> timeSeriesMetadataList =
-              reader.readTimeseriesMetadata(path, allSensors);
+              reader.readTimeseriesMetadata(path);
           // put TimeSeriesMetadata of all sensors used in this query into cache
           for (TimeseriesMetadata metadata : timeSeriesMetadataList) {
             TimeSeriesMetadataCacheKey k =

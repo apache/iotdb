@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.tsfile.read.query.timegenerator.node;
+package org.apache.iotdb.tsfile.read.query.iterator;
 
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.Node;
+import org.apache.iotdb.tsfile.read.query.timegenerator.node.NodeType;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 
 import java.io.IOException;
@@ -32,6 +35,7 @@ public class LeafNode implements Node {
 
   private long cachedTime;
   private Object cachedValue;
+  private Field cachedField;
 
   public LeafNode(IBatchReader reader) {
     this.reader = reader;
@@ -45,6 +49,7 @@ public class LeafNode implements Node {
     if (cacheData != null && cacheData.hasCurrent()) {
       cachedTime = cacheData.currentTime();
       cachedValue = cacheData.currentValue();
+      cachedField = cacheData.currentField();
       hasCached = true;
       return true;
     }
@@ -53,6 +58,7 @@ public class LeafNode implements Node {
       if (cacheData.hasCurrent()) {
         cachedTime = cacheData.currentTime();
         cachedValue = cacheData.currentValue();
+        cachedField = cacheData.currentField();
         hasCached = true;
         return true;
       }
@@ -83,6 +89,10 @@ public class LeafNode implements Node {
   /** Function for getting the value at the given time. */
   public Object currentValue() {
     return cachedValue;
+  }
+
+  public Field currentField() {
+    return cachedField;
   }
 
   @Override

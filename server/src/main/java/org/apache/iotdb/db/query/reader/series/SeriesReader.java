@@ -1101,7 +1101,7 @@ public class SeriesReader {
       Set<String> allSensors)
       throws IOException {
     return FileLoaderUtils.loadTimeSeriesMetadata(
-        resource, seriesPath, context, filter, allSensors);
+        resource, seriesPath, context, filter);
   }
 
   protected Filter getAnyFilter() {

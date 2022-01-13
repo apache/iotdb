@@ -189,7 +189,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
   in allSensors set */
   @SuppressWarnings("squid:S3776")
   @Override
-  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path, Set<String> allSensors)
+  public List<TimeseriesMetadata> readTimeseriesMetadata(Path path)
       throws IOException {
     readFileMetadata();
     MetadataIndexNode deviceMetadataIndexNode = tsFileMetaData.getMetadataIndex();
@@ -215,9 +215,7 @@ public class TsFileSequenceReaderForV2 extends TsFileSequenceReader implements A
       timeseriesMetadata = TimeseriesMetadataV2.deserializeFrom(buffer);
       ArrayList<ChunkMetadata> chunkMetadataList = readChunkMetaDataList(timeseriesMetadata);
       timeseriesMetadata.setChunkMetadataList(chunkMetadataList);
-      if (allSensors.contains(timeseriesMetadata.getMeasurementId())) {
-        timeseriesMetadataList.add(timeseriesMetadata);
-      }
+      timeseriesMetadataList.add(timeseriesMetadata);
     }
     return timeseriesMetadataList;
   }

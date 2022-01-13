@@ -42,8 +42,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TsFileExecutor implements QueryExecutor {
+
+  public static final AtomicBoolean newApproach = new AtomicBoolean(false);
 
   private IMetadataQuerier metadataQuerier;
   private IChunkLoader chunkLoader;
@@ -80,8 +83,13 @@ public class TsFileExecutor implements QueryExecutor {
           return execute(
               queryExpression.getSelectedSeries(), (GlobalTimeExpression) regularIExpression);
         } else {
-          return new ExecutorWithTimeGenerator(metadataQuerier, chunkLoader)
-              .execute(queryExpression);
+          if (!newApproach.get()) {
+            return new ExecutorWithTimeGenerator(metadataQuerier, chunkLoader)
+                .execute(queryExpression);
+          } else {
+            return new ExecutorWithTimeGenerator2(metadataQuerier, chunkLoader)
+                .execute(queryExpression);
+          }
         }
       } catch (QueryFilterOptimizationException | NoMeasurementException e) {
         throw new IOException(e);

@@ -80,7 +80,7 @@ public class QueryRouter implements IQueryRouter {
           expression == null
               ? null
               : ExpressionOptimizer.getInstance()
-                  .optimize(expression, new ArrayList<>(deduplicatedPaths));
+              .optimize(expression, new ArrayList<>(deduplicatedPaths));
     } catch (QueryFilterOptimizationException e) {
       throw new StorageEngineException(e.getMessage());
     }
@@ -117,7 +117,7 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet aggregate(AggregationPlan aggregationPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
+      IOException {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -139,7 +139,7 @@ public class QueryRouter implements IQueryRouter {
         expression == null
             ? null
             : ExpressionOptimizer.getInstance()
-                .optimize(expression, new ArrayList<>(deduplicatedPaths));
+            .optimize(expression, new ArrayList<>(deduplicatedPaths));
 
     aggregationPlan.setExpression(optimizedExpression);
 
@@ -160,7 +160,7 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet udafQuery(UDAFPlan udafPlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, IOException,
-          QueryProcessException {
+      QueryProcessException {
     if (logger.isDebugEnabled()) {
       logger.debug("paths:" + udafPlan.getPaths());
     }
@@ -214,7 +214,7 @@ public class QueryRouter implements IQueryRouter {
   @Override
   public QueryDataSet groupBy(GroupByTimePlan groupByTimePlan, QueryContext context)
       throws QueryFilterOptimizationException, StorageEngineException, QueryProcessException,
-          IOException {
+      IOException {
 
     if (logger.isDebugEnabled()) {
       logger.debug(
@@ -334,7 +334,7 @@ public class QueryRouter implements IQueryRouter {
           expression == null
               ? null
               : ExpressionOptimizer.getInstance()
-                  .optimize(expression, new ArrayList<>(udtfPlan.getDeduplicatedPaths()));
+              .optimize(expression, new ArrayList<>(udtfPlan.getDeduplicatedPaths()));
     } catch (QueryFilterOptimizationException e) {
       throw new StorageEngineException(e.getMessage());
     }
