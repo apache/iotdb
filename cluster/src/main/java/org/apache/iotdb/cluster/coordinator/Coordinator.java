@@ -38,6 +38,7 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.PartitionUtils;
 import org.apache.iotdb.cluster.utils.StatusUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
@@ -241,6 +242,7 @@ public class Coordinator {
    */
   public TSStatus processPartitionedPlan(PhysicalPlan plan) throws UnsupportedPlanException {
     logger.debug("{}: Received a partitioned plan {}", name, plan);
+    ClusterUtils.waitUntilMetaReady(metaGroupMember);
     if (metaGroupMember.getPartitionTable() == null) {
       logger.debug("{}: Partition table is not ready", name);
       return StatusUtils.PARTITION_TABLE_NOT_READY;

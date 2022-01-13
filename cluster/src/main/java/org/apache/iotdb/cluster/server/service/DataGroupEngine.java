@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.server.StoppedMemberManager;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport.DataMemberReport;
+import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
@@ -252,6 +253,7 @@ public class DataGroupEngine implements IService, DataGroupEngineMBean {
       return member;
     }
     logger.info("Received a request \"{}\" from unregistered header {}", request, header);
+    ClusterUtils.waitUntilMetaReady(metaGroupMember);
     if (partitionTable != null) {
       try {
         member = createNewMember(header);
