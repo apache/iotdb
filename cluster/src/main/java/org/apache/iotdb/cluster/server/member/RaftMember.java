@@ -265,22 +265,25 @@ public abstract class RaftMember implements RaftMemberMBean {
   }
 
   void startBackGroundThreads() {
-    heartBeatService = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name + "-Heartbeat");
+    if (allNodes.size() > 1) {
+      heartBeatService =
+          IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(name + "-Heartbeat");
 
-    catchUpService = IoTDBThreadPoolFactory.newCachedThreadPool(name + "-CatchUp");
-    appendLogThreadPool =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors() * 10, name + "-AppendLog");
-    serialToParallelPool =
-        IoTDBThreadPoolFactory.newThreadPool(
-            allNodes.size(),
-            Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
-            1000L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new IoTThreadFactory(getName() + "-SerialToParallel"),
-            getName() + "-SerialToParallel");
-    commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
+      catchUpService = IoTDBThreadPoolFactory.newCachedThreadPool(name + "-CatchUp");
+      appendLogThreadPool =
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors() * 10, name + "-AppendLog");
+      serialToParallelPool =
+          IoTDBThreadPoolFactory.newThreadPool(
+              allNodes.size(),
+              Math.max(allNodes.size(), Runtime.getRuntime().availableProcessors()),
+              1000L,
+              TimeUnit.MILLISECONDS,
+              new LinkedBlockingQueue<>(),
+              new IoTThreadFactory(getName() + "-SerialToParallel"),
+              getName() + "-SerialToParallel");
+      commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
+    }
   }
 
   public String getName() {

@@ -250,13 +250,16 @@ public class DataGroupMember extends RaftMember implements DataGroupMemberMBean 
     logger.info("Starting DataGroupMember {}... RaftGroupID: {}", name, getRaftGroupId());
     JMXService.registerMBean(this, mbeanName);
     super.start();
-    heartBeatService.submit(new DataHeartbeatThread(this));
-    pullSnapshotService =
-        IoTDBThreadPoolFactory.newFixedThreadPool(
-            Runtime.getRuntime().availableProcessors(), "pullSnapshot");
-    pullSnapshotHintService = new PullSnapshotHintService(this);
-    pullSnapshotHintService.start();
-    resumePullSnapshotTasks();
+
+    if (allNodes.size() > 1) {
+      heartBeatService.submit(new DataHeartbeatThread(this));
+      pullSnapshotService =
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              Runtime.getRuntime().availableProcessors(), "pullSnapshot");
+      pullSnapshotHintService = new PullSnapshotHintService(this);
+      pullSnapshotHintService.start();
+      resumePullSnapshotTasks();
+    }
   }
 
   /**
