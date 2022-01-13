@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
@@ -116,19 +114,22 @@ public abstract class ServiceProvider {
     return isLoggedIn;
   }
 
-  public boolean checkAuthorization(
-      List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
+  public boolean checkAuthorization(PhysicalPlan plan, String username) throws AuthException {
+    if (!plan.isAuthenticationRequired()) {
+      return true;
+    }
+
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
     }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+    return AuthorityChecker.check(
+        username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
   }
 
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<? extends PartialPath> paths = plan.getPaths();
     try {
-      if (!checkAuthorization(paths, plan, SESSION_MANAGER.getUsername(sessionId))) {
+      if (!checkAuthorization(plan, SESSION_MANAGER.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation " + plan.getOperatorType());
