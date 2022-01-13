@@ -65,6 +65,10 @@ public class IoTDBRestServiceDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "rest_service_port", Integer.toString(conf.getRestServicePort()))));
+      conf.setRestQueryFetchSize(
+          Integer.parseInt(
+              properties.getProperty(
+                  "rest_query_fetch_size", Integer.toString(conf.getRestQueryFetchSize()))));
 
       conf.setEnableHttps(
           Boolean.parseBoolean(
