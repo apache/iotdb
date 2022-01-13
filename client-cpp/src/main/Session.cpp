@@ -1472,9 +1472,9 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
         throw IoTDBConnectionException(e.what());
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
-    return std::make_unique<SessionDataSet>(
+    return unique_ptr<SessionDataSet>(new SessionDataSet(
             sql, resp->columns, resp->dataTypeList, resp->columnNameIndexMap, resp->ignoreTimeStamp, resp->queryId,
-            statementId, client, sessionId, queryDataSet);
+            statementId, client, sessionId, queryDataSet));
 }
 
 void Session::executeNonQueryStatement(const string &sql) {

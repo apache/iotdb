@@ -521,7 +521,7 @@ public:
         bitMaps.resize(schemas.size());
         for (size_t i = 0; i < schemas.size(); i++) {
             values[i].resize(maxRowNumber);
-            bitMaps[i] = std::make_unique<BitMap>(maxRowNumber);
+            bitMaps[i] = std::unique_ptr<BitMap>(new BitMap(maxRowNumber));
         }
         this->rowSize = 0;
     }
@@ -676,16 +676,16 @@ public:
             }
             if (!columnNameIndexMap.empty()) {
                 this->valueBuffers.push_back(
-                        std::make_unique<MyStringBuffer>(
-                                queryDataSet->valueList[columnNameIndexMap[name]]));
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
                 this->bitmapBuffers.push_back(
-                        std::make_unique<MyStringBuffer>(
-                                queryDataSet->bitmapList[columnNameIndexMap[name]]));
+                        std::unique_ptr<MyStringBuffer>(
+                                new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
             } else {
                 this->valueBuffers.push_back(
-                        std::make_unique<MyStringBuffer>(queryDataSet->valueList[columnMap[name]]));
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
                 this->bitmapBuffers.push_back(
-                        std::make_unique<MyStringBuffer>(queryDataSet->bitmapList[columnMap[name]]));
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
             }
         }
         this->tsQueryDataSet = queryDataSet;
