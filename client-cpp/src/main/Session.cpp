@@ -392,6 +392,58 @@ void SessionDataSet::closeOperationHandle() {
     }
 }
 
+string MeasurementNode::serialize() const {
+    MyStringBuffer buffer;
+    buffer.putString(getName());
+    buffer.putChar(getDataType());
+    buffer.putChar(getEncoding());
+    buffer.putChar(getCompressionType());
+    return buffer.str;
+}
+
+string Template::serialize() const {
+    MyStringBuffer buffer;
+    stack<pair<string, shared_ptr<TemplateNode>>> stack;
+    unordered_set<string> alignedPrefix;
+    buffer.putString(getName());
+    buffer.putBool(isAligned());
+    if (isAligned()) {
+        alignedPrefix.emplace("");
+    }
+
+    for (const auto &child: children_) {
+        stack.push(make_pair("", child.second));
+    }
+
+    while (!stack.empty()) {
+        auto cur = stack.top();
+        stack.pop();
+
+        string prefix = cur.first;
+        shared_ptr<TemplateNode> cur_node_ptr = cur.second;
+        string fullPath(prefix);
+
+        if (!cur_node_ptr->isMeasurement()) {
+            if (!prefix.empty()) {
+                fullPath.append(".");
+            }
+            fullPath.append(cur_node_ptr->getName());
+            if (cur_node_ptr->isAligned()) {
+                alignedPrefix.emplace(fullPath);
+            }
+            for (const auto &child: cur_node_ptr->getChildren()) {
+                stack.push(make_pair(fullPath, child.second));
+            }
+        } else {
+            buffer.putString(prefix);
+            buffer.putBool(alignedPrefix.find(prefix) != alignedPrefix.end());
+            buffer.concat(cur_node_ptr->serialize());
+        }
+    }
+
+    return buffer.str;
+}
+
 /**
  * When delete variable, make sure release all resource.
  */
@@ -1404,6 +1456,21 @@ void Session::executeNonQueryStatement(const string &sql) {
     try {
         client->executeUpdateStatement(*resp, *req);
         RpcUtils::verifySuccess(resp->status);
+    }
+    catch (IoTDBConnectionException &e) {
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::createSchemaTemplate(const Template &templ) {
+    shared_ptr<TSCreateSchemaTemplateReq> req(new TSCreateSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(templ.getName());
+    req->__set_serializedTemplate(templ.serialize());
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->createSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(e.what());

@@ -85,6 +85,20 @@ void createMultiTimeseries() {
     }
 }
 
+void createSchemaTemplate() {
+    Template temp("template1", false);
+
+    MeasurementNode mNodeS1("s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS3("s3", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+
+    temp.addToTemplate(mNodeS1);
+    temp.addToTemplate(mNodeS2);
+    temp.addToTemplate(mNodeS3);
+
+    session->createSchemaTemplate(temp);
+}
+
 void showTimeseries() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
     for (const string &name: dataSet->getColumnNames()) {
@@ -348,6 +362,9 @@ int main() {
 
     cout << "createMultiTimeseries\n" << endl;
     createMultiTimeseries();
+
+    cout << "createSchemaTemplate\n" << endl;
+    createSchemaTemplate();
 
     cout << "showTimeseries\n" << endl;
     showTimeseries();

@@ -28,8 +28,8 @@
 #include <algorithm>
 #include <map>
 #include <unordered_map>
-#include <utility>
-#include <memory>
+#include <unordered_set>
+#include <stack>
 #include <new>
 #include <thread>
 #include <mutex>
@@ -103,25 +103,39 @@ public:
 
 namespace CompressionType {
     enum CompressionType {
-        UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4
+        UNCOMPRESSED = (char) 0,
+        SNAPPY = (char) 1,
+        GZIP = (char) 2,
+        LZO = (char) 3,
+        SDT = (char) 4,
+        PAA = (char) 5,
+        PLA = (char) 6,
+        LZ4 = (char) 7
     };
 }
 namespace TSDataType {
     enum TSDataType {
-        BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
+        BOOLEAN = (char) 0,
+        INT32 = (char) 1,
+        INT64 = (char) 2,
+        FLOAT = (char) 3,
+        DOUBLE = (char) 4,
+        TEXT = (char) 5,
+        VECTOR = (char) 6,
+        NULLTYPE = (char) 7
     };
 }
 namespace TSEncoding {
     enum TSEncoding {
-        PLAIN = 0,
-        DICTIONARY = 1,
-        RLE = 2,
-        DIFF = 3,
-        TS_2DIFF = 4,
-        BITMAP = 5,
-        GORILLA_V1 = 6,
-        REGULAR = 7,
-        GORILLA = 8
+        PLAIN = (char) 0,
+        DICTIONARY = (char) 1,
+        RLE = (char) 2,
+        DIFF = (char) 3,
+        TS_2DIFF = (char) 4,
+        BITMAP = (char) 5,
+        GORILLA_V1 = (char) 6,
+        REGULAR = (char) 7,
+        GORILLA = (char) 8
     };
 }
 namespace TSStatusCode {
@@ -292,6 +306,10 @@ public:
         str += ins;
     }
 
+    void concat(const std::string &ins) {
+        str.append(ins);
+    }
+
 public:
     std::string str;
     size_t pos;
@@ -435,11 +453,11 @@ public:
     double doubleV;
     std::string stringV;
 
-    Field(TSDataType::TSDataType a) {
+    explicit Field(TSDataType::TSDataType a) {
         dataType = a;
     }
 
-    Field() {}
+    Field() = default;
 };
 
 /*
@@ -469,7 +487,7 @@ public:
     int maxRowNumber;   // the maximum number of rows for this tablet
     bool isAligned;   // whether this tablet store data of aligned timeseries or not
 
-    Tablet() {}
+    Tablet() = default;
 
     /**
    * Return a tablet with default specified row number. This is the standard
@@ -706,6 +724,151 @@ std::vector<T> sortList(const std::vector<T> &valueList, const int *index, int i
     return sortedValues;
 }
 
+class TemplateNode {
+public:
+
+    TemplateNode() = default;
+
+    explicit TemplateNode(std::string name_) {
+        this->name_ = std::move(name_);
+    }
+
+    const std::string &getName() const {
+        return name_;
+    }
+
+    virtual const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+    virtual bool isMeasurement() = 0;
+
+    virtual bool isAligned() {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+    virtual std::string serialize() const {
+        throw BatchExecutionException("Should call exact sub class!");
+    }
+
+private:
+    std::string name_;
+};
+
+class MeasurementNode : public TemplateNode {
+public:
+
+    MeasurementNode(std::string name_, TSDataType::TSDataType data_type_, TSEncoding::TSEncoding encoding_,
+                    CompressionType::CompressionType compression_type_) : TemplateNode(std::move(name_)) {
+        this->data_type_ = data_type_;
+        this->encoding_ = encoding_;
+        this->compression_type_ = compression_type_;
+    }
+
+    TSDataType::TSDataType getDataType() const {
+        return data_type_;
+    }
+
+    TSEncoding::TSEncoding getEncoding() const {
+        return encoding_;
+    }
+
+    CompressionType::CompressionType getCompressionType() const {
+        return compression_type_;
+    }
+
+    bool isMeasurement() override {
+        return true;
+    }
+
+    std::string serialize() const override;
+
+private:
+    TSDataType::TSDataType data_type_;
+    TSEncoding::TSEncoding encoding_;
+    CompressionType::CompressionType compression_type_;
+};
+
+class InternalNode : public TemplateNode {
+public:
+
+    InternalNode(std::string name_, bool is_aligned_) : TemplateNode(std::move(name_)) {
+        this->is_aligned_ = is_aligned_;
+    }
+
+    void addChild(const InternalNode &node) {
+        if (this->children_.count(node.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[node.getName()] = std::make_shared<InternalNode>(node);
+    }
+
+    void addChild(const MeasurementNode &node) {
+        if (this->children_.count(node.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[node.getName()] = std::make_shared<MeasurementNode>(node);
+    }
+
+    void deleteChild(const TemplateNode &node) {
+        this->children_.erase(node.getName());
+    }
+
+    const std::unordered_map<std::string, std::shared_ptr<TemplateNode>> &getChildren() const override {
+        return children_;
+    }
+
+    bool isMeasurement() override {
+        return false;
+    }
+
+    bool isAligned() override {
+        return is_aligned_;
+    }
+
+private:
+    std::unordered_map<std::string, std::shared_ptr<TemplateNode>> children_;
+    bool is_aligned_;
+};
+
+class Template {
+public:
+
+    Template(std::string name_, bool is_aligned_) {
+        this->name_ = std::move(name_);
+        this->is_aligned_ = is_aligned_;
+    }
+
+    const std::string &getName() const {
+        return name_;
+    }
+
+    bool isAligned() const {
+        return is_aligned_;
+    }
+
+    void addToTemplate(const InternalNode &child) {
+        if (this->children_.count(child.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[child.getName()] = std::make_shared<InternalNode>(child);
+    }
+
+    void addToTemplate(const MeasurementNode &child) {
+        if (this->children_.count(child.getName())) {
+            throw BatchExecutionException("Duplicated child of node in template.");
+        }
+        this->children_[child.getName()] = std::make_shared<MeasurementNode>(child);
+    }
+
+    std::string serialize() const;
+
+private:
+    std::string name_;
+    std::unordered_map<std::string, std::shared_ptr<TemplateNode>> children_;
+    bool is_aligned_;
+};
+
 class Session {
 private:
     std::string host;
@@ -926,6 +1089,9 @@ public:
     std::unique_ptr<SessionDataSet> executeQueryStatement(const std::string &sql);
 
     void executeNonQueryStatement(const std::string &sql);
+
+    void createSchemaTemplate(const Template &templ);
+
 };
 
 #endif // IOTDB_SESSION_H
