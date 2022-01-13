@@ -1869,16 +1869,16 @@ public class MManager {
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
       int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if (index != fullPath.getNodeLength() - 1) {
+      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
         // this measurement is in template, need to assure mounted node exists and set using
         // template.
-        if (!mountedNodeFound) {
-          // Without allowing overlap of template and MTree, this block run only once
-          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        // Without allowing overlap of template and MTree, this block run only once
+        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        if (!mountedNode.isUseTemplate()) {
           setUsingSchemaTemplate(mountedNode);
-          mountedNodeFound = true;
         }
+        mountedNodeFound = true;
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
