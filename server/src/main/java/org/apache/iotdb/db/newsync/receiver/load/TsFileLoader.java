@@ -18,11 +18,17 @@
  */
 package org.apache.iotdb.db.newsync.receiver.load;
 
+import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.tools.TsFileRewriteTool;
+import org.apache.iotdb.db.utils.FileLoaderUtils;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /** This loader is used to load tsFiles. */
 public class TsFileLoader implements ILoader {
@@ -37,6 +43,29 @@ public class TsFileLoader implements ILoader {
 
   @Override
   public boolean load() throws StorageEngineException, LoadFileException, MetadataException {
-    return true;
+    TsFileResource tsFileResource = new TsFileResource(tsFile);
+    tsFileResource.setClosed(true);
+    try {
+      FileLoaderUtils.checkTsFileResource(tsFileResource);
+      List<TsFileResource> splitResources = new ArrayList();
+      if (tsFileResource.isSpanMultiTimePartitions()) {
+        TsFileRewriteTool.rewriteTsFile(tsFileResource, splitResources);
+        tsFileResource.writeLock();
+        tsFileResource.removeModFile();
+        tsFileResource.writeUnlock();
+      }
+
+      if (splitResources.isEmpty()) {
+        splitResources.add(tsFileResource);
+      }
+
+      for (TsFileResource resource : splitResources) {
+        StorageEngine.getInstance().loadNewTsFile(resource);
+      }
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
   }
 }
+
