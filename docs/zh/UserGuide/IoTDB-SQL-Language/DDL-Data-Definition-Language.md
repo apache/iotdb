@@ -537,27 +537,29 @@ Total line number = 2
 It costs 0.001s
 ```
 
-## 物理量模板
+## 元数据模板
 
-IoTDB 支持物理量模板功能，实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理。
+IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理。
 
-### 创建物理量模板
+### 创建元数据模板
 
-创建物理量模板的 SQL 语句如下所示：
+创建元数据模板的 SQL 语句如下所示：
 
 ```
-IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla) compression=SNAPPY, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
 
-### 挂载物理量模板
+其中，`GPS` 设备下的物理量 `lat` 和 `lon` 是对齐的。
 
-挂载物理量模板的 SQL 语句如下所示：
+### 挂载元数据模板
+
+挂载元数据模板的 SQL 语句如下所示：
 
 ```
 IoTDB> set schema template temp1 to root.ln.wf01
 ```
 
-挂载好物理量模板后，即可进行数据的写入。例如存储组为root.ln，模板temp1被挂载到了节点root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+挂载好元数据模板后，即可进行数据的写入。例如存储组为root.ln，模板temp1被挂载到了节点root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
 
 **注意**：在插入数据之前，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列：
 
@@ -565,9 +567,9 @@ IoTDB> set schema template temp1 to root.ln.wf01
 IoTDB> create timeseries of schema template on root.ln.wf01
 ```
 
-### 卸载物理量模板
+### 卸载元数据模板
 
-卸载物理量模板的 SQL 语句如下所示：
+卸载元数据模板的 SQL 语句如下所示：
 
 ```
 IoTDB> unset schema template temp1 from root.beijing
