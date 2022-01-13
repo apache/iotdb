@@ -392,13 +392,16 @@ public class ClusterUtils {
       try {
         Thread.sleep(ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs());
       } catch (InterruptedException e) {
+        logger.warn("Waiting for meta ready interrupted");
         Thread.currentThread().interrupt();
-        return false;
+        return metaGroupMember.isReady();
       }
 
       alreadyWait = System.currentTimeMillis() - waitStart;
     }
 
+    logger.debug(
+        "Meta {} after {}ms", metaGroupMember.isReady() ? "is ready" : "is not ready", alreadyWait);
     return metaGroupMember.isReady();
   }
 }

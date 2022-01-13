@@ -212,7 +212,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   }
 
   // whether the MetaEngine has been ready.
-  boolean ready = false;
+  volatile boolean ready = false;
 
   @TestOnly
   public MetaGroupMember() {}
