@@ -67,7 +67,7 @@ public class MergeManagerTest extends MergeTest {
     private String progress = "0";
 
     public FakedMainCompactionTask(int serialNum) {
-      super(null, null, null, null, 0, null);
+      super(null, null, null, null, null);
       this.serialNum = serialNum;
     }
 

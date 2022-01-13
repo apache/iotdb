@@ -33,21 +33,15 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     super(
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartitionId,
         storageGroupDir,
-        seqTsFileResourceList,
-        unSeqTsFileResourceList,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
-        concurrentMergeCount,
         CompactionTaskManager.currentTaskNum);
   }
 
@@ -63,6 +57,6 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
     selectedUnSeqTsFileResourceList.clear();
-    unSeqTsFileResourceList.clear();
+//    unSeqTsFileResourceList.clear();
   }
 }

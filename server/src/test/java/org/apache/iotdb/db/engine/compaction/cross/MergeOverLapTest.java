@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -161,7 +162,7 @@ public class MergeOverLapTest extends MergeTest {
   public void testFullMerge() throws Exception {
     CrossSpaceCompactionTask mergeTask =
         new CrossSpaceCompactionTask(
-            seqResources, unseqResources, tempSGDir.getPath(), "test", 1, MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -170,7 +171,7 @@ public class MergeOverLapTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(seqResources.get(0));
+    resources.add(TsFileNameGenerator.increaseCrossCompactionCnt(seqResources.get(0)));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,

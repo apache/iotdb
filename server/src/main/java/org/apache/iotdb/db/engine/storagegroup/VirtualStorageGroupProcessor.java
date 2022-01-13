@@ -115,6 +115,8 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -464,6 +466,7 @@ public class VirtualStorageGroupProcessor {
     try {
       recoverInnerSpaceCompaction(true);
       recoverInnerSpaceCompaction(false);
+      recoverCrossSpaceCompaction();
     } catch (Exception e) {
       throw new StorageGroupProcessorException(e);
     }
@@ -545,11 +548,14 @@ public class VirtualStorageGroupProcessor {
         .submitTask(
             logicalStorageGroupName + "-" + virtualStorageGroupId,
             0,
-            new CompactionRecoverTask(
-                this::submitTimedCompactionTask,
-                tsFileManager,
-                logicalStorageGroupName,
-                virtualStorageGroupId));
+            new SubmitTimedCompactionTask(this::executeCompaction));
+  }
+
+  /** recover crossSpaceCompaction */
+  private void recoverCrossSpaceCompaction() throws Exception {
+    CompactionRecoverTask compactionRecoverTask =
+        new CompactionRecoverTask(tsFileManager, logicalStorageGroupName, virtualStorageGroupId);
+    compactionRecoverTask.recoverCrossSpaceCompaction();
   }
 
   private void recoverInnerSpaceCompaction(boolean isSequence) throws Exception {
@@ -622,12 +628,23 @@ public class VirtualStorageGroupProcessor {
     }
   }
 
-  private void submitTimedCompactionTask() {
-    timedCompactionScheduleTask.scheduleWithFixedDelay(
-        this::executeCompaction,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        COMPACTION_TASK_SUBMIT_DELAY,
-        TimeUnit.MILLISECONDS);
+  class SubmitTimedCompactionTask implements Callable<Void> {
+
+    private Runnable runnable;
+
+    public SubmitTimedCompactionTask(Runnable runnable) {
+      this.runnable = runnable;
+    }
+
+    @Override
+    public Void call() throws Exception {
+      timedCompactionScheduleTask.scheduleWithFixedDelay(
+          runnable,
+          COMPACTION_TASK_SUBMIT_DELAY,
+          COMPACTION_TASK_SUBMIT_DELAY,
+          TimeUnit.MILLISECONDS);
+      return null;
+    }
   }
 
   private void updatePartitionFileVersion(long partitionNum, long fileVersion) {

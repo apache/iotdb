@@ -48,7 +48,7 @@ public class MergePerfTest extends MergeTest {
     resource.setCacheDeviceMeta(true);
     CrossSpaceCompactionTask mergeTask =
         new CrossSpaceCompactionTask(
-            seqResources, unseqResources, tempSGDir.getPath(), "test", 100, MERGE_TEST_SG);
+            seqResources, unseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
     timeConsumption = System.currentTimeMillis() - timeConsumption;
     tearDown();

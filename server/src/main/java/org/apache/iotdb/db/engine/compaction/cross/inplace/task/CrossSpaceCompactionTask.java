@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
 
-import java.util.Arrays;
-import java.util.Collections;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -34,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Callable;
 
@@ -58,36 +57,19 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
   String storageGroupSysDir;
   String storageGroupName;
   InplaceCompactionLogger inplaceCompactionLogger;
-  int concurrentMergeSeriesNum;
   String taskName;
   States states = States.START;
-
-  CrossSpaceCompactionTask(
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles,
-      String storageGroupSysDir,
-      String taskName,
-      String storageGroupName) {
-    this.sequenceTsFileResourceList = seqFiles;
-    this.unsequenceTsFileResourceList = unseqFiles;
-    this.storageGroupSysDir = storageGroupSysDir;
-    this.taskName = taskName;
-    this.concurrentMergeSeriesNum = 1;
-    this.storageGroupName = storageGroupName;
-  }
 
   public CrossSpaceCompactionTask(
       List<TsFileResource> seqFiles,
       List<TsFileResource> unseqFiles,
       String storageGroupSysDir,
       String taskName,
-      int concurrentMergeSeriesNum,
       String storageGroupName) {
     this.sequenceTsFileResourceList = seqFiles;
     this.unsequenceTsFileResourceList = unseqFiles;
     this.storageGroupSysDir = storageGroupSysDir;
     this.taskName = taskName;
-    this.concurrentMergeSeriesNum = concurrentMergeSeriesNum;
     this.storageGroupName = storageGroupName;
   }
 
@@ -98,11 +80,6 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       abort();
-    } finally {
-      // to avoid repeated close, handle it uniformly in finally
-      if (inplaceCompactionLogger != null) {
-        inplaceCompactionLogger.close();
-      }
     }
     return null;
   }
@@ -155,8 +132,7 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
         (System.currentTimeMillis() - startTime) / 1000);
   }
 
-  void deleteOldFiles(
-      List<TsFileResource> tsFileResourceList, List<String> failedToDeleteFiles) {
+  void deleteOldFiles(List<TsFileResource> tsFileResourceList, List<String> failedToDeleteFiles) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
       if (!tsFileResource.getTsFile().delete()) {
         failedToDeleteFiles.add(tsFileResource.getTsFile().getAbsolutePath());
@@ -167,8 +143,8 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
   void cleanUp() throws IOException {
     logger.info("{} is cleaning up", taskName);
     for (TsFileResource seqFile : sequenceTsFileResourceList) {
-      for (File file : TsFileNameGenerator.getCrossCompactionTargetFile(
-          Collections.singletonList(seqFile))) {
+      for (File file :
+          TsFileNameGenerator.getCrossCompactionTargetFile(Collections.singletonList(seqFile))) {
         // this file does not necessarily exist, so deletion results need not be processed
         file.delete();
         seqFile.setMerging(false);
@@ -177,7 +153,9 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     for (TsFileResource unseqFile : unsequenceTsFileResourceList) {
       unseqFile.setMerging(false);
     }
-
+    if (inplaceCompactionLogger != null) {
+      inplaceCompactionLogger.close();
+    }
     File logFile = new File(storageGroupSysDir, InplaceCompactionLogger.MERGE_LOG_NAME);
     logFile.delete();
   }

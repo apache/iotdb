@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -60,6 +61,7 @@ import java.util.Set;
 import static org.junit.Assert.fail;
 
 public class CrossSpaceCompactionTest {
+
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
       new String[] {
@@ -413,11 +415,8 @@ public class CrossSpaceCompactionTest {
                     "0",
                     0,
                     "target",
-                    seqTsFileResourceList,
-                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles(),
-                    fileSelector.getConcurrentMergeNum());
+                    mergeResource.getUnseqFiles());
             compactionTask.call();
             CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources);
             CompactionClearUtils.clearAllCompactionFiles();
@@ -700,13 +699,15 @@ public class CrossSpaceCompactionTest {
                     "0",
                     0,
                     "target",
-                    seqTsFileResourceList,
-                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
-                    mergeResource.getUnseqFiles(),
-                    fileSelector.getConcurrentMergeNum());
+                    mergeResource.getUnseqFiles());
             compactionTask.call();
-            CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources.subList(1, 4));
+            List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
+            for (TsFileResource targetFile : seqResources.subList(2, 5)) {
+              targetTsfileResourceList.add(
+                  TsFileNameGenerator.increaseCrossCompactionCnt(targetFile));
+            }
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
             CompactionClearUtils.clearAllCompactionFiles();
           } else {
             fail();

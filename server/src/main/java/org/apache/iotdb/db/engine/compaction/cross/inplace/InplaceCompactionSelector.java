@@ -138,11 +138,8 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               virtualGroupId,
               timePartition,
               storageGroupDir,
-              sequenceFileList,
-              unsequenceFileList,
               mergeFiles[0],
-              mergeFiles[1],
-              fileSelector.getConcurrentMergeNum());
+              mergeFiles[1]);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
       taskSubmitted = true;
       LOGGER.info(

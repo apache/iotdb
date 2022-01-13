@@ -22,7 +22,6 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionT
 import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +35,6 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   protected String storageGroupDir;
   protected List<TsFileResource> selectedSeqTsFileResourceList;
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
-  protected TsFileResourceList seqTsFileResourceList;
-  protected TsFileResourceList unSeqTsFileResourceList;
-  protected int concurrentMergeCount;
   protected String logicalStorageGroupName;
   protected String virtualStorageGroupName;
 
@@ -47,11 +43,8 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount,
       AtomicInteger currentTaskNum) {
     super(
         logicalStorageGroupName + "-" + virtualStorageGroupName,
@@ -62,11 +55,8 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroupName = virtualStorageGroupName;
     this.storageGroupDir = storageGroupDir;
-    this.seqTsFileResourceList = seqTsFileResourceList;
-    this.unSeqTsFileResourceList = unSeqTsFileResourceList;
     this.selectedSeqTsFileResourceList = selectedSeqTsFileResourceList;
     this.selectedUnSeqTsFileResourceList = selectedUnSeqTsFileResourceList;
-    this.concurrentMergeCount = concurrentMergeCount;
   }
 
   @Override
@@ -74,11 +64,10 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     String taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
     CrossSpaceCompactionTask mergeTask =
         new CrossSpaceCompactionTask(
-            CrossSpaceCompactionUtils.convertArrayListByResourceList(seqTsFileResourceList),
-            CrossSpaceCompactionUtils.convertArrayListByResourceList(unSeqTsFileResourceList),
+            selectedSeqTsFileResourceList,
+            selectedUnSeqTsFileResourceList,
             storageGroupDir,
             taskName,
-            concurrentMergeCount,
             logicalStorageGroupName);
     mergeTask.call();
   }

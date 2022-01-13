@@ -69,7 +69,6 @@ public class MergeLogTest extends MergeTest {
             unseqResources.subList(0, 1),
             tempSGDir.getPath(),
             "test",
-            1,
             MERGE_TEST_SG);
     mergeTask.call();
   }

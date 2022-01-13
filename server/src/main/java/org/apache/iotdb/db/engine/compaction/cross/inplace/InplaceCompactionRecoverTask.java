@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
@@ -46,7 +45,6 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
-      int concurrentMergeCount,
       File logFile,
       AtomicInteger currentTaskNum) {
     super(
@@ -56,9 +54,6 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
         storageGroupDir,
         seqTsFileResourceList,
         unSeqTsFileResourceList,
-        seqTsFileResourceList,
-        unSeqTsFileResourceList,
-        concurrentMergeCount,
         currentTaskNum);
     this.logFile = logFile;
   }
@@ -66,19 +61,17 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
   @Override
   public void doCompaction() throws IOException {
     String taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
-    List<TsFileResource> seqFileList =
-        CrossSpaceCompactionUtils.convertArrayListByResourceList(seqTsFileResourceList);
     CleanLastCrossSpaceCompactionTask cleanLastCrossSpaceCompactionTask =
         new CleanLastCrossSpaceCompactionTask(
-            seqFileList,
-            CrossSpaceCompactionUtils.convertArrayListByResourceList(unSeqTsFileResourceList),
+            selectedSeqTsFileResourceList,
+            selectedUnSeqTsFileResourceList,
             storageGroupDir,
             taskName,
             logicalStorageGroupName);
     LOGGER.info(
         "{} a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName, taskName);
     cleanLastCrossSpaceCompactionTask.cleanLastCrossSpaceCompactionInfo(logFile);
-    for (TsFileResource seqFile : seqFileList) {
+    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
       ModificationFile.getCompactionMods(seqFile).remove();
     }
   }
