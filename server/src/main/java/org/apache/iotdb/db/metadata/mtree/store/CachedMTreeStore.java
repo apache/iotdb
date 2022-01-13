@@ -21,7 +21,7 @@ package org.apache.iotdb.db.metadata.mtree.store;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
-import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.CacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.ICacheStrategy;
 import org.apache.iotdb.db.metadata.mtree.store.disk.cache.IMemManager;
@@ -40,12 +40,16 @@ public class CachedMTreeStore implements IMTreeStore {
 
   private ICacheStrategy cacheStrategy = new CacheStrategy();
 
-  private ISchemaFile file = new MockSchemaFile();
+  private ISchemaFile file;
 
-  private InternalMNode root;
+  private IMNode root;
 
   @Override
-  public void init() throws IOException {}
+  public void init() throws IOException {
+    MNodeContainers.IS_DISK_MODE = true;
+    file = new MockSchemaFile();
+    root = file.init();
+  }
 
   @Override
   public IMNode getRoot() {
@@ -115,7 +119,10 @@ public class CachedMTreeStore implements IMTreeStore {
     root = null;
     cacheStrategy.clear();
     memManager.clear();
-    file.close();
+    if (file != null) {
+      file.close();
+    }
+    file = null;
   }
 
   private void cacheMNodeInMemory(IMNode node) {

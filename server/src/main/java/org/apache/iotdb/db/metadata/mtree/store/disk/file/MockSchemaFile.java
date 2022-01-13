@@ -18,11 +18,14 @@
  */
 package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.metadata.mnode.EntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
+import org.apache.iotdb.db.metadata.mnode.IMNodeContainer;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.InternalMNode;
+import org.apache.iotdb.db.metadata.mnode.MNodeContainers;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupEntityMNode;
 import org.apache.iotdb.db.metadata.mnode.StorageGroupMNode;
@@ -40,6 +43,13 @@ public class MockSchemaFile implements ISchemaFile {
   private final Map<Long, Map<String, IMNode>> mockFile = new HashMap<>();
 
   @Override
+  public IMNode init() {
+    IMNode root = new InternalMNode(null, IoTDBConstant.PATH_ROOT);
+    writeMNode(root);
+    return root;
+  }
+
+  @Override
   public IMNode getChildNode(IMNode parent, String childName) {
     return cloneMNode(mockFile.get(getSegmentAddress(parent)).get(childName));
   }
@@ -55,15 +65,15 @@ public class MockSchemaFile implements ISchemaFile {
 
   @Override
   public void writeMNode(IMNode parent) {
-    ICachedMNodeContainer segment = getCachedMNodeContainer(parent);
-    long address = segment.getSegmentAddress();
-    if (segment.isVolatile()) {
+    ICachedMNodeContainer container = getCachedMNodeContainer(parent);
+    long address = container.getSegmentAddress();
+    if (container.isVolatile()) {
       address = fileTail++;
-      segment.setSegmentAddress(address);
+      container.setSegmentAddress(address);
       mockFile.put(address, new HashMap<>());
     }
-    write(address, segment.getUpdatedChildBuffer());
-    write(address, segment.getNewChildBuffer());
+    write(address, container.getUpdatedChildBuffer());
+    write(address, container.getNewChildBuffer());
   }
 
   private void write(long address, Map<String, IMNode> nodeMap) {
@@ -99,7 +109,12 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   private ICachedMNodeContainer getCachedMNodeContainer(IMNode node) {
-    return (ICachedMNodeContainer) node.getChildren();
+    IMNodeContainer container = node.getChildren();
+    if (container.equals(MNodeContainers.emptyMNodeContainer())) {
+      container = new CachedMNodeContainer();
+      node.setChildren(container);
+    }
+    return (ICachedMNodeContainer) container;
   }
 
   private long getSegmentAddress(IMNode node) {
@@ -107,6 +122,9 @@ public class MockSchemaFile implements ISchemaFile {
   }
 
   private IMNode cloneMNode(IMNode node) {
+    if (node == null) {
+      return null;
+    }
     if (node.isMeasurement()) {
       IMeasurementMNode measurementMNode = node.getAsMeasurementMNode();
       IMeasurementMNode result =

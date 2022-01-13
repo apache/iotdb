@@ -40,6 +40,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,10 +66,21 @@ public class MTreeTest {
     EnvironmentUtils.cleanEnv();
   }
 
+  private MTreeService getNewMTree() {
+    try {
+      MTreeService root = new MTreeService();
+      root.init();
+      return root;
+    } catch (IOException e) {
+      fail();
+    }
+    return null;
+  }
+
   @Test
   @SuppressWarnings("squid:S5783")
   public void testSetStorageGroupExceptionMessage() throws IllegalPathException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.edge1.access"));
       root.setStorageGroup(new PartialPath("root.edge1"));
@@ -94,7 +106,7 @@ public class MTreeTest {
 
   @Test
   public void testAddLeftNodePathWithAlias() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.laptop"));
     try {
       root.createTimeseries(
@@ -123,7 +135,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndPathExist() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     String path1 = "root";
     root.setStorageGroup(new PartialPath("root.laptop"));
     assertTrue(root.isPathExist(new PartialPath(path1)));
@@ -157,7 +169,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndQueryPath() {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -224,7 +236,7 @@ public class MTreeTest {
 
   @Test
   public void testAddAndQueryPathWithAlias() {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       assertFalse(root.isPathExist(new PartialPath("root.a.d0")));
       assertFalse(root.checkStorageGroupByPath(new PartialPath("root.a.d0")));
@@ -313,7 +325,7 @@ public class MTreeTest {
 
   @Test
   public void testGetAllChildNodeNamesByPath() {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.a.d0"));
       root.createTimeseries(
@@ -357,7 +369,7 @@ public class MTreeTest {
   @Test
   public void testSetStorageGroup() throws IllegalPathException {
     // set storage group first
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       assertTrue(root.isPathExist(new PartialPath("root.laptop.d1")));
@@ -459,7 +471,7 @@ public class MTreeTest {
   @Test
   public void testCheckStorageGroup() {
     // set storage group first
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       assertFalse(root.isStorageGroup(new PartialPath("root")));
       assertFalse(root.isStorageGroup(new PartialPath("root1.laptop.d2")));
@@ -486,7 +498,7 @@ public class MTreeTest {
   @Test
   public void testGetAllFileNamesByPath() {
     // set storage group first
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.laptop.d1"));
       root.setStorageGroup(new PartialPath("root.laptop.d2"));
@@ -523,7 +535,7 @@ public class MTreeTest {
   @Test
   public void testCheckStorageExistOfPath() {
     // set storage group first
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root")).isEmpty());
       assertTrue(root.getBelongedStorageGroups(new PartialPath("root.vehicle")).isEmpty());
@@ -553,7 +565,7 @@ public class MTreeTest {
   @Test
   public void testGetAllTimeseriesCount() {
     // set storage group first
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.laptop"));
       root.createTimeseries(
@@ -603,7 +615,7 @@ public class MTreeTest {
 
   @Test
   public void testAddSubDevice() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.laptop"));
     root.createTimeseries(
         new PartialPath("root.laptop.d1.s1"),
@@ -630,7 +642,7 @@ public class MTreeTest {
 
   @Test
   public void testIllegalStorageGroup() {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     try {
       root.setStorageGroup(new PartialPath("root.\"sg.ln\""));
     } catch (MetadataException e) {
@@ -642,7 +654,7 @@ public class MTreeTest {
 
   @Test
   public void testSearchStorageGroup() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     String path1 = "root";
     String sgPath1 = "root.vehicle";
     root.setStorageGroup(new PartialPath(sgPath1));
@@ -673,7 +685,7 @@ public class MTreeTest {
 
   @Test
   public void testCreateTimeseries() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     String sgPath = "root.sg1";
     root.setStorageGroup(new PartialPath(sgPath));
 
@@ -704,7 +716,7 @@ public class MTreeTest {
 
   @Test
   public void testCountEntity() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.laptop"));
     root.createTimeseries(
         new PartialPath("root.laptop.s1"),
@@ -762,7 +774,7 @@ public class MTreeTest {
 
   @Test
   public void testCountStorageGroup() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.setStorageGroup(new PartialPath("root.a.sg1"));
     root.setStorageGroup(new PartialPath("root.a.b.sg1"));
@@ -791,7 +803,7 @@ public class MTreeTest {
 
   @Test
   public void testGetNodeListInLevel() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.d1.s1"),
@@ -837,7 +849,7 @@ public class MTreeTest {
 
   @Test
   public void testGetDeviceForTimeseries() throws MetadataException {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.d1.s1"),
@@ -877,7 +889,7 @@ public class MTreeTest {
 
   @Test
   public void testGetMeasurementCountGroupByLevel() throws Exception {
-    MTreeService root = new MTreeService();
+    MTreeService root = getNewMTree();
     root.setStorageGroup(new PartialPath("root.sg1"));
     root.createTimeseries(
         new PartialPath("root.sg1.s1"),

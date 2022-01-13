@@ -22,7 +22,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public class MemManager implements IMemManager {
 
-  private int capacity;
+  private int capacity = 1000;
 
   private int size;
 

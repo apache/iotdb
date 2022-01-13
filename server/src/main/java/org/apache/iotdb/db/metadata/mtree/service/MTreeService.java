@@ -128,12 +128,10 @@ public class MTreeService implements Serializable {
   private IMTreeStore store;
 
   // region MTree initialization, clear and serialization
-  public MTreeService() {
-    store = new MemMTreeStore();
-    this.root = store.getRoot();
-  }
+  public MTreeService() {}
 
   public void init() throws IOException {
+    store = new MemMTreeStore();
     store.init();
     this.root = store.getRoot();
   }

@@ -24,6 +24,8 @@ import java.util.Iterator;
 
 public interface ISchemaFile {
 
+  IMNode init();
+
   IMNode getChildNode(IMNode parent, String childName);
 
   Iterator<IMNode> getChildren(IMNode parent);

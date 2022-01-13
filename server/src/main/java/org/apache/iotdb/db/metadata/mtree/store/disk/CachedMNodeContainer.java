@@ -92,7 +92,7 @@ public class CachedMNodeContainer implements ICachedMNodeContainer {
     if (result != null) {
       return result;
     }
-    return get(updatedChildBuffer);
+    return get(updatedChildBuffer, key);
   }
 
   private IMNode get(Map<String, IMNode> map, Object key) {
