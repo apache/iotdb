@@ -35,7 +35,6 @@ import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.fileSystem.FSType;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -389,6 +388,8 @@ public class IoTDBConfig {
 
   /** The target tsfile size in compaction, 1 GB by default */
   private long targetCompactionFileSize = 1073741824L;
+
+  private long targetFileDataSize = 1024 * 1024 * 1024 * 256;
 
   /** The target chunk size in compaction. */
   private long targetChunkSize = 1048576L;

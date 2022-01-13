@@ -45,8 +45,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String deviceId;
 
-  private long targetChunkSize =
-      IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
+  private long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -133,8 +132,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     if (checkChunkSize()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
-      fileWriter.endChunkGroup();
-      fileWriter.startChunkGroup(deviceId);
     }
   }
 

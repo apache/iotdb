@@ -49,7 +49,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -303,8 +302,7 @@ public class CompactionUtils {
     }
     checkAndUpdateTargetFileResources(targetResources, fileSuffix);
     for (TsFileResource targetResource : targetResources) {
-      moveOneTargetFile(
-          targetResource, IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, fullStorageGroupName);
+      moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
     }
   }
 

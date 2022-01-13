@@ -128,6 +128,17 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     return this.fileWriterList;
   }
 
+  private void checkFileSizeAndMayOpenANewTargetFile() throws IOException {
+    if (fileWriterList.get(seqFileIndex).getIOWriterOut().getPosition() < 1024) {
+      return;
+    }
+    fileWriterList.get(seqFileIndex).endFile();
+    TsFileResource newTargetFileResource = null;
+    fileWriterList.remove(seqFileIndex);
+    fileWriterList.add(
+        seqFileIndex, new RestorableTsFileIOWriter(newTargetFileResource.getTsFile()));
+  }
+
   private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp) throws IOException {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[seqFileIndex]) {
