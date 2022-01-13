@@ -22,7 +22,7 @@ package org.apache.iotdb.db.query.executor;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -31,7 +31,9 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
 import org.apache.iotdb.db.query.reader.series.ManagedSeriesReader;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -40,7 +42,9 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
+import org.apache.iotdb.tsfile.read.filter.factory.FilterFactory;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
+import org.apache.iotdb.tsfile.utils.Pair;
 
 import javax.activation.UnsupportedDataTypeException;
 
@@ -56,14 +60,19 @@ public class FillQueryExecutor {
   protected List<PartialPath> selectedSeries;
   protected List<TSDataType> dataTypes;
   protected Map<TSDataType, IFill> typeIFillMap;
+  protected IFill singleFill;
   protected long queryTime;
+
+  protected IFill[] fillExecutors;
 
   public FillQueryExecutor(FillQueryPlan fillQueryPlan) {
     this.plan = fillQueryPlan;
     this.selectedSeries = plan.getDeduplicatedPaths();
+    this.singleFill = plan.getSingleFill();
     this.typeIFillMap = plan.getFillType();
     this.dataTypes = plan.getDeduplicatedDataTypes();
     this.queryTime = plan.getQueryTime();
+    this.fillExecutors = new IFill[selectedSeries.size()];
   }
 
   /**
@@ -75,12 +84,20 @@ public class FillQueryExecutor {
       throws StorageEngineException, QueryProcessException, IOException {
     RowRecord record = new RowRecord(queryTime);
 
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(selectedSeries);
+    Filter timeFilter = initFillExecutorsAndContructTimeFilter(context);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair = StorageEngine.getInstance().mergeLock(selectedSeries);
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
       List<TimeValuePair> timeValuePairs = getTimeValuePairs(context);
-      long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
       for (int i = 0; i < selectedSeries.size(); i++) {
-        PartialPath path = selectedSeries.get(i);
         TSDataType dataType = dataTypes.get(i);
 
         if (timeValuePairs.get(i) != null) {
@@ -89,33 +106,18 @@ public class FillQueryExecutor {
           continue;
         }
 
-        IFill fill;
-        if (!typeIFillMap.containsKey(dataType)) {
-          switch (dataType) {
-            case INT32:
-            case INT64:
-            case FLOAT:
-            case DOUBLE:
-            case BOOLEAN:
-            case TEXT:
-              fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
-              break;
-            default:
-              throw new UnsupportedDataTypeException("unsupported data type " + dataType);
-          }
-        } else {
-          fill = typeIFillMap.get(dataType).copy();
-        }
-        fill =
-            configureFill(
-                fill,
-                path,
-                dataType,
-                queryTime,
-                plan.getAllMeasurementsInDevice(path.getDevice()),
-                context);
+        IFill fill = fillExecutors[i];
 
-        TimeValuePair timeValuePair = fill.getFillResult();
+        TimeValuePair timeValuePair;
+        try {
+          timeValuePair = fill.getFillResult();
+          if (timeValuePair == null && fill instanceof ValueFill) {
+            timeValuePair = ((ValueFill) fill).getSpecifiedFillResult(dataType);
+          }
+        } catch (QueryProcessException | NumberFormatException ignored) {
+          record.addField(null);
+          continue;
+        }
         if (timeValuePair == null || timeValuePair.getValue() == null) {
           record.addField(null);
         } else {
@@ -123,12 +125,73 @@ public class FillQueryExecutor {
         }
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
 
     SingleDataSet dataSet = new SingleDataSet(selectedSeries, dataTypes);
     dataSet.setRecord(record);
     return dataSet;
+  }
+
+  private Filter initFillExecutorsAndContructTimeFilter(QueryContext context)
+      throws UnsupportedDataTypeException, QueryProcessException, StorageEngineException {
+    long lowerBound = Long.MAX_VALUE;
+    long upperBound = Long.MIN_VALUE;
+    long defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+
+    for (int i = 0; i < selectedSeries.size(); i++) {
+      PartialPath path = selectedSeries.get(i);
+      TSDataType dataType = dataTypes.get(i);
+
+      IFill fill;
+      if (singleFill != null) {
+        fill = singleFill.copy();
+      } else if (!typeIFillMap.containsKey(dataType)) {
+        // old type fill logic
+        switch (dataType) {
+          case INT32:
+          case INT64:
+          case FLOAT:
+          case DOUBLE:
+          case BOOLEAN:
+          case TEXT:
+            fill = new PreviousFill(dataType, queryTime, defaultFillInterval);
+            break;
+          default:
+            throw new UnsupportedDataTypeException("unsupported data type " + dataType);
+        }
+      } else {
+        // old type fill logic
+        fill = typeIFillMap.get(dataType).copy();
+      }
+      fill =
+          configureFill(
+              fill,
+              path,
+              dataType,
+              queryTime,
+              plan.getAllMeasurementsInDevice(path.getDevice()),
+              context);
+      fillExecutors[i] = fill;
+
+      if (fill instanceof PreviousFill) {
+        long beforeRange = fill.getBeforeRange();
+        lowerBound =
+            Math.min(lowerBound, beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange);
+        upperBound = Math.max(upperBound, queryTime);
+      } else if (fill instanceof LinearFill) {
+        long beforeRange = fill.getBeforeRange();
+        long afterRange = fill.getAfterRange();
+        lowerBound =
+            Math.min(lowerBound, beforeRange == -1 ? Long.MIN_VALUE : queryTime - beforeRange);
+        upperBound =
+            Math.max(upperBound, afterRange == -1 ? Long.MAX_VALUE : queryTime + afterRange);
+      } else if (fill instanceof ValueFill) {
+        lowerBound = Math.min(lowerBound, queryTime);
+        upperBound = Math.max(upperBound, queryTime);
+      }
+    }
+    return FilterFactory.and(TimeFilter.gtEq(lowerBound), TimeFilter.ltEq(upperBound));
   }
 
   protected IFill configureFill(

@@ -1485,6 +1485,42 @@
 |默认值| 604800 |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+* virtual\_storage\_group\_num
+
+|名字| virtual\_storage\_group\_num |
+|:---:|:---|
+|描述| 每一个用户定义存储组下虚拟存储组的数量, 虚拟存储组是内存中写入的并行单位，每一个虚拟存储组内的写入请求是串行的，推荐值为： [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
+|类型| INT32 |
+|默认值| 1 |
+|改后生效方式|仅允许在第一次启动服务前修改|
+
+* enable\_id\_table
+
+|名字| enable\_id\_table |
+|:---:|:---|
+|描述| 是否开启ID表，加速写入时元数据访问，注意：ID表与别名(alias)不兼容 |
+|类型| bool |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
+* device\_id\_transformation\_method
+
+|名字| device\_id\_transformation\_method |
+|:---:|:---|
+|描述| 设备路径id化的方式，可以选择Plain或SHA256 |
+|类型| string |
+|默认值| Plain |
+|改后生效方式|仅允许在第一次启动服务前修改|
+
+* enable\_id\_table\_log\_file
+
+|名字| enable\_id\_table\_log\_file |
+|:---:|:---|
+|描述| 是否开启ID表设备ID到设备名称记录文件，在使用SHA256映射时，若想保持tsfile的自解析能力，建议开启 |
+|类型| bool |
+|默认值| false |
+|改后生效方式|重启服务生效|
+
 * concurrent\_writing\_time\_partition
 
 |名字| concurrent\_writing\_time\_partition |
@@ -1511,6 +1547,7 @@
 |类型| String |
 |默认值| root |
 |改后生效方式|仅允许在第一次启动服务前修改|
+
 
 ## 开启 GC 日志
 GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。

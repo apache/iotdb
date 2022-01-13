@@ -85,11 +85,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     try {
       List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
-          context.getQueryId(),
-          queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(),
-          readersOfSelectedSeries,
-          queryPlan.isAscending());
+          context.getQueryId(), queryPlan, readersOfSelectedSeries);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());

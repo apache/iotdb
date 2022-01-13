@@ -152,4 +152,21 @@ public class ResultColumn {
   public TSDataType getDataType() {
     return dataType;
   }
+
+  @Override
+  public final int hashCode() {
+    return alias == null ? getResultColumnName().hashCode() : alias.hashCode();
+  }
+
+  @Override
+  public final boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+
+    if (!(o instanceof ResultColumn)) {
+      return false;
+    }
+    return getResultColumnName().equals(((ResultColumn) o).getResultColumnName());
+  }
 }

@@ -32,7 +32,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 
 import java.io.File;
@@ -59,7 +59,7 @@ public class CompactionFileGeneratorUtils {
                     + (tsFileName.getInnerCompactionCnt() + 1)
                     + IoTDBConstant.FILE_NAME_SEPARATOR
                     + tsFileName.getCrossCompactionCnt()
-                    + ".tsfile")));
+                    + IoTDBConstant.COMPACTION_TMP_FILE_SUFFIX)));
   }
 
   public static TsFileResource generateTsFileResource(boolean sequence, int index) {
@@ -126,7 +126,7 @@ public class CompactionFileGeneratorUtils {
         long currTime = startTime;
         for (List<Long> chunk : chunkPagePointsNum) {
           ChunkWriterImpl chunkWriter =
-              new ChunkWriterImpl(new UnaryMeasurementSchema(sensor, TSDataType.INT64), true);
+              new ChunkWriterImpl(new MeasurementSchema(sensor, TSDataType.INT64), true);
           for (Long page : chunk) {
             for (long i = 0; i < page; i++) {
               chunkWriter.write(currTime, currTime);
@@ -183,7 +183,7 @@ public class CompactionFileGeneratorUtils {
       for (String sensor : deviceMeasurementEntry.getValue()) {
         List<long[][]> chunks = chunkPagePointsNum.get(currChunksIndex);
         ChunkWriterImpl chunkWriter =
-            new ChunkWriterImpl(new UnaryMeasurementSchema(sensor, TSDataType.INT64), true);
+            new ChunkWriterImpl(new MeasurementSchema(sensor, TSDataType.INT64), true);
         for (long[][] pages : chunks) {
           for (long[] starEndTime : pages) {
             for (long i = starEndTime[0]; i < starEndTime[1]; i++) {

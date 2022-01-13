@@ -35,16 +35,20 @@ import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.TriggerManagementException;
 import org.apache.iotdb.db.exception.UDFRegistrationException;
+import org.apache.iotdb.db.metadata.idtable.IDTableManager;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
+import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.MemTableManager;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.rpc.TSocketWrapper;
 import org.apache.iotdb.tsfile.utils.FilePathUtils;
@@ -138,6 +142,9 @@ public class EnvironmentUtils {
     }
 
     IoTDBDescriptor.getInstance().getConfig().setReadOnly(false);
+    // We must disable MQTT service as it will cost a lot of time to be shutdown, which may slow our
+    // unit tests.
+    IoTDBDescriptor.getInstance().getConfig().setEnableMQTTService(false);
 
     // clean cache
     if (config.isMetaDataCacheEnable()) {
@@ -161,6 +168,12 @@ public class EnvironmentUtils {
 
     // clear tsFileResource manager info
     TsFileResourceManager.getInstance().clear();
+
+    // clear id table manager
+    IDTableManager.getInstance().clear();
+
+    // clear last query executor
+    LastQueryExecutor.clear();
 
     // delete all directory
     cleanAllDir();
@@ -205,8 +218,8 @@ public class EnvironmentUtils {
     }
     // try MetricService
     try (Socket socket = new Socket()) {
-      socket.connect(new InetSocketAddress("127.0.0.1", 8181), 100);
-      logger.error("stop MetricService failed. 8181 can be connected now.");
+      socket.connect(new InetSocketAddress("127.0.0.1", 9091), 100);
+      logger.error("stop MetricService failed. 9091 can be connected now.");
       return false;
     } catch (Exception e) {
       // do nothing
@@ -255,8 +268,8 @@ public class EnvironmentUtils {
   public static void envSetUp() {
     logger.debug("EnvironmentUtil setup...");
     IoTDBDescriptor.getInstance().getConfig().setThriftServerAwaitTimeForStopService(60);
-    // we do not start 8181 port in test.
-    IoTDBDescriptor.getInstance().getConfig().setEnableMetricService(false);
+    // we do not start 9091 port in test.
+    MetricConfigDescriptor.getInstance().getMetricConfig().setEnableMetric(false);
     IoTDBDescriptor.getInstance().getConfig().setAvgSeriesPointNumberThreshold(Integer.MAX_VALUE);
     if (daemon == null) {
       daemon = new IoTDB();
@@ -268,6 +281,9 @@ public class EnvironmentUtils {
     }
 
     createAllDir();
+
+    // reset id method
+    DeviceIDFactory.getInstance().reset();
 
     TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
     TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
@@ -304,6 +320,7 @@ public class EnvironmentUtils {
     shutdownDaemon();
     stopDaemon();
     IoTDB.metaManager.clear();
+    IDTableManager.getInstance().clear();
     TsFileResourceManager.getInstance().clear();
     reactiveDaemon();
   }

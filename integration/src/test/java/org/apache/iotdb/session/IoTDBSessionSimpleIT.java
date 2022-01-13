@@ -44,8 +44,7 @@ import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import org.apache.commons.lang3.StringUtils;
 import org.junit.After;
@@ -126,10 +125,10 @@ public class IoTDBSessionSimpleIT {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
 
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 
@@ -391,10 +390,10 @@ public class IoTDBSessionSimpleIT {
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT32));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT32));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     tablet.setAligned(true);
@@ -430,13 +429,13 @@ public class IoTDBSessionSimpleIT {
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session.open();
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
-    schemaList.add(new UnaryMeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s0", TSDataType.DOUBLE, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s1", TSDataType.FLOAT, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.INT64, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.INT32, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s4", TSDataType.BOOLEAN, TSEncoding.RLE));
+    schemaList.add(new MeasurementSchema("s5", TSDataType.TEXT, TSEncoding.RLE));
 
     Tablet tablet = new Tablet("root.sg1.d1", schemaList);
     for (long time = 0; time < 10; time++) {
@@ -539,8 +538,7 @@ public class IoTDBSessionSimpleIT {
     try {
       session.deleteTimeseries(Arrays.asList("root.sg1.d1.t6", "root.sg1.d1.t2", "root.sg1.d1.t3"));
     } catch (BatchExecutionException e) {
-      assertEquals(
-          "No matched timeseries or aligned timeseries for Path [root.sg1.d1.t6];", e.getMessage());
+      assertEquals("Path [root.sg1.d1.t6] does not exist;", e.getMessage());
     }
     assertTrue(session.checkTimeseriesExists("root.sg1.d1.t1"));
     assertFalse(session.checkTimeseriesExists("root.sg1.d1.t2"));
@@ -732,7 +730,7 @@ public class IoTDBSessionSimpleIT {
     session.close();
   }
 
-  @Test(expected = BatchExecutionException.class)
+  @Test
   public void testInsertOneDeviceRecordsWithIncorrectOrder()
       throws IoTDBConnectionException, StatementExecutionException {
     session = new Session("127.0.0.1", 6667, "root", "root");
@@ -891,8 +889,8 @@ public class IoTDBSessionSimpleIT {
           new Tablet(
               deviceId,
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       long ts = 7L;
       for (long row = 0; row < 8; row++) {
@@ -920,15 +918,15 @@ public class IoTDBSessionSimpleIT {
           new Tablet(
               deviceId,
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       Tablet tablet2 =
           new Tablet(
               "root.sg.d2",
               Arrays.asList(
-                  new UnaryMeasurementSchema("s1", TSDataType.INT32),
-                  new UnaryMeasurementSchema("s2", TSDataType.FLOAT)),
+                  new MeasurementSchema("s1", TSDataType.INT32),
+                  new MeasurementSchema("s2", TSDataType.FLOAT)),
               5);
       HashMap<String, Tablet> tablets = new HashMap<>();
       tablets.put(deviceId, tablet1);
@@ -1193,9 +1191,9 @@ public class IoTDBSessionSimpleIT {
     }
 
     // insert tablets
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("x", TSDataType.FLOAT));
-    schemaList.add(new UnaryMeasurementSchema("y", TSDataType.FLOAT));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("x", TSDataType.FLOAT));
+    schemaList.add(new MeasurementSchema("y", TSDataType.FLOAT));
     Tablet tablet = new Tablet("root.sg.loc1.sector", schemaList);
     tablet.setAligned(true);
 
@@ -1256,8 +1254,8 @@ public class IoTDBSessionSimpleIT {
     values.add("1.0");
     values.add("2.0");
 
-    session.insertRecord("root.sg.loc.area", 1L, measurements, values);
-    session.insertRecord("root.sg.loc", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc.area", 1L, measurements, values);
+    session.insertAlignedRecord("root.sg.loc", 1L, measurements, values);
 
     dataSet = session.executeQueryStatement("show timeseries");
 
@@ -1287,17 +1285,18 @@ public class IoTDBSessionSimpleIT {
 
     dataSet = session.executeQueryStatement("show devices");
 
-    checkSet.add("root.sg.loc");
-    checkSet.add("root.sg.loc.GPS");
-    checkSet.add("root.sg.loc.vehicle");
-    checkSet.add("root.sg.loc.vehicle.GPS");
-    checkSet.add("root.sg.loc.area");
-    checkSet.add("root.sg.loc.area.GPS");
-    checkSet.add("root.sg.loc.area.vehicle");
-    checkSet.add("root.sg.loc.area.vehicle.GPS");
+    checkSet.add("root.sg.loc,true");
+    checkSet.add("root.sg.loc.GPS,false");
+    checkSet.add("root.sg.loc.vehicle,true");
+    checkSet.add("root.sg.loc.vehicle.GPS,false");
+    checkSet.add("root.sg.loc.area,true");
+    checkSet.add("root.sg.loc.area.GPS,false");
+    checkSet.add("root.sg.loc.area.vehicle,true");
+    checkSet.add("root.sg.loc.area.vehicle.GPS,false");
 
     while (dataSet.hasNext()) {
-      checkSet.remove(dataSet.next().getFields().get(0).toString());
+      List<Field> fields = dataSet.next().getFields();
+      checkSet.remove(fields.get(0).toString() + "," + fields.get(1).toString());
     }
 
     assertTrue(checkSet.isEmpty());
@@ -1321,10 +1320,10 @@ public class IoTDBSessionSimpleIT {
       session.createTimeseries(
           "root.sg.d.s3", TSDataType.INT64, TSEncoding.RLE, CompressionType.SNAPPY);
     }
-    List<IMeasurementSchema> schemaList = new ArrayList<>();
-    schemaList.add(new UnaryMeasurementSchema("s1", TSDataType.INT64));
-    schemaList.add(new UnaryMeasurementSchema("s2", TSDataType.DOUBLE));
-    schemaList.add(new UnaryMeasurementSchema("s3", TSDataType.TEXT));
+    List<MeasurementSchema> schemaList = new ArrayList<>();
+    schemaList.add(new MeasurementSchema("s1", TSDataType.INT64));
+    schemaList.add(new MeasurementSchema("s2", TSDataType.DOUBLE));
+    schemaList.add(new MeasurementSchema("s3", TSDataType.TEXT));
 
     Tablet tablet = new Tablet("root.sg.d", schemaList, 10);
 

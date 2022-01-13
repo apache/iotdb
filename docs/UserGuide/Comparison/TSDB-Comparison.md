@@ -220,13 +220,13 @@ IoTDB and InfluxDB can meet most requirements of time series data management, wh
 I listed some interesting features that these systems may differ.
 
 | TSDB                         | IoTDB  | InfluxDB | OpenTSDB | KairosDB | TimescaleDB |
-| ---------------------------- | :----: | :------: | :------: | :------: | :---------: |
+| ---------------------------- | :----: | :------: | :------: | :------: |:-----------:|
 | *Align by time*              | **++** |    +     |    -     |    -     |      +      |
 | *Compression*                | **++** |    +-    |    +-    |    +-    |     +-      |
 | *MQTT support*               | **++** |    +     |    -     |    -     |     +-      |
 | *Run on Edge-side Device*    | **++** |    +     |    -     |    +-    |      +      |
 | *Multi\-instance Sync*       | **++** |    -     |    -     |    -     |      -      |
-| *JDBC Driver*                | **+**  |    -     |    -     |    -     |      -      |
+| *JDBC Driver*                | **+**  |    -     |    -     |    -     |     ++      |
 | *Standard SQL*               |   +    |    -     |    -     |    -     |   **++**    |
 | *Spark integration*          | **++** |    -     |    -     |    -     |      -      |
 | *Hive integration*           | **++** |    -     |    -     |    -     |      -      |

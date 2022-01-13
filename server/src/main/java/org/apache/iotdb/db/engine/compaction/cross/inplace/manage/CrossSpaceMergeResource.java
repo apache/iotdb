@@ -21,8 +21,11 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.manage;
 
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
+import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.MergeUtils;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -64,8 +67,6 @@ public class CrossSpaceMergeResource {
   private Map<TsFileResource, List<Modification>> modificationCache = new HashMap<>();
   private Map<TsFileResource, Map<String, Pair<Long, Long>>> startEndTimeCache =
       new HashMap<>(); // pair<startTime, endTime>
-  private Map<PartialPath, IMeasurementSchema> measurementSchemaMap =
-      new HashMap<>(); // is this too waste?
   private Map<IMeasurementSchema, ChunkWriterImpl> chunkWriterCache = new ConcurrentHashMap<>();
 
   private long ttlLowerBound = Long.MIN_VALUE;
@@ -103,12 +104,11 @@ public class CrossSpaceMergeResource {
     fileReaderCache.clear();
     fileWriterCache.clear();
     modificationCache.clear();
-    measurementSchemaMap.clear();
     chunkWriterCache.clear();
   }
 
-  public IMeasurementSchema getSchema(PartialPath path) {
-    return measurementSchemaMap.get(path);
+  public IMeasurementSchema getSchema(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getSeriesSchema(path);
   }
 
   /**
@@ -161,11 +161,18 @@ public class CrossSpaceMergeResource {
    * @param paths names of the timeseries
    * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
    */
-  public IPointReader[] getUnseqReaders(List<PartialPath> paths) throws IOException {
+  public IPointReader[] getUnseqReaders(List<PartialPath> paths)
+      throws IOException, MetadataException {
     List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
     IPointReader[] ret = new IPointReader[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
-      TSDataType dataType = getSchema(paths.get(i)).getType();
+      PartialPath path = paths.get(i);
+      TSDataType dataType;
+      if (path instanceof MeasurementPath) {
+        dataType = path.getMeasurementSchema().getType();
+      } else {
+        dataType = getSchema(path).getType();
+      }
       ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
     }
     return ret;
@@ -259,10 +266,6 @@ public class CrossSpaceMergeResource {
 
   public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
     this.cacheDeviceMeta = cacheDeviceMeta;
-  }
-
-  public void setMeasurementSchemaMap(Map<PartialPath, IMeasurementSchema> measurementSchemaMap) {
-    this.measurementSchemaMap = measurementSchemaMap;
   }
 
   public void clearChunkWriterCache() {

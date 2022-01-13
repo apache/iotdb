@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.query.manage.ClusterSessionManager;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
@@ -71,8 +72,8 @@ public class ClusterTSServiceImpl extends TSServiceImpl {
       if (!(plan instanceof SetSystemModePlan)
           && !(plan instanceof FlushPlan)
           && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-        throw new QueryProcessException(
-            "Current system mode is read-only, does not support non-query operation");
+        return RpcUtils.getStatus(
+            TSStatusCode.READ_ONLY_SYSTEM_ERROR, StorageEngineReadonlyException.ERROR_MESSAGE);
       }
     } catch (QueryProcessException e) {
       logger.warn("Illegal plan detected： {}", plan);

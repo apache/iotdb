@@ -44,7 +44,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;

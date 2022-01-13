@@ -23,11 +23,16 @@ import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.inner.sizetiered.SizeTieredCompactionRecoverTask;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -53,6 +58,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
 
   @Override
   public Void call() throws Exception {
+    long startTime = System.currentTimeMillis();
     currentTaskNum.incrementAndGet();
     try {
       doCompaction();
@@ -66,6 +72,18 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       }
       this.currentTaskNum.decrementAndGet();
     }
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .timer(
+              System.currentTimeMillis() - startTime,
+              TimeUnit.MILLISECONDS,
+              Metric.COST_TASK.toString(),
+              Tag.NAME.toString(),
+              "compaction");
+    }
+
     return null;
   }
 

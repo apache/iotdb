@@ -33,22 +33,8 @@
         <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>ON</thrift.with.csharp>
         <thrift.with.python>ON</thrift.with.python>
-        <chmod.command>chmod</chmod.command>
-        <chmod.command.para>+x cmake</chmod.command.para>
     </properties>
     <profiles>
-        <profile>
-            <id>os-windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <chmod.command>echo</chmod.command>
-                <chmod.command.para>"do nothing"</chmod.command.para>
-            </properties>
-        </profile>
         <profile>
             <id>compile-cpp</id>
             <build>
@@ -82,25 +68,6 @@
                                     <url>https://archive.apache.org/dist/thrift/${thrift.version}/thrift-${thrift.version}.tar.gz</url>
                                     <unpack>true</unpack>
                                     <outputDirectory>${project.build.directory}</outputDirectory>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>generate-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>${chmod.command}</executable>
-                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
                                 </configuration>
                             </execution>
                         </executions>

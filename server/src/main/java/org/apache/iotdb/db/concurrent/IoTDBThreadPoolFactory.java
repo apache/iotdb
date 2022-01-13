@@ -79,14 +79,8 @@ public class IoTDBThreadPoolFactory {
 
   public static ExecutorService newFixedThreadPoolWithDaemonThread(int nThreads, String poolName) {
     logger.info(NEW_FIXED_THREAD_POOL_LOGGER_FORMAT, poolName, nThreads);
-    return new WrappedThreadPoolExecutor(
-        nThreads,
-        nThreads,
-        0L,
-        TimeUnit.MILLISECONDS,
-        new LinkedBlockingQueue<>(),
-        new IoTDBDaemonThreadFactory(poolName),
-        poolName);
+    return new WrappedSingleThreadExecutorService(
+        Executors.newSingleThreadExecutor(new IoTThreadFactory(poolName)), poolName);
   }
 
   public static ExecutorService newFixedThreadPool(

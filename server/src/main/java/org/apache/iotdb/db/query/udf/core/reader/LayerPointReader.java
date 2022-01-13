@@ -47,5 +47,7 @@ public interface LayerPointReader {
 
   boolean currentBoolean() throws IOException;
 
+  boolean isCurrentNull() throws IOException;
+
   Binary currentBinary() throws IOException;
 }

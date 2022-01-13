@@ -34,11 +34,11 @@ public class SetTemplatePlan extends PhysicalPlan {
   String prefixPath;
 
   public SetTemplatePlan() {
-    super(false, OperatorType.SET_TEMPLATE);
+    super(OperatorType.SET_TEMPLATE);
   }
 
   public SetTemplatePlan(String templateName, String prefixPath) {
-    super(false, OperatorType.SET_TEMPLATE);
+    super(OperatorType.SET_TEMPLATE);
     this.templateName = templateName;
     this.prefixPath = prefixPath;
   }

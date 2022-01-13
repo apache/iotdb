@@ -78,6 +78,7 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -169,4 +170,7 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
+
+  // compaction
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
 }

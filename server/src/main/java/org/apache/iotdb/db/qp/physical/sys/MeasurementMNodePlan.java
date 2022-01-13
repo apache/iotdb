@@ -22,7 +22,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,12 +37,12 @@ public class MeasurementMNodePlan extends MNodePlan {
   private long offset;
 
   public MeasurementMNodePlan() {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
   }
 
   public MeasurementMNodePlan(
       String name, String alias, long offset, int childSize, IMeasurementSchema schema) {
-    super(false, Operator.OperatorType.MEASUREMENT_MNODE);
+    super(Operator.OperatorType.MEASUREMENT_MNODE);
     this.name = name;
     this.alias = alias;
     this.offset = offset;
@@ -87,7 +87,7 @@ public class MeasurementMNodePlan extends MNodePlan {
     alias = readString(buffer);
     offset = buffer.getLong();
     childSize = buffer.getInt();
-    schema = UnaryMeasurementSchema.deserializeFrom(buffer);
+    schema = MeasurementSchema.deserializeFrom(buffer);
 
     index = buffer.getLong();
   }

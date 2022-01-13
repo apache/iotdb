@@ -57,6 +57,8 @@ public class TsFileManager {
   private List<TsFileResource> sequenceRecoverTsFileResources = new ArrayList<>();
   private List<TsFileResource> unsequenceRecoverTsFileResources = new ArrayList<>();
 
+  private boolean allowCompaction = true;
+
   public TsFileManager(
       String storageGroupName, String virtualStorageGroup, String storageGroupDir) {
     this.storageGroupName = storageGroupName;
@@ -274,6 +276,14 @@ public class TsFileManager {
     } finally {
       readUnlock();
     }
+  }
+
+  public boolean isAllowCompaction() {
+    return allowCompaction;
+  }
+
+  public void setAllowCompaction(boolean allowCompaction) {
+    this.allowCompaction = allowCompaction;
   }
 
   public String getVirtualStorageGroup() {

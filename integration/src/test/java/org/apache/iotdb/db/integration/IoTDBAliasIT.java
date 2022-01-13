@@ -34,9 +34,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.apache.iotdb.db.constant.TestConstant.TIMESTAMP_STR;
+import static org.junit.Assert.*;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBAliasIT {
@@ -357,6 +356,38 @@ public class IoTDBAliasIT {
         }
       }
 
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  @Test
+  public void UDFAliasResultTest() {
+
+    String[] expect = {
+      "0,-1,1,0.0", "1,-2,2,0.0", "2,-3,3,0.0",
+    };
+    String sql = "select s1, s2, sin(s1+s2) as a from root.sg1.d1 ";
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+
+      boolean hasResult = statement.execute(sql);
+      assertTrue(hasResult);
+      try (ResultSet resultSet = statement.getResultSet()) {
+
+        int cnt = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString("root.sg1.d1.s1")
+                  + ","
+                  + resultSet.getString("root.sg1.d1.s2")
+                  + ","
+                  + resultSet.getString("a");
+          assertEquals(expect[cnt++], ans);
+        }
+      }
     } catch (Exception e) {
       fail(e.getMessage());
     }

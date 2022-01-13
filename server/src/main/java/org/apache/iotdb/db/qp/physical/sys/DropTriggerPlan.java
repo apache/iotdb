@@ -35,12 +35,12 @@ public class DropTriggerPlan extends PhysicalPlan {
   private String triggerName;
 
   public DropTriggerPlan() {
-    super(false, OperatorType.DROP_TRIGGER);
+    super(OperatorType.DROP_TRIGGER);
     canBeSplit = false;
   }
 
   public DropTriggerPlan(String triggerName) {
-    super(false, OperatorType.DROP_TRIGGER);
+    super(OperatorType.DROP_TRIGGER);
     this.triggerName = triggerName;
     canBeSplit = false;
   }

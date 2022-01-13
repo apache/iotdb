@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
+public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDFInputDataSet {
 
   private final TimeGenerator timeGenerator;
   private final List<IReaderByTimestamp> seriesReaderByTimestampList;

@@ -240,7 +240,7 @@ abstract class BaseApplier implements LogApplier {
         MetaPuller.getInstance()
             .pullTimeSeriesSchemas(((BatchPlan) plan).getPrefixPaths(), ignoredGroup);
       } else {
-        PartialPath path = plan.getDeviceId();
+        PartialPath path = plan.getDevicePath();
         MetaPuller.getInstance()
             .pullTimeSeriesSchemas(Collections.singletonList(path), ignoredGroup);
       }

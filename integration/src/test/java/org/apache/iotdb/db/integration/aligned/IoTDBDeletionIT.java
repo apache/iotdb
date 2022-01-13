@@ -20,9 +20,9 @@
 package org.apache.iotdb.db.integration.aligned;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-import org.apache.iotdb.jdbc.Config;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -60,18 +59,16 @@ public class IoTDBDeletionIT {
   @Before
   public void setUp() throws Exception {
     Locale.setDefault(Locale.ENGLISH);
-    EnvironmentUtils.closeStatMonitor();
     prevPartitionInterval = IoTDBDescriptor.getInstance().getConfig().getPartitionInterval();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(1000);
-    EnvironmentUtils.envSetUp();
-    Class.forName(Config.JDBC_DRIVER_NAME);
+    ConfigFactory.getConfig().setPartitionInterval(1000);
+    EnvFactory.getEnv().initBeforeTest();
     prepareSeries();
   }
 
   @After
   public void tearDown() throws Exception {
-    EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setPartitionInterval(prevPartitionInterval);
+    EnvFactory.getEnv().cleanAfterTest();
+    ConfigFactory.getConfig().setPartitionInterval(prevPartitionInterval);
   }
 
   /**
@@ -81,9 +78,7 @@ public class IoTDBDeletionIT {
    */
   @Test
   public void testUnsupportedValueFilter() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("insert into root.vehicle.d0(time,s0) aligned values (10,310)");
@@ -157,9 +152,7 @@ public class IoTDBDeletionIT {
   @Test
   public void test() throws SQLException {
     prepareData();
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0  WHERE time <= 300");
@@ -200,9 +193,7 @@ public class IoTDBDeletionIT {
   public void testMerge() throws SQLException {
     prepareMerge();
 
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("merge");
       statement.execute("DELETE FROM root.vehicle.d0.** WHERE time <= 15000");
@@ -230,9 +221,7 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testDelAfterFlush() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
       statement.execute(
@@ -254,9 +243,7 @@ public class IoTDBDeletionIT {
   @Test
   public void testRangeDelete() throws SQLException {
     prepareData();
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time <= 300");
@@ -291,9 +278,7 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testFullDeleteWithoutWhereClause() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("DELETE FROM root.vehicle.d0.s0");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
@@ -310,9 +295,7 @@ public class IoTDBDeletionIT {
   @Test
   public void testPartialPathRangeDelete() throws SQLException {
     prepareData();
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       statement.execute("DELETE FROM root.vehicle.d0.* WHERE time <= 300 and time > 150");
@@ -341,16 +324,14 @@ public class IoTDBDeletionIT {
     long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(10000);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 1500 and time <= 9000");
       try (ResultSet set = statement.executeQuery("SELECT s0 FROM root.vehicle.d0")) {
         int cnt = 0;
@@ -369,22 +350,21 @@ public class IoTDBDeletionIT {
     long size = IoTDBDescriptor.getInstance().getConfig().getMemtableSizeThreshold();
     // Adjust memstable threshold size to make it flush automatically
     IoTDBDescriptor.getInstance().getConfig().setMemtableSizeThreshold(1000000);
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       for (int i = 1; i <= 100000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
-
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 15000 and time <= 30000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 30000 and time <= 40000");
       for (int i = 100001; i <= 200000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 50000 and time <= 80000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 90000 and time <= 110000");
       statement.execute("DELETE FROM root.vehicle.d0.s0 WHERE time > 150000 and time <= 165000");
@@ -403,9 +383,7 @@ public class IoTDBDeletionIT {
 
   @Test
   public void testDelSeriesWithSpecialSymbol() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
           "CREATE TIMESERIES root.ln.d1.`\"status,01\"` WITH DATATYPE=BOOLEAN, ENCODING=PLAIN");
@@ -442,11 +420,71 @@ public class IoTDBDeletionIT {
     }
   }
 
+  @Test
+  public void testInsertDuplicatedTimeThenDel() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)");
+      statement.execute(
+          "insert into root.lz.dev.GPS(time, latitude, longitude) aligned values(9,3.2,9.8)");
+      statement.execute("insert into root.lz.dev.GPS(time, latitude) aligned values(11,4.5)");
+      statement.execute("insert into root.lz.dev.GPS(time, longitude) aligned values(11,6.7)");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      statement.execute("delete from root.lz.dev.GPS.latitude");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+    }
+  }
+
+  @Test
+  public void testDeleteAll() throws SQLException {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)");
+      statement.execute(
+          "insert into root.lz.dev.GPS(time, latitude, longitude) aligned values(9,3.2,9.8)");
+      statement.execute("insert into root.lz.dev.GPS(time, latitude) aligned values(11,4.5)");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(2, cnt);
+      }
+
+      statement.execute("delete from root.lz.**");
+
+      try (ResultSet resultSet = statement.executeQuery("select * from root.lz.dev.GPS")) {
+        int cnt = 0;
+        while (resultSet.next()) {
+          cnt++;
+        }
+        Assert.assertEquals(0, cnt);
+      }
+      statement.execute("flush");
+    }
+  }
+
   private static void prepareSeries() {
     String sq = null;
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       for (String sql : creationSqls) {
@@ -460,9 +498,7 @@ public class IoTDBDeletionIT {
   }
 
   private void prepareData() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite file
@@ -493,30 +529,28 @@ public class IoTDBDeletionIT {
   }
 
   private void cleanData() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(deleteAllTemplate);
     }
   }
 
   public void prepareMerge() throws SQLException {
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       // prepare BufferWrite data
       for (int i = 10001; i <= 20000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
       // prepare Overflow data
       for (int i = 1; i <= 10000; i++) {
-        statement.execute(
+        statement.addBatch(
             String.format(insertTemplate, i, i, i, (double) i, "'" + i + "'", i % 2 == 0));
       }
+      statement.executeBatch();
     }
   }
 }

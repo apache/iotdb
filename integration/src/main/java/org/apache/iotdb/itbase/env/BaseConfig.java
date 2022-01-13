@@ -22,12 +22,16 @@ import java.util.Properties;
 
 public interface BaseConfig {
 
-  default void clearProperties() throws Exception {
-    throw new Exception("Not implement");
+  default void clearAllProperties() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Method clearAllProperties not implement");
   }
 
-  default Properties getProperties() throws Exception {
-    throw new Exception("Not implement");
+  default Properties getEngineProperties() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Method getEngineProperties not implement");
+  }
+
+  default Properties getClusterProperties() throws UnsupportedOperationException {
+    throw new UnsupportedOperationException("Method getClusterProperties not implement");
   }
 
   default BaseConfig setMaxNumberOfPointsInPage(int maxNumberOfPointsInPage) {
@@ -95,6 +99,18 @@ public interface BaseConfig {
   }
 
   default BaseConfig setEnableCrossSpaceCompaction(boolean enableCrossSpaceCompaction) {
+    return this;
+  }
+
+  default BaseConfig setEnableIDTable(boolean isEnableIDTable) {
+    return this;
+  }
+
+  default BaseConfig setDeviceIDTransformationMethod(String deviceIDTransformationMethod) {
+    return this;
+  }
+
+  default BaseConfig setAutoCreateSchemaEnabled(boolean enableAutoCreateSchema) {
     return this;
   }
 }

@@ -79,23 +79,24 @@ public class BytesUtils {
    * convert an integer to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input integer variable
+   * @param srcNum input integer variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void intToBytes(int srcNum, byte[] result, int pos, int width) {
-    srcNum = srcNum & ~(-1 << width);
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     try {
       while (width > 0) {
         int m = width + cnt >= 8 ? 8 - cnt : width;
         width -= m;
+        int mask = 1 << (8 - cnt);
         cnt += m;
         byte y = (byte) (srcNum >> width);
         y = (byte) (y << (8 - cnt));
-        result[index] = (byte) (result[index] | y);
+        mask = ~(mask - (1 << (8 - cnt)));
+        result[index] = (byte) (result[index] & mask | y);
         srcNum = srcNum & ~(-1 << width);
         if (cnt == 8) {
           index++;
@@ -199,8 +200,8 @@ public class BytesUtils {
    */
   public static int bytesToInt(byte[] result, int pos, int width) {
     int ret = 0;
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     while (width > 0) {
       int m = width + cnt >= 8 ? 8 - cnt : width;
       width -= m;
@@ -505,26 +506,27 @@ public class BytesUtils {
   }
 
   /**
-   * convert an long to a byte array which length is width, then copy this array to the parameter
+   * convert a long to a byte array which length is width, then copy this array to the parameter
    * result from pos.
    *
-   * @param srcNum input long variable
+   * @param srcNum input long variable. All but the lowest {@code width} bits are 0.
    * @param result byte array to convert
    * @param pos start position
    * @param width bit-width
    */
   public static void longToBytes(long srcNum, byte[] result, int pos, int width) {
-    srcNum = srcNum & ~(-1L << width);
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     try {
       while (width > 0) {
         int m = width + cnt >= 8 ? 8 - cnt : width;
         width -= m;
+        int mask = 1 << (8 - cnt);
         cnt += m;
         byte y = (byte) (srcNum >> width);
         y = (byte) (y << (8 - cnt));
-        result[index] = (byte) (result[index] | y);
+        mask = ~(mask - (1 << (8 - cnt)));
+        result[index] = (byte) (result[index] & mask | y);
         srcNum = srcNum & ~(-1L << width);
         if (cnt == 8) {
           index++;
@@ -582,8 +584,8 @@ public class BytesUtils {
    */
   public static long bytesToLong(byte[] result, int pos, int width) {
     long ret = 0;
-    int cnt = pos % 8;
-    int index = pos / 8;
+    int cnt = pos & 0x07;
+    int index = pos >> 3;
     while (width > 0) {
       int m = width + cnt >= 8 ? 8 - cnt : width;
       width -= m;

@@ -49,7 +49,8 @@ import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
-import org.apache.iotdb.db.qp.logical.crud.UDFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.UDAFQueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.UDTFQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.logical.sys.ActivateTemplateOperator;
 import org.apache.iotdb.db.qp.logical.sys.AlterTimeSeriesOperator;
@@ -103,6 +104,7 @@ import org.apache.iotdb.db.qp.logical.sys.UnSetTTLOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnloadFileOperator;
 import org.apache.iotdb.db.qp.logical.sys.UnsetTemplateOperator;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.ConstantContext;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser.CqGroupByTimeClauseContext;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 import org.apache.iotdb.db.query.executor.fill.IFill;
 import org.apache.iotdb.db.query.executor.fill.LinearFill;
@@ -131,7 +133,15 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.io.File;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -324,36 +334,34 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseTemplateMeasurementClause(
       IoTDBSqlParser.TemplateMeasurementClauseContext ctx,
       CreateTemplateOperator createTemplateOperator) {
-    String schemaName;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
     if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
       // aligned measurement
+      String alignedSuffixPath =
+          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).suffixPath().getText();
       List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
       List<IoTDBSqlParser.AttributeClausesContext> attributeList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
-      schemaName = measurementList.get(0).getText();
       for (int i = 0; i < attributeList.size(); i++) {
-        measurements.add(measurementList.get(i + 1).getText());
+        measurements.add(
+            alignedSuffixPath.concat(
+                TsFileConstant.PATH_SEPARATOR + measurementList.get(i).getText()));
         parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
       }
     } else {
       // non-aligned template measurement
-      schemaName =
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx)
-              .nodeNameWithoutWildcard()
-              .getText();
-      measurements.add(schemaName);
+      measurements.add(
+          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).suffixPath().getText());
       parseAttributeClause(
           ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
           dataTypes,
           encodings,
           compressors);
     }
-    createTemplateOperator.addSchemaName(schemaName);
     createTemplateOperator.addMeasurements(measurements);
     createTemplateOperator.addDataTypes(dataTypes);
     createTemplateOperator.addEncodings(encodings);
@@ -514,7 +522,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public void parseCqSelectIntoClause(
       IoTDBSqlParser.CqSelectIntoClauseContext ctx,
       CreateContinuousQueryOperator createContinuousQueryOperator) {
-
     queryOp = new GroupByQueryOperator();
 
     parseSelectClause(ctx.selectClause());
@@ -523,12 +530,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (queryOp.getSelectComponent().getResultColumns().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple result columns.");
     }
-
     if (queryOp.getFromComponent().getPrefixPaths().size() > 1) {
       throw new SQLParserException("CQ: CQ currently does not support multiple series.");
     }
 
-    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause());
+    parseCqGroupByTimeClause(ctx.cqGroupByTimeClause(), createContinuousQueryOperator);
 
     if (queryOp.isGroupByLevel()) {
       int[] groupByQueryLevels = queryOp.getSpecialClauseComponent().getLevels();
@@ -542,12 +548,15 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     createContinuousQueryOperator.setQueryOperator(queryOp);
   }
 
-  public void parseCqGroupByTimeClause(IoTDBSqlParser.CqGroupByTimeClauseContext ctx) {
-
+  public void parseCqGroupByTimeClause(
+      CqGroupByTimeClauseContext ctx, CreateContinuousQueryOperator createContinuousQueryOperator) {
     GroupByClauseComponent groupByClauseComponent = new GroupByClauseComponent();
 
-    groupByClauseComponent.setUnit(
-        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent));
+    long groupByInterval =
+        parseTimeUnitOrSlidingStep(ctx.DURATION_LITERAL().getText(), true, groupByClauseComponent);
+    groupByClauseComponent.setUnit(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeInterval(groupByInterval);
+    createContinuousQueryOperator.setGroupByTimeIntervalString(ctx.DURATION_LITERAL().getText());
 
     groupByClauseComponent.setSlidingStep(groupByClauseComponent.getUnit());
     groupByClauseComponent.setSlidingStepByMonth(groupByClauseComponent.isIntervalByMonth());
@@ -1030,6 +1039,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       intoPaths.add(parseIntoPath(ctx.intoClause().intoPath(i)));
     }
     selectIntoOperator.setIntoPaths(intoPaths);
+    selectIntoOperator.setIntoPathsAligned(ctx.intoClause().ALIGNED() != null);
     return selectIntoOperator;
   }
 
@@ -1247,6 +1257,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     groupByClauseComponent.setUnit(
         parseTimeUnitOrSlidingStep(
             ctx.DURATION_LITERAL(0).getText(), true, groupByClauseComponent));
+    if (groupByClauseComponent.getUnit() <= 0) {
+      throw new SQLParserException(
+          "The second parameter time interval should be a positive integer.");
+    }
     // parse sliding step
     if (ctx.DURATION_LITERAL().size() == 2) {
       groupByClauseComponent.setSlidingStep(
@@ -1297,16 +1311,40 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
     parseTimeInterval(ctx.timeInterval(), groupByFillClauseComponent);
 
-    List<IoTDBSqlParser.TypeClauseContext> list = ctx.typeClause();
-    Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-    for (IoTDBSqlParser.TypeClauseContext typeClause : list) {
-      if (typeClause.ALL() != null) {
-        parseAllTypeClause(typeClause, fillTypes);
-      } else {
-        parsePrimitiveTypeClause(typeClause, fillTypes);
+    if (ctx.fillClause().oldTypeClause().size() > 0) {
+      // old type fill logic
+      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.fillClause().oldTypeClause();
+      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
+      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
+        if (typeClause.ALL() != null) {
+          parseAllTypeClause(typeClause, fillTypes);
+        } else {
+          parsePrimitiveTypeClause(typeClause, fillTypes);
+        }
       }
+
+      int usePrevious = 0;
+      int useLinear = 0;
+      int useValue = 0;
+      for (IFill iFill : fillTypes.values()) {
+        if (iFill instanceof PreviousFill) {
+          usePrevious = 1;
+        }
+        if (iFill instanceof LinearFill) {
+          useLinear = 1;
+        }
+        if (iFill instanceof ValueFill) {
+          useValue = 1;
+        }
+      }
+      if (usePrevious + useLinear + useValue > 1) {
+        throw new SQLParserException("The old type logic could only use one type of fill");
+      }
+
+      groupByFillClauseComponent.setFillTypes(fillTypes);
+    } else {
+      groupByFillClauseComponent.setSingleFill(getSingleIFill(ctx.fillClause()));
     }
-    groupByFillClauseComponent.setFillTypes(fillTypes);
     queryOp.setSpecialClauseComponent(groupByFillClauseComponent);
   }
 
@@ -1323,45 +1361,36 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseFillClause(IoTDBSqlParser.FillClauseContext ctx) {
     FillClauseComponent fillClauseComponent = new FillClauseComponent();
-    List<IoTDBSqlParser.TypeClauseContext> list = ctx.typeClause();
-    Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
-    for (IoTDBSqlParser.TypeClauseContext typeClause : list) {
-      if (typeClause.ALL() != null) {
-        if (typeClause.linearClause() != null) {
-          throw new SQLParserException("fill all doesn't support linear fill");
+
+    if (ctx.oldTypeClause().size() > 0) {
+      // old type fill logic
+      List<IoTDBSqlParser.OldTypeClauseContext> list = ctx.oldTypeClause();
+      Map<TSDataType, IFill> fillTypes = new EnumMap<>(TSDataType.class);
+      for (IoTDBSqlParser.OldTypeClauseContext typeClause : list) {
+        if (typeClause.ALL() != null) {
+          if (typeClause.linearClause() != null) {
+            throw new SQLParserException("fill all doesn't support linear fill");
+          }
+          parseAllTypeClause(typeClause, fillTypes);
+          break;
+        } else {
+          parsePrimitiveTypeClause(typeClause, fillTypes);
         }
-        parseAllTypeClause(typeClause, fillTypes);
-        break;
-      } else {
-        parsePrimitiveTypeClause(typeClause, fillTypes);
       }
+      fillClauseComponent.setFillTypes(fillTypes);
+    } else {
+      // new single fill logic
+      fillClauseComponent.setSingleFill(getSingleIFill(ctx));
     }
-    fillClauseComponent.setFillTypes(fillTypes);
     queryOp.setSpecialClauseComponent(fillClauseComponent);
   }
 
   private void parseTimeInterval(
       IoTDBSqlParser.TimeIntervalContext timeInterval,
       GroupByClauseComponent groupByClauseComponent) {
-    long startTime;
-    long endTime;
     long currentTime = DatetimeUtils.currentTime();
-    if (timeInterval.timeValue(0).INTEGER_LITERAL() != null) {
-      startTime = Long.parseLong(timeInterval.timeValue(0).INTEGER_LITERAL().getText());
-    } else if (timeInterval.timeValue(0).dateExpression() != null) {
-      startTime = parseDateExpression(timeInterval.timeValue(0).dateExpression(), currentTime);
-    } else {
-      startTime =
-          parseDateFormat(timeInterval.timeValue(0).datetimeLiteral().getText(), currentTime);
-    }
-    if (timeInterval.timeValue(1).INTEGER_LITERAL() != null) {
-      endTime = Long.parseLong(timeInterval.timeValue(1).INTEGER_LITERAL().getText());
-    } else if (timeInterval.timeValue(1).dateExpression() != null) {
-      endTime = parseDateExpression(timeInterval.timeValue(1).dateExpression(), currentTime);
-    } else {
-      endTime = parseDateFormat(timeInterval.timeValue(1).datetimeLiteral().getText(), currentTime);
-    }
-
+    long startTime = parseTimeValue(timeInterval.timeValue(0), currentTime);
+    long endTime = parseTimeValue(timeInterval.timeValue(1), currentTime);
     groupByClauseComponent.setStartTime(startTime);
     groupByClauseComponent.setEndTime(endTime);
     if (startTime >= endTime) {
@@ -1379,8 +1408,43 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     queryOp.setSpecialClauseComponent(specialClauseComponent);
   }
 
+  private IFill getSingleIFill(IoTDBSqlParser.FillClauseContext ctx) {
+    int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
+    if (ctx.linearClause() != null) { // linear
+      if (ctx.linearClause().DURATION_LITERAL(0) != null) {
+        String beforeStr = ctx.linearClause().DURATION_LITERAL(0).getText();
+        String afterStr = ctx.linearClause().DURATION_LITERAL(1).getText();
+        return new LinearFill(beforeStr, afterStr);
+      } else {
+        return new LinearFill(defaultFillInterval, defaultFillInterval);
+      }
+    } else if (ctx.previousClause() != null) { // previous
+      if (ctx.previousClause().DURATION_LITERAL() != null) {
+        String preRangeStr = ctx.previousClause().DURATION_LITERAL().getText();
+        return new PreviousFill(preRangeStr);
+      } else {
+        return new PreviousFill(defaultFillInterval);
+      }
+    } else if (ctx.specificValueClause() != null) { // value
+      if (ctx.specificValueClause().constant() != null) {
+        return new ValueFill(ctx.specificValueClause().constant().getText());
+      } else {
+        throw new SQLParserException("fill value cannot be null");
+      }
+    } else if (ctx.previousUntilLastClause() != null) { // previous until last
+      if (ctx.previousUntilLastClause().DURATION_LITERAL() != null) {
+        String preRangeStr = ctx.previousUntilLastClause().DURATION_LITERAL().getText();
+        return new PreviousFill(preRangeStr, true);
+      } else {
+        return new PreviousFill(defaultFillInterval, true);
+      }
+    } else {
+      throw new SQLParserException("unknown single fill type");
+    }
+  }
+
   private void parseAllTypeClause(
-      IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     IFill fill;
     int defaultFillInterval = IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval();
 
@@ -1424,7 +1488,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   }
 
   private void parsePrimitiveTypeClause(
-      IoTDBSqlParser.TypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
+      IoTDBSqlParser.OldTypeClauseContext ctx, Map<TSDataType, IFill> fillTypes) {
     TSDataType dataType = parseType(ctx.dataType.getText());
     if (dataType == TSDataType.VECTOR) {
       throw new SQLParserException(String.format("type %s cannot use fill function", dataType));
@@ -1499,38 +1563,51 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitInsertStatement(IoTDBSqlParser.InsertStatementContext ctx) {
     InsertOperator insertOp = new InsertOperator(SQLConstant.TOK_INSERT);
     insertOp.setDevice(parsePrefixPath(ctx.prefixPath()));
-    parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
-    parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp);
+    boolean isTimeDefault = parseInsertColumnSpec(ctx.insertColumnsSpec(), insertOp);
+    parseInsertValuesSpec(ctx.insertValuesSpec(), insertOp, isTimeDefault);
     insertOp.setAligned(ctx.ALIGNED() != null);
     return insertOp;
   }
 
-  private void parseInsertColumnSpec(
+  private boolean parseInsertColumnSpec(
       IoTDBSqlParser.InsertColumnsSpecContext ctx, InsertOperator insertOp) {
     List<String> measurementList = new ArrayList<>();
     for (IoTDBSqlParser.MeasurementNameContext measurementName : ctx.measurementName()) {
       measurementList.add(parseStringWithQuotes(measurementName.getText()));
     }
     insertOp.setMeasurementList(measurementList.toArray(new String[0]));
+    return (ctx.TIME() == null && ctx.TIMESTAMP() == null);
   }
 
   private void parseInsertValuesSpec(
-      IoTDBSqlParser.InsertValuesSpecContext ctx, InsertOperator insertOp) {
+      IoTDBSqlParser.InsertValuesSpecContext ctx, InsertOperator insertOp, boolean isTimeDefault) {
     List<IoTDBSqlParser.InsertMultiValueContext> insertMultiValues = ctx.insertMultiValue();
-    List<String> valueList = new ArrayList<>();
+    List<String[]> valueLists = new ArrayList<>();
     long[] timeArray = new long[insertMultiValues.size()];
     for (int i = 0; i < insertMultiValues.size(); i++) {
+      // parse timestamp
       long timestamp;
-      if (insertMultiValues.get(i).datetimeLiteral() != null) {
-        timestamp = parseDateFormat(insertMultiValues.get(i).datetimeLiteral().getText());
-      } else if (insertMultiValues.get(i).INTEGER_LITERAL() != null) {
-        timestamp = Long.parseLong(insertMultiValues.get(i).INTEGER_LITERAL().getText());
-      } else if (insertMultiValues.size() != 1) {
-        throw new SQLParserException("need timestamps when insert multi rows");
+      if (insertMultiValues.get(i).timeValue() != null) {
+        if (isTimeDefault) {
+          throw new SQLParserException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        timestamp =
+            parseTimeValue(insertMultiValues.get(i).timeValue(), DatetimeUtils.currentTime());
       } else {
+        if (!isTimeDefault) {
+          throw new SQLParserException(
+              "the measurementList's size is not consistent with the valueList's size");
+        }
+        if (insertMultiValues.size() != 1) {
+          throw new SQLParserException("need timestamps when insert multi rows");
+        }
         timestamp = parseDateFormat(SQLConstant.NOW_FUNC);
       }
       timeArray[i] = timestamp;
+
+      // parse values
+      List<String> valueList = new ArrayList<>();
       List<IoTDBSqlParser.MeasurementValueContext> values =
           insertMultiValues.get(i).measurementValue();
       for (IoTDBSqlParser.MeasurementValueContext value : values) {
@@ -1538,9 +1615,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           valueList.add(constant.getText());
         }
       }
+      valueLists.add(valueList.toArray(new String[0]));
     }
     insertOp.setTimes(timeArray);
-    insertOp.setValueList(valueList.toArray(new String[0]));
+    insertOp.setValueLists(valueLists);
   }
 
   // Delete Statement
@@ -2152,6 +2230,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return time;
   }
 
+  private long parseTimeValue(IoTDBSqlParser.TimeValueContext ctx, long currentTime) {
+    if (ctx.INTEGER_LITERAL() != null) {
+      return Long.parseLong(ctx.INTEGER_LITERAL().getText());
+    } else if (ctx.dateExpression() != null) {
+      return parseDateExpression(ctx.dateExpression(), currentTime);
+    } else {
+      return parseDateFormat(ctx.datetimeLiteral().getText(), currentTime);
+    }
+  }
+
   @SuppressWarnings("squid:S3776")
   private Expression parseExpression(IoTDBSqlParser.ExpressionContext context) {
     // LR_BRACKET unaryInBracket=expression RR_BRACKET
@@ -2453,17 +2541,20 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       queryOp = new LastQueryOperator(queryOp);
     }
 
-    boolean isFirstElement = true;
     for (IoTDBSqlParser.ResultColumnContext resultColumnContext : ctx.resultColumn()) {
       selectComponent.addResultColumn(parseResultColumn(resultColumnContext));
-      // judge query type according to the first select element
-      if (!hasDecidedQueryType()) {
-        if (selectComponent.hasAggregationFunction()) {
-          queryOp = new AggregationQueryOperator(queryOp);
-        } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
-          queryOp = new UDFQueryOperator(queryOp);
-        }
+    }
+    // judge query type
+    if (!hasDecidedQueryType()) {
+      if (selectComponent.hasUserDefinedAggregationFunction()) {
+        queryOp = new UDAFQueryOperator(new AggregationQueryOperator(queryOp));
+      } else if (selectComponent.hasPlainAggregationFunction()) {
+        queryOp = new AggregationQueryOperator(queryOp);
+      } else if (selectComponent.hasTimeSeriesGeneratingFunction()) {
+        queryOp = new UDTFQueryOperator(queryOp);
       }
+    } else if (selectComponent.hasUserDefinedAggregationFunction()) {
+      queryOp = new UDAFQueryOperator((AggregationQueryOperator) (queryOp));
     }
 
     queryOp.setSelectComponent(selectComponent);
@@ -2639,7 +2730,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         || queryOp instanceof FillQueryOperator
         || queryOp instanceof LastQueryOperator
         || queryOp instanceof AggregationQueryOperator
-        || queryOp instanceof UDFQueryOperator;
+        || queryOp instanceof UDTFQueryOperator
+        || queryOp instanceof UDAFQueryOperator;
   }
 
   private String parseStringWithQuotes(String src) {

@@ -41,7 +41,7 @@ public class FillQueryOperator extends QueryOperator {
       throw new LogicalOperatorException("FILL doesn't support disable align clause.");
     }
 
-    if (hasTimeSeriesGeneratingFunction()) {
+    if (hasTimeSeriesGeneratingFunction() || selectComponent.hasUserDefinedAggregationFunction()) {
       throw new LogicalOperatorException("Fill functions are not supported in UDF queries.");
     }
 
@@ -84,6 +84,8 @@ public class FillQueryOperator extends QueryOperator {
     FilterOperator timeFilter = whereComponent.getFilterOperator();
     long time = Long.parseLong(((BasicFunctionOperator) timeFilter).getValue());
     fillQueryPlan.setQueryTime(time);
+    fillQueryPlan.setSingleFill(((FillClauseComponent) specialClauseComponent).getSingleFill());
+    // old type fill logic
     fillQueryPlan.setFillType(((FillClauseComponent) specialClauseComponent).getFillTypes());
     return fillQueryPlan;
   }

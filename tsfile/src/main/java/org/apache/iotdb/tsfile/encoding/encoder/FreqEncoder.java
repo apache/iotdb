@@ -34,8 +34,8 @@ public class FreqEncoder extends Encoder {
   private static final Logger logger = LoggerFactory.getLogger(FreqEncoder.class);
   private ByteArrayOutputStream out;
   private int blockSize;
-  private int writeIndex = 0;
-  private double threshold = 1 - 1e-4;
+  protected int writeIndex = 0;
+  private double threshold = 1e-4;
   private int base;
   private double[] dataBuffer;
   private DoubleFFT_1D transformer;
@@ -201,8 +201,8 @@ public class FreqEncoder extends Encoder {
     return 64 - Long.numberOfLeadingZeros(x);
   }
 
-  private int getBase(double sum1, double sum2) {
-    double temp = (1 - threshold) * sum2 / sum1;
+  private int getBase(int m, double sum2) {
+    double temp = Math.sqrt(threshold * sum2 / (m * writeIndex));
     return max2Power(temp);
   }
 
@@ -232,23 +232,23 @@ public class FreqEncoder extends Encoder {
   private ArrayList<Point> selectPoints() {
     int n = this.writeIndex;
     // 利用优先队列（堆）来维护信息量大的数据点
-    double temp = 0, sum1 = 0, sum2 = 0;
+    double sum2 = 0;
     Point point;
     PriorityQueue<Point> queue = new PriorityQueue<>(n / 2);
     for (int i = 0; i <= n / 2; i++) {
       point = new Point(i, dataBuffer[2 * i], dataBuffer[2 * i + 1]);
       queue.add(point);
-      sum1 += point.getModulus();
       sum2 += point.getPower();
     }
-    this.base = getBase(sum1, sum2);
     // 挑选数据量大的数据点加入keepList
+    double temp = sum2;
     ArrayList<Point> keepList = new ArrayList<>();
     while (temp < threshold * sum2) {
       point = queue.poll();
       keepList.add(point);
       temp = temp + point.getPower();
     }
+    this.base = getBase(keepList.size(), sum2);
     return keepList;
   }
 
@@ -263,31 +263,32 @@ public class FreqEncoder extends Encoder {
     private final double real;
     private final double imag;
     private final int index;
-    private final double squareModulus;
+    private final double power;
 
     Point(int index, double real, double imag) {
       this.index = index;
       this.real = real;
       this.imag = imag;
-      this.squareModulus = real * real + imag * imag;
+      int n = FreqEncoder.this.writeIndex;
+      if (this.index == 0 || ((n % 2 == 0) && (this.index == n / 2))) {
+        this.power = real * real + imag * imag;
+      } else {
+        this.power = 2 * (real * real + imag * imag);
+      }
     }
 
     @Override
     public int compareTo(Point o) {
-      return Double.compare(o.squareModulus, this.squareModulus);
+      return Double.compare(o.power, this.power);
     }
 
     public double getPower() {
-      return this.squareModulus * (index == 0 ? 1 : 2);
-    }
-
-    public double getModulus() {
-      return getAmp() * (index == 0 ? 1 : 2);
+      return this.power;
     }
 
     /** @return the amp */
     public double getAmp() {
-      return Math.sqrt(this.squareModulus);
+      return Math.sqrt(this.power);
     }
 
     /** @return the angle */

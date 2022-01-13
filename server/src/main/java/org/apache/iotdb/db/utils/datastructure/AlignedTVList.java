@@ -34,10 +34,10 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Queue;
 
 import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_ARRAY_HEADER;
+import static org.apache.iotdb.tsfile.utils.RamUsageEstimator.NUM_BYTES_OBJECT_REF;
 
 public class AlignedTVList extends TVList {
 
@@ -172,21 +172,19 @@ public class AlignedTVList extends TVList {
     if (valueIndex >= size) {
       throw new ArrayIndexOutOfBoundsException(valueIndex);
     }
-    int arrayIndex = valueIndex / ARRAY_SIZE;
-    int elementIndex = valueIndex % ARRAY_SIZE;
     TsPrimitiveType[] vector = new TsPrimitiveType[values.size()];
     for (int columnIndex = 0; columnIndex < values.size(); columnIndex++) {
       List<Object> columnValues = values.get(columnIndex);
-      if (validIndexesForTimeDuplicatedRows == null
-          && (columnValues == null
-              || bitMaps != null
-                  && bitMaps.get(columnIndex) != null
-                  && isValueMarked(valueIndex, columnIndex))) {
-        continue;
-      }
+      int validValueIndex;
       if (validIndexesForTimeDuplicatedRows != null) {
-        arrayIndex = validIndexesForTimeDuplicatedRows[columnIndex] / ARRAY_SIZE;
-        elementIndex = validIndexesForTimeDuplicatedRows[columnIndex] % ARRAY_SIZE;
+        validValueIndex = validIndexesForTimeDuplicatedRows[columnIndex];
+      } else {
+        validValueIndex = valueIndex;
+      }
+      int arrayIndex = validValueIndex / ARRAY_SIZE;
+      int elementIndex = validValueIndex % ARRAY_SIZE;
+      if (columnValues == null || isValueMarked(validValueIndex, columnIndex)) {
+        continue;
       }
       switch (dataTypes.get(columnIndex)) {
         case TEXT:
@@ -461,15 +459,16 @@ public class AlignedTVList extends TVList {
         deleteColumn = false;
       }
     }
-    if (deleteColumn) {
-      dataTypes.remove(columnIndex);
-      for (Object array : values.get(columnIndex)) {
-        PrimitiveArrayManager.release(array);
-      }
-      values.remove(columnIndex);
-      bitMaps.remove(columnIndex);
-    }
     return new Pair<>(deletedNumber, deleteColumn);
+  }
+
+  public void deleteColumn(int columnIndex) {
+    dataTypes.remove(columnIndex);
+    for (Object array : values.get(columnIndex)) {
+      PrimitiveArrayManager.release(array);
+    }
+    values.remove(columnIndex);
+    bitMaps.remove(columnIndex);
   }
 
   private void set(int index, long timestamp, int value) {
@@ -850,26 +849,35 @@ public class AlignedTVList extends TVList {
   }
 
   /**
-   * Get the single alignedTVList array size by give types.
+   * Get the single alignedTVList array mem cost by give types.
    *
    * @param types the types in the vector
    * @return AlignedTvListArrayMemSize
    */
-  public static long alignedTvListArrayMemSize(TSDataType[] types) {
+  public static long alignedTvListArrayMemCost(TSDataType[] types) {
     long size = 0;
-    // time size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
-    // index size
-    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
-    // value size
+    // value array mem size
     for (TSDataType type : types) {
-      size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      if (type != null) {
+        size += (long) PrimitiveArrayManager.ARRAY_SIZE * (long) type.getDataTypeSize();
+      }
     }
+    // size is 0 when all types are null
+    if (size == 0) {
+      return size;
+    }
+    // time array mem size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 8L;
+    // index array mem size
+    size += (long) PrimitiveArrayManager.ARRAY_SIZE * 4L;
+    // array headers mem size
+    size += NUM_BYTES_ARRAY_HEADER * (2 + types.length);
+    // Object references size in ArrayList
+    size += NUM_BYTES_OBJECT_REF * (2 + types.length);
     return size;
   }
 
-  @Override
-  public void clear(Map<TSDataType, Queue<TVList>> tvListCache) {
+  public void clear() {
     size = 0;
     sorted = true;
     minTime = Long.MAX_VALUE;

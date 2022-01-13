@@ -49,7 +49,7 @@ import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.NU
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.STRING;
 
 /**
- * ConverterUtils is a utility class. It provide conversion between normal datatype and byte array.
+ * ConverterUtils is a utility class. It provides conversion between normal datatype and byte array.
  */
 public class ReadWriteIOUtils {
 
@@ -59,6 +59,7 @@ public class ReadWriteIOUtils {
   public static final int LONG_LEN = 8;
   public static final int DOUBLE_LEN = 8;
   public static final int FLOAT_LEN = 4;
+  public static final float BIT_LEN = 0.125F;
 
   private static final byte[] magicStringBytes;
 

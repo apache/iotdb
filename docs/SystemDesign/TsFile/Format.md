@@ -175,7 +175,6 @@ Here is the detailed information for `statistics`:
 | firstValue | first value | double | float | int | long | Binary | boolean|
 | lastValue | last value | double | float | int | long | Binary | boolean|
 | sumValue | sum value | double | double | double | double | - | - |
-| extreme | extreme value | double | float | int | long | - | - |
 
 ##### ChunkGroupFooter
 

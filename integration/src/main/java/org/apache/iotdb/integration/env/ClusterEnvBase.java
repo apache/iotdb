@@ -85,9 +85,11 @@ public abstract class ClusterEnvBase implements BaseEnv {
       try {
         Process proc = Runtime.getRuntime().exec(cmd + "\"" + port + "\"");
         BufferedReader br = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-        String line = null;
-        while ((line = br.readLine()) != null) System.out.println(line);
-        System.out.println("");
+        String line;
+        while ((line = br.readLine()) != null) {
+          System.out.println(line);
+        }
+        System.out.println();
         if (proc.waitFor() == 1) {
           flag = false;
         }
@@ -97,7 +99,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
       counter++;
       if (counter >= 100) {
-        fail("No more avaliable port to test cluster.");
+        fail("No more available port to test cluster.");
       }
     } while (flag);
 
@@ -175,9 +177,11 @@ public abstract class ClusterEnvBase implements BaseEnv {
   public void changeNodesConfig() {
     try {
       for (ClusterNode node : this.nodes) {
-        node.changeConfig(ConfigFactory.getConfig().getProperties());
+        node.changeConfig(
+            ConfigFactory.getConfig().getEngineProperties(),
+            ConfigFactory.getConfig().getClusterProperties());
       }
-      ConfigFactory.getConfig().clearProperties();
+      ConfigFactory.getConfig().clearAllProperties();
     } catch (Exception e) {
       fail(e.getMessage());
     }

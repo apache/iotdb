@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.integration.aggregation;
 
-import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -216,11 +215,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT max_value(d0.s0),max_value(d1.s1),max_value(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
 
       boolean hasResultSet =
@@ -247,7 +242,7 @@ public class IoTDBAggregationSmallDataIT {
   }
 
   @Test
-  public void extremeWithoutFilterTest() throws ClassNotFoundException {
+  public void extremeWithoutFilterTest() {
     String[] retArray = new String[] {"0,22222,null"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -260,11 +255,7 @@ public class IoTDBAggregationSmallDataIT {
         Assert.assertTrue(
             e.toString()
                 .contains(
-                    String.format(
-                        "500: [INTERNAL_SERVER_ERROR(500)] Exception occurred: "
-                            + "\"SELECT extreme(d0.s0),extreme(d1.s1),extreme(d0.s3) "
-                            + "FROM root.vehicle\". %s failed. Binary statistics does not support: max",
-                        OperationType.EXECUTE_STATEMENT.getName())));
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
 
       boolean hasResultSet =
@@ -623,14 +614,14 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void minValueWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,90,180,2.22,ddddd,true"};
+    String[] retArray = new String[] {"0,90,180,2.22"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0),min_value(s1),min_value(s2),"
-                  + "min_value(s3),min_value(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100");
+              "SELECT min_value(s0),min_value(s1),min_value(s2) FROM root.vehicle.d0 "
+                  + "WHERE s1 < 50000 AND s1 != 100");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -643,11 +634,7 @@ public class IoTDBAggregationSmallDataIT {
                   + ","
                   + resultSet.getString(minValue(d0s1))
                   + ","
-                  + resultSet.getString(minValue(d0s2))
-                  + ","
-                  + resultSet.getString(minValue(d0s3))
-                  + ","
-                  + resultSet.getString(minValue(d0s4));
+                  + resultSet.getString(minValue(d0s2));
           Assert.assertEquals(ans, retArray[cnt]);
           cnt++;
         }
@@ -662,14 +649,13 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void maxValueWithMultiValueFiltersTest() {
-    String[] retArray = new String[] {"0,99,40000,11.11,fffff,true"};
+    String[] retArray = new String[] {"0,99,40000,11.11"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT max_value(s0),max_value(s1),max_value(s2),"
-                  + "max_value(s3),max_value(s4) FROM root.vehicle.d0 "
+              "SELECT max_value(s0),max_value(s1),max_value(s2) FROM root.vehicle.d0 "
                   + "WHERE s1 < 50000 AND s1 != 100");
 
       Assert.assertTrue(hasResultSet);
@@ -683,11 +669,7 @@ public class IoTDBAggregationSmallDataIT {
                   + ","
                   + resultSet.getString(maxValue(d0s1))
                   + ","
-                  + resultSet.getString(maxValue(d0s2))
-                  + ","
-                  + resultSet.getString(maxValue(d0s3))
-                  + ","
-                  + resultSet.getString(maxValue(d0s4));
+                  + resultSet.getString(maxValue(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

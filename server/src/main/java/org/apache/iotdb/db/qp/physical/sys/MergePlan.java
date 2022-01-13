@@ -32,11 +32,11 @@ import java.util.List;
 public class MergePlan extends PhysicalPlan {
 
   public MergePlan(OperatorType operatorType) {
-    super(false, operatorType);
+    super(operatorType);
   }
 
   public MergePlan() {
-    super(false, OperatorType.MERGE);
+    super(OperatorType.MERGE);
   }
 
   @Override

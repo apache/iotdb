@@ -35,7 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.schema.UnaryMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 
 import org.apache.commons.lang3.builder.HashCodeBuilder;
@@ -115,7 +115,7 @@ public class Template {
       // normal measurement
       else {
         curSchema =
-            new UnaryMeasurementSchema(
+            new MeasurementSchema(
                 plan.getMeasurements().get(i).get(0),
                 plan.getDataTypes().get(i).get(0),
                 plan.getEncodings().get(i).get(0),
@@ -241,7 +241,7 @@ public class Template {
 
   private IMeasurementSchema constructSchema(
       String nodeName, TSDataType dataType, TSEncoding encoding, CompressionType compressor) {
-    return new UnaryMeasurementSchema(nodeName, dataType, encoding, compressor);
+    return new MeasurementSchema(nodeName, dataType, encoding, compressor);
   }
 
   private IMeasurementSchema[] constructSchemas(
@@ -249,10 +249,9 @@ public class Template {
       TSDataType[] dataTypes,
       TSEncoding[] encodings,
       CompressionType[] compressors) {
-    UnaryMeasurementSchema[] schemas = new UnaryMeasurementSchema[nodeNames.length];
+    MeasurementSchema[] schemas = new MeasurementSchema[nodeNames.length];
     for (int i = 0; i < nodeNames.length; i++) {
-      schemas[i] =
-          new UnaryMeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
+      schemas[i] = new MeasurementSchema(nodeNames[i], dataTypes[i], encodings[i], compressors[i]);
     }
     return schemas;
   }
@@ -620,7 +619,7 @@ public class Template {
       byte flag = ReadWriteIOUtils.readByte(buffer);
       IMeasurementSchema measurementSchema = null;
       if (flag == (byte) 0) {
-        measurementSchema = UnaryMeasurementSchema.partialDeserializeFrom(buffer);
+        measurementSchema = MeasurementSchema.partialDeserializeFrom(buffer);
       } else if (flag == (byte) 1) {
         measurementSchema = VectorMeasurementSchema.partialDeserializeFrom(buffer);
       }

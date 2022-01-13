@@ -29,12 +29,15 @@ import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
 
 import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
 
 public class ErrorHandlingUtils {
 
@@ -52,7 +55,7 @@ public class ErrorHandlingUtils {
   public static TSStatus onNPEOrUnexpectedException(
       Exception e, String operation, TSStatusCode statusCode) {
     String message = String.format("[%s] Exception occurred: %s failed. ", statusCode, operation);
-    if (e instanceof NullPointerException) {
+    if (e instanceof IOException || e instanceof NullPointerException) {
       LOGGER.error("Status code: {}, operation: {} failed", statusCode, operation, e);
     } else {
       LOGGER.warn("Status code: {}, operation: {} failed", statusCode, operation, e);
@@ -84,28 +87,32 @@ public class ErrorHandlingUtils {
   }
 
   public static TSStatus tryCatchQueryException(Exception e) {
-    if (e instanceof QueryTimeoutRuntimeException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(e.getMessage(), e);
-      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(e));
-    } else if (e instanceof ParseCancellationException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, e);
+    Throwable t = e instanceof ExecutionException ? e.getCause() : e;
+    if (t instanceof QueryTimeoutRuntimeException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(t.getMessage(), t);
+      return RpcUtils.getStatus(TSStatusCode.TIME_OUT, getRootCause(t));
+    } else if (t instanceof ParseCancellationException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_PARSING_SQL_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(e));
-    } else if (e instanceof SQLParserException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, e);
+          TSStatusCode.SQL_PARSE_ERROR, INFO_PARSING_SQL_ERROR + getRootCause(t));
+    } else if (t instanceof SQLParserException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_CHECK_METADATA_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(e));
-    } else if (e instanceof QueryProcessException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
+          TSStatusCode.METADATA_ERROR, INFO_CHECK_METADATA_ERROR + getRootCause(t));
+    } else if (t instanceof QueryProcessException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + getRootCause(e));
-    } else if (e instanceof QueryInBatchStatementException) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, e);
+          TSStatusCode.QUERY_PROCESS_ERROR, INFO_QUERY_PROCESS_ERROR + getRootCause(t));
+    } else if (t instanceof QueryInBatchStatementException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_NOT_ALLOWED_IN_BATCH_ERROR, t);
       return RpcUtils.getStatus(
-          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(e));
-    } else if (e instanceof IoTDBException && !(e instanceof StorageGroupNotReadyException)) {
-      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, e);
-      return RpcUtils.getStatus(((IoTDBException) e).getErrorCode(), getRootCause(e));
+          TSStatusCode.QUERY_NOT_ALLOWED, INFO_NOT_ALLOWED_IN_BATCH_ERROR + getRootCause(t));
+    } else if (t instanceof IoTDBException && !(t instanceof StorageGroupNotReadyException)) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
+      return RpcUtils.getStatus(((IoTDBException) t).getErrorCode(), getRootCause(t));
+    } else if (t instanceof TsFileRuntimeException) {
+      DETAILED_FAILURE_QUERY_TRACE_LOGGER.warn(INFO_QUERY_PROCESS_ERROR, t);
+      return RpcUtils.getStatus(TSStatusCode.TSFILE_PROCESSOR_ERROR, getRootCause(t));
     }
     return null;
   }

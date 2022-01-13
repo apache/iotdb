@@ -39,10 +39,6 @@ public class MetricService {
   private static final MetricConfig metricConfig =
       MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  static {
-    init();
-  }
-
   private static final MetricService INSTANCE = new MetricService();
 
   private static MetricManager metricManager;
@@ -56,7 +52,7 @@ public class MetricService {
   private MetricService() {}
 
   /** init config, manager and reporter */
-  private static void init() {
+  public static void init() {
     logger.info("Init metric service");
     // load manager
     loadManager();

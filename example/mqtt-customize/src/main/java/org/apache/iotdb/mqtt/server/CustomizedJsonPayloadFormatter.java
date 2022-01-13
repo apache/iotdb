@@ -18,8 +18,8 @@
  */
 package org.apache.iotdb.mqtt.server;
 
-import org.apache.iotdb.db.mqtt.Message;
-import org.apache.iotdb.db.mqtt.PayloadFormatter;
+import org.apache.iotdb.db.protocol.mqtt.Message;
+import org.apache.iotdb.db.protocol.mqtt.PayloadFormatter;
 
 import io.netty.buffer.ByteBuf;
 

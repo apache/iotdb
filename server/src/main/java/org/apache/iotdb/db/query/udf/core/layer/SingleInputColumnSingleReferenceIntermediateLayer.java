@@ -63,11 +63,15 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       private final Row row = new LayerPointReaderBackedSingleColumnRow(parentLayerPointReader);
 
       private boolean hasCached = false;
+      private boolean isCurrentNull = false;
 
       @Override
       public boolean next() throws IOException, QueryProcessException {
         if (!hasCached) {
           hasCached = parentLayerPointReader.next();
+          if (hasCached) {
+            isCurrentNull = parentLayerPointReader.isCurrentNull();
+          }
         }
         return hasCached;
       }
@@ -75,7 +79,7 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public void readyForNext() {
         hasCached = false;
-
+        isCurrentNull = false;
         parentLayerPointReader.readyForNext();
       }
 
@@ -92,6 +96,11 @@ public class SingleInputColumnSingleReferenceIntermediateLayer extends Intermedi
       @Override
       public Row currentRow() {
         return row;
+      }
+
+      @Override
+      public boolean isCurrentNull() {
+        return isCurrentNull;
       }
     };
   }

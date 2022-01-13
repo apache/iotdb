@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.utils;
 
+import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,5 +47,27 @@ public class FileUtils {
     } catch (Exception e) {
       logger.warn("{}: {}", e.getMessage(), folder.getName(), e);
     }
+  }
+
+  /**
+   * Calculate the directory size including sub dir.
+   *
+   * @param path
+   * @return
+   */
+  public static long getDirSize(String path) {
+    long sum = 0;
+    File file = SystemFileFactory.INSTANCE.getFile(path);
+    if (file.isDirectory()) {
+      String[] list = file.list();
+      for (String item : list) {
+        String subPath = path + File.separator + item;
+        sum += getDirSize(subPath);
+      }
+    } else {
+      // this is a file.
+      sum += file.length();
+    }
+    return sum;
   }
 }
