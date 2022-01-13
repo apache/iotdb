@@ -122,16 +122,7 @@ public abstract class ClusterEnvBase implements BaseEnv {
 
       try (IoTDBConnection connection = getConnection(60);
           Statement statement = connection.createStatement()) {
-        statement.execute("SET STORAGE GROUP TO root.test" + counter);
-        statement.execute(
-            "CREATE TIMESERIES root.test" + counter + ".d0.s0 WITH DATATYPE=INT32, ENCODING=RLE");
-        if (statement.execute("SHOW TIMESERIES")) {
-          ResultSet resultSet = statement.getResultSet();
-          if (resultSet.next()) {
-            statement.execute("DELETE STORAGE GROUP root.*");
-            break;
-          }
-        }
+        break;
 
       } catch (SQLException e) {
         logger.debug(++counter + " time(s) connect to cluster failed!");
