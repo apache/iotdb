@@ -159,7 +159,13 @@ public class ReceiverService implements IService {
   }
 
   @Override
-  public void stop() {}
+  public void stop() {
+    try {
+      receiverManager.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
   @Override
   public ServiceType getID() {

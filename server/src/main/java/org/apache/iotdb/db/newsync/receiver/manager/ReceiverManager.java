@@ -52,7 +52,6 @@ public class ReceiverManager {
 
   public void startServer() throws IOException {
     log.startPipeServer();
-    ;
     pipeServerEnable = true;
   }
 
