@@ -1586,7 +1586,8 @@ public class MTree implements Serializable {
       if (!cur.hasChild(fullPathNodes[index])) {
         if (upperTemplate != null) {
           // for this fullPath, cur is the last node on MTree
-          // since upperTemplate exists, need to find the matched suffix path of fullPath and template
+          // since upperTemplate exists, need to find the matched suffix path of fullPath and
+          // template
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
                   .toString();

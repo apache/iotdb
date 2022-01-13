@@ -2100,6 +2100,13 @@ public class MManager {
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
     try {
+
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+      for (int idx = 0; idx < dataTypes.size(); idx++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(idx), encodings.get(idx));
+      }
+
       templateManager.appendSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
