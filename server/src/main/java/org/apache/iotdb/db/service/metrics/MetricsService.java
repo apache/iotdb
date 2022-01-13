@@ -178,6 +178,9 @@ public class MetricsService extends MetricService implements MetricsServiceMBean
             compositeReporter.restartAll();
             logger.info("Finish restart metric reporters.");
             break;
+          case NOTHING:
+            logger.debug("There are nothing change in metric module.");
+            break;
           default:
             break;
         }
