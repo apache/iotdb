@@ -42,6 +42,7 @@ import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.template.MeasurementNode;
 import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
@@ -1897,6 +1898,84 @@ public class Session {
     req.setSerializedTemplate(baos.toByteArray());
     baos.close();
     defaultSessionConnection.createSchemaTemplate(req);
+  }
+
+  /**
+   * Create a template with flat measurements, not tree structured. Need to specify datatype,
+   * encoding and compressor of each measurement, and alignment of these measurements at once.
+   *
+   * @oaram templateName name of template to create
+   * @param measurements flat measurements of the template, cannot contain character dot
+   * @param dataTypes datatype of each measurement in the template
+   * @param encodings encodings of each measurement in the template
+   * @param compressors compression type of each measurement in the template
+   * @param isAligned specify whether these flat measurements are aligned
+   */
+  public void createSchemaTemplate(
+      String templateName,
+      List<String> measurements,
+      List<TSDataType> dataTypes,
+      List<TSEncoding> encodings,
+      List<CompressionType> compressors,
+      boolean isAligned)
+      throws IOException, IoTDBConnectionException, StatementExecutionException {
+    Template temp = new Template(templateName, isAligned);
+    int len = measurements.size();
+    if (len != dataTypes.size() || len != encodings.size() || len != compressors.size()) {
+      throw new StatementExecutionException(
+          "Different length of measurements, datatypes, encodings "
+              + "or compressors when create schema tempalte.");
+    }
+    for (int idx = 0; idx < measurements.size(); idx++) {
+      MeasurementNode mNode =
+          new MeasurementNode(
+              measurements.get(idx), dataTypes.get(idx), encodings.get(idx), compressors.get(idx));
+      temp.addToTemplate(mNode);
+    }
+    createSchemaTemplate(temp);
+  }
+
+  /**
+   * Compatible for rel/0.12, this method will create an unaligned flat template as a result. Notice
+   * that there is no aligned concept in 0.12, so only the first measurement in each nested list
+   * matters.
+   *
+   * @param name name of the template
+   * @param schemaNames it works as a virtual layer inside template in 0.12, and makes no difference
+   *     after 0.13
+   * @param measurements the first measurement in each nested list will constitute the final flat
+   *     template
+   * @param dataTypes the data type of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param encodings the encoding of each measurement, only the first one in each nested list
+   *     matters as above
+   * @param compressors the compressor of each measurement
+   * @throws IoTDBConnectionException
+   * @throws StatementExecutionException
+   */
+  @Deprecated
+  public void createSchemaTemplate(
+      String name,
+      List<String> schemaNames,
+      List<List<String>> measurements,
+      List<List<TSDataType>> dataTypes,
+      List<List<TSEncoding>> encodings,
+      List<CompressionType> compressors)
+      throws IoTDBConnectionException, StatementExecutionException {
+    List<String> flatMeasurements = new ArrayList<>();
+    List<TSDataType> flatDataTypes = new ArrayList<>();
+    List<TSEncoding> flatEncodings = new ArrayList<>();
+    for (int idx = 0; idx < measurements.size(); idx++) {
+      flatMeasurements.add(measurements.get(idx).get(0));
+      flatDataTypes.add(dataTypes.get(idx).get(0));
+      flatEncodings.add(encodings.get(idx).get(0));
+    }
+    try {
+      createSchemaTemplate(
+          name, flatMeasurements, flatDataTypes, flatEncodings, compressors, false);
+    } catch (IOException e) {
+      throw new StatementExecutionException(e.getMessage());
+    }
   }
 
   /**
