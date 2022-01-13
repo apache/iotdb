@@ -19,7 +19,6 @@ package org.apache.iotdb.db.protocol.rest.impl;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.conf.rest.IoTDBRestServiceDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.protocol.rest.GrafanaApiService;
 import org.apache.iotdb.db.protocol.rest.NotFoundException;
@@ -49,14 +48,12 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   private final BasicServiceProvider basicServiceProvider;
   private final AuthorizationHandler authorizationHandler;
-  private final Integer limitValue;
 
   private final float timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
     basicServiceProvider = new BasicServiceProvider();
     authorizationHandler = new AuthorizationHandler(basicServiceProvider);
-    limitValue = IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryFetchSize();
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
@@ -143,15 +140,6 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       }
 
       PhysicalPlan physicalPlan = basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
-
-      if (physicalPlan instanceof QueryPlan) {
-        int limit = ((QueryPlan) physicalPlan).getRowLimit();
-        if (limit == 0) {
-          ((QueryPlan) physicalPlan).setRowLimit(limitValue);
-        } else if (limit > limitValue) {
-          ((QueryPlan) physicalPlan).setRowLimit(limitValue);
-        }
-      }
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
