@@ -2079,6 +2079,15 @@ public class MManager {
   // region Interfaces and Implementation for Template operations
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+
+      List<List<TSDataType>> dataTypes = plan.getDataTypes();
+      List<List<TSEncoding>> encodings = plan.getEncodings();
+      for (int i = 0; i < dataTypes.size(); i++) {
+        for (int j = 0; j < dataTypes.get(i).size(); j++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
+        }
+      }
+
       templateManager.createSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
