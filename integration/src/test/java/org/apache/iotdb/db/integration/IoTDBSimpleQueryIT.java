@@ -64,6 +64,7 @@ public class IoTDBSimpleQueryIT {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseries1() throws MetadataException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -80,6 +81,7 @@ public class IoTDBSimpleQueryIT {
     assertNull(mNode.getSchema().getProps());
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseriesSDTProperties() throws MetadataException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
@@ -100,6 +102,7 @@ public class IoTDBSimpleQueryIT {
     assertEquals(2, mNode.getSchema().getProps().size());
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseriesWithSDTProperties2() throws MetadataException {
     try (Connection connection = EnvFactory.getEnv().getConnection();
