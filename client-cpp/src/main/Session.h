@@ -831,6 +831,12 @@ private:
     bool is_aligned_;
 };
 
+namespace TemplateQueryType {
+    enum TemplateQueryType {
+        COUNT_MEASUREMENTS, IS_MEASUREMENT, PATH_EXIST, SHOW_MEASUREMENTS
+    };
+}
+
 class Template {
 public:
 
@@ -1092,6 +1098,45 @@ public:
 
     void createSchemaTemplate(const Template &templ);
 
+    void setSchemaTemplate(const std::string &template_name, const std::string &prefix_path);
+
+    void unsetSchemaTemplate(const std::string &prefix_path, const std::string &template_name);
+
+    void addAlignedMeasurementsInTemplate(const std::string &template_name,
+                                          const std::vector<std::string> &measurements,
+                                          const std::vector<TSDataType::TSDataType> &dataTypes,
+                                          const std::vector<TSEncoding::TSEncoding> &encodings,
+                                          const std::vector<CompressionType::CompressionType> &compressors);
+
+    void addAlignedMeasurementsInTemplate(const std::string &template_name,
+                                          const std::string &measurement,
+                                          TSDataType::TSDataType dataType,
+                                          TSEncoding::TSEncoding encoding,
+                                          CompressionType::CompressionType compressor);
+
+    void addUnalignedMeasurementsInTemplate(const std::string &template_name,
+                                            const std::vector<std::string> &measurements,
+                                            const std::vector<TSDataType::TSDataType> &dataTypes,
+                                            const std::vector<TSEncoding::TSEncoding> &encodings,
+                                            const std::vector<CompressionType::CompressionType> &compressors);
+
+    void addUnalignedMeasurementsInTemplate(const std::string &template_name,
+                                            const std::string &measurement,
+                                            TSDataType::TSDataType dataType,
+                                            TSEncoding::TSEncoding encoding,
+                                            CompressionType::CompressionType compressor);
+
+    void deleteNodeInTemplate(const std::string &template_name, const std::string &path);
+
+    int countMeasurementsInTemplate(const std::string &template_name);
+
+    bool isMeasurementInTemplate(const std::string &template_name, const std::string &path);
+
+    bool isPathExistInTemplate(const std::string &template_name, const std::string &path);
+
+    std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name);
+
+    std::vector<std::string> showMeasurementsInTemplate(const std::string &template_name, const std::string &pattern);
 };
 
 #endif // IOTDB_SESSION_H

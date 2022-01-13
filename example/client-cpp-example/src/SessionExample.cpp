@@ -88,15 +88,26 @@ void createMultiTimeseries() {
 void createSchemaTemplate() {
     Template temp("template1", false);
 
-    MeasurementNode mNodeS1("s1", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
-    MeasurementNode mNodeS3("s3", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    InternalNode iNodeD99("d99", false);
 
+    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+
+    iNodeD99.addChild(mNodeD99S1);
+    iNodeD99.addChild(mNodeD99S2);
+
+    temp.addToTemplate(iNodeD99);
     temp.addToTemplate(mNodeS1);
     temp.addToTemplate(mNodeS2);
-    temp.addToTemplate(mNodeS3);
 
     session->createSchemaTemplate(temp);
+    session->setSchemaTemplate("template1", "root.sg2");
+}
+
+void ActivateTemplate() {
+    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
 }
 
 void showTimeseries() {
@@ -345,9 +356,21 @@ int main() {
     session = new Session("127.0.0.1", 6667, "root", "root");
     session->open(false);
 
-    cout << "setStorageGroup\n" << endl;
+    cout << "setStorageGroup: root.sg1\n" << endl;
     try {
         session->setStorageGroup("root.sg1");
+    }
+    catch (IoTDBConnectionException &e) {
+        string errorMessage(e.what());
+        if (errorMessage.find("StorageGroupAlreadySetException") == string::npos) {
+            cout << errorMessage << endl;
+        }
+        throw e;
+    }
+
+    cout << "setStorageGroup: root.sg2\n" << endl;
+    try {
+        session->setStorageGroup("root.sg2");
     }
     catch (IoTDBConnectionException &e) {
         string errorMessage(e.what());
@@ -365,6 +388,9 @@ int main() {
 
     cout << "createSchemaTemplate\n" << endl;
     createSchemaTemplate();
+
+    cout << "ActivateTemplate\n" << endl;
+    ActivateTemplate();
 
     cout << "showTimeseries\n" << endl;
     showTimeseries();

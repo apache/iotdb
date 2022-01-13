@@ -39,6 +39,47 @@ void createAlignedTimeseries() {
     session->createAlignedTimeseries(alignedDeviceId, measurements, dataTypes, encodings, compressors);
 }
 
+void createSchemaTemplate() {
+    Template temp("template1", false);
+
+    InternalNode iNodeD99("d99", true);
+
+    MeasurementNode mNodeS1("s1", TSDataType::INT32, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeS2("s2", TSDataType::INT64, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S1("s1", TSDataType::DOUBLE, TSEncoding::RLE, CompressionType::SNAPPY);
+    MeasurementNode mNodeD99S2("s2", TSDataType::BOOLEAN, TSEncoding::RLE, CompressionType::SNAPPY);
+
+    iNodeD99.addChild(mNodeD99S1);
+    iNodeD99.addChild(mNodeD99S2);
+
+    temp.addToTemplate(iNodeD99);
+    temp.addToTemplate(mNodeS1);
+    temp.addToTemplate(mNodeS2);
+
+    session->createSchemaTemplate(temp);
+    session->setSchemaTemplate("template1", "root.sg2");
+}
+
+void ActivateTemplate() {
+    session->executeNonQueryStatement("insert into root.sg2.d1(timestamp,s1, s2) values(200, 1, 1);");
+}
+
+void showDevices() {
+    unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show devices with storage group");
+    for (const string &name: dataSet->getColumnNames()) {
+        cout << name << "  ";
+    }
+    cout << endl;
+
+    dataSet->setBatchSize(1024);
+    while (dataSet->hasNext()) {
+        cout << dataSet->next()->toString();
+    }
+    cout << endl;
+
+    dataSet->closeOperationHandle();
+}
+
 void showTimeseries() {
     unique_ptr<SessionDataSet> dataSet = session->executeQueryStatement("show timeseries");
     for (const string &name: dataSet->getColumnNames()) {
@@ -284,6 +325,15 @@ int main() {
 
     cout << "createAlignedTimeseries\n" << endl;
     createAlignedTimeseries();
+
+    cout << "createSchemaTemplate\n" << endl;
+    createSchemaTemplate();
+
+    cout << "ActivateTemplate\n" << endl;
+    ActivateTemplate();
+
+    cout << "showDevices\n" << endl;
+    showDevices();
 
     cout << "showTimeseries\n" << endl;
     showTimeseries();
