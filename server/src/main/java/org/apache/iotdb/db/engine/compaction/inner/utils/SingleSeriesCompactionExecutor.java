@@ -298,7 +298,6 @@ public class SingleSeriesCompactionExecutor {
   private void flushChunkWriter() throws IOException {
     MergeManager.mergeRateLimiterAcquire(
         compactionRateLimiter, chunkWriter.estimateMaxSeriesMemSize());
-    long size = chunkWriter.estimateMaxSeriesMemSize();
     chunkWriter.writeToFileWriter(fileWriter);
     pointCountInChunkWriter = 0L;
   }
