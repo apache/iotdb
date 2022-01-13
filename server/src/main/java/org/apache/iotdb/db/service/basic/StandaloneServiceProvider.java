@@ -29,9 +29,9 @@ import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 
-public class LocalServiceProvider extends ServiceProvider {
+public class StandaloneServiceProvider extends ServiceProvider {
 
-  public LocalServiceProvider() throws QueryProcessException {
+  public StandaloneServiceProvider() throws QueryProcessException {
     super(new PlanExecutor());
   }
 

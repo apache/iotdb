@@ -43,8 +43,8 @@ import org.apache.iotdb.db.query.udf.service.UDFClassLoaderManager;
 import org.apache.iotdb.db.query.udf.service.UDFRegistrationService;
 import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.db.rescon.SystemInfo;
-import org.apache.iotdb.db.service.basic.LocalServiceProvider;
 import org.apache.iotdb.db.service.basic.ServiceProvider;
+import org.apache.iotdb.db.service.basic.StandaloneServiceProvider;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.sync.receiver.SyncServerManager;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
@@ -180,7 +180,7 @@ public class IoTDB implements IoTDBMBean {
 
   private void initServiceProvider() throws QueryProcessException {
     if (!clusterMode) {
-      serviceProvider = new LocalServiceProvider();
+      serviceProvider = new StandaloneServiceProvider();
     }
   }
 
