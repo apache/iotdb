@@ -1019,7 +1019,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     } catch (LogExecutionException e) {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
-    return StatusUtils.TIME_OUT;
+    return StatusUtils.TIME_OUT.deepCopy().setMessage("Replication time out in " + allNodes);
   }
 
   private TSStatus processPlanLocallyV2(PhysicalPlan plan) {
@@ -1104,7 +1104,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     } catch (LogExecutionException e) {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
-    return StatusUtils.TIME_OUT;
+    return StatusUtils.TIME_OUT.deepCopy().setMessage("Replication time out in " + allNodes);
   }
 
   public SendLogRequest buildSendLogRequest(Log log) {
@@ -1351,7 +1351,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     try {
       TSStatus tsStatus = SyncClientAdaptor.executeNonQuery(client, plan, header, receiver);
       if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
+        tsStatus =
+            StatusUtils.TIME_OUT
+                .deepCopy()
+                .setMessage("Forward time out, from " + thisNode + " " + "to " + receiver);
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
@@ -1361,7 +1364,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       logger.warn("{}: forward {} to {} interrupted", name, plan, receiver);
-      return StatusUtils.TIME_OUT;
+      return StatusUtils.TIME_OUT
+          .deepCopy()
+          .setMessage("Forward time out, from " + thisNode + " " + "to " + receiver);
     }
   }
 
@@ -1369,7 +1374,9 @@ public abstract class RaftMember implements RaftMemberMBean {
     Client client = getSyncClient(receiver);
     if (client == null) {
       logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
-      return StatusUtils.TIME_OUT;
+      return StatusUtils.TIME_OUT
+          .deepCopy()
+          .setMessage("Forward time out, from " + thisNode + " " + "to " + receiver);
     }
     return forwardPlanSync(plan, receiver, header, client);
   }
@@ -1385,7 +1392,10 @@ public abstract class RaftMember implements RaftMemberMBean {
 
       TSStatus tsStatus = client.executeNonQueryPlan(req);
       if (tsStatus == null) {
-        tsStatus = StatusUtils.TIME_OUT;
+        tsStatus =
+            StatusUtils.TIME_OUT
+                .deepCopy()
+                .setMessage("Forward time out, from " + thisNode + " " + "to " + receiver);
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       }
       return tsStatus;
@@ -1395,7 +1405,10 @@ public abstract class RaftMember implements RaftMemberMBean {
     } catch (TException e) {
       TSStatus status;
       if (e.getCause() instanceof SocketTimeoutException) {
-        status = StatusUtils.TIME_OUT;
+        status =
+            StatusUtils.TIME_OUT
+                .deepCopy()
+                .setMessage("Forward time out, from " + thisNode + " " + "to " + receiver);
         logger.warn(MSG_FORWARD_TIMEOUT, name, plan, receiver);
       } else {
         logger.error(MSG_FORWARD_ERROR, name, plan, receiver, e);

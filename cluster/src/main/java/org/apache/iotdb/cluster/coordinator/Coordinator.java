@@ -835,7 +835,9 @@ public class Coordinator {
       }
     }
     logger.warn("Forward {} to {} timed out", plan, group);
-    return StatusUtils.TIME_OUT;
+    return StatusUtils.TIME_OUT
+        .deepCopy()
+        .setMessage("Forward from " + thisNode + " to " + group.toString() + " time " + "out");
   }
 
   /**
