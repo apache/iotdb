@@ -32,10 +32,6 @@ public interface PipeSink {
 
   String showAllAttributes();
 
-  ByteBuffer serialize();
-
-  void deserialize(ByteBuffer byteBuffer);
-
   enum Type {
     IoTDB;
   }

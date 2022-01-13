@@ -36,21 +36,10 @@ public interface Pipe {
 
   PipeStatus getStatus();
 
-  String serialize();
-
-  // new pipe should be stop status
+  // a new pipe should be stop status
   enum PipeStatus {
     RUNNING,
     STOP,
     DROP
-  }
-
-  class PipeFactory {
-    // when adding a new type pipe, should write a factory method to build it from bytebuffer
-    public static Pipe createPipe(String className, String serializationString)
-        throws PipeException {
-      if (TsFilePipe.class.getName().equals(className)) {}
-      throw new UnsupportedOperationException("Not support for pipe type " + className);
-    }
   }
 }

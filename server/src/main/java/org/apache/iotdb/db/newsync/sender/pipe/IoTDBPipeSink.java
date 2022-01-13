@@ -71,12 +71,4 @@ public class IoTDBPipeSink implements PipeSink {
   public String showAllAttributes() {
     return String.format("ip='%s',port=%d", ip, port);
   }
-
-  @Override
-  public ByteBuffer serialize() {
-    return null;
-  }
-
-  @Override
-  public void deserialize(ByteBuffer byteBuffer) {}
 }

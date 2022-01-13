@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.newsync.sender.pipe;
 
 import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 
 public class TsFilePipe implements Pipe {
   private static final String SERIALIZE_SPLIT_TOKEN = ",";
@@ -40,7 +41,7 @@ public class TsFilePipe implements Pipe {
     this.dataStartTimestamp = dataStartTimestamp;
     this.syncDelOp = syncDelOp;
 
-    createTime = System.currentTimeMillis();
+    createTime = DatetimeUtils.currentTime();
   }
 
   public TsFilePipe(
@@ -90,30 +91,5 @@ public class TsFilePipe implements Pipe {
   @Override
   public PipeStatus getStatus() {
     return status;
-  }
-
-  @Override
-  public String serialize() {
-    StringBuilder builder = new StringBuilder();
-    builder.append(createTime).append(SERIALIZE_SPLIT_TOKEN);
-    builder.append(name).append(SERIALIZE_SPLIT_TOKEN);
-    builder.append(pipeSink.getName()).append(SERIALIZE_SPLIT_TOKEN);
-    builder.append(dataStartTimestamp).append(SERIALIZE_SPLIT_TOKEN);
-    builder.append(syncDelOp).append(SERIALIZE_SPLIT_TOKEN);
-    return builder.toString();
-  }
-
-  public static TsFilePipe deserialize(String serializationString) throws PipeException {
-    String[] attributes = serializationString.split(SERIALIZE_SPLIT_TOKEN);
-    if (attributes.length != 5) {
-      throw new PipeException(
-          "deserialize error, get more attributes than expected : " + serializationString);
-    }
-    TsFilePipe pipe;
-    try {
-    } catch (Exception e) {
-      throw new PipeException("");
-    }
-    return null;
   }
 }
