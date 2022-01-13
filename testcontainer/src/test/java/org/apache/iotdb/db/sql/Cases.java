@@ -73,7 +73,9 @@ public abstract class Cases {
   protected Session session;
   private final Planner processor = new Planner();
 
-  /** initialize the writeStatement,writeConnection, readStatements and the readConnections. */
+  /**
+   * initialize the writeStatement,writeConnection, readStatements and the readConnections.
+   */
   public abstract void init() throws Exception;
 
   public void clean() throws Exception {
@@ -147,8 +149,8 @@ public abstract class Cases {
     writeStatement.execute(
         "create timeseries root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCODING=RLE");
     String[] initDataArray = {
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
-      "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
+        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(200,20.71)",
+        "INSERT INTO root.ln.wf01.wt01(timestamp,temperature) values(220,50.71)"
     };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
@@ -167,10 +169,10 @@ public abstract class Cases {
 
     // test https://issues.apache.org/jira/browse/IOTDB-1348
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(250, 10.0)",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(300, 20.0)",
-          "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(350, 25.0)"
+        new String[]{
+            "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(250, 10.0)",
+            "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(300, 20.0)",
+            "INSERT INTO root.ln.wf01.wt01(timestamp, temperature) values(350, 25.0)"
         };
 
     for (String initData : initDataArray) {
@@ -187,10 +189,10 @@ public abstract class Cases {
 
     // test https://issues.apache.org/jira/browse/IOTDB-1457
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
-          "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
-          "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
+        new String[]{
+            "INSERT INTO root.ln.wf011.wt0110(timestamp, temperature) values(250, 10.0)",
+            "INSERT INTO root.ln.wf011.wt0111(timestamp, temperature) values(300, 20.0)",
+            "INSERT INTO root.ln.wf011.wt0112(timestamp, temperature) values(350, 25.0)"
         };
 
     for (String initData : initDataArray) {
@@ -206,17 +208,17 @@ public abstract class Cases {
     writeStatement.execute(
         "create timeseries root.ln.wf01.wt02.city WITH DATATYPE=TEXT, ENCODING=DICTIONARY");
     initDataArray =
-        new String[] {
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, 'Nanjing')",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, 'Nanjing')",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, 'Singapore')",
-          "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, 'Shanghai')"
+        new String[]{
+            "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(250, 'Nanjing')",
+            "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(300, 'Nanjing')",
+            "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(350, 'Singapore')",
+            "INSERT INTO root.ln.wf01.wt02(timestamp, city) values(400, 'Shanghai')"
         };
     for (String initData : initDataArray) {
       writeStatement.execute(initData);
     }
 
-    String[] results = new String[] {"Nanjing", "Nanjing", "Singapore", "Shanghai"};
+    String[] results = new String[]{"Nanjing", "Nanjing", "Singapore", "Shanghai"};
     for (Statement readStatement : readStatements) {
       resultSet = readStatement.executeQuery("select * from root.ln.wf01.wt02");
       int i = 0;
@@ -1042,21 +1044,21 @@ public abstract class Cases {
 
   // --------------------- AS Tests -----------------------------------------
   private static String[] asSqls =
-      new String[] {
-        "SET STORAGE GROUP TO root.sg",
-        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "CREATE TIMESERIES root.sg.d2.s3 WITH DATATYPE=FLOAT, ENCODING=RLE",
-        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(100, 10.1, 20.7)",
-        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(200, 15.2, 22.9)",
-        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(300, 30.3, 25.1)",
-        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(400, 50.4, 28.3)",
-        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(100, 11.1, 20.2, 80.0)",
-        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(200, 20.2, 21.8, 81.0)",
-        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(300, 45.3, 23.4, 82.0)",
-        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
+      new String[]{
+          "SET STORAGE GROUP TO root.sg",
+          "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.sg.d2.s3 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "INSERT INTO root.sg.d1(timestamp,s1,s2) values(100, 10.1, 20.7)",
+          "INSERT INTO root.sg.d1(timestamp,s1,s2) values(200, 15.2, 22.9)",
+          "INSERT INTO root.sg.d1(timestamp,s1,s2) values(300, 30.3, 25.1)",
+          "INSERT INTO root.sg.d1(timestamp,s1,s2) values(400, 50.4, 28.3)",
+          "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(100, 11.1, 20.2, 80.0)",
+          "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(200, 20.2, 21.8, 81.0)",
+          "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(300, 45.3, 23.4, 82.0)",
+          "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
       };
 
   private void prepareAsData() {
@@ -1088,8 +1090,8 @@ public abstract class Cases {
   public void alignByDeviceWithAsAggregationTest() {
     prepareAsData();
     String[] retArray =
-        new String[] {
-          "root.sg.d2,4,4,4,",
+        new String[]{
+            "root.sg.d2,4,4,4,",
         };
 
     for (Statement readStatement : readStatements) {
@@ -1129,11 +1131,11 @@ public abstract class Cases {
   public void alignByDeviceWithAsTest() {
     prepareAsData();
     String[] retArray =
-        new String[] {
-          "100,root.sg.d1,10.1,20.7,",
-          "200,root.sg.d1,15.2,22.9,",
-          "300,root.sg.d1,30.3,25.1,",
-          "400,root.sg.d1,50.4,28.3,"
+        new String[]{
+            "100,root.sg.d1,10.1,20.7,",
+            "200,root.sg.d1,15.2,22.9,",
+            "300,root.sg.d1,30.3,25.1,",
+            "400,root.sg.d1,50.4,28.3,"
         };
 
     for (Statement readStatement : readStatements) {
@@ -1173,15 +1175,15 @@ public abstract class Cases {
   public void alignByDeviceWithAsMixedTest() {
     prepareAsData();
     String[] retArray =
-        new String[] {
-          "100,root.sg.d1,10.1,20.7,",
-          "200,root.sg.d1,15.2,22.9,",
-          "300,root.sg.d1,30.3,25.1,",
-          "400,root.sg.d1,50.4,28.3,",
-          "100,root.sg.d2,11.1,20.2,",
-          "200,root.sg.d2,20.2,21.8,",
-          "300,root.sg.d2,45.3,23.4,",
-          "400,root.sg.d2,73.4,26.3,"
+        new String[]{
+            "100,root.sg.d1,10.1,20.7,",
+            "200,root.sg.d1,15.2,22.9,",
+            "300,root.sg.d1,30.3,25.1,",
+            "400,root.sg.d1,50.4,28.3,",
+            "100,root.sg.d2,11.1,20.2,",
+            "200,root.sg.d2,20.2,21.8,",
+            "300,root.sg.d2,45.3,23.4,",
+            "400,root.sg.d2,73.4,26.3,"
         };
 
     for (Statement readStatement : readStatements) {
@@ -1220,11 +1222,11 @@ public abstract class Cases {
   public void alignByDeviceWithAsDuplicatedTest() {
     prepareAsData();
     String[] retArray =
-        new String[] {
-          "100,root.sg.d1,10.1,10.1,",
-          "200,root.sg.d1,15.2,15.2,",
-          "300,root.sg.d1,30.3,30.3,",
-          "400,root.sg.d1,50.4,50.4,"
+        new String[]{
+            "100,root.sg.d1,10.1,10.1,",
+            "200,root.sg.d1,15.2,15.2,",
+            "300,root.sg.d1,30.3,30.3,",
+            "400,root.sg.d1,50.4,50.4,"
         };
 
     for (Statement readStatement : readStatements) {
@@ -1309,8 +1311,8 @@ public abstract class Cases {
 
   @Test
   public void testEmptyDataSet() throws SQLException {
-    try {
 
+    for (Statement statement : readStatements) {
       ResultSet resultSet = statement.executeQuery("select * from root.**");
       // has an empty time column
       Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
