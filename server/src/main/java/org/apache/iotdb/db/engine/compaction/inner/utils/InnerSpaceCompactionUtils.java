@@ -91,6 +91,7 @@ public class InnerSpaceCompactionUtils {
                   sequence);
           compactionExecutorOfCurrentTimeSeries.execute();
         }
+
         writer.endChunkGroup();
       }
 
