@@ -183,6 +183,7 @@ public class InsertTabletPlanGenerator {
           break;
         case TEXT:
           columns[i] = new Binary[tabletRowLimit];
+          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
           break;
         default:
           throw new UnSupportedDataTypeException(

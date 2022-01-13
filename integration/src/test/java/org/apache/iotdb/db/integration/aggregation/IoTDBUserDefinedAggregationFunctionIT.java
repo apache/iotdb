@@ -611,7 +611,9 @@ public class IoTDBUserDefinedAggregationFunctionIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation AVG : TEXT"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -622,7 +624,9 @@ public class IoTDBUserDefinedAggregationFunctionIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation SUM : TEXT"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -633,7 +637,9 @@ public class IoTDBUserDefinedAggregationFunctionIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation AVG : BOOLEAN"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute(
@@ -644,7 +650,9 @@ public class IoTDBUserDefinedAggregationFunctionIT {
         }
       } catch (Exception e) {
         Assert.assertTrue(
-            e.getMessage().contains("Unsupported data type in aggregation SUM : BOOLEAN"));
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
       try {
         statement.execute("SELECT avg(status)+2 FROM root.ln.wf01.wt01");
@@ -653,7 +661,10 @@ public class IoTDBUserDefinedAggregationFunctionIT {
           fail();
         }
       } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("Boolean statistics does not support: avg"));
+        Assert.assertTrue(
+            e.getMessage()
+                .contains(
+                    "Aggregate functions [AVG, SUM, EXTREME, MIN_VALUE, MAX_VALUE] only support numeric data types [INT32, INT64, FLOAT, DOUBLE]"));
       }
     } catch (Exception e) {
       e.printStackTrace();
