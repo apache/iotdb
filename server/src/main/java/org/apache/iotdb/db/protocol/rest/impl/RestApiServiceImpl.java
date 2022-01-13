@@ -29,10 +29,17 @@ import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
+import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
+import org.apache.iotdb.db.query.dataset.ListDataSet;
+import org.apache.iotdb.db.query.dataset.ShowDevicesDataSet;
+import org.apache.iotdb.db.query.dataset.ShowTimeseriesDataSet;
+import org.apache.iotdb.db.query.dataset.SingleDataSet;
 import org.apache.iotdb.db.service.basic.BasicServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -89,7 +96,10 @@ public class RestApiServiceImpl extends RestApiService {
           basicServiceProvider
               .getPlanner()
               .parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
-      if (!(physicalPlan instanceof QueryPlan)) {
+      physicalPlan.setLoginUserName(securityContext.getUserPrincipal().getName());
+      if (!(physicalPlan instanceof QueryPlan)
+          && !(physicalPlan instanceof ShowPlan)
+          && !(physicalPlan instanceof AuthorPlan)) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()
@@ -115,13 +125,23 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             basicServiceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        if (queryDataSet instanceof ShowDevicesDataSet
+            || queryDataSet instanceof ListDataSet
+            || queryDataSet instanceof ShowTimeseriesDataSet
+            || (queryDataSet instanceof SingleDataSet
+                && !(physicalPlan instanceof AggregationPlan))) {
+          return QueryDataSetHandler.fillShowPlanDateSet(queryDataSet);
+        } else if (physicalPlan instanceof QueryPlan) {
+          return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        }
+
       } finally {
         BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
     }
+    return Response.ok().entity(new org.apache.iotdb.db.protocol.rest.model.QueryDataSet()).build();
   }
 
   @Override

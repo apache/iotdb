@@ -23,6 +23,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
+import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -72,6 +73,35 @@ public class QueryDataSetHandler {
       }
     } catch (IOException e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
+    }
+    return Response.ok().entity(queryDataSet).build();
+  }
+
+  public static Response fillShowPlanDateSet(QueryDataSet dataSet) throws IOException {
+    int[] dataSetIndexes = new int[dataSet.getPaths().size()];
+    org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
+        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    for (int i = 0; dataSet.getPaths() != null && i < dataSet.getPaths().size(); i++) {
+      Path path = dataSet.getPaths().get(i);
+      queryDataSet.addCloumnNamesItem(path.getFullPath());
+      queryDataSet.addValuesItem(new ArrayList<>());
+      dataSetIndexes[i] = i;
+    }
+
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      for (int i = 0; i < queryDataSet.getCloumnNames().size(); i++) {
+        List<Object> values = queryDataSet.getValues().get(i);
+        Field field = record.getFields().get(dataSetIndexes[i]);
+        if (field == null) {
+          values.add(null);
+        } else {
+          values.add(
+              field.getDataType().equals(TSDataType.TEXT)
+                  ? field.getStringValue()
+                  : field.getObjectValue(field.getDataType()));
+        }
+      }
     }
     return Response.ok().entity(queryDataSet).build();
   }

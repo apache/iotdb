@@ -29,6 +29,10 @@ public class PhysicalPlanValidationHandler {
 
   public static void checkRestQuery(QueryOperator queryOperator) throws LogicalOperatorException {
 
+    if (queryOperator.isAlignByDevice()) {
+      throw new LogicalOperatorException("align by device clauses are not supported.");
+    }
+
     // disable align
     if (!queryOperator.isAlignByTime()) {
       throw new LogicalOperatorException("disable align clauses are not supported.");
