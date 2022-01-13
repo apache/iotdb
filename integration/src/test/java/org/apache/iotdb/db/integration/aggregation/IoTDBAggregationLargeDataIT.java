@@ -486,14 +486,13 @@ public class IoTDBAggregationLargeDataIT {
 
   @Test
   public void minValueAggreWithSingleFilterTest() {
-    String[] retArray = new String[] {"0,0,0,0.0,B,true"};
+    String[] retArray = new String[] {"0,0,0,0.0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "select min_value(s0),min_value(s1),min_value(s2),"
-                  + "min_value(s3),min_value(s4) from root.vehicle.d0 "
+              "select min_value(s0),min_value(s1),min_value(s2) from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100");
 
       if (hasResultSet) {
@@ -507,11 +506,7 @@ public class IoTDBAggregationLargeDataIT {
                     + ","
                     + resultSet.getString(minValue(d0s1))
                     + ","
-                    + resultSet.getString(minValue(d0s2))
-                    + ","
-                    + resultSet.getString(minValue(d0s3))
-                    + ","
-                    + resultSet.getString(minValue(d0s4));
+                    + resultSet.getString(minValue(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }
@@ -521,8 +516,7 @@ public class IoTDBAggregationLargeDataIT {
 
       hasResultSet =
           statement.execute(
-              "select min_value(s0),min_value(s1),min_value(s2),"
-                  + "min_value(s3),min_value(s4) from root.vehicle.d0 "
+              "select min_value(s0),min_value(s1),min_value(s2) from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100 order by time desc");
 
       if (hasResultSet) {
@@ -536,11 +530,7 @@ public class IoTDBAggregationLargeDataIT {
                     + ","
                     + resultSet.getString(minValue(d0s1))
                     + ","
-                    + resultSet.getString(minValue(d0s2))
-                    + ","
-                    + resultSet.getString(minValue(d0s3))
-                    + ","
-                    + resultSet.getString(minValue(d0s4));
+                    + resultSet.getString(minValue(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }
@@ -555,15 +545,14 @@ public class IoTDBAggregationLargeDataIT {
 
   @Test
   public void maxValueAggreWithSingleFilterTest() {
-    String[] retArray = new String[] {"0,99,40000,122.0,fffff,true"};
+    String[] retArray = new String[] {"0,99,40000,122.0"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 
       boolean hasResultSet =
           statement.execute(
-              "select max_value(s0),max_value(s1),max_value(s2),"
-                  + "max_value(s3),max_value(s4) from root.vehicle.d0 "
+              "select max_value(s0),max_value(s1),max_value(s2) from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100");
 
       if (hasResultSet) {
@@ -577,11 +566,7 @@ public class IoTDBAggregationLargeDataIT {
                     + ","
                     + resultSet.getString(maxValue(d0s1))
                     + ","
-                    + resultSet.getString(maxValue(d0s2))
-                    + ","
-                    + resultSet.getString(maxValue(d0s3))
-                    + ","
-                    + resultSet.getString(maxValue(d0s4));
+                    + resultSet.getString(maxValue(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }
@@ -591,8 +576,7 @@ public class IoTDBAggregationLargeDataIT {
 
       hasResultSet =
           statement.execute(
-              "select max_value(s0),max_value(s1),max_value(s2),"
-                  + "max_value(s3),max_value(s4) from root.vehicle.d0 "
+              "select max_value(s0),max_value(s1),max_value(s2) from root.vehicle.d0 "
                   + "where s1 < 50000 and s1 != 100 order by time desc");
 
       if (hasResultSet) {
@@ -606,11 +590,7 @@ public class IoTDBAggregationLargeDataIT {
                     + ","
                     + resultSet.getString(maxValue(d0s1))
                     + ","
-                    + resultSet.getString(maxValue(d0s2))
-                    + ","
-                    + resultSet.getString(maxValue(d0s3))
-                    + ","
-                    + resultSet.getString(maxValue(d0s4));
+                    + resultSet.getString(maxValue(d0s2));
             Assert.assertEquals(ans, retArray[cnt]);
             cnt++;
           }

@@ -116,8 +116,7 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
-      InnerSpaceCompactionUtils.compact(
-          targetTsFileResource, selectedTsFileResourceList, fullStorageGroupName, sequence);
+      InnerSpaceCompactionUtils.compact(targetTsFileResource, selectedTsFileResourceList, sequence);
       InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);

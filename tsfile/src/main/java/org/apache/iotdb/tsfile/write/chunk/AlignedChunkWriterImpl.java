@@ -24,11 +24,13 @@ import org.apache.iotdb.tsfile.encoding.encoder.TSEncodingBuilder;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.VectorMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -113,6 +115,37 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
 
   public void write(long time, Binary value, boolean isNull) {
     valueChunkWriterList.get(valueIndex++).write(time, value, isNull);
+  }
+
+  public void write(long time, TsPrimitiveType[] points) {
+    valueIndex = 0;
+    for (TsPrimitiveType point : points) {
+      ValueChunkWriter writer = valueChunkWriterList.get(valueIndex++);
+      switch (writer.getDataType()) {
+        case INT64:
+          writer.write(time, point != null ? point.getLong() : Long.MAX_VALUE, point == null);
+          break;
+        case INT32:
+          writer.write(time, point != null ? point.getInt() : Integer.MAX_VALUE, point == null);
+          break;
+        case FLOAT:
+          writer.write(time, point != null ? point.getFloat() : Float.MAX_VALUE, point == null);
+          break;
+        case DOUBLE:
+          writer.write(time, point != null ? point.getDouble() : Double.MAX_VALUE, point == null);
+          break;
+        case BOOLEAN:
+          writer.write(time, point != null ? point.getBoolean() : false, point == null);
+          break;
+        case TEXT:
+          writer.write(
+              time,
+              point != null ? point.getBinary() : new Binary("".getBytes(StandardCharsets.UTF_8)),
+              point == null);
+          break;
+      }
+    }
+    write(time);
   }
 
   public void write(long time) {
