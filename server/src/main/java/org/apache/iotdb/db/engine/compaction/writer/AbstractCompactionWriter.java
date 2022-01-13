@@ -44,7 +44,8 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   protected String deviceId;
 
-  private long targetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private final long targetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
@@ -96,31 +97,32 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
     } else {
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
       for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
-        Object v = val == null ? null : val.getValue();
-        // if val is null, then give it TEXT type to allow null type casting
-        TSDataType tsDataType = val == null ? TSDataType.TEXT : val.getDataType();
-        boolean isNull = val == null;
-        switch (tsDataType) {
-          case TEXT:
-            chunkWriter.write(timestamp, (Binary) v, isNull);
-            break;
-          case DOUBLE:
-            chunkWriter.write(timestamp, (double) v, isNull);
-            break;
-          case BOOLEAN:
-            chunkWriter.write(timestamp, (boolean) v, isNull);
-            break;
-          case INT64:
-            chunkWriter.write(timestamp, (long) v, isNull);
-            break;
-          case INT32:
-            chunkWriter.write(timestamp, (int) v, isNull);
-            break;
-          case FLOAT:
-            chunkWriter.write(timestamp, (float) v, isNull);
-            break;
-          default:
-            throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+        if (val == null) {
+          chunkWriter.write(timestamp, null, true);
+        } else {
+          TSDataType tsDataType = chunkWriter.getCurrentValueChunkType();
+          switch (tsDataType) {
+            case TEXT:
+              chunkWriter.write(timestamp, val.getBinary(), false);
+              break;
+            case DOUBLE:
+              chunkWriter.write(timestamp, val.getDouble(), false);
+              break;
+            case BOOLEAN:
+              chunkWriter.write(timestamp, val.getBoolean(), false);
+              break;
+            case INT64:
+              chunkWriter.write(timestamp, val.getLong(), false);
+              break;
+            case INT32:
+              chunkWriter.write(timestamp, val.getInt(), false);
+              break;
+            case FLOAT:
+              chunkWriter.write(timestamp, val.getFloat(), false);
+              break;
+            default:
+              throw new UnsupportedOperationException("Unknown data type " + tsDataType);
+          }
         }
       }
       chunkWriter.write(timestamp);

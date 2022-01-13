@@ -55,7 +55,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionUtilsTest extends AbstractCompactionTest {
-  private String oldThreadName = Thread.currentThread().getName();
+  private final String oldThreadName = Thread.currentThread().getName();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {

@@ -97,7 +97,7 @@ public class InnerSpaceCompactionUtils {
       boolean sequence)
       throws IOException, MetadataException {
     MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-        deviceIterator.iterateNotAlignedSeries(device);
+        deviceIterator.iterateNotAlignedSeries(device, true);
     while (seriesIterator.hasNextSeries()) {
       // TODO: we can provide a configuration item to enable concurrent between each series
       String currentSeries = seriesIterator.nextSeries();
