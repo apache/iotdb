@@ -334,36 +334,34 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private void parseTemplateMeasurementClause(
       IoTDBSqlParser.TemplateMeasurementClauseContext ctx,
       CreateTemplateOperator createTemplateOperator) {
-    String schemaName;
     List<String> measurements = new ArrayList<>();
     List<TSDataType> dataTypes = new ArrayList<>();
     List<TSEncoding> encodings = new ArrayList<>();
     List<CompressionType> compressors = new ArrayList<>();
     if (ctx instanceof IoTDBSqlParser.AlignedTemplateMeasurementContext) {
       // aligned measurement
+      String alignedSuffixPath =
+          ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).suffixPath().getText();
       List<IoTDBSqlParser.NodeNameWithoutWildcardContext> measurementList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).nodeNameWithoutWildcard();
       List<IoTDBSqlParser.AttributeClausesContext> attributeList =
           ((IoTDBSqlParser.AlignedTemplateMeasurementContext) ctx).attributeClauses();
-      schemaName = measurementList.get(0).getText();
       for (int i = 0; i < attributeList.size(); i++) {
-        measurements.add(measurementList.get(i + 1).getText());
+        measurements.add(
+            alignedSuffixPath.concat(
+                TsFileConstant.PATH_SEPARATOR + measurementList.get(i).getText()));
         parseAttributeClause(attributeList.get(i), dataTypes, encodings, compressors);
       }
     } else {
       // non-aligned template measurement
-      schemaName =
-          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx)
-              .nodeNameWithoutWildcard()
-              .getText();
-      measurements.add(schemaName);
+      measurements.add(
+          ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).suffixPath().getText());
       parseAttributeClause(
           ((IoTDBSqlParser.NonAlignedTemplateMeasurementContext) ctx).attributeClauses(),
           dataTypes,
           encodings,
           compressors);
     }
-    createTemplateOperator.addSchemaName(schemaName);
     createTemplateOperator.addMeasurements(measurements);
     createTemplateOperator.addDataTypes(dataTypes);
     createTemplateOperator.addEncodings(encodings);

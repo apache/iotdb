@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.iotdb.db.service.basic;
 
 import org.apache.iotdb.db.auth.AuthException;
@@ -27,7 +28,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.OperationType;
 import org.apache.iotdb.db.exception.StorageEngineException;
-import org.apache.iotdb.db.exception.StorageEngineReadonlyException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
@@ -37,8 +37,6 @@ import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
-import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryTimeManager;
 import org.apache.iotdb.db.query.control.SessionManager;
@@ -61,32 +59,47 @@ import java.util.List;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
-public class BasicServiceProvider {
+public abstract class ServiceProvider {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(BasicServiceProvider.class);
-  protected static final Logger AUDIT_LOGGER =
+  private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProvider.class);
+  public static final Logger AUDIT_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.AUDIT_LOGGER_NAME);
-  protected static final Logger SLOW_SQL_LOGGER =
+  public static final Logger SLOW_SQL_LOGGER =
       LoggerFactory.getLogger(IoTDBConstant.SLOW_SQL_LOGGER_NAME);
 
-  protected static final TSProtocolVersion CURRENT_RPC_VERSION =
+  public static final TSProtocolVersion CURRENT_RPC_VERSION =
       TSProtocolVersion.IOTDB_SERVICE_PROTOCOL_V3;
 
-  protected static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
+  public static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
-  protected final QueryTimeManager queryTimeManager = QueryTimeManager.getInstance();
-  public static SessionManager sessionManager = SessionManager.getInstance();
-  protected final TracingManager tracingManager = TracingManager.getInstance();
-  protected final QueryFrequencyRecorder queryFrequencyRecorder;
+  public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
+  public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
+  public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
+      new QueryFrequencyRecorder(CONFIG);
 
-  protected Planner processor;
-  protected IPlanExecutor executor;
+  public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
-  public BasicServiceProvider() throws QueryProcessException {
-    queryFrequencyRecorder = new QueryFrequencyRecorder(CONFIG);
-    processor = new Planner();
-    executor = new PlanExecutor();
+  private final Planner planner;
+  protected final IPlanExecutor executor;
+
+  public Planner getPlanner() {
+    return planner;
   }
+
+  public IPlanExecutor getExecutor() {
+    return executor;
+  }
+
+  public ServiceProvider(PlanExecutor executor) throws QueryProcessException {
+    planner = new Planner();
+    this.executor = executor;
+  }
+
+  public abstract QueryContext genQueryContext(
+      long queryId, boolean debug, long startTime, String statement, long timeout);
+
+  public abstract boolean executeNonQuery(PhysicalPlan plan)
+      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException;
 
   /**
    * Check whether current user has logged in.
@@ -94,7 +107,7 @@ public class BasicServiceProvider {
    * @return true: If logged in; false: If not logged in
    */
   public boolean checkLogin(long sessionId) {
-    boolean isLoggedIn = sessionManager.getUsername(sessionId) != null;
+    boolean isLoggedIn = SESSION_MANAGER.getUsername(sessionId) != null;
     if (!isLoggedIn) {
       LOGGER.info("{}: Not login. ", IoTDBConstant.GLOBAL_DB_NAME);
     } else {
@@ -115,7 +128,7 @@ public class BasicServiceProvider {
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
     List<? extends PartialPath> paths = plan.getPaths();
     try {
-      if (!checkAuthorization(paths, plan, sessionManager.getUsername(sessionId))) {
+      if (!checkAuthorization(paths, plan, SESSION_MANAGER.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation " + plan.getOperatorType());
@@ -165,7 +178,7 @@ public class BasicServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = sessionManager.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
       LOGGER.info(
           "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
@@ -176,7 +189,7 @@ public class BasicServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = sessionManager.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
@@ -187,12 +200,12 @@ public class BasicServiceProvider {
   public boolean closeSession(long sessionId) {
     AUDIT_LOGGER.info("Session-{} is closing", sessionId);
 
-    sessionManager.removeCurrSessionId();
+    SESSION_MANAGER.removeCurrSessionId();
 
     return SessionTimeoutManager.getInstance().unregister(sessionId);
   }
 
-  protected TSStatus closeOperation(
+  public TSStatus closeOperation(
       long sessionId,
       long queryId,
       long statementId,
@@ -208,15 +221,15 @@ public class BasicServiceProvider {
       AUDIT_LOGGER.debug(
           "{}: receive close operation from Session {}",
           IoTDBConstant.GLOBAL_DB_NAME,
-          sessionManager.getCurrSessionId());
+          SESSION_MANAGER.getCurrSessionId());
     }
 
     try {
       if (haveStatementId) {
         if (haveSetQueryId) {
-          sessionManager.closeDataset(statementId, queryId);
+          SESSION_MANAGER.closeDataset(statementId, queryId);
         } else {
-          sessionManager.closeStatement(sessionId, statementId);
+          SESSION_MANAGER.closeStatement(sessionId, statementId);
         }
         return RpcUtils.getStatus(TSStatusCode.SUCCESS_STATUS);
       } else {
@@ -229,11 +242,6 @@ public class BasicServiceProvider {
     }
   }
 
-  public QueryContext genQueryContext(
-      long queryId, boolean debug, long startTime, String statement, long timeout) {
-    return new QueryContext(queryId, debug, startTime, statement, timeout);
-  }
-
   /** create QueryDataSet and buffer it for fetchResults */
   public QueryDataSet createQueryDataSet(
       QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
@@ -242,26 +250,11 @@ public class BasicServiceProvider {
 
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
-    sessionManager.setDataset(context.getQueryId(), queryDataSet);
+    SESSION_MANAGER.setDataset(context.getQueryId(), queryDataSet);
     return queryDataSet;
-  }
-
-  public boolean executeNonQuery(PhysicalPlan plan)
-      throws QueryProcessException, StorageGroupNotSetException, StorageEngineException {
-    plan.checkIntegrity();
-    if (!(plan instanceof SetSystemModePlan)
-        && !(plan instanceof FlushPlan)
-        && IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      throw new StorageEngineReadonlyException();
-    }
-    return executor.processNonQuery(plan);
   }
 
   private boolean checkCompatibility(TSProtocolVersion version) {
     return version.equals(CURRENT_RPC_VERSION);
-  }
-
-  public Planner getPlanner() {
-    return processor;
   }
 }
