@@ -144,10 +144,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 |CREATE_FUNCTION|register UDFs; path independent|
 |DROP_FUNCTION|deregister UDFs; path independent|
-|CREATE_TRIGGER|create triggers; path independent|
-|DROP_TRIGGER|drop triggers; path independent|
-|START_TRIGGER|start triggers; path independent|
-|STOP_TRIGGER|stop triggers; path independent|
+|CREATE_TRIGGER|create triggers; path dependent|
+|DROP_TRIGGER|drop triggers; path dependent|
+|START_TRIGGER|start triggers; path dependent|
+|STOP_TRIGGER|stop triggers; path dependent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
 

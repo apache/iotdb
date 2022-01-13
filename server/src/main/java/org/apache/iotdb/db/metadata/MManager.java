@@ -21,9 +21,11 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -496,6 +498,15 @@ public class MManager {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
+        createContinuousQuery(createContinuousQueryPlan);
+        break;
+      case DROP_CONTINUOUS_QUERY:
+        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
+        dropContinuousQuery(dropContinuousQueryPlan);
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -503,11 +514,27 @@ public class MManager {
   // endregion
 
   // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().register(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().deregister(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriter.createContinuousQuery(plan);
   }
 
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
     logWriter.dropContinuousQuery(plan);
   }
   // endregion
@@ -1947,7 +1974,9 @@ public class MManager {
             internalCreateTimeseries(devicePath.concatNode(measurement), plan.getDataTypes()[loc]);
           } else {
             internalAlignedCreateTimeseries(
-                devicePath, Arrays.asList(measurementList), Arrays.asList(plan.getDataTypes()));
+                devicePath,
+                Collections.singletonList(measurement),
+                Collections.singletonList(plan.getDataTypes()[loc]));
           }
           // after creating timeseries, the deviceMNode has been replaced by a new entityMNode
           deviceMNode = mtree.getNodeByPath(devicePath);

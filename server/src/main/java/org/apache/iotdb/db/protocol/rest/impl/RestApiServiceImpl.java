@@ -28,6 +28,7 @@ import org.apache.iotdb.db.protocol.rest.handler.RequestValidationHandler;
 import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
+import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
@@ -51,12 +52,14 @@ import java.time.ZoneId;
 
 public class RestApiServiceImpl extends RestApiService {
 
-  private final BasicServiceProvider basicServiceProvider;
+  public static ServiceProvider serviceProvider = IoTDB.serviceProvider;
+
+  protected final Planner planner;
   private final AuthorizationHandler authorizationHandler;
 
   public RestApiServiceImpl() throws QueryProcessException {
-    basicServiceProvider = new BasicServiceProvider();
-    authorizationHandler = new AuthorizationHandler(basicServiceProvider);
+    this.authorizationHandler = new AuthorizationHandler(serviceProvider);
+    planner = serviceProvider.getPlanner();
   }
 
   @Override
@@ -64,9 +67,7 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      PhysicalPlan physicalPlan =
-          basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
-
+      PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql.getSql());
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
@@ -74,7 +75,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              basicServiceProvider.executeNonQuery(physicalPlan)
+              serviceProvider.executeNonQuery(physicalPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())
@@ -116,14 +117,14 @@ public class RestApiServiceImpl extends RestApiService {
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
-            basicServiceProvider.genQueryContext(
+            serviceProvider.genQueryContext(
                 queryId,
                 physicalPlan.isDebug(),
                 System.currentTimeMillis(),
                 sql.getSql(),
                 IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
         QueryDataSet queryDataSet =
-            basicServiceProvider.createQueryDataSet(
+            serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
         if (queryDataSet instanceof ShowDevicesDataSet
             || queryDataSet instanceof ListDataSet
@@ -136,7 +137,7 @@ public class RestApiServiceImpl extends RestApiService {
         }
 
       } finally {
-        BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -160,7 +161,7 @@ public class RestApiServiceImpl extends RestApiService {
 
       return Response.ok()
           .entity(
-              basicServiceProvider.executeNonQuery(insertTabletPlan)
+              serviceProvider.executeNonQuery(insertTabletPlan)
                   ? new ExecutionStatus()
                       .code(TSStatusCode.SUCCESS_STATUS.getStatusCode())
                       .message(TSStatusCode.SUCCESS_STATUS.name())

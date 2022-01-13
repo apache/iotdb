@@ -30,7 +30,6 @@ import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.strategy.LogicalChecker;
 import org.apache.iotdb.db.qp.strategy.LogicalGenerator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -38,7 +37,6 @@ import org.apache.iotdb.db.qp.strategy.optimizer.ConcatPathOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.DnfFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.MergeSingleFilterOptimizer;
 import org.apache.iotdb.db.qp.strategy.optimizer.RemoveNotOptimizer;
-import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 
@@ -61,14 +59,6 @@ public class Planner {
     operator = logicalOptimize(operator);
     // from logical operator to physical plan
     return new PhysicalGenerator().transformToPhysicalPlan(operator);
-  }
-
-  public GroupByTimePlan cqQueryOperatorToGroupByTimePlan(QueryOperator operator)
-      throws QueryProcessException {
-    // optimize the logical operator (no need to check since the operator has been checked
-    // beforehand)
-    operator = (QueryOperator) logicalOptimize(operator);
-    return (GroupByTimePlan) new PhysicalGenerator().transformToPhysicalPlan(operator);
   }
 
   /** convert raw data query to physical plan directly */
@@ -149,7 +139,6 @@ public class Planner {
     return operator;
   }
 
-  @TestOnly
   public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
     return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
   }

@@ -618,39 +618,14 @@ public class TsFileSequenceReader implements AutoCloseable {
    * @return an iterator of "device, isAligned" list, in which names of devices are ordered in
    *     dictionary order, and isAligned represents whether the device is aligned
    */
-  public Iterator<Pair<String, Boolean>> getAllDevicesIteratorWithIsAligned() throws IOException {
+  public TsFileDeviceIterator getAllDevicesIteratorWithIsAligned() throws IOException {
     readFileMetadata();
 
     MetadataIndexNode metadataIndexNode = tsFileMetaData.getMetadataIndex();
     Queue<Pair<String, Pair<Long, Long>>> queue = new LinkedList<>();
     getAllDevicesWithIsAligned(metadataIndexNode, queue);
 
-    return new Iterator<Pair<String, Boolean>>() {
-      @Override
-      public boolean hasNext() {
-        return !queue.isEmpty();
-      }
-
-      @Override
-      public Pair<String, Boolean> next() {
-        if (!hasNext()) {
-          throw new NoSuchElementException();
-        }
-        Pair<String, Pair<Long, Long>> startEndPair = queue.remove();
-        List<Pair<String, Boolean>> devices = new ArrayList<>();
-        try {
-          MetadataIndexNode measurementNode =
-              MetadataIndexNode.deserializeFrom(
-                  readData(startEndPair.right.left, startEndPair.right.right));
-          // if tryToGetFirstTimeseriesMetadata(node) returns null, the device is not aligned
-          boolean isAligned = tryToGetFirstTimeseriesMetadata(measurementNode) != null;
-          return new Pair<>(startEndPair.left, isAligned);
-        } catch (IOException e) {
-          throw new TsFileRuntimeException(
-              "Error occurred while reading a time series metadata block.");
-        }
-      }
-    };
+    return new TsFileDeviceIterator(this, queue);
   }
 
   private void getAllDevicesWithIsAligned(
@@ -1758,5 +1733,10 @@ public class TsFileSequenceReader implements AutoCloseable {
           "Error occurred while collecting offset ranges of measurement nodes of file {}", file);
       throw e;
     }
+  }
+
+  @Override
+  public int hashCode() {
+    return file.hashCode();
   }
 }

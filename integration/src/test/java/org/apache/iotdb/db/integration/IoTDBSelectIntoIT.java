@@ -59,6 +59,8 @@ public class IoTDBSelectIntoIT {
     "insert into root.sg.d1(time, s1, s2, s4, s5, s6) values (2, 2, 2, 2, true, '2')",
     "insert into root.sg.d1(time, s1, s2, s3, s5, s6) values (3, 3, 3, 3, false, '3')",
     "insert into root.sg.d1(time, s1, s2, s3, s4, s5, s6) values (4, 4, 4, 4, 4, true, '4')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s6) values (5, 5, 5, 5, 5, '5')",
+    "insert into root.sg.d1(time, s1, s2, s3, s4, s5) values (6, 6, 6, 6, 6, true)",
   };
 
   @BeforeClass
@@ -426,7 +428,7 @@ public class IoTDBSelectIntoIT {
       try (ResultSet resultSet = statement.executeQuery("select count_s1 from root.sg.d1")) {
         assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
 
-        for (int i = 1; i < INSERTION_SQLS.length; ++i) {
+        for (int i = 1; i < INSERTION_SQLS.length - 2; ++i) {
           assertTrue(resultSet.next());
           for (int j = 0; j < 1 + 1; ++j) {
             assertEquals(String.valueOf(i), resultSet.getString(1));
@@ -461,6 +463,8 @@ public class IoTDBSelectIntoIT {
           }
         }
 
+        assertTrue(resultSet.next());
+        assertTrue(resultSet.next());
         assertFalse(resultSet.next());
       }
     } catch (SQLException throwable) {
@@ -482,7 +486,7 @@ public class IoTDBSelectIntoIT {
 
         assertTrue(resultSet.next());
         assertEquals("10", resultSet.getString(1));
-        assertEquals("4", resultSet.getString(2));
+        assertEquals("6", resultSet.getString(2));
 
         assertFalse(resultSet.next());
       }
@@ -723,6 +727,39 @@ public class IoTDBSelectIntoIT {
           assertFalse(resultSet.next());
         }
       }
+    }
+  }
+
+  // This case tests whether select into clause functions correctly when multiple columns are
+  // selected.
+  // It is possible that in the first few rows, some columns are null.
+  @Test
+  public void testSelectMultiColumnsWithTopKCase() throws SQLException {
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      statement.execute(
+          "select -s1, sin(cos(tan(s1+s1*s2))) + cos(s1), top_k(s1,'k'='1') "
+              + "into k1,k2,k3 from root.sg.d1;");
+
+      try (ResultSet resultSet = statement.executeQuery("select k1 from root.sg.d1")) {
+        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+        for (int i = 1; i <= 6; ++i) {
+          assertTrue(resultSet.next());
+        }
+        assertFalse(resultSet.next());
+      }
+
+      // verify that only one row is selected into k3.
+      try (ResultSet resultSet = statement.executeQuery("select k3 from root.sg.d1")) {
+        assertEquals(1 + 1, resultSet.getMetaData().getColumnCount());
+        assertTrue(resultSet.next());
+        assertFalse(resultSet.next());
+      }
+
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
   }
 }

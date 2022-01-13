@@ -26,7 +26,6 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.SeriesRawDataBatchReader;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -488,23 +487,25 @@ public class CompactionCheckerUtils {
    * @throws IllegalPathException
    * @throws IOException
    */
-  public static Map<String, List<TimeValuePair>> getDataByQuery(
-      List<String> fullPaths,
+  public static Map<PartialPath, List<TimeValuePair>> getDataByQuery(
+      List<PartialPath> fullPaths,
       List<IMeasurementSchema> schemas,
       List<TsFileResource> sequenceResources,
       List<TsFileResource> unsequenceResources)
       throws IllegalPathException, IOException {
-    Map<String, List<TimeValuePair>> pathDataMap = new HashMap<>();
+    Map<PartialPath, List<TimeValuePair>> pathDataMap = new HashMap<>();
     for (int i = 0; i < fullPaths.size(); ++i) {
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
+      TimeSeriesMetadataCache.getInstance().clear();
+      ChunkCache.getInstance().clear();
 
-      PartialPath path = new MeasurementPath(fullPaths.get(i));
+      PartialPath path = fullPaths.get(i);
       List<TimeValuePair> dataList = new LinkedList<>();
       IBatchReader reader =
           new SeriesRawDataBatchReader(
               path,
-              schemas.get(i).getType(),
+              path.getSeriesType(),
               EnvironmentUtils.TEST_QUERY_CONTEXT,
               sequenceResources,
               unsequenceResources,
@@ -524,12 +525,15 @@ public class CompactionCheckerUtils {
       TimeSeriesMetadataCache.getInstance().clear();
       ChunkCache.getInstance().clear();
     }
+    TimeSeriesMetadataCache.getInstance().clear();
+    ChunkCache.getInstance().clear();
     return pathDataMap;
   }
 
   public static void validDataByValueList(
-      Map<String, List<TimeValuePair>> expectedData, Map<String, List<TimeValuePair>> actualData) {
-    for (String path : expectedData.keySet()) {
+      Map<PartialPath, List<TimeValuePair>> expectedData,
+      Map<PartialPath, List<TimeValuePair>> actualData) {
+    for (PartialPath path : expectedData.keySet()) {
       List<TimeValuePair> expectedTimeValueList = expectedData.get(path);
       List<TimeValuePair> actualTimeValueList = actualData.get(path);
 
@@ -539,7 +543,17 @@ public class CompactionCheckerUtils {
         TimeValuePair expectedTimeValuePair = expectedTimeValueList.get(i);
         TimeValuePair actualTimeValuePair = actualTimeValueList.get(i);
         assertEquals(expectedTimeValuePair.getTimestamp(), actualTimeValuePair.getTimestamp());
-        assertEquals(expectedTimeValuePair.getValue(), actualTimeValuePair.getValue());
+        TSDataType type = expectedTimeValuePair.getValue().getDataType();
+        if (type == TSDataType.VECTOR) {
+          TsPrimitiveType[] expectedVector = expectedTimeValuePair.getValue().getVector();
+          TsPrimitiveType[] actualVector = actualTimeValuePair.getValue().getVector();
+          assertEquals(expectedVector.length, actualVector.length);
+          for (int j = 0; j < expectedVector.length; ++j) {
+            assertEquals(expectedVector[j], actualVector[j]);
+          }
+        } else {
+          assertEquals(expectedTimeValuePair.getValue(), actualTimeValuePair.getValue());
+        }
       }
     }
   }

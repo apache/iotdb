@@ -430,10 +430,10 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleInterval = 10_000L;
+  private long compactionScheduleInterval = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 1_000L;
+  private long compactionSubmissionInterval = 60_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
