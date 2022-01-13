@@ -133,6 +133,10 @@ public class Coordinator {
     } else if (PartitionUtils.isGlobalDataPlan(plan)) {
       // forward the plan to all data group nodes
       result = processNonPartitionedDataPlan(plan);
+    } else if (PartitionUtils.isMixedGroupPlan(plan)) {
+      return new TSStatus()
+          .setCode(TSStatusCode.UNSUPPORTED_OPERATION.getStatusCode())
+          .setMessage(plan.getOperatorType().name() + " not supported yet");
     } else {
       // split the plan and forward them to some PartitionGroups
       try {

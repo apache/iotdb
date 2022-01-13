@@ -1009,7 +1009,7 @@ public class CMManager extends MManager {
   private List<MeasurementPath> getMatchedPathsLocally(PartialPath partialPath, boolean withAlias)
       throws MetadataException {
     if (!withAlias) {
-      return getMeasurementPaths(partialPath);
+      return super.getMeasurementPaths(partialPath);
     } else {
       return super.getMeasurementPathsWithAlias(partialPath, -1, -1).left;
     }
@@ -1782,6 +1782,22 @@ public class CMManager extends MManager {
         logger.warn(FAILED_TO_CHECK_CONSISTENCY, e);
       }
       return super.getBelongedStorageGroup(path);
+    }
+  }
+
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   */
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
+      throws MetadataException {
+    try {
+      return getMatchedPaths(pathPattern);
+    } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
+      throw new MetadataException(e);
     }
   }
 }

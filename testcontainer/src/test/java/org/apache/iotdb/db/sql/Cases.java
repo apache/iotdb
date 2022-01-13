@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sql;
 
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -46,17 +47,21 @@ import org.junit.Test;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public abstract class Cases {
@@ -1032,6 +1037,332 @@ public abstract class Cases {
       for (int i = 1; i <= schemaList.size(); ++i) {
         Assert.assertEquals(9L, resultSet.getLong(i));
       }
+    }
+  }
+
+  // --------------------- AS Tests -----------------------------------------
+  private static String[] asSqls =
+      new String[] {
+        "SET STORAGE GROUP TO root.sg",
+        "CREATE TIMESERIES root.sg.d1.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d1.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.s1 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.sg.d2.s3 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(100, 10.1, 20.7)",
+        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(200, 15.2, 22.9)",
+        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(300, 30.3, 25.1)",
+        "INSERT INTO root.sg.d1(timestamp,s1,s2) values(400, 50.4, 28.3)",
+        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(100, 11.1, 20.2, 80.0)",
+        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(200, 20.2, 21.8, 81.0)",
+        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(300, 45.3, 23.4, 82.0)",
+        "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
+      };
+
+  private void prepareAsData() {
+    for (String sql : asSqls) {
+      try {
+        writeStatement.execute(sql);
+      } catch (SQLException throwables) {
+        fail(throwables.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsFailTest() {
+    prepareAsData();
+    // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
+    for (Statement readStatement : readStatements) {
+      try {
+        readStatement.execute("select * as speed from root.sg.d1 align by device");
+        fail();
+      } catch (Exception e) {
+        Assert.assertTrue(
+            e.getMessage().contains("alias speed can only be matched with one time series"));
+      }
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsAggregationTest() {
+    prepareAsData();
+    String[] retArray =
+        new String[] {
+          "root.sg.d2,4,4,4,",
+        };
+
+    for (Statement readStatement : readStatements) {
+      try {
+        boolean hasResultSet =
+            readStatement.execute(
+                "select count(s1) as s1_num, count(s2), count(s3) as s3_num from root.sg.d2 align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = readStatement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          assertEquals("Device,s1_num,count(s2),s3_num,", header.toString());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(retArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(retArray.length, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsTest() {
+    prepareAsData();
+    String[] retArray =
+        new String[] {
+          "100,root.sg.d1,10.1,20.7,",
+          "200,root.sg.d1,15.2,22.9,",
+          "300,root.sg.d1,30.3,25.1,",
+          "400,root.sg.d1,50.4,28.3,"
+        };
+
+    for (Statement readStatement : readStatements) {
+      try {
+        boolean hasResultSet =
+            readStatement.execute(
+                "select s1 as speed, s2 as temperature from root.sg.d1 align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = readStatement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          assertEquals("Time,Device,speed,temperature,", header.toString());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(retArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(retArray.length, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsMixedTest() {
+    prepareAsData();
+    String[] retArray =
+        new String[] {
+          "100,root.sg.d1,10.1,20.7,",
+          "200,root.sg.d1,15.2,22.9,",
+          "300,root.sg.d1,30.3,25.1,",
+          "400,root.sg.d1,50.4,28.3,",
+          "100,root.sg.d2,11.1,20.2,",
+          "200,root.sg.d2,20.2,21.8,",
+          "300,root.sg.d2,45.3,23.4,",
+          "400,root.sg.d2,73.4,26.3,"
+        };
+
+    for (Statement readStatement : readStatements) {
+      try {
+        boolean hasResultSet =
+            readStatement.execute("select s1 as speed, s2 from root.sg.* align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = readStatement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          assertEquals("Time,Device,speed,s2,", header.toString());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(retArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(retArray.length, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void alignByDeviceWithAsDuplicatedTest() {
+    prepareAsData();
+    String[] retArray =
+        new String[] {
+          "100,root.sg.d1,10.1,10.1,",
+          "200,root.sg.d1,15.2,15.2,",
+          "300,root.sg.d1,30.3,30.3,",
+          "400,root.sg.d1,50.4,50.4,"
+        };
+
+    for (Statement readStatement : readStatements) {
+      try {
+        boolean hasResultSet =
+            readStatement.execute("select s1 as speed, s1 from root.sg.d1 align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = readStatement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          StringBuilder header = new StringBuilder();
+          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+            header.append(resultSetMetaData.getColumnName(i)).append(",");
+          }
+          assertEquals("Time,Device,speed,speed,", header.toString());
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+              builder.append(resultSet.getString(i)).append(",");
+            }
+            assertEquals(retArray[cnt], builder.toString());
+            cnt++;
+          }
+          assertEquals(retArray.length, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void deleteStorageGroupTagTest() {
+    List<String> ret =
+        Collections.singletonList(
+            "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
+                + "{\"tag1\":\"v1\",\"tag2\":\"v2\"},{\"attr2\":\"v2\",\"attr1\":\"v1\"}");
+
+    String sql =
+        "create timeseries root.turbine.d1.s1(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(tag1=v1, tag2=v2) attributes(attr1=v1, attr2=v2)";
+    try {
+      writeStatement.execute(sql);
+      for (Statement readStatement : readStatements) {
+        boolean hasResult = readStatement.execute("show timeseries");
+        assertTrue(hasResult);
+        int count = 0;
+        try (ResultSet resultSet = readStatement.getResultSet()) {
+          while (resultSet.next()) {
+            String ans =
+                resultSet.getString("timeseries")
+                    + ","
+                    + resultSet.getString("alias")
+                    + ","
+                    + resultSet.getString("storage group")
+                    + ","
+                    + resultSet.getString("dataType")
+                    + ","
+                    + resultSet.getString("encoding")
+                    + ","
+                    + resultSet.getString("compression")
+                    + ","
+                    + resultSet.getString("tags")
+                    + ","
+                    + resultSet.getString("attributes");
+            assertTrue(ret.contains(ans));
+            count++;
+          }
+        }
+        assertEquals(ret.size(), count);
+      }
+
+      writeStatement.execute("delete storage group root.turbine");
+
+    } catch (Exception e) {
+      assertEquals("703: DELETE_STORAGE_GROUP not supported yet", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testEmptyDataSet() throws SQLException {
+    try {
+
+      ResultSet resultSet = statement.executeQuery("select * from root.**");
+      // has an empty time column
+      Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+      try {
+        while (resultSet.next()) {
+          fail();
+        }
+
+        resultSet =
+            statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+        // has an empty time column
+        Assert.assertEquals(1, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+
+        resultSet = statement.executeQuery("select count(*) from root");
+        // has no column
+        Assert.assertEquals(0, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+
+        resultSet = statement.executeQuery("select * from root.** align by device");
+        // has time and device columns
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+
+        resultSet = statement.executeQuery("select count(*) from root align by device");
+        // has device column
+        Assert.assertEquals(2, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+
+        resultSet =
+            statement.executeQuery(
+                "select count(*) from root where time >= 1 and time <= 100 "
+                    + "group by ([0, 100), 20ms, 20ms) align by device");
+        // has time and device columns
+        Assert.assertEquals(3, resultSet.getMetaData().getColumnCount());
+        while (resultSet.next()) {
+          fail();
+        }
+      } finally {
+        resultSet.close();
+      }
+
+      resultSet.close();
     }
   }
 }

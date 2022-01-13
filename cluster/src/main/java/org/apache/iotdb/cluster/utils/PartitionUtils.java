@@ -80,6 +80,16 @@ public class PartitionUtils {
   }
 
   /**
+   * Mixed group plans involves both metadata and data.
+   *
+   * @param plan
+   * @return
+   */
+  public static boolean isMixedGroupPlan(PhysicalPlan plan) {
+    return plan instanceof DeleteStorageGroupPlan || plan instanceof DeleteTimeSeriesPlan;
+  }
+
+  /**
    * GlobalMetaPlan will be executed on all meta group nodes.
    *
    * @param plan
@@ -94,7 +104,6 @@ public class PartitionUtils {
                 .getLoadConfigurationPlanType()
                 .equals(LoadConfigurationPlanType.GLOBAL))
         || plan instanceof AuthorPlan
-        || plan instanceof DeleteStorageGroupPlan
         // DataAuthPlan is global because all nodes must have all user info
         || plan instanceof DataAuthPlan
         || plan instanceof CreateTemplatePlan
@@ -116,7 +125,6 @@ public class PartitionUtils {
     return
     // because deletePlan has an infinite time range.
     plan instanceof DeletePlan
-        || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
         || plan instanceof FlushPlan
         || plan instanceof SetTemplatePlan
