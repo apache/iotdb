@@ -19,8 +19,6 @@
 
 package org.apache.iotdb.library.anomaly;
 
-import com.google.common.math.Quantiles;
-import java.util.ArrayList;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -30,6 +28,10 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import com.google.common.math.Quantiles;
+
+import java.util.ArrayList;
 
 /*
 This function is used to detect anomalies based on IQR.

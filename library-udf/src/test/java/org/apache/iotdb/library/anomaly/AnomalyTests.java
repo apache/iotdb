@@ -39,7 +39,7 @@ import java.sql.Statement;
 
 import static org.junit.Assert.fail;
 
-public class DQualityTests {
+public class AnomalyTests {
   protected static final int ITERATION_TIMES = 10_000;
 
   @BeforeClass
@@ -111,16 +111,12 @@ public class DQualityTests {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute(
-          "create function iqr as 'org.apache.iotdb.library.anomaly.UDTFIQR'");
-      statement.execute(
-          "create function ksigma as 'org.apache.iotdb.library.anomaly.UDTFKSigma'");
+      statement.execute("create function iqr as 'org.apache.iotdb.library.anomaly.UDTFIQR'");
+      statement.execute("create function ksigma as 'org.apache.iotdb.library.anomaly.UDTFKSigma'");
       statement.execute(
           "create function missdetect as 'org.apache.iotdb.library.anomaly.UDTFMissDetect'");
-      statement.execute(
-          "create function lof as 'org.apache.iotdb.library.anomaly.UDTFLOF'");
-      statement.execute(
-          "create function range as 'org.apache.iotdb.library.anomaly.UDTFRange'");
+      statement.execute("create function lof as 'org.apache.iotdb.library.anomaly.UDTFLOF'");
+      statement.execute("create function range as 'org.apache.iotdb.library.anomaly.UDTFRange'");
       statement.execute(
           "create function TwoSidedFilter as 'org.apache.iotdb.library.anomaly.UDTFTwoSidedFilter'");
     } catch (SQLException throwable) {
@@ -376,15 +372,15 @@ public class DQualityTests {
       fail(throwable.getMessage());
     }
   }
-}
 
   @Test
   public void testRange1() {
-    String sqlStr = "select range(d1.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+    String sqlStr =
+        "select range(d1.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -395,11 +391,12 @@ public class DQualityTests {
 
   @Test
   public void testRange2() {
-    String sqlStr = "select range(d1.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+    String sqlStr =
+        "select range(d1.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -410,11 +407,12 @@ public class DQualityTests {
 
   @Test
   public void testRange3() {
-    String sqlStr = "select range(d2.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+    String sqlStr =
+        "select range(d2.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -425,11 +423,12 @@ public class DQualityTests {
 
   @Test
   public void testRange4() {
-    String sqlStr = "select range(d2.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+    String sqlStr =
+        "select range(d2.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -442,9 +441,9 @@ public class DQualityTests {
   public void testTwoSidedFileter1() {
     String sqlStr = "select TwoSidedFilter(d1.s1, 'len'='5', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -457,9 +456,9 @@ public class DQualityTests {
   public void testTwoSidedFileter2() {
     String sqlStr = "select TwoSidedFilter(d1.s2, 'len'='5', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -472,9 +471,9 @@ public class DQualityTests {
   public void testTwoSidedFileter3() {
     String sqlStr = "select TwoSidedFilter(d2.s1, 'len'='5', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -487,9 +486,9 @@ public class DQualityTests {
   public void testTwoSidedFileter4() {
     String sqlStr = "select TwoSidedFilter(d2.s2, 'len'='5', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
@@ -497,3 +496,4 @@ public class DQualityTests {
       fail(throwable.getMessage());
     }
   }
+}
