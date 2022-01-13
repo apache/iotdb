@@ -187,11 +187,16 @@ public class AlignedChunkWriterImpl implements IChunkWriter {
     }
   }
 
-  public TimeChunkWriter getTimeChunkWriter() {
-    return timeChunkWriter;
-  }
-
-  public List<ValueChunkWriter> getValueChunkWriterList() {
-    return valueChunkWriterList;
+  /** Used for compaction to control the target chunk size. */
+  public boolean checkIsChunkSizeOverThreshold(long threshold) {
+    if (timeChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+      return true;
+    }
+    for (ValueChunkWriter valueChunkWriter : valueChunkWriterList) {
+      if (valueChunkWriter.estimateMaxSeriesMemSize() > threshold) {
+        return true;
+      }
+    }
+    return false;
   }
 }

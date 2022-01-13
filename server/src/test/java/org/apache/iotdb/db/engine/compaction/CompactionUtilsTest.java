@@ -55,16 +55,19 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.junit.Assert.assertEquals;
 
 public class CompactionUtilsTest extends AbstractCompactionTest {
+  private String oldThreadName = Thread.currentThread().getName();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
+    Thread.currentThread().setName("IoTB-pool-Compaction-1");
   }
 
   @After
   public void tearDown() throws IOException, StorageEngineException {
     super.tearDown();
+    Thread.currentThread().setName(oldThreadName);
   }
 
   /* Total 5 seq files, each file has the same 6 nonAligned timeseries, each timeseries has the same 100 data point.*/

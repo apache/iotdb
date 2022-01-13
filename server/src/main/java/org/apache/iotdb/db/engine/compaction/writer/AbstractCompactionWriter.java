@@ -26,7 +26,6 @@ import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
-import org.apache.iotdb.tsfile.write.chunk.ValueChunkWriter;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -98,27 +97,27 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       AlignedChunkWriterImpl chunkWriter = (AlignedChunkWriterImpl) this.chunkWriter;
       for (TsPrimitiveType val : (TsPrimitiveType[]) value) {
         Object v = val == null ? null : val.getValue();
-        // if val is null, then give it a random type
+        // if val is null, then give it TEXT type to allow null type casting
         TSDataType tsDataType = val == null ? TSDataType.TEXT : val.getDataType();
-        boolean isNull = v == null;
+        boolean isNull = val == null;
         switch (tsDataType) {
           case TEXT:
             chunkWriter.write(timestamp, (Binary) v, isNull);
             break;
           case DOUBLE:
-            chunkWriter.write(timestamp, (Double) v, isNull);
+            chunkWriter.write(timestamp, (double) v, isNull);
             break;
           case BOOLEAN:
-            chunkWriter.write(timestamp, (Boolean) v, isNull);
+            chunkWriter.write(timestamp, (boolean) v, isNull);
             break;
           case INT64:
-            chunkWriter.write(timestamp, (Long) v, isNull);
+            chunkWriter.write(timestamp, (long) v, isNull);
             break;
           case INT32:
-            chunkWriter.write(timestamp, (Integer) v, isNull);
+            chunkWriter.write(timestamp, (int) v, isNull);
             break;
           case FLOAT:
-            chunkWriter.write(timestamp, (Float) v, isNull);
+            chunkWriter.write(timestamp, (float) v, isNull);
             break;
           default:
             throw new UnsupportedOperationException("Unknown data type " + tsDataType);
@@ -137,17 +136,7 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
 
   private boolean checkChunkSize() {
     if (chunkWriter instanceof AlignedChunkWriterImpl) {
-      if (((AlignedChunkWriterImpl) chunkWriter).getTimeChunkWriter().estimateMaxSeriesMemSize()
-          > targetChunkSize) {
-        return true;
-      }
-      for (ValueChunkWriter valueChunkWriter :
-          ((AlignedChunkWriterImpl) chunkWriter).getValueChunkWriterList()) {
-        if (valueChunkWriter.estimateMaxSeriesMemSize() > targetChunkSize) {
-          return true;
-        }
-      }
-      return false;
+      return ((AlignedChunkWriterImpl) chunkWriter).checkIsChunkSizeOverThreshold(targetChunkSize);
     } else {
       return chunkWriter.estimateMaxSeriesMemSize() > targetChunkSize;
     }

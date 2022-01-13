@@ -19,8 +19,8 @@
 package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
-import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
@@ -62,23 +62,22 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   public void startChunkGroup(String deviceId, boolean isAlign) throws IOException {
     this.deviceId = deviceId;
     this.isAlign = isAlign;
+    this.seqFileIndex = 0;
     checkIsDeviceExistAndGetDeviceEndTime();
-    for (; seqFileIndex < seqTsFileResources.size(); seqFileIndex++) {
-      if (isCurrentDeviceExist[seqFileIndex]) {
-        fileWriterList.get(seqFileIndex).startChunkGroup(deviceId);
+    for (int i = 0; i < seqTsFileResources.size(); i++) {
+      if (isCurrentDeviceExist[i]) {
+        fileWriterList.get(i).startChunkGroup(deviceId);
       }
     }
-    seqFileIndex = 0;
   }
 
   @Override
   public void endChunkGroup() throws IOException {
-    for (; seqFileIndex < seqTsFileResources.size(); seqFileIndex++) {
-      if (isCurrentDeviceExist[seqFileIndex]) {
-        fileWriterList.get(seqFileIndex).endChunkGroup();
+    for (int i = 0; i < seqTsFileResources.size(); i++) {
+      if (isCurrentDeviceExist[i]) {
+        fileWriterList.get(i).endChunkGroup();
       }
     }
-    seqFileIndex = 0;
     deviceId = null;
   }
 
@@ -87,7 +86,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
     chunkWriter = null;
-    seqFileIndex = 0;
   }
 
   @Override
@@ -137,33 +135,31 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   }
 
   private void checkIsDeviceExistAndGetDeviceEndTime() throws IOException {
-    while (seqFileIndex < seqTsFileResources.size()) {
-      if (seqTsFileResources.get(seqFileIndex).getTimeIndexType() == 1) {
+    int fileIndex = 0;
+    while (fileIndex < seqTsFileResources.size()) {
+      if (seqTsFileResources.get(fileIndex).getTimeIndexType() == 1) {
         // the timeIndexType of resource is deviceTimeIndex
-        currentDeviceEndTime[seqFileIndex] =
-            seqTsFileResources.get(seqFileIndex).getEndTime(deviceId);
-        isCurrentDeviceExist[seqFileIndex] =
-            seqTsFileResources.get(seqFileIndex).isDeviceIdExist(deviceId);
+        currentDeviceEndTime[fileIndex] = seqTsFileResources.get(fileIndex).getEndTime(deviceId);
+        isCurrentDeviceExist[fileIndex] =
+            seqTsFileResources.get(fileIndex).isDeviceIdExist(deviceId);
       } else {
-        try (TsFileSequenceReader sequenceReader =
-            new TsFileSequenceReader(seqTsFileResources.get(seqFileIndex).getTsFilePath())) {
-          long endTime = Long.MIN_VALUE;
-          Map<String, TimeseriesMetadata> deviceMetadataMap =
-              sequenceReader.readDeviceMetadata(deviceId);
-          isCurrentDeviceExist[seqFileIndex] = deviceMetadataMap.size() != 0;
-          for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
-            long tmpStartTime = entry.getValue().getStatistics().getStartTime();
-            long tmpEndTime = entry.getValue().getStatistics().getEndTime();
-            if (tmpEndTime >= tmpStartTime && endTime < tmpEndTime) {
-              endTime = tmpEndTime;
-            }
+        long endTime = Long.MIN_VALUE;
+        Map<String, TimeseriesMetadata> deviceMetadataMap =
+            FileReaderManager.getInstance()
+                .get(seqTsFileResources.get(fileIndex).getTsFilePath(), true)
+                .readDeviceMetadata(deviceId);
+        isCurrentDeviceExist[fileIndex] = deviceMetadataMap.size() != 0;
+        for (Map.Entry<String, TimeseriesMetadata> entry : deviceMetadataMap.entrySet()) {
+          long tmpStartTime = entry.getValue().getStatistics().getStartTime();
+          long tmpEndTime = entry.getValue().getStatistics().getEndTime();
+          if (tmpEndTime >= tmpStartTime && endTime < tmpEndTime) {
+            endTime = tmpEndTime;
           }
-          currentDeviceEndTime[seqFileIndex] = endTime;
         }
+        currentDeviceEndTime[fileIndex] = endTime;
       }
-      seqFileIndex++;
+
+      fileIndex++;
     }
-    // reset
-    seqFileIndex = 0;
   }
 }

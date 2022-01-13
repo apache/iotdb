@@ -42,6 +42,10 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
+  private static final int oldPagePointNum =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
+  private static final int oldTsFileGroupSizeInByte =
+      TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
 
   @Before
   public void setUp() throws Exception {
@@ -57,6 +61,8 @@ public class IOTDBInsertAlignedValuesIT {
   public void tearDown() throws Exception {
     close();
     EnvironmentUtils.cleanEnv();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointNum);
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldTsFileGroupSizeInByte);
   }
 
   private static void close() {

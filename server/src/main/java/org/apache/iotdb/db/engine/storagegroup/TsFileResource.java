@@ -910,7 +910,7 @@ public class TsFileResource {
     return timeIndexType;
   }
 
-  /** for test */
+  @TestOnly
   public void setTimeIndexType(byte type) {
     this.timeIndexType = type;
   }
