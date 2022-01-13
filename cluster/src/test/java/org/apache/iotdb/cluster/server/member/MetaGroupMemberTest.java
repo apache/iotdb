@@ -118,7 +118,6 @@ import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -357,7 +356,7 @@ public class MetaGroupMemberTest extends BaseMember {
   @Override
   protected MetaGroupMember getMetaGroupMember(Node node) throws QueryProcessException {
     MetaGroupMember metaGroupMember =
-        new MetaGroupMember(new Factory(), node, new Coordinator()) {
+        new MetaGroupMember(node, new Coordinator()) {
 
           @Override
           public void applyAddNode(AddNodeLog addNodeLog) {

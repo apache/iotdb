@@ -155,7 +155,7 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     TProtocolFactory protocolFactory =
         ThriftServiceThread.getProtocolFactory(
             IoTDBDescriptor.getInstance().getConfig().isRpcThriftCompressionEnable());
-    metaGroupMember = new MetaGroupMember(protocolFactory, thisNode, coordinator);
+    metaGroupMember = new MetaGroupMember(thisNode, coordinator);
     IoTDB.setClusterMode();
     IoTDB.setMetaManager(CMManager.getInstance());
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);

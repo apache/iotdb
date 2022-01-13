@@ -94,7 +94,6 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.thrift.TApplicationException;
 import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TProtocolFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,7 +216,7 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   @TestOnly
   public MetaGroupMember() {}
 
-  public MetaGroupMember(TProtocolFactory factory, Node thisNode, Coordinator coordinator) {
+  public MetaGroupMember(Node thisNode, Coordinator coordinator) {
     super(
         "Meta",
         new ClientManager(

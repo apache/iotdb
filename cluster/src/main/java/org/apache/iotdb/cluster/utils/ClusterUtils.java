@@ -386,9 +386,7 @@ public class ClusterUtils {
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     long maxWait = ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
-    while (!metaGroupMember.isReady()
-        && metaGroupMember.getPartitionTable() == null
-        && alreadyWait < maxWait) {
+    while (!metaGroupMember.isReady() && alreadyWait < maxWait) {
       try {
         Thread.sleep(ClusterDescriptor.getInstance().getConfig().getHeartbeatIntervalMs());
       } catch (InterruptedException e) {
