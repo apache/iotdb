@@ -79,6 +79,7 @@ public class CreatePipePlan extends PhysicalPlan {
       throw new IOException("Parsing CreatePipePlan error. Attributes is less than expected.");
     }
     CreatePipePlan plan = new CreatePipePlan(attributes[0], attributes[1]);
+    plan.setDataStartTimestamp(Long.parseLong(attributes[2]));
     int size = (Integer.parseInt(attributes[3]) << 1);
     if (attributes.length != (size + 4)) {
       throw new IOException("Parsing CreatePipePlan error. Attributes number is wrong.");
@@ -95,7 +96,7 @@ public class CreatePipePlan extends PhysicalPlan {
     builder.append(pipeName).append(SenderConf.planSplitCharacter);
     builder.append(pipeSinkName).append(SenderConf.planSplitCharacter);
     builder.append(dataStartTimestamp).append(SenderConf.planSplitCharacter);
-    builder.append(pipeAttributes.size());
+    builder.append(pipeAttributes.size()).append(SenderConf.planSplitCharacter);
     for (int i = 0; i < pipeAttributes.size(); i++) {
       builder.append(pipeAttributes.get(i).left).append(SenderConf.planSplitCharacter);
       builder.append(pipeAttributes.get(i).right).append(SenderConf.planSplitCharacter);

@@ -2257,7 +2257,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       }
       IoTDBSqlParser.PredicateContext predicateCtx = andExpressionCtx.predicate(0);
       if (predicateCtx.comparisonOperator() == null
-          || predicateCtx.comparisonOperator().OPERATOR_GTE() == null
+          || (predicateCtx.comparisonOperator().OPERATOR_GTE() == null
+              && predicateCtx.comparisonOperator().OPERATOR_GT() == null)
           || predicateCtx.suffixPath() != null
           || predicateCtx.fullPath() != null) {
         throw new SQLParserException("Not support for this sql in pipe.");

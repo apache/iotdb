@@ -84,7 +84,7 @@ public class CreatePipeSinkPlan extends PhysicalPlan {
     StringBuilder builder = new StringBuilder();
     builder.append(pipeSinkName).append(SenderConf.planSplitCharacter);
     builder.append(pipeSinkType).append(SenderConf.planSplitCharacter);
-    builder.append(pipeSinkAttributes.size());
+    builder.append(pipeSinkAttributes.size()).append(SenderConf.planSplitCharacter);
     for (int i = 0; i < pipeSinkAttributes.size(); i++) {
       builder.append(pipeSinkAttributes.get(i).left).append(SenderConf.planSplitCharacter);
       builder.append(pipeSinkAttributes.get(i).right).append(SenderConf.planSplitCharacter);

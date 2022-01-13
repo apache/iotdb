@@ -38,6 +38,7 @@ public interface Pipe {
 
   String serialize();
 
+  // new pipe should be stop status
   enum PipeStatus {
     RUNNING,
     STOP,

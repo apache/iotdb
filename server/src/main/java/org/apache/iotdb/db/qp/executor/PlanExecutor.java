@@ -1173,7 +1173,8 @@ public class PlanExecutor implements IPlanExecutor {
     for (Pipe pipe : SenderService.getInstance().getAllPipes())
       if (showAll || plan.getPipeName().equals(pipe.getName())) {
         RowRecord record = new RowRecord(0);
-        record.addField(Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
+        record.addField(
+            Binary.valueOf(DatetimeUtils.convertLongToDate(pipe.getCreateTime())), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getPipeSink().getName()), TSDataType.TEXT);
         record.addField(Binary.valueOf(pipe.getStatus().name()), TSDataType.TEXT);
