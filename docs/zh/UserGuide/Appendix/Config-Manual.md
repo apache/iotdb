@@ -498,11 +498,29 @@
 
 * concurrent\_query\_thread
 
-|名字| concurrent\_query\_thread |
-|:---:|:---|
-|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 0。|
+|名字| concurrent\_query\_thread                                                   |
+|:---:|:----------------------------------------------------------------------------|
+|描述| 当 IoTDB 对内存中的数据进行查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 16。 |
+|类型| Int32                                                                       |
+|默认值| 16                                                                          |
+|改后生效方式| 重启服务生效                                                                      |
+
+* concurrent\_sub\_rawQuery\_thread
+
+|名字| concurrent\_sub\_rawQuery\_thread |
+|:---:|:--|
+|描述| 当 IoTDB 对内存中的数据进行原始数据查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的 CPU 核的数量。默认值为 8。|
 |类型| Int32 |
-|默认值| 0 |
+|默认值| 8 |
+|改后生效方式|重启服务生效|
+
+* raw\_query\_blocking\_queue\_capacity
+
+|名字| raw\_query\_blocking\_queue\_capacity |
+|:---:|:--|
+|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。|
+|类型| Int32 |
+|默认值| 5 |
 |改后生效方式|重启服务生效|
 
 * chunk\_buffer\_pool\_enable
@@ -531,6 +549,15 @@
 |类型| Int32 |
 |默认值| 700 |
 |改后生效方式|仅允许在第一次启动服务前修改|
+
+* tag\_attribute\_flush\_interval
+
+|名字| tag\_attribute\_flush\_interval |
+|:---:|:--------------------------------|
+|描述| 标签和属性记录的间隔数，达到此记录数量时将强制刷盘       |
+|类型| Int32                           |
+|默认值| 1000                            |
+|改后生效方式| 仅允许在第一次启动服务前修改                  |
 
 * enable\_partial\_insert
 
@@ -568,15 +595,6 @@
 |默认值| 3600 |
 |改后生效方式|重启服务生效|
 
-* virtual\_storage\_group\_num
-
-|名字| virtual\_storage\_group\_num |
-|:---:|:---|
-|描述| 每个用户定义的虚拟存储组数 |
-|类型| Int64 |
-|默认值| 1 |
-|改后生效方式|仅允许在第一次启动服务前修改|
-
 * time\_index\_level
 
 |名字| time\_index\_level |
@@ -599,12 +617,12 @@
 
 * write\_read\_schema\_free\_memory\_proportion
 
-|名字| write\_read\_schema\_free\_memory\_proportion |
-|:---:|:---|
-|描述| 读写内存分配比率。 参数形式为a:b:c:d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
-|类型| String |
-|默认值| 4:3:1:2 |
-|改后生效方式|重启服务生效|
+|名字| write\_read\_schema\_free\_memory\_proportion                                                |
+|:---:|:---------------------------------------------------------------------------------------------|
+|描述| 读写内存分配比率。 参数形式为a : b : c : d，其中a、b、c、d为整数。如“1:1:1:1”、“6:2:1:1”，如果你的写入压力大而读取压力小，请调整为“6:1:1:2” |
+|类型| String                                                                                       |
+|默认值| 4:3:1:2                                                                                      |
+|改后生效方式| 重启服务生效                                                                                       |
 
 * primary\_array\_size
 
@@ -617,19 +635,28 @@
 
 * flush\_proportion
 
-|名字| flush\_proportion |
-|:---:|:---|
+|名字| flush\_proportion                                                   |
+|:---:|:--------------------------------------------------------------------|
 |描述| 调用flush disk的写入内存比例，默认0.4,若有极高的写入负载力（比如batch=1000），可以设置为低于默认值，比如0.2 |
-|类型| Float |
-|默认值| 0.4 |
-|改后生效方式|重启服务生效|
+|类型| Double                                                              |
+|默认值| 0.4                                                                 |
+|改后生效方式| 重启服务生效                                                              |
+
+* time\_index\_memory\_proportion
+
+|名字| time\_index\_memory\_proportion |
+|:---:|:--------------------------------|
+|描述| 分配给读 timeIndex 的内存占比            |
+|类型| Double                           |
+|默认值| 0.2                             |
+|改后生效方式| 重启服务生效                          |
 
 * buffered\_arrays\_memory\_proportion
 
 |名字| buffered\_arrays\_memory\_proportion |
 |:---:|:---|
 |描述| 为缓冲数组分配的写入内存比例，默认为0.6 |
-|类型| Float |
+|类型| Double |
 |默认值| 0.6 |
 |改后生效方式|重启服务生效|
 
@@ -638,7 +665,7 @@
 |名字| reject\_proportion |
 |:---:|:---|
 |描述| 拒绝插入的写入内存比例，默认0.8，若有极高的写入负载力（比如batch=1000）并且物理内存足够大，它可以设置为高于默认值，如0.9 |
-|类型| Float |
+|类型| Double |
 |默认值| 0.8 |
 |改后生效方式|重启服务生效|
 
@@ -895,12 +922,12 @@
 
 * chunk\_timeseriesmeta\_free\_memory\_proportion
 
-|名字| chunk\_timeseriesmeta\_free\_memory\_proportion |
-|:---:|:---|
-|描述| 读取内存分配比例，ChunkCache、TimeseriesMetadataCache、数据集查询的内存和可用内存的查询。参数形式为a:b:c:d，其中a、b、c、d为整数。 例如“1:1:1:1” ，“1:2:3:4” 。|
-|类型|String|
-|默认值| 1:2:3:4 |
-|改后生效方式| 重启服务生效|
+|名字| chunk\_timeseriesmeta\_free\_memory\_proportion                                                                                                                           |
+|:---:|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|描述| 读取内存分配比例，BloomFilterCache、ChunkCache、TimeseriesMetadataCache、数据集查询的内存和可用内存的查询。参数形式为a : b : c : d : e，其中a、b、c、d、e为整数。 例如“1 : 1 : 1 : 1 : 1” ，“1 : 100 : 200 : 300 : 400” 。 |
+|类型| String                                                                                                                                                                    |
+|默认值| 1 : 100 : 200 : 300 : 400                                                                                                                                                 |
+|改后生效方式| 重启服务生效                                                                                                                                                                    |
 
 * metadata\_node\_cache\_size
 
@@ -1022,23 +1049,14 @@
 |默认值| true |
 |改后生效方式|重启服务生效|
 
-* performance\_stat\_display\_interval
+* tracing\_dir
 
-|名字| performance\_stat\_display\_interval |
-|:---:|:---|
-|描述| 显示统计结果的间隔，单位为毫秒ms。 |
-|类型| Int32 |
-|默认值| 60000 |
-|改后生效方式|重启服务生效|
-
-* performance\_stat\_memory\_in\_kb
-
-|名字| performance\_stat\_memory\_in\_kb |
-|:---:|:---|
-|描述| 设置性能状态内存（以 kb 为单位）。 |
-|类型| Int32 |
-|默认值| 20 |
-|改后生效方式|重启服务生效|
+|名字| tracing\_dir              |
+|:---:|:--------------------------|
+|描述| 取消注释用以下字段来配置 tracing 根目录。 |
+|类型| String                    |
+|默认值| data/tracing(Windows:data\\tracing) |
+|改后生效方式| 重启服务生效                    |
 
 ### 水印模块配置
 
@@ -1226,15 +1244,6 @@
 |默认值| 1048576 |
 |改后生效方式|触发生效|
 
-* time\_series\_data\_type
-
-|名字| time\_series\_data\_type |
-|:---:|:---|
-|描述| 数据类型配置，输入时间戳数据类型，支持INT32或INT64 |
-|类型| String |
-|默认值| INT64 |
-|改后生效方式|触发生效|
-
 * max\_string\_length
 
 |名字| max\_string\_length |
@@ -1407,11 +1416,11 @@
 * udf\_reader\_transformer\_collector\_memory\_proportion
 
 |名字| udf\_reader\_transformer\_collector\_memory\_proportion |
-|:---:|:---|
-|描述| UDF内存分配比例。参数形式为a:b:c，其中a、b、c为整数。 |
-|类型| String |
-|默认值| 1:1:1 |
-|改后生效方式|重启服务生效|
+|:---:|:--------------------------------------------------------|
+|描述| UDF内存分配比例。参数形式为a : b : c，其中a、b、c为整数。                    |
+|类型| String                                                  |
+|默认值| 1:1:1                                                   |
+|改后生效方式| 重启服务生效                                                  |
 
 * udf\_root\_dir
 
@@ -1421,6 +1430,8 @@
 |类型| String |
 |默认值| ext/udf(Windows:ext\\udf) |
 |改后生效方式|重启服务生效|
+
+### 索引配置
 
 * index\_root\_dir
 
