@@ -556,7 +556,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan)
       throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().deregister(plan);
+    return ContinuousQueryService.getInstance().deregister(plan, true);
   }
 
   public static void flushSpecifiedStorageGroups(FlushPlan plan)

@@ -77,6 +77,12 @@ Total line number = 4
 It costs 0.004s
 ```
 
+此外，我们可以省略 timestamp 列，此时系统将使用当前的系统时间作为该数据点的时间戳，示例代码如下：
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**注意：** 当一次插入多行数据时必须指定时间戳。
+
 ### 向对齐时间序列插入数据
 
 向对齐时间序列插入数据只需在SQL中增加`ALIGNED`关键词，其他类似。
@@ -638,7 +644,7 @@ IoTDB 目前支持 previous, linear, value 三种空值填充方式，数据类�
 
 - Previous 方式
 
-当查询的时间戳值为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
+当查询的时间戳下数据为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -695,7 +701,7 @@ It costs 0.004s
 
 - Linear 方法
 
-当查询的时间戳值为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
+当查询的时间戳下数据为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -744,7 +750,7 @@ It costs 0.017s
 
 - Value方法
 
-当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
+当查询的时间戳下数据为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)

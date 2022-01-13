@@ -55,7 +55,6 @@ public class IoTDBSchemaTemplateIT {
   }
 
   @Test
-  @Ignore
   public void testCreateTemplateAndCreateTimeseries() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
@@ -72,7 +71,7 @@ public class IoTDBSchemaTemplateIT {
     }
 
     // set schema template
-    statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1");
+    statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1.d1");
 
     statement.execute("SHOW TIMESERIES root.sg1.**");
     try (ResultSet resultSet = statement.getResultSet()) {
@@ -80,16 +79,16 @@ public class IoTDBSchemaTemplateIT {
     }
 
     // create timeseries of schema template
-    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1");
+    statement.execute("CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.sg1.d1");
 
     boolean hasResult = statement.execute("SHOW TIMESERIES root.sg1.**");
     Assert.assertTrue(hasResult);
 
     String[] expectedResult =
         new String[] {
-          "root.sg1.vector1.s1,FLOAT,GORILLA,SNAPPY",
-          "root.sg1.vector1.s2,INT64,RLE,SNAPPY",
-          "root.sg1.s1,INT64,RLE,SNAPPY"
+          "root.sg1.d1.vector1.s1,FLOAT,GORILLA,SNAPPY",
+          "root.sg1.d1.vector1.s2,INT64,RLE,SNAPPY",
+          "root.sg1.d1.s1,INT64,RLE,SNAPPY"
         };
 
     int count = 0;
@@ -109,15 +108,30 @@ public class IoTDBSchemaTemplateIT {
     }
     Assert.assertEquals(3, count);
 
+    hasResult = statement.execute("SHOW DEVICES");
+    Assert.assertTrue(hasResult);
+
+    expectedResult = new String[] {"root.sg1.d1,false", "root.sg1.d1.vector1,true"};
+
+    count = 0;
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        String ActualResult =
+            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+        Assert.assertEquals(expectedResult[count], ActualResult);
+        count++;
+      }
+    }
+    Assert.assertEquals(2, count);
+
     try {
-      statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1");
+      statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
-      Assert.assertEquals("326: Template is in use on root.sg1", e.getMessage());
+      Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }
   }
 
   @Test
-  @Ignore
   public void testCreateAndSetSchemaTemplate() throws SQLException {
     statement.execute("CREATE STORAGE GROUP root.sg1");
 
@@ -134,7 +148,7 @@ public class IoTDBSchemaTemplateIT {
     }
 
     // set schema template
-    statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1");
+    statement.execute("SET SCHEMA TEMPLATE temp1 TO root.sg1.d1");
 
     statement.execute("SHOW TIMESERIES root.sg1.**");
     try (ResultSet resultSet = statement.getResultSet()) {
@@ -171,8 +185,24 @@ public class IoTDBSchemaTemplateIT {
     }
     Assert.assertEquals(3, count);
 
+    hasResult = statement.execute("SHOW DEVICES");
+    Assert.assertTrue(hasResult);
+
+    expectedResult = new String[] {"root.sg1.d1,false", "root.sg1.d1.vector1,true"};
+
+    count = 0;
+    try (ResultSet resultSet = statement.getResultSet()) {
+      while (resultSet.next()) {
+        String ActualResult =
+            resultSet.getString("devices") + "," + resultSet.getString("isAligned");
+        Assert.assertEquals(expectedResult[count], ActualResult);
+        count++;
+      }
+    }
+    Assert.assertEquals(2, count);
+
     try {
-      statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1");
+      statement.execute("UNSET SCHEMA TEMPLATE temp1 FROM root.sg1.d1");
     } catch (IoTDBSQLException e) {
       Assert.assertEquals("326: Template is in use on root.sg1.d1", e.getMessage());
     }

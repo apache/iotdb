@@ -1205,9 +1205,9 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
       InsertRowsOfOneDevicePlan plan =
           new InsertRowsOfOneDevicePlan(
               new PartialPath(req.getPrefixPath()),
-              req.getTimestamps().toArray(new Long[0]),
+              req.getTimestamps(),
               req.getMeasurementsList(),
-              req.getValuesList().toArray(new ByteBuffer[0]),
+              req.getValuesList(),
               req.isAligned);
       TSStatus status = checkAuthority(plan, req.getSessionId());
       statusList.add(status != null ? status : executeNonQueryPlan(plan));

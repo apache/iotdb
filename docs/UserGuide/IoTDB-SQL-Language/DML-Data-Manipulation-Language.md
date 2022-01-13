@@ -76,6 +76,12 @@ Total line number = 4
 It costs 0.004s
 ```
 
+In addition, we can omit the timestamp column, and the system will use the current system timestamp as the timestamp of the data point. The sample code is as follows:
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
+
 ### Insert Data Into Aligned Timeseries
 
 To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
@@ -621,11 +627,11 @@ IoTDB supports previous, linear, and value fill methods. Table 3-1 lists the dat
 
 #### Single Fill Query
 
-When data for a particular timestamp is null, the null values can be filled using single fill, as described below:
+When data in a particular timestamp is null, the null values can be filled using single fill, as described below:
 
 * Previous Function
 
-When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+When the value in the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -681,7 +687,7 @@ It costs 0.004s
 
 * Linear Method
 
-When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+When the value in the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -725,7 +731,7 @@ It costs 0.017s
 
 * Value Method
 
-When the value of the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+When the value in the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)
