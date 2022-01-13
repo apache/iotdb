@@ -20,33 +20,26 @@ package org.apache.iotdb.db.engine.compaction.inner.utils;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.exception.metadata.PathNotExistException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.IChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.read.TsFileAlignedSeriesReaderIterator;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
-import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReaderByTimestamp;
-import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.read.reader.chunk.AlignedChunkReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 import org.apache.iotdb.tsfile.write.chunk.AlignedChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public class AlignedSeriesCompactionExecutor {
   private final String device;
@@ -56,8 +49,7 @@ public class AlignedSeriesCompactionExecutor {
   private final TsFileIOWriter writer;
 
   private final AlignedChunkWriterImpl chunkWriter;
-  private final List<IMeasurementSchema> iSchemaList = new ArrayList<>();
-  private final Map<String, Integer> measurementIndexMap = new HashMap<>();
+  private final List<IMeasurementSchema> schemaList;
   private long remainingPointInChunkWriter = 0L;
 
   private final long chunkSizeThreshold =
@@ -69,19 +61,42 @@ public class AlignedSeriesCompactionExecutor {
       String device,
       TsFileResource targetResource,
       LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList,
-      TsFileIOWriter writer)
-      throws IllegalPathException, PathNotExistException {
+      TsFileIOWriter writer) {
     this.device = device;
     this.readerAndChunkMetadataList = readerAndChunkMetadataList;
     this.writer = writer;
     this.targetResource = targetResource;
-    List<MeasurementPath> subPaths =
-        MManager.getInstance().getAllMeasurementByDevicePath(new PartialPath(device));
-    for (int i = 0; i < subPaths.size(); ++i) {
-      iSchemaList.add(subPaths.get(i).getMeasurementSchema());
-      measurementIndexMap.put(subPaths.get(i).getMeasurement(), i);
+    schemaList = collectSchemaFromAlignedChunkMetadataList(readerAndChunkMetadataList);
+    chunkWriter = new AlignedChunkWriterImpl(schemaList);
+  }
+
+  /**
+   * collect the measurement schema from list of alignedChunkMetadata list, and sort them in
+   * dictionary order.
+   *
+   * @param readerAndChunkMetadataList
+   * @return
+   */
+  private List<IMeasurementSchema> collectSchemaFromAlignedChunkMetadataList(
+      LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>>
+          readerAndChunkMetadataList) {
+    Set<MeasurementSchema> schemaSet = new HashSet<>();
+    for (Pair<TsFileSequenceReader, List<AlignedChunkMetadata>> readerListPair :
+        readerAndChunkMetadataList) {
+      List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
+      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
+        List<IChunkMetadata> valueChunkMetadataList =
+            alignedChunkMetadata.getValueChunkMetadataList();
+        for (IChunkMetadata chunkMetadata : valueChunkMetadataList) {
+          schemaSet.add(
+              new MeasurementSchema(
+                  chunkMetadata.getMeasurementUid(), chunkMetadata.getDataType()));
+        }
+      }
     }
-    chunkWriter = new AlignedChunkWriterImpl(iSchemaList);
+    List<IMeasurementSchema> schemaList = new ArrayList<>(schemaSet);
+    schemaList.sort(Comparator.comparing(IMeasurementSchema::getMeasurementId));
+    return schemaList;
   }
 
   public void execute() throws IOException {
@@ -90,10 +105,10 @@ public class AlignedSeriesCompactionExecutor {
           readerAndChunkMetadataList.removeFirst();
       TsFileSequenceReader reader = readerListPair.left;
       List<AlignedChunkMetadata> alignedChunkMetadataList = readerListPair.right;
-
-      for (AlignedChunkMetadata alignedChunkMetadata : alignedChunkMetadataList) {
-        AlignedChunkReaderByTimestamp chunkReader =
-            constructAlignedChunkReader(reader, alignedChunkMetadata);
+      TsFileAlignedSeriesReaderIterator readerIterator =
+          new TsFileAlignedSeriesReaderIterator(reader, alignedChunkMetadataList, schemaList);
+      while (readerIterator.hasNext()) {
+        AlignedChunkReader chunkReader = readerIterator.nextReader();
         compactOneAlignedChunk(chunkReader);
       }
     }
@@ -103,43 +118,13 @@ public class AlignedSeriesCompactionExecutor {
     }
   }
 
-  /**
-   * read the time chunk and value chunks separately, then use them to construct a
-   * AlignedChunkReader
-   *
-   * @param reader
-   * @param alignedChunkMetadata
-   * @return
-   * @throws IOException
-   */
-  private AlignedChunkReaderByTimestamp constructAlignedChunkReader(
-      TsFileSequenceReader reader, AlignedChunkMetadata alignedChunkMetadata) throws IOException {
-    IChunkMetadata timeChunkMetadata = alignedChunkMetadata.getTimeChunkMetadata();
-    List<IChunkMetadata> valueChunkMetadataList = alignedChunkMetadata.getValueChunkMetadataList();
-
-    Chunk timeChunk = reader.readMemChunk((ChunkMetadata) timeChunkMetadata);
-    Chunk[] valueChunks = new Chunk[iSchemaList.size()];
-    for (IChunkMetadata valueChunkMetadata : valueChunkMetadataList) {
-      valueChunks[measurementIndexMap.get(valueChunkMetadata.getMeasurementUid())] =
-          reader.readMemChunk((ChunkMetadata) valueChunkMetadata);
-    }
-
-    AlignedChunkReaderByTimestamp chunkReader =
-        new AlignedChunkReaderByTimestamp(timeChunk, Arrays.asList(valueChunks));
-    return chunkReader;
-  }
-
-  private void compactOneAlignedChunk(AlignedChunkReaderByTimestamp chunkReader)
-      throws IOException {
+  private void compactOneAlignedChunk(AlignedChunkReader chunkReader) throws IOException {
     while (chunkReader.hasNextSatisfiedPage()) {
       IBatchDataIterator batchDataIterator = chunkReader.nextPageData().getBatchDataIterator();
       while (batchDataIterator.hasNext()) {
         TsPrimitiveType[] pointsData = (TsPrimitiveType[]) batchDataIterator.currentValue();
         long time = batchDataIterator.currentTime();
-        for (int i = 0; i < pointsData.length; ++i) {
-          writeOnePointToChunkWriter(time, pointsData[i], iSchemaList.get(i).getType());
-        }
-        chunkWriter.write(time);
+        chunkWriter.write(time, pointsData);
         ++remainingPointInChunkWriter;
 
         targetResource.updateStartTime(device, time);
@@ -148,37 +133,7 @@ public class AlignedSeriesCompactionExecutor {
         batchDataIterator.next();
       }
     }
-  }
-
-  private void writeOnePointToChunkWriter(long time, TsPrimitiveType pointData, TSDataType type) {
-    switch (type) {
-      case TEXT:
-        chunkWriter.write(
-            time,
-            pointData == null ? new Binary(new byte[] {}) : pointData.getBinary(),
-            pointData == null);
-        break;
-      case FLOAT:
-        chunkWriter.write(
-            time, pointData == null ? Float.MIN_VALUE : pointData.getFloat(), pointData == null);
-        break;
-      case DOUBLE:
-        chunkWriter.write(
-            time, pointData == null ? Double.MIN_VALUE : pointData.getDouble(), pointData == null);
-        break;
-      case INT32:
-        chunkWriter.write(
-            time, pointData == null ? Integer.MIN_VALUE : pointData.getInt(), pointData == null);
-        break;
-      case INT64:
-        chunkWriter.write(
-            time, pointData == null ? Long.MIN_VALUE : pointData.getLong(), pointData == null);
-        break;
-      case BOOLEAN:
-        chunkWriter.write(
-            time, pointData == null ? false : pointData.getBoolean(), pointData == null);
-        break;
-    }
+    flushChunkWriterIfLargeEnough();
   }
 
   /**
@@ -189,7 +144,7 @@ public class AlignedSeriesCompactionExecutor {
    */
   private void flushChunkWriterIfLargeEnough() throws IOException {
     if (remainingPointInChunkWriter >= chunkPointNumThreshold
-        || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * iSchemaList.size()) {
+        || chunkWriter.estimateMaxSeriesMemSize() >= chunkSizeThreshold * schemaList.size()) {
       chunkWriter.writeToFileWriter(writer);
       remainingPointInChunkWriter = 0L;
     }

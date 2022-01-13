@@ -65,10 +65,9 @@ public class InnerSpaceCompactionUtils {
   public static void compact(
       TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
       throws IOException, MetadataException {
-    TsFileIOWriter writer = null;
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(tsFileResources)) {
-      writer = new TsFileIOWriter(targetResource.getTsFile());
+
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
+        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
       while (deviceIterator.hasNextDevice()) {
         Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
         String device = deviceInfo.left;
@@ -87,10 +86,6 @@ public class InnerSpaceCompactionUtils {
       }
       writer.endFile();
       targetResource.close();
-    } finally {
-      if (writer != null && writer.canWrite()) {
-        writer.close();
-      }
     }
   }
 
