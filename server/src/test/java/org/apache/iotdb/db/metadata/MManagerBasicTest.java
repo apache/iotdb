@@ -2047,6 +2047,51 @@ public class MManagerBasicTest {
   }
 
   @Test
+  public void testAutoCreateAlignedTimeseriesWhileInsert() {
+    MManager manager = IoTDB.metaManager;
+
+    try {
+      long time = 1L;
+      TSDataType[] dataTypes = new TSDataType[] {TSDataType.INT32, TSDataType.INT32};
+
+      String[] columns = new String[2];
+      columns[0] = "1";
+      columns[1] = "2";
+
+      InsertRowPlan insertRowPlan =
+          new InsertRowPlan(
+              new PartialPath("root.laptop.d1.aligned_device"),
+              time,
+              new String[] {"s1", "s2"},
+              dataTypes,
+              columns,
+              true);
+      insertRowPlan.setMeasurementMNodes(
+          new IMeasurementMNode[insertRowPlan.getMeasurements().length]);
+
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s1")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s2")));
+
+      insertRowPlan.setMeasurements(new String[] {"s3", "s4"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s3")));
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s4")));
+
+      insertRowPlan.setMeasurements(new String[] {"s2", "s5"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+      assertTrue(manager.isPathExist(new PartialPath("root.laptop.d1.aligned_device.s5")));
+
+      insertRowPlan.setMeasurements(new String[] {"s2", "s3"});
+      manager.getSeriesSchemasAndReadLockDevice(insertRowPlan);
+
+    } catch (MetadataException | IOException e) {
+      fail();
+    }
+  }
+
+  @Test
   public void testGetStorageGroupNodeByPath() {
     MManager manager = IoTDB.metaManager;
     PartialPath partialPath = null;

@@ -32,7 +32,8 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
@@ -46,46 +47,42 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MetaManager {
+public class InfluxDBMetaManager {
 
-  protected final Planner planner = new Planner();
+  protected final Planner planner;
 
-  private final BasicServiceProvider basicServiceProvider;
+  private final ServiceProvider serviceProvider;
 
-  private static String SELECT_TAG_INFO_SQL =
+  private static final String SELECT_TAG_INFO_SQL =
       "select database_name,measurement_name,tag_name,tag_order from root.TAG_INFO ";
 
-  public static MetaManager getInstance() {
-    return MetaManagerHolder.INSTANCE;
+  public static InfluxDBMetaManager getInstance() {
+    return InfluxDBMetaManagerHolder.INSTANCE;
   }
 
   // TODO avoid OOM
   private static Map<String, Map<String, Map<String, Integer>>> database2Measurement2TagOrders =
       new HashMap<>();
 
-  private MetaManager() {
-    try {
-      basicServiceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      throw new InfluxDBException(e.getMessage());
-    }
+  private InfluxDBMetaManager() {
+    serviceProvider = IoTDB.serviceProvider;
     database2Measurement2TagOrders = new HashMap<>();
-    recover();
+    planner = serviceProvider.getPlanner();
   }
 
-  private void recover() {
+  public void recover() {
     long queryId = QueryResourceManager.getInstance().assignQueryId(true);
     try {
       QueryPlan queryPlan = (QueryPlan) planner.parseSQLToPhysicalPlan(SELECT_TAG_INFO_SQL);
       QueryContext queryContext =
-          basicServiceProvider.genQueryContext(
+          serviceProvider.genQueryContext(
               queryId,
               true,
               System.currentTimeMillis(),
               SELECT_TAG_INFO_SQL,
               IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
       QueryDataSet queryDataSet =
-          basicServiceProvider.createQueryDataSet(
+          serviceProvider.createQueryDataSet(
               queryContext, queryPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
       while (queryDataSet.hasNext()) {
         List<Field> fields = queryDataSet.next().getFields();
@@ -120,7 +117,7 @@ public class MetaManager {
         | MetadataException e) {
       throw new InfluxDBException(e.getMessage());
     } finally {
-      BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
@@ -134,7 +131,7 @@ public class MetaManager {
     try {
       SetStorageGroupPlan setStorageGroupPlan =
           new SetStorageGroupPlan(new PartialPath("root." + database));
-      basicServiceProvider.executeNonQuery(setStorageGroupPlan);
+      serviceProvider.executeNonQuery(setStorageGroupPlan);
     } catch (QueryProcessException e) {
       // errCode = 300 means sg has already set
       if (e.getErrorCode() != 300) {
@@ -201,16 +198,16 @@ public class MetaManager {
     List<InsertRowPlan> plans = tagInfoRecords.convertToInsertRowPlans();
     for (InsertRowPlan plan : plans) {
       try {
-        basicServiceProvider.executeNonQuery(plan);
+        serviceProvider.executeNonQuery(plan);
       } catch (QueryProcessException | StorageGroupNotSetException | StorageEngineException e) {
         throw new InfluxDBException(e.getMessage());
       }
     }
   }
 
-  private static class MetaManagerHolder {
-    private static final MetaManager INSTANCE = new MetaManager();
+  private static class InfluxDBMetaManagerHolder {
+    private static final InfluxDBMetaManager INSTANCE = new InfluxDBMetaManager();
 
-    private MetaManagerHolder() {}
+    private InfluxDBMetaManagerHolder() {}
   }
 }

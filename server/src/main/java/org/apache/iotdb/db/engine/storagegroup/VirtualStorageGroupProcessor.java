@@ -18,6 +18,8 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -113,7 +115,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -271,13 +272,17 @@ public class VirtualStorageGroupProcessor {
   private String insertWriteLockHolder = "";
 
   private ScheduledExecutorService timedCompactionScheduleTask =
-      Executors.newSingleThreadScheduledExecutor();
+      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+          ThreadName.COMPACTION_SCHEDULE.getName());
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
 
-  /** get the direct byte buffer from pool, each fetch contains two ByteBuffer */
+  /**
+   * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
+   * fails
+   */
   public ByteBuffer[] getWalDirectByteBuffer() {
     ByteBuffer[] res = new ByteBuffer[2];
     synchronized (walByteBufferPool) {
@@ -307,9 +312,21 @@ public class VirtualStorageGroupProcessor {
       } else {
         // if the queue is empty and current size is less than MAX_BYTEBUFFER_NUM
         // we can construct another two more new byte buffer
-        currentWalPoolSize += 2;
-        res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
-        res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        try {
+          currentWalPoolSize += 2;
+          res[0] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+          res[1] = ByteBuffer.allocateDirect(WAL_BUFFER_SIZE);
+        } catch (OutOfMemoryError e) {
+          if (res[0] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[0]);
+            currentWalPoolSize -= 1;
+          }
+          if (res[1] != null) {
+            MmapUtil.clean((MappedByteBuffer) res[1]);
+            currentWalPoolSize -= 1;
+          }
+          return null;
+        }
       }
       // if the pool is empty, set the time back to MAX_VALUE
       if (walByteBufferPool.isEmpty()) {
@@ -386,7 +403,8 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
+    ScheduledExecutorService executorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
@@ -1494,12 +1512,10 @@ public class VirtualStorageGroupProcessor {
       return;
     }
     long ttlLowerBound = System.currentTimeMillis() - dataTTL;
-    if (logger.isDebugEnabled()) {
-      logger.debug(
-          "{}: TTL removing files before {}",
-          logicalStorageGroupName + "-" + virtualStorageGroupId,
-          new Date(ttlLowerBound));
-    }
+    logger.debug(
+        "{}: TTL removing files before {}",
+        logicalStorageGroupName + "-" + virtualStorageGroupId,
+        new Date(ttlLowerBound));
 
     // copy to avoid concurrent modification of deletion
     List<TsFileResource> seqFiles = new ArrayList<>(tsFileManager.getTsFileList(true));
@@ -1518,33 +1534,23 @@ public class VirtualStorageGroupProcessor {
       return;
     }
 
-    TsFileResourceList resourceList =
-        tsFileManager.getSequenceListByTimePartition(resource.getTimePartition());
-    resourceList.writeLock();
-    try {
-      // prevent new merges and queries from choosing this file
-      resource.setDeleted(true);
+    // prevent new merges and queries from choosing this file
+    resource.setDeleted(true);
 
-      // ensure that the file is not used by any queries
-      if (resource.tryWriteLock()) {
-        try {
-          // physical removal
-          resource.remove();
-          resourceList.remove(resource);
-          if (logger.isInfoEnabled()) {
-            logger.info(
-                "Removed a file {} before {} by ttl ({}ms)",
-                resource.getTsFilePath(),
-                new Date(ttlLowerBound),
-                dataTTL);
-          }
-          tsFileManager.remove(resource, isSeq);
-        } finally {
-          resource.writeUnlock();
-        }
+    // ensure that the file is not used by any queries
+    if (resource.tryWriteLock()) {
+      try {
+        // try to delete physical data file
+        resource.remove();
+        tsFileManager.remove(resource, isSeq);
+        logger.info(
+            "Removed a file {} before {} by ttl ({}ms)",
+            resource.getTsFilePath(),
+            new Date(ttlLowerBound),
+            dataTTL);
+      } finally {
+        resource.writeUnlock();
       }
-    } finally {
-      resourceList.writeUnlock();
     }
   }
 
@@ -2926,7 +2932,6 @@ public class VirtualStorageGroupProcessor {
 
   public void setDataTTL(long dataTTL) {
     this.dataTTL = dataTTL;
-    checkFilesTTL();
   }
 
   public List<TsFileResource> getSequenceFileTreeSet() {

@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.service;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.settle.SettleLog;
@@ -39,7 +41,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class SettleService implements IService {
@@ -66,8 +67,8 @@ public class SettleService implements IService {
     if (settleThreadPool == null) {
       int settleThreadNum = IoTDBDescriptor.getInstance().getConfig().getSettleThreadNum();
       settleThreadPool =
-          Executors.newFixedThreadPool(
-              settleThreadNum, r -> new Thread(r, "SettleThread-" + threadCnt.getAndIncrement()));
+          IoTDBThreadPoolFactory.newFixedThreadPool(
+              settleThreadNum, ThreadName.SETTLE_SERVICE.getName());
     }
     TsFileAndModSettleTool.findFilesToBeRecovered();
 
