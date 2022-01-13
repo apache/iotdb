@@ -30,6 +30,10 @@ public interface ICacheStrategy {
 
   void updateCacheStatusAfterUpdate(IMNode node);
 
+  void updateCacheStatusAfterPersist(IMNode node);
+
+  List<IMNode> collectVolatileMNodes(IMNode node);
+
   void remove(IMNode node);
 
   List<IMNode> evict();

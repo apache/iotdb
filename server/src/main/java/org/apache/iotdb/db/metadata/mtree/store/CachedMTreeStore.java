@@ -114,20 +114,29 @@ public class CachedMTreeStore implements IMTreeStore {
   public void clear() {
     root = null;
     cacheStrategy.clear();
+    memManager.clear();
     file.close();
   }
 
   private void cacheMNodeInMemory(IMNode node) {
     if (!memManager.requestMemResource(node)) {
-      List<IMNode> evictedMNodes;
-      while (!memManager.isUnderThreshold()) {
-        evictedMNodes = cacheStrategy.evict();
-        for (IMNode evictedMNode : evictedMNodes) {
-          memManager.releaseMemResource(evictedMNode);
-          file.writeMNode(evictedMNode);
-        }
-      }
+      executeMemoryRelease();
       memManager.requestMemResource(node);
+    }
+  }
+
+  private void executeMemoryRelease() {
+    List<IMNode> nodesToPersist = cacheStrategy.collectVolatileMNodes(root);
+    for (IMNode volatileNode : nodesToPersist) {
+      file.writeMNode(volatileNode);
+      cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
+    }
+    List<IMNode> evictedMNodes;
+    while (!memManager.isUnderThreshold()) {
+      evictedMNodes = cacheStrategy.evict();
+      for (IMNode evictedMNode : evictedMNodes) {
+        memManager.releaseMemResource(evictedMNode);
+      }
     }
   }
 

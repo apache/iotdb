@@ -31,4 +31,6 @@ public interface IMemManager {
   boolean requestMemResource(IMNode node);
 
   void releaseMemResource(IMNode node);
+
+  void clear();
 }

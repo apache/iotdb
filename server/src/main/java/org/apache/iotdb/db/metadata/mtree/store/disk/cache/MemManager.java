@@ -21,24 +21,42 @@ package org.apache.iotdb.db.metadata.mtree.store.disk.cache;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 
 public class MemManager implements IMemManager {
+
+  private int capacity;
+
+  private int size;
+
   @Override
-  public void initCapacity(int capacity) {}
+  public void initCapacity(int capacity) {
+    this.capacity = capacity;
+  }
 
   @Override
   public boolean isEmpty() {
-    return false;
+    return size == 0;
   }
 
   @Override
   public boolean isUnderThreshold() {
-    return false;
+    return size < capacity * 0.6;
   }
 
   @Override
   public boolean requestMemResource(IMNode node) {
-    return true;
+    if (size < capacity - 1) {
+      size++;
+      return true;
+    }
+    return false;
   }
 
   @Override
-  public void releaseMemResource(IMNode node) {}
+  public void releaseMemResource(IMNode node) {
+    size--;
+  }
+
+  @Override
+  public void clear() {
+    size = 0;
+  }
 }
