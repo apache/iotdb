@@ -81,6 +81,7 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 |参数名称  |参数类型  |是否必填|参数描述|
 | ------------ | ------------ | ------------ |------------ |
 |  sql | string | 是  |   |
+| rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
 
 请求示例:
 ```shell
@@ -206,6 +207,30 @@ enable_rest_service=true
 rest_service_port=18080
 ```
 
+* 一次查询能返回的结果集最大行数。当返回结果集的行数超出参数限制时，您只会得到在行数范围内的结果集，且将得到状态码`411`。
+
+```properties
+rest_query_default_row_size_limit=10000
+```
+
+* 缓存客户登录信息的过期时间（用于加速用户鉴权的速度，单位为秒，默认是8个小时）
+
+```properties
+cache_expire=28800
+```
+
+* 缓存中存储的最大用户数量（默认是100）
+
+```properties
+cache_max_num=100
+```
+
+* 缓存初始容量（默认是10）
+
+```properties
+cache_init_num=10
+```
+
 * REST Service 是否开启 SSL 配置，将 `enable_https` 设置为 `true` 以启用该模块，而将 `false` 设置为禁用该模块。默认情况下，该值为 `false`。
 
 ```properties
@@ -244,25 +269,3 @@ trust_store_pwd=
 ```properties
 idle_timeout=5000
 ```
-
-
-* 缓存客户登录信息的过期时间（用于加速用户鉴权的速度，单位为秒，默认是8个小时）
-
-```properties
-cache_expire=28800
-```
-
-
-* 缓存中存储的最大用户数量（默认是100）
-
-```properties
-cache_max_num=100
-```
-
-* 缓存初始容量（默认是10）
-
-```properties
-cache_init_num=10
-```
-
-
