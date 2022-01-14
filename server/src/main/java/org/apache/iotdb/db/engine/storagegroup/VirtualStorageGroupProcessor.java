@@ -114,7 +114,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -542,11 +541,11 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
-    CompactionTaskManager.getInstance()
-        .submitTask(
-            logicalStorageGroupName + "-" + virtualStorageGroupId,
-            0,
-            new SubmitTimedCompactionTask(this::executeCompaction));
+    timedCompactionScheduleTask.scheduleWithFixedDelay(
+        this::executeCompaction,
+        COMPACTION_TASK_SUBMIT_DELAY,
+        IoTDBDescriptor.getInstance().getConfig().getCompactionScheduleInterval(),
+        TimeUnit.MILLISECONDS);
   }
 
   /** recover crossSpaceCompaction */
@@ -623,25 +622,6 @@ public class VirtualStorageGroupProcessor {
               logFile.getParent(),
               isSequence)
           .call();
-    }
-  }
-
-  class SubmitTimedCompactionTask implements Callable<Void> {
-
-    private Runnable runnable;
-
-    public SubmitTimedCompactionTask(Runnable runnable) {
-      this.runnable = runnable;
-    }
-
-    @Override
-    public Void call() throws Exception {
-      timedCompactionScheduleTask.scheduleWithFixedDelay(
-          runnable,
-          COMPACTION_TASK_SUBMIT_DELAY,
-          COMPACTION_TASK_SUBMIT_DELAY,
-          TimeUnit.MILLISECONDS);
-      return null;
     }
   }
 
