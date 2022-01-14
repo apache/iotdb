@@ -612,7 +612,9 @@ public class LocalQueryExecutor {
     allTimeseriesSchema =
         getCMManager()
             .showLocalTimeseries(
-                plan, new QueryContext(SessionManager.getInstance().requestQueryId(false)));
+                plan,
+                new QueryContext(
+                    SessionManager.getInstance().requestQueryId(plan.isOrderByHeat())));
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     try (DataOutputStream dataOutputStream = new DataOutputStream(outputStream)) {

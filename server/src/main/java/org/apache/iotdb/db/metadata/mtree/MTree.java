@@ -21,6 +21,7 @@ package org.apache.iotdb.db.metadata.mtree;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -65,6 +66,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.StorageGroupMNodePlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1006,6 +1008,13 @@ public class MTree implements Serializable {
                     .reversed()
                     .thenComparing((Pair<PartialPath, String[]> p) -> p.left));
 
+    try {
+      // the previous step may involve reading the Last point of timeseries and by now the
+      // related resources can be released
+      QueryResourceManager.getInstance().endQuery(queryContext.getQueryId());
+    } catch (StorageEngineException e) {
+      throw new MetadataException(e);
+    }
     // no limit
     if (plan.getLimit() == 0) {
       return sortedStream.collect(toList());

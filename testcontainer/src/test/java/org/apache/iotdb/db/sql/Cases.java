@@ -39,14 +39,11 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
-import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -62,7 +59,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1576,5 +1572,91 @@ public abstract class Cases {
       }
     }
   }
-  
+
+  // ------------------ Sorted Show Timeseries ---------------
+  private static String[] sortedShowTimeseriesSqls =
+      new String[] {
+        "SET STORAGE GROUP TO root.turbine",
+        "SET STORAGE GROUP TO root.ln",
+        "create timeseries root.turbine.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=f, description='turbine this is a test1') attributes(H_Alarm=100, M_Alarm=50)",
+        "create timeseries root.turbine.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=kw, description='turbine this is a test2') attributes(H_Alarm=99.9, M_Alarm=44.4)",
+        "create timeseries root.turbine.d0.s2(cpu) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=cores, description='turbine this is a cpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
+        "create timeseries root.turbine.d0.s3(gpu0) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=cores, description='turbine this is a gpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
+        "create timeseries root.turbine.d0.s4(tpu0) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=cores, description='turbine this is a tpu') attributes(H_Alarm=99.9, M_Alarm=44.4)",
+        "create timeseries root.turbine.d1.s0(status) with datatype=INT32, encoding=RLE "
+            + "tags(description='turbine this is a test3') attributes(H_Alarm=9, M_Alarm=5)",
+        "create timeseries root.turbine.d2.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=f, description='turbine d2 this is a test1') attributes(MaxValue=100, MinValue=1)",
+        "create timeseries root.turbine.d2.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=kw, description='turbine d2 this is a test2') attributes(MaxValue=99.9, MinValue=44.4)",
+        "create timeseries root.turbine.d2.s3(status) with datatype=INT32, encoding=RLE "
+            + "tags(description='turbine d2 this is a test3') attributes(MaxValue=9, MinValue=5)",
+        "create timeseries root.ln.d0.s0(temperature) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=c, description='ln this is a test1') attributes(H_Alarm=1000, M_Alarm=500)",
+        "create timeseries root.ln.d0.s1(power) with datatype=FLOAT, encoding=RLE, compression=SNAPPY "
+            + "tags(unit=w, description='ln this is a test2') attributes(H_Alarm=9.9, M_Alarm=4.4)",
+        "create timeseries root.ln.d1.s0(status) with datatype=INT32, encoding=RLE "
+            + "tags(description='ln this is a test3') attributes(H_Alarm=90, M_Alarm=50)",
+        "insert into root.turbine.d0(timestamp,s0) values(1, 1)",
+        "insert into root.turbine.d0(timestamp,s1) values(2, 2)",
+        "insert into root.turbine.d0(timestamp,s2) values(3, 3)",
+        "insert into root.turbine.d0(timestamp,s3) values(4, 4)",
+        "insert into root.turbine.d0(timestamp,s4) values(5, 5)",
+        "insert into root.turbine.d1(timestamp,s0) values(1, 11)",
+        "insert into root.turbine.d2(timestamp,s0,s1,s3) values(6,6,6,6)"
+      };
+
+  @Test
+  public void showTimeseriesOrderByHeatWithWhereTest() {
+    prepareData(sortedShowTimeseriesSqls);
+    String[] retArray =
+        new String[] {
+          "root.turbine.d0.s4,tpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+              + " tpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+          "root.turbine.d0.s3,gpu0,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a "
+              + "gpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+          "root.turbine.d0.s2,cpu,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\"turbine this is a"
+              + " cpu\",\"unit\":\"cores\"},{\"H_Alarm\":\"99.9\",\"M_Alarm\":\"44.4\"}",
+        };
+
+    for (Statement statement : readStatements) {
+      try {
+        boolean hasResultSet = statement.execute("show LATEST timeseries where unit=cores");
+        Assert.assertTrue(hasResultSet);
+        ResultSet resultSet = statement.getResultSet();
+        int count = 0;
+        while (resultSet.next()) {
+          String ans =
+              resultSet.getString("timeseries")
+                  + ","
+                  + resultSet.getString("alias")
+                  + ","
+                  + resultSet.getString("storage group")
+                  + ","
+                  + resultSet.getString("dataType")
+                  + ","
+                  + resultSet.getString("encoding")
+                  + ","
+                  + resultSet.getString("compression")
+                  + ","
+                  + resultSet.getString("tags")
+                  + ","
+                  + resultSet.getString("attributes");
+
+          assertEquals(retArray[count], ans);
+          count++;
+        }
+        assertEquals(retArray.length, count);
+
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
 }

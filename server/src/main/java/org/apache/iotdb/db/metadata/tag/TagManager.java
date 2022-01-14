@@ -182,6 +182,8 @@ public class TagManager {
                           .thenComparing(IMNode::getFullPath))
                   .collect(toList());
         } finally {
+          // all necessary data has been fetched, resources can be released
+          QueryResourceManager.getInstance().endQuery(context.getQueryId());
           StorageEngine.getInstance().mergeUnLock(list);
         }
       } catch (StorageEngineException | QueryProcessException e) {
