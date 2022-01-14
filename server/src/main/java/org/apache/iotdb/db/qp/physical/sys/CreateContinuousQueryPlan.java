@@ -41,7 +41,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
   private long forInterval;
   private long groupByTimeInterval;
   private String groupByTimeIntervalString;
-  private long creationTimestamp;
+  private long firstExecutionTimeBoundary;
 
   public CreateContinuousQueryPlan() {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
@@ -54,7 +54,8 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       long everyInterval,
       long forInterval,
       long groupByTimeIntervalUnit,
-      String groupByTimeIntervalString) {
+      String groupByTimeIntervalString,
+      Long firstExecutionTimeBoundary) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
     querySql = querySql.toLowerCase();
     this.querySql = querySql;
@@ -69,7 +70,10 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     this.forInterval = forInterval;
     this.groupByTimeInterval = groupByTimeIntervalUnit;
     this.groupByTimeIntervalString = groupByTimeIntervalString;
-    this.creationTimestamp = DatetimeUtils.currentTime();
+    this.firstExecutionTimeBoundary =
+        firstExecutionTimeBoundary != null
+            ? firstExecutionTimeBoundary
+            : DatetimeUtils.currentTime();
   }
 
   public String getQuerySql() {
@@ -112,8 +116,8 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     return groupByTimeIntervalString;
   }
 
-  public long getCreationTimestamp() {
-    return creationTimestamp;
+  public long getFirstExecutionTimeBoundary() {
+    return firstExecutionTimeBoundary;
   }
 
   @Override
@@ -133,7 +137,7 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     buffer.putLong(forInterval);
     buffer.putLong(groupByTimeInterval);
     ReadWriteIOUtils.write(groupByTimeIntervalString, buffer);
-    buffer.putLong(creationTimestamp);
+    buffer.putLong(firstExecutionTimeBoundary);
   }
 
   @Override
@@ -147,6 +151,6 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
     forInterval = ReadWriteIOUtils.readLong(buffer);
     groupByTimeInterval = ReadWriteIOUtils.readLong(buffer);
     groupByTimeIntervalString = ReadWriteIOUtils.readString(buffer);
-    creationTimestamp = ReadWriteIOUtils.readLong(buffer);
+    firstExecutionTimeBoundary = ReadWriteIOUtils.readLong(buffer);
   }
 }
