@@ -17,10 +17,8 @@
  * under the License.
  */
 
-package org.apache.iotdb.quality.string;
+package org.apache.iotdb.library.string;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -29,6 +27,9 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValida
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /** This function matches substring according to given regex from an input series. */
 public class UDTFRegexMatch implements UDTF {

@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.quality.string;
+package org.apache.iotdb.library.string;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
