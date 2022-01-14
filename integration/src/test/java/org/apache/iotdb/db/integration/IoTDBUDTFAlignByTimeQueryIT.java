@@ -827,8 +827,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
     }
   }
 
-  // Aligned timeseries is not supported in UDF queries for now.
-  // This case can be removed once aligned timeseries is supported in UDF queries.
+  // Aligned timeseries is not supported in UDF/Arithmetic expressions/nested expressions queries
+  // for now.
+  // This case can be removed once aligned timeseries is supported in above queries.
   @Test
   public void testAlignedTimeseriesNotSupported() {
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
@@ -837,7 +838,8 @@ public class IoTDBUDTFAlignByTimeQueryIT {
         fail();
       } catch (SQLException e) {
         assertTrue(
-            e.getMessage().contains("Aligned timeseries is not supported in UDF queries for now."));
+            e.getMessage()
+                .contains("Aligned timeseries is not supported in current query for now."));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());

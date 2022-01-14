@@ -265,6 +265,8 @@ It costs 0.016s
 
 ### Arithmetic Query
 
+> Please note that Aligned Timeseries has not been supported in Arithmetic Query yet. An error message is expected if you use Arithmetic Query with Aligned Timeseries selected.
+
 #### Unary Arithmetic Operators
 
 Supported operators: `+`, `-`
@@ -312,6 +314,8 @@ The time series generating function takes several time series as input and outpu
 All time series generating functions can accept * as input.
 
 IoTDB supports hybrid queries of time series generating function queries and raw data queries.
+
+> Please note that Aligned Timeseries has not been supported in queries with hybrid functions yet. An error message is expected if you use hybrid functions with Aligned Timeseries selected in a query statement.
 
 #### Mathematical Functions
 
@@ -547,6 +551,8 @@ Known Implementation UDF Libraries:
 ### Nested Expressions
 
 IoTDB supports the execution of arbitrary nested expressions consisting of **numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
+
+> Please note that Aligned Timeseries has not been supported in Nested Expressions yet. An error message is expected if you use Nested Expressions with Aligned Timeseries selected in a query statement.
 
 #### Syntax
 

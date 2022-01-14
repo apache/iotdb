@@ -89,13 +89,14 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
       }
     }
 
-    // Aligned timeseries is not supported in UDF queries for now.
+    // Aligned timeseries is not supported in current query for now.
     // To judge whether an aligned timeseries is used, we need to traversal all the paths in
     // deduplicatedPaths.
     for (PartialPath path : getDeduplicatedPaths()) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (measurementPath.isUnderAlignedEntity()) {
-        throw new MetadataException("Aligned timeseries is not supported in UDF queries for now.");
+        throw new MetadataException(
+            "Aligned timeseries is not supported in current query for now.");
       }
     }
   }
