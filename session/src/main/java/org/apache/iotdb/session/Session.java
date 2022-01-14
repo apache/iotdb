@@ -47,6 +47,7 @@ import org.apache.iotdb.session.template.Template;
 import org.apache.iotdb.session.template.TemplateQueryType;
 import org.apache.iotdb.session.util.SessionUtils;
 import org.apache.iotdb.session.util.ThreadUtils;
+import org.apache.iotdb.session.util.Version;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -130,6 +131,9 @@ public class Session {
 
   protected boolean enableQueryRedirection = false;
 
+  /** */
+  protected Version version;
+
   public Session(String host, int rpcPort) {
     this(
         host,
@@ -140,7 +144,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, String rpcPort, String username, String password) {
@@ -153,7 +158,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password) {
@@ -166,7 +172,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(String host, int rpcPort, String username, String password, int fetchSize) {
@@ -179,7 +186,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -198,7 +206,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
     this.queryTimeoutInMs = queryTimeoutInMs;
   }
 
@@ -212,7 +221,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -226,7 +236,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader);
+        enableCacheLeader,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -246,7 +257,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        enableCacheLeader);
+        enableCacheLeader,
+        Config.DEFAULT_VERSION);
   }
 
   @SuppressWarnings("squid:S107")
@@ -259,7 +271,8 @@ public class Session {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader) {
+      boolean enableCacheLeader,
+      Version version) {
     this.defaultEndPoint = new EndPoint(host, rpcPort);
     this.username = username;
     this.password = password;
@@ -268,6 +281,7 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
   }
 
   public Session(List<String> nodeUrls, String username, String password) {
@@ -279,7 +293,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   /**
@@ -296,7 +311,8 @@ public class Session {
         null,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(List<String> nodeUrls, String username, String password, ZoneId zoneId) {
@@ -308,7 +324,8 @@ public class Session {
         zoneId,
         Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
         Config.DEFAULT_MAX_FRAME_SIZE,
-        Config.DEFAULT_CACHE_LEADER_MODE);
+        Config.DEFAULT_CACHE_LEADER_MODE,
+        Config.DEFAULT_VERSION);
   }
 
   public Session(
@@ -319,7 +336,8 @@ public class Session {
       ZoneId zoneId,
       int thriftDefaultBufferSize,
       int thriftMaxFrameSize,
-      boolean enableCacheLeader) {
+      boolean enableCacheLeader,
+      Version version) {
     this.nodeUrls = nodeUrls;
     this.username = username;
     this.password = password;
@@ -328,6 +346,7 @@ public class Session {
     this.thriftDefaultBufferSize = thriftDefaultBufferSize;
     this.thriftMaxFrameSize = thriftMaxFrameSize;
     this.enableCacheLeader = enableCacheLeader;
+    this.version = version;
   }
 
   public void setFetchSize(int fetchSize) {
@@ -336,6 +355,14 @@ public class Session {
 
   public int getFetchSize() {
     return this.fetchSize;
+  }
+
+  public Version getVersion() {
+    return version;
+  }
+
+  public void setVersion(Version version) {
+    this.version = version;
   }
 
   public synchronized void open() throws IoTDBConnectionException {
@@ -2248,6 +2275,8 @@ public class Session {
     private int thriftDefaultBufferSize = Config.DEFAULT_INITIAL_BUFFER_CAPACITY;
     private int thriftMaxFrameSize = Config.DEFAULT_MAX_FRAME_SIZE;
     private boolean enableCacheLeader = Config.DEFAULT_CACHE_LEADER_MODE;
+    private Version version = Config.DEFAULT_VERSION;
+
     List<String> nodeUrls = null;
 
     public Builder host(String host) {
@@ -2300,6 +2329,11 @@ public class Session {
       return this;
     }
 
+    public Builder version(Version version) {
+      this.version = version;
+      return this;
+    }
+
     public Session build() {
       if (nodeUrls != null
           && (!Config.DEFAULT_HOST.equals(host) || rpcPort != Config.DEFAULT_PORT)) {
@@ -2316,7 +2350,8 @@ public class Session {
             zoneId,
             thriftDefaultBufferSize,
             thriftMaxFrameSize,
-            enableCacheLeader);
+            enableCacheLeader,
+            version);
       }
 
       return new Session(
@@ -2328,7 +2363,8 @@ public class Session {
           zoneId,
           thriftDefaultBufferSize,
           thriftMaxFrameSize,
-          enableCacheLeader);
+          enableCacheLeader,
+          version);
     }
   }
 }
