@@ -130,7 +130,7 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
       for (int j = 0; j < cachedTimeCnt; j++) {
         if (results == null || results[j] == null) {
           for (int index : readerToIndexList.get(i)) {
-            rowRecords[j].setField(null, index);
+            rowRecords[j].setField(index, null);
           }
         } else {
           if (dataTypes.get(i) == TSDataType.VECTOR) {
@@ -139,15 +139,15 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDF
               TsPrimitiveType value = result[k];
               int index = readerToIndexList.get(i).get(k);
               if (value == null) {
-                rowRecords[j].setField(null, index);
+                rowRecords[j].setField(index, null);
               } else {
                 hasField[j] = true;
-                rowRecords[j].setField(value.getValue(), value.getDataType(), index);
+                rowRecords[j].setField(index, value.getValue(), value.getDataType());
               }
             }
           } else {
             hasField[j] = true;
-            rowRecords[j].setField(results[j], dataTypes.get(i), readerToIndexList.get(i).get(0));
+            rowRecords[j].setField(readerToIndexList.get(i).get(0), results[j], dataTypes.get(i));
           }
         }
       }

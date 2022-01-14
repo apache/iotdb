@@ -59,7 +59,7 @@ public class RowRecord {
     }
   }
 
-  public void setField(Field f, int index) {
+  public void setField(int index, Field f) {
     this.fields.set(index, f);
     if (f == null || f.getDataType() == null) {
       hasNullField = true;
@@ -77,7 +77,7 @@ public class RowRecord {
     }
   }
 
-  public void setField(Object value, TSDataType dataType, int index) {
+  public void setField(int index, Object value, TSDataType dataType) {
     this.fields.set(index, Field.getField(value, dataType));
     if (value == null || dataType == null) {
       hasNullField = true;
