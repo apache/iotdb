@@ -74,6 +74,7 @@ import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTimeSeriesPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
+import org.apache.iotdb.db.query.control.SessionManager;
 import org.apache.iotdb.db.query.dataset.ShowDevicesResult;
 import org.apache.iotdb.db.query.dataset.ShowTimeSeriesResult;
 import org.apache.iotdb.db.service.IoTDB;
@@ -1401,13 +1402,14 @@ public class CMManager extends MManager {
   }
 
   private List<ShowTimeSeriesResult> showLocalTimeseries(
-      PartitionGroup group, ShowTimeSeriesPlan plan, QueryContext context)
+      PartitionGroup group, ShowTimeSeriesPlan plan)
       throws CheckConsistencyException, MetadataException, PartitionTableUnavailableException,
           NotInSameGroupException {
     DataGroupMember localDataMember =
         metaGroupMember.getLocalDataMember(group.getHeader(), group.getRaftId());
     localDataMember.syncLeaderWithConsistencyCheck(false);
-    return super.showTimeseries(plan, context);
+    return super.showTimeseries(
+        plan, new QueryContext(SessionManager.getInstance().requestQueryId(plan.isOrderByHeat())));
   }
 
   public List<ShowDevicesResult> getLocalDevices(ShowDevicesPlan plan) throws MetadataException {
@@ -1559,7 +1561,7 @@ public class CMManager extends MManager {
         ShowTimeSeriesPlan subPlan = plan.copy();
         try {
           subPlan.setPath(new PartialPath(path));
-          results.addAll(showLocalTimeseries(group, subPlan, context));
+          results.addAll(showLocalTimeseries(group, subPlan));
         } catch (CheckConsistencyException
             | MetadataException
             | PartitionTableUnavailableException
