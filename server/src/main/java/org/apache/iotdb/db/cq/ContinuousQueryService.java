@@ -142,7 +142,10 @@ public class ContinuousQueryService implements IService {
           String.format("Continuous Query [%s] already exists", plan.getContinuousQueryName()));
     }
 
-    checkSchemaBeforeRegistration(plan);
+    // if it is not processing recovery
+    if (shouldWriteLog) {
+      checkSchemaBeforeRegistration(plan);
+    }
 
     acquireRegistrationLock();
     try {
@@ -216,7 +219,8 @@ public class ContinuousQueryService implements IService {
               plan.getContinuousQueryName(),
               plan.getTargetPath(),
               plan.getEveryInterval(),
-              plan.getForInterval()));
+              plan.getForInterval(),
+              plan.getFirstExecutionTimeBoundary()));
     }
     return results;
   }
