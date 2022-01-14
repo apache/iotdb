@@ -78,6 +78,7 @@ public class InnerSpaceCompactionUtils {
         } else {
           compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
         }
+
         writer.endChunkGroup();
       }
 

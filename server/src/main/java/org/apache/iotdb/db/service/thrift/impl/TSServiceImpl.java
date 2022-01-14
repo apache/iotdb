@@ -725,7 +725,7 @@ public class TSServiceImpl implements TSIService.Iface {
     List<? extends PartialPath> authPaths = plan.getAuthPaths();
     if (authPaths != null
         && !authPaths.isEmpty()
-        && !serviceProvider.checkAuthorization(authPaths, plan, username)) {
+        && !serviceProvider.checkAuthorization(plan, username)) {
       return RpcUtils.getTSExecuteStatementResp(
           RpcUtils.getStatus(
               TSStatusCode.NO_PERMISSION_ERROR,

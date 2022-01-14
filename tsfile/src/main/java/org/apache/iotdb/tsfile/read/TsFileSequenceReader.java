@@ -1734,4 +1734,9 @@ public class TsFileSequenceReader implements AutoCloseable {
       throw e;
     }
   }
+
+  @Override
+  public int hashCode() {
+    return file.hashCode();
+  }
 }

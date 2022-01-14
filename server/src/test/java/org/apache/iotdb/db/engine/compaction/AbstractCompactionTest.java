@@ -26,6 +26,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,7 +55,12 @@ public class AbstractCompactionTest {
   private int pageSize = 0;
   protected String COMPACTION_TEST_SG = TsFileGeneratorUtils.testStorageGroup;
 
-  private long oldTargetChunkSize = IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private static final long oldTargetChunkSize =
+      IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
+  private static final int oldChunkGroupSize =
+      TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+  private static final int oldPagePointSize =
+      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
 
   protected static File SEQ_DIRS =
       new File(
@@ -246,6 +252,8 @@ public class AbstractCompactionTest {
       FileUtils.deleteDirectory(UNSEQ_DIRS);
     }
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
   }
 
   private void removeFiles() throws IOException {

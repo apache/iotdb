@@ -402,13 +402,6 @@ public class VirtualStorageGroupProcessor {
       logger.error("create Storage Group system Directory {} failed", storageGroupSysDir.getPath());
     }
 
-    ScheduledExecutorService executorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
-    executorService.scheduleWithFixedDelay(
-        this::trimTask,
-        config.getWalPoolTrimIntervalInMS(),
-        config.getWalPoolTrimIntervalInMS(),
-        TimeUnit.MILLISECONDS);
     // use id table
     if (config.isEnableIDTable()) {
       try {
@@ -417,7 +410,9 @@ public class VirtualStorageGroupProcessor {
         logger.error("failed to create id table");
       }
     }
+    // recover tsfiles
     recover();
+
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
       MetricsService.getInstance()
           .getMetricManager()
@@ -428,6 +423,15 @@ public class VirtualStorageGroupProcessor {
               Tag.NAME.toString(),
               "storageGroup");
     }
+
+    // start trim task at last
+    ScheduledExecutorService executorService =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
+    executorService.scheduleWithFixedDelay(
+        this::trimTask,
+        config.getWalPoolTrimIntervalInMS(),
+        config.getWalPoolTrimIntervalInMS(),
+        TimeUnit.MILLISECONDS);
   }
 
   public String getLogicalStorageGroupName() {
