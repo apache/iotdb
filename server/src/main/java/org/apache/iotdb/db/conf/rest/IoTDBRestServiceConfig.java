@@ -143,11 +143,11 @@ public class IoTDBRestServiceConfig {
     this.cacheInitNum = cacheInitNum;
   }
 
-  public int getRestQueryFetchSize() {
+  public int getRestQueryDefaultRowSizeLimit() {
     return restQueryFetchSize;
   }
 
-  public void setRestQueryFetchSize(int restQueryFetchSize) {
+  public void setRestQueryDefaultRowSizeLimit(int restQueryFetchSize) {
     this.restQueryFetchSize = restQueryFetchSize;
   }
 }

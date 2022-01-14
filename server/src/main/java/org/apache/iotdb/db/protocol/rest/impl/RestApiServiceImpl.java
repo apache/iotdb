@@ -47,14 +47,17 @@ public class RestApiServiceImpl extends RestApiService {
 
   public static ServiceProvider serviceProvider = IoTDB.serviceProvider;
 
-  protected final Planner planner;
+  private final Planner planner;
   private final AuthorizationHandler authorizationHandler;
-  private final Integer limitValue;
+
+  private final Integer defaultQueryRowLimit;
 
   public RestApiServiceImpl() throws QueryProcessException {
-    limitValue = IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryFetchSize();
-    this.authorizationHandler = new AuthorizationHandler(serviceProvider);
     planner = serviceProvider.getPlanner();
+    authorizationHandler = new AuthorizationHandler(serviceProvider);
+
+    defaultQueryRowLimit =
+        IoTDBRestServiceDescriptor.getInstance().getConfig().getRestQueryDefaultRowSizeLimit();
   }
 
   @Override
@@ -97,23 +100,23 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
+      QueryPlan queryPlan = (QueryPlan) physicalPlan;
 
-      if (physicalPlan instanceof QueryPlan) {
-        int limit = ((QueryPlan) physicalPlan).getRowLimit();
-        if ((sql.getFetchSize() == null || sql.getFetchSize() <= 0)
-            && (limit == 0 || limit > limitValue)) {
-          ((QueryPlan) physicalPlan).setRowLimit(limitValue);
-        } else if (sql.getFetchSize() != null
-            && sql.getFetchSize() != 0
-            && sql.getFetchSize() <= limit) {
-          ((QueryPlan) physicalPlan).setRowLimit(sql.getFetchSize());
-        }
-      }
-
-      Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
+      Response response = authorizationHandler.checkAuthority(securityContext, queryPlan);
       if (response != null) {
         return response;
       }
+
+      // set max row limit to avoid OOM
+      Integer rowLimitInRequest = sql.getRowLimit();
+      if (rowLimitInRequest == null) {
+        rowLimitInRequest = defaultQueryRowLimit;
+      }
+      int rowLimitInQueryPlan = queryPlan.getRowLimit();
+      if (rowLimitInQueryPlan <= 0) {
+        rowLimitInQueryPlan = defaultQueryRowLimit;
+      }
+      final int actualRowSizeLimit = Math.min(rowLimitInRequest, rowLimitInQueryPlan);
 
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
@@ -127,7 +130,7 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        return QueryDataSetHandler.fillDateSet(queryDataSet, queryPlan, actualRowSizeLimit);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }

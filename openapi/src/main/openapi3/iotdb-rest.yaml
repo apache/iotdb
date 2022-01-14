@@ -139,7 +139,7 @@ components:
       properties:
         sql:
           type: string
-        fetchSize:
+        rowLimit:
           type: Integer
 
     InsertTabletRequest:
