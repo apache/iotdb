@@ -558,8 +558,9 @@ public class SeriesReader {
                 && orderUtils.isOverlapped(
                     firstPageReader.getStatistics(), unSeqPageReaders.peek().getStatistics())
             || (mergeReader.hasNextTimeValuePair()
-                && mergeReader.currentTimeValuePair().getTimestamp()
-                    >= firstPageReader.getStatistics().getStartTime()));
+                && orderUtils.isOverlapped(
+                    mergeReader.currentTimeValuePair().getTimestamp(),
+                    firstPageReader.getStatistics())));
   }
 
   private void unpackAllOverlappedChunkMetadataToPageReaders(long endpointTime, boolean init)
@@ -808,7 +809,8 @@ public class SeriesReader {
               cachedBatchData.flip();
               hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
               return hasCachedNextOverlappedPage;
-            } else {
+            } else if (orderUtils.isOverlapped(
+                timeValuePair.getTimestamp(), firstPageReader.getStatistics())) {
               // current timeValuePair is overlapped with firstPageReader, add it to merged reader
               // and update endTime to the max end time
               mergeReader.addReader(
@@ -835,7 +837,8 @@ public class SeriesReader {
               cachedBatchData.flip();
               hasCachedNextOverlappedPage = cachedBatchData.hasCurrent();
               return hasCachedNextOverlappedPage;
-            } else {
+            } else if (orderUtils.isOverlapped(
+                timeValuePair.getTimestamp(), seqPageReaders.get(0).getStatistics())) {
               VersionPageReader pageReader = seqPageReaders.remove(0);
               mergeReader.addReader(
                   pageReader
