@@ -154,7 +154,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
-              CompactionFileGeneratorUtils.generateTsFileResource(true, 1);
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 1, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
@@ -192,7 +192,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(100L);
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile1 = CompactionFileGeneratorUtils.generateTsFileResource(false, 1);
+          TsFileResource unseqFile1 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 1, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3000L, unseqFile1);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -226,7 +227,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(2000L);
           pagePointsNum.add(1000L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile2 = CompactionFileGeneratorUtils.generateTsFileResource(false, 2);
+          TsFileResource unseqFile2 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 2, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, unseqFile2);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -260,7 +262,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile3 = CompactionFileGeneratorUtils.generateTsFileResource(false, 3);
+          TsFileResource unseqFile3 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 3, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, unseqFile3);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -294,7 +297,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile4 = CompactionFileGeneratorUtils.generateTsFileResource(false, 4);
+          TsFileResource unseqFile4 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 4, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3000L, unseqFile4);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -328,7 +332,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(100L);
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile5 = CompactionFileGeneratorUtils.generateTsFileResource(false, 5);
+          TsFileResource unseqFile5 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 5, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 0L, unseqFile5);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -362,7 +367,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(100L);
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource unseqFile6 = CompactionFileGeneratorUtils.generateTsFileResource(false, 6);
+          TsFileResource unseqFile6 =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 6, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 5000L, unseqFile6);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -469,7 +475,7 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
           TsFileResource tsFileResource =
-              CompactionFileGeneratorUtils.generateTsFileResource(false, 1);
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 1, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(
               fullPath, chunkPagePointsNum, 2000L, tsFileResource);
           // has mods files before compaction
@@ -507,7 +513,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(100L);
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource seqFile1 = CompactionFileGeneratorUtils.generateTsFileResource(true, 1);
+          TsFileResource seqFile1 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 1, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 0L, seqFile1);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -542,7 +549,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource seqFile2 = CompactionFileGeneratorUtils.generateTsFileResource(true, 2);
+          TsFileResource seqFile2 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 2, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, seqFile2);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -577,7 +585,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(100L);
           pagePointsNum.add(50L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource seqFile3 = CompactionFileGeneratorUtils.generateTsFileResource(true, 3);
+          TsFileResource seqFile3 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 3, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3500L, seqFile3);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -612,7 +621,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource seqFile4 = CompactionFileGeneratorUtils.generateTsFileResource(true, 4);
+          TsFileResource seqFile4 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 4, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3750L, seqFile4);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
@@ -647,7 +657,8 @@ public class CrossSpaceCompactionTest {
           pagePointsNum.add(1000L);
           pagePointsNum.add(500L);
           chunkPagePointsNum.add(pagePointsNum);
-          TsFileResource seqFile5 = CompactionFileGeneratorUtils.generateTsFileResource(true, 5);
+          TsFileResource seqFile5 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 5, COMPACTION_TEST_SG);
           CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 6250L, seqFile5);
           // has mods files before compaction
           if (compactionBeforeHasMod) {
