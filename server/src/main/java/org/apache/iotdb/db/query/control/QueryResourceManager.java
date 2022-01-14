@@ -92,12 +92,12 @@ public class QueryResourceManager {
 
   /**
    * Register a query id for compaction. The name of the compaction thread is
-   * 'IoTB-pool-Compaction-xx', xx in which is usually an integer from 0 to
+   * 'pool-x-IoTDB-Compaction-xx', xx in which is usually an integer from 0 to
    * MAXCOMPACTION_THREAD_NUM. We use the following rules to define query id for compaction: <br>
    * queryId = xx + Long.MIN_VALUE
    */
   public long assignCompactionQueryId() {
-    long threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[3]);
+    long threadNum = Long.parseLong((Thread.currentThread().getName().split("-"))[4]);
     long queryId = Long.MIN_VALUE + threadNum;
     filePathsManager.addQueryId(queryId);
     return queryId;
