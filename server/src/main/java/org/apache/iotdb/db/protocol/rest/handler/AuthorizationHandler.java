@@ -37,9 +37,7 @@ public class AuthorizationHandler {
   public Response checkAuthority(SecurityContext securityContext, PhysicalPlan physicalPlan) {
     try {
       if (!this.serviceProvider.checkAuthorization(
-          physicalPlan.getAuthPaths(),
-          physicalPlan,
-          securityContext.getUserPrincipal().getName())) {
+          physicalPlan, securityContext.getUserPrincipal().getName())) {
         return Response.ok()
             .entity(
                 new ExecutionStatus()

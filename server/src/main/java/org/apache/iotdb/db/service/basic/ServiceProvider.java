@@ -31,7 +31,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.executor.IPlanExecutor;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
@@ -55,7 +54,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.sql.SQLException;
-import java.util.List;
 
 import static org.apache.iotdb.db.utils.ErrorHandlingUtils.onNPEOrUnexpectedException;
 
@@ -116,19 +114,22 @@ public abstract class ServiceProvider {
     return isLoggedIn;
   }
 
-  public boolean checkAuthorization(
-      List<? extends PartialPath> paths, PhysicalPlan plan, String username) throws AuthException {
+  public boolean checkAuthorization(PhysicalPlan plan, String username) throws AuthException {
+    if (!plan.isAuthenticationRequired()) {
+      return true;
+    }
+
     String targetUser = null;
     if (plan instanceof AuthorPlan) {
       targetUser = ((AuthorPlan) plan).getUserName();
     }
-    return AuthorityChecker.check(username, paths, plan.getOperatorType(), targetUser);
+    return AuthorityChecker.check(
+        username, plan.getAuthPaths(), plan.getOperatorType(), targetUser);
   }
 
   public TSStatus checkAuthority(PhysicalPlan plan, long sessionId) {
-    List<? extends PartialPath> paths = plan.getPaths();
     try {
-      if (!checkAuthorization(paths, plan, SESSION_MANAGER.getUsername(sessionId))) {
+      if (!checkAuthorization(plan, SESSION_MANAGER.getUsername(sessionId))) {
         return RpcUtils.getStatus(
             TSStatusCode.NO_PERMISSION_ERROR,
             "No permissions for this operation " + plan.getOperatorType());
@@ -144,7 +145,11 @@ public abstract class ServiceProvider {
   }
 
   public BasicOpenSessionResp openSession(
-      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -178,7 +183,8 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
+
       LOGGER.info(
           "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
@@ -189,12 +195,19 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
     SessionTimeoutManager.getInstance().register(sessionId);
     return openSessionResp.sessionId(sessionId);
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      throws TException {
+    return openSession(
+        username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
   }
 
   public boolean closeSession(long sessionId) {

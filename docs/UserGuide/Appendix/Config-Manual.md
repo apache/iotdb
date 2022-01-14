@@ -403,7 +403,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
 |Type|Bool|
 |Default| false |
 |Effective|Only allowed to be modified in first start up|

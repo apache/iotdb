@@ -174,4 +174,10 @@ public class IoTDBConstant {
 
   // compaction
   public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+
+  // client version number
+  public enum ClientVersion {
+    V_0_12,
+    V_0_13
+  }
 }

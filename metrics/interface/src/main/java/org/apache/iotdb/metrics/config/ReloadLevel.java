@@ -17,9 +17,12 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.metrics.config;
 
-public enum PredefinedMetric {
-  jvm,
-  logback
+public enum ReloadLevel {
+  START_METRIC,
+  STOP_METRIC,
+  RESTART_METRIC,
+  RESTART_REPORTER,
+  NOTHING
 }
