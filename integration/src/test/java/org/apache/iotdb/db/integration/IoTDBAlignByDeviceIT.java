@@ -176,8 +176,10 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          for (int i = 0; i < 5; i++) {
+            actualBuilder.append(resultSet.getString("s" + i)).append(",");
           }
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
@@ -286,9 +288,11 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
-          }
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          actualBuilder.append(resultSet.getString("s0")).append(",");
+          actualBuilder.append(resultSet.getString("s0")).append(",");
+          actualBuilder.append(resultSet.getString("s1")).append(",");
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
@@ -505,8 +509,10 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          for (int i = 0; i < 5; i++) {
+            actualBuilder.append(resultSet.getString("count(s" + i + ")")).append(",");
           }
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
@@ -600,8 +606,10 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          for (int i = 0; i < 5; i++) {
+            actualBuilder.append(resultSet.getString("s" + i)).append(",");
           }
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
@@ -713,8 +721,13 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          actualBuilder.append(resultSet.getString("s0")).append(",");
+          actualBuilder.append(resultSet.getString("s0")).append(",");
+          actualBuilder.append(resultSet.getString("s1")).append(",");
+          for (int i = 0; i < 5; i++) {
+            actualBuilder.append(resultSet.getString("s" + i)).append(",");
           }
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
@@ -862,8 +875,10 @@ public class IoTDBAlignByDeviceIT {
         int cnt = 0;
         while (resultSet.next()) {
           StringBuilder actualBuilder = new StringBuilder();
-          for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-            actualBuilder.append(resultSet.getString(i)).append(",");
+          actualBuilder.append(resultSet.getString("Time")).append(",");
+          actualBuilder.append(resultSet.getString("Device")).append(",");
+          for (int i = 0; i < 5; i++) {
+            actualBuilder.append(resultSet.getString("s" + i)).append(",");
           }
           assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;

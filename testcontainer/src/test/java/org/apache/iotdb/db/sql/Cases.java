@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.sql;
 
+import java.sql.Types;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -1057,8 +1058,8 @@ public abstract class Cases {
         "INSERT INTO root.sg.d2(timestamp,s1,s2,s3) values(400, 73.4, 26.3, 83.0)"
       };
 
-  private void prepareAsData() {
-    for (String sql : asSqls) {
+  private void prepareData(String[] sqls) {
+    for (String sql : sqls) {
       try {
         writeStatement.execute(sql);
       } catch (SQLException throwables) {
@@ -1069,7 +1070,7 @@ public abstract class Cases {
 
   @Test
   public void alignByDeviceWithAsFailTest() {
-    prepareAsData();
+    prepareData(asSqls);
     // root.sg.*.s1 matches root.sg.d1.s1 and root.sg.d2.s1 both
     for (Statement readStatement : readStatements) {
       try {
@@ -1084,7 +1085,7 @@ public abstract class Cases {
 
   @Test
   public void alignByDeviceWithAsAggregationTest() {
-    prepareAsData();
+    prepareData(asSqls);
     String[] retArray =
         new String[] {
           "root.sg.d2,4,4,4,",
@@ -1125,7 +1126,7 @@ public abstract class Cases {
 
   @Test
   public void alignByDeviceWithAsTest() {
-    prepareAsData();
+    prepareData(asSqls);
     String[] retArray =
         new String[] {
           "100,root.sg.d1,10.1,20.7,",
@@ -1169,7 +1170,7 @@ public abstract class Cases {
 
   @Test
   public void alignByDeviceWithAsMixedTest() {
-    prepareAsData();
+    prepareData(asSqls);
     String[] retArray =
         new String[] {
           "100,root.sg.d1,10.1,20.7,",
@@ -1216,7 +1217,7 @@ public abstract class Cases {
 
   @Test
   public void alignByDeviceWithAsDuplicatedTest() {
-    prepareAsData();
+    prepareData(asSqls);
     String[] retArray =
         new String[] {
           "100,root.sg.d1,10.1,10.1,",
@@ -1362,5 +1363,148 @@ public abstract class Cases {
 
       resultSet.close();
     }
+  }
+
+  // ------------------------- Align By Device Tests -------------------------
+
+  private static String[] alignByDeviceSqls =
+      new String[] {
+          "SET STORAGE GROUP TO root.vehicle",
+          "SET STORAGE GROUP TO root.other",
+          "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+          "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+          "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+          "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
+          "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
+          "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
+          "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
+          "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
+          "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
+          "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
+          "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
+          "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+          "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
+          "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
+          "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+          "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
+          "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
+          "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
+          "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
+          "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
+          "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
+          "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
+          "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+          "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
+          "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
+          "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
+          "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+          "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
+          "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
+          "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
+          "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
+          "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
+          "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
+          "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
+          "insert into root.vehicle.d0(timestamp,s3) values(60,'aaaaa')",
+          "insert into root.vehicle.d0(timestamp,s3) values(70,'bbbbb')",
+          "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
+          "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
+          "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
+          "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
+          "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+          "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+          "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
+          "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
+          "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
+      };
+
+  @Test
+  public void selectTest() {
+    prepareData(alignByDeviceSqls);
+    Set<String> retSet =
+        new HashSet<>(
+            Arrays.asList(
+                "1,root.vehicle.d0,101,1101,null,null,null,",
+                "2,root.vehicle.d0,10000,40000,2.22,null,null,",
+                "3,root.vehicle.d0,null,null,3.33,null,null,",
+                "4,root.vehicle.d0,null,null,4.44,null,null,",
+                "50,root.vehicle.d0,10000,50000,null,null,null,",
+                "60,root.vehicle.d0,null,null,null,aaaaa,null,",
+                "70,root.vehicle.d0,null,null,null,bbbbb,null,",
+                "80,root.vehicle.d0,null,null,null,ccccc,null,",
+                "100,root.vehicle.d0,99,199,null,null,true,",
+                "101,root.vehicle.d0,99,199,null,ddddd,null,",
+                "102,root.vehicle.d0,80,180,10.0,fffff,null,",
+                "103,root.vehicle.d0,99,199,null,null,null,",
+                "104,root.vehicle.d0,90,190,null,null,null,",
+                "105,root.vehicle.d0,99,199,11.11,null,null,",
+                "106,root.vehicle.d0,99,null,null,null,null,",
+                "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
+                "946684800000,root.vehicle.d0,null,100,null,good,null,",
+                "1,root.vehicle.d1,999,null,null,null,null,",
+                "1000,root.vehicle.d1,888,null,null,null,null,"));
+
+    for (Statement statement : readStatements) {
+      try  {
+        boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          List<Integer> actualIndexToExpectedIndexList =
+              checkHeader(
+                  resultSetMetaData,
+                  "Time,Device,s0,s1,s2,s3,s4",
+                  new int[] {
+                      Types.TIMESTAMP,
+                      Types.VARCHAR,
+                      Types.INTEGER,
+                      Types.BIGINT,
+                      Types.FLOAT,
+                      Types.VARCHAR,
+                      Types.BOOLEAN
+                  });
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder actualBuilder = new StringBuilder();
+            actualBuilder.append(resultSet.getString("Time")).append(",");
+            actualBuilder.append(resultSet.getString("Device")).append(",");
+            for (int i = 0; i < 5; i++) {
+              actualBuilder.append(resultSet.getString("s" + i)).append(",");
+            }
+            assertTrue(retSet.contains(actualBuilder.toString()));
+            cnt++;
+          }
+          Assert.assertEquals(19, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
+  private List<Integer> checkHeader(
+      ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
+      throws SQLException {
+    String[] expectedHeaders = expectedHeaderStrings.split(",");
+    Map<String, Integer> expectedHeaderToTypeIndexMap = new HashMap<>();
+    for (int i = 0; i < expectedHeaders.length; ++i) {
+      expectedHeaderToTypeIndexMap.put(expectedHeaders[i], i);
+    }
+
+    List<Integer> actualIndexToExpectedIndexList = new ArrayList<>();
+    for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+      Integer typeIndex = expectedHeaderToTypeIndexMap.get(resultSetMetaData.getColumnName(i));
+      Assert.assertNotNull(typeIndex);
+      Assert.assertEquals(expectedTypes[typeIndex], resultSetMetaData.getColumnType(i));
+      actualIndexToExpectedIndexList.add(typeIndex);
+    }
+    return actualIndexToExpectedIndexList;
   }
 }
