@@ -383,6 +383,9 @@ public class ClusterUtils {
    * @return whether metaGroupMember is ready after wait
    */
   public static boolean waitUntilMetaReady(MetaGroupMember metaGroupMember) {
+    if (metaGroupMember.isReady()) {
+      return true;
+    }
     long waitStart = System.currentTimeMillis();
     long alreadyWait = 0;
     long maxWait = ClusterDescriptor.getInstance().getConfig().getConnectionTimeoutInMS();
