@@ -57,12 +57,12 @@ public class CreateContinuousQueryPlan extends PhysicalPlan {
       String groupByTimeIntervalString,
       Long firstExecutionTimeBoundary) {
     super(Operator.OperatorType.CREATE_CONTINUOUS_QUERY);
-    querySql = querySql.toLowerCase();
     this.querySql = querySql;
-    int indexOfGroupBy = querySql.indexOf("group by");
+    String querySqlLowerCase = querySql.toLowerCase();
+    int indexOfGroupBy = querySqlLowerCase.indexOf("group by");
     this.querySqlBeforeGroupByClause =
         indexOfGroupBy == -1 ? querySql : querySql.substring(0, indexOfGroupBy);
-    int indexOfLevel = querySql.indexOf("level");
+    int indexOfLevel = querySqlLowerCase.indexOf("level");
     this.querySqlAfterGroupByClause = indexOfLevel == -1 ? "" : querySql.substring(indexOfLevel);
     this.continuousQueryName = continuousQueryName;
     this.targetPath = targetPath;
