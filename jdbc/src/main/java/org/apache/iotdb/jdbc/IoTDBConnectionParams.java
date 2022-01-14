@@ -28,6 +28,8 @@ public class IoTDBConnectionParams {
   private String seriesName = Config.DEFAULT_SERIES_NAME;
   private String username = Config.DEFAULT_USER;
   private String password = Config.DEFAULT_PASSWORD;
+
+  // The version number of the client which used for compatible in server
   private Constant.Version version = Config.DEFAULT_VERSION;
 
   private int thriftDefaultBufferSize = RpcUtils.THRIFT_DEFAULT_BUF_CAPACITY;

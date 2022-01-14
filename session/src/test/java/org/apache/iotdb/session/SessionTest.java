@@ -523,7 +523,7 @@ public class SessionTest {
             .thriftMaxFrameSize(3)
             .enableCacheLeader(true)
             .zoneId(ZoneOffset.UTC)
-            .version(Version.V_0_13)
+            .version(Version.V_0_12)
             .build();
 
     assertEquals(1, session.fetchSize);
@@ -533,10 +533,11 @@ public class SessionTest {
     assertEquals(3, session.thriftMaxFrameSize);
     assertEquals(ZoneOffset.UTC, session.zoneId);
     assertTrue(session.enableCacheLeader);
-    assertEquals(Version.V_0_13, session.version);
+    assertEquals(Version.V_0_12, session.version);
 
     session = new Session.Builder().nodeUrls(Arrays.asList("aaa.com:12", "bbb.com:12")).build();
     assertEquals(Arrays.asList("aaa.com:12", "bbb.com:12"), session.nodeUrls);
+    assertEquals(Version.V_0_13, session.version);
 
     try {
       session =
