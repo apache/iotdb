@@ -158,7 +158,8 @@ public class GroupByWithValueFilterDataSet extends GroupByEngineDataSet {
         queryPlan.getAllMeasurementsInDevice(path.getDevice()),
         path.getSeriesType(),
         context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null),
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context, null, queryPlan.isAscending()),
         null,
         ascending);
   }
