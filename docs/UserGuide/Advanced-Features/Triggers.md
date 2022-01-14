@@ -301,10 +301,10 @@ SHOW TRIGGERS
 
 When a user manages triggers, 4 types of authorities will be involved:
 
-* `CREATE_TRIGGER`: Only users with this authority are allowed to register triggers.
-* `DROP_TRIGGER`: Only users with this authority are allowed to drop triggers.
-* `START_TRIGGER`: Only users with this authority are allowed to start triggers.
-* `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers.
+* `CREATE_TRIGGER`: Only users with this authority are allowed to register triggers. This authority is path dependent.
+* `DROP_TRIGGER`: Only users with this authority are allowed to drop triggers. This authority is path dependent.
+* `START_TRIGGER`: Only users with this authority are allowed to start triggers. This authority is path dependent.
+* `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers. This authority is path dependent.
 
 For more information, refer to [Authority Management Statement](../Operation%20Manual/Administration.md).
 
