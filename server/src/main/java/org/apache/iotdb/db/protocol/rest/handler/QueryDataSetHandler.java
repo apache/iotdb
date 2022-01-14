@@ -18,8 +18,10 @@
 package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
+import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
@@ -31,8 +33,10 @@ import javax.ws.rs.core.Response;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 public class QueryDataSetHandler {
 
@@ -77,6 +81,41 @@ public class QueryDataSetHandler {
     return Response.ok().entity(queryDataSet).build();
   }
 
+  public static Response fillAggregationPlanDateSet(
+      QueryDataSet dataSet, AggregationPlan aggregationPlan) throws IOException {
+
+    Map<String, AggregateResult> groupPathsResultMap = aggregationPlan.getGroupPathsResultMap();
+    int[] dataSetIndexes = new int[groupPathsResultMap.size()];
+    Map<String, Integer> sourcePathToQueryDataSetIndex = aggregationPlan.getPathToIndex();
+    org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
+        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    Iterator<Entry<String, AggregateResult>> iterator = groupPathsResultMap.entrySet().iterator();
+    for (int i = 0; iterator.hasNext(); i++) {
+      Entry<String, AggregateResult> next = iterator.next();
+      queryDataSet.addCloumnNamesItem(next.getKey());
+      queryDataSet.addValuesItem(new ArrayList<>());
+      dataSetIndexes[i] = sourcePathToQueryDataSetIndex.get(next.getKey());
+    }
+    while (dataSet.hasNext()) {
+      RowRecord rowRecord = dataSet.next();
+      List<Field> fields = rowRecord.getFields();
+      for (int i = 0; i < sourcePathToQueryDataSetIndex.size(); i++) {
+        List<Object> values = queryDataSet.getValues().get(i);
+        Field field = fields.get(dataSetIndexes[i]);
+        if (field == null || field.getDataType() == null) {
+          values.add(null);
+        } else {
+          values.add(
+              field.getDataType().equals(TSDataType.TEXT)
+                  ? field.getStringValue()
+                  : field.getObjectValue(field.getDataType()));
+        }
+      }
+    }
+
+    return Response.ok().entity(queryDataSet).build();
+  }
+
   public static Response fillShowPlanDateSet(QueryDataSet dataSet) throws IOException {
     int[] dataSetIndexes = new int[dataSet.getPaths().size()];
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
@@ -93,6 +132,37 @@ public class QueryDataSetHandler {
       for (int i = 0; i < queryDataSet.getCloumnNames().size(); i++) {
         List<Object> values = queryDataSet.getValues().get(i);
         Field field = record.getFields().get(dataSetIndexes[i]);
+        if (field == null) {
+          values.add(null);
+        } else {
+          values.add(
+              field.getDataType().equals(TSDataType.TEXT)
+                  ? field.getStringValue()
+                  : field.getObjectValue(field.getDataType()));
+        }
+      }
+    }
+    return Response.ok().entity(queryDataSet).build();
+  }
+
+  public static Response fillLastQueryPlanDateSet(QueryDataSet dataSet) throws IOException {
+    int[] dataSetIndexes = new int[dataSet.getPaths().size()];
+    org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
+        new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
+    for (int i = 0; dataSet.getPaths() != null && i < dataSet.getPaths().size(); i++) {
+      Path path = dataSet.getPaths().get(i);
+      queryDataSet.addCloumnNamesItem(path.getFullPath());
+      queryDataSet.addValuesItem(new ArrayList<>());
+      dataSetIndexes[i] = i;
+    }
+
+    while (dataSet.hasNext()) {
+      RowRecord record = dataSet.next();
+      queryDataSet.addTimestampsItem(record.getTimestamp());
+      for (int i = 0; i < queryDataSet.getCloumnNames().size(); i++) {
+        List<Object> values = queryDataSet.getValues().get(i);
+        Field field = record.getFields().get(dataSetIndexes[i]);
+
         if (field == null) {
           values.add(null);
         } else {

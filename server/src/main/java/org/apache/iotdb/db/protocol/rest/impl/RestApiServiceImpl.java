@@ -32,6 +32,7 @@ import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
+import org.apache.iotdb.db.qp.physical.crud.LastQueryPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
@@ -126,11 +127,18 @@ public class RestApiServiceImpl extends RestApiService {
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
         if (queryDataSet instanceof ShowDevicesDataSet
-            || queryDataSet instanceof ListDataSet
+            || (queryDataSet instanceof ListDataSet && !(physicalPlan instanceof LastQueryPlan))
             || queryDataSet instanceof ShowTimeseriesDataSet
             || (queryDataSet instanceof SingleDataSet
                 && !(physicalPlan instanceof AggregationPlan))) {
           return QueryDataSetHandler.fillShowPlanDateSet(queryDataSet);
+        } else if (queryDataSet instanceof ListDataSet && physicalPlan instanceof LastQueryPlan) {
+          return QueryDataSetHandler.fillLastQueryPlanDateSet(queryDataSet);
+        } else if (queryDataSet instanceof SingleDataSet
+            && physicalPlan instanceof AggregationPlan
+            && ((AggregationPlan) physicalPlan).getLevels() != null) {
+          return QueryDataSetHandler.fillAggregationPlanDateSet(
+              queryDataSet, (AggregationPlan) physicalPlan);
         } else if (physicalPlan instanceof QueryPlan) {
           return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
         }

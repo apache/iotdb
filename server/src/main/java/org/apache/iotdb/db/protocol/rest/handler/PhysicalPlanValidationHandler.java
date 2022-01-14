@@ -22,13 +22,19 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.SelectIntoOperator;
 
 public class PhysicalPlanValidationHandler {
 
   public static void checkRestQuery(Operator operator) throws LogicalOperatorException {
+    if (operator instanceof SelectIntoOperator) {
+      throw new LogicalOperatorException("select into clauses are not supported.");
+    }
+
     if (!(operator instanceof QueryOperator)) {
       return;
     }
+
     QueryOperator queryOperator = (QueryOperator) operator;
 
     if (queryOperator.isAlignByDevice()) {
