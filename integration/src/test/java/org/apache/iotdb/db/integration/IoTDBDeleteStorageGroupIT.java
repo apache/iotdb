@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
@@ -54,6 +55,9 @@ public class IoTDBDeleteStorageGroupIT {
 
   @Test
   public void testDeleteStorageGroup() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln.wf01.wt01");
@@ -80,6 +84,9 @@ public class IoTDBDeleteStorageGroupIT {
 
   @Test
   public void testDeleteMultipleStorageGroupWithQuote() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln1.wf01.wt01");
@@ -105,6 +112,9 @@ public class IoTDBDeleteStorageGroupIT {
 
   @Test(expected = IoTDBSQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln2.wf01.wt01");
@@ -114,6 +124,9 @@ public class IoTDBDeleteStorageGroupIT {
 
   @Test
   public void testDeleteStorageGroupWithStar() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln3.wf01.wt01");
@@ -139,6 +152,9 @@ public class IoTDBDeleteStorageGroupIT {
 
   @Test
   public void testDeleteAllStorageGroups() throws Exception {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute("SET STORAGE GROUP TO root.ln4.wf01.wt01");

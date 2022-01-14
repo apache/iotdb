@@ -23,6 +23,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
@@ -67,6 +68,9 @@ public class IoTDBSimpleQueryIT {
   @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseries1() throws MetadataException {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
@@ -84,6 +88,9 @@ public class IoTDBSimpleQueryIT {
   @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseriesSDTProperties() throws MetadataException {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
@@ -105,6 +112,9 @@ public class IoTDBSimpleQueryIT {
   @Category({LocalStandaloneTest.class})
   @Test
   public void testCreateTimeseriesWithSDTProperties2() throws MetadataException {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);

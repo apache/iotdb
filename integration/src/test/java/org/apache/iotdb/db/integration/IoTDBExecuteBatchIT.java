@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
@@ -50,6 +51,9 @@ public class IoTDBExecuteBatchIT {
 
   @Test
   public void testJDBCExecuteBatch() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(5);
@@ -79,6 +83,9 @@ public class IoTDBExecuteBatchIT {
 
   @Test
   public void testJDBCExecuteBatchForCreateMultiTimeSeriesPlan() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.setFetchSize(100);

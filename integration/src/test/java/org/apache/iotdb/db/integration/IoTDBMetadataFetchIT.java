@@ -550,6 +550,7 @@ public class IoTDBMetadataFetchIT {
             try (ResultSet resultSet = statement.getResultSet()) {
               while (resultSet.next()) {
                 String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+                System.out.println(string);
                 Assert.assertTrue(standard.contains(string));
                 standard.remove(string);
               }

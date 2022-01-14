@@ -49,6 +49,7 @@ public class ShowDevicesPlan extends ShowPlan {
     outputStream.writeInt(limit);
     outputStream.writeInt(offset);
     outputStream.writeLong(index);
+    outputStream.writeBoolean(hasSgCol);
   }
 
   @Override
@@ -56,7 +57,8 @@ public class ShowDevicesPlan extends ShowPlan {
     path = new PartialPath(readString(buffer));
     limit = buffer.getInt();
     offset = buffer.getInt();
-    this.index = buffer.getLong();
+    index = buffer.getLong();
+    hasSgCol = buffer.get() == 1;
   }
 
   public boolean hasSgCol() {

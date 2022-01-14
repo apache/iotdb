@@ -35,10 +35,14 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 @Category({LocalStandaloneTest.class, ClusterTest.class})
@@ -124,28 +128,29 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectTest() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,",
-          "2,root.vehicle.d0,10000,40000,2.22,null,null,",
-          "3,root.vehicle.d0,null,null,3.33,null,null,",
-          "4,root.vehicle.d0,null,null,4.44,null,null,",
-          "50,root.vehicle.d0,10000,50000,null,null,null,",
-          "60,root.vehicle.d0,null,null,null,aaaaa,null,",
-          "70,root.vehicle.d0,null,null,null,bbbbb,null,",
-          "80,root.vehicle.d0,null,null,null,ccccc,null,",
-          "100,root.vehicle.d0,99,199,null,null,true,",
-          "101,root.vehicle.d0,99,199,null,ddddd,null,",
-          "102,root.vehicle.d0,80,180,10.0,fffff,null,",
-          "103,root.vehicle.d0,99,199,null,null,null,",
-          "104,root.vehicle.d0,90,190,null,null,null,",
-          "105,root.vehicle.d0,99,199,11.11,null,null,",
-          "106,root.vehicle.d0,99,null,null,null,null,",
-          "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
-          "946684800000,root.vehicle.d0,null,100,null,good,null,",
-          "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "1,root.vehicle.d0,101,1101,null,null,null,",
+              "2,root.vehicle.d0,10000,40000,2.22,null,null,",
+              "3,root.vehicle.d0,null,null,3.33,null,null,",
+              "4,root.vehicle.d0,null,null,4.44,null,null,",
+              "50,root.vehicle.d0,10000,50000,null,null,null,",
+              "60,root.vehicle.d0,null,null,null,aaaaa,null,",
+              "70,root.vehicle.d0,null,null,null,bbbbb,null,",
+              "80,root.vehicle.d0,null,null,null,ccccc,null,",
+              "100,root.vehicle.d0,99,199,null,null,true,",
+              "101,root.vehicle.d0,99,199,null,ddddd,null,",
+              "102,root.vehicle.d0,80,180,10.0,fffff,null,",
+              "103,root.vehicle.d0,99,199,null,null,null,",
+              "104,root.vehicle.d0,90,190,null,null,null,",
+              "105,root.vehicle.d0,99,199,11.11,null,null,",
+              "106,root.vehicle.d0,99,null,null,null,null,",
+              "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
+              "946684800000,root.vehicle.d0,null,100,null,good,null,",
+              "1,root.vehicle.d1,999,null,null,null,null,",
+              "1000,root.vehicle.d1,888,null,null,null,null,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -170,16 +175,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -251,19 +251,20 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectLimitTest() {
-    String[] retArray =
-        new String[] {
-          "2,root.vehicle.d0,10000,10000,40000,",
-          "50,root.vehicle.d0,10000,10000,50000,",
-          "100,root.vehicle.d0,99,99,199,",
-          "101,root.vehicle.d0,99,99,199,",
-          "102,root.vehicle.d0,80,80,180,",
-          "103,root.vehicle.d0,99,99,199,",
-          "104,root.vehicle.d0,90,90,190,",
-          "105,root.vehicle.d0,99,99,199,",
-          "106,root.vehicle.d0,99,99,null,",
-          "1000,root.vehicle.d0,22222,22222,55555,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "2,root.vehicle.d0,10000,10000,40000,",
+              "50,root.vehicle.d0,10000,10000,50000,",
+              "100,root.vehicle.d0,99,99,199,",
+              "101,root.vehicle.d0,99,99,199,",
+              "102,root.vehicle.d0,80,80,180,",
+              "103,root.vehicle.d0,99,99,199,",
+              "104,root.vehicle.d0,90,90,190,",
+              "105,root.vehicle.d0,99,99,199,",
+              "106,root.vehicle.d0,99,99,null,",
+              "1000,root.vehicle.d0,22222,22222,55555,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -284,16 +285,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(10, cnt);
@@ -472,15 +468,16 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void groupByTimeTest() {
-    String[] retArray =
-        new String[] {
-          "2,root.vehicle.d0,1,1,3,0,0,",
-          "22,root.vehicle.d0,0,0,0,0,0,",
-          "42,root.vehicle.d0,0,0,0,0,0,",
-          "2,root.vehicle.d1,0,null,null,null,null,",
-          "22,root.vehicle.d1,0,null,null,null,null,",
-          "42,root.vehicle.d1,0,null,null,null,null,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "2,root.vehicle.d0,1,1,3,0,0,",
+              "22,root.vehicle.d0,0,0,0,0,0,",
+              "42,root.vehicle.d0,0,0,0,0,0,",
+              "2,root.vehicle.d1,0,null,null,null,null,",
+              "22,root.vehicle.d1,0,null,null,null,null,",
+              "42,root.vehicle.d1,0,null,null,null,null,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -507,16 +504,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(6, cnt);
@@ -575,11 +567,12 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void fillTest() {
-    String[] retArray =
-        new String[] {
-          "3,root.vehicle.d0,10000,40000,3.33,null,null,",
-          "3,root.vehicle.d1,999,null,null,null,null,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "3,root.vehicle.d0,10000,40000,3.33,null,null,",
+              "3,root.vehicle.d1,999,null,null,null,null,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -606,16 +599,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(2, cnt);
@@ -649,8 +637,9 @@ public class IoTDBAlignByDeviceIT {
    */
   @Test
   public void unusualCaseTest1() {
-    String[] retArray =
-        new String[] {"root.other.d1,1,", "root.vehicle.d0,11,", "root.vehicle.d1,2,"};
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {"root.other.d1,1,", "root.vehicle.d0,11,", "root.vehicle.d1,2,"});
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -666,16 +655,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(3, cnt);
@@ -688,14 +672,15 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void unusualCaseTest2() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,101,1101,101,1101,null,null,null,",
-          "2,root.vehicle.d0,10000,10000,40000,10000,40000,2.22,null,null,",
-          "3,root.vehicle.d0,null,null,null,null,null,3.33,null,null,",
-          "4,root.vehicle.d0,null,null,null,null,null,4.44,null,null,",
-          "1,root.vehicle.d1,999,999,null,999,null,null,null,null,"
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "1,root.vehicle.d0,101,101,1101,101,1101,null,null,null,",
+              "2,root.vehicle.d0,10000,10000,40000,10000,40000,2.22,null,null,",
+              "3,root.vehicle.d0,null,null,null,null,null,3.33,null,null,",
+              "4,root.vehicle.d0,null,null,null,null,null,4.44,null,null,",
+              "1,root.vehicle.d1,999,999,null,999,null,null,null,null,"
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -727,16 +712,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(5, cnt);
@@ -749,28 +729,29 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectNonExistTest() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,null,",
-          "2,root.vehicle.d0,10000,40000,2.22,null,null,null,",
-          "3,root.vehicle.d0,null,null,3.33,null,null,null,",
-          "4,root.vehicle.d0,null,null,4.44,null,null,null,",
-          "50,root.vehicle.d0,10000,50000,null,null,null,null,",
-          "60,root.vehicle.d0,null,null,null,aaaaa,null,null,",
-          "70,root.vehicle.d0,null,null,null,bbbbb,null,null,",
-          "80,root.vehicle.d0,null,null,null,ccccc,null,null,",
-          "100,root.vehicle.d0,99,199,null,null,true,null,",
-          "101,root.vehicle.d0,99,199,null,ddddd,null,null,",
-          "102,root.vehicle.d0,80,180,10.0,fffff,null,null,",
-          "103,root.vehicle.d0,99,199,null,null,null,null,",
-          "104,root.vehicle.d0,90,190,null,null,null,null,",
-          "105,root.vehicle.d0,99,199,11.11,null,null,null,",
-          "106,root.vehicle.d0,99,null,null,null,null,null,",
-          "1000,root.vehicle.d0,22222,55555,1000.11,null,null,null,",
-          "946684800000,root.vehicle.d0,null,100,null,good,null,null,",
-          "1,root.vehicle.d1,999,null,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,null,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "1,root.vehicle.d0,101,1101,null,null,null,null,",
+              "2,root.vehicle.d0,10000,40000,2.22,null,null,null,",
+              "3,root.vehicle.d0,null,null,3.33,null,null,null,",
+              "4,root.vehicle.d0,null,null,4.44,null,null,null,",
+              "50,root.vehicle.d0,10000,50000,null,null,null,null,",
+              "60,root.vehicle.d0,null,null,null,aaaaa,null,null,",
+              "70,root.vehicle.d0,null,null,null,bbbbb,null,null,",
+              "80,root.vehicle.d0,null,null,null,ccccc,null,null,",
+              "100,root.vehicle.d0,99,199,null,null,true,null,",
+              "101,root.vehicle.d0,99,199,null,ddddd,null,null,",
+              "102,root.vehicle.d0,80,180,10.0,fffff,null,null,",
+              "103,root.vehicle.d0,99,199,null,null,null,null,",
+              "104,root.vehicle.d0,90,190,null,null,null,null,",
+              "105,root.vehicle.d0,99,199,11.11,null,null,null,",
+              "106,root.vehicle.d0,99,null,null,null,null,null,",
+              "1000,root.vehicle.d0,22222,55555,1000.11,null,null,null,",
+              "946684800000,root.vehicle.d0,null,100,null,good,null,null,",
+              "1,root.vehicle.d1,999,null,null,null,null,null,",
+              "1000,root.vehicle.d1,888,null,null,null,null,null,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -797,16 +778,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -838,28 +814,29 @@ public class IoTDBAlignByDeviceIT {
 
   @Test
   public void selectWithRegularExpressionTest() {
-    String[] retArray =
-        new String[] {
-          "1,root.vehicle.d0,101,1101,null,null,null,",
-          "2,root.vehicle.d0,10000,40000,2.22,null,null,",
-          "3,root.vehicle.d0,null,null,3.33,null,null,",
-          "4,root.vehicle.d0,null,null,4.44,null,null,",
-          "50,root.vehicle.d0,10000,50000,null,null,null,",
-          "60,root.vehicle.d0,null,null,null,aaaaa,null,",
-          "70,root.vehicle.d0,null,null,null,bbbbb,null,",
-          "80,root.vehicle.d0,null,null,null,ccccc,null,",
-          "100,root.vehicle.d0,99,199,null,null,true,",
-          "101,root.vehicle.d0,99,199,null,ddddd,null,",
-          "102,root.vehicle.d0,80,180,10.0,fffff,null,",
-          "103,root.vehicle.d0,99,199,null,null,null,",
-          "104,root.vehicle.d0,90,190,null,null,null,",
-          "105,root.vehicle.d0,99,199,11.11,null,null,",
-          "106,root.vehicle.d0,99,null,null,null,null,",
-          "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
-          "946684800000,root.vehicle.d0,null,100,null,good,null,",
-          "1,root.vehicle.d1,999,null,null,null,null,",
-          "1000,root.vehicle.d1,888,null,null,null,null,",
-        };
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+              "1,root.vehicle.d0,101,1101,null,null,null,",
+              "2,root.vehicle.d0,10000,40000,2.22,null,null,",
+              "3,root.vehicle.d0,null,null,3.33,null,null,",
+              "4,root.vehicle.d0,null,null,4.44,null,null,",
+              "50,root.vehicle.d0,10000,50000,null,null,null,",
+              "60,root.vehicle.d0,null,null,null,aaaaa,null,",
+              "70,root.vehicle.d0,null,null,null,bbbbb,null,",
+              "80,root.vehicle.d0,null,null,null,ccccc,null,",
+              "100,root.vehicle.d0,99,199,null,null,true,",
+              "101,root.vehicle.d0,99,199,null,ddddd,null,",
+              "102,root.vehicle.d0,80,180,10.0,fffff,null,",
+              "103,root.vehicle.d0,99,199,null,null,null,",
+              "104,root.vehicle.d0,90,190,null,null,null,",
+              "105,root.vehicle.d0,99,199,11.11,null,null,",
+              "106,root.vehicle.d0,99,null,null,null,null,",
+              "1000,root.vehicle.d0,22222,55555,1000.11,null,null,",
+              "946684800000,root.vehicle.d0,null,100,null,good,null,",
+              "1,root.vehicle.d1,999,null,null,null,null,",
+              "1000,root.vehicle.d1,888,null,null,null,null,",
+            });
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
@@ -884,16 +861,11 @@ public class IoTDBAlignByDeviceIT {
 
         int cnt = 0;
         while (resultSet.next()) {
-          String[] expectedStrings = retArray[cnt].split(",");
-          StringBuilder expectedBuilder = new StringBuilder();
           StringBuilder actualBuilder = new StringBuilder();
           for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
             actualBuilder.append(resultSet.getString(i)).append(",");
-            expectedBuilder
-                .append(expectedStrings[actualIndexToExpectedIndexList.get(i - 1)])
-                .append(",");
           }
-          Assert.assertEquals(expectedBuilder.toString(), actualBuilder.toString());
+          assertTrue(retSet.contains(actualBuilder.toString()));
           cnt++;
         }
         Assert.assertEquals(19, cnt);
@@ -953,5 +925,11 @@ public class IoTDBAlignByDeviceIT {
       e.printStackTrace();
       fail(e.getMessage());
     }
+  }
+
+  private Set<String> getExpectedResultSet(String[] results) {
+    Set<String> resultSet = new HashSet<>();
+    Collections.addAll(resultSet, results);
+    return resultSet;
   }
 }
