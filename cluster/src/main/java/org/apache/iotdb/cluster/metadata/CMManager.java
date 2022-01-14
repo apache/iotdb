@@ -1503,7 +1503,7 @@ public class CMManager extends MManager {
       futureList.add(
           pool.submit(
               () -> {
-                showTimeseries(entry.getKey(), entry.getValue(), plan, context, handler);
+                showTimeseries(entry.getKey(), entry.getValue(), plan, handler);
                 return null;
               }));
     }
@@ -1552,7 +1552,6 @@ public class CMManager extends MManager {
       PartitionGroup group,
       List<String> paths,
       ShowTimeSeriesPlan plan,
-      QueryContext context,
       ShowTimeSeriesHandler handler) {
     List<ShowTimeSeriesResult> results = new ArrayList<>();
     if (group.contains(metaGroupMember.getThisNode())) {
