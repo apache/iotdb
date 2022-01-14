@@ -17,16 +17,12 @@
 #
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
-PROJECT(iotdb_session_IT CXX)
+INCLUDE( CTest )
 SET(CMAKE_CXX_STANDARD 11)
 SET(CMAKE_CXX_STANDARD_REQUIRED ON)
 SET(TARGET_NAME session_tests)
 SET(TOOLS_DIR "${CMAKE_SOURCE_DIR}/../../../../compile-tools")
 ENABLE_TESTING()
-
-FIND_PACKAGE(Catch2 REQUIRED)
-INCLUDE(Catch)
-INCLUDE(CTest)
 
 # Add Boost include path for MacOS
 INCLUDE_DIRECTORIES(/usr/local/include)
@@ -35,9 +31,9 @@ INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/../main/generated-sources-cpp)
 # Add Thrift include directory
 INCLUDE_DIRECTORIES(${TOOLS_DIR}/thrift/target/thrift-0.14.1/lib/cpp/src)
 
-FIND_PACKAGE(Boost REQUIRED)
+find_package(Boost REQUIRED)
 IF (DEFINED BOOST_INCLUDEDIR)
-    INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIR}")
+    include_directories("${Boost_INCLUDE_DIR}")
 ENDIF()
 
 # Link directories are different for Windows and Linux/Mac
@@ -59,4 +55,8 @@ ENDIF()
 TARGET_INCLUDE_DIRECTORIES(${TARGET_NAME} PUBLIC ./catch2/)
 
 # Add 'sessionIT' to the project to be run by ctest
-# CATCH_DISCOVER_TESTS(${TARGET_NAME})
+IF(MSVC)
+    ADD_TEST(NAME sessionIT CONFIGURATIONS Release COMMAND ${TARGET_NAME})
+ELSE()
+    ADD_TEST(NAME sessionIT COMMAND ${TARGET_NAME})
+ENDIF()
