@@ -76,7 +76,15 @@ public class Cli extends AbstractCli {
       return;
     }
 
-    lineReader = JlineUtils.getLineReader();
+    try {
+      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
+    } catch (ArgsErrorException e) {
+      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
+    } catch (Exception e) {
+      println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
+    }
+
+    lineReader = JlineUtils.getLineReader(username);
     serve();
   }
 
@@ -117,7 +125,6 @@ public class Cli extends AbstractCli {
     try {
       host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
       port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-      username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
 
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (hasExecuteSQL && password != null) {
