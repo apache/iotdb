@@ -103,18 +103,11 @@ public class CompactionTaskManager implements IService {
       currentTaskNum = new AtomicInteger(0);
       semaphore =
           new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
-      compactionTaskSubmissionThreadPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
 
       // Periodically do the following: fetch the highest priority thread from the
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
       // if there is thread space available in the taskExecutionPool, put the compaction task thread
       // into the taskExecutionPool and perform the compaction.
-      //      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
-      //          this::submitTaskFromTaskQueue,
-      //          TASK_SUBMIT_INTERVAL,
-      //          TASK_SUBMIT_INTERVAL,
-      //          TimeUnit.MILLISECONDS);
       new Thread(this::submitTaskFromTaskQueue).start();
     }
     logger.info("Compaction task manager started.");
