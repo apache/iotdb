@@ -22,6 +22,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -192,6 +193,9 @@ public class IoTDBTtlIT {
   @Category({LocalStandaloneTest.class})
   @Test
   public void testDefaultTTL() throws SQLException {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     IoTDBDescriptor.getInstance().getConfig().setDefaultTTL(10000);
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

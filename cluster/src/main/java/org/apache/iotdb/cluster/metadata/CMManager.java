@@ -1792,6 +1792,7 @@ public class CMManager extends MManager {
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
+  @Override
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
     try {
@@ -1799,5 +1800,16 @@ public class CMManager extends MManager {
     } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
+  }
+
+  @Override
+  public Map<String, List<PartialPath>> groupPathByStorageGroup(PartialPath path)
+      throws MetadataException {
+    try {
+      metaGroupMember.syncLeaderWithConsistencyCheck(false);
+    } catch (CheckConsistencyException e) {
+      throw new MetadataException(e);
+    }
+    return super.groupPathByStorageGroup(path);
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
@@ -377,8 +378,12 @@ public class IoTDBTagIT {
     }
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void deleteTest() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     List<String> ret1 =
         Arrays.asList(
             "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
@@ -462,8 +467,13 @@ public class IoTDBTagIT {
     }
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void deleteWithAliasTest() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
+
     List<String> ret1 =
         Arrays.asList(
             "root.turbine.d7.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
@@ -777,8 +787,12 @@ public class IoTDBTagIT {
     }
   }
 
+  @Category({LocalStandaloneTest.class})
   @Test
   public void queryWithWhereAndDeleteTest() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     Set<String> ret = new HashSet<>();
     ret.add(
         "root.turbine.d0.s0,temperature,root.turbine,FLOAT,RLE,SNAPPY,{\"description\":\""
@@ -1021,6 +1035,9 @@ public class IoTDBTagIT {
   @Category({LocalStandaloneTest.class})
   @Test
   public void deleteStorageGroupTest() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     List<String> ret =
         Collections.singletonList(
             "root.turbine.d1.s1,temperature,root.turbine,FLOAT,RLE,SNAPPY,"
