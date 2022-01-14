@@ -161,7 +161,7 @@ boolean checkTimeseriesExists(String path)
 
 #### 元数据模版
 
-* 元数据模板内部支持树状结构，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
+* 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -183,13 +183,6 @@ Abstract Class Node {
     public void deleteChild(Node node);
 }
 
-Class InternalNode extends Node {
-    boolean shareTime;
-    Map<String, Node> children;
-    public void setShareTime(boolean shareTime);
-    public InternalNode(String name, boolean isShareTime);
-}
-
 Class MeasurementNode extends Node {
     TSDataType dataType;
     TSEncoding encoding;
@@ -208,17 +201,9 @@ MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RL
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-InternalNode internalGPS = new InternalNode("GPS", true);
-InternalNode internalVehicle = new InternalNode("vehicle", false);
-
-internalGPS.addChild(nodeX);
-internalGPS.addChild(nodeY);
-internalVehicle.addChild(GPS);
-internalVehicle.addChild(nodeSpeed);
-
-Template template = new Template("treeTemplateExample");
-template.addToTemplate(internalGPS);
-template.addToTemplate(internalVehicle);
+Template template = new Template("templateExample");
+template.addToTemplate(nodeX);
+template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
 createSchemaTemplate(template);

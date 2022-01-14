@@ -54,7 +54,7 @@
 
 * 创建元数据模板
 
-元数据模板内部支持树状结构。在 Session 中创建元数据模板，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，构造模板内部物理量结构结构，并通过以下接口创建模板
+在 Session 中创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，构造模板内部物理量结构，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -74,13 +74,6 @@ Abstract Class Node {
     private String name;
     public void addChild(Node node);
     public void deleteChild(Node node);
-}
-
-Class InternalNode extends Node {
-    boolean shareTime;
-    Map<String, Node> children;
-    public void setShareTime(boolean shareTime);
-    public InternalNode(String name, boolean isShareTime);
 }
 
 Class MeasurementNode extends Node {
@@ -114,4 +107,4 @@ createSchemaTemplate(template);
 setSchemaTemplate("template", "root.Beijing");
 ```
 
-挂载好元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了存储组后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。
+挂载元数据模板后，即可进行数据的写入。如按上述代码创建并挂载模板，并在 root.Beijing 路径上设置了存储组后，即可写入例如 root.Beijing.petro_vehicle.velocity 等时间序列数据，系统将自动创建 petro_vehicle 节点，并设置其“正在使用模板”，对写入数据应用模板中为 velocity 定义的元数据信息。
