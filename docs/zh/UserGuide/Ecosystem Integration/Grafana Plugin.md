@@ -64,7 +64,7 @@ git clone https://github.com/apache/iotdb.git
 * 使用 maven 编译，在 `grafana-plugin` 目录下执行：
 
 ```shell
-mvn install package
+mvn install package -P compile-grafana-plugin
 ```
 
 * 或使用 yarn 编译，在 `grafana-plugin` 目录下执行：
@@ -85,7 +85,7 @@ yarn build
 在 IoTDB 仓库的根目录下执行：
 
 ```shell
- mvn clean package -pl distribution -am -DskipTests 
+ mvn clean package -pl distribution -am -DskipTests -P compile-grafana-plugin
 ```
 
 如果编译成功，我们将看到 `distribution/target` 路径下包含了编译好的 Grafana 前端插件：
@@ -191,7 +191,7 @@ Ip 为您的 IoTDB 服务器所在的宿主机 IP，port 为 REST 服务的运�
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Ecosystem%20Integration/Grafana-plugin/add%20empty%20panel.png?raw=true">
 
-在 SELECT 输入框、FROM 输入框、WHERE 输入框输入内容，其中 WHERE 输入框为非必填。
+在 SELECT 输入框、FROM 输入框、WHERE输入框、CONTROL输入框中输入内容，其中 WHERE 和 CONTROL 输入框为非必填。
 
 如果一个查询涉及多个表达式，我们可以点击 SELECT 输入框右侧的 `+` 来添加 SELECT 子句中的表达式，也可以点击 FROM 输入框右侧的 `+` 来添加路径前缀，如下图所示：
 
@@ -205,6 +205,20 @@ SELECT 输入框中的内容可以是时间序列的后缀，可以是函数或�
 *  `top_k(s1, 'k'='1') as top`
 *  `sin(s1) + cos(s1 + s2)` 
 *  `udf(s1) as "中文别名"`
+
+FROM 输入框中的内容必须是时间序列的前缀路径，比如 `root.sg.d`。
+
+WHERE 输入框为非必须填写项目，填写内容应当是查询的过滤条件，比如 `time > 0`  或者 `s1 < 1024 and s2 > 1024`。
+
+CONTROL 输入框为非必须填写项目，填写内容应当是控制查询类型、输出格式的特殊子句，下面是 CONTROL 输入框中一些合法的输入举例：
+
+*  `group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00), 1d)`
+*  `group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d)`
+*  `GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (PREVIOUSUNTILLAST)` 
+*  `GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (PREVIOUS, 1m)`
+*  `GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00), 1m) FILL (LINEAR, 5m, 5m)`
+*  `group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00], 1d), level=1`
+*  `group by ([0, 20), 2ms, 3ms), level=1`
 
 
 

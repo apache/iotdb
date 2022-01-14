@@ -36,8 +36,8 @@ import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
 import org.apache.iotdb.db.engine.trigger.service.TriggerRegistrationService;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -53,7 +53,6 @@ import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupAlreadySetException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
@@ -153,7 +152,9 @@ import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.ChunkGroupMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -181,7 +182,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.concurrent.*;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
@@ -554,7 +556,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private boolean operateDropContinuousQuery(DropContinuousQueryPlan plan)
       throws ContinuousQueryException {
-    return ContinuousQueryService.getInstance().deregister(plan);
+    return ContinuousQueryService.getInstance().deregister(plan, true);
   }
 
   public static void flushSpecifiedStorageGroups(FlushPlan plan)
@@ -686,20 +688,19 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodeTimeSeries(CountPlan countPlan) throws MetadataException {
-    // get the nodes that need to group by first
-    List<PartialPath> nodes = getNodesList(countPlan.getPath(), countPlan.getLevel());
+    Map<PartialPath, Integer> countResults = getTimeseriesCountGroupByLevel(countPlan);
     ListDataSet listDataSet =
         new ListDataSet(
             Arrays.asList(
                 new PartialPath(COLUMN_COLUMN, false), new PartialPath(COLUMN_COUNT, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.INT32));
-    for (PartialPath columnPath : nodes) {
+    for (PartialPath columnPath : countResults.keySet()) {
       RowRecord record = new RowRecord(0);
       Field field = new Field(TSDataType.TEXT);
       field.setBinaryV(new Binary(columnPath.getFullPath()));
       Field field1 = new Field(TSDataType.INT32);
       // get the count of every group
-      field1.setIntV(getPathsNum(columnPath));
+      field1.setIntV(countResults.get(columnPath));
       record.addField(field);
       record.addField(field1);
       listDataSet.putRecord(record);
@@ -774,6 +775,12 @@ public class PlanExecutor implements IPlanExecutor {
   protected List<PartialPath> getNodesList(PartialPath schemaPattern, int level)
       throws MetadataException {
     return IoTDB.metaManager.getNodesListInGivenLevel(schemaPattern, level);
+  }
+
+  private Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
+      throws MetadataException {
+    return IoTDB.metaManager.getMeasurementCountGroupByLevel(
+        countPlan.getPath(), countPlan.getLevel());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
@@ -1223,21 +1230,33 @@ public class PlanExecutor implements IPlanExecutor {
       if (!IoTDB.metaManager.isPathExist(devicePath)) {
         continue;
       }
+      boolean isAlignedInIoTDB =
+          IoTDB.metaManager.getDeviceNode(devicePath).getAsEntityMNode().isAligned();
+      boolean isAlignedInTsFile = false;
       for (TimeseriesMetadata metadata : entry.getValue()) {
+        if ("".equals(metadata.getMeasurementId())) {
+          isAlignedInTsFile = true;
+          continue;
+        }
         PartialPath fullPath =
             new PartialPath(deviceId + TsFileConstant.PATH_SEPARATOR + metadata.getMeasurementId());
         if (IoTDB.metaManager.isPathExist(fullPath)) {
           TSDataType dataType = IoTDB.metaManager.getSeriesType(fullPath);
           if (dataType != metadata.getTSDataType()) {
             throw new QueryProcessException(
-                fullPath.getFullPath()
-                    + " is "
-                    + metadata.getTSDataType().name()
-                    + " in the loading TsFile but is "
-                    + dataType.name()
-                    + " in IoTDB.");
+                String.format(
+                    "%s is %s in the loading TsFile but is %s in IoTDB.",
+                    fullPath.getFullPath(), metadata.getTSDataType().name(), dataType.name()));
           }
         }
+      }
+      if (isAlignedInIoTDB != isAlignedInTsFile) {
+        throw new QueryProcessException(
+            String.format(
+                "%s is%s aligned in the loading TsFile but is%s aligned in IoTDB.",
+                devicePath.getFullPath(),
+                isAlignedInTsFile ? "" : " not",
+                isAlignedInIoTDB ? "" : " not"));
       }
     }
   }
@@ -1255,7 +1274,10 @@ public class PlanExecutor implements IPlanExecutor {
     Set<PartialPath> registeredSeries = new HashSet<>();
     for (ChunkGroupMetadata chunkGroupMetadata : chunkGroupMetadataList) {
       String device = chunkGroupMetadata.getDevice();
+      boolean isAligned = false;
       Set<String> existSeriesSet = new HashSet<>();
+      List<PartialPath> needRegisterSeries = new ArrayList<>();
+      List<IMeasurementSchema> needRegisterSchema = new ArrayList<>();
       PartialPath devicePath = new PartialPath(device);
       PartialPath storageGroupPath = MetaUtils.getStorageGroupPathByLevel(devicePath, sgLevel);
       try {
@@ -1271,6 +1293,10 @@ public class PlanExecutor implements IPlanExecutor {
         existSeriesSet.add(path.getMeasurementAlias());
       }
       for (ChunkMetadata chunkMetadata : chunkGroupMetadata.getChunkMetadataList()) {
+        if ("".equals(chunkMetadata.getMeasurementUid())) {
+          isAligned = true;
+          continue;
+        }
         PartialPath series =
             new PartialPath(
                 chunkGroupMetadata.getDevice()
@@ -1287,13 +1313,41 @@ public class PlanExecutor implements IPlanExecutor {
                     chunkMetadata.getMeasurementUid()));
           }
           if (!existSeriesSet.contains(chunkMetadata.getMeasurementUid())) {
-            IoTDB.metaManager.createTimeseries(
-                series,
-                schema.getType(),
-                schema.getEncodingType(),
-                schema.getCompressor(),
-                Collections.emptyMap());
+            needRegisterSeries.add(series);
+            needRegisterSchema.add(schema);
           }
+        }
+      }
+
+      int size = needRegisterSeries.size();
+      if (size == 0) {
+        continue;
+      }
+      if (isAligned) {
+        List<String> measurements = new ArrayList<>();
+        List<TSDataType> dataTypes = new ArrayList<>();
+        List<TSEncoding> encodings = new ArrayList<>();
+        List<CompressionType> compressors = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+          IMeasurementSchema schema = needRegisterSchema.get(i);
+          measurements.add(needRegisterSeries.get(i).getMeasurement());
+          dataTypes.add(schema.getType());
+          encodings.add(schema.getEncodingType());
+          compressors.add(schema.getCompressor());
+        }
+
+        IoTDB.metaManager.createAlignedTimeSeries(
+            devicePath, measurements, dataTypes, encodings, compressors);
+      } else {
+        for (int i = 0; i < size; i++) {
+          IMeasurementSchema schema = needRegisterSchema.get(i);
+          IoTDB.metaManager.createTimeseries(
+              needRegisterSeries.get(i),
+              schema.getType(),
+              schema.getEncodingType(),
+              schema.getCompressor(),
+              Collections.emptyMap());
         }
       }
     }
@@ -1364,14 +1418,6 @@ public class PlanExecutor implements IPlanExecutor {
     }
   }
 
-  protected IMNode getSeriesSchemas(InsertPlan insertPlan) throws MetadataException {
-    try {
-      return IoTDB.metaManager.getSeriesSchemasAndReadLockDevice(insertPlan);
-    } catch (IOException e) {
-      throw new MetadataException(e);
-    }
-  }
-
   private void checkFailedMeasurments(InsertPlan plan)
       throws PathNotExistException, StorageEngineException {
     // check if all path not exist exceptions
@@ -1405,12 +1451,7 @@ public class PlanExecutor implements IPlanExecutor {
       return;
     }
     try {
-      for (InsertRowPlan plan : insertRowsOfOneDevicePlan.getRowPlans()) {
-        plan.setMeasurementMNodes(new IMeasurementMNode[plan.getMeasurements().length]);
-        // check whether types are match
-        getSeriesSchemas(plan);
-      }
-      // ok, we can begin to write data into the engine..
+      // insert to storage engine
       StorageEngine.getInstance().insert(insertRowsOfOneDevicePlan);
 
       List<String> notExistedPaths = null;
@@ -1491,12 +1532,9 @@ public class PlanExecutor implements IPlanExecutor {
                   insertRowPlan.getValues()[i], insertRowPlan.isNeedInferType());
         }
       }
-      // check whether types are match
-      getSeriesSchemas(insertRowPlan);
-      insertRowPlan.transferType();
-      if (insertRowPlan.getFailedMeasurementNumber() < insertRowPlan.getMeasurements().length) {
-        StorageEngine.getInstance().insert(insertRowPlan);
-      }
+
+      StorageEngine.getInstance().insert(insertRowPlan);
+
       if (insertRowPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertRowPlan);
       }
@@ -1616,8 +1654,9 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       insertTabletPlan.setMeasurementMNodes(
           new IMeasurementMNode[insertTabletPlan.getMeasurements().length]);
-      getSeriesSchemas(insertTabletPlan);
+
       StorageEngine.getInstance().insertTablet(insertTabletPlan);
+
       if (insertTabletPlan.getFailedMeasurements() != null) {
         checkFailedMeasurments(insertTabletPlan);
       }

@@ -34,7 +34,8 @@ import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
@@ -46,14 +47,13 @@ import javax.ws.rs.core.SecurityContext;
 
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
-  private final BasicServiceProvider basicServiceProvider;
+  private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
   private final AuthorizationHandler authorizationHandler;
 
   private final float timePrecision; // the default timestamp precision is ms
 
   public GrafanaApiServiceImpl() throws QueryProcessException {
-    basicServiceProvider = new BasicServiceProvider();
-    authorizationHandler = new AuthorizationHandler(basicServiceProvider);
+    authorizationHandler = new AuthorizationHandler(serviceProvider);
 
     switch (IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()) {
       case "ns":
@@ -75,8 +75,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      PhysicalPlan physicalPlan =
-          basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
+      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql.getSql());
       if (!(physicalPlan instanceof ShowPlan) && !(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
@@ -94,18 +93,18 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
-            basicServiceProvider.genQueryContext(
+            serviceProvider.genQueryContext(
                 queryId,
                 physicalPlan.isDebug(),
                 System.currentTimeMillis(),
                 sql.getSql(),
                 IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
         QueryDataSet queryDataSet =
-            basicServiceProvider.createQueryDataSet(
+            serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
         return QueryDataSetHandler.fillVariablesResult(queryDataSet, physicalPlan);
       } finally {
-        BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();
@@ -135,8 +134,11 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       if (StringUtils.isNotEmpty(expressionRequest.getCondition())) {
         sql += " and " + expressionRequest.getCondition();
       }
+      if (StringUtils.isNotEmpty(expressionRequest.getControl())) {
+        sql += " " + expressionRequest.getControl();
+      }
 
-      PhysicalPlan physicalPlan = basicServiceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
+      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
@@ -146,18 +148,18 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
-            basicServiceProvider.genQueryContext(
+            serviceProvider.genQueryContext(
                 queryId,
                 physicalPlan.isDebug(),
                 System.currentTimeMillis(),
                 sql,
                 IoTDBConstant.DEFAULT_CONNECTION_TIMEOUT_MS);
         QueryDataSet queryDataSet =
-            basicServiceProvider.createQueryDataSet(
+            serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan, 0);
       } finally {
-        BasicServiceProvider.sessionManager.releaseQueryResourceNoExceptions(queryId);
+        ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
     } catch (Exception e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

@@ -81,8 +81,24 @@ public class IoTDBInfluxDB implements InfluxDB {
 
   @Override
   public void write(final String database, final String retentionPolicy, final Point point) {
+    TimeUnit precision = TimeUnit.NANOSECONDS;
+    // Get the precision of point in influxdb by reflection
+    for (java.lang.reflect.Field reflectField : point.getClass().getDeclaredFields()) {
+      reflectField.setAccessible(true);
+      try {
+        if (reflectField.getType().getName().equalsIgnoreCase("java.util.concurrent.TimeUnit")
+            && reflectField.getName().equalsIgnoreCase("precision")) {
+          precision = (TimeUnit) reflectField.get(point);
+        }
+      } catch (IllegalAccessException e) {
+        throw new IllegalArgumentException(e.getMessage());
+      }
+    }
     BatchPoints batchPoints =
-        BatchPoints.database(database).retentionPolicy(retentionPolicy).build();
+        BatchPoints.database(database)
+            .retentionPolicy(retentionPolicy)
+            .precision(precision)
+            .build();
     batchPoints.point(point);
     write(batchPoints);
   }

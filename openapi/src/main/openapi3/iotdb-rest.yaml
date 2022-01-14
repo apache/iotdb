@@ -139,6 +139,8 @@ components:
       properties:
         sql:
           type: string
+        rowLimit:
+          type: Integer
 
     InsertTabletRequest:
       title: InsertTabletRequest
@@ -206,6 +208,8 @@ components:
             type: string
         condition:
           type: string
+        control:
+           type: string
         startTime:
           type: number
         endTime:

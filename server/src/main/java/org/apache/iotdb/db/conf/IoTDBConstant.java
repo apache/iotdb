@@ -78,6 +78,7 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -172,4 +173,10 @@ public class IoTDBConstant {
 
   // compaction
   public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+
+  // client version number
+  public enum ClientVersion {
+    V_0_12,
+    V_0_13
+  }
 }

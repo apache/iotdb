@@ -23,11 +23,13 @@ import { QueryInlineField } from './componments/Form';
 import { SelectValue } from 'componments/SelectValue';
 import { FromValue } from 'componments/FromValue';
 import { WhereValue } from 'componments/WhereValue';
+import { ControlValue } from 'componments/ControlValue';
 
 interface State {
   expression: string[];
   prefixPath: string[];
   condition: string;
+  control: string;
 }
 
 const paths = [''];
@@ -39,6 +41,7 @@ export class QueryEditor extends PureComponent<Props, State> {
     expression: expressions,
     prefixPath: paths,
     condition: '',
+    control: '',
   };
 
   onSelectValueChange = (exp: string[]) => {
@@ -58,6 +61,11 @@ export class QueryEditor extends PureComponent<Props, State> {
     onChange({ ...query, condition: c });
     this.setState({ condition: c });
   };
+  onControlValueChange = (c: string) => {
+    const { onChange, query } = this.props;
+    onChange({ ...query, control: c });
+    this.setState({ control: c });
+  };
 
   onQueryTextChange = (event: ChangeEvent<HTMLInputElement>) => {
     const { onChange, query } = this.props;
@@ -66,7 +74,7 @@ export class QueryEditor extends PureComponent<Props, State> {
 
   render() {
     const query = defaults(this.props.query);
-    const { expression, prefixPath, condition } = query;
+    const { expression, prefixPath, condition, control } = query;
 
     return (
       <>
@@ -91,6 +99,11 @@ export class QueryEditor extends PureComponent<Props, State> {
             <div className="gf-form">
               <QueryInlineField label={'WHERE'}>
                 <WhereValue condition={condition} onChange={this.onWhereValueChange} />
+              </QueryInlineField>
+            </div>
+            <div className="gf-form">
+              <QueryInlineField label={'CONTROL'}>
+                <ControlValue control={control} onChange={this.onControlValueChange} />
               </QueryInlineField>
             </div>
           </>

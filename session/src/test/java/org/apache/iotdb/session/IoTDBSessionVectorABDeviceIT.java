@@ -39,8 +39,6 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-@Ignore
-// TODO: AlignByDevice
 public class IoTDBSessionVectorABDeviceIT {
   private static final String ROOT_SG1_D1 = "root.sg1.d1";
   private static final String ROOT_SG1_D2 = "root.sg1.d2";
@@ -133,27 +131,14 @@ public class IoTDBSessionVectorABDeviceIT {
       assertEquals("s2", dataSet.getColumnNames().get(3));
 
       long time = 1L;
-      int count = 0;
-      int index = 0;
-      String[] deviceArray = {"root.sg1.d2", "root.sg1.d1"};
+      String device = "root.sg1.d1";
       while (dataSet.hasNext()) {
-        count++;
         RowRecord rowRecord = dataSet.next();
         assertEquals(time, rowRecord.getTimestamp());
-        assertEquals(deviceArray[index], rowRecord.getFields().get(0).getBinaryV().toString());
-        if (index == 1) {
-          assertEquals(time + 1, rowRecord.getFields().get(1).getLongV());
-          assertEquals(time + 2, rowRecord.getFields().get(2).getLongV());
-          assertEquals("null", rowRecord.getFields().get(3).getStringValue());
-        } else {
-          assertEquals(time + 3, rowRecord.getFields().get(1).getLongV());
-          assertEquals(time + 4, rowRecord.getFields().get(2).getLongV());
-          assertEquals(time + 5, rowRecord.getFields().get(3).getLongV());
-        }
-        if (count == 100) {
-          count = 0;
-          index++;
-        }
+        assertEquals(device, rowRecord.getFields().get(0).getBinaryV().toString());
+        assertEquals(time + 1, rowRecord.getFields().get(1).getLongV());
+        assertEquals(time + 2, rowRecord.getFields().get(2).getLongV());
+        assertEquals("null", rowRecord.getFields().get(3).getStringValue());
         dataSet.next();
       }
 
@@ -164,6 +149,8 @@ public class IoTDBSessionVectorABDeviceIT {
     }
   }
 
+  // TODO: remove ignore after implementing aggregation
+  @Ignore
   @Test
   public void vectorAggregationAlignByDeviceTest() {
     try {

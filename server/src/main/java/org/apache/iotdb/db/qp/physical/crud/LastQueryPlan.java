@@ -35,7 +35,11 @@ import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import org.apache.thrift.TException;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public class LastQueryPlan extends RawDataQueryPlan {
 
@@ -66,7 +70,7 @@ public class LastQueryPlan extends RawDataQueryPlan {
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList)
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList)
       throws TException {
     throw new TException("unsupported query type: " + getOperatorType());
   }

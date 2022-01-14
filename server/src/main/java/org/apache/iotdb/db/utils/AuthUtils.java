@@ -138,6 +138,10 @@ public class AuthUtils {
         case CREATE_TIMESERIES:
         case DELETE_TIMESERIES:
         case INSERT_TIMESERIES:
+        case CREATE_TRIGGER:
+        case DROP_TRIGGER:
+        case START_TRIGGER:
+        case STOP_TRIGGER:
           return;
         default:
           throw new AuthException(

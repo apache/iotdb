@@ -22,15 +22,17 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.SettleTsFileCallBack;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator.TsFileName;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.SettleTsFileCallBack;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.UpgradeTsFileResourceCallBack;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.DeviceTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.FileTimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.ITimeIndex;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.engine.upgrade.UpgradeTask;
 import org.apache.iotdb.db.exception.PartitionViolationException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.service.UpgradeSevice;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
@@ -67,11 +69,11 @@ import static org.apache.iotdb.tsfile.common.constant.TsFileConstant.TSFILE_SUFF
 @SuppressWarnings("java:S1135") // ignore todos
 public class TsFileResource {
 
-  private static final Logger logger = LoggerFactory.getLogger(TsFileResource.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TsFileResource.class);
 
   private static final Logger DEBUG_LOGGER = LoggerFactory.getLogger("QUERY_DEBUG");
 
-  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig CONFIG = IoTDBDescriptor.getInstance().getConfig();
 
   /** this tsfile */
   private File file;
@@ -87,11 +89,6 @@ public class TsFileResource {
 
   protected TsFileResource next;
 
-  private TsFileProcessor processor;
-
-  public TsFileProcessor getProcessor() {
-    return processor;
-  }
   /** time index */
   protected ITimeIndex timeIndex;
 
@@ -110,18 +107,6 @@ public class TsFileResource {
 
   private boolean isSeq;
 
-  /**
-   * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
-   * process.
-   */
-  private List<IChunkMetadata> chunkMetadataList;
-
-  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
-  private List<ReadOnlyMemChunk> readOnlyMemChunk;
-
-  /** used for unsealed file to get TimeseriesMetadata */
-  private ITimeSeriesMetadata timeSeriesMetadata;
-
   private FSFactory fsFactory = FSFactoryProducer.getFSFactory();
 
   /** generated upgraded TsFile ResourceList used for upgrading v0.11.x/v2 -> 0.12/v3 */
@@ -135,13 +120,6 @@ public class TsFileResource {
 
   private SettleTsFileCallBack settleTsFileCallBack;
 
-  /**
-   * If it is not null, it indicates that the current tsfile resource is a snapshot of the
-   * originTsFileResource, and if so, when we want to used the lock, we should try to acquire the
-   * lock of originTsFileResource
-   */
-  private TsFileResource originTsFileResource;
-
   /** Maximum index of plans executed within this TsFile. */
   protected long maxPlanIndex = Long.MIN_VALUE;
 
@@ -151,6 +129,27 @@ public class TsFileResource {
   private long version = 0;
 
   private long ramSize;
+
+  private TsFileProcessor processor;
+
+  /**
+   * Chunk metadata list of unsealed tsfile. Only be set in a temporal TsFileResource in a query
+   * process.
+   */
+  private Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap = new HashMap<>();
+
+  /** Mem chunk data. Only be set in a temporal TsFileResource in a query process. */
+  private Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap = new HashMap<>();
+
+  /** used for unsealed file to get TimeseriesMetadata */
+  private Map<PartialPath, ITimeSeriesMetadata> pathToTimeSeriesMetadataMap = new HashMap<>();
+
+  /**
+   * If it is not null, it indicates that the current tsfile resource is a snapshot of the
+   * originTsFileResource, and if so, when we want to used the lock, we should try to acquire the
+   * lock of originTsFileResource
+   */
+  private TsFileResource originTsFileResource;
 
   public TsFileResource() {}
 
@@ -163,8 +162,9 @@ public class TsFileResource {
     this.closed = other.closed;
     this.deleted = other.deleted;
     this.isMerging = other.isMerging;
-    this.chunkMetadataList = other.chunkMetadataList;
-    this.readOnlyMemChunk = other.readOnlyMemChunk;
+    this.pathToChunkMetadataListMap = other.pathToChunkMetadataListMap;
+    this.pathToReadOnlyMemChunkMap = other.pathToReadOnlyMemChunkMap;
+    this.pathToTimeSeriesMetadataMap = other.pathToTimeSeriesMetadataMap;
     this.tsFileLock = other.tsFileLock;
     this.fsFactory = other.fsFactory;
     this.maxPlanIndex = other.maxPlanIndex;
@@ -176,21 +176,22 @@ public class TsFileResource {
   public TsFileResource(File file) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
+    this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
   }
 
   /** unsealed TsFile, for writter */
   public TsFileResource(File file, TsFileProcessor processor) {
     this.file = file;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
-    this.timeIndex = config.getTimeIndexLevel().getTimeIndex();
-    this.timeIndexType = (byte) config.getTimeIndexLevel().ordinal();
+    this.timeIndex = CONFIG.getTimeIndexLevel().getTimeIndex();
+    this.timeIndexType = (byte) CONFIG.getTimeIndexLevel().ordinal();
     this.processor = processor;
   }
 
   /** unsealed TsFile, for query */
   public TsFileResource(
+      PartialPath path,
       List<ReadOnlyMemChunk> readOnlyMemChunk,
       List<IChunkMetadata> chunkMetadataList,
       TsFileResource originTsFileResource)
@@ -198,8 +199,24 @@ public class TsFileResource {
     this.file = originTsFileResource.file;
     this.timeIndex = originTsFileResource.timeIndex;
     this.timeIndexType = originTsFileResource.timeIndexType;
-    this.chunkMetadataList = chunkMetadataList;
-    this.readOnlyMemChunk = readOnlyMemChunk;
+    this.pathToReadOnlyMemChunkMap.put(path, readOnlyMemChunk);
+    this.pathToChunkMetadataListMap.put(path, chunkMetadataList);
+    this.originTsFileResource = originTsFileResource;
+    this.version = originTsFileResource.version;
+  }
+
+  /** unsealed TsFile, for query */
+  public TsFileResource(
+      Map<PartialPath, List<ReadOnlyMemChunk>> pathToReadOnlyMemChunkMap,
+      Map<PartialPath, List<IChunkMetadata>> pathToChunkMetadataListMap,
+      TsFileResource originTsFileResource)
+      throws IOException {
+    this.file = originTsFileResource.file;
+    this.timeIndex = originTsFileResource.timeIndex;
+    this.timeIndexType = originTsFileResource.timeIndexType;
+    this.pathToReadOnlyMemChunkMap = pathToReadOnlyMemChunkMap;
+    this.pathToChunkMetadataListMap = pathToChunkMetadataListMap;
+    generatePathToTimeSeriesMetadataMap();
     this.originTsFileResource = originTsFileResource;
     this.version = originTsFileResource.version;
   }
@@ -317,12 +334,12 @@ public class TsFileResource {
     return fsFactory.getFile(file + RESOURCE_SUFFIX).exists();
   }
 
-  public List<IChunkMetadata> getChunkMetadataList() {
-    return new ArrayList<>(chunkMetadataList);
+  public List<IChunkMetadata> getChunkMetadataList(PartialPath seriesPath) {
+    return new ArrayList<>(pathToChunkMetadataListMap.get(seriesPath));
   }
 
-  public List<ReadOnlyMemChunk> getReadOnlyMemChunk() {
-    return readOnlyMemChunk;
+  public List<ReadOnlyMemChunk> getReadOnlyMemChunk(PartialPath seriesPath) {
+    return pathToReadOnlyMemChunkMap.get(seriesPath);
   }
 
   public ModificationFile getModFile() {
@@ -380,6 +397,19 @@ public class TsFileResource {
     return timeIndex.getEndTime(deviceId);
   }
 
+  public long getOrderTime(String deviceId, boolean ascending) {
+    return ascending ? getStartTime(deviceId) : getEndTime(deviceId);
+  }
+
+  public long getFileStartTime() {
+    return timeIndex.getMinStartTime();
+  }
+
+  /** open file's end time is Long.MIN_VALUE */
+  public long getFileEndTime() {
+    return timeIndex.getMaxEndTime();
+  }
+
   public Set<String> getDevices() {
     return timeIndex.getDevices(file.getPath());
   }
@@ -399,11 +429,13 @@ public class TsFileResource {
       modFile = null;
     }
     processor = null;
-    chunkMetadataList = null;
+    pathToChunkMetadataListMap = null;
+    pathToReadOnlyMemChunkMap = null;
+    pathToTimeSeriesMetadataMap = null;
     timeIndex.close();
   }
 
-  TsFileProcessor getUnsealedFileProcessor() {
+  TsFileProcessor getProcessor() {
     return processor;
   }
 
@@ -461,7 +493,7 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(file);
     } catch (IOException e) {
-      logger.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("TsFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
     if (!removeResourceFile()) {
@@ -470,7 +502,7 @@ public class TsFileResource {
     try {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + ModificationFile.FILE_SUFFIX));
     } catch (IOException e) {
-      logger.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("ModificationFile {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
     return true;
@@ -481,7 +513,7 @@ public class TsFileResource {
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX));
       fsFactory.deleteIfExists(fsFactory.getFile(file.getPath() + RESOURCE_SUFFIX + TEMP_SUFFIX));
     } catch (IOException e) {
-      logger.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
+      LOGGER.error("TsFileResource {} cannot be deleted: {}", file, e.getMessage());
       return false;
     }
     return true;
@@ -554,7 +586,11 @@ public class TsFileResource {
   /** @return true if the device is contained in the TsFile and it lives beyond TTL */
   public boolean isSatisfied(
       String deviceId, Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
-    if (!timeIndex.checkDeviceIdExist(deviceId)) {
+    if (deviceId == null) {
+      return isSatisfied(timeFilter, isSeq, ttl, debug);
+    }
+
+    if (!getDevices().contains(deviceId)) {
       if (debug) {
         DEBUG_LOGGER.info(
             "Path: {} file {} is not satisfied because of no device!", deviceId, file);
@@ -567,10 +603,65 @@ public class TsFileResource {
 
     if (!isAlive(endTime, ttl)) {
       if (debug) {
-        DEBUG_LOGGER.info("Path: {} file {} is not satisfied because of ttl!", deviceId, file);
+        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
       }
       return false;
     }
+
+    if (timeFilter != null) {
+      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
+      if (debug && !res) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of time filter!", deviceId, fsFactory);
+      }
+      return res;
+    }
+    return true;
+  }
+
+  /** @return true if the TsFile lives beyond TTL */
+  private boolean isSatisfied(Filter timeFilter, boolean isSeq, long ttl, boolean debug) {
+    long startTime = getFileStartTime();
+    long endTime = closed || !isSeq ? getFileEndTime() : Long.MAX_VALUE;
+
+    if (!isAlive(endTime, ttl)) {
+      if (debug) {
+        DEBUG_LOGGER.info("file {} is not satisfied because of ttl!", file);
+      }
+      return false;
+    }
+
+    if (timeFilter != null) {
+      boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
+      if (debug && !res) {
+        DEBUG_LOGGER.info("Path: file {} is not satisfied because of time filter!", fsFactory);
+      }
+      return res;
+    }
+    return true;
+  }
+
+  /** @return true if the device is contained in the TsFile */
+  public boolean isSatisfied(
+      String deviceId, Filter timeFilter, TsFileFilter fileFilter, boolean isSeq, boolean debug) {
+    if (fileFilter != null && fileFilter.fileNotSatisfy(this)) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of fileFilter!", deviceId, file);
+      }
+      return false;
+    }
+
+    if (!getDevices().contains(deviceId)) {
+      if (debug) {
+        DEBUG_LOGGER.info(
+            "Path: {} file {} is not satisfied because of no device!", deviceId, file);
+      }
+      return false;
+    }
+
+    long startTime = getStartTime(deviceId);
+    long endTime = closed || !isSeq ? getEndTime(deviceId) : Long.MAX_VALUE;
 
     if (timeFilter != null) {
       boolean res = timeFilter.satisfyStartEndTime(startTime, endTime);
@@ -593,16 +684,19 @@ public class TsFileResource {
   }
 
   /**
-   * Get a timeseriesMetadata.
+   * Get a timeseriesMetadata by path.
    *
    * @return TimeseriesMetadata or the first ValueTimeseriesMetadata in VectorTimeseriesMetadata
    */
-  public ITimeSeriesMetadata getTimeSeriesMetadata() {
-    return timeSeriesMetadata;
+  public ITimeSeriesMetadata getTimeSeriesMetadata(PartialPath seriesPath) {
+    if (pathToTimeSeriesMetadataMap.containsKey(seriesPath)) {
+      return pathToTimeSeriesMetadataMap.get(seriesPath);
+    }
+    return null;
   }
 
-  public void setTimeSeriesMetadata(ITimeSeriesMetadata timeSeriesMetadata) {
-    this.timeSeriesMetadata = timeSeriesMetadata;
+  public void setTimeSeriesMetadata(PartialPath path, ITimeSeriesMetadata timeSeriesMetadata) {
+    this.pathToTimeSeriesMetadataMap.put(path, timeSeriesMetadata);
   }
 
   public void setUpgradedResources(List<TsFileResource> upgradedResources) {
@@ -665,7 +759,7 @@ public class TsFileResource {
     try {
       newResource = new TsFileResource(this);
     } catch (IOException e) {
-      logger.error("Cannot create hardlink for {}", file, e);
+      LOGGER.error("Cannot create hardlink for {}", file, e);
       return null;
     }
 
@@ -684,7 +778,7 @@ public class TsFileResource {
       } catch (FileAlreadyExistsException e) {
         // retry a different name if the file is already created
       } catch (IOException e) {
-        logger.error("Cannot create hardlink for {}", file, e);
+        LOGGER.error("Cannot create hardlink for {}", file, e);
         return null;
       }
     }
@@ -729,7 +823,7 @@ public class TsFileResource {
       try {
         serialize();
       } catch (IOException e) {
-        logger.error(
+        LOGGER.error(
             "Cannot serialize TsFileResource {} when updating plan index {}-{}",
             this,
             maxPlanIndex,
@@ -778,9 +872,11 @@ public class TsFileResource {
   }
 
   // ({systemTime}-{versionNum}-{innerMergeNum}-{crossMergeNum}.tsfile)
-  public static int compareFileName(File o1, File o2) {
-    String[] items1 = o1.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
-    String[] items2 = o2.getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+  public static int compareFileName(TsFileResource o1, TsFileResource o2) {
+    String[] items1 =
+        o1.getTsFile().getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
+    String[] items2 =
+        o2.getTsFile().getName().replace(TSFILE_SUFFIX, "").split(FILE_NAME_SEPARATOR);
     long ver1 = Long.parseLong(items1[0]);
     long ver2 = Long.parseLong(items2[0]);
     int cmp = Long.compare(ver1, ver2);
@@ -835,5 +931,14 @@ public class TsFileResource {
     timeIndex = new FileTimeIndex(startTime, endTime);
     timeIndexType = 0;
     return ramSize - timeIndex.calculateRamSize();
+  }
+
+  private void generatePathToTimeSeriesMetadataMap() throws IOException {
+    for (PartialPath path : pathToChunkMetadataListMap.keySet()) {
+      pathToTimeSeriesMetadataMap.put(
+          path,
+          path.generateTimeSeriesMetadata(
+              pathToReadOnlyMemChunkMap.get(path), pathToChunkMetadataListMap.get(path)));
+    }
   }
 }

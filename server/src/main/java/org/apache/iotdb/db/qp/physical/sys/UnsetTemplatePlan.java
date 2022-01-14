@@ -36,11 +36,11 @@ public class UnsetTemplatePlan extends PhysicalPlan {
   String templateName;
 
   public UnsetTemplatePlan() {
-    super(false, Operator.OperatorType.UNSET_TEMPLATE);
+    super(Operator.OperatorType.UNSET_TEMPLATE);
   }
 
   public UnsetTemplatePlan(String prefixPath, String templateName) {
-    super(false, Operator.OperatorType.UNSET_TEMPLATE);
+    super(Operator.OperatorType.UNSET_TEMPLATE);
     this.prefixPath = prefixPath;
     this.templateName = templateName;
   }

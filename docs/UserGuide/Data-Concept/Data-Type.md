@@ -19,7 +19,9 @@
 
 -->
 
-## Data Type
+# Data Type
+
+## Basic Data Type
 
 IoTDB supports the following data types:
 
@@ -43,17 +45,15 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-
-
-Timestamp
+## Timestamp
 
 The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps
 
-* Absolute timestamp
+### Absolute timestamp
 
 Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
 
-<center>
+<div style="text-align: center;">
 
 **Supported formats of DATETIME-INPUT type timestamp**
 
@@ -75,12 +75,12 @@ Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (incl
 |  yyyy.MM.dd HH:mm:ss.SSSZZ   |
 | ISO8601 standard time format |
 
-</center>
+</div>
 
 
 IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestamps. The DATETIME-DISPLAY type can support user-defined time formats. The syntax of the custom time format is shown in the table below:
 
-<center>
+<div style="text-align: center;">
 
 **The syntax of the custom time format**
 
@@ -117,9 +117,9 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 |   '    |       escape for text       |  delimiter   |                                    |
 |   ''   |        single quote         |   literal    |                 '                  |
 
-</center>
+</div>
 
-* Relative timestamp
+### Relative timestamp
 
 Relative time refers to the time relative to the server time ```now()``` and ```DATETIME``` time.
 
@@ -131,7 +131,7 @@ Relative time refers to the time relative to the server time ```now()``` and ```
         
  ```
 
-  <center>
+  <div style="text-align: center;">
 
 **The syntax of the duration unit**
 
@@ -151,7 +151,7 @@ Relative time refers to the time relative to the server time ```now()``` and ```
 |   us   | microsecond |   1us=1000 nanoseconds   |   1us    |
 |   ns   | nanosecond  |     1ns=1 nanosecond     |   1ns    |
 
-  </center>
+  </div>
 
   eg：
 

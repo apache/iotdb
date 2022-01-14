@@ -20,7 +20,7 @@ package org.apache.iotdb.db.query.executor;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -40,10 +40,15 @@ import org.apache.iotdb.tsfile.read.expression.impl.GlobalTimeExpression;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
+import org.apache.iotdb.tsfile.utils.Pair;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static org.apache.iotdb.tsfile.read.query.executor.ExecutorWithTimeGenerator.markFilterdPaths;
@@ -56,6 +61,8 @@ public class RawDataQueryExecutor {
   public RawDataQueryExecutor(RawDataQueryPlan queryPlan) {
     this.queryPlan = queryPlan;
   }
+
+  private static final Logger logger = LoggerFactory.getLogger(RawDataQueryExecutor.class);
 
   /** without filter or with global time filter. */
   public QueryDataSet executeWithoutValueFilter(QueryContext context)
@@ -99,9 +106,19 @@ public class RawDataQueryExecutor {
     }
 
     List<ManagedSeriesReader> readersOfSelectedSeries = new ArrayList<>();
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+
+      // init QueryDataSource cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       List<PartialPath> paths = queryPlan.getDeduplicatedPaths();
       for (PartialPath path : paths) {
         TSDataType dataType = path.getSeriesType();
@@ -123,8 +140,11 @@ public class RawDataQueryExecutor {
                 queryPlan.isAscending());
         readersOfSelectedSeries.add(reader);
       }
+    } catch (Exception e) {
+      logger.error("Meet error when init series reader ", e);
+      throw new QueryProcessException("Meet error when init series reader.", e);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }
@@ -149,7 +169,7 @@ public class RawDataQueryExecutor {
             new ArrayList<>(queryPlan.getDeduplicatedPaths()),
             timestampGenerator.hasOrNode());
     List<IReaderByTimestamp> readersOfSelectedSeries =
-        initSeriesReaderByTimestamp(context, queryPlan, cached);
+        initSeriesReaderByTimestamp(context, queryPlan, cached, timestampGenerator.getTimeFilter());
     return new RawQueryDataSetWithValueFilter(
         queryPlan.getDeduplicatedPaths(),
         queryPlan.getDeduplicatedDataTypes(),
@@ -160,12 +180,22 @@ public class RawDataQueryExecutor {
   }
 
   protected List<IReaderByTimestamp> initSeriesReaderByTimestamp(
-      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached)
+      QueryContext context, RawDataQueryPlan queryPlan, List<Boolean> cached, Filter timeFilter)
       throws QueryProcessException, StorageEngineException {
     List<IReaderByTimestamp> readersOfSelectedSeries = new ArrayList<>();
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance().mergeLock(queryPlan.getDeduplicatedPaths());
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, context, timeFilter);
+
       for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
         if (cached.get(i)) {
           readersOfSelectedSeries.add(null);
@@ -181,7 +211,7 @@ public class RawDataQueryExecutor {
         readersOfSelectedSeries.add(seriesReaderByTimestamp);
       }
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
     return readersOfSelectedSeries;
   }

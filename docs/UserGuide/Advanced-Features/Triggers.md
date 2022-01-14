@@ -170,7 +170,7 @@ Registering a trigger can be carried out as follows:
 4. Use the SQL statement to register the trigger. Assume that the name given to the trigger is `alert-listener-sg1d1s1`.
 
    ```sql
-   CREATE TRIGGER alert-listener-sg1d1s1
+   CREATE TRIGGER `alert-listener-sg1d1s1`
    AFTER INSERT
    ON root.sg1.d1.s1
    AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
@@ -236,7 +236,7 @@ DROP TRIGGER <TRIGGER-NAME>
 The following is an example of a `DROP TRIGGER` statement:
 
 ```sql
-DROP TRIGGER alert-listener-sg1d1s1
+DROP TRIGGER `alert-listener-sg1d1s1`
 ```
 
 
@@ -258,7 +258,7 @@ START TRIGGER <TRIGGER-NAME>
 The following is an example of a `START TRIGGER` statement:
 
 ```sql
-START TRIGGER alert-listener-sg1d1s1
+START TRIGGER `alert-listener-sg1d1s1`
 ```
 
 
@@ -284,7 +284,7 @@ STOP TRIGGER <TRIGGER-NAME>
 The following is an example of a `STOP TRIGGER` statement:
 
 ```sql
-STOP TRIGGER alert-listener-sg1d1s1
+STOP TRIGGER `alert-listener-sg1d1s1`
 ```
 
 
@@ -301,10 +301,10 @@ SHOW TRIGGERS
 
 When a user manages triggers, 4 types of authorities will be involved:
 
-* `CREATE_TRIGGER`: Only users with this authority are allowed to register triggers.
-* `DROP_TRIGGER`: Only users with this authority are allowed to drop triggers.
-* `START_TRIGGER`: Only users with this authority are allowed to start triggers.
-* `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers.
+* `CREATE_TRIGGER`: Only users with this authority are allowed to register triggers. This authority is path dependent.
+* `DROP_TRIGGER`: Only users with this authority are allowed to drop triggers. This authority is path dependent.
+* `START_TRIGGER`: Only users with this authority are allowed to start triggers. This authority is path dependent.
+* `STOP_TRIGGER`: Only users with this authority are allowed to stop triggers. This authority is path dependent.
 
 For more information, refer to [Authority Management Statement](../Operation%20Manual/Administration.md).
 
@@ -830,7 +830,7 @@ You can try this trigger by following the steps below:
 * Use the `CREATE TRIGGER` statement to register the trigger via cli
 
   ```sql
-  CREATE TRIGGER window-avg-alerter
+  CREATE TRIGGER `window-avg-alerter`
   AFTER INSERT
   ON root.sg1.d1.s1
   AS 'org.apache.iotdb.trigger.TriggerExample'

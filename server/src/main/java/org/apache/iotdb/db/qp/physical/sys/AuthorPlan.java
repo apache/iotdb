@@ -68,7 +68,7 @@ public class AuthorPlan extends PhysicalPlan {
       String[] authorizationList,
       PartialPath nodeName)
       throws AuthException {
-    super(false, Operator.OperatorType.AUTHOR);
+    super(Operator.OperatorType.AUTHOR);
     this.authorType = authorType;
     this.userName = userName;
     this.roleName = roleName;
@@ -139,7 +139,7 @@ public class AuthorPlan extends PhysicalPlan {
   }
 
   public AuthorPlan(OperatorType operatorType) throws IOException {
-    super(false, operatorType);
+    super(operatorType);
     setAuthorType(transformOperatorTypeToAuthorType(operatorType));
   }
 

@@ -22,6 +22,9 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 import org.apache.iotdb.db.query.expression.Expression;
+import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
+
+import org.apache.thrift.TException;
 
 import java.time.ZoneId;
 import java.util.HashSet;
@@ -37,6 +40,16 @@ public class UDAFPlan extends UDTFPlan {
   public UDAFPlan(ZoneId zoneId) {
     super(zoneId);
     setOperatorType(OperatorType.UDAF);
+  }
+
+  @Override
+  public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
+      throws TException, MetadataException {
+    TSExecuteStatementResp resp = super.getTSExecuteStatementResp(isJdbcQuery);
+    if (getInnerAggregationPlan().getOperatorType() == OperatorType.AGGREGATION) {
+      resp.setIgnoreTimeStamp(true);
+    }
+    return resp;
   }
 
   public void setExpressionToInnerResultIndexMap(

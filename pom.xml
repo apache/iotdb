@@ -109,6 +109,7 @@
         <module>client-cpp</module>
         <module>metrics</module>
         <module>integration</module>
+        <module>library-udf</module>
     </modules>
     <!-- Properties Management -->
     <properties>
@@ -121,9 +122,9 @@
         <hive2.version>2.3.6</hive2.version>
         <junit.version>4.13.2</junit.version>
         <slf4j.version>1.7.12</slf4j.version>
-        <logback.version>1.2.3</logback.version>
+        <logback.version>1.2.10</logback.version>
         <joda.version>2.9.9</joda.version>
-        <spark.version>2.4.3</spark.version>
+        <spark.version>2.4.5</spark.version>
         <flink.version>1.14.0</flink.version>
         <common.io.version>2.11.0</common.io.version>
         <commons.collections4>4.4</commons.collections4>
@@ -392,7 +393,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.0</version>
+                <version>3.0.2</version>
                 <exclusions>
                     <exclusion>
                         <groupId>jakarta.activation</groupId>
@@ -684,6 +685,8 @@
                             <exclude>apache_iotdb.egg-info/**</exclude>
                             <!-- Java SPI uses files in resources/META-INF/services-->
                             <exclude>**/resources/META-INF/services/**</exclude>
+                            <!-- grafana plugin -->
+                            <exclude>**/yarn.lock</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -732,6 +735,7 @@
                         <sourceDirectory>thrift/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-sync/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>thrift-cluster/target/generated-sources/thrift</sourceDirectory>
+                        <sourceDirectory>thrift-influxdb/target/generated-sources/thrift</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/gen/java</sourceDirectory>
                         <sourceDirectory>openapi/target/generated-sources/java/src/main/java</sourceDirectory>
                         <sourceDirectory>spark-iotdb-connector/src/main/scala</sourceDirectory>

@@ -23,8 +23,8 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
@@ -51,15 +51,15 @@ public class IoTDBGroupByFillWithRangeIT {
         "flush"
       };
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     ConfigFactory.getConfig().setPartitionInterval(1000);
     EnvFactory.getEnv().initBeforeTest();
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     ConfigFactory.getConfig().setPartitionInterval(86400);
     EnvFactory.getEnv().cleanAfterTest();
   }
@@ -164,7 +164,7 @@ public class IoTDBGroupByFillWithRangeIT {
     }
   }
 
-  private void prepareData() {
+  private static void prepareData() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
 

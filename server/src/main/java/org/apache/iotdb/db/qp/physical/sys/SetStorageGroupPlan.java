@@ -35,11 +35,11 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   private PartialPath path;
 
   public SetStorageGroupPlan() {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+    super(Operator.OperatorType.SET_STORAGE_GROUP);
   }
 
   public SetStorageGroupPlan(PartialPath path) {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+    super(Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
 

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
@@ -31,7 +32,14 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
 import java.time.ZoneId;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
@@ -80,11 +88,22 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
         columnForDisplaySet.add(columnForDisplay);
       }
     }
+
+    // Aligned timeseries is not supported in current query for now.
+    // To judge whether an aligned timeseries is used, we need to traversal all the paths in
+    // deduplicatedPaths.
+    for (PartialPath path : getDeduplicatedPaths()) {
+      MeasurementPath measurementPath = (MeasurementPath) path;
+      if (measurementPath.isUnderAlignedEntity()) {
+        throw new MetadataException(
+            "Aligned timeseries is not supported in current query for now.");
+      }
+    }
   }
 
   @Override
   public List<TSDataType> getWideQueryHeaders(
-      List<String> respColumns, List<String> respSgColumns, Boolean isJdbcQuery, BitSet aliasList) {
+      List<String> respColumns, List<String> respSgColumns, boolean isJdbcQuery, BitSet aliasList) {
     List<TSDataType> seriesTypes = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {
       respColumns.add(resultColumns.get(i).getResultColumnName());

@@ -445,6 +445,22 @@ public class IoTDBDescriptor {
         conf.setConcurrentQueryThread(Runtime.getRuntime().availableProcessors());
       }
 
+      conf.setConcurrentSubRawQueryThread(
+          Integer.parseInt(
+              properties.getProperty(
+                  "concurrent_sub_rawQuery_thread",
+                  Integer.toString(conf.getConcurrentSubRawQueryThread()))));
+
+      if (conf.getConcurrentSubRawQueryThread() <= 0) {
+        conf.setConcurrentSubRawQueryThread(Runtime.getRuntime().availableProcessors());
+      }
+
+      conf.setRawQueryBlockingQueueCapacity(
+          Integer.parseInt(
+              properties.getProperty(
+                  "raw_query_blocking_queue_capacity",
+                  Integer.toString(conf.getRawQueryBlockingQueueCapacity()))));
+
       conf.setmManagerCacheSize(
           Integer.parseInt(
               properties
@@ -517,6 +533,24 @@ public class IoTDBDescriptor {
               properties.getProperty(
                   "target_compaction_file_size",
                   Long.toString(conf.getTargetCompactionFileSize()))));
+      conf.setTargetChunkSize(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_chunk_size", Long.toString(conf.getTargetChunkSize()))));
+      conf.setTargetChunkPointNum(
+          Long.parseLong(
+              properties.getProperty(
+                  "target_chunk_point_num", Long.toString(conf.getTargetChunkPointNum()))));
+      conf.setChunkPointNumLowerBoundInCompaction(
+          Long.parseLong(
+              properties.getProperty(
+                  "chunk_size_lower_bound_in_compaction",
+                  Long.toString(conf.getChunkPointNumLowerBoundInCompaction()))));
+      conf.setChunkSizeLowerBoundInCompaction(
+          Long.parseLong(
+              properties.getProperty(
+                  "chunk_size_lower_bound_in_compaction",
+                  Long.toString(conf.getChunkSizeLowerBoundInCompaction()))));
       conf.setMaxCompactionCandidateFileNum(
           Integer.parseInt(
               properties.getProperty(
@@ -688,6 +722,20 @@ public class IoTDBDescriptor {
       if (conf.getMaxPendingWindowEvaluationTasks() <= 0) {
         conf.setMaxPendingWindowEvaluationTasks(64);
       }
+
+      // id table related configuration
+      conf.setDeviceIDTransformationMethod(
+          properties.getProperty(
+              "device_id_transformation_method", conf.getDeviceIDTransformationMethod()));
+
+      conf.setEnableIDTable(
+          Boolean.parseBoolean(
+              properties.getProperty("enable_id_table", String.valueOf(conf.isEnableIDTable()))));
+
+      conf.setEnableIDTableLogFile(
+          Boolean.parseBoolean(
+              properties.getProperty(
+                  "enable_id_table_log_file", String.valueOf(conf.isEnableIDTableLogFile()))));
 
       // mqtt
       if (properties.getProperty(IoTDBConstant.MQTT_HOST_NAME) != null) {
@@ -877,11 +925,29 @@ public class IoTDBDescriptor {
     }
 
     long poolTrimIntervalInMS =
-        Integer.parseInt(
+        Long.parseLong(
             properties.getProperty(
                 "wal_pool_trim_interval_ms", Long.toString(conf.getWalPoolTrimIntervalInMS())));
     if (poolTrimIntervalInMS > 0) {
       conf.setWalPoolTrimIntervalInMS(poolTrimIntervalInMS);
+    }
+
+    long registerBufferSleepIntervalInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_sleep_interval_in_ms",
+                Long.toString(conf.getRegisterBufferSleepIntervalInMs())));
+    if (registerBufferSleepIntervalInMs > 0) {
+      conf.setRegisterBufferSleepIntervalInMs(registerBufferSleepIntervalInMs);
+    }
+
+    long registerBufferRejectThresholdInMs =
+        Long.parseLong(
+            properties.getProperty(
+                "register_buffer_reject_threshold_in_ms",
+                Long.toString(conf.getRegisterBufferRejectThresholdInMs())));
+    if (registerBufferRejectThresholdInMs > 0) {
+      conf.setRegisterBufferRejectThresholdInMs(registerBufferRejectThresholdInMs);
     }
   }
 
@@ -1293,6 +1359,11 @@ public class IoTDBDescriptor {
       conf.setUdfMemoryBudgetInMB(
           (float)
               Math.min(Float.parseFloat(memoryBudgetInMb), 0.2 * conf.getAllocateMemoryForRead()));
+    }
+
+    String groupByFillCacheSizeInMB = properties.getProperty("group_by_fill_cache_size_in_mb");
+    if (groupByFillCacheSizeInMB != null) {
+      conf.setGroupByFillCacheSizeInMB(Float.parseFloat(groupByFillCacheSizeInMB));
     }
 
     String readerTransformerCollectorMemoryProportion =

@@ -20,18 +20,18 @@
 package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.text.DateFormat;
@@ -45,27 +45,26 @@ import static org.junit.Assert.fail;
 public class IoTDBGroupByMonthFillIT {
 
   private static final String TIMESTAMP_STR = "Time";
-  private final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
+  private static final DateFormat df = new SimpleDateFormat("MM/dd/yyyy:HH:mm:ss");
 
-  @Before
-  public void setUp() throws Exception {
+  @BeforeClass
+  public static void setUp() throws Exception {
     df.setTimeZone(TimeZone.getTimeZone("GMT+00:00"));
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
     prepareData();
   }
 
-  @After
-  public void tearDown() throws Exception {
+  @AfterClass
+  public static void tearDown() throws Exception {
     EnvironmentUtils.cleanEnv();
   }
 
   /** Test StartTime: 2020-02-15, EndTime: 2020-11-15 PreviousFill beforeRange = 1mo */
   @Test
   public void previousFillTest1() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       String[] retArray1 = {
         "02/15/2020:02:00:00", "1.0",
@@ -80,7 +79,7 @@ public class IoTDBGroupByMonthFillIT {
         "11/15/2020:02:00:00", null,
       };
 
-      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      ((IoTDBConnection) conn).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -107,9 +106,8 @@ public class IoTDBGroupByMonthFillIT {
   /** Test StartTime: 2020-02-15, EndTime: 2020-11-15 PreviousFill beforeRange = 2mo */
   @Test
   public void previousFillTest2() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       String[] retArray1 = {
         "02/15/2020:02:00:00", "1.0",
@@ -124,12 +122,12 @@ public class IoTDBGroupByMonthFillIT {
         "11/15/2020:02:00:00", "9.0",
       };
 
-      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      ((IoTDBConnection) conn).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
                   + "GROUP BY ([1581732000000, 1607997600000), 1mo) "
-                  + "FILL(ALL[previous, 2mo])");
+                  + "FILL(previous, 2mo)");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
@@ -154,9 +152,8 @@ public class IoTDBGroupByMonthFillIT {
    */
   @Test
   public void LinearFillTest1() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       String[] retArray1 = {
         "02/15/2020:02:00:00", "2.0",
@@ -171,7 +168,7 @@ public class IoTDBGroupByMonthFillIT {
         "11/15/2020:02:00:00", null,
       };
 
-      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      ((IoTDBConnection) conn).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
@@ -206,9 +203,8 @@ public class IoTDBGroupByMonthFillIT {
    */
   @Test
   public void LinearFillTest2() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       String[] retArray1 = {
         "02/15/2020:02:00:00", "2.0",
@@ -223,12 +219,12 @@ public class IoTDBGroupByMonthFillIT {
         "11/15/2020:02:00:00", "11.0",
       };
 
-      ((IoTDBConnection) connection).setTimeZone("GMT+00:00");
+      ((IoTDBConnection) conn).setTimeZone("GMT+00:00");
       boolean hasResultSet =
           statement.execute(
               "select sum(temperature) from root.sg1.d1 "
                   + "GROUP BY ([1581732000000, 1607997600000), 1mo) "
-                  + "FILL(ALL[linear, 2mo, 2mo])");
+                  + "FILL(linear, 2mo, 2mo)");
 
       Assert.assertTrue(hasResultSet);
       int cnt = 0;
@@ -247,10 +243,9 @@ public class IoTDBGroupByMonthFillIT {
     }
   }
 
-  private void prepareData() {
-    try (Connection connection =
-            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
+  private static void prepareData() {
+    try (Connection conn = EnvFactory.getEnv().getConnection();
+        Statement statement = conn.createStatement()) {
 
       // 2020-01-15
       statement.execute(

@@ -19,17 +19,17 @@
 
 -->
 
-## Auto create metadata
+# Auto create metadata
 
 This function is enabled by default, and it can be disabled by setting enabling_auto_create_schema to false.
 
-### Background
+## Background
 
 * Unable to predict entities and measurements exactly, so unable to model them in advance
 
 * Avoid creating metadata manually
 
-### Auto create storage group metadata
+## Auto create storage group metadata
 
 * default\_storage\_group\_level
 
@@ -48,7 +48,7 @@ Illustrated as the following figure:
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://github.com/apache/iotdb-bin-resources/blob/main/docs/UserGuide/Data%20Concept/Auto-Create-MetaData/auto_create_sg_example.png?raw=true" alt="auto create storage group example">
 
-### Auto create time series metadata(specify data type in the frontend)
+## Auto create time series metadata(specify data type in the frontend)
 
 * Users should specify data type when writing:
 
@@ -62,7 +62,7 @@ Illustrated as the following figure:
 
 * Efficient, time series are auto created when inserting data.
 
-### Auto create time series metadata(infer data type in the backend)
+## Auto create time series metadata(infer data type in the backend)
 
 * Just pass string, and the database will infer the data type:
   
@@ -76,7 +76,7 @@ Illustrated as the following figure:
 
 * Since type inference will increase the writing time, the efficiency of auto creating time series metadata through type inference is lower than that of auto creating time series metadata through specifying data type. We recommend users choose specifying data type in the frontend when possible.
 
-#### Type inference
+### Type inference
 
 | Data(String Format) | Format Type | iotdb-engine.properties | Default |
 |:---:|:---|:---|:---|
@@ -91,7 +91,7 @@ Illustrated as the following figure:
 
 * long_string_infer_type is used to avoid precision loss caused by using integer_string_infer_type=FLOAT to infer num > 2^24.
 
-#### Encoding Type
+### Encoding Type
 
 | Data Type | iotdb-engine.properties | Default |
 |:---|:---|:---|

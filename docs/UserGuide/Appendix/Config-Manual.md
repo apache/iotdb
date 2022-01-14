@@ -403,7 +403,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
 |Type|Bool|
 |Default| false |
 |Effective|Only allowed to be modified in first start up|
@@ -453,6 +453,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| Int32 |
 |Default| 700 |
 |Effective|Only allowed to be modified in first start up|
+
+* tag\_attribute\_flush\_interval
+
+|Name| tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
+|:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
+|Type| Int32                                                                                                                                                                                                                                          |
+|Default| 1000                                                                                                                                                                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
 
 * enable\_partial\_insert
 
@@ -525,6 +534,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| Int32 |
 |Default| 0 |
 |Effective|After restart system|
+
+* concurrent\_query\_thread
+
+|Name| concurrent\_query\_thread                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| Int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restart system                                                                                                 |
+
+* concurrent\_sub\_rawQuery\_thread
+
+|Name| concurrent\_sub\_rawQuery\_thread                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| Int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restart system                                                                                                     |
 
 * tsfile\_storage\_fs
 
@@ -728,7 +755,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| whether enable data partition. If disabled, all data belongs to partition 0|
 |Type| BOOLEAN |
 |Default|false |
-|Effective|After restart system|
+|Effective|Only allowed to be modified in first start up|
 
 * partition\_interval
 
@@ -737,6 +764,42 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Description| time range for partitioning data inside each storage group, the unit is second|
 |Type| LONG |
 |Default| 604800 |
+|Effective|Only allowed to be modified in first start up|
+
+* virtual\_storage\_group\_num
+
+|Name| virtual\_storage\_group\_num |
+|:---:|:---|
+|Description| number of virtual storage groups per user-defined storage group, a virtual storage group is the unit of parallelism in memory as all ingestions in one virtual storage group are serialized, recommended value is [virtual storage group number] = [CPU core number] / [user-defined storage group number]|
+|Type| LONG |
+|Default| 1 |
+|Effective|Only allowed to be modified in first start up|
+
+* enable\_id\_table
+
+|Name| enable\_id\_table |
+|:---:|:---|
+|Description| whether to use id table. ATTENTION: id table is not compatible with alias |
+|Type| bool |
+|Default| false |
+|Effective|After restart system|
+
+* device\_id\_transformation\_method
+
+|Name| device\_id\_transformation\_method |
+|:---:|:---|
+|Description| the method to transform device path to device id, can be 'Plain' or 'SHA256' |
+|Type| string |
+|Default| Plain |
+|Effective|Only allowed to be modified in first start up|
+
+* enable\_id\_table\_log\_file
+
+|Name| enable\_id\_table\_log\_file |
+|:---:|:---|
+|Description| whether create mapping file of id table. This file can map device id in tsfile to device path |
+|Type| bool |
+|Default| false |
 |Effective|After restart system|
 
 ## Enable GC log
