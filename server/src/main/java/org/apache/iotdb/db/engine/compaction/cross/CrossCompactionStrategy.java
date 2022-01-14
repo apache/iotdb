@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -52,7 +52,7 @@ public enum CrossCompactionStrategy {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionTask(
+        return new RewriteCrossSpaceCompactionTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
@@ -77,7 +77,7 @@ public enum CrossCompactionStrategy {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionRecoverTask(
+        return new RewriteCrossCompactionRecoverTask(
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
@@ -101,7 +101,7 @@ public enum CrossCompactionStrategy {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
-        return new InplaceCompactionSelector(
+        return new RewriteCrossSpaceCompactionSelector(
             logicalStorageGroupName,
             virtualGroupId,
             storageGroupDir,

@@ -40,13 +40,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
+public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompactionTask {
 
   private static final Logger logger =
       LoggerFactory.getLogger(AbstractCrossSpaceCompactionRecoverTask.class);
   private File logFile;
 
-  public InplaceCompactionRecoverTask(
+  public RewriteCrossCompactionRecoverTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
@@ -191,8 +191,8 @@ public class InplaceCompactionRecoverTask extends InplaceCompactionTask {
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask other) {
-    if (other instanceof InplaceCompactionRecoverTask) {
-      return logFile.equals(((InplaceCompactionRecoverTask) other).logFile);
+    if (other instanceof RewriteCrossCompactionRecoverTask) {
+      return logFile.equals(((RewriteCrossCompactionRecoverTask) other).logFile);
     }
     return false;
   }

@@ -52,7 +52,7 @@ import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.Inplac
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_TARGET_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
 
-public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
+public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   private static final Logger logger = LoggerFactory.getLogger("COMPACTION");
   protected String storageGroupDir;
@@ -76,7 +76,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   String taskName;
   States states = States.START;
 
-  public InplaceCompactionTask(
+  public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
@@ -131,6 +131,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     long startTime = System.currentTimeMillis();
     targetTsfileResourceList =
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
+
     if (targetTsfileResourceList.isEmpty()
         && selectedSeqTsFileResourceList.isEmpty()
         && selectedUnSeqTsFileResourceList.isEmpty()) {
@@ -159,9 +160,10 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     releaseReadAndLockWrite(selectedSeqTsFileResourceList);
     releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
 
-    combineModesFiles();
+    combineModsFiles();
     try {
-      tsFileManager.writeLockWithTimeout("size-tired compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
+      tsFileManager.writeLockWithTimeout(
+          "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
       getWriteLockOfManager = true;
     } catch (WriteLockFailedException e) {
       // if current compaction thread couldn't get write lock
@@ -178,7 +180,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
     deleteOldFiles(selectedSeqTsFileResourceList);
     deleteOldFiles(selectedUnSeqTsFileResourceList);
-    removeMergingModification();
+    removeCompactionModification();
 
     updateTsFileResource();
     cleanUp();
@@ -188,7 +190,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
         (System.currentTimeMillis() - startTime) / 1000);
   }
 
-  private void updateTsFileResource() {
+  private void updateTsFileResource() throws IOException {
     for (TsFileResource resource : selectedSeqTsFileResourceList) {
       TsFileResourceManager.getInstance().removeTsFileResource(resource);
     }
@@ -196,8 +198,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
       TsFileResourceManager.getInstance().removeTsFileResource(resource);
     }
     for (TsFileResource targetTsFileResource : targetTsfileResourceList) {
-      seqTsFileResourceList.insertBefore(
-          selectedSeqTsFileResourceList.get(0), targetTsFileResource);
+      seqTsFileResourceList.keepOrderInsert(targetTsFileResource);
       TsFileResourceManager.getInstance().registerSealedTsFileResource(targetTsFileResource);
     }
     for (TsFileResource resource : selectedSeqTsFileResourceList) {
@@ -208,7 +209,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     }
   }
 
-  private void combineModesFiles() throws IOException {
+  private void combineModsFiles() throws IOException {
     Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
     for (TsFileResource tsFileResource : selectedSeqTsFileResourceList) {
       seqFileInfoMap.put(
@@ -288,6 +289,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   void cleanUp() throws IOException {
     logger.info("{} is cleaning up", taskName);
+    // TODO: must have big problem
     for (TsFileResource tsFileResource : targetTsfileResourceList) {
       tsFileResource.getTsFile().delete();
       tsFileResource.setMerging(false);
@@ -331,16 +333,13 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     ABORTED
   }
 
-  private void removeMergingModification() {
+  private void removeCompactionModification() {
     try {
       for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
         ModificationFile.getCompactionMods(seqFile).remove();
       }
       for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
         ModificationFile.getCompactionMods(unseqFile).remove();
-      }
-      for (TsFileResource targetFile : targetTsfileResourceList) {
-        ModificationFile.getCompactionMods(targetFile).remove();
       }
     } catch (IOException e) {
       logger.error("{} cannot remove merging modification ", fullStorageGroupName, e);
@@ -350,12 +349,6 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   private void updateMergeModification(
       TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles) {
     try {
-      // remove old modifications and write modifications generated during merge
-      targetFile.removeModFile();
-      ModificationFile compactionModificationFile = ModificationFile.getCompactionMods(targetFile);
-      for (Modification modification : compactionModificationFile.getModifications()) {
-        targetFile.getModFile().write(modification);
-      }
       // write mods in the seq file
       if (seqFile != null) {
         ModificationFile seqCompactionModificationFile =
@@ -389,8 +382,8 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   @Override
   public boolean equalsOtherTask(AbstractCompactionTask other) {
-    if (other instanceof InplaceCompactionTask) {
-      InplaceCompactionTask otherTask = (InplaceCompactionTask) other;
+    if (other instanceof RewriteCrossSpaceCompactionTask) {
+      RewriteCrossSpaceCompactionTask otherTask = (RewriteCrossSpaceCompactionTask) other;
       if (!otherTask.selectedSeqTsFileResourceList.equals(selectedSeqTsFileResourceList)
           || !otherTask.selectedUnSeqTsFileResourceList.equals(selectedUnSeqTsFileResourceList)) {
         return false;

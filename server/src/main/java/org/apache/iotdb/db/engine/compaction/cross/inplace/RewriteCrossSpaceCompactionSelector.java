@@ -41,12 +41,12 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
 
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public InplaceCompactionSelector(
+  public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupId,
       String storageGroupDir,
