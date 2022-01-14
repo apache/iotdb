@@ -244,6 +244,9 @@ public class AbstractCompactionTest {
     seqResources.clear();
     unseqResources.clear();
     IoTDB.metaManager.clear();
+    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
+    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
     EnvironmentUtils.cleanEnv();
     if (SEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(SEQ_DIRS);
@@ -251,9 +254,6 @@ public class AbstractCompactionTest {
     if (UNSEQ_DIRS.exists()) {
       FileUtils.deleteDirectory(UNSEQ_DIRS);
     }
-    IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(oldTargetChunkSize);
-    TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldChunkGroupSize);
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointSize);
   }
 
   private void removeFiles() throws IOException {
