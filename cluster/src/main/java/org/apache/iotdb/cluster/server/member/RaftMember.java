@@ -69,10 +69,8 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.IoTThreadFactory;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.storagegroup.TsFileProcessor;
 import org.apache.iotdb.db.exception.BatchProcessException;
 import org.apache.iotdb.db.exception.IoTDBException;
-import org.apache.iotdb.db.exception.WriteProcessRejectException;
 import org.apache.iotdb.db.exception.metadata.DuplicatedTemplateException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -83,7 +81,6 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.executor.PlanExecutor;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.sys.LogPlan;
-import org.apache.iotdb.db.rescon.SystemInfo;
 import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
@@ -1015,10 +1012,7 @@ public abstract class RaftMember implements RaftMemberMBean {
             IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime
             > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          return StatusUtils.INTERNAL_ERROR;
-          //          throw new WriteProcessRejectException(
-          //                  "System rejected over " + (System.currentTimeMillis() - startTime) +
-          // "ms");
+          return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();
@@ -1034,28 +1028,6 @@ public abstract class RaftMember implements RaftMemberMBean {
       return handleLogExecutionException(log, IOUtils.getRootCause(e));
     }
     return StatusUtils.TIME_OUT;
-  }
-
-  /** block insertion if the insertion is rejected by memory control */
-  public static void blockInsertionIfReject(TsFileProcessor tsFileProcessor)
-      throws WriteProcessRejectException {
-    long startTime = System.currentTimeMillis();
-    while (SystemInfo.getInstance().isRejected()) {
-      //      if (tsFileProcessor != null && tsFileProcessor.shouldFlush()) {
-      //        break;
-      //      }
-      try {
-        TimeUnit.MILLISECONDS.sleep(
-            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime
-            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          throw new WriteProcessRejectException(
-              "System rejected over " + (System.currentTimeMillis() - startTime) + "ms");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
   }
 
   private TSStatus processPlanLocallyV2(PhysicalPlan plan) {
@@ -1116,10 +1088,7 @@ public abstract class RaftMember implements RaftMemberMBean {
             IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
         if (System.currentTimeMillis() - startTime
             > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
-          return StatusUtils.INTERNAL_ERROR;
-          //          throw new WriteProcessRejectException(
-          //                  "System rejected over " + (System.currentTimeMillis() - startTime) +
-          // "ms");
+          return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
         }
       } catch (InterruptedException e) {
         Thread.currentThread().interrupt();

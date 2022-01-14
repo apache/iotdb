@@ -143,13 +143,13 @@ public class ClusterConfig {
    * If leader finds too many uncommitted raft logs, raft group leader will wait for a short period
    * of time, and then append the raft log
    */
-  private int UnCommittedRaftLogNumForRejectThreshold = 5000;
+  private int UnCommittedRaftLogNumForRejectThreshold = 500;
 
   /**
    * If followers find too many committed raft logs have not been applied, followers will reject the
    * raft log sent by leader
    */
-  private int UnAppliedRaftLogNumForRejectThreshold = 5000;
+  private int UnAppliedRaftLogNumForRejectThreshold = 500;
 
   /**
    * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The

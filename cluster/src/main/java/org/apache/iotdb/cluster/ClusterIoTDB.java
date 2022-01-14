@@ -295,16 +295,18 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
       config.setRpcAddress(clusterConfig.getInternalIp());
     }
     // set the memory allocated for raft log of each raft log manager
-    clusterConfig.setMaxMemorySizeForRaftLog(
-        (long)
-            (config.getAllocateMemoryForWrite()
-                * clusterConfig.getRaftLogMemoryProportion()
-                / clusterConfig.getReplicationNum()));
-    // calculate remaining memory allocated for write process
-    config.setAllocateMemoryForWrite(
-        (long)
-            (config.getAllocateMemoryForWrite()
-                * (1 - clusterConfig.getRaftLogMemoryProportion())));
+    if (clusterConfig.getReplicationNum() > 1) {
+      clusterConfig.setMaxMemorySizeForRaftLog(
+          (long)
+              (config.getAllocateMemoryForWrite()
+                  * clusterConfig.getRaftLogMemoryProportion()
+                  / clusterConfig.getReplicationNum()));
+      // calculate remaining memory allocated for write process
+      config.setAllocateMemoryForWrite(
+          (long)
+              (config.getAllocateMemoryForWrite()
+                  * (1 - clusterConfig.getRaftLogMemoryProportion())));
+    }
     return true;
   }
 
