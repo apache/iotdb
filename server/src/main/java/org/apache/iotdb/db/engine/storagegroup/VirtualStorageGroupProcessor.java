@@ -271,9 +271,7 @@ public class VirtualStorageGroupProcessor {
    */
   private String insertWriteLockHolder = "";
 
-  private ScheduledExecutorService timedCompactionScheduleTask =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.COMPACTION_SCHEDULE.getName());
+  private ScheduledExecutorService timedCompactionScheduleTask;
 
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
@@ -426,7 +424,12 @@ public class VirtualStorageGroupProcessor {
 
     // start trim task at last
     ScheduledExecutorService executorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.WAL_TRIM.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),
@@ -542,6 +545,14 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
+    timedCompactionScheduleTask =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.COMPACTION_SCHEDULE.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
+
     CompactionTaskManager.getInstance()
         .submitTask(
             logicalStorageGroupName + "-" + virtualStorageGroupId,
