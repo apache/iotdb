@@ -19,7 +19,8 @@
 
 -->
 
-# TimestampRepair
+# Data Repairing
+## TimestampRepair
 
 This function is used for timestamp repair.
 According to the given standard time interval,
@@ -40,9 +41,9 @@ this function will use the **median**, **mode** or **cluster** of the time inter
 
 **Output Series:** Output a single series. The type is the same as the input. This series is the input after repairing.
 
-## Examples
+### Examples
 
-### Manually Specify the Standard Time Interval
+#### Manually Specify the Standard Time Interval
 
 When `interval` is given, this function repairs according to the given standard time interval.
 
@@ -91,7 +92,7 @@ Output series:
 +-----------------------------+----------------------------------------------------+
 ```
 
-### Automatically Estimate the Standard Time Interval
+#### Automatically Estimate the Standard Time Interval
 
 When `interval` is default, this function estimates the standard time interval.
 
@@ -119,9 +120,9 @@ Output series:
 |2021-07-01T12:01:30.000+08:00|                            10.0|
 +-----------------------------+--------------------------------+
 ```
-# ValueFill
+## ValueFill
 
-## Usage
+### Usage
 This function is used to impute time series. Several methods are supported.
 
 **Name**: ValueFill
@@ -136,9 +137,9 @@ This function is used to impute time series. Several methods are supported.
 
 **Note:** AR method use AR(1) model. Input value should be auto-correlated, or the function would output a single point (0, 0.0).
 
-## Examples
+### Examples
 
-### Fill with linear
+#### Fill with linear
 
 When `method` is "linear" or the default, Screen method is used to impute.
 
@@ -196,7 +197,7 @@ Output series:
 +-----------------------------+-----------------------+
 ```
 
-### Previous Fill
+#### Previous Fill
 
 When `method` is "previous", previous method is used.
 
@@ -230,9 +231,9 @@ Output series:
 +-----------------------------+-------------------------------------------+
 ```
 
-# ValueRepair
+## ValueRepair
 
-## Usage
+### Usage
 This function is used to repair the value of the time series.
 Currently, two methods are supported:
 **Screen** is a method based on speed threshold, which makes all speeds meet the threshold requirements under the premise of minimum changes;
@@ -255,9 +256,9 @@ Currently, two methods are supported:
 
 **Note:** `NaN` will be filled with linear interpolation before repairing.
 
-## Examples
+### Examples
 
-### Repair with Screen
+#### Repair with Screen
 
 When `method` is 'Screen' or the default, Screen method is used.
 
@@ -315,7 +316,7 @@ Output series:
 +-----------------------------+----------------------------+
 ```
 
-### Repair with LsGreedy
+#### Repair with LsGreedy
 When `method` is 'LsGreedy', LsGreedy method is used.
 
 Input series is the same as above, the SQL for query is shown below:
