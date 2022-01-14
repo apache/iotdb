@@ -19,6 +19,11 @@
 
 package org.apache.iotdb.library.dquality;
 
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
@@ -28,20 +33,13 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-
 import static org.junit.Assert.fail;
 
-public class DQualityTests {
+public class DMatchTests {
   protected static final int ITERATION_TIMES = 10_000;
 
   @BeforeClass
@@ -114,13 +112,15 @@ public class DQualityTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function completeness as 'org.apache.iotdb.library.dquality.UDTFCompleteness'");
+          "create function completeness as 'org.apache.iotdb.library.dmatch.UDAFCov'");
       statement.execute(
-          "create function timeliness as 'org.apache.iotdb.library.dquality.UDTFTimeliness'");
+          "create function timeliness as 'org.apache.iotdb.library.dmatch.UDAFDtw'");
       statement.execute(
-          "create function consistency as 'org.apache.iotdb.library.dquality.UDTFConsistency'");
+          "create function consistency as 'org.apache.iotdb.library.dmatch.UDAFPearson'");
       statement.execute(
-          "create function validity as 'org.apache.iotdb.library.dquality.UDTFValidity'");
+              "create function validity as 'org.apache.iotdb.library.dmatch.UDTFPtnSym'");
+      statement.execute(
+          "create function validity as 'org.apache.iotdb.library.dmatch.UDTFXcorr'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -136,8 +136,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testCompleteness1() {
-    String sqlStr = "select completeness(d1.s1) from root.vehicle";
+  public void testCov1() {
+    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -151,8 +151,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testCompleteness2() {
-    String sqlStr = "select completeness(d1.s2) from root.vehicle";
+  public void testCov2() {
+    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -166,8 +166,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testCompleteness3() {
-    String sqlStr = "select completeness(d2.s1) from root.vehicle";
+  public void testCov3() {
+    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -181,8 +181,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testCompleteness4() {
-    String sqlStr = "select completeness(d2.s2) from root.vehicle";
+  public void testCov4() {
+    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -196,8 +196,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testTimeliness1() {
-    String sqlStr = "select timeliness(d1.s1) from root.vehicle";
+  public void testDtw1() {
+    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -211,8 +211,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testTimeliness2() {
-    String sqlStr = "select timeliness(d1.s2) from root.vehicle";
+  public void testDtw2() {
+    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -226,8 +226,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testTimeliness3() {
-    String sqlStr = "select timeliness(d2.s1) from root.vehicle";
+  public void testDtw3() {
+    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -241,8 +241,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testTimeliness4() {
-    String sqlStr = "select timeliness(d2.s2) from root.vehicle";
+  public void testDtw4() {
+    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -256,8 +256,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testConsistency1() {
-    String sqlStr = "select consistency(d1.s1) from root.vehicle";
+  public void testPearson1() {
+    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -271,8 +271,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testConsistency2() {
-    String sqlStr = "select consistency(d1.s2) from root.vehicle";
+  public void testPearson2() {
+    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -286,8 +286,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testConsistency3() {
-    String sqlStr = "select consistency(d2.s1) from root.vehicle";
+  public void testPearson3() {
+    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -301,8 +301,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testConsistency4() {
-    String sqlStr = "select consistency(d2.s2) from root.vehicle";
+  public void testPearson4() {
+    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -316,8 +316,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testValidity1() {
-    String sqlStr = "select validity(d1.s1) from root.vehicle";
+  public void testPthSym1() {
+    String sqlStr = "select ptnsym(d2.s1, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -331,8 +331,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testValidity2() {
-    String sqlStr = "select validity(d1.s2) from root.vehicle";
+  public void testPtnSym2() {
+    String sqlStr = "select ptnsym(d1.s2, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -346,8 +346,8 @@ public class DQualityTests {
   }
 
   @Test
-  public void testValidity3() {
-    String sqlStr = "select validity(d2.s1) from root.vehicle";
+  public void testPtnSym3() {
+    String sqlStr = "select ptnsym(d2.s1, 'window'='5', 'threshold'='0') from";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -361,12 +361,72 @@ public class DQualityTests {
   }
 
   @Test
-  public void testValidity4() {
-    String sqlStr = "select validity(d2.s2) from root.vehicle";
+  public void testPtnSym4() {
+    String sqlStr = "select ptnsym(d2.s2, 'window'='5', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      Double result = Double.parseDouble(resultSet.getString(1));
+      assert result >= -0.0D && result <= 1.0D;
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testXCorr1() {
+    String sqlStr = "select xcorr(d1.s1,d1.s2) from root.vehicle";
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      Double result = Double.parseDouble(resultSet.getString(1));
+      assert result >= -0.0D && result <= 1.0D;
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testXCorr2() {
+    String sqlStr = "select xcorr(d1.s1, d1.s2) from root.vehicle";
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      Double result = Double.parseDouble(resultSet.getString(1));
+      assert result >= -0.0D && result <= 1.0D;
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testXCorr3() {
+    String sqlStr = "select xcorr(d1.s1, d1.s2) from root.vehicle";
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      Double result = Double.parseDouble(resultSet.getString(1));
+      assert result >= -0.0D && result <= 1.0D;
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testXCorr4() {
+    String sqlStr = "select xcorr(d1.s1,d1.s2) from root.vehicle";
+    try (Connection connection =
+                 DriverManager.getConnection(
+                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
       assert result >= -0.0D && result <= 1.0D;
