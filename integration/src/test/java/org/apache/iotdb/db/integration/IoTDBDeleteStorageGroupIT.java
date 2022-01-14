@@ -113,7 +113,7 @@ public class IoTDBDeleteStorageGroupIT {
   @Test(expected = IoTDBSQLException.class)
   public void deleteNonExistStorageGroup() throws Exception {
     if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
-      return;
+      throw new IoTDBSQLException("Not supported");
     }
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

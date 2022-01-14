@@ -530,4 +530,14 @@ public class SyncClientAdaptor {
     client.onSnapshotApplied(header, slots, handler);
     return handler.getResult(ClusterConstant.getWriteOperationTimeoutMS());
   }
+
+  public static Map<String, Integer> countDeviceGroupByLevel(
+      AsyncDataClient client, RaftNode header, List<String> paths, int level)
+      throws TException, InterruptedException {
+    AtomicReference<Map<String, Integer>> result = new AtomicReference<>();
+    GenericHandler<Map<String, Integer>> handler = new GenericHandler<>(client.getNode(), result);
+
+    client.countDeviceGroupByLevel(header, paths, level, handler);
+    return handler.getResult(ClusterConstant.getReadOperationTimeoutMS());
+  }
 }

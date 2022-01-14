@@ -458,4 +458,14 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
       throw new TApplicationException(e.getMessage());
     }
   }
+
+  @Override
+  public Map<String, Integer> countDeviceGroupByLevel(
+      RaftNode header, List<String> paths, int level) throws TException {
+    try {
+      return dataGroupMember.getLocalQueryExecutor().countTimeseriesGroupByLevel(paths, level);
+    } catch (MetadataException e) {
+      throw new TApplicationException(e.getMessage());
+    }
+  }
 }

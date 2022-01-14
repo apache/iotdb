@@ -91,6 +91,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import static org.apache.iotdb.cluster.utils.ClusterQueryUtils.getAssembledPathFromRequest;
@@ -1060,5 +1061,27 @@ public class LocalQueryExecutor {
       SerializeUtils.serializeTVPair(timeValuePair.right, dataOutputStream);
     }
     return ByteBuffer.wrap(byteArrayOutputStream.toByteArray());
+  }
+
+  public Map<String, Integer> countTimeseriesGroupByLevel(List<String> paths, int level)
+      throws MetadataException, CheckConsistencyException {
+    dataGroupMember.syncLeaderWithConsistencyCheck(false);
+    Map<String, Integer> fullResult = new HashMap<>();
+    for (String path : paths) {
+      Map<PartialPath, Integer> partialResult =
+          getCMManager().getMeasurementCountGroupByLevel(new PartialPath(path), level);
+      for (Entry<PartialPath, Integer> entry : partialResult.entrySet()) {
+        fullResult.compute(
+            entry.getKey().getFullPath(),
+            (k, v) -> {
+              if (v == null) {
+                return entry.getValue();
+              } else {
+                return v + entry.getValue();
+              }
+            });
+      }
+    }
+    return fullResult;
   }
 }

@@ -491,4 +491,19 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
       resultHandler.onError(e);
     }
   }
+
+  @Override
+  public void countDeviceGroupByLevel(
+      RaftNode header,
+      List<String> paths,
+      int level,
+      AsyncMethodCallback<Map<String, Integer>> resultHandler)
+      throws TException {
+    try {
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().countTimeseriesGroupByLevel(paths, level));
+    } catch (MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
 }

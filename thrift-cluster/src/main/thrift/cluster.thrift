@@ -475,6 +475,7 @@ service TSDataService extends RaftService {
   binary peekNextNotNullValue(1: RaftNode header, 2: long executorId, 3: long startTime, 4: long
   endTime)
 
+  map<string, int> countDeviceGroupByLevel(1: RaftNode header, 2: list<string> paths, 3: int level)
 }
 
 service TSMetaService extends RaftService {

@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.sql;
 
-import java.sql.Types;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.qp.Planner;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -40,16 +39,20 @@ import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -59,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.apache.iotdb.db.metadata.MManager.TIME_SERIES_TREE_HEADER;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -1369,57 +1373,57 @@ public abstract class Cases {
 
   private static String[] alignByDeviceSqls =
       new String[] {
-          "SET STORAGE GROUP TO root.vehicle",
-          "SET STORAGE GROUP TO root.other",
-          "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
-          "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
-          "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-          "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
-          "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
-          "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
-          "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
-          "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
-          "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
-          "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
-          "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
-          "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
-          "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
-          "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
-          "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
-          "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
-          "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
-          "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
-          "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
-          "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
-          "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
-          "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
-          "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
-          "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
-          "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
-          "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
-          "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
-          "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
-          "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
-          "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
-          "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
-          "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
-          "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
-          "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
-          "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
-          "insert into root.vehicle.d0(timestamp,s3) values(60,'aaaaa')",
-          "insert into root.vehicle.d0(timestamp,s3) values(70,'bbbbb')",
-          "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
-          "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
-          "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
-          "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
-          "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
-          "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
-          "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
-          "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
-          "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
+        "SET STORAGE GROUP TO root.vehicle",
+        "SET STORAGE GROUP TO root.other",
+        "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT64, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "CREATE TIMESERIES root.vehicle.d0.s3 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d0.s4 WITH DATATYPE=BOOLEAN, ENCODING=PLAIN",
+        "CREATE TIMESERIES root.vehicle.d1.s0 WITH DATATYPE=INT32, ENCODING=RLE",
+        "CREATE TIMESERIES root.other.d1.s0 WITH DATATYPE=FLOAT, ENCODING=RLE",
+        "insert into root.vehicle.d0(timestamp,s0) values(1,101)",
+        "insert into root.vehicle.d0(timestamp,s0) values(2,198)",
+        "insert into root.vehicle.d0(timestamp,s0) values(100,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(101,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(102,80)",
+        "insert into root.vehicle.d0(timestamp,s0) values(103,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(104,90)",
+        "insert into root.vehicle.d0(timestamp,s0) values(105,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(106,99)",
+        "insert into root.vehicle.d0(timestamp,s0) values(2,10000)",
+        "insert into root.vehicle.d0(timestamp,s0) values(50,10000)",
+        "insert into root.vehicle.d0(timestamp,s0) values(1000,22222)",
+        "insert into root.vehicle.d0(timestamp,s1) values(1,1101)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2,198)",
+        "insert into root.vehicle.d0(timestamp,s1) values(100,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(101,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(102,180)",
+        "insert into root.vehicle.d0(timestamp,s1) values(103,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(104,190)",
+        "insert into root.vehicle.d0(timestamp,s1) values(105,199)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2,40000)",
+        "insert into root.vehicle.d0(timestamp,s1) values(50,50000)",
+        "insert into root.vehicle.d0(timestamp,s1) values(1000,55555)",
+        "insert into root.vehicle.d0(timestamp,s1) values(2000-01-01T08:00:00+08:00, 100)",
+        "insert into root.vehicle.d0(timestamp,s2) values(1000,55555)",
+        "insert into root.vehicle.d0(timestamp,s2) values(2,2.22)",
+        "insert into root.vehicle.d0(timestamp,s2) values(3,3.33)",
+        "insert into root.vehicle.d0(timestamp,s2) values(4,4.44)",
+        "insert into root.vehicle.d0(timestamp,s2) values(102,10.00)",
+        "insert into root.vehicle.d0(timestamp,s2) values(105,11.11)",
+        "insert into root.vehicle.d0(timestamp,s2) values(1000,1000.11)",
+        "insert into root.vehicle.d0(timestamp,s3) values(60,'aaaaa')",
+        "insert into root.vehicle.d0(timestamp,s3) values(70,'bbbbb')",
+        "insert into root.vehicle.d0(timestamp,s3) values(80,'ccccc')",
+        "insert into root.vehicle.d0(timestamp,s3) values(101,'ddddd')",
+        "insert into root.vehicle.d0(timestamp,s3) values(102,'fffff')",
+        "insert into root.vehicle.d0(timestamp,s3) values(2000-01-01T08:00:00+08:00, 'good')",
+        "insert into root.vehicle.d0(timestamp,s4) values(100, false)",
+        "insert into root.vehicle.d0(timestamp,s4) values(100, true)",
+        "insert into root.vehicle.d1(timestamp,s0) values(1,999)",
+        "insert into root.vehicle.d1(timestamp,s0) values(1000,888)",
+        "insert into root.other.d1(timestamp,s0) values(2, 3.14)",
       };
 
   @Test
@@ -1449,7 +1453,7 @@ public abstract class Cases {
                 "1000,root.vehicle.d1,888,null,null,null,null,"));
 
     for (Statement statement : readStatements) {
-      try  {
+      try {
         boolean hasResultSet = statement.execute("select * from root.vehicle.** align by device");
         Assert.assertTrue(hasResultSet);
 
@@ -1460,13 +1464,13 @@ public abstract class Cases {
                   resultSetMetaData,
                   "Time,Device,s0,s1,s2,s3,s4",
                   new int[] {
-                      Types.TIMESTAMP,
-                      Types.VARCHAR,
-                      Types.INTEGER,
-                      Types.BIGINT,
-                      Types.FLOAT,
-                      Types.VARCHAR,
-                      Types.BOOLEAN
+                    Types.TIMESTAMP,
+                    Types.VARCHAR,
+                    Types.INTEGER,
+                    Types.BIGINT,
+                    Types.FLOAT,
+                    Types.VARCHAR,
+                    Types.BOOLEAN
                   });
 
           int cnt = 0;
@@ -1506,5 +1510,104 @@ public abstract class Cases {
       actualIndexToExpectedIndexList.add(typeIndex);
     }
     return actualIndexToExpectedIndexList;
+  }
+
+  // --------------------------- Metadata Tests -----------------------
+
+  private String[] metadataSqls =
+      new String[] {
+        "SET STORAGE GROUP TO root.ln.wf01.wt01",
+        "SET STORAGE GROUP TO root.ln.wf01.wt02",
+        "SET STORAGE GROUP TO root.ln1.wf01.wt01",
+        "SET STORAGE GROUP TO root.ln2.wf01.wt01",
+        "CREATE TIMESERIES root.ln.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+            + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+        "CREATE ALIGNED TIMESERIES root.ln.wf01.wt02(s1 INT32, s2 DOUBLE)",
+        "CREATE TIMESERIES root.ln1.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln1.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+            + "compressor = SNAPPY, MAX_POINT_NUMBER = 3",
+        "CREATE TIMESERIES root.ln2.wf01.wt01.status WITH DATATYPE = BOOLEAN, ENCODING = PLAIN",
+        "CREATE TIMESERIES root.ln2.wf01.wt01.temperature WITH DATATYPE = FLOAT, ENCODING = RLE, "
+            + "compressor = SNAPPY, MAX_POINT_NUMBER = 3"
+      };
+
+  @Test
+  public void showCountTimeSeriesGroupBy() {
+    prepareData(metadataSqls);
+
+    for (Statement statement : readStatements) {
+      String[] sqls =
+          new String[] {
+            "COUNT TIMESERIES root.** group by level=1",
+            "COUNT TIMESERIES root.** group by level=3",
+            "COUNT TIMESERIES root.**.status group by level=2"
+          };
+      Set<String>[] standards =
+          new Set[] {
+            new HashSet<>(Arrays.asList("root.ln,4,", "root.ln1,2,", "root.ln2,2,")),
+            new HashSet<>(
+                Arrays.asList(
+                    "root.ln.wf01.wt01,2,",
+                    "root.ln.wf01.wt02,2,",
+                    "root.ln1.wf01.wt01,2,",
+                    "root.ln2.wf01.wt01,2,")),
+            new HashSet<>(Arrays.asList("root.ln.wf01,1,", "root.ln1.wf01,1,", "root.ln2.wf01,1,")),
+          };
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        Set<String> standard = standards[n];
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              while (resultSet.next()) {
+                String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
+                System.out.println(string);
+                Assert.assertTrue(standard.contains(string));
+                standard.remove(string);
+              }
+              assertEquals(0, standard.size());
+            }
+          }
+        } catch (SQLException e) {
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void databaseMetaDataTest() throws SQLException {
+    try {
+      DatabaseMetaData metaData = writeConnection.getMetaData();
+      showTimeseriesInJson(metaData);
+
+    } catch (Exception e) {
+      fail(e.getMessage());
+    }
+  }
+
+  /**
+   * show metadata in json
+   *
+   * @param metaData
+   */
+  private void showTimeseriesInJson(DatabaseMetaData metaData) {
+    String metadataInJson = metaData.toString();
+    String standard =
+        "===  Timeseries Tree  ===\n"
+            + "\n"
+            + "{\"root\":{\"ln2\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln2.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln2.wf01.wt01\"}}}},\"ln\":{\"wf01\":{\"wt02\":{\"s1\":{\"DataType\":\"INT32\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"},\"s2\":{\"DataType\":\"DOUBLE\",\"Encoding\":\"GORILLA\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt02\"}},\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln.wf01.wt01\"}}}},\"ln1\":{\"wf01\":{\"wt01\":{\"temperature\":{\"DataType\":\"FLOAT\",\"Encoding\":\"RLE\",\"Compressor\":\"SNAPPY\",\"args\":\"{max_point_number=3}\",\"StorageGroup\":\"root.ln1.wf01.wt01\"},\"status\":{\"DataType\":\"BOOLEAN\",\"Encoding\":\"PLAIN\",\"Compressor\":\"SNAPPY\",\"StorageGroup\":\"root.ln1.wf01.wt01\"}}}}}}";
+    // TODO Remove the constant json String.
+    // Do not depends on the sequence of property in json string if you do not
+    // explictly mark the sequence, when we use jackson, the json result may change again
+    String rawJsonString = metadataInJson.substring(TIME_SERIES_TREE_HEADER.length());
+    Gson gson = new Gson();
+    JsonObject actual = gson.fromJson(rawJsonString, JsonObject.class);
+    JsonObject expected =
+        gson.fromJson(standard.substring(TIME_SERIES_TREE_HEADER.length()), JsonObject.class);
+
+    Assert.assertEquals(expected, actual);
   }
 }

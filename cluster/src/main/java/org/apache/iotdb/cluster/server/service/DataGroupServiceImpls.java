@@ -763,4 +763,25 @@ public class DataGroupServiceImpls implements TSDataService.AsyncIface, TSDataSe
       resultHandler.onError(e);
     }
   }
+
+  @Override
+  public Map<String, Integer> countDeviceGroupByLevel(
+      RaftNode header, List<String> paths, int level) throws TException {
+    return DataGroupEngine.getInstance()
+        .getDataSyncService(header)
+        .countDeviceGroupByLevel(header, paths, level);
+  }
+
+  @Override
+  public void countDeviceGroupByLevel(
+      RaftNode header,
+      List<String> paths,
+      int level,
+      AsyncMethodCallback<Map<String, Integer>> resultHandler)
+      throws TException {
+    resultHandler.onComplete(
+        DataGroupEngine.getInstance()
+            .getDataSyncService(header)
+            .countDeviceGroupByLevel(header, paths, level));
+  }
 }
