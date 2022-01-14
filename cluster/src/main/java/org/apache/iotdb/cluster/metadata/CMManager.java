@@ -39,6 +39,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -286,8 +287,9 @@ public class CMManager extends MManager {
   }
 
   /**
-   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier)} will call
-   * this to get schema after restart we should retry to get schema util we get the schema.
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
+   * VirtualStorageGroupProcessor)} will call this to get schema after restart we should retry to
+   * get schema util we get the schema.
    *
    * @param deviceId the device id.
    * @param measurements the measurements.
@@ -1685,7 +1687,7 @@ public class CMManager extends MManager {
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
-          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
+          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1, false).left;
       for (MeasurementPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(timeseriesPathWithAlias.getFullPath());
         dataTypes.add(timeseriesPathWithAlias.getSeriesTypeInByte());

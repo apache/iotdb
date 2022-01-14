@@ -1032,7 +1032,7 @@ public class MTree implements Serializable {
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchemaByHeatOrder(
       ShowTimeSeriesPlan plan, QueryContext queryContext) throws MetadataException {
     List<Pair<PartialPath, String[]>> allMatchedNodes =
-        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true);
+        collectMeasurementSchema(plan.getPath(), 0, 0, queryContext, true, plan.isPrefixMatch());
 
     Stream<Pair<PartialPath, String[]>> sortedStream =
         allMatchedNodes.stream()
@@ -1057,11 +1057,17 @@ public class MTree implements Serializable {
    */
   public List<Pair<PartialPath, String[]>> getAllMeasurementSchema(ShowTimeSeriesPlan plan)
       throws MetadataException {
-    return collectMeasurementSchema(plan.getPath(), plan.getLimit(), plan.getOffset(), null, false);
+    return collectMeasurementSchema(
+        plan.getPath(), plan.getLimit(), plan.getOffset(), null, false, plan.isPrefixMatch());
   }
 
   private List<Pair<PartialPath, String[]>> collectMeasurementSchema(
-      PartialPath pathPattern, int limit, int offset, QueryContext queryContext, boolean needLast)
+      PartialPath pathPattern,
+      int limit,
+      int offset,
+      QueryContext queryContext,
+      boolean needLast,
+      boolean isPrefixMatch)
       throws MetadataException {
     List<Pair<PartialPath, String[]>> result = new LinkedList<>();
     MeasurementCollector<List<Pair<PartialPath, String[]>>> collector =
@@ -1082,6 +1088,7 @@ public class MTree implements Serializable {
             result.add(temp);
           }
         };
+    collector.setPrefixMatch(isPrefixMatch);
     collector.traverse();
     return result;
   }

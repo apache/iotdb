@@ -1285,18 +1285,45 @@ public class MManager {
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
+   * with the matched prefix path will be collected.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
+  }
+
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
    * '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getMeasurementPaths(pathPattern);
+    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset.
+   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
+   * timeseries start with the matched prefix path will be collected.
+   *
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
+  }
+
+  /**
+   * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
+   * limit and offset
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
@@ -1326,7 +1353,9 @@ public class MManager {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
     for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (pathPattern.matchFullPath(leaf.getPartialPath())) {
+      if (plan.isPrefixMatch()
+          ? pathPattern.matchPrefixPath(leaf.getPartialPath())
+          : pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;
           if (curOffset < offset || count == limit) {

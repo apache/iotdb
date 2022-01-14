@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.qp;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
@@ -48,42 +49,51 @@ public class Planner {
     // do nothing
   }
 
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr, ZoneId zoneId)
+  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
+    return parseSQLToPhysicalPlan(
+        sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
+  }
+
+  public PhysicalPlan parseSQLToPhysicalPlan(
+      String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws QueryProcessException {
     // from SQL to logical operator
     Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // check if there are logical errors
-    LogicalChecker.check(operator);
-    // optimize the logical operator
-    operator = logicalOptimize(operator);
-    // from logical operator to physical plan
-    return new PhysicalGenerator().transformToPhysicalPlan(operator);
+    return generatePhysicalPlanFromOperator(operator, clientVersion);
   }
 
   /** convert raw data query to physical plan directly */
   public PhysicalPlan rawDataQueryReqToPhysicalPlan(
-      TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId)
+      TSRawDataQueryReq rawDataQueryReq, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws IllegalPathException, QueryProcessException {
     // from TSRawDataQueryReq to logical operator
     Operator operator = LogicalGenerator.generate(rawDataQueryReq, zoneId);
+    return generatePhysicalPlanFromOperator(operator, clientVersion);
+  }
+
+  /** convert last data query to physical plan directly */
+  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
+      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
+      throws QueryProcessException, IllegalPathException {
+    // from TSLastDataQueryReq to logical operator
+    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
+    return generatePhysicalPlanFromOperator(operator, clientVersion);
+  }
+
+  private PhysicalPlan generatePhysicalPlanFromOperator(
+      Operator operator, IoTDBConstant.ClientVersion clientVersion) throws QueryProcessException {
+    // if client version is before 0.13, match path with prefix
+    operator.setPrefixMatchPath(IoTDBConstant.ClientVersion.V_0_12.equals(clientVersion));
     // check if there are logical errors
     LogicalChecker.check(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator);
     // from logical operator to physical plan
-    return new PhysicalGenerator().transformToPhysicalPlan(operator);
+    return generatePhysicalPlanFromOperator(operator);
   }
 
-  /** convert last data query to physical plan directly */
-  public PhysicalPlan lastDataQueryReqToPhysicalPlan(
-      TSLastDataQueryReq lastDataQueryReq, ZoneId zoneId)
-      throws QueryProcessException, IllegalPathException {
-    // from TSLastDataQueryReq to logical operator
-    Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
-    // check if there are logical errors
-    LogicalChecker.check(operator);
-    // optimize the logical operator
-    operator = logicalOptimize(operator);
+  protected PhysicalPlan generatePhysicalPlanFromOperator(Operator operator)
+      throws QueryProcessException {
     // from logical operator to physical plan
     return new PhysicalGenerator().transformToPhysicalPlan(operator);
   }
@@ -136,9 +146,5 @@ public class Planner {
       throws PathNumOverLimitException, LogicalOperatorException {
     operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator()));
     return operator;
-  }
-
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
-    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
   }
 }
