@@ -22,9 +22,6 @@ package org.apache.iotdb.db.engine.storagegroup;
 import org.apache.iotdb.db.metadata.idtable.IDTable;
 import org.apache.iotdb.db.metadata.idtable.entry.DeviceEntry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Map;
 
 /**
@@ -33,8 +30,6 @@ import java.util.Map;
  * upgrade
  */
 public class IDTableFlushTimeManager implements ILastFlushTimeManager {
-  private static final Logger logger = LoggerFactory.getLogger(LastFlushTimeManager.class);
-
   IDTable idTable;
 
   public IDTableFlushTimeManager(IDTable idTable) {
