@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.apache.iotdb.quality.series;
+package org.apache.iotdb.library.series;
 
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
@@ -23,8 +23,8 @@ import org.apache.iotdb.db.query.udf.api.customizer.config.UDTFConfigurations;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameterValidator;
 import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrategy;
-import org.apache.iotdb.quality.series.util.ConsecutiveUtil;
-import org.apache.iotdb.quality.util.Util;
+import org.apache.iotdb.library.series.util.ConsecutiveUtil;
+import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.commons.lang3.tuple.Pair;
