@@ -61,7 +61,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     super.setUp();
     IoTDBDescriptor.getInstance().getConfig().setTargetChunkSize(1024);
-    Thread.currentThread().setName("IoTB-pool-Compaction-1");
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
   @After

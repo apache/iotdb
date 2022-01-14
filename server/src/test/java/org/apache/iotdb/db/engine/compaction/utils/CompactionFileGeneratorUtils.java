@@ -104,6 +104,55 @@ public class CompactionFileGeneratorUtils {
     }
   }
 
+  public static TsFileResource generateTsFileResource(
+      boolean sequence, int index, String storageGroupName) {
+    if (sequence) {
+      return new TsFileResource(
+          new File(
+              TestConstant.OUTPUT_DATA_DIR
+                  .concat(File.separator)
+                  .concat("sequence")
+                  .concat(File.separator)
+                  .concat(storageGroupName)
+                  .concat(File.separator)
+                  .concat("0")
+                  .concat(File.separator)
+                  .concat("0")
+                  .concat(File.separator)
+                  .concat(
+                      index
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + index
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile")));
+    } else {
+      return new TsFileResource(
+          new File(
+              TestConstant.OUTPUT_DATA_DIR
+                  .concat(File.separator)
+                  .concat("unsequence")
+                  .concat(File.separator)
+                  .concat(storageGroupName)
+                  .concat(File.separator)
+                  .concat("0")
+                  .concat(File.separator)
+                  .concat("0")
+                  .concat(File.separator)
+                  .concat(
+                      (index + 10000)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + (index + 10000)
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + IoTDBConstant.FILE_NAME_SEPARATOR
+                          + 0
+                          + ".tsfile")));
+    }
+  }
+
   /**
    * Generate a new file. For each time series, insert a point (+1 for each point) into the file
    * from the start time util each sequence of the last file meets the target Chunk and Page size,

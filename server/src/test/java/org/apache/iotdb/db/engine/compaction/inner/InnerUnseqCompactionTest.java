@@ -34,6 +34,7 @@ import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
@@ -90,6 +91,7 @@ public class InnerUnseqCompactionTest {
         CompactionOverlapType.CHUNK_OVERLAP_PAGE_NO_OVERLAP,
         CompactionOverlapType.PAGE_OVERLAP
       };
+  static final String oldThreadName = Thread.currentThread().getName();
 
   @Before
   public void setUp() throws MetadataException {
@@ -104,6 +106,7 @@ public class InnerUnseqCompactionTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
     }
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
   @After
@@ -113,11 +116,13 @@ public class InnerUnseqCompactionTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
+    Thread.currentThread().setName(oldThreadName);
   }
 
   // unseq space only do deserialize page
   @Test
-  public void test() throws MetadataException, IOException {
+  public void test()
+      throws MetadataException, IOException, StorageEngineException, WriteProcessException {
     for (int toMergeFileNum : toMergeFileNums) {
       for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
         for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
