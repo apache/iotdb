@@ -28,6 +28,7 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -76,17 +77,17 @@ public class FrequencyTests {
         CompressionType.UNCOMPRESSED,
         null);
     IoTDB.metaManager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s1"),
-            TSDataType.DOUBLE,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
+        new PartialPath("root.vehicle.d2.s1"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
     IoTDB.metaManager.createTimeseries(
-            new PartialPath("root.vehicle.d2.s2"),
-            TSDataType.DOUBLE,
-            TSEncoding.PLAIN,
-            CompressionType.UNCOMPRESSED,
-            null);
+        new PartialPath("root.vehicle.d2.s2"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
   }
 
   private static void generateData() {
@@ -100,17 +101,25 @@ public class FrequencyTests {
         statement.execute(
             String.format(
                 "insert into root.vehicle.d1(timestamp,s1,s2,s3) values(%d,%f,%f,%f)",
-                    (long)(i+1)*DELTA_T, Math.sin(i%PERIOD_1*2*pi/(double)PERIOD_1),
-                    Math.sin(i%PEROID_2*2*pi/(double)PEROID_2),
-                    0.5*Math.sin(i%PERIOD_1*pi)+Math.sin(i%PEROID_2*pi)));
+                (long) (i + 1) * DELTA_T,
+                Math.sin(i % PERIOD_1 * 2 * pi / (double) PERIOD_1),
+                Math.sin(i % PEROID_2 * 2 * pi / (double) PEROID_2),
+                0.5 * Math.sin(i % PERIOD_1 * pi) + Math.sin(i % PEROID_2 * pi)));
       }
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 2)",DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 7)",2*DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 4)",3*DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 9)",4*DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 1)",DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 0)",2*DELTA_T));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 1)",3*DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 2)", DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 7)", 2 * DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 4)", 3 * DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s1) values(%d, 9)", 4 * DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 1)", DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 0)", 2 * DELTA_T));
+      statement.execute(
+          String.format("insert into root.vehicle.d2(timestamp,s2) values(%d, 1)", 3 * DELTA_T));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -119,20 +128,15 @@ public class FrequencyTests {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
+      statement.execute("create function conv as 'org.apache.iotdb.library.dquality.UDTFConv'");
+      statement.execute("create function deconv as 'org.apache.iotdb.library.dquality.UDTFDeconv'");
+      statement.execute("create function dwt as 'org.apache.iotdb.library.dquality.UDTFDWT'");
+      statement.execute("create function fft as 'org.apache.iotdb.library.dquality.UDTFFFT'");
       statement.execute(
-          "create function conv as 'org.apache.iotdb.library.dquality.UDTFConv'");
+          "create function highpass as 'org.apache.iotdb.library.dquality.UDTFHighPass'");
+      statement.execute("create function idwt as 'org.apache.iotdb.library.dquality.UDTFIDWT'");
       statement.execute(
-          "create function deconv as 'org.apache.iotdb.library.dquality.UDTFDeconv'");
-      statement.execute(
-          "create function dwt as 'org.apache.iotdb.library.dquality.UDTFDWT'");
-      statement.execute(
-          "create function fft as 'org.apache.iotdb.library.dquality.UDTFFFT'");
-      statement.execute(
-              "create function highpass as 'org.apache.iotdb.library.dquality.UDTFHighPass'");
-      statement.execute(
-              "create function idwt as 'org.apache.iotdb.library.dquality.UDTFIDWT'");
-      statement.execute(
-              "create function lowpass as 'org.apache.iotdb.library.dquality.UDTFLowPass'");
+          "create function lowpass as 'org.apache.iotdb.library.dquality.UDTFLowPass'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -172,7 +176,7 @@ public class FrequencyTests {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result1 = Double.parseDouble(resultSet.getString(1));
       Double result2 = Double.parseDouble(resultSet.getString(2));
-      assert Math.abs(result1-2d)<1e-5 && Math.abs(result2-7d)<1e-5;
+      assert Math.abs(result1 - 2d) < 1e-5 && Math.abs(result2 - 7d) < 1e-5;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -182,27 +186,30 @@ public class FrequencyTests {
   public void testDeconv2() {
     String sqlStr = "select deconv(d2.s1,d2.s2,'result'='remainder') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result1 = Double.parseDouble(resultSet.getString(1));
       Double result2 = Double.parseDouble(resultSet.getString(2));
       Double result3 = Double.parseDouble(resultSet.getString(3));
       Double result4 = Double.parseDouble(resultSet.getString(4));
-      assert Math.abs(result1)<1e-5 && Math.abs(result2)<1e-5 && Math.abs(result3-2d)<1e-5 && Math.abs(result4-2d)<1e-5;
+      assert Math.abs(result1) < 1e-5
+          && Math.abs(result2) < 1e-5
+          && Math.abs(result3 - 2d) < 1e-5
+          && Math.abs(result4 - 2d) < 1e-5;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
   }
 
   @Test
-  public void testDWT1(){
+  public void testDWT1() {
     String sqlStr = "select dwt(d2.s3,'method'='haar') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -210,12 +217,12 @@ public class FrequencyTests {
   }
 
   @Test
-  public void testDWT2(){
+  public void testDWT2() {
     String sqlStr = "select dwt(d2.s3,'method'='DB4') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -223,12 +230,12 @@ public class FrequencyTests {
   }
 
   @Test
-  public void testFFT1(){
+  public void testFFT1() {
     String sqlStr = "select fft(d1.s1) from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -236,18 +243,18 @@ public class FrequencyTests {
   }
 
   @Test
-  public void testHighPass1(){
+  public void testHighPass1() {
     String sqlStr = "select highpass(d1.s3,'wpass'='0.5') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet1 = statement.executeQuery(sqlStr);
       ResultSet resultSet2 = statement.executeQuery("select d1.s1 from root.vehicle");
-      for(int i=1;i<ITERATION_TIMES;++i){
+      for (int i = 1; i < ITERATION_TIMES; ++i) {
         Double result1 = Double.parseDouble(resultSet1.getString(i));
         Double result2 = Double.parseDouble(resultSet2.getString(i));
-        assert Math.abs(result1-0.5*result2)<1e-2;
+        assert Math.abs(result1 - 0.5 * result2) < 1e-2;
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -255,18 +262,18 @@ public class FrequencyTests {
   }
 
   @Test
-  public void testLowPass1(){
+  public void testLowPass1() {
     String sqlStr = "select lowpass(d1.s3,'wpass'='0.5') from root.vehicle";
     try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
       ResultSet resultSet1 = statement.executeQuery(sqlStr);
       ResultSet resultSet2 = statement.executeQuery("select d1.s2 from root.vehicle");
-      for(int i=1;i<ITERATION_TIMES;++i){
+      for (int i = 1; i < ITERATION_TIMES; ++i) {
         Double result1 = Double.parseDouble(resultSet1.getString(i));
         Double result2 = Double.parseDouble(resultSet2.getString(i));
-        assert Math.abs(result1-result2)<1e-2;
+        assert Math.abs(result1 - result2) < 1e-2;
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
