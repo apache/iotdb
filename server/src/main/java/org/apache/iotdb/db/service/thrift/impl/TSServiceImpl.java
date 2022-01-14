@@ -75,47 +75,7 @@ import org.apache.iotdb.db.utils.QueryDataSetUtils;
 import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.TSStatusCode;
-import org.apache.iotdb.service.rpc.thrift.EndPoint;
-import org.apache.iotdb.service.rpc.thrift.ServerProperties;
-import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCancelOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseOperationReq;
-import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSCreateTimeseriesReq;
-import org.apache.iotdb.service.rpc.thrift.TSDeleteDataReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteBatchStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementReq;
-import org.apache.iotdb.service.rpc.thrift.TSExecuteStatementResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchMetadataResp;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsReq;
-import org.apache.iotdb.service.rpc.thrift.TSFetchResultsResp;
-import org.apache.iotdb.service.rpc.thrift.TSGetTimeZoneResp;
-import org.apache.iotdb.service.rpc.thrift.TSIService;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsOfOneDeviceReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertStringRecordsReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletReq;
-import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
-import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
-import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
-import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSQueryDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryNonAlignDataSet;
-import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
-import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
-import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
-import org.apache.iotdb.service.rpc.thrift.TSStatus;
-import org.apache.iotdb.service.rpc.thrift.TSTracingInfo;
-import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.*;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
@@ -1227,6 +1187,64 @@ public class TSServiceImpl extends BasicServiceProvider implements TSIService.If
     resp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
 
     return resp;
+  }
+
+  @Override
+  public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
+    if (!checkLogin(req.getSessionId())) {
+      return getNotLoggedInStatus();
+    }
+
+    if (AUDIT_LOGGER.isDebugEnabled()) {
+      AUDIT_LOGGER.debug(
+          "Session {} insertRecords, device {}, first time {}",
+          sessionManager.getCurrSessionId(),
+          req.prefixPath,
+          req.getTimestamps().get(0));
+    }
+
+    boolean allCheckSuccess = true;
+    InsertRowsPlan insertRowsPlan = new InsertRowsPlan();
+    for (int i = 0; i < req.timestamps.size(); i++) {
+      InsertRowPlan plan = new InsertRowPlan();
+      try {
+        plan.setDevicePath(new PartialPath(req.getPrefixPath()));
+        plan.setTime(req.getTimestamps().get(i));
+        addMeasurementAndValue(plan, req.getMeasurementsList().get(i), req.getValuesList().get(i));
+        plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
+        plan.setNeedInferType(true);
+        plan.setAligned(req.isAligned);
+        TSStatus status = checkAuthority(plan, req.getSessionId());
+
+        if (status != null) {
+          insertRowsPlan.getResults().put(i, status);
+          allCheckSuccess = false;
+        }
+        insertRowsPlan.addOneInsertRowPlan(plan, i);
+      } catch (IoTDBException e) {
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onIoTDBException(
+                    e, OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE, e.getErrorCode()));
+        allCheckSuccess = false;
+      } catch (Exception e) {
+        insertRowsPlan
+            .getResults()
+            .put(
+                i,
+                onNPEOrUnexpectedException(
+                    e,
+                    OperationType.INSERT_STRING_RECORDS_OF_ONE_DEVICE,
+                    TSStatusCode.INTERNAL_SERVER_ERROR));
+        allCheckSuccess = false;
+      }
+    }
+    TSStatus tsStatus = executeNonQueryPlan(insertRowsPlan);
+
+    return judgeFinalTsStatus(
+        allCheckSuccess, tsStatus, insertRowsPlan.getResults(), req.timestamps.size());
   }
 
   @Override
