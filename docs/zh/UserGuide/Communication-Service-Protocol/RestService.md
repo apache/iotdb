@@ -81,7 +81,7 @@ $ curl -H "Authorization:Basic cm9vdDpyb2901" http://127.0.0.1:18080/ping
 |参数名称  |参数类型  |是否必填|参数描述|
 | ------------ | ------------ | ------------ |------------ |
 |  sql | string | 是  |   |
-| rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。当返回结果集的行数超出限制时，您只会得到在行数范围内的结果集，且将得到状态码 `411`。 |
+| rowLimit | integer | 否 | 一次查询能返回的结果集的最大行数。<br />如果不设置该参数，将使用配置文件的  `rest_query_default_row_size_limit` 作为默认值。<br />当返回结果集的行数超出限制时，将返回状态码 `411`。 |
 
 请求示例:
 ```shell

@@ -61,12 +61,15 @@ public class QueryDataSetHandler {
       int fetched = 0;
       while (dataSet.hasNext()) {
         if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-          ExecutionStatus executionStatus = new ExecutionStatus();
-          executionStatus.setCode(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode());
-          executionStatus.setMessage(
-              String.format(
-                  "Dataset row size exceeded the given max row size (%d)", actualRowSizeLimit));
-          return Response.ok().entity(executionStatus).entity(queryDataSet).build();
+          return Response.ok()
+              .entity(
+                  new ExecutionStatus()
+                      .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                      .message(
+                          String.format(
+                              "Dataset row size exceeded the given max row size (%d)",
+                              actualRowSizeLimit)))
+              .build();
         }
 
         RowRecord rowRecord = dataSet.next();
