@@ -202,7 +202,6 @@ enableMetric: false
 metricReporterList:						
   - jmx                    
   - prometheus
-   # - iotdb
 
 # You can choose the underlying inplementation of the framework, dropwizard or micrometer, the latter is recommended.
 monitorType: micrometer         

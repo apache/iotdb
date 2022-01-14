@@ -25,7 +25,6 @@ enableMetric: true
 metricReporterList:
   - jmx
   - prometheus
-  # - iotdb
 
   # the following configure should be matched
   # MicrometerMetricManager MicrometerMetricReporter

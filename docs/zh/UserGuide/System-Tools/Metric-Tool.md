@@ -199,7 +199,6 @@ enableMetric: false
 metricReporterList:						
   - jmx                    
   - prometheus
-   # - iotdb 
 
 # 底层采用的metric库，推荐使用micrometer
 monitorType: micrometer          
