@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.dstring;
+package org.apache.iotdb.library.string;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -89,7 +89,7 @@ public class StringTests {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,100,101));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1) values(%d,%d,%d)",100,100,101));
       statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",200,102,101));
       statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",300,104,102));
       statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",400,126,102));
@@ -118,15 +118,13 @@ public class StringTests {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
       statement.execute(
-          "create function completeness as 'org.apache.iotdb.library.dmatch.UDAFCov'");
+          "create function regexmatch as 'org.apache.iotdb.library.string.UDTFRegexMatch'");
       statement.execute(
-          "create function timeliness as 'org.apache.iotdb.library.dmatch.UDAFDtw'");
+          "create function regexreplace as 'org.apache.iotdb.library.string.UDTFRegexReplace'");
       statement.execute(
-          "create function consistency as 'org.apache.iotdb.library.dmatch.UDAFPearson'");
+          "create function regexsplit as 'org.apache.iotdb.library.string.UDTFRegexSplit'");
       statement.execute(
-              "create function validity as 'org.apache.iotdb.library.dmatch.UDTFPtnSym'");
-      statement.execute(
-          "create function validity as 'org.apache.iotdb.library.dmatch.UDTFXcorr'");
+          "create function strreplace as 'org.apache.iotdb.library.string.UDTFStrReplace'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -142,8 +140,8 @@ public class StringTests {
   }
 
   @Test
-  public void testCov1() {
-    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexMatch1() {
+    String sqlStr = "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -158,8 +156,8 @@ public class StringTests {
   }
 
   @Test
-  public void testCov2() {
-    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexMatch2() {
+    String sqlStr = "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -174,8 +172,8 @@ public class StringTests {
   }
 
   @Test
-  public void testCov3() {
-    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexMatch3() {
+    String sqlStr = "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -190,8 +188,8 @@ public class StringTests {
   }
 
   @Test
-  public void testCov4() {
-    String sqlStr = "select cov(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexMatch4() {
+    String sqlStr = "select regexmatch(d1.s1,\"regex\"=\"\\d+\\.\\d+\\.\\d+\\.\\d+\", \"group\"=\"0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -206,26 +204,8 @@ public class StringTests {
   }
 
   @Test
-  public void testDtw1() {
-    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
-    try (Connection connection =
-            DriverManager.getConnection(
-                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-        Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= 0.0D;
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testDtw2() {
-    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexReplace1() {
+    String sqlStr = "select regexreplace(d1.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -242,8 +222,8 @@ public class StringTests {
   }
 
   @Test
-  public void testDtw3() {
-    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexReplace2() {
+    String sqlStr = "select regexreplace(d1.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -260,8 +240,8 @@ public class StringTests {
   }
 
   @Test
-  public void testDtw4() {
-    String sqlStr = "select dtw(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexReplace3() {
+    String sqlStr = "select regexreplace(d1.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -278,8 +258,26 @@ public class StringTests {
   }
 
   @Test
-  public void testPearson1() {
-    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexReplace4() {
+    String sqlStr = "select regexreplace(d1.s1,\"regex\"=\"192\\.168\\.0\\.(\\d+)\", \"replace\"=\"cluster-$1\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
+      Double result = Double.parseDouble(resultSet.getString(1));
+      assert result >= 0.0D;
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testRegexSplit1() {
+    String sqlStr = "select regexsplit(d1.s1, \"regex\"=\",\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -293,8 +291,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPearson2() {
-    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexSplit2() {
+    String sqlStr = "select regexsplit(d1.s1, \"regex\"=\",\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -308,8 +306,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPearson3() {
-    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexSplit3() {
+    String sqlStr = "select regexsplit(d1.s1, \"regex\"=\",\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -323,8 +321,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPearson4() {
-    String sqlStr = "select pearson(d1.s1,d1.s2) from root.vehicle";
+  public void testRegexSplit4() {
+    String sqlStr = "select regexsplit(d1.s1, \"regex\"=\",\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -338,8 +336,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPthSym1() {
-    String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from root.vehicle";
+  public void testStrReplace1() {
+    String sqlStr = "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -354,8 +352,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPtnSym2() {
-    String sqlStr = "select ptnsym(d1.s2, 'window'='3', 'threshold'='0') from root.vehicle";
+  public void testStrReplace2() {
+    String sqlStr = "select strreplace(d1.s2,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -370,8 +368,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPtnSym3() {
-    String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from";
+  public void testStrReplace3() {
+    String sqlStr = "select strreplace(d2.s1,\"target\"=\",\", \"replace\"=\"_\") from";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -386,8 +384,8 @@ public class StringTests {
   }
 
   @Test
-  public void testPtnSym4() {
-    String sqlStr = "select ptnsym(d2.s2, 'window'='3', 'threshold'='0') from root.vehicle";
+  public void testStrReplace4() {
+    String sqlStr = "select strreplace(d2.s2,\"target\"=\",\", \"replace\"=\"_\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -396,70 +394,6 @@ public class StringTests {
       resultSet.last();
       int resultSetLength=resultSet.getRow();
       assert resultSetLength==1;
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testXCorr1() {
-    String sqlStr = "select xcorr(d1.s1,d1.s2) from root.vehicle";
-    try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==19;
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testXCorr2() {
-    String sqlStr = "select xcorr(d1.s1, d1.s2) from root.vehicle";
-    try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==19;
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testXCorr3() {
-    String sqlStr = "select xcorr(d1.s1, d1.s2) from root.vehicle";
-    try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==19;
-    } catch (SQLException throwable) {
-      fail(throwable.getMessage());
-    }
-  }
-
-  @Test
-  public void testXCorr4() {
-    String sqlStr = "select xcorr(d1.s1,d1.s2) from root.vehicle";
-    try (Connection connection =
-                 DriverManager.getConnection(
-                         Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
-      ResultSet resultSet = statement.executeQuery(sqlStr);
-      resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==19;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
