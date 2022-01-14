@@ -58,7 +58,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
 
   @Override
   public void deduplicate(PhysicalGenerator physicalGenerator)
-      throws MetadataException, QueryProcessException {
+      throws MetadataException {
     // sort paths by device, to accelerate the metadata read process
     List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); i++) {
@@ -97,7 +97,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     for (PartialPath path : getDeduplicatedPaths()) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (measurementPath.isUnderAlignedEntity()) {
-        throw new QueryProcessException(
+        throw new MetadataException(
             "Aligned timeseries is not supported in UDF queries for now.");
       }
     }

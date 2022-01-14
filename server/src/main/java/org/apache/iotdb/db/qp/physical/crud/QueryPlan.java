@@ -71,7 +71,7 @@ public abstract class QueryPlan extends PhysicalPlan {
   }
 
   public abstract void deduplicate(PhysicalGenerator physicalGenerator)
-      throws MetadataException, QueryProcessException;
+      throws MetadataException;
 
   /** Construct the header of result set. Return TSExecuteStatementResp. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
