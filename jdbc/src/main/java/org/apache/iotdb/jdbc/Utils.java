@@ -50,7 +50,6 @@ public class Utils {
       }
     }
     if (!isUrlLegal) {
-      System.out.println(url);
       throw new IoTDBURLException(
           "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port?property1=value1&property2=value2");
     }
