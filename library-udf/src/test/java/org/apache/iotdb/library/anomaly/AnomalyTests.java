@@ -89,20 +89,26 @@ public class AnomalyTests {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      for (int i = 1; i <= ITERATION_TIMES; ++i) {
-        statement.execute(
-            String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",
-                (int) Math.floor(a + Math.random() * b % (b - a + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1))));
-        statement.execute(
-            (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
-                (int) Math.floor(a + Math.random() * b % (b - a + 1)),
-                x + Math.random() * y % (y - x + 1),
-                x + Math.random() * y % (y - x + 1))));
-      }
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-2,-2));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,10,10));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-2,-2));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,10,10));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -141,8 +147,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -156,8 +163,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -171,8 +179,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -186,8 +195,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -201,8 +211,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -216,8 +227,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -231,8 +243,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -246,8 +259,9 @@ public class AnomalyTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -262,7 +276,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result == 1 || result == 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -277,7 +291,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result == 1 || result == 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -292,7 +306,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result == 1 || result == 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -307,7 +321,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result == 1 || result == 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -322,7 +336,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -337,7 +351,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -352,7 +366,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -367,7 +381,7 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -376,14 +390,15 @@ public class AnomalyTests {
   @Test
   public void testRange1() {
     String sqlStr =
-        "select range(d1.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+        "select range(d1.s1,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -392,14 +407,15 @@ public class AnomalyTests {
   @Test
   public void testRange2() {
     String sqlStr =
-        "select range(d1.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+        "select range(d1.s2,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -408,14 +424,15 @@ public class AnomalyTests {
   @Test
   public void testRange3() {
     String sqlStr =
-        "select range(d2.s1,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+        "select range(d2.s1,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -424,14 +441,15 @@ public class AnomalyTests {
   @Test
   public void testRange4() {
     String sqlStr =
-        "select range(d2.s2,\"lower_bound\"=\"0.0\",\"upper_bound\"=\"80.0\") from root.vehicle";
+        "select range(d2.s2,\"lower_bound\"=\"-5.0\",\"upper_bound\"=\"5.0\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -439,14 +457,15 @@ public class AnomalyTests {
 
   @Test
   public void testTwoSidedFileter1() {
-    String sqlStr = "select TwoSidedFilter(d1.s1, 'len'='5', 'threshold'='0.3') from root.vehicle";
+    String sqlStr = "select TwoSidedFilter(d1.s1, 'len'='3', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength<=10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -454,14 +473,15 @@ public class AnomalyTests {
 
   @Test
   public void testTwoSidedFileter2() {
-    String sqlStr = "select TwoSidedFilter(d1.s2, 'len'='5', 'threshold'='0.3') from root.vehicle";
+    String sqlStr = "select TwoSidedFilter(d1.s2, 'len'='3', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength<=10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -469,14 +489,15 @@ public class AnomalyTests {
 
   @Test
   public void testTwoSidedFileter3() {
-    String sqlStr = "select TwoSidedFilter(d2.s1, 'len'='5', 'threshold'='0.3') from root.vehicle";
+    String sqlStr = "select TwoSidedFilter(d2.s1, 'len'='3', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength<=10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -484,14 +505,15 @@ public class AnomalyTests {
 
   @Test
   public void testTwoSidedFileter4() {
-    String sqlStr = "select TwoSidedFilter(d2.s2, 'len'='5', 'threshold'='0.3') from root.vehicle";
+    String sqlStr = "select TwoSidedFilter(d2.s2, 'len'='3', 'threshold'='0.3') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength<=10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
