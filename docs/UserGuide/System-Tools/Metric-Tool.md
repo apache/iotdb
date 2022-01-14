@@ -198,10 +198,11 @@ The metrics collection switch is disabled by default，you need to enable it fro
 # The default value is false，change it to true and start/restart you IoTDB server, then you will get the metrics data.
 enableMetric: false            
 
-# IoTDB provides metrics data both in JMX and Prometheus format.
+# IoTDB provides metrics data both in JMX , Prometheus and IoTDB format. IoTDB is off by default.
 metricReporterList:						
   - jmx                    
   - prometheus
+   # - iotdb
 
 # You can choose the underlying inplementation of the framework, dropwizard or micrometer, the latter is recommended.
 monitorType: micrometer         

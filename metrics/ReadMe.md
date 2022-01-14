@@ -27,6 +27,7 @@ Metric Module
 - In each implementations, you can use many types of reporter to report the details of metric
   - Jmx Reporter
   - Prometheus Reporter
+  - IoTDB Reporter
 
 
 - [1. Design](#1-design)

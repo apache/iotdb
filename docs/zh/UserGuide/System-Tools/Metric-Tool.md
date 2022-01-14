@@ -195,10 +195,11 @@ metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开
 # 默认是false，改成true后启动iotdb，就可以获取到metrics数据了
 enableMetric: false            
 
-# 对外以jmx和prometheus协议提供metrics数据
+# 对外以jmx,prometheus和iotdb协议提供metrics数据,iotdb是默认关闭的
 metricReporterList:						
   - jmx                    
   - prometheus
+   # - iotdb 
 
 # 底层采用的metric库，推荐使用micrometer
 monitorType: micrometer          

@@ -20,6 +20,7 @@
 package org.apache.iotdb.db.metrics.micrometer.registry;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
@@ -32,14 +33,20 @@ import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.distribution.HistogramSnapshot;
 import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
@@ -50,7 +57,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
 
   public IoTDBMeterRegistry(StepRegistryConfig config, Clock clock) {
     super(config, clock);
-    IoTDBConfig ioTDBConfig = new IoTDBConfig();
+    IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     rpcPort = ioTDBConfig.getRpcPort();
     address = ioTDBConfig.getRpcAddress();
     try {

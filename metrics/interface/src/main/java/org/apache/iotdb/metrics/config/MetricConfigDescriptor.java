@@ -82,11 +82,6 @@ public class MetricConfigDescriptor {
       logger.warn("Fail to find config file, use default");
     }
     metricConfig = new MetricConfig();
-    if (metricConfig.getEnableMetric()) {
-      logger.warn("metricConfig enable");
-    } else {
-      logger.warn("metricConfig not enable");
-    }
   }
 
   private static class MetricConfigDescriptorHolder {
