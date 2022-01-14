@@ -283,6 +283,9 @@ public abstract class RaftMember implements RaftMemberMBean {
               new IoTThreadFactory(getName() + "-SerialToParallel"),
               getName() + "-SerialToParallel");
       commitLogPool = IoTDBThreadPoolFactory.newSingleThreadExecutor("RaftCommitLog");
+    } else {
+      setCharacter(NodeCharacter.LEADER);
+      setLeader(thisNode);
     }
   }
 
