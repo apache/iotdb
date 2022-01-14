@@ -403,7 +403,7 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 
 |Name| enable\_partition |
 |:---:|:---|
-|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 |
+|Description| Whether enable time partition for data, if disabled, all data belongs to partition 0 (it's not recommend to open this function. If open, please calculate appropriate concurrent_writing_time_partition and wal_buffer_size)|
 |Type|Bool|
 |Default| false |
 |Effective|Only allowed to be modified in first start up|
@@ -453,6 +453,15 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| Int32 |
 |Default| 700 |
 |Effective|Only allowed to be modified in first start up|
+
+* tag\_attribute\_flush\_interval
+
+|Name| tag\_attribute\_flush\_interval                                                                                                                                                                                                                |
+|:---:|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|Description| interval num for tag and attribute records when force flushing to disk. When a certain amount of tag and attribute records is reached, they will be force flushed to disk. It is possible to lose at most tag_attribute_flush_interval records |
+|Type| Int32                                                                                                                                                                                                                                          |
+|Default| 1000                                                                                                                                                                                                                                           |
+|Effective| Only allowed to be modified in first start up                                                                                                                                                                                                  |
 
 * enable\_partial\_insert
 
@@ -525,6 +534,24 @@ The permission definitions are in ${IOTDB\_CONF}/conf/jmx.access.
 |Type| Int32 |
 |Default| 0 |
 |Effective|After restart system|
+
+* concurrent\_query\_thread
+
+|Name| concurrent\_query\_thread                                                                                            |
+|:---:|:---------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently execute query statement. When <= 0, use CPU core number. The default is 16. |
+|Type| Int32                                                                                                                |
+|Default| 16                                                                                                                   |
+|Effective| After restart system                                                                                                 |
+
+* concurrent\_sub\_rawQuery\_thread
+
+|Name| concurrent\_sub\_rawQuery\_thread                                                                                        |
+|:---:|:-------------------------------------------------------------------------------------------------------------------------|
+|Description| The thread number which can concurrently read data for raw data query. When <= 0, use CPU core number. The default is 8. |
+|Type| Int32                                                                                                                    |
+|Default| 8                                                                                                                        |
+|Effective| After restart system                                                                                                     |
 
 * tsfile\_storage\_fs
 

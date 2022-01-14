@@ -538,8 +538,10 @@ IoTDB supports the schema template function, enabling different entities of the 
 The SQL Statement for creating schema template is as follow:
 
 ```
-IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla) compression=SNAPPY, status BOOLEAN encoding=PLAIN compression=SNAPPY)
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
 ```
+
+The` lat` and `lon` measurements under the `GPS` device are aligned.
 
 ### Set Schema Template
 

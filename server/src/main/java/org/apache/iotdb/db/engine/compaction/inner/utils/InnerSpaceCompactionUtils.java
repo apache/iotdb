@@ -30,9 +30,12 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
+import org.apache.iotdb.tsfile.file.metadata.AlignedChunkMetadata;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -50,7 +53,6 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 
 public class InnerSpaceCompactionUtils {
 
@@ -61,36 +63,22 @@ public class InnerSpaceCompactionUtils {
   }
 
   public static void compact(
-      TsFileResource targetResource,
-      List<TsFileResource> tsFileResources,
-      String storageGroup,
-      boolean sequence)
+      TsFileResource targetResource, List<TsFileResource> tsFileResources, boolean sequence)
       throws IOException, MetadataException {
-    TsFileIOWriter writer = null;
-    try (MultiTsFileDeviceIterator deviceIterator =
-        new MultiTsFileDeviceIterator(tsFileResources)) {
-      writer = new TsFileIOWriter(targetResource.getTsFile());
-      Set<String> devices = deviceIterator.getDevices();
-      for (String device : devices) {
+
+    try (MultiTsFileDeviceIterator deviceIterator = new MultiTsFileDeviceIterator(tsFileResources);
+        TsFileIOWriter writer = new TsFileIOWriter(targetResource.getTsFile())) {
+      while (deviceIterator.hasNextDevice()) {
+        Pair<String, Boolean> deviceInfo = deviceIterator.nextDevice();
+        String device = deviceInfo.left;
+        boolean aligned = deviceInfo.right;
         writer.startChunkGroup(device);
-        // TODO: compact a aligned device
-        MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
-            deviceIterator.iterateOneSeries(device);
-        while (seriesIterator.hasNextSeries()) {
-          // TODO: we can provide a configuration item to enable concurrent between each series
-          String currentSeries = seriesIterator.nextSeries();
-          LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
-              seriesIterator.getMetadataListForCurrentSeries();
-          SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
-              new SingleSeriesCompactionExecutor(
-                  device,
-                  currentSeries,
-                  readerAndChunkMetadataList,
-                  writer,
-                  targetResource,
-                  sequence);
-          compactionExecutorOfCurrentTimeSeries.execute();
+        if (aligned) {
+          compactAlignedSeries(device, targetResource, writer, deviceIterator);
+        } else {
+          compactNotAlignedSeries(device, targetResource, writer, deviceIterator, sequence);
         }
+
         writer.endChunkGroup();
       }
 
@@ -99,11 +87,42 @@ public class InnerSpaceCompactionUtils {
       }
       writer.endFile();
       targetResource.close();
-    } finally {
-      if (writer != null && writer.canWrite()) {
-        writer.close();
-      }
     }
+  }
+
+  private static void compactNotAlignedSeries(
+      String device,
+      TsFileResource targetResource,
+      TsFileIOWriter writer,
+      MultiTsFileDeviceIterator deviceIterator,
+      boolean sequence)
+      throws IOException, MetadataException {
+    MultiTsFileDeviceIterator.MeasurementIterator seriesIterator =
+        deviceIterator.iterateNotAlignedSeries(device);
+    while (seriesIterator.hasNextSeries()) {
+      // TODO: we can provide a configuration item to enable concurrent between each series
+      String currentSeries = seriesIterator.nextSeries();
+      LinkedList<Pair<TsFileSequenceReader, List<ChunkMetadata>>> readerAndChunkMetadataList =
+          seriesIterator.getMetadataListForCurrentSeries();
+      SingleSeriesCompactionExecutor compactionExecutorOfCurrentTimeSeries =
+          new SingleSeriesCompactionExecutor(
+              device, currentSeries, readerAndChunkMetadataList, writer, targetResource, sequence);
+      compactionExecutorOfCurrentTimeSeries.execute();
+    }
+  }
+
+  private static void compactAlignedSeries(
+      String device,
+      TsFileResource targetResource,
+      TsFileIOWriter writer,
+      MultiTsFileDeviceIterator deviceIterator)
+      throws IOException, IllegalPathException, PathNotExistException {
+    LinkedList<Pair<TsFileSequenceReader, List<AlignedChunkMetadata>>> readerAndChunkMetadataList =
+        deviceIterator.getReaderAndChunkMetadataForCurrentAlignedSeries();
+    AlignedSeriesCompactionExecutor compactionExecutor =
+        new AlignedSeriesCompactionExecutor(
+            device, targetResource, readerAndChunkMetadataList, writer);
+    compactionExecutor.execute();
   }
 
   public static boolean deleteTsFilesInDisk(

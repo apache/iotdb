@@ -33,6 +33,8 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.Timer;
 import org.apache.iotdb.cluster.utils.ClientUtils;
 import org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd;
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StartupException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -56,7 +58,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.apache.iotdb.cluster.utils.nodetool.function.NodeToolCmd.BUILDING_CLUSTER_INFO;
@@ -91,7 +92,7 @@ public class ClusterMonitor implements ClusterMonitorMBean, IService {
   private void startCollectClusterStatus() {
     // monitor all nodes' live status
     LOGGER.info("start metric node status and leader distribution");
-    Executors.newSingleThreadScheduledExecutor()
+    IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.Cluster_Monitor.getName())
         .scheduleAtFixedRate(
             () -> {
               MetaGroupMember metaGroupMember = ClusterIoTDB.getInstance().getMetaGroupMember();
