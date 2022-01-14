@@ -43,11 +43,8 @@ public enum CrossCompactionStrategy {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
@@ -56,11 +53,8 @@ public enum CrossCompactionStrategy {
             virtualStorageGroupName,
             timePartitionId,
             storageGroupDir,
-            seqTsFileResourceList,
-            unSeqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
-            concurrentMergeCount,
             CompactionTaskManager.currentTaskNum);
     }
   }
@@ -72,7 +66,6 @@ public enum CrossCompactionStrategy {
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
-      int concurrentMergeCount,
       File logFile) {
     switch (this) {
       case INPLACE_COMPACTION:
@@ -84,7 +77,6 @@ public enum CrossCompactionStrategy {
             storageGroupDir,
             seqTsFileResourceList,
             unSeqTsFileResourceList,
-            concurrentMergeCount,
             logFile,
             CompactionTaskManager.currentTaskNum);
     }
