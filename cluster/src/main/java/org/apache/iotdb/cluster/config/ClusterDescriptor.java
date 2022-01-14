@@ -269,6 +269,18 @@ public class ClusterDescriptor {
                 "max_raft_log_index_size_in_memory",
                 String.valueOf(config.getMaxRaftLogIndexSizeInMemory()))));
 
+    config.setUnCommittedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "uncommitted_raft_log_num_for_reject_threshold",
+                String.valueOf(config.getUnCommittedRaftLogNumForRejectThreshold()))));
+
+    config.setUnAppliedRaftLogNumForRejectThreshold(
+        Integer.parseInt(
+            properties.getProperty(
+                "unapplied_raft_log_num_for_reject_threshold",
+                String.valueOf(config.getUnAppliedRaftLogNumForRejectThreshold()))));
+
     config.setMaxRaftLogPersistDataSizePerFile(
         Integer.parseInt(
             properties.getProperty(

@@ -139,8 +139,18 @@ public class ClusterConfig {
    */
   private int maxRaftLogIndexSizeInMemory = 10000;
 
-  /** */
-  private int UnCommittedRaftLogNumForBlock = 500;
+  /**
+   * If leader finds too many uncommitted raft logs, raft group leader will wait for a short period
+   * of time, and then append the raft log
+   */
+  private int UnCommittedRaftLogNumForRejectThreshold = 5000;
+
+  /**
+   * If followers find too many committed raft logs have not been applied, followers will reject the
+   * raft log sent by leader
+   */
+  private int UnAppliedRaftLogNumForRejectThreshold = 5000;
+
   /**
    * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The
    * default size is 1GB
@@ -380,12 +390,21 @@ public class ClusterConfig {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 
-  public int getUnCommittedRaftLogNumForBlock() {
-    return UnCommittedRaftLogNumForBlock;
+  public int getUnCommittedRaftLogNumForRejectThreshold() {
+    return UnCommittedRaftLogNumForRejectThreshold;
   }
 
-  public void setUnCommittedRaftLogNumForBlock(int unCommittedRaftLogNumForBlock) {
-    UnCommittedRaftLogNumForBlock = unCommittedRaftLogNumForBlock;
+  public void setUnCommittedRaftLogNumForRejectThreshold(
+      int unCommittedRaftLogNumForRejectThreshold) {
+    UnCommittedRaftLogNumForRejectThreshold = unCommittedRaftLogNumForRejectThreshold;
+  }
+
+  public int getUnAppliedRaftLogNumForRejectThreshold() {
+    return UnAppliedRaftLogNumForRejectThreshold;
+  }
+
+  public void setUnAppliedRaftLogNumForRejectThreshold(int unAppliedRaftLogNumForRejectThreshold) {
+    UnAppliedRaftLogNumForRejectThreshold = unAppliedRaftLogNumForRejectThreshold;
   }
 
   public int getRaftLogBufferSize() {
