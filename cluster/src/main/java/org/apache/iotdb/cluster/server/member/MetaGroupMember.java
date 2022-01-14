@@ -383,7 +383,9 @@ public class MetaGroupMember extends RaftMember implements IService, MetaGroupMe
   }
 
   private void threadTaskInit() {
-    heartBeatService.submit(new MetaHeartbeatThread(this));
+    if (allNodes.size() > 1) {
+      heartBeatService.submit(new MetaHeartbeatThread(this));
+    }
   }
 
   /**
