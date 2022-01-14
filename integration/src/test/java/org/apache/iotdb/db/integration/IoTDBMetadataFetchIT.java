@@ -226,6 +226,9 @@ public class IoTDBMetadataFetchIT {
   @Test
   @Category({LocalStandaloneTest.class})
   public void databaseMetaDataTest() throws SQLException {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
       databaseMetaData = connection.getMetaData();
       showTimeseriesInJson();
