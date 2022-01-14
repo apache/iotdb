@@ -217,6 +217,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
@@ -1817,6 +1818,14 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance()
             .deleteTimeseries(
                 path, deleteTimeSeriesPlan.getIndex(), deleteTimeSeriesPlan.getPartitionFilter());
+        if (deleteTimeSeriesPlan.isPrefixMatch()) {
+          // adapt to prefix match of 0.12
+          StorageEngine.getInstance()
+              .deleteTimeseries(
+                  path.concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                  deleteTimeSeriesPlan.getIndex(),
+                  deleteTimeSeriesPlan.getPartitionFilter());
+        }
         String failed =
             IoTDB.metaManager.deleteTimeseries(path, deleteTimeSeriesPlan.isPrefixMatch());
         if (failed != null) {
