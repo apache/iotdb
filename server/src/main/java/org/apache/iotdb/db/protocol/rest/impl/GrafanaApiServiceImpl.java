@@ -160,7 +160,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan, 0);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }

@@ -1585,6 +1585,9 @@ public class MTree implements Serializable {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
       if (!cur.hasChild(fullPathNodes[index])) {
         if (upperTemplate != null) {
+          // for this fullPath, cur is the last node on MTree
+          // since upperTemplate exists, need to find the matched suffix path of fullPath and
+          // template
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
                   .toString();
@@ -1595,7 +1598,8 @@ public class MTree implements Serializable {
             return index - 1;
           }
 
-          // overlap with template, cast exception for now
+          // if suffix doesn't match, but first node name matched, it's an overlap with template
+          // cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);
