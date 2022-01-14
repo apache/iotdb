@@ -56,6 +56,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
@@ -77,15 +78,14 @@ public class CompactionTaskManager implements IService {
       new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
 
+  public static AtomicLong writtenBytes = new AtomicLong(0);
+
   // The thread pool that periodically fetches and executes the compaction task from
   // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
   // is 1.
   private ScheduledExecutorService compactionTaskSubmissionThreadPool;
 
   public static Semaphore semaphore = null;
-
-  private final long TASK_SUBMIT_INTERVAL =
-      IoTDBDescriptor.getInstance().getConfig().getCompactionSubmissionInterval();
 
   public static CompactionTaskManager getInstance() {
     return INSTANCE;
@@ -108,6 +108,20 @@ public class CompactionTaskManager implements IService {
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
       // if there is thread space available in the taskExecutionPool, put the compaction task thread
       // into the taskExecutionPool and perform the compaction.
+      this.compactionTaskSubmissionThreadPool =
+          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
+      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
+          () -> {
+            double writtenSize = writtenBytes.doubleValue() / 1024 / 1024;
+            logger.info(
+                "[IO Rates] Total written size is {} MB, {} MB/s in average",
+                writtenSize,
+                writtenSize / 60);
+            writtenBytes.set(0);
+          },
+          60,
+          60,
+          TimeUnit.SECONDS);
       new Thread(this::submitTaskFromTaskQueue).start();
     }
     logger.info("Compaction task manager started.");
