@@ -9,6 +9,7 @@ on:
       - master
       - 'rel/*'
       - Vector
+      - new-compaction
     paths-ignore:
       - 'docs/**'
   pull_request:
@@ -17,6 +18,7 @@ on:
       - 'rel/*'
       - cluster_new
       - Vector
+      - new-compaction
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:
