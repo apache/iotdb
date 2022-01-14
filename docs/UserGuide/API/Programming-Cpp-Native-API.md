@@ -18,9 +18,10 @@
     under the License.
 
 -->
-## C++ Native API
 
-### Dependencies
+# C++ Native API
+
+## Dependencies
 - Java 8+
 - Maven 3.5+
 - Flex
@@ -30,14 +31,22 @@
 - GCC 5.5.0+
 
 
-### Installation
+## Installation
+
+### Download From the Official Website
+
+Download zip from the official website. This is the recommended method, in which you will get a package which is out-of-the-box.
+
+Dowload Link: [Apache Archives | IoTDB](https://archive.apache.org/dist/iotdb/)
 
 The compilation of CPP client requires the module "compile-tools" to be built first. 
 "compile-tools" is mainly responsible for building Thrift libraries locally.
 
+### Installation From Source Code
 
+#### Install CPP Dependencies
 
-#### Build Thrift on MacOS
+### Build Thrift on MacOS
 
 - Bison
 
@@ -93,7 +102,7 @@ to specify the OpenSSL installation directory on your Mac.
 
 
 
-#### Build Thrift on Linux
+### Build Thrift on Linux
 
 Ubuntu 20:  
 
@@ -115,7 +124,7 @@ The version of gcc and boost installed by yum is too low, therefore you should c
 
 
 
-#### Build Thrift on Windows
+### Build Thrift on Windows
 
 - building environment
 
@@ -194,7 +203,7 @@ download binary files from http://slproweb.com/products/Win32OpenSSL.html
 
 Before compile，make sure cmake,flex,bison and openssl already add to "PATH" environment variables.
 
-#### Compile and Test
+### Compile and Test
 
 To compile cpp client, add "-P compile-cpp" option to maven build command.
 
@@ -240,9 +249,9 @@ On Mac machines, the hierarchy of the package should look like this:
 
 
 
-### Q&A
+## Q&A
 
-#### on Mac
+### on Mac
 
 If errors occur when compiling thrift source code, try to downgrade your xcode-commandline from 12 to 11.5
 
@@ -250,7 +259,7 @@ see https://stackoverflow.com/questions/63592445/ld-unsupported-tapi-file-type-t
 
 
 
-#### on Windows
+### on Windows
 
 When Building Thrift and downloading packages via "wget", a possible annoying issue may occur with
 error message looks like:

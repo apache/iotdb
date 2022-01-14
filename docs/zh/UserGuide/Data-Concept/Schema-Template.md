@@ -47,35 +47,4 @@
 
 ## 使用
 
-当前仅支持通过Session编程接口使用元数据模板，包括模板的创建和挂载操作。
-
-
-* 创建一个元数据模板
-
-```
-* name: 元数据模板名称
-* measurements: 工况名称列表，如果该工况是非对齐的，直接将其名称放入一个 list 中再放入 measurements 中，
-*               如果该工况是对齐的，将所有对齐工况名称放入一个 list 再放入 measurements 中
-* dataTypes: 数据类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 dataTypes 中，
-             如果该工况是对齐的，将所有对齐工况的数据类型放入一个 list 再放入 dataTypes 中
-* encodings: 编码类型名称列表，如果该工况是非对齐的，直接将其数据类型放入一个 list 中再放入 encodings 中，
-             如果该工况是对齐的，将所有对齐工况的编码类型放入一个 list 再放入 encodings 中
-* compressors: 压缩方式列表                          
-void createSchemaTemplate(
-      String templateName,
-      List<String> schemaName,
-      List<List<String>> measurements,
-      List<List<TSDataType>> dataTypes,
-      List<List<TSEncoding>> encodings,
-      List<CompressionType> compressors)
-```
-
-* 将名为 `templateName` 的元数据模板挂载到 `prefixPath` 路径下，在执行这一步之前，你需要创建名为 `templateName` 的元数据模板
-
-``` 
-void setSchemaTemplate(String templateName, String prefixPath)
-```
-
-挂载好元数据模板后，即可进行数据的写入。例如存储组为root.sg，模板t1(s1,s2)被挂载到了节点root.sg.car，那么可直接向时间序列（如root.sg.car.d1.s1和root.sg.car.d1.s2）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
-
-使用元数据模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`。
+目前 Java 原生接口、C++ 原生接口、IoTDB-SQL 已经支持元数据模板操作。
