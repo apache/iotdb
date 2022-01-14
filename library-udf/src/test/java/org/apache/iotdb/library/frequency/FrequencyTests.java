@@ -247,7 +247,7 @@ public class FrequencyTests {
       for(int i=1;i<ITERATION_TIMES;++i){
         Double result1 = Double.parseDouble(resultSet1.getString(i));
         Double result2 = Double.parseDouble(resultSet2.getString(i));
-        assert Math.abs(result1-result2)<1e-2;
+        assert Math.abs(result1-0.5*result2)<1e-2;
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
