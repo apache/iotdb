@@ -58,7 +58,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -1504,8 +1503,7 @@ public abstract class Cases {
                 "104,root.vehicle.d0,90,90,190,",
                 "105,root.vehicle.d0,99,99,199,",
                 "106,root.vehicle.d0,99,99,null,",
-                "1000,root.vehicle.d0,22222,22222,55555,"
-            ));
+                "1000,root.vehicle.d0,22222,22222,55555,"));
     for (Statement statement : readStatements) {
       try {
         boolean hasResultSet =
@@ -1520,7 +1518,7 @@ public abstract class Cases {
                   resultSetMetaData,
                   "Time,Device,s0,s0,s1",
                   new int[] {
-                      Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT
+                    Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT
                   });
 
           int cnt = 0;
@@ -1634,12 +1632,12 @@ public abstract class Cases {
     for (Statement statement : readStatements) {
       String[] sqls =
           new String[] {
-              "COUNT NODES root.** level=1",
-              "COUNT NODES root.ln level=1",
-              "COUNT NODES root.ln.wf01.** level=1",
-              "COUNT NODES root.ln.wf01.* level=2",
-              "COUNT NODES root.ln.wf01.* level=3",
-              "COUNT NODES root.ln.wf01.* level=4"
+            "COUNT NODES root.** level=1",
+            "COUNT NODES root.ln level=1",
+            "COUNT NODES root.ln.wf01.** level=1",
+            "COUNT NODES root.ln.wf01.* level=2",
+            "COUNT NODES root.ln.wf01.* level=3",
+            "COUNT NODES root.ln.wf01.* level=4"
           };
       String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
