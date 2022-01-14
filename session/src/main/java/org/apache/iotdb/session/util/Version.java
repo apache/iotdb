@@ -20,10 +20,6 @@
 package org.apache.iotdb.session.util;
 
 public enum Version {
-  V_0_8,
-  V_0_9,
-  V_0_10,
-  V_0_11,
   V_0_12,
   V_0_13
 }

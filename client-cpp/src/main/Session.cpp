@@ -526,14 +526,6 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
 
 string Session::getVersionString(Version::Version version) {
     switch (version) {
-        case Version::V_0_8:
-            return "V_0_8";
-        case Version::V_0_9:
-            return "V_0_9";
-        case Version::V_0_10:
-            return "V_0_10";
-        case Version::V_0_11:
-            return "V_0_11";
         case Version::V_0_12:
             return "V_0_12";
         case Version::V_0_13:
