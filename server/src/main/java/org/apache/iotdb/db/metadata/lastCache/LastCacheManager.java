@@ -222,7 +222,7 @@ public class LastCacheManager {
       try {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(node.getPartialPath(), queryContext, null);
+                .getQueryDataSource(node.getPartialPath(), queryContext, null, false);
         Set<String> measurementSet = new HashSet<>();
         measurementSet.add(node.getPartialPath().getFullPath());
         LastPointReader lastReader =
