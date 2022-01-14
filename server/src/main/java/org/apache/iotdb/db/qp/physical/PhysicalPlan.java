@@ -271,6 +271,10 @@ public abstract class PhysicalPlan {
     }
   }
 
+  public boolean isAuthenticationRequired() {
+    return true;
+  }
+
   /** Used to check whether a user has the permission to execute the plan with these paths. */
   public List<? extends PartialPath> getAuthPaths() {
     return getPaths();

@@ -524,6 +524,17 @@ int8_t Session::getDataTypeNumber(TSDataType::TSDataType type) {
     }
 }
 
+string Session::getVersionString(Version::Version version) {
+    switch (version) {
+        case Version::V_0_12:
+            return "V_0_12";
+        case Version::V_0_13:
+            return "V_0_13";
+        default:
+            return "V_0_12";
+    }
+}
+
 void Session::open() {
     open(false, DEFAULT_TIMEOUT_MS);
 }
@@ -556,10 +567,15 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         client = std::make_shared<TSIServiceClient>(protocol);
     }
 
+    std::map<std::string, std::string> configuration;
+    configuration["version"] = getVersionString(version);
+
     TSOpenSessionReq openReq;
     openReq.__set_username(username);
     openReq.__set_password(password);
     openReq.__set_zoneId(zoneId);
+    openReq.__set_configuration(configuration);
+
     try {
         TSOpenSessionResp openResp;
         client->openSession(openResp, openReq);
