@@ -71,6 +71,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       }
       this.currentTaskNum.decrementAndGet();
+      CompactionTaskManager.semaphore.release();
     }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
