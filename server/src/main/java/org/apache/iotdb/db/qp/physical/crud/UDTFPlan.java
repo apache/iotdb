@@ -20,7 +20,6 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -57,8 +56,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
   }
 
   @Override
-  public void deduplicate(PhysicalGenerator physicalGenerator)
-      throws MetadataException {
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
     // sort paths by device, to accelerate the metadata read process
     List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < resultColumns.size(); i++) {
@@ -97,8 +95,7 @@ public class UDTFPlan extends RawDataQueryPlan implements UDFPlan {
     for (PartialPath path : getDeduplicatedPaths()) {
       MeasurementPath measurementPath = (MeasurementPath) path;
       if (measurementPath.isUnderAlignedEntity()) {
-        throw new MetadataException(
-            "Aligned timeseries is not supported in UDF queries for now.");
+        throw new MetadataException("Aligned timeseries is not supported in UDF queries for now.");
       }
     }
   }

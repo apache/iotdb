@@ -53,8 +53,7 @@ public class RawDataQueryPlan extends QueryPlan {
   }
 
   @Override
-  public void deduplicate(PhysicalGenerator physicalGenerator)
-      throws MetadataException {
+  public void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException {
     // sort paths by device, to accelerate the metadata read process
     List<Pair<PartialPath, Integer>> indexedPaths = new ArrayList<>();
     for (int i = 0; i < paths.size(); i++) {

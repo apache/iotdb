@@ -19,7 +19,6 @@
 package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -70,8 +69,7 @@ public abstract class QueryPlan extends PhysicalPlan {
     setQuery(true);
   }
 
-  public abstract void deduplicate(PhysicalGenerator physicalGenerator)
-      throws MetadataException;
+  public abstract void deduplicate(PhysicalGenerator physicalGenerator) throws MetadataException;
 
   /** Construct the header of result set. Return TSExecuteStatementResp. */
   public TSExecuteStatementResp getTSExecuteStatementResp(boolean isJdbcQuery)
