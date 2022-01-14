@@ -824,6 +824,14 @@ It costs 0.007s
 本章节主要介绍聚合查询的相关示例，
 主要使用的是 IoTDB SELECT 语句的聚合查询函数。
 
+> 需要注意的是，聚合查询和时间序列查询不能混合使用。下述语句就是不支持的：
+>
+> ```sql
+> select a, count(a) from root.sg
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
+
 #### 统计总点数
 
 ```sql

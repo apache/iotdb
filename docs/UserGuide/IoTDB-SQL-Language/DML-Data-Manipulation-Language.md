@@ -802,6 +802,14 @@ It costs 0.007s
 
 This section mainly introduces the related examples of aggregate query.
 
+> Please note that mixed use of `Aggregate Query` and `Timeseries Query` is not allowed. Below are examples for queries that are not allowed.
+>
+> ```
+> select a, count(a) from root.sg 
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
+
 #### Count Points
 
 ```sql
