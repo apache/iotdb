@@ -77,6 +77,8 @@ public class Cli extends AbstractCli {
     }
 
     try {
+      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
+      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
       username = checkRequiredArg(USERNAME_ARGS, USERNAME_NAME, commandLine, true, null);
     } catch (ArgsErrorException e) {
       println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
@@ -84,7 +86,7 @@ public class Cli extends AbstractCli {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
     }
 
-    lineReader = JlineUtils.getLineReader(username);
+    lineReader = JlineUtils.getLineReader(username, host, port);
     serve();
   }
 
@@ -123,9 +125,6 @@ public class Cli extends AbstractCli {
 
   private static void serve() {
     try {
-      host = checkRequiredArg(HOST_ARGS, HOST_NAME, commandLine, false, host);
-      port = checkRequiredArg(PORT_ARGS, PORT_NAME, commandLine, false, port);
-
       password = commandLine.getOptionValue(PASSWORD_ARGS);
       if (hasExecuteSQL && password != null) {
         try (IoTDBConnection connection =
@@ -145,8 +144,6 @@ public class Cli extends AbstractCli {
         password = lineReader.readLine("please input your password:", '\0');
       }
       receiveCommands(lineReader);
-    } catch (ArgsErrorException e) {
-      println(IOTDB_CLI_PREFIX + "> input params error because" + e.getMessage());
     } catch (Exception e) {
       println(IOTDB_CLI_PREFIX + "> exit cli with error " + e.getMessage());
     }
