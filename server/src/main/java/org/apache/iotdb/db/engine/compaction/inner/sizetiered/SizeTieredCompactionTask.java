@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner.sizetiered;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.AbstractInnerSpaceCompactionTask;
 import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -30,11 +31,11 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -116,7 +117,17 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
           "{} [Compaction] compaction with {}", fullStorageGroupName, selectedTsFileResourceList);
 
       // carry out the compaction
-      InnerSpaceCompactionUtils.compact(targetTsFileResource, selectedTsFileResourceList, sequence);
+      if (sequence) {
+        InnerSpaceCompactionUtils.compact(
+            targetTsFileResource, selectedTsFileResourceList, sequence);
+      } else {
+        CompactionUtils.compact(
+            Collections.emptyList(),
+            selectedTsFileResourceList,
+            Collections.singletonList(targetTsFileResource),
+            fullStorageGroupName);
+      }
+
       InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, fullStorageGroupName);
       LOGGER.info(
           "{} [SizeTiredCompactionTask] compact finish, close the logger", fullStorageGroupName);
