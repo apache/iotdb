@@ -19,7 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
 import org.apache.iotdb.db.qp.utils.DatetimeUtils;
 
 public class TsFilePipe implements Pipe {
@@ -60,7 +60,13 @@ public class TsFilePipe implements Pipe {
 
   @Override
   public void start() {
+    if (new TsFilePipeLogAnalyzer().isCollectFinished()) {
+      recover();
+    }
     status = PipeStatus.RUNNING;
+  }
+
+  private void recover() {
   }
 
   @Override

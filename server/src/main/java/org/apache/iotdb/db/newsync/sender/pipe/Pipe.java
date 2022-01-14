@@ -19,8 +19,6 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
-import org.apache.iotdb.db.exception.PipeException;
-
 public interface Pipe {
   void start();
 

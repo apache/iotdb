@@ -23,8 +23,6 @@ import org.apache.iotdb.db.exception.PipeSinkException;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
-import java.nio.ByteBuffer;
-
 public class IoTDBPipeSink implements PipeSink {
   private final PipeSink.Type type;
 
