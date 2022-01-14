@@ -131,7 +131,7 @@ public class Session {
 
   protected boolean enableQueryRedirection = false;
 
-  // The version number of the client which used for compatible in server
+  // The version number of the client which used for compatibility in the server
   protected Version version;
 
   public Session(String host, int rpcPort) {
