@@ -983,7 +983,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     // if a single log exceeds the threshold
     // we need to return error code to the client as in server mode
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        & log.serialize().capacity() + Integer.BYTES
+        && log.serialize().capacity() + Integer.BYTES
             >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
@@ -1036,7 +1036,7 @@ public abstract class RaftMember implements RaftMemberMBean {
 
     // just like processPlanLocally,we need to check the size of log
     if (ClusterDescriptor.getInstance().getConfig().isEnableRaftLogPersistence()
-        & log.serialize().capacity() + Integer.BYTES
+        && log.serialize().capacity() + Integer.BYTES
             >= ClusterDescriptor.getInstance().getConfig().getRaftLogBufferSize()) {
       logger.error(
           "Log cannot fit into buffer, please increase raft_log_buffer_size;"
