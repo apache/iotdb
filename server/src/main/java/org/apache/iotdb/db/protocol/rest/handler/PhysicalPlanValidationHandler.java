@@ -18,16 +18,18 @@
 package org.apache.iotdb.db.protocol.rest.handler;
 
 import org.apache.iotdb.db.exception.query.LogicalOperatorException;
+import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.qp.logical.crud.GroupByQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
-import org.apache.iotdb.db.qp.logical.crud.SpecialClauseComponent;
-import org.apache.iotdb.db.query.expression.ResultColumn;
-
-import java.util.List;
 
 public class PhysicalPlanValidationHandler {
 
-  public static void checkRestQuery(QueryOperator queryOperator) throws LogicalOperatorException {
+  public static void checkRestQuery(Operator operator) throws LogicalOperatorException {
+    if (!(operator instanceof QueryOperator)) {
+      return;
+    }
+    QueryOperator queryOperator = (QueryOperator) operator;
 
     if (queryOperator.isAlignByDevice()) {
       throw new LogicalOperatorException("align by device clauses are not supported.");
@@ -39,7 +41,11 @@ public class PhysicalPlanValidationHandler {
     }
   }
 
-  public static void checkGrafanaExp(QueryOperator queryOperator) throws LogicalOperatorException {
+  public static void checkGrafanaQuery(Operator operator) throws LogicalOperatorException {
+    if (!(operator instanceof QueryOperator)) {
+      return;
+    }
+    QueryOperator queryOperator = (QueryOperator) operator;
 
     if (queryOperator.isAlignByDevice()) {
       throw new LogicalOperatorException("align by device clauses are not supported.");
@@ -54,22 +60,14 @@ public class PhysicalPlanValidationHandler {
       throw new LogicalOperatorException("last clauses are not supported.");
     }
 
-    if (queryOperator.getSpecialClauseComponent() != null) {
-      SpecialClauseComponent specialClauseComponent = queryOperator.getSpecialClauseComponent();
-      if (!specialClauseComponent.isAscending()) {
-        throw new LogicalOperatorException("order by time desc clauses are not supported.");
-      }
+    if (!(queryOperator instanceof GroupByQueryOperator) && queryOperator.isGroupByLevel()) {
+      throw new LogicalOperatorException(
+          "group by level without time interval clauses are not supported.");
+    }
 
-      if (specialClauseComponent.getLevels() != null
-          && specialClauseComponent.getLevels().length > 0) {
-        List<ResultColumn> resultColumnList = queryOperator.getSelectComponent().getResultColumns();
-        for (ResultColumn resultColumn : resultColumnList) {
-          if (resultColumn.getExpression().getExpressionString().contains("count")) {
-            throw new LogicalOperatorException(
-                "count timeseries with group by level clauses are not supported.");
-          }
-        }
-      }
+    if (queryOperator.getSpecialClauseComponent() != null
+        && !queryOperator.getSpecialClauseComponent().isAscending()) {
+      throw new LogicalOperatorException("order by time desc clauses are not supported.");
     }
   }
 }

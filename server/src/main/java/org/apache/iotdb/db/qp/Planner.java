@@ -150,9 +150,7 @@ public class Planner {
     // check if there are logical errors
     LogicalChecker.check(operator);
     // extra check for rest query
-    if (operator.isQuery()) {
-      PhysicalPlanValidationHandler.checkRestQuery((QueryOperator) operator);
-    }
+    PhysicalPlanValidationHandler.checkRestQuery(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator);
     // from logical operator to physical plan
@@ -166,9 +164,7 @@ public class Planner {
     // check if there are logical errors
     LogicalChecker.check(operator);
     // extra check for grafana query
-    if (operator.isQuery()) {
-      PhysicalPlanValidationHandler.checkGrafanaExp((QueryOperator) operator);
-    }
+    PhysicalPlanValidationHandler.checkGrafanaQuery(operator);
     // optimize the logical operator
     operator = logicalOptimize(operator);
     // from logical operator to physical plan
