@@ -134,7 +134,7 @@ When the target aligned timeseries are not existed, the system will automaticall
 
 ### Supported Query Types
 
-**Note that except for the following types of queries, other types of queries (such as `LAST` queries) are not supported. **
+**Note that except for the following types of queries, other types of queries (such as `LAST` queries and raw aggregation queries) are not supported. **
 
 * Raw time series query
 
