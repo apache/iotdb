@@ -73,8 +73,8 @@ public abstract class ServiceProvider {
 
   public static final QueryTimeManager QUERY_TIME_MANAGER = QueryTimeManager.getInstance();
   public static final TracingManager TRACING_MANAGER = TracingManager.getInstance();
-  public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER = QueryFrequencyRecorder
-      .getInstance();
+  public static final QueryFrequencyRecorder QUERY_FREQUENCY_RECORDER =
+      QueryFrequencyRecorder.getInstance();
 
   public static SessionManager SESSION_MANAGER = SessionManager.getInstance();
 
@@ -244,13 +244,11 @@ public abstract class ServiceProvider {
     }
   }
 
-  /**
-   * create QueryDataSet and buffer it for fetchResults
-   */
+  /** create QueryDataSet and buffer it for fetchResults */
   public QueryDataSet createQueryDataSet(
       QueryContext context, PhysicalPlan physicalPlan, int fetchSize)
       throws QueryProcessException, QueryFilterOptimizationException, StorageEngineException,
-      IOException, MetadataException, SQLException, TException, InterruptedException {
+          IOException, MetadataException, SQLException, TException, InterruptedException {
 
     QueryDataSet queryDataSet = executor.processQuery(physicalPlan, context);
     queryDataSet.setFetchSize(fetchSize);
