@@ -28,9 +28,11 @@ import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -40,8 +42,6 @@ import java.sql.Statement;
 import static org.junit.Assert.fail;
 
 public class AnomalyTests {
-  protected static final int ITERATION_TIMES = 10_000;
-
   @BeforeClass
   public static void setUp() throws Exception {
     ConfigFactory.getConfig()
@@ -83,32 +83,70 @@ public class AnomalyTests {
   }
 
   private static void generateData() {
-    double x = -100d, y = 100d; // borders of random value
-    long a = 0, b = 1000000000;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-2,-2));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,10,10));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
-      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-2,-2));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,10,10));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,0,0));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,2,2));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,-1,-1));
-      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,1,1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 100, 0, 0));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 200, 2, 2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 300, -2, -2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 400, -1, -1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 500, 10, 10));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 600, 1, 1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 700, 0, 0));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 800, 2, 2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 900, -1, -1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1000, 1, 1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 100, 0, 0));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 200, 2, 2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 300, -2, -2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 400, -1, -1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 500, 10, 10));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 600, 1, 1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 700, 0, 0));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 800, 2, 2));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 900, -1, -1));
+      statement.execute(
+          String.format(
+              "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1000, 1, 1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -148,8 +186,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -164,8 +202,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -180,8 +218,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -196,8 +234,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -212,8 +250,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -228,8 +266,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -244,8 +282,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -260,8 +298,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -397,8 +435,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -414,8 +452,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -431,8 +469,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -448,8 +486,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength==1;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength == 1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -464,8 +502,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength<=10;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength <= 10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -480,8 +518,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength<=10;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength <= 10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -496,8 +534,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength<=10;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength <= 10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -512,8 +550,8 @@ public class AnomalyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       resultSet.last();
-      int resultSetLength=resultSet.getRow();
-      assert resultSetLength<=10;
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength <= 10;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
