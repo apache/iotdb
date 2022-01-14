@@ -54,6 +54,7 @@ public class ClientPoolFactory {
             : new TBinaryProtocol.Factory();
     poolConfig = new GenericKeyedObjectPoolConfig();
     poolConfig.setMaxTotalPerKey(maxConnectionForEachNode);
+    poolConfig.setMaxIdlePerKey(maxConnectionForEachNode / 2);
     poolConfig.setMaxWait(Duration.ofMillis(waitClientTimeoutMS));
     poolConfig.setTestOnReturn(true);
     poolConfig.setTestOnBorrow(true);

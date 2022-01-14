@@ -130,6 +130,38 @@ public class ClientPoolFactoryTest {
   }
 
   @Test
+  public void poolIdleObjectEvictionTest() throws Exception {
+    GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
+        clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
+
+    int oldMaxTotalPerKey = pool.getMaxTotalPerKey();
+    pool.setMaxTotalPerKey(2 * pool.getMaxIdlePerKey());
+
+    Node node = constructDefaultNode();
+    List<RaftService.AsyncClient> clientList = new ArrayList<>();
+    for (int i = 0; i < pool.getMaxTotalPerKey(); i++) {
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNotNull(client);
+      clientList.add(client);
+    }
+
+    for (RaftService.AsyncClient client : clientList) {
+      pool.returnObject(node, client);
+    }
+
+    Assert.assertEquals(0, pool.getNumActive(node));
+    Assert.assertEquals(pool.getMaxIdlePerKey(), pool.getNumIdle(node));
+
+    for (int i = 0; i < pool.getMaxIdlePerKey(); i++) {
+      RaftService.AsyncClient client = pool.borrowObject(node);
+      Assert.assertNotNull(client);
+      Assert.assertTrue(clientList.contains(client));
+    }
+
+    pool.setMaxTotalPerKey(oldMaxTotalPerKey);
+  }
+
+  @Test
   public void createAsyncDataClientTest() throws Exception {
     GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
         clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
