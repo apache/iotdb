@@ -1174,9 +1174,7 @@ public class MTree implements Serializable {
 
   // region Interfaces for Level Node info Query
   /**
-   * Get child node path in the next level of the given path pattern. If using prefix match, the
-   * path pattern is used to match prefix path. All timeseries start with the matched prefix path
-   * will be deleted.
+   * Get child node path in the next level of the given path pattern.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*.
    *
@@ -1184,11 +1182,9 @@ public class MTree implements Serializable {
    * return [root.sg1.d1, root.sg1.d2]
    *
    * @param pathPattern The given path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
+  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
     try {
       MNodeCollector<Set<String>> collector =
           new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
@@ -1202,55 +1198,6 @@ public class MTree implements Serializable {
             }
           };
       collector.setResultSet(new TreeSet<>());
-      collector.setPrefixMatch(isPrefixMatch);
-      collector.traverse();
-      return collector.getResult();
-    } catch (IllegalPathException e) {
-      throw new IllegalPathException(pathPattern.getFullPath());
-    }
-  }
-
-  /**
-   * Get child node path in the next level of the given path pattern.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return getChildNodePathInNextLevel(pathPattern, false);
-  }
-
-  /**
-   * Get child node in the next level of the given path. If using prefix match, the path pattern is
-   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2]
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1.d1
-   * return [s1, s2]
-   *
-   * @param pathPattern Path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    try {
-      MNodeCollector<Set<String>> collector =
-          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
-            @Override
-            protected void transferToResult(IMNode node) {
-              resultSet.add(node.getName());
-            }
-          };
-      collector.setResultSet(new TreeSet<>());
-      collector.setPrefixMatch(isPrefixMatch);
       collector.traverse();
       return collector.getResult();
     } catch (IllegalPathException e) {
@@ -1271,7 +1218,20 @@ public class MTree implements Serializable {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return getChildNodeNameInNextLevel(pathPattern, false);
+    try {
+      MNodeCollector<Set<String>> collector =
+          new MNodeCollector<Set<String>>(root, pathPattern.concatNode(ONE_LEVEL_PATH_WILDCARD)) {
+            @Override
+            protected void transferToResult(IMNode node) {
+              resultSet.add(node.getName());
+            }
+          };
+      collector.setResultSet(new TreeSet<>());
+      collector.traverse();
+      return collector.getResult();
+    } catch (IllegalPathException e) {
+      throw new IllegalPathException(pathPattern.getFullPath());
+    }
   }
 
   /** Get all paths from root to the given level */

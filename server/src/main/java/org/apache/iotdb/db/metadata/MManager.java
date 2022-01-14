@@ -1085,25 +1085,6 @@ public class MManager {
   }
 
   /**
-   * Get child node path in the next level of the given path pattern. If using prefix match, the
-   * path pattern is used to match prefix path. All timeseries start with the matched prefix path
-   * will be collected.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [root.sg1.d1, root.sg1.d2]
-   *
-   * @param pathPattern The given path
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return All child nodes' seriesPath(s) of given seriesPath.
-   */
-  public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getChildNodePathInNextLevel(pathPattern, isPrefixMatch);
-  }
-
-  /**
    * Get child node path in the next level of the given path pattern.
    *
    * <p>give pathPattern and the child nodes is those matching pathPattern.*
@@ -1115,25 +1096,7 @@ public class MManager {
    * @return All child nodes' seriesPath(s) of given seriesPath.
    */
   public Set<String> getChildNodePathInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return getChildNodePathInNextLevel(pathPattern, false);
-  }
-
-  /**
-   * Get child node in the next level of the given path pattern. If using prefix match, the path
-   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
-   * collected.
-   *
-   * <p>give pathPattern and the child nodes is those matching pathPattern.*
-   *
-   * <p>e.g., MTree has [root.sg1.d1.s1, root.sg1.d1.s2, root.sg1.d2.s1] given path = root.sg1,
-   * return [d1, d2] given path = root.sg.d1 return [s1,s2]
-   *
-   * @param isPrefixMatch if true, the path pattern is used to match prefix path
-   * @return All child nodes of given seriesPath.
-   */
-  public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getChildNodeNameInNextLevel(pathPattern, isPrefixMatch);
+    return mtree.getChildNodePathInNextLevel(pathPattern);
   }
 
   /**
@@ -1147,7 +1110,7 @@ public class MManager {
    * @return All child nodes of given seriesPath.
    */
   public Set<String> getChildNodeNameInNextLevel(PartialPath pathPattern) throws MetadataException {
-    return getChildNodeNameInNextLevel(pathPattern, false);
+    return mtree.getChildNodeNameInNextLevel(pathPattern);
   }
   // endregion
 

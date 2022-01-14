@@ -798,8 +798,7 @@ public class PlanExecutor implements IPlanExecutor {
 
   private QueryDataSet processShowChildPaths(ShowChildPathsPlan showChildPathsPlan)
       throws MetadataException {
-    Set<String> childPathsList =
-        getPathNextChildren(showChildPathsPlan.getPath(), showChildPathsPlan.isPrefixMatch());
+    Set<String> childPathsList = getPathNextChildren(showChildPathsPlan.getPath());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_CHILD_PATHS, false)),
@@ -814,16 +813,14 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getPathNextChildren(PartialPath path, boolean isPrefixMatch)
-      throws MetadataException {
-    return IoTDB.metaManager.getChildNodePathInNextLevel(path, isPrefixMatch);
+  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getChildNodePathInNextLevel(path);
   }
 
   private QueryDataSet processShowChildNodes(ShowChildNodesPlan showChildNodesPlan)
       throws MetadataException {
     // getNodeNextChildren
-    Set<String> childNodesList =
-        getNodeNextChildren(showChildNodesPlan.getPath(), showChildNodesPlan.isPrefixMatch());
+    Set<String> childNodesList = getNodeNextChildren(showChildNodesPlan.getPath());
     ListDataSet listDataSet =
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_CHILD_NODES, false)),
@@ -838,9 +835,8 @@ public class PlanExecutor implements IPlanExecutor {
     return listDataSet;
   }
 
-  protected Set<String> getNodeNextChildren(PartialPath path, boolean isPrefixMatch)
-      throws MetadataException {
-    return IoTDB.metaManager.getChildNodeNameInNextLevel(path, isPrefixMatch);
+  protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
+    return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
   }
 
   protected List<PartialPath> getStorageGroupNames(PartialPath path, boolean isPrefixMatch)

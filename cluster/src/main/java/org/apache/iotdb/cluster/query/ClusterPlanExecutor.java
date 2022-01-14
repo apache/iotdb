@@ -617,8 +617,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getNodeNextChildren(PartialPath path, boolean isPrefixMatch)
-      throws MetadataException {
+  protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     // TODO: create a thread pool for each query calling.
@@ -720,8 +719,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getPathNextChildren(PartialPath path, boolean isPrefixMatch)
-      throws MetadataException {
+  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     // TODO: create a thread pool for each query calling.
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
