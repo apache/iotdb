@@ -181,7 +181,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
     deleteOldFiles(selectedUnSeqTsFileResourceList);
     removeMergingModification();
 
-    updateTsfileResource();
+    updateTsFileResource();
     cleanUp();
     logger.info(
         "{}-crossSpaceCompactionTask Costs {} s",
@@ -189,7 +189,7 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
         (System.currentTimeMillis() - startTime) / 1000);
   }
 
-  private void updateTsfileResource() {
+  private void updateTsFileResource() {
     for (TsFileResource resource : selectedSeqTsFileResourceList) {
       TsFileResourceManager.getInstance().removeTsFileResource(resource);
     }
@@ -226,14 +226,14 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   private boolean addReadLock(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      tsFileResource.readLock();
-      holdReadLockList.add(tsFileResource);
       if (tsFileResource.isMerging() | !tsFileResource.isClosed()
           || !tsFileResource.getTsFile().exists()
           || tsFileResource.isDeleted()) {
         releaseAllLock();
         return false;
       }
+      tsFileResource.readLock();
+      holdReadLockList.add(tsFileResource);
     }
     for (TsFileResource tsFileResource : tsFileResourceList) {
       tsFileResource.setMerging(true);

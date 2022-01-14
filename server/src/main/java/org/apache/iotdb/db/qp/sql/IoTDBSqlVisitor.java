@@ -92,7 +92,6 @@ import org.apache.iotdb.db.qp.logical.sys.ShowContinuousQueriesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowDevicesOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowFunctionsOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowLockInfoOperator;
-import org.apache.iotdb.db.qp.logical.sys.ShowMergeStatusOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowStorageGroupOperator;
 import org.apache.iotdb.db.qp.logical.sys.ShowTTLOperator;
@@ -1979,13 +1978,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       return new ShowLockInfoOperator(
           SQLConstant.TOK_LOCK_INFO, new PartialPath(SQLConstant.getSingleRootArray()));
     }
-  }
-
-  // Show Merge Info
-
-  @Override
-  public Operator visitShowMergeInfo(IoTDBSqlParser.ShowMergeInfoContext ctx) {
-    return new ShowMergeStatusOperator(SQLConstant.TOK_SHOW_MERGE_STATUS);
   }
 
   // Show Query Processlist

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.CompactionRecoverTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
@@ -3028,7 +3027,6 @@ public class VirtualStorageGroupProcessor {
     try {
       // abort ongoing comapctions and merges
       CompactionTaskManager.getInstance().abortCompaction(logicalStorageGroupName);
-      MergeManager.getINSTANCE().abortMerge(logicalStorageGroupName);
       // close all working files that should be removed
       removePartitions(filter, workSequenceTsFileProcessors.entrySet(), true);
       removePartitions(filter, workUnsequenceTsFileProcessors.entrySet(), false);

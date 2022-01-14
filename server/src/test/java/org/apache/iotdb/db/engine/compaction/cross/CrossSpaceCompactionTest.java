@@ -22,7 +22,6 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MaxFileMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
@@ -104,7 +103,6 @@ public class CrossSpaceCompactionTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
     }
-    MergeManager.getINSTANCE().start();
   }
 
   @After
@@ -113,7 +111,6 @@ public class CrossSpaceCompactionTest {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
-    MergeManager.getINSTANCE().stop();
     EnvironmentUtils.cleanAllDir();
   }
 
