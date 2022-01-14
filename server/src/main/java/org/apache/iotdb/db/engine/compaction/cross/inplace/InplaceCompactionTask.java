@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.WriteLockFailedException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
+import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -127,14 +127,11 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   }
 
   private void startCompaction()
-      throws IOException, StorageEngineException, MetadataException, InterruptedException {
+      throws IOException, StorageEngineException, MetadataException, InterruptedException,
+          WriteProcessException {
     long startTime = System.currentTimeMillis();
-    targetTsfileResourceList = new ArrayList<>();
-    List<File> targetFiles =
-        TsFileNameGenerator.getCrossCompactionTargetFile(selectedSeqTsFileResourceList);
-    for (File targetFile : targetFiles) {
-      targetTsfileResourceList.add(new TsFileResource(targetFile));
-    }
+    targetTsfileResourceList =
+        TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
     if (targetTsfileResourceList.isEmpty()
         && selectedSeqTsFileResourceList.isEmpty()
         && selectedUnSeqTsFileResourceList.isEmpty()) {
@@ -292,13 +289,9 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
   void cleanUp() throws IOException {
     logger.info("{} is cleaning up", taskName);
-    for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
-      for (File file :
-          TsFileNameGenerator.getCrossCompactionTargetFile(Collections.singletonList(seqFile))) {
-        // this file does not necessarily exist, so deletion results need not be processed
-        file.delete();
-        seqFile.setMerging(false);
-      }
+    for (TsFileResource tsFileResource : targetTsfileResourceList) {
+      tsFileResource.getTsFile().delete();
+      tsFileResource.setMerging(false);
     }
     for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
       unseqFile.setMerging(false);
