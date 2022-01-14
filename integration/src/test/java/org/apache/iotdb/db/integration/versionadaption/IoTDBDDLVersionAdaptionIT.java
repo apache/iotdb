@@ -22,9 +22,9 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Constant;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.slf4j.Logger;
@@ -81,471 +81,234 @@ public class IoTDBDDLVersionAdaptionIT {
     }
   }
 
-  @BeforeClass
-  public static void setUp() throws Exception {
+  @Before
+  public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
 
     insertSQL();
   }
 
-  @AfterClass
-  public static void tearDown() throws Exception {
+  @After
+  public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
   }
 
   @Test
   public void showTimeseriesTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-
-      String[] sqls =
-          new String[] {
-            "show timeseries root.ln.wf01.wt01.status", // full seriesPath
-            "show timeseries root.ln.*", // prefix seriesPath
-            "show timeseries root.ln.*.wt01", // seriesPath with stars
-            "show timeseries", // the same as root
-            "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Collections.singletonList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
-                    "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,",
-                    "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
-                    "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
-                    "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
-            new HashSet<>()
-          };
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
-          }
-        } catch (SQLException e) {
-          logger.error("showTimeseriesTest() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "show timeseries root.ln.wf01.wt01.status", // full seriesPath
+          "show timeseries root.ln.*", // prefix seriesPath
+          "show timeseries root.ln.*.wt01", // seriesPath with stars
+          "show timeseries", // the same as root
+          "show timeseries root.a.b", // nonexistent timeseries, thus returning ""
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(
+              Collections.singletonList(
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,")),
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,")),
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01.status,null,root.ln.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                  "root.ln.wf01.wt01.temperature,null,root.ln.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt02.s1,null,root.ln.wf01.wt02,INT32,RLE,SNAPPY,null,null,",
+                  "root.ln.wf01.wt02.s2,null,root.ln.wf01.wt02,DOUBLE,GORILLA,SNAPPY,null,null,",
+                  "root.ln1.wf01.wt01.status,null,root.ln1.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                  "root.ln1.wf01.wt01.temperature,null,root.ln1.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,",
+                  "root.ln2.wf01.wt01.status,null,root.ln2.wf01.wt01,BOOLEAN,PLAIN,SNAPPY,null,null,",
+                  "root.ln2.wf01.wt01.temperature,null,root.ln2.wf01.wt01,FLOAT,RLE,SNAPPY,null,null,")),
+          new HashSet<>()
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showStorageGroupTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "show storage group",
-            "show storage group root.ln.wf01",
-            "show storage group root.ln.wf01.wt01.status"
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,",
-                    "root.ln.wf01.wt02,",
-                    "root.ln1.wf01.wt01,",
-                    "root.ln2.wf01.wt01,")),
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
-            new HashSet<>()
-          };
-
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                Assert.assertTrue(standard.contains(builder.toString()));
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
-          }
-        } catch (SQLException e) {
-          logger.error("showStorageGroupTest() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "show storage group",
+          "show storage group root.ln.wf01",
+          "show storage group root.ln.wf01.wt01.status"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01,",
+                  "root.ln.wf01.wt02,",
+                  "root.ln1.wf01.wt01,",
+                  "root.ln2.wf01.wt01,")),
+          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,", "root.ln.wf01.wt02,")),
+          new HashSet<>()
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showDevicesWithSgTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "show devices root.ln with storage group", "show devices root.ln.wf01.wt01.temperature"
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,root.ln.wf01.wt01,false,",
-                    "root.ln.wf01.wt02,root.ln.wf01.wt02,true,")),
-            new HashSet<>()
-          };
-
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                System.out.println(string);
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
-          }
-        } catch (SQLException e) {
-          logger.error("showDevicesTest() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "show devices root.ln with storage group", "show devices root.ln.wf01.wt01.temperature"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01,root.ln.wf01.wt01,false,",
+                  "root.ln.wf01.wt02,root.ln.wf01.wt02,true,")),
+          new HashSet<>()
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showDevicesTest() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {"show devices root.ln.*", "show devices root.ln.wf01.wt01.temperature"};
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
-            new HashSet<>()
-          };
-
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                StringBuilder builder = new StringBuilder();
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                String string = builder.toString();
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
-          }
-        } catch (SQLException e) {
-          logger.error("showDevicesTest() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {"show devices root.ln.*", "show devices root.ln.wf01.wt01.temperature"};
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Arrays.asList("root.ln.wf01.wt01,false,", "root.ln.wf01.wt02,true,")),
+          new HashSet<>()
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showChildPaths() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"show child paths root.ln"};
-      String[] standards = new String[] {"root.ln.wf01,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showChildPaths() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls = new String[] {"show child paths root.ln"};
+    Set<String>[] standards = new Set[] {new HashSet<>(Collections.singletonList("root.ln.wf01,"))};
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showChildNodes() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"show child nodes root.ln"};
-      String[] standards = new String[] {"wf01,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showChildNodes() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls = new String[] {"show child nodes root.ln"};
+    Set<String>[] standards = new Set[] {new HashSet<>(Collections.singletonList("wf01,"))};
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showCountTimeSeries() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls = new String[] {"COUNT TIMESERIES root.ln.*", "COUNT TIMESERIES"};
-      String[] standards = new String[] {"4,\n", "8,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showCountTimeSeries() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls = new String[] {"COUNT TIMESERIES root.ln.*", "COUNT TIMESERIES"};
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Collections.singletonList("4,")),
+          new HashSet<>(Collections.singletonList("8,"))
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showCountDevices() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT DEVICES root.ln", "COUNT DEVICES", "COUNT DEVICES root.ln.wf01.wt01.temperature"
-          };
-      String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showCountDevices() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "COUNT DEVICES root.ln", "COUNT DEVICES", "COUNT DEVICES root.ln.wf01.wt01.temperature"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Collections.singletonList("2,")),
+          new HashSet<>(Collections.singletonList("4,")),
+          new HashSet<>(Collections.singletonList("0,"))
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showCountStorageGroup() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "count storage group root.ln",
-            "count storage group",
-            "count storage group root.ln.wf01.wt01.status"
-          };
-      String[] standards = new String[] {"2,\n", "4,\n", "0,\n"};
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
-              }
-            }
-          }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showCountStorageGroup() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "count storage group root.ln",
+          "count storage group",
+          "count storage group root.ln.wf01.wt01.status"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Collections.singletonList("2,")),
+          new HashSet<>(Collections.singletonList("4,")),
+          new HashSet<>(Collections.singletonList("0,"))
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showCountTimeSeriesGroupBy() throws SQLException {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT TIMESERIES root group by level=1",
-            "COUNT TIMESERIES root group by level=3",
-            "COUNT TIMESERIES root.*.wf01 group by level=2"
-          };
-      Set<String>[] standards =
-          new Set[] {
-            new HashSet<>(Arrays.asList("root.ln,4,", "root.ln1,2,", "root.ln2,2,")),
-            new HashSet<>(
-                Arrays.asList(
-                    "root.ln.wf01.wt01,2,",
-                    "root.ln.wf01.wt02,2,",
-                    "root.ln1.wf01.wt01,2,",
-                    "root.ln2.wf01.wt01,2,")),
-            new HashSet<>(Arrays.asList("root.ln.wf01,4,", "root.ln1.wf01,2,", "root.ln2.wf01,2,")),
-          };
-      for (int n = 0; n < sqls.length; n++) {
-        String sql = sqls[n];
-        Set<String> standard = standards[n];
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              while (resultSet.next()) {
-                String string = resultSet.getString(1) + "," + resultSet.getInt(2) + ",";
-                Assert.assertTrue(standard.contains(string));
-                standard.remove(string);
-              }
-              assertEquals(0, standard.size());
-            }
-          }
-        } catch (SQLException e) {
-          logger.error("showCountTimeSeriesGroupBy() failed", e);
-          fail(e.getMessage());
-        }
-      }
-    }
+    String[] sqls =
+        new String[] {
+          "COUNT TIMESERIES root group by level=1",
+          "COUNT TIMESERIES root group by level=3",
+          "COUNT TIMESERIES root.*.wf01 group by level=2"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Arrays.asList("root.ln,4,", "root.ln1,2,", "root.ln2,2,")),
+          new HashSet<>(
+              Arrays.asList(
+                  "root.ln.wf01.wt01,2,",
+                  "root.ln.wf01.wt02,2,",
+                  "root.ln1.wf01.wt01,2,",
+                  "root.ln2.wf01.wt01,2,")),
+          new HashSet<>(Arrays.asList("root.ln.wf01,4,", "root.ln1.wf01,2,", "root.ln2.wf01,2,")),
+        };
+    executeAndCheckResult(sqls, standards);
   }
 
   @Test
   public void showCountNodes() throws SQLException {
+    String[] sqls =
+        new String[] {
+          "COUNT NODES root level=1",
+          "COUNT NODES root.ln level=1",
+          "COUNT NODES root.ln level=4",
+          "COUNT NODES root.ln.wf01 level=1",
+          "COUNT NODES root.ln.wf01 level=2",
+          "COUNT NODES root.ln.wf01 level=3",
+          "COUNT NODES root.ln.wf01 level=4"
+        };
+    Set<String>[] standards =
+        new Set[] {
+          new HashSet<>(Collections.singletonList("3,")),
+          new HashSet<>(Collections.singletonList("1,")),
+          new HashSet<>(Collections.singletonList("4,")),
+          new HashSet<>(Collections.singletonList("0,")),
+          new HashSet<>(Collections.singletonList("1,")),
+          new HashSet<>(Collections.singletonList("2,")),
+          new HashSet<>(Collections.singletonList("4,"))
+        };
+    executeAndCheckResult(sqls, standards);
+  }
+
+  private void executeAndCheckResult(String[] sqls, Set<String>[] standards) throws SQLException {
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      String[] sqls =
-          new String[] {
-            "COUNT NODES root level=1",
-            "COUNT NODES root.ln level=1",
-            "COUNT NODES root.ln level=4",
-            "COUNT NODES root.ln.wf01 level=1",
-            "COUNT NODES root.ln.wf01 level=2",
-            "COUNT NODES root.ln.wf01 level=3",
-            "COUNT NODES root.ln.wf01 level=4"
-          };
-      String[] standards = new String[] {"3,\n", "1,\n", "4,\n", "0,\n", "1,\n", "2,\n", "4,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
-        String standard = standards[n];
-        StringBuilder builder = new StringBuilder();
-        try {
-          boolean hasResultSet = statement.execute(sql);
-          if (hasResultSet) {
-            try (ResultSet resultSet = statement.getResultSet()) {
-              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
-              while (resultSet.next()) {
-                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
-                  builder.append(resultSet.getString(i)).append(",");
-                }
-                builder.append("\n");
+        Set<String> standard = standards[n];
+        boolean hasResultSet = statement.execute(sql);
+        if (hasResultSet) {
+          try (ResultSet resultSet = statement.getResultSet()) {
+            ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+            while (resultSet.next()) {
+              StringBuilder builder = new StringBuilder();
+              for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                builder.append(resultSet.getString(i)).append(",");
               }
+              String string = builder.toString();
+              Assert.assertTrue(standard.contains(string));
+              standard.remove(string);
             }
+            assertEquals(0, standard.size());
           }
-          Assert.assertEquals(standard, builder.toString());
-        } catch (SQLException e) {
-          logger.error("showCountNodes() failed", e);
-          fail(e.getMessage());
         }
       }
     }
@@ -553,72 +316,41 @@ public class IoTDBDDLVersionAdaptionIT {
 
   @Test
   public void testDeleteStorageGroup() throws Exception {
-    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
-        Statement statement = connection.createStatement()) {
-      statement.execute("DELETE STORAGE GROUP root.ln.*");
-      boolean hasResult = statement.execute("SHOW STORAGE GROUP");
-      assertTrue(hasResult);
-      String[] expected = new String[] {"root.ln1.wf01.wt01", "root.ln2.wf01.wt01"};
-      List<String> expectedList = new ArrayList<>();
-      Collections.addAll(expectedList, expected);
-      List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          result.add(resultSet.getString(1));
-        }
-      }
-      assertEquals(expected.length, result.size());
-      assertTrue(expectedList.containsAll(result));
-
-      statement.execute("DELETE STORAGE GROUP root.ln1");
-      hasResult = statement.execute("SHOW STORAGE GROUP");
-      assertTrue(hasResult);
-      expected = new String[] {"root.ln2.wf01.wt01"};
-      expectedList = new ArrayList<>();
-      Collections.addAll(expectedList, expected);
-      result = new ArrayList<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          result.add(resultSet.getString(1));
-        }
-      }
-      assertEquals(expected.length, result.size());
-      assertTrue(expectedList.containsAll(result));
-    }
+    executeDeleteAndCheckResult(
+        "DELETE STORAGE GROUP root.ln.*",
+        "SHOW STORAGE GROUP",
+        new String[] {"root.ln1.wf01.wt01", "root.ln2.wf01.wt01"});
+    executeDeleteAndCheckResult(
+        "DELETE STORAGE GROUP root.ln1", "SHOW STORAGE GROUP", new String[] {"root.ln2.wf01.wt01"});
   }
 
   @Test
   public void testDeleteTimeseries() throws Exception {
+    executeDeleteAndCheckResult(
+        "DELETE TIMESERIES root.ln.*",
+        "SHOW TIMESERIES",
+        new String[] {
+          "root.ln1.wf01.wt01.status",
+          "root.ln1.wf01.wt01.temperature",
+          "root.ln2.wf01.wt01.status",
+          "root.ln2.wf01.wt01.temperature"
+        });
+    executeDeleteAndCheckResult(
+        "DELETE TIMESERIES root.ln1",
+        "SHOW TIMESERIES",
+        new String[] {"root.ln2.wf01.wt01.status", "root.ln2.wf01.wt01.temperature"});
+  }
+
+  private void executeDeleteAndCheckResult(String deleteSql, String showSql, String[] expected)
+      throws Exception {
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      statement.execute("DELETE TIMESERIES root.ln.*");
-      boolean hasResult = statement.execute("SHOW TIMESERIES");
+      statement.execute(deleteSql);
+      boolean hasResult = statement.execute(showSql);
       assertTrue(hasResult);
-      String[] expected =
-          new String[] {
-            "root.ln1.wf01.wt01.status",
-            "root.ln1.wf01.wt01.temperature",
-            "root.ln2.wf01.wt01.status",
-            "root.ln2.wf01.wt01.temperature"
-          };
       List<String> expectedList = new ArrayList<>();
       Collections.addAll(expectedList, expected);
       List<String> result = new ArrayList<>();
-      try (ResultSet resultSet = statement.getResultSet()) {
-        while (resultSet.next()) {
-          result.add(resultSet.getString(1));
-        }
-      }
-      assertEquals(expected.length, result.size());
-      assertTrue(expectedList.containsAll(result));
-
-      statement.execute("DELETE TIMESERIES root.ln1");
-      hasResult = statement.execute("SHOW TIMESERIES");
-      assertTrue(hasResult);
-      expected = new String[] {"root.ln2.wf01.wt01.status", "root.ln2.wf01.wt01.temperature"};
-      expectedList = new ArrayList<>();
-      Collections.addAll(expectedList, expected);
-      result = new ArrayList<>();
       try (ResultSet resultSet = statement.getResultSet()) {
         while (resultSet.next()) {
           result.add(resultSet.getString(1));
