@@ -58,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.junit.experimental.categories.Category;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -1489,6 +1490,59 @@ public abstract class Cases {
     }
   }
 
+  @Test
+  public void selectLimitTest() {
+    Set<String> retSet =
+        getExpectedResultSet(
+            new String[] {
+                "2,root.vehicle.d0,10000,10000,40000,",
+                "50,root.vehicle.d0,10000,10000,50000,",
+                "100,root.vehicle.d0,99,99,199,",
+                "101,root.vehicle.d0,99,99,199,",
+                "102,root.vehicle.d0,80,80,180,",
+                "103,root.vehicle.d0,99,99,199,",
+                "104,root.vehicle.d0,90,90,190,",
+                "105,root.vehicle.d0,99,99,199,",
+                "106,root.vehicle.d0,99,99,null,",
+                "1000,root.vehicle.d0,22222,22222,55555,",
+            });
+    for (Statement statement : readStatements) {
+      try {
+        boolean hasResultSet =
+            statement.execute(
+                "select s0,s0,s1 from root.vehicle.* limit 10 offset 1 align by device");
+        Assert.assertTrue(hasResultSet);
+
+        try (ResultSet resultSet = statement.getResultSet()) {
+          ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+          List<Integer> actualIndexToExpectedIndexList =
+              checkHeader(
+                  resultSetMetaData,
+                  "Time,Device,s0,s0,s1",
+                  new int[] {
+                      Types.TIMESTAMP, Types.VARCHAR, Types.INTEGER, Types.INTEGER, Types.BIGINT
+                  });
+
+          int cnt = 0;
+          while (resultSet.next()) {
+            StringBuilder actualBuilder = new StringBuilder();
+            actualBuilder.append(resultSet.getString("Time")).append(",");
+            actualBuilder.append(resultSet.getString("Device")).append(",");
+            actualBuilder.append(resultSet.getString("s0")).append(",");
+            actualBuilder.append(resultSet.getString("s0")).append(",");
+            actualBuilder.append(resultSet.getString("s1")).append(",");
+            assertTrue(retSet.contains(actualBuilder.toString()));
+            cnt++;
+          }
+          Assert.assertEquals(10, cnt);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+  }
+
   private List<Integer> checkHeader(
       ResultSetMetaData resultSetMetaData, String expectedHeaderStrings, int[] expectedTypes)
       throws SQLException {
@@ -1566,6 +1620,46 @@ public abstract class Cases {
               assertEquals(0, standard.size());
             }
           }
+        } catch (SQLException e) {
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void showCountNodes() {
+    prepareData(metadataSqls);
+
+    for (Statement statement : readStatements) {
+      String[] sqls =
+          new String[] {
+              "COUNT NODES root.** level=1",
+              "COUNT NODES root.ln level=1",
+              "COUNT NODES root.ln.wf01.** level=1",
+              "COUNT NODES root.ln.wf01.* level=2",
+              "COUNT NODES root.ln.wf01.* level=3",
+              "COUNT NODES root.ln.wf01.* level=4"
+          };
+      String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "2,\n", "0,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(standard, builder.toString());
         } catch (SQLException e) {
           fail(e.getMessage());
         }

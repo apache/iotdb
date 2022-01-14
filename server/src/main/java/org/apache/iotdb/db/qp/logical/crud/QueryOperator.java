@@ -243,6 +243,7 @@ public class QueryOperator extends Operator {
 
     // remove stars in fromPaths and get deviceId with deduplication
     List<PartialPath> devices = removeStarsInDeviceWithUnique(fromComponent.getPrefixPaths());
+    devices.sort(null);
     List<ResultColumn> resultColumns =
         convertSpecialClauseValues(alignByDevicePlan, selectComponent.getResultColumns());
     List<String> aggregationFuncs = selectComponent.getAggregationFunctions();
