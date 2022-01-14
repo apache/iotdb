@@ -46,7 +46,6 @@ import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -122,6 +121,7 @@ public class CompactionUtils {
     List<String> allMeasurments = alignedMeasurmentIterator.getAllMeasurements();
     List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
     for (String measurement : allMeasurments) {
+      // TODO: use IDTable
       measurementSchemas.add(
           IoTDB.metaManager.getSeriesSchema(new PartialPath(device, measurement)));
     }
@@ -156,7 +156,7 @@ public class CompactionUtils {
     boolean hasStartChunkGroup = false;
     MultiTsFileDeviceIterator.MeasurementIterator measurementIterator =
         deviceIterator.iterateNotAlignedSeries(device, false);
-    List<String> allMeasurements = measurementIterator.getAllMeasurements();
+    Set<String> allMeasurements = measurementIterator.getAllMeasurements();
     for (String measurement : allMeasurements) {
       List<IMeasurementSchema> measurementSchemas = new ArrayList<>();
       measurementSchemas.add(
@@ -201,6 +201,10 @@ public class CompactionUtils {
     }
   }
 
+  /**
+   * @param measurementIds if device is aligned, then measurementIds contain all measurements. If
+   *     device is not aligned, then measurementIds only contain one measurement.
+   */
   private static IBatchReader constructReader(
       String deviceId,
       List<String> measurementIds,

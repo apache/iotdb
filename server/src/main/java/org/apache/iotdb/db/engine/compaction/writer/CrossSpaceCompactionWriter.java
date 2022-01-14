@@ -38,6 +38,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private int seqFileIndex;
 
+  // indicate is current device exist in each source file.
   private final boolean[] isCurrentDeviceExist;
 
   private final long[] currentDeviceEndTime;

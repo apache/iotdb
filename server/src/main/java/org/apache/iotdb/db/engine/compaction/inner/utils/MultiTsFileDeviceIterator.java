@@ -37,10 +37,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -261,12 +263,13 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
       }
     }
 
-    public List<String> getAllMeasurements() throws IOException {
-      Map<String, TimeseriesMetadata> deviceMeasurementsMap = new ConcurrentHashMap<>();
+    public Set<String> getAllMeasurements() throws IOException {
+      // Todo:Set
+      Set<String> measurementsSet = new HashSet<>();
       for (TsFileSequenceReader reader : readerMap.values()) {
-        deviceMeasurementsMap.putAll(reader.readDeviceMetadata(device));
+        measurementsSet.addAll(reader.readDeviceMetadata(device).keySet());
       }
-      return new ArrayList<>(deviceMeasurementsMap.keySet());
+      return measurementsSet;
     }
 
     /**

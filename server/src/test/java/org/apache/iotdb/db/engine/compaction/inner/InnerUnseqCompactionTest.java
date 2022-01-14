@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
@@ -39,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -182,7 +182,8 @@ public class InnerUnseqCompactionTest {
                     pagePointsNum.add(300L);
                     chunkPagePointsNum.add(pagePointsNum);
                     tsFileResource =
-                        CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                        CompactionFileGeneratorUtils.generateTsFileResource(
+                            false, i + 1, COMPACTION_TEST_SG);
                     CompactionFileGeneratorUtils.writeTsFile(
                         fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     break;
@@ -209,7 +210,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsRange.add(new long[][] {{0L, 1000L}});
                       chunkPagePointsRange.add(pagePointsRange);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeChunkToTsFileWithTimeRange(
                           fullPath, chunkPagePointsRange, tsFileResource);
                     } else {
@@ -224,7 +226,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsNum.add(300L);
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
@@ -248,7 +251,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsRange.add(new long[][] {{300L, 600L}, {1800L, 3600L}});
                       chunkPagePointsRange.add(pagePointsRange);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeChunkToTsFileWithTimeRange(
                           fullPath, chunkPagePointsRange, tsFileResource);
                     } else {
@@ -263,7 +267,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsNum.add(300L);
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
@@ -281,7 +286,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsNum.add(300L);
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, 50L, tsFileResource);
                     } else {
@@ -296,7 +302,8 @@ public class InnerUnseqCompactionTest {
                       pagePointsNum.add(300L);
                       chunkPagePointsNum.add(pagePointsNum);
                       tsFileResource =
-                          CompactionFileGeneratorUtils.generateTsFileResource(false, i + 1);
+                          CompactionFileGeneratorUtils.generateTsFileResource(
+                              false, i + 1, COMPACTION_TEST_SG);
                       CompactionFileGeneratorUtils.writeTsFile(
                           fullPath, chunkPagePointsNum, i * 600L, tsFileResource);
                     }
@@ -334,9 +341,14 @@ public class InnerUnseqCompactionTest {
                       toDeleteTimeseriesAndTime, tsFileResource, false);
                 }
               }
+              //              TsFileResource targetTsFileResource =
+              //
+              // CompactionFileGeneratorUtils.getTargetTsFileResourceFromSourceResource(
+              //                      toMergeResources.get(0));
               TsFileResource targetTsFileResource =
-                  CompactionFileGeneratorUtils.getTargetTsFileResourceFromSourceResource(
-                      toMergeResources.get(0));
+                  CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(
+                          toMergeResources, false)
+                      .get(0);
               Map<String, List<TimeValuePair>> sourceData =
                   CompactionCheckerUtils.readFiles(toMergeResources);
               if (compactionHasMod) {
@@ -352,8 +364,17 @@ public class InnerUnseqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, false);
-              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
+              //              InnerSpaceCompactionUtils.compact(targetTsFileResource,
+              // toMergeResources, false);
+              //              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource,
+              // COMPACTION_TEST_SG);
+              CompactionUtils.compact(
+                  Collections.emptyList(),
+                  toMergeResources,
+                  Collections.singletonList(targetTsFileResource),
+                  COMPACTION_TEST_SG);
+              CompactionUtils.moveToTargetFile(
+                  Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);
               List<TsFileResource> targetTsFileResources = new ArrayList<>();
