@@ -1493,8 +1493,8 @@ public abstract class Cases {
   @Test
   public void selectLimitTest() {
     Set<String> retSet =
-        getExpectedResultSet(
-            new String[] {
+        new HashSet<>(
+            Arrays.asList(
                 "2,root.vehicle.d0,10000,10000,40000,",
                 "50,root.vehicle.d0,10000,10000,50000,",
                 "100,root.vehicle.d0,99,99,199,",
@@ -1504,8 +1504,8 @@ public abstract class Cases {
                 "104,root.vehicle.d0,90,90,190,",
                 "105,root.vehicle.d0,99,99,199,",
                 "106,root.vehicle.d0,99,99,null,",
-                "1000,root.vehicle.d0,22222,22222,55555,",
-            });
+                "1000,root.vehicle.d0,22222,22222,55555,"
+            ));
     for (Statement statement : readStatements) {
       try {
         boolean hasResultSet =
