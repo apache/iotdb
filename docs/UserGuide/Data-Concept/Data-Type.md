@@ -21,6 +21,8 @@
 
 # Data Type
 
+## Basic Data Type
+
 IoTDB supports the following data types:
 
 * BOOLEAN (Boolean)
@@ -43,13 +45,11 @@ IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODIN
 error: encoding TS_2DIFF does not support BOOLEAN
 ```
 
-
-
-Timestamp
+## Timestamp
 
 The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps
 
-* Absolute timestamp
+### Absolute timestamp
 
 Absolute timestamps in IoTDB are divided into two types: LONG and DATETIME (including DATETIME-INPUT and DATETIME-DISPLAY). When a user inputs a timestamp, he can use a LONG type timestamp or a DATETIME-INPUT type timestamp, and the supported formats of the DATETIME-INPUT type timestamp are shown in the table below:
 
@@ -119,7 +119,7 @@ IoTDB can support LONG types and DATETIME-DISPLAY types when displaying timestam
 
 </div>
 
-* Relative timestamp
+### Relative timestamp
 
 Relative time refers to the time relative to the server time ```now()``` and ```DATETIME``` time.
 

@@ -153,13 +153,6 @@ public class InsertTabletPlanGenerator {
         initializedDataTypeIndexes.add(i);
       }
     }
-
-    for (int i = 0; i < dataTypes.length; ++i) {
-      if (dataTypes[i] == null && fields.get(i) != null && fields.get(i).getDataType() != null) {
-        dataTypes[i] = fields.get(i).getDataType();
-        initializedDataTypeIndexes.add(i);
-      }
-    }
     return initializedDataTypeIndexes;
   }
 
@@ -183,6 +176,7 @@ public class InsertTabletPlanGenerator {
           break;
         case TEXT:
           columns[i] = new Binary[tabletRowLimit];
+          Arrays.fill((Binary[]) columns[i], Binary.EMPTY_VALUE);
           break;
         default:
           throw new UnSupportedDataTypeException(
