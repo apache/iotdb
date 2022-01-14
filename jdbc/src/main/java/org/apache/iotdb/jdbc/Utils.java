@@ -71,6 +71,9 @@ public class Utils {
       params.setThriftMaxFrameSize(
           Integer.parseInt(info.getProperty(Config.THRIFT_FRAME_MAX_SIZE)));
     }
+    if (info.containsKey(Config.VERSION)) {
+      params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
+    }
 
     return params;
   }
