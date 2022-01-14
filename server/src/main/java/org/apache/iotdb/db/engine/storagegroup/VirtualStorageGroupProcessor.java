@@ -271,13 +271,10 @@ public class VirtualStorageGroupProcessor {
    */
   private String insertWriteLockHolder = "";
 
-  private ScheduledExecutorService timedCompactionScheduleTask =
-      IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
-          ThreadName.COMPACTION_SCHEDULE.getName());
-
   public static final long COMPACTION_TASK_SUBMIT_DELAY = 20L * 1000L;
 
   private IDTable idTable;
+  private ScheduledExecutorService timedCompactionScheduleTask;
 
   /**
    * get the direct byte buffer from pool, each fetch contains two ByteBuffer, return null if fetch
@@ -403,7 +400,14 @@ public class VirtualStorageGroupProcessor {
     }
 
     ScheduledExecutorService executorService =
-        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(ThreadName.WAL_TRIM.getName());
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.WAL_TRIM.getName() + logicalStorageGroupName + "-" + virtualStorageGroupId);
+    timedCompactionScheduleTask =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.COMPACTION_SCHEDULE.getName()
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
     executorService.scheduleWithFixedDelay(
         this::trimTask,
         config.getWalPoolTrimIntervalInMS(),

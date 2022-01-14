@@ -233,14 +233,14 @@ public class CompactionTaskManager implements IService {
    * This method will submit task cached in queue with most priority to execution thread pool if
    * there is available thread.
    */
-  public synchronized void submitTaskFromTaskQueue() {
+  public void submitTaskFromTaskQueue() {
     try {
       while (true) {
         semaphore.acquire();
         AbstractCompactionTask compactionTask;
         do {
           compactionTask = candidateCompactionTaskQueue.take();
-        } while (compactionTask.checkValidAndSetMerging());
+        } while (!compactionTask.checkValidAndSetMerging());
 
         if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
           addMetrics(compactionTask, false, false);
@@ -298,7 +298,7 @@ public class CompactionTaskManager implements IService {
    *
    * @throws RejectedExecutionException
    */
-  public synchronized void submitTask(
+  public void submitTask(
       String fullStorageGroupName, long timePartition, Callable<Void> compactionMergeTask)
       throws RejectedExecutionException {
     if (taskExecutionPool != null && !taskExecutionPool.isTerminated()) {
