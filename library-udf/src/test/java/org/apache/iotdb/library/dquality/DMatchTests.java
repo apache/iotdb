@@ -89,20 +89,26 @@ public class DMatchTests {
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      for (int i = 1; i <= ITERATION_TIMES; ++i) {
-        statement.execute(
-            String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",
-                (int) Math.floor(a + Math.random() * b % (b - a + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1))));
-        statement.execute(
-            (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
-                (int) Math.floor(a + Math.random() * b % (b - a + 1)),
-                x + Math.random() * y % (y - x + 1),
-                x + Math.random() * y % (y - x + 1))));
-      }
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",100,100,101));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",200,102,101));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",300,104,102));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",400,126,102));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",500,108,103));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",600,112,104));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",700,114,104));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",800,112,104));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",900,118,105));
+      statement.execute(String.format("insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",1000,100,106));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",100,100,101));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",200,102,101));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",300,104,102));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",400,126,102));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",500,108,103));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",600,112,104));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",700,114,104));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",800,112,104));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",900,118,105));
+      statement.execute(String.format("insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)",1000,100,106));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -143,8 +149,9 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -158,8 +165,9 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -173,8 +181,9 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -188,8 +197,9 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -203,8 +213,11 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0.0D;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -218,8 +231,11 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0.0D;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -233,8 +249,11 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0.0D;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -248,8 +267,11 @@ public class DMatchTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
       Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      assert result >= 0.0D;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -317,14 +339,15 @@ public class DMatchTests {
 
   @Test
   public void testPthSym1() {
-    String sqlStr = "select ptnsym(d2.s1, 'window'='5', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -332,14 +355,15 @@ public class DMatchTests {
 
   @Test
   public void testPtnSym2() {
-    String sqlStr = "select ptnsym(d1.s2, 'window'='5', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d1.s2, 'window'='3', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -347,14 +371,15 @@ public class DMatchTests {
 
   @Test
   public void testPtnSym3() {
-    String sqlStr = "select ptnsym(d2.s1, 'window'='5', 'threshold'='0') from";
+    String sqlStr = "select ptnsym(d2.s1, 'window'='3', 'threshold'='0') from";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -362,14 +387,15 @@ public class DMatchTests {
 
   @Test
   public void testPtnSym4() {
-    String sqlStr = "select ptnsym(d2.s2, 'window'='5', 'threshold'='0') from root.vehicle";
+    String sqlStr = "select ptnsym(d2.s2, 'window'='3', 'threshold'='0') from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==1;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -383,8 +409,9 @@ public class DMatchTests {
                          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==19;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -398,8 +425,9 @@ public class DMatchTests {
                          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==19;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -413,8 +441,9 @@ public class DMatchTests {
                          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==19;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -428,8 +457,9 @@ public class DMatchTests {
                          Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
          Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
-      assert result >= -0.0D && result <= 1.0D;
+      resultSet.last();
+      int resultSetLength=resultSet.getRow();
+      assert resultSetLength==19;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }

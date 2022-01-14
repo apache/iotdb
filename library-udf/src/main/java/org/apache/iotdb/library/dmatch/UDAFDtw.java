@@ -29,7 +29,6 @@ import org.apache.iotdb.db.query.udf.api.customizer.parameter.UDFParameters;
 import org.apache.iotdb.db.query.udf.api.customizer.strategy.SlidingSizeWindowAccessStrategy;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
 import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
 
 /** This function calculates DTW distance between two input series. */

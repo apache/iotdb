@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.library.dmatch;
 
+import java.util.ArrayList;
 import org.apache.iotdb.db.query.udf.api.UDTF;
 import org.apache.iotdb.db.query.udf.api.access.Row;
 import org.apache.iotdb.db.query.udf.api.collector.PointCollector;
@@ -29,8 +30,6 @@ import org.apache.iotdb.db.query.udf.api.customizer.strategy.RowByRowAccessStrat
 import org.apache.iotdb.library.dmatch.util.CrossCorrelation;
 import org.apache.iotdb.library.util.Util;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-
-import java.util.ArrayList;
 
 /** This function calculates cross correlation between two input series. */
 public class UDTFXCorr implements UDTF {
