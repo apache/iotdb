@@ -30,6 +30,7 @@ import org.apache.iotdb.db.engine.compaction.utils.CompactionCheckerUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionTimeseriesType;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
@@ -415,6 +416,9 @@ public class CrossSpaceCompactionTest {
                     "0",
                     0,
                     "target",
+                    null,
+                    seqTsFileResourceList,
+                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
@@ -699,11 +703,17 @@ public class CrossSpaceCompactionTest {
                     "0",
                     0,
                     "target",
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    seqTsFileResourceList,
+                    unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
-            for (TsFileResource targetFile : seqResources.subList(2, 5)) {
+            for (TsFileResource targetFile : seqResources.subList(1, 4)) {
               targetTsfileResourceList.add(
                   TsFileNameGenerator.increaseCrossCompactionCnt(targetFile));
             }

@@ -22,6 +22,7 @@ import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
@@ -43,6 +44,9 @@ public enum CrossCompactionStrategy {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
+      TsFileManager tsFileManager,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList UNseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
@@ -53,6 +57,9 @@ public enum CrossCompactionStrategy {
             virtualStorageGroupName,
             timePartitionId,
             storageGroupDir,
+            tsFileManager,
+            seqTsFileResourceList,
+            UNseqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
             CompactionTaskManager.currentTaskNum);
@@ -87,6 +94,7 @@ public enum CrossCompactionStrategy {
       String virtualGroupId,
       String storageGroupDir,
       long timePartition,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -98,6 +106,7 @@ public enum CrossCompactionStrategy {
             virtualGroupId,
             storageGroupDir,
             timePartition,
+            tsFileManager,
             sequenceFileList,
             unsequenceFileList,
             taskFactory);

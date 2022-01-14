@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
+import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -94,7 +95,10 @@ public class InplaceCompactionLogger {
     logStream.write(flag);
     logStream.newLine();
     for (TsFileResource tsFileResource : seqFiles) {
-      logStream.write(tsFileResource.getTsFile().getAbsolutePath());
+      logStream.write(
+          TsFileIdentifier.getFileIdentifierFromFilePath(
+                  tsFileResource.getTsFile().getAbsolutePath())
+              .toString());
       logStream.newLine();
     }
     logStream.flush();

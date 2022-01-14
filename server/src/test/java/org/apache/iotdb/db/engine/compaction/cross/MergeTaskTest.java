@@ -318,7 +318,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(seqResources.get(2));
+    list.add(TsFileNameGenerator.increaseCrossCompactionCnt(seqResources.get(2)));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -361,7 +361,7 @@ public class MergeTaskTest extends MergeTest {
 
     CrossSpaceCompactionTask mergeTask =
         new CrossSpaceCompactionTask(
-            seqResources, unseqResources.subList(0, 1), tempSGDir.getPath(), "test", MERGE_TEST_SG);
+            seqResources, unseqResources.subList(0, 5), tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =

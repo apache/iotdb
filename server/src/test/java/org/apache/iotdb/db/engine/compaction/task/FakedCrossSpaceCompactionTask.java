@@ -22,6 +22,7 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
@@ -33,6 +34,9 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
+      TsFileManager tsFileManager,
+      TsFileResourceList seqTsFileResourceList,
+      TsFileResourceList unseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     super(
@@ -40,6 +44,9 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
         virtualStorageGroupName,
         timePartitionId,
         storageGroupDir,
+        tsFileManager,
+        seqTsFileResourceList,
+        unseqTsFileResourceList,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
         CompactionTaskManager.currentTaskNum);
@@ -57,6 +64,6 @@ public class FakedCrossSpaceCompactionTask extends InplaceCompactionTask {
           .setTsFileSize(resource.getTsFileSize() + avgSizeAddToSeqFile);
     }
     selectedUnSeqTsFileResourceList.clear();
-//    unSeqTsFileResourceList.clear();
+    //    unSeqTsFileResourceList.clear();
   }
 }

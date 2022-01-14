@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.query.control.FileReaderManager;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +52,9 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
 
   public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(CrossSpaceCompactionTask.class);
+  private List<TsFileResource> targetTsfileResourceList;
+  private List<TsFileResource> holdReadLockList = new ArrayList<>();
+  private List<TsFileResource> holdWriteLockList = new ArrayList<>();
 
   List<TsFileResource> sequenceTsFileResourceList;
   List<TsFileResource> unsequenceTsFileResourceList;
@@ -80,6 +84,8 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     } catch (Exception e) {
       logger.error("Runtime exception in merge {}", taskName, e);
       abort();
+    } finally {
+      releaseAllLock();
     }
     return null;
   }
@@ -91,13 +97,19 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
 
   private void doCompaction() throws IOException, StorageEngineException, MetadataException {
     long startTime = System.currentTimeMillis();
-
-    List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
+    targetTsfileResourceList = new ArrayList<>();
     List<File> targetFiles =
         TsFileNameGenerator.getCrossCompactionTargetFile(sequenceTsFileResourceList);
     for (File targetFile : targetFiles) {
       targetTsfileResourceList.add(new TsFileResource(targetFile));
     }
+    if (targetTsfileResourceList.isEmpty()
+        && sequenceTsFileResourceList.isEmpty()
+        && unsequenceTsFileResourceList.isEmpty()) {
+      return;
+    }
+    addReadLock(sequenceTsFileResourceList);
+    addReadLock(unsequenceTsFileResourceList);
     logger.info("{}-crossSpaceCompactionTask start.", storageGroupName);
     inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
     // print the path of the temporary file first for priority check during recovery
@@ -116,15 +128,13 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
 
     states = States.CLEAN_UP;
     CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
-    List<String> failedToDeleteFiles = new ArrayList<>();
-    deleteOldFiles(sequenceTsFileResourceList, failedToDeleteFiles);
-    deleteOldFiles(unsequenceTsFileResourceList, failedToDeleteFiles);
-    if (!failedToDeleteFiles.isEmpty()) {
-      logger.warn(
-          "Failed to delete old files in the process of crossSpaceCompaction:"
-              + failedToDeleteFiles);
-      throw new IOException("Delete old files failed.");
-    }
+
+    releaseReadAndLockWrite(sequenceTsFileResourceList);
+    releaseReadAndLockWrite(unsequenceTsFileResourceList);
+
+    deleteOldFiles(sequenceTsFileResourceList);
+    deleteOldFiles(unsequenceTsFileResourceList);
+
     cleanUp();
     logger.info(
         "{}-crossSpaceCompactionTask Costs {} s",
@@ -132,11 +142,41 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
         (System.currentTimeMillis() - startTime) / 1000);
   }
 
-  void deleteOldFiles(List<TsFileResource> tsFileResourceList, List<String> failedToDeleteFiles) {
+  private void addReadLock(List<TsFileResource> tsFileResourceList) {
     for (TsFileResource tsFileResource : tsFileResourceList) {
-      if (!tsFileResource.getTsFile().delete()) {
-        failedToDeleteFiles.add(tsFileResource.getTsFile().getAbsolutePath());
-      }
+      tsFileResource.readLock();
+      holdReadLockList.add(tsFileResource);
+    }
+  }
+
+  private void releaseReadAndLockWrite(List<TsFileResource> tsFileResourceList) {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      tsFileResource.readUnlock();
+      holdReadLockList.remove(tsFileResource);
+      tsFileResource.writeLock();
+      holdWriteLockList.add(tsFileResource);
+    }
+  }
+
+  private void releaseAllLock() {
+    for (TsFileResource tsFileResource : holdReadLockList) {
+      tsFileResource.readUnlock();
+    }
+    holdReadLockList.clear();
+    for (TsFileResource tsFileResource : holdWriteLockList) {
+      tsFileResource.writeUnlock();
+    }
+    holdWriteLockList.clear();
+  }
+
+  void deleteOldFiles(List<TsFileResource> tsFileResourceList) throws IOException {
+    for (TsFileResource tsFileResource : tsFileResourceList) {
+      FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
+      tsFileResource.setDeleted(true);
+      tsFileResource.delete();
+      logger.info(
+          "[CrossSpaceCompaction] Delete TsFile :{}.",
+          tsFileResource.getTsFile().getAbsolutePath());
     }
   }
 

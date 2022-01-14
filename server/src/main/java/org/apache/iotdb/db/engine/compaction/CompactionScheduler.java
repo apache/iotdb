@@ -136,6 +136,7 @@ public class CompactionScheduler {
                   virtualStorageGroupName,
                   storageGroupDir,
                   timePartition,
+                  tsFileManager,
                   sequenceFileList,
                   unsequenceFileList,
                   new CrossSpaceCompactionTaskFactory())
@@ -172,6 +173,7 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         storageGroupDir,
         timePartition,
+        tsFileManager,
         sequenceFileList,
         unsequenceFileList,
         new CrossSpaceCompactionTaskFactory());
@@ -190,6 +192,7 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         storageGroupDir,
         timePartition,
+        tsFileManager,
         sequenceFileList,
         unsequenceFileList,
         new CrossSpaceCompactionTaskFactory());
@@ -243,6 +246,7 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       String storageGroupDir,
       long timePartition,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -257,6 +261,7 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 storageGroupDir,
                 timePartition,
+                tsFileManager,
                 sequenceFileList,
                 unsequenceFileList,
                 taskFactory);

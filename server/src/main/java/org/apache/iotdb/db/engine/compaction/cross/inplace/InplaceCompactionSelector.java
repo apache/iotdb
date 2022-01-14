@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMerg
 import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
@@ -41,6 +42,7 @@ import java.util.Iterator;
 import java.util.List;
 
 public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
@@ -49,6 +51,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
       String virtualStorageGroupId,
       String storageGroupDir,
       long timePartition,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -57,6 +60,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         virtualStorageGroupId,
         storageGroupDir,
         timePartition,
+        tsFileManager,
         sequenceFileList,
         unsequenceFileList,
         taskFactory);
@@ -138,6 +142,9 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               virtualGroupId,
               timePartition,
               storageGroupDir,
+              tsFileManager,
+              sequenceFileList,
+              unsequenceFileList,
               mergeFiles[0],
               mergeFiles[1]);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
