@@ -127,7 +127,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getDevicesNum(PartialPath path) throws MetadataException {
+  protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
     // make sure this node knows all storage groups
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -290,12 +290,13 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getPathsNum(PartialPath path) throws MetadataException {
-    return getNodesNumInGivenLevel(path, -1);
+  protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return getNodesNumInGivenLevel(path, -1, isPrefixMatch);
   }
 
   @Override
-  protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
+  protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
+      throws MetadataException {
     // make sure this node knows all storage groups
     try {
       metaGroupMember.syncLeaderWithConsistencyCheck(false);
@@ -616,7 +617,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getNodeNextChildren(PartialPath path) throws MetadataException {
+  protected Set<String> getNodeNextChildren(PartialPath path, boolean isPrefixMatch)
+      throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     List<PartitionGroup> globalGroups = metaGroupMember.getPartitionTable().getGlobalGroups();
     // TODO: create a thread pool for each query calling.
@@ -718,7 +720,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected Set<String> getPathNextChildren(PartialPath path) throws MetadataException {
+  protected Set<String> getPathNextChildren(PartialPath path, boolean isPrefixMatch)
+      throws MetadataException {
     ConcurrentSkipListSet<String> resultSet = new ConcurrentSkipListSet<>();
     // TODO: create a thread pool for each query calling.
     ExecutorService pool = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
