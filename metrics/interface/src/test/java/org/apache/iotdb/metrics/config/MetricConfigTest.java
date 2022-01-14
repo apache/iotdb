@@ -51,7 +51,7 @@ public class MetricConfigTest {
 
     List<ReporterType> lists = metricConfig.getMetricReporterList();
 
-    Assert.assertEquals(lists.size(), 3);
+    Assert.assertEquals(lists.size(), 2);
     Assert.assertEquals(
         metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "9091");
   }
