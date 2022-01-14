@@ -98,16 +98,24 @@ public:
     UnSupportedDataTypeException(const std::string &m) : message("UnSupported dataType: " + m) {}
 };
 
+namespace Version {
+    enum Version {
+        V_0_8, V_0_9, V_0_10, V_0_11, V_0_12, V_0_13
+    };
+}
+
 namespace CompressionType {
     enum CompressionType {
         UNCOMPRESSED, SNAPPY, GZIP, LZO, SDT, PAA, PLA, LZ4
     };
 }
+
 namespace TSDataType {
     enum TSDataType {
         BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
     };
 }
+
 namespace TSEncoding {
     enum TSEncoding {
         PLAIN = 0,
@@ -121,6 +129,7 @@ namespace TSEncoding {
         GORILLA = 8
     };
 }
+
 namespace TSStatusCode {
     enum TSStatusCode {
         SUCCESS_STATUS = 200,
@@ -719,6 +728,7 @@ private:
     int fetchSize;
     const static int DEFAULT_FETCH_SIZE = 10000;
     const static int DEFAULT_TIMEOUT_MS = 0;
+    Version::Version version;
 
     bool checkSorted(const Tablet &tablet);
 
@@ -748,8 +758,10 @@ private:
         bool operator()(int i, int j) { return (timestamps[i] < timestamps[j]); };
     };
 
+    std::string getVersionString(Version::Version version);
+
 public:
-    Session(const std::string &host, int rpcPort) : username("user"), password("password") {
+    Session(const std::string &host, int rpcPort) : username("user"), password("password"), version(Version::V_0_13) {
         this->host = host;
         this->rpcPort = rpcPort;
     }
@@ -761,6 +773,7 @@ public:
         this->username = username;
         this->password = password;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
 
     Session(const std::string &host, int rpcPort, const std::string &username, const std::string &password,
@@ -771,6 +784,7 @@ public:
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
 
     Session(const std::string &host, const std::string &rpcPort, const std::string &username = "user",
@@ -781,6 +795,7 @@ public:
         this->password = password;
         this->fetchSize = fetchSize;
         this->zoneId = "UTC+08:00";
+        this->version = Version::V_0_13;
     }
 
     ~Session();
