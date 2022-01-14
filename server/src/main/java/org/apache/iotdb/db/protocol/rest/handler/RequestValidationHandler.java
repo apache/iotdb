@@ -29,6 +29,9 @@ public class RequestValidationHandler {
 
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
+    if (sql.getRowLimit() != null && sql.getRowLimit() <= 0) {
+      Objects.requireNonNull(null, "rowLimit should be greater than or equal to 0");
+    }
   }
 
   public static void validateInsertTabletRequest(InsertTabletRequest insertTabletRequest) {

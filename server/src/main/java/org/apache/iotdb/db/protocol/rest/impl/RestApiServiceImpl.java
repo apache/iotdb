@@ -114,23 +114,15 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
-      QueryPlan queryPlan = (QueryPlan) physicalPlan;
 
-      Response response = authorizationHandler.checkAuthority(securityContext, queryPlan);
+      Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;
       }
 
       // set max row limit to avoid OOM
-      Integer rowLimitInRequest = sql.getRowLimit();
-      if (rowLimitInRequest == null) {
-        rowLimitInRequest = defaultQueryRowLimit;
-      }
-      int rowLimitInQueryPlan = queryPlan.getRowLimit();
-      if (rowLimitInQueryPlan <= 0) {
-        rowLimitInQueryPlan = defaultQueryRowLimit;
-      }
-      final int actualRowSizeLimit = Math.min(rowLimitInRequest, rowLimitInQueryPlan);
+      final int actualRowSizeLimit =
+          sql.getRowLimit() == null ? defaultQueryRowLimit : sql.getRowLimit();
 
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
@@ -149,16 +141,17 @@ public class RestApiServiceImpl extends RestApiService {
             || queryDataSet instanceof ShowTimeseriesDataSet
             || (queryDataSet instanceof SingleDataSet
                 && !(physicalPlan instanceof AggregationPlan))) {
-          return QueryDataSetHandler.fillShowPlanDateSet(queryDataSet);
+          return QueryDataSetHandler.fillShowPlanDateSet(queryDataSet, actualRowSizeLimit);
         } else if (queryDataSet instanceof ListDataSet && physicalPlan instanceof LastQueryPlan) {
-          return QueryDataSetHandler.fillLastQueryPlanDateSet(queryDataSet);
+          return QueryDataSetHandler.fillLastQueryPlanDateSet(queryDataSet, actualRowSizeLimit);
         } else if (queryDataSet instanceof SingleDataSet
             && physicalPlan instanceof AggregationPlan
             && ((AggregationPlan) physicalPlan).getLevels() != null) {
           return QueryDataSetHandler.fillAggregationPlanDateSet(
-              queryDataSet, (AggregationPlan) physicalPlan);
+              queryDataSet, (AggregationPlan) physicalPlan, actualRowSizeLimit);
         } else if (physicalPlan instanceof QueryPlan) {
-          return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+          return QueryDataSetHandler.fillDateSet(
+              queryDataSet, (QueryPlan) physicalPlan, actualRowSizeLimit);
         }
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);

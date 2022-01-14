@@ -17,14 +17,12 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
-import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.AggregationPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.expression.ResultColumn;
-import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -66,15 +64,7 @@ public class QueryDataSetHandler {
       int fetched = 0;
       while (dataSet.hasNext()) {
         if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
-          return Response.ok()
-              .entity(
-                  new ExecutionStatus()
-                      .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
-                      .message(
-                          String.format(
-                              "Dataset row size exceeded the given max row size (%d)",
-                              actualRowSizeLimit)))
-              .build();
+          return Response.ok().entity(queryDataSet).build();
         }
 
         RowRecord rowRecord = dataSet.next();
@@ -103,7 +93,8 @@ public class QueryDataSetHandler {
   }
 
   public static Response fillAggregationPlanDateSet(
-      QueryDataSet dataSet, AggregationPlan aggregationPlan) throws IOException {
+      QueryDataSet dataSet, AggregationPlan aggregationPlan, final int actualRowSizeLimit)
+      throws IOException {
 
     Map<String, AggregateResult> groupPathsResultMap = aggregationPlan.getGroupPathsResultMap();
     int[] dataSetIndexes = new int[groupPathsResultMap.size()];
@@ -117,7 +108,13 @@ public class QueryDataSetHandler {
       queryDataSet.addValuesItem(new ArrayList<>());
       dataSetIndexes[i] = sourcePathToQueryDataSetIndex.get(next.getKey());
     }
+
+    int fetched = 0;
     while (dataSet.hasNext()) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok().entity(queryDataSet).build();
+      }
+
       RowRecord rowRecord = dataSet.next();
       List<Field> fields = rowRecord.getFields();
       for (int i = 0; i < sourcePathToQueryDataSetIndex.size(); i++) {
@@ -132,12 +129,14 @@ public class QueryDataSetHandler {
                   : field.getObjectValue(field.getDataType()));
         }
       }
+      fetched++;
     }
 
     return Response.ok().entity(queryDataSet).build();
   }
 
-  public static Response fillShowPlanDateSet(QueryDataSet dataSet) throws IOException {
+  public static Response fillShowPlanDateSet(QueryDataSet dataSet, final int actualRowSizeLimit)
+      throws IOException {
     int[] dataSetIndexes = new int[dataSet.getPaths().size()];
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
@@ -147,8 +146,12 @@ public class QueryDataSetHandler {
       queryDataSet.addValuesItem(new ArrayList<>());
       dataSetIndexes[i] = i;
     }
-
+    int fetched = 0;
     while (dataSet.hasNext()) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok().entity(queryDataSet).build();
+      }
+
       RowRecord record = dataSet.next();
       for (int i = 0; i < queryDataSet.getCloumnNames().size(); i++) {
         List<Object> values = queryDataSet.getValues().get(i);
@@ -162,11 +165,13 @@ public class QueryDataSetHandler {
                   : field.getObjectValue(field.getDataType()));
         }
       }
+      fetched++;
     }
     return Response.ok().entity(queryDataSet).build();
   }
 
-  public static Response fillLastQueryPlanDateSet(QueryDataSet dataSet) throws IOException {
+  public static Response fillLastQueryPlanDateSet(
+      QueryDataSet dataSet, final int actualRowSizeLimit) throws IOException {
     int[] dataSetIndexes = new int[dataSet.getPaths().size()];
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
@@ -176,8 +181,12 @@ public class QueryDataSetHandler {
       queryDataSet.addValuesItem(new ArrayList<>());
       dataSetIndexes[i] = i;
     }
-
+    int fetched = 0;
     while (dataSet.hasNext()) {
+      if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+        return Response.ok().entity(queryDataSet).build();
+      }
+
       RowRecord record = dataSet.next();
       queryDataSet.addTimestampsItem(record.getTimestamp());
       for (int i = 0; i < queryDataSet.getCloumnNames().size(); i++) {
@@ -193,6 +202,7 @@ public class QueryDataSetHandler {
                   : field.getObjectValue(field.getDataType()));
         }
       }
+      fetched++;
     }
     return Response.ok().entity(queryDataSet).build();
   }
