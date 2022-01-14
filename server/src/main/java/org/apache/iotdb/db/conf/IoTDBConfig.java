@@ -594,13 +594,6 @@ public class IoTDBConfig {
    */
   private long mergeIntervalSec = 0L;
 
-  /**
-   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
-   * re-written despite how much they are overflowed). This may increase merge overhead depending on
-   * how much the SeqFiles are overflowed.
-   */
-  private boolean forceFullMerge = true;
-
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
 
@@ -1574,14 +1567,6 @@ public class IoTDBConfig {
 
   public void setEnablePartialInsert(boolean enablePartialInsert) {
     this.enablePartialInsert = enablePartialInsert;
-  }
-
-  public boolean isForceFullMerge() {
-    return forceFullMerge;
-  }
-
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
   }
 
   public int getConcurrentCompactionThread() {
