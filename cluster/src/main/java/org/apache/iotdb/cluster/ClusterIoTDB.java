@@ -57,6 +57,7 @@ import org.apache.iotdb.cluster.server.service.MetaSyncService;
 import org.apache.iotdb.cluster.utils.ClusterUtils;
 import org.apache.iotdb.cluster.utils.nodetool.ClusterMonitor;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBConfigCheck;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -276,28 +277,34 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
 
   private boolean serverCheckAndInit() throws ConfigurationException, IOException {
     IoTDBConfigCheck.getInstance().checkConfig();
+    IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
     // init server's configuration first, because the cluster configuration may read settings from
     // the server's configuration.
-    IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
+    config.setSyncEnable(false);
     // auto create schema is took over by cluster module, so we disable it in the server module.
-    IoTDBDescriptor.getInstance().getConfig().setAutoCreateSchemaEnabled(false);
+    config.setAutoCreateSchemaEnabled(false);
     // check cluster config
     String checkResult = clusterConfigCheck();
     if (checkResult != null) {
       logger.error(checkResult);
       return false;
     }
-    ClusterConfig config = ClusterDescriptor.getInstance().getConfig();
+    ClusterConfig clusterConfig = ClusterDescriptor.getInstance().getConfig();
     // if client ip is the default address, set it same with internal ip
-    if (IoTDBDescriptor.getInstance().getConfig().getRpcAddress().equals("0.0.0.0")) {
-      IoTDBDescriptor.getInstance().getConfig().setRpcAddress(config.getInternalIp());
+    if (config.getRpcAddress().equals("0.0.0.0")) {
+      config.setRpcAddress(clusterConfig.getInternalIp());
     }
     // set the memory allocated for raft log of each raft log manager
-    config.setMaxMemorySizeForRaftLog(
+    clusterConfig.setMaxMemorySizeForRaftLog(
         (long)
-            (IoTDBDescriptor.getInstance().getConfig().getAllocateMemoryForWrite()
-                * config.getRaftLogMemoryProportion()
-                / config.getReplicationNum()));
+            (config.getAllocateMemoryForWrite()
+                * clusterConfig.getRaftLogMemoryProportion()
+                / clusterConfig.getReplicationNum()));
+    // calculate remaining memory allocated for write process
+    config.setAllocateMemoryForWrite(
+        (long)
+            (config.getAllocateMemoryForWrite()
+                * (1 - clusterConfig.getRaftLogMemoryProportion())));
     return true;
   }
 
