@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.cross.inplace.recover;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -44,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask.MERGE_SUFFIX;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_ALL_TS_END;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_END;
 import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_MERGE_END;
@@ -202,9 +202,7 @@ public class InplaceCompactionLogAnalyzer {
 
     status = Status.MERGE_START;
     for (TsFileResource seqFile : resource.getSeqFiles()) {
-      File mergeFile =
-          SystemFileFactory.INSTANCE.getFile(
-              seqFile.getTsFilePath() + CrossSpaceCompactionTask.MERGE_SUFFIX);
+      File mergeFile = SystemFileFactory.INSTANCE.getFile(seqFile.getTsFilePath() + MERGE_SUFFIX);
       fileLastPositions.put(mergeFile, 0L);
     }
 
@@ -286,8 +284,7 @@ public class InplaceCompactionLogAnalyzer {
           throw new IOException("Illegal merge files");
         }
         fileLastPositions.remove(currFile);
-        String seqFilePath =
-            currFile.getAbsolutePath().replace(CrossSpaceCompactionTask.MERGE_SUFFIX, "");
+        String seqFilePath = currFile.getAbsolutePath().replace(MERGE_SUFFIX, "");
         Iterator<TsFileResource> unmergedFileIter = unmergedFiles.iterator();
         while (unmergedFileIter.hasNext()) {
           TsFileResource seqFile = unmergedFileIter.next();

@@ -64,7 +64,6 @@ public class InplaceCompactionTask extends AbstractCrossSpaceCompactionTask {
   private TsFileResourceList seqTsFileResourceList;
   private TsFileResourceList unseqTsFileResourceList;
 
-  public static final String MERGE_SUFFIX = ".merge";
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
   private List<TsFileResource> holdWriteLockList = new ArrayList<>();

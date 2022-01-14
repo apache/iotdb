@@ -51,7 +51,7 @@ import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceCompactionTask.MERGE_SUFFIX;
+import static org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask.MERGE_SUFFIX;
 
 /**
  * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and

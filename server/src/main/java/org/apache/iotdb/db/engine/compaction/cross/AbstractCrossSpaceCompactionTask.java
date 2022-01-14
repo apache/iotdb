@@ -27,6 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class AbstractCrossSpaceCompactionTask extends AbstractCompactionTask {
 
+  public static final String MERGE_SUFFIX = ".merge";
+
   List<TsFileResource> selectedSequenceFiles;
   List<TsFileResource> selectedUnsequenceFiles;
 
