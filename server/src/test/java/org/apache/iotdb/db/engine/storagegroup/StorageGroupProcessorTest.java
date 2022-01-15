@@ -820,7 +820,7 @@ public class StorageGroupProcessorTest {
 
     // change config & reboot timed service
     long prevSeqTsFileSize = config.getSeqTsFileSize();
-    config.setSeqTsFileSize(Long.MAX_VALUE);
+    config.setSeqTsFileSize(1);
     boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
     long preFLushInterval = config.getSeqMemtableFlushInterval();
     config.setEnableTimedFlushSeqMemtable(true);
