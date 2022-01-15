@@ -1628,7 +1628,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       for (IoTDBSqlParser.MeasurementValueContext value : values) {
         for (IoTDBSqlParser.ConstantContext constant : value.constant()) {
           if (constant.STRING_LITERAL() != null) {
-            valueList.add(parseStringWithQuotes(constant.getText()));
+            valueList.add(parseStringLiteralInInsertValue(constant.getText()));
           } else {
             valueList.add(constant.getText());
           }
@@ -2362,7 +2362,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
                 TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
           } else if (constantContext.STRING_LITERAL() != null) {
             String text = constantContext.STRING_LITERAL().getText();
-            return new ConstantOperand(TSDataType.TEXT, text.substring(1, text.length() - 1));
+            return new ConstantOperand(TSDataType.TEXT, parseStringWithQuotes(text));
           } else if (constantContext.INTEGER_LITERAL() != null) {
             return new ConstantOperand(
                 TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
@@ -2521,7 +2521,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           new BasicFunctionOperator(
               FilterConstant.lexerToFilterType.get(ctx.comparisonOperator().type.getType()),
               path,
-              ctx.constant().getText());
+              parseStringWithQuotes(ctx.constant().getText()));
     }
     return basic;
   }
@@ -2827,15 +2827,27 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringWithQuotesInNodeName(String src) {
     if (2 <= src.length()) {
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        return src.length() == 2
-            ? "\"\""
-            : StringEscapeUtils.unescapeJava(src).replace("\"\"", "\"");
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        if (unescapeString.length() == 0) {
+          return "\"\"";
+        } else {
+          return "\"" + unescapeString.replace("\"\"", "\"") + "\"";
+        }
       }
       if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-        return src.length() == 2 ? "''" : StringEscapeUtils.unescapeJava(src).replace("''", "'");
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        if (unescapeString.length() == 0) {
+          return "''";
+        } else {
+          return "'" + unescapeString.replace("''", "'") + "'";
+        }
       }
     }
     return src;
+  }
+
+  private String parseStringLiteralInInsertValue(String src) {
+    return parseStringWithQuotesInNodeName(src);
   }
 
   /** function for parsing file path used by LOAD statement. */
