@@ -21,6 +21,7 @@ package org.apache.iotdb.metrics;
 
 import org.apache.iotdb.metrics.config.MetricConfig;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
+import org.apache.iotdb.metrics.config.ReloadLevel;
 import org.apache.iotdb.metrics.impl.DoNothingMetricManager;
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
@@ -33,36 +34,47 @@ import java.util.ServiceLoader;
 /**
  * MetricService is the entry to manage all Metric system, include MetricManager and MetricReporter.
  */
-public class MetricService {
+public abstract class MetricService {
 
   private static final Logger logger = LoggerFactory.getLogger(MetricService.class);
-  private static final MetricConfig metricConfig =
-      MetricConfigDescriptor.getInstance().getMetricConfig();
+  private final MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
 
-  private static final MetricService INSTANCE = new MetricService();
+  protected MetricManager metricManager = new DoNothingMetricManager();
 
-  private static MetricManager metricManager;
+  protected CompositeReporter compositeReporter = new CompositeReporter();
 
-  private static CompositeReporter compositeReporter;
+  protected boolean isEnableMetric = metricConfig.getEnableMetric();
 
-  public static MetricService getInstance() {
-    return INSTANCE;
-  }
+  public MetricService() {}
 
-  private MetricService() {}
-
-  /** init config, manager and reporter */
-  public static void init() {
-    logger.info("Init metric service");
+  /** Start all reporter. if is disabled, do nothing */
+  public void startService() {
     // load manager
     loadManager();
     // load reporter
     loadReporter();
     // do some init work
     metricManager.init();
+    // start reporter
+    compositeReporter.startAll();
+
+    for (PredefinedMetric predefinedMetric : metricConfig.getPredefinedMetrics()) {
+      enablePredefinedMetric(predefinedMetric);
+    }
+    logger.info("Start predefined metric:" + metricConfig.getPredefinedMetrics());
+
+    collectFileSystemInfo();
   }
 
-  public static void loadManager() {
+  /** Stop metric service. if is disabled, do nothing */
+  public void stopService() {
+    metricManager.stop();
+    compositeReporter.stopAll();
+    metricManager = new DoNothingMetricManager();
+    compositeReporter = new CompositeReporter();
+  }
+
+  private void loadManager() {
     logger.info("Load metricManager, type: {}", metricConfig.getMonitorType());
     ServiceLoader<MetricManager> metricManagers = ServiceLoader.load(MetricManager.class);
     int size = 0;
@@ -86,9 +98,8 @@ public class MetricService {
     }
   }
 
-  public static void loadReporter() {
+  private void loadReporter() {
     logger.info("Load metric reporter, reporters: {}", metricConfig.getMetricReporterList());
-    compositeReporter = new CompositeReporter();
 
     ServiceLoader<Reporter> reporters = ServiceLoader.load(Reporter.class);
     for (Reporter reporter : reporters) {
@@ -106,7 +117,7 @@ public class MetricService {
   }
 
   /** start reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public static void start(ReporterType reporter) {
+  public void start(ReporterType reporter) {
     if (!isEnable()) {
       return;
     }
@@ -114,39 +125,36 @@ public class MetricService {
   }
 
   /** stop reporter by name, values in jmx, prometheus, internal. if is disabled, do nothing */
-  public static void stop(ReporterType reporter) {
+  public void stop(ReporterType reporter) {
     if (!isEnable()) {
       return;
     }
     compositeReporter.stop(reporter);
   }
 
-  /** Start all reporter. if is disabled, do nothing */
-  public static void startAll() {
-    if (!isEnable()) {
-      return;
-    }
-    compositeReporter.startAll();
-  }
+  /** collect file system info in metric way */
+  protected abstract void collectFileSystemInfo();
 
-  /** Stop metric service. if is disabled, do nothing */
-  public static void stopAll() {
-    if (!isEnable()) {
-      return;
-    }
-    compositeReporter.stopAll();
-  }
+  /**
+   * support hot load of some properties
+   *
+   * @param reloadLevel
+   */
+  protected abstract void reloadProperties(ReloadLevel reloadLevel);
 
-  /** Enable some predefined metric, now support jvm */
-  public static void enablePredefinedMetric(PredefinedMetric metric) {
+  /**
+   * Enable some predefined metric, now support jvm, logback. Notice: In dropwizard mode, logback
+   * metrics are not supported
+   */
+  public void enablePredefinedMetric(PredefinedMetric metric) {
     metricManager.enablePredefinedMetric(metric);
   }
 
-  public static MetricManager getMetricManager() {
+  public MetricManager getMetricManager() {
     return metricManager;
   }
 
-  public static boolean isEnable() {
-    return metricConfig.getEnableMetric();
+  public boolean isEnable() {
+    return isEnableMetric;
   }
 }
