@@ -22,9 +22,9 @@ package org.apache.iotdb.db.engine.compaction.cross;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.task.CrossSpaceMergeTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.CrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
@@ -79,15 +79,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testMerge() throws Exception {
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
     MeasurementPath path =
         SchemaTestUtils.getMeasurementPath(
@@ -119,17 +113,9 @@ public class MergeTaskTest extends MergeTest {
   public void testMergeEndTime() throws Exception {
     List<TsFileResource> testSeqResources = seqResources.subList(0, 3);
     List<TsFileResource> testUnseqResource = unseqResources.subList(5, 6);
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResource),
-            tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(499, k.get(2).getEndTime("root.mergeTest.device1"));
-            },
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            testSeqResources, testUnseqResource, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 
@@ -173,31 +159,17 @@ public class MergeTaskTest extends MergeTest {
     List<TsFileResource> testSeqResources = seqResources.subList(0, 1);
     List<TsFileResource> testUnseqResources = new ArrayList<>();
     testUnseqResources.add(smallUnseqTsFileResource);
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(49, k.get(0).getEndTime("root.mergeTest.device1"));
-            },
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            testSeqResources, testUnseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 
   @Test
   public void testFullMerge() throws Exception {
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            true,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -206,7 +178,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[9].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(seqResources.get(0));
+    list.add(TsFileNameGenerator.increaseCrossCompactionCnt(seqResources.get(0)));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -232,15 +204,9 @@ public class MergeTaskTest extends MergeTest {
   @Test
   public void testChunkNumThreshold() throws Exception {
     IoTDBDescriptor.getInstance().getConfig().setMergeChunkPointNumberThreshold(Integer.MAX_VALUE);
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -271,15 +237,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge1() throws Exception {
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 1)),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources.subList(0, 1), tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -314,15 +274,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge2() throws Exception {
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(5, 6)),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources.subList(5, 6), tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -353,15 +307,9 @@ public class MergeTaskTest extends MergeTest {
 
   @Test
   public void testPartialMerge3() throws Exception {
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 5)),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources.subList(0, 5), tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -370,7 +318,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> list = new ArrayList<>();
-    list.add(seqResources.get(2));
+    list.add(TsFileNameGenerator.increaseCrossCompactionCnt(seqResources.get(2)));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -411,21 +359,9 @@ public class MergeTaskTest extends MergeTest {
       seqResources.get(0).getModFile().close();
     }
 
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(seqResources, unseqResources.subList(0, 1)),
-            tempSGDir.getPath(),
-            (k, v, l) -> {
-              try {
-                seqResources.get(0).removeModFile();
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-            },
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            seqResources, unseqResources.subList(0, 5), tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -434,7 +370,7 @@ public class MergeTaskTest extends MergeTest {
                 + TsFileConstant.PATH_SEPARATOR
                 + measurementSchemas[0].getMeasurementId());
     List<TsFileResource> resources = new ArrayList<>();
-    resources.add(seqResources.get(0));
+    resources.add(TsFileNameGenerator.increaseCrossCompactionCnt(seqResources.get(0)));
     IBatchReader tsFilesReader =
         new SeriesRawDataBatchReader(
             path,
@@ -466,15 +402,9 @@ public class MergeTaskTest extends MergeTest {
     // unseq and no seq merge
     List<TsFileResource> testSeqResources = new ArrayList<>();
     List<TsFileResource> testUnseqResource = unseqResources.subList(5, 6);
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResource),
-            tempSGDir.getPath(),
-            (k, v, l) -> {},
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            testSeqResources, testUnseqResource, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
 
     MeasurementPath path =
@@ -529,17 +459,9 @@ public class MergeTaskTest extends MergeTest {
     List<TsFileResource> testSeqResources = seqResources.subList(0, 1);
     List<TsFileResource> testUnseqResources = new ArrayList<>();
     testUnseqResources.add(unseqTsFileResourceWithoutSomeSensor);
-    CrossSpaceMergeTask mergeTask =
-        new CrossSpaceMergeTask(
-            new CrossSpaceMergeResource(testSeqResources, testUnseqResources),
-            tempSGDir.getPath(),
-            (k, v, l) -> {
-              assertEquals(99, k.get(0).getEndTime("root.mergeTest.device1"));
-            },
-            "test",
-            false,
-            1,
-            MERGE_TEST_SG);
+    CrossSpaceCompactionTask mergeTask =
+        new CrossSpaceCompactionTask(
+            testSeqResources, testUnseqResources, tempSGDir.getPath(), "test", MERGE_TEST_SG);
     mergeTask.call();
   }
 

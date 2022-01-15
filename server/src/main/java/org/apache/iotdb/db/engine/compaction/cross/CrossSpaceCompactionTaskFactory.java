@@ -20,8 +20,8 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
@@ -33,13 +33,12 @@ public class CrossSpaceCompactionTaskFactory {
       String logicalStorageGroupName,
       String virtualStorageGroupName,
       long timePartitionId,
-      CrossSpaceMergeResource mergeResource,
       String storageGroupDir,
+      TsFileManager tsFileManager,
       TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
+      TsFileResourceList unseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
-      List<TsFileResource> selectedUnSeqTsFileResourceList,
-      int concurrentMergeCount) {
+      List<TsFileResource> selectedUnSeqTsFileResourceList) {
     return IoTDBDescriptor.getInstance()
         .getConfig()
         .getCrossCompactionStrategy()
@@ -47,12 +46,11 @@ public class CrossSpaceCompactionTaskFactory {
             logicalStorageGroupName,
             virtualStorageGroupName,
             timePartitionId,
-            mergeResource,
             storageGroupDir,
+            tsFileManager,
             seqTsFileResourceList,
-            unSeqTsFileResourceList,
+            unseqTsFileResourceList,
             selectedSeqTsFileResourceList,
-            selectedUnSeqTsFileResourceList,
-            concurrentMergeCount);
+            selectedUnSeqTsFileResourceList);
   }
 }

@@ -17,11 +17,22 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross;
 
-public enum MergeFileStrategy {
-  MAX_SERIES_NUM,
-  MAX_FILE_NUM,
-  // TODO: HOW?
-  TRADE_OFF,
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+
+import java.io.File;
+import java.util.List;
+
+public class CrossSpaceCompactionExceptionHandler {
+  public static void handleException(
+      String storageGroup,
+      File logFile,
+      List<TsFileResource> targetResourceList,
+      List<TsFileResource> seqFileList,
+      List<TsFileResource> unseqFileList,
+      TsFileManager tsFileManager,
+      TsFileResourceList tsFileResourceList) {}
 }

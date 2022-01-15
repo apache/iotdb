@@ -17,19 +17,11 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.exception.MergeException;
-
-import java.util.List;
-
-/**
- * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
- * without exceeding given memory budget.
- */
-public interface ICrossSpaceMergeFileSelector {
-
-  List[] select() throws MergeException;
-
-  int getConcurrentMergeNum();
+public enum MergeFileStrategy {
+  MAX_SERIES_NUM,
+  MAX_FILE_NUM,
+  // TODO: HOW?
+  TRADE_OFF,
 }

@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 import org.apache.iotdb.db.utils.MergeUtils;

@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionPriority;
 import org.apache.iotdb.db.engine.compaction.cross.CrossCompactionStrategy;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.MergeFileStrategy;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.MergeFileStrategy;
 import org.apache.iotdb.db.engine.compaction.inner.InnerCompactionStrategy;
 import org.apache.iotdb.db.engine.storagegroup.timeindex.TimeIndexLevel;
 import org.apache.iotdb.db.exception.LoadConfigurationException;
@@ -589,24 +589,10 @@ public class IoTDBConfig {
   private long mergeFileSelectionTimeBudget = 30 * 1000L;
 
   /**
-   * When set to true, if some crashed merges are detected during system rebooting, such merges will
-   * be continued, otherwise, the unfinished parts of such merges will not be continued while the
-   * finished parts still remain as they are.
-   */
-  private boolean continueMergeAfterReboot = false;
-
-  /**
    * A global merge will be performed each such interval, that is, each storage group will be merged
    * (if proper merge candidates can be found). Unit: second.
    */
   private long mergeIntervalSec = 0L;
-
-  /**
-   * When set to true, all cross space compaction becomes full merge (the whole SeqFiles are
-   * re-written despite how much they are overflowed). This may increase merge overhead depending on
-   * how much the SeqFiles are overflowed.
-   */
-  private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
   private int mergeWriteThroughputMbPerSec = 8;
@@ -1471,14 +1457,6 @@ public class IoTDBConfig {
     this.mergeMemoryBudget = mergeMemoryBudget;
   }
 
-  public boolean isContinueMergeAfterReboot() {
-    return continueMergeAfterReboot;
-  }
-
-  void setContinueMergeAfterReboot(boolean continueMergeAfterReboot) {
-    this.continueMergeAfterReboot = continueMergeAfterReboot;
-  }
-
   public long getMergeIntervalSec() {
     return mergeIntervalSec;
   }
@@ -1589,14 +1567,6 @@ public class IoTDBConfig {
 
   public void setEnablePartialInsert(boolean enablePartialInsert) {
     this.enablePartialInsert = enablePartialInsert;
-  }
-
-  public boolean isForceFullMerge() {
-    return forceFullMerge;
-  }
-
-  void setForceFullMerge(boolean forceFullMerge) {
-    this.forceFullMerge = forceFullMerge;
   }
 
   public int getConcurrentCompactionThread() {

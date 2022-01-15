@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.inplace;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -24,10 +24,11 @@ import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionSelector;
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionTaskFactory;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.selector.ICrossSpaceMergeFileSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.CrossSpaceMergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.selector.ICrossSpaceMergeFileSelector;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
@@ -40,15 +41,17 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
+
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
   private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
-  public InplaceCompactionSelector(
+  public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,
       String virtualStorageGroupId,
       String storageGroupDir,
       long timePartition,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -57,6 +60,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
         virtualStorageGroupId,
         storageGroupDir,
         timePartition,
+        tsFileManager,
         sequenceFileList,
         unsequenceFileList,
         taskFactory);
@@ -137,13 +141,12 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
               logicalStorageGroupName,
               virtualGroupId,
               timePartition,
-              mergeResource,
               storageGroupDir,
+              tsFileManager,
               sequenceFileList,
               unsequenceFileList,
               mergeFiles[0],
-              mergeFiles[1],
-              fileSelector.getConcurrentMergeNum());
+              mergeFiles[1]);
       CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
       taskSubmitted = true;
       LOGGER.info(

@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.constant.TestConstant;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionClearUtils;
 import org.apache.iotdb.db.engine.compaction.utils.CompactionFileGeneratorUtils;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
@@ -58,6 +57,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class CompactionSchedulerTest {
+
   private static final Logger logger = LoggerFactory.getLogger(CompactionSchedulerTest.class);
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final long MAX_WAITING_TIME = 240_000;
@@ -104,7 +104,6 @@ public class CompactionSchedulerTest {
     if (!basicOutputDir.exists()) {
       assertTrue(basicOutputDir.mkdirs());
     }
-    MergeManager.getINSTANCE().start();
     CompactionTaskManager.getInstance().start();
     while (CompactionTaskManager.getInstance().getExecutingTaskCount() > 0) {
       try {
@@ -119,7 +118,6 @@ public class CompactionSchedulerTest {
   public void tearDown() throws IOException, StorageEngineException {
     ChunkCache.getInstance().clear();
     TimeSeriesMetadataCache.getInstance().clear();
-    MergeManager.getINSTANCE().stop();
     IoTDB.metaManager.clear();
     CompactionClearUtils.clearAllCompactionFiles();
     EnvironmentUtils.cleanAllDir();
@@ -665,6 +663,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -964,6 +963,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -1096,6 +1096,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
@@ -1204,6 +1205,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1327,6 +1329,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1465,6 +1468,7 @@ public class CompactionSchedulerTest {
           .setEnableCrossSpaceCompaction(prevEnableCrossCompaction);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=50 max_compaction_candidate_file_num=2
@@ -1732,6 +1736,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
@@ -1865,6 +1870,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
@@ -1998,6 +2004,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=true enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2
@@ -2132,6 +2139,7 @@ public class CompactionSchedulerTest {
           .setMaxCompactionCandidateFileNum(prevMaxCompactionCandidateFileNum);
     }
   }
+
   /**
    * enable_seq_space_compaction=false enable_unseq_space_compaction=false
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=2

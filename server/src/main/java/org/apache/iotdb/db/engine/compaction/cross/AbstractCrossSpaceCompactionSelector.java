@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
+import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompactionSelector {
@@ -26,6 +27,7 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
   protected String virtualGroupId;
   protected String storageGroupDir;
   protected long timePartition;
+  protected TsFileManager tsFileManager;
   protected TsFileResourceList sequenceFileList;
   protected TsFileResourceList unsequenceFileList;
   protected CrossSpaceCompactionTaskFactory taskFactory;
@@ -35,6 +37,7 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
       String virtualGroupId,
       String storageGroupDir,
       long timePartition,
+      TsFileManager tsFileManager,
       TsFileResourceList sequenceFileList,
       TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
@@ -45,6 +48,7 @@ public abstract class AbstractCrossSpaceCompactionSelector extends AbstractCompa
     this.sequenceFileList = sequenceFileList;
     this.unsequenceFileList = unsequenceFileList;
     this.taskFactory = taskFactory;
+    this.tsFileManager = tsFileManager;
   }
 
   @Override

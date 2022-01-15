@@ -17,39 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
 import org.apache.iotdb.db.metadata.path.PartialPath;
 
+import java.util.Iterator;
 import java.util.List;
-import java.util.NoSuchElementException;
 
-public class NaivePathSelector implements IMergePathSelector {
-
-  private List<PartialPath> paths;
-  private int idx;
-  private int maxSeriesNum;
-
-  public NaivePathSelector(List<PartialPath> paths, int maxSeriesNum) {
-    this.paths = paths;
-    this.maxSeriesNum = maxSeriesNum;
-  }
-
-  @Override
-  public boolean hasNext() {
-    return idx < paths.size();
-  }
-
-  @Override
-  public List<PartialPath> next() {
-    if (!hasNext()) {
-      throw new NoSuchElementException();
-    }
-    List<PartialPath> ret =
-        idx + maxSeriesNum <= paths.size()
-            ? paths.subList(idx, idx + maxSeriesNum)
-            : paths.subList(idx, paths.size());
-    idx += maxSeriesNum;
-    return ret;
-  }
-}
+/**
+ * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be merged
+ * at the same time.
+ */
+public interface IMergePathSelector extends Iterator<List<PartialPath>> {}

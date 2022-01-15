@@ -17,24 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.qp.logical.sys;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.qp.logical.Operator;
-import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.sys.ShowMergeStatusPlan;
-import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-public class ShowMergeStatusOperator extends Operator {
+import java.io.IOException;
 
-  public ShowMergeStatusOperator(int tokenIntType) {
-    super(tokenIntType);
-    setOperatorType(OperatorType.SHOW_MERGE_STATUS);
-  }
-
-  @Override
-  public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
-      throws QueryProcessException {
-    return new ShowMergeStatusPlan();
-  }
+@FunctionalInterface
+/**
+ * Estimate how much memory a file may occupy when being queried during merge.
+ *
+ * @param resource
+ * @return
+ * @throws IOException
+ */
+interface IFileQueryMemMeasurement {
+  long measure(TsFileResource resource) throws IOException;
 }
