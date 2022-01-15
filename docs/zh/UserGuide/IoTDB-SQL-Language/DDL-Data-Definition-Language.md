@@ -421,12 +421,14 @@ SHOW CHILD NODES pathPattern
 
 ### 统计节点数
 
-IoTDB 支持使用`COUNT NODES <PathPattern> LEVEL=<INTEGER>`来统计当前 Metadata 树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+IoTDB 支持使用`COUNT NODES <PathPattern> LEVEL=<INTEGER>`来统计当前 Metadata
+ 树下满足某路径模式的路径中指定层级的节点个数。这条语句可以用来统计带有特定采样点的设备数。例如：
 
 ```
 IoTDB > COUNT NODES root.** LEVEL=2
 IoTDB > COUNT NODES root.ln.** LEVEL=2
 IoTDB > COUNT NODES root.ln.wf01.* LEVEL=3
+IoTDB > COUNT NODES root.**.temperature LEVEL=3
 ```
 
 对于上面提到的例子和 Metadata Tree，你可以获得如下结果：
@@ -452,6 +454,14 @@ It costs 0.002s
 |count|
 +-----+
 |    1|
++-----+
+Total line number = 1
+It costs 0.002s
+
++-----+
+|count|
++-----+
+|    2|
 +-----+
 Total line number = 1
 It costs 0.002s
