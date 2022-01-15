@@ -909,7 +909,7 @@ public class StorageEngine implements IService {
 
   public void loadNewTsFileForSync(TsFileResource newTsFileResource)
       throws StorageEngineException, LoadFileException, IllegalPathException {
-    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile())))
+    getProcessorDirectly(new PartialPath(getSgByEngineFile(newTsFileResource.getTsFile(), false)))
         .loadNewTsFileForSync(newTsFileResource);
   }
 
@@ -927,19 +927,19 @@ public class StorageEngine implements IService {
 
   public boolean deleteTsfileForSync(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, false)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean deleteTsfile(File deletedTsfile)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(deletedTsfile, true)))
         .deleteTsfile(deletedTsfile);
   }
 
   public boolean unloadTsfile(File tsfileToBeUnloaded, File targetDir)
       throws StorageEngineException, IllegalPathException {
-    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded)))
+    return getProcessorDirectly(new PartialPath(getSgByEngineFile(tsfileToBeUnloaded, true)))
         .unloadTsfile(tsfileToBeUnloaded, targetDir);
   }
 
@@ -950,19 +950,23 @@ public class StorageEngine implements IService {
    * @param file internal file
    * @return sg name
    */
-  public String getSgByEngineFile(File file) throws IllegalPathException {
-    File dataDir =
-        file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
-    if (dataDir.exists()) {
-      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
-      for (String dir : dataDirs) {
-        File f = new File(dir);
-        if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
-          return file.getParentFile().getParentFile().getParentFile().getName();
+  public String getSgByEngineFile(File file, boolean needCheck) throws IllegalPathException {
+    if (needCheck) {
+      File dataDir =
+          file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+      if (dataDir.exists()) {
+        String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+        for (String dir : dataDirs) {
+          File f = new File(dir);
+          if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
+            return file.getParentFile().getParentFile().getParentFile().getName();
+          }
         }
       }
+      throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
+    } else {
+      return file.getParentFile().getParentFile().getParentFile().getName();
     }
-    throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
   }
 
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
