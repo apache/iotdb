@@ -137,12 +137,15 @@ public class MeasurementPath extends PartialPath {
     isUnderAlignedEntity = underAlignedEntity;
   }
 
+  @Override
   public PartialPath copy() {
     MeasurementPath result = new MeasurementPath();
     result.nodes = nodes;
     result.fullPath = fullPath;
     result.device = device;
     result.measurementAlias = measurementAlias;
+    result.measurementSchema = measurementSchema;
+    result.isUnderAlignedEntity = isUnderAlignedEntity;
     return result;
   }
 

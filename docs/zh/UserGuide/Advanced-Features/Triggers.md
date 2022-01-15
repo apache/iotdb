@@ -150,7 +150,7 @@ default int[] fire(long[] timestamps, int[] values) throws Exception {
 5. 使用`CREATE TRIGGER`语句注册该触发器
 
    ```sql
-   CREATE TRIGGER alert-listener-sg1d1s1
+   CREATE TRIGGER `alert-listener-sg1d1s1`
    AFTER INSERT
    ON root.sg1.d1.s1
    AS 'org.apache.iotdb.db.engine.trigger.example.AlertListener'
@@ -214,7 +214,7 @@ DROP TRIGGER <TRIGGER-NAME>
 下面是一个`DROP TRIGGER`语句的例子：
 
 ```sql
-DROP TRIGGER alert-listener-sg1d1s1
+DROP TRIGGER `alert-listener-sg1d1s1`
 ```
 
 ### 启动触发器
@@ -232,7 +232,7 @@ START TRIGGER <TRIGGER-NAME>
 下面是一个`START TRIGGER`语句的例子：
 
 ```sql
-START TRIGGER alert-listener-sg1d1s1
+START TRIGGER `alert-listener-sg1d1s1`
 ```
 
 注意，通过`CREATE TRIGGER`语句注册的触发器默认是`STARTED`的。
@@ -252,7 +252,7 @@ STOP TRIGGER <TRIGGER-NAME>
 下面是一个`STOP TRIGGER`语句的例子：
 
 ```sql
-STOP TRIGGER alert-listener-sg1d1s1
+STOP TRIGGER `alert-listener-sg1d1s1`
 ```
 
 ### 查询所有注册的触发器
@@ -269,10 +269,10 @@ SHOW TRIGGERS
 
 用户在使用触发器时会涉及到 4 种权限：
 
-* `CREATE_TRIGGER`：具备该权限的用户才被允许注册触发器操作。
-* `DROP_TRIGGER`：具备该权限的用户才被允许卸载触发器操作。
-* `START_TRIGGER`：具备该权限的用户才被允许启动已被停止的触发器。
-* `STOP_TRIGGER`：具备该权限的用户才被允许停止正在运行的触发器。
+* `CREATE_TRIGGER`：具备该权限的用户才被允许注册触发器操作。该权限需要与触发器的路径绑定。
+* `DROP_TRIGGER`：具备该权限的用户才被允许卸载触发器操作。该权限需要与触发器的路径绑定。
+* `START_TRIGGER`：具备该权限的用户才被允许启动已被停止的触发器。该权限需要与触发器的路径绑定。
+* `STOP_TRIGGER`：具备该权限的用户才被允许停止正在运行的触发器。该权限需要与触发器的路径绑定。
 
 更多用户权限相关的内容，请参考 [权限管理语句](../Operation%20Manual/Administration.md)。
 
@@ -763,7 +763,7 @@ public class TriggerExample implements Trigger {
 * 使用`CREATE TRIGGER`语句注册该触发器
 
   ```sql
-  CREATE TRIGGER window-avg-alerter
+  CREATE TRIGGER `window-avg-alerter`
   AFTER INSERT
   ON root.sg1.d1.s1
   AS 'org.apache.iotdb.trigger.TriggerExample'

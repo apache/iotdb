@@ -59,7 +59,7 @@ IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, fa
 插入数据后我们可以使用 SELECT 语句简单查询已插入的数据。
 
 ```sql
-IoTDB > select * from root.ln.wf02 where time < 5
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 结果如图所示。由查询结果可以看出，单列、多列数据的插入操作正确执行。
@@ -76,6 +76,12 @@ IoTDB > select * from root.ln.wf02 where time < 5
 Total line number = 4
 It costs 0.004s
 ```
+
+此外，我们可以省略 timestamp 列，此时系统将使用当前的系统时间作为该数据点的时间戳，示例代码如下：
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**注意：** 当一次插入多行数据时必须指定时间戳。
 
 ### 向对齐时间序列插入数据
 
@@ -268,6 +274,8 @@ It costs 0.016s
 
 ### 算数运算查询
 
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持算数运算查询。算数运算所选时间序列包含对齐时间序列时，会提示错误。
+
 #### 一元算数运算符
 
 支持的运算符：`+`, `-`
@@ -315,6 +323,8 @@ It costs 0.014s
 时间序列生成函数可接受若干原始时间序列作为输入，产生一列时间序列输出。与聚合函数不同的是，时间序列生成函数的结果集带有时间戳列。
 
 所有的时间序列生成函数都可以接受 * 作为输入，都可以与原始查询混合进行。
+
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持内置函数查询。使用内置函数时，如果自变量包含对齐时间序列，会提示错误。
 
 #### 数学函数
 
@@ -554,6 +564,8 @@ It costs 0.078s
 
 IoTDB 支持在 `select` 字句中执行由**数字常量，时间序列、算数运算表达式和时间序列生成函数（包括用户自定义函数）**组成的任意嵌套表达式。
 
+> 请注意，目前对齐时间序列(Aligned Timeseries)尚不支持嵌套表达式查询。使用嵌套表达式时，如果操作数包含对齐时间序列，会提示错误。
+
 #### 语法
 
 下面是 `select` 子句的语法定义：
@@ -638,7 +650,7 @@ IoTDB 目前支持 previous, linear, value 三种空值填充方式，数据类�
 
 - Previous 方式
 
-当查询的时间戳值为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
+当查询的时间戳下数据为空时，将使用前一个时间戳的值来填充空白。 形式化的先前方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
@@ -695,7 +707,7 @@ It costs 0.004s
 
 - Linear 方法
 
-当查询的时间戳值为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
+当查询的时间戳下数据为空时，将使用前一个和下一个时间戳的值来填充空白。 形式化线性方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
@@ -744,7 +756,7 @@ It costs 0.017s
 
 - Value方法
 
-当查询的时间戳值为空时，将使用给定的值来填充空白。 特定值填充方法如下：
+当查询的时间戳下数据为空时，将使用给定的值来填充空白。 特定值填充方法如下：
 
 ```sql
 select <path> from <prefixPath> where time = <T> fill(constant)
@@ -811,6 +823,14 @@ It costs 0.007s
 
 本章节主要介绍聚合查询的相关示例，
 主要使用的是 IoTDB SELECT 语句的聚合查询函数。
+
+> 需要注意的是，聚合查询和时间序列查询不能混合使用。下述语句就是不支持的：
+>
+> ```sql
+> select a, count(a) from root.sg
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
 
 #### 统计总点数
 
@@ -1381,7 +1401,7 @@ It costs 0.006s
 加上滑动 Step 的降采样后的结果也可以汇总
 
 ```sql
-select count(status) from root.ln.wf01.wt01 group by ([0,20),2ms,3ms), level=1;
+select count(status) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d), level=1;
 ```
 
 ```
@@ -1551,31 +1571,31 @@ It costs 0.002s
 
 Like语句：
 
-示例 1：查询 `root.sg.device` 下 `value` 含有`'cc'`的数据。
+示例 1：查询 `root.sg.d1` 下 `value` 含有`'cc'`的数据。
 `%` 表示任意0个或多个字符。
 
 ```
-IoTDB> select * from root.sg.device where value like '%cc%'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value like '%cc%'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-示例 2：查询 `root.sg.device` 下 `value` 中间为 `'b'`、前后为任意单个字符的数据。
+示例 2：查询 `root.sg.d1` 下 `value` 中间为 `'b'`、前后为任意单个字符的数据。
 `_` 表示任意单个字符。
 
 ```
 IoTDB> select * from root.sg.device where value like '_b_'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|                 abc| 
-+-----------------------------+--------------------+
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:02.000+08:00|             abc| 
++-----------------------------+----------------+
 Total line number = 1
 It costs 0.002s
 ```
@@ -1584,30 +1604,30 @@ Regexp语句：
 
 需要传入的过滤条件为 Java 标准库风格的正则表达式
 
-示例 1：查询 root.sg.device 下 value 值为26个英文字符组成的字符串
+示例 1：查询 root.sg.d1 下 value 值为26个英文字符组成的字符串
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[A-Za-z]+$'
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[A-Za-z]+$'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
 
-示例 2：查询 root.sg.device 下 value 值为26个小写英文字符组成的字符串 且时间大于100的
+示例 2：查询 root.sg.d1 下 value 值为26个小写英文字符组成的字符串 且时间大于100的
 
 ```
-IoTDB> select * from root.sg.device where value regexp '^[a-z]+$' and time > 100
-+-----------------------------+--------------------+
-|                         Time|root.sg.device.value|
-+-----------------------------+--------------------+
-|2017-11-07T23:59:00.000+08:00|            aabbccdd| 
-|2017-11-07T23:59:00.000+08:00|                  cc|
-+-----------------------------+--------------------+
+IoTDB> select * from root.sg.d1 where value regexp '^[a-z]+$' and time > 100
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
 Total line number = 2
 It costs 0.002s
 ```
@@ -1642,7 +1662,7 @@ select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
 ### 结果集行列输出控制 (LIMIT & OFFSET)
 
 IoTDB 提供 [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) 子句和 [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 子句，以使用户可以更好地控制查询结果。使用 LIMIT 和 SLIMIT 子句可让用户控制查询结果的行数和列数，
-并且使用 OFFSET 和 SOFSET 子句允许用户设置结果显示的起始位置。
+并且使用 OFFSET 和 SOFFSET 子句允许用户设置结果显示的起始位置。
 
 请注意，按组查询不支持 LIMIT 和 OFFSET。
 

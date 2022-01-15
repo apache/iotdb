@@ -42,6 +42,7 @@ import org.apache.iotdb.cluster.server.ClusterRPCService;
 import org.apache.iotdb.cluster.server.ClusterTSServiceImpl;
 import org.apache.iotdb.cluster.server.HardLinkCleaner;
 import org.apache.iotdb.cluster.server.Response;
+import org.apache.iotdb.cluster.server.basic.ClusterServiceProvider;
 import org.apache.iotdb.cluster.server.clusterinfo.ClusterInfoServer;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.server.monitor.NodeReport;
@@ -65,7 +66,7 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.service.JMXService;
 import org.apache.iotdb.db.service.RegisterManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.service.thrift.ThriftServiceThread;
 import org.apache.iotdb.db.utils.TestOnly;
 
@@ -161,6 +162,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     ((CMManager) IoTDB.metaManager).setMetaGroupMember(metaGroupMember);
     ((CMManager) IoTDB.metaManager).setCoordinator(coordinator);
     MetaPuller.getInstance().init(metaGroupMember);
+    // set coordinator for serviceProvider construction
+    try {
+      IoTDB.setServiceProvider(new ClusterServiceProvider(coordinator, metaGroupMember));
+    } catch (QueryProcessException e) {
+      logger.error("Failed to set clusterServiceProvider.", e);
+      stop();
+      return false;
+    }
 
     // from the scope of the DataGroupEngine,it should be singleton pattern
     // the way of setting MetaGroupMember in DataGroupEngine may need a better modification in
@@ -390,12 +399,14 @@ public class ClusterIoTDB implements ClusterIoTDBMBean {
     // we must wait until the metaGroup established.
     // So that the ClusterRPCService can work.
     ClusterTSServiceImpl clusterServiceImpl = new ClusterTSServiceImpl();
-    clusterServiceImpl.setCoordinator(coordinator);
-    clusterServiceImpl.setExecutor(metaGroupMember);
-    BasicServiceProvider.sessionManager = ClusterSessionManager.getInstance();
+    ServiceProvider.SESSION_MANAGER = ClusterSessionManager.getInstance();
     ClusterSessionManager.getInstance().setCoordinator(coordinator);
     ClusterRPCService.getInstance().initSyncedServiceImpl(clusterServiceImpl);
     registerManager.register(ClusterRPCService.getInstance());
+    // init influxDB MManager
+    if (IoTDBDescriptor.getInstance().getConfig().isEnableInfluxDBRpcService()) {
+      IoTDB.initInfluxDBMManager();
+    }
   }
 
   /** Be added to the cluster by seed nodes */

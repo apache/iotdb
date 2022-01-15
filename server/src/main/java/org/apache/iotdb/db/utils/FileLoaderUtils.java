@@ -99,9 +99,6 @@ public class FileLoaderUtils {
     TimeseriesMetadata timeSeriesMetadata;
     // If the tsfile is closed, we need to load from tsfile
     if (resource.isClosed()) {
-      if (!resource.getTsFile().exists()) {
-        return null;
-      }
       timeSeriesMetadata =
           TimeSeriesMetadataCache.getInstance()
               .get(

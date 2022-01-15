@@ -127,6 +127,7 @@ public class SessionConnection {
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
+    openReq.putToConfiguration("version", session.version.toString());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);

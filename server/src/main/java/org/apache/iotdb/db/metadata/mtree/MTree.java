@@ -52,6 +52,7 @@ import org.apache.iotdb.db.metadata.mtree.traverser.counter.CounterTraverser;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.EntityCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MNodeLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementCounter;
+import org.apache.iotdb.db.metadata.mtree.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.traverser.counter.StorageGroupCounter;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
@@ -923,9 +924,11 @@ public class MTree implements Serializable {
             if (plan.hasSgCol()) {
               res.add(
                   new ShowDevicesResult(
-                      device.getFullPath(), getBelongedStorageGroup(device).getFullPath()));
+                      device.getFullPath(),
+                      node.isAligned(),
+                      getBelongedStorageGroup(device).getFullPath()));
             } else {
-              res.add(new ShowDevicesResult(device.getFullPath()));
+              res.add(new ShowDevicesResult(device.getFullPath(), node.isAligned()));
             }
           }
         };
@@ -1251,6 +1254,15 @@ public class MTree implements Serializable {
     counter.traverse();
     return counter.getCount();
   }
+
+  public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
+      PartialPath pathPattern, int level) throws MetadataException {
+    MeasurementGroupByLevelCounter counter =
+        new MeasurementGroupByLevelCounter(root, pathPattern, level);
+    counter.traverse();
+    return counter.getResult();
+  }
+
   // endregion
 
   // endregion
@@ -1573,6 +1585,9 @@ public class MTree implements Serializable {
       upperTemplate = cur.getSchemaTemplate() != null ? cur.getSchemaTemplate() : upperTemplate;
       if (!cur.hasChild(fullPathNodes[index])) {
         if (upperTemplate != null) {
+          // for this fullPath, cur is the last node on MTree
+          // since upperTemplate exists, need to find the matched suffix path of fullPath and
+          // template
           String suffixPath =
               new PartialPath(Arrays.copyOfRange(fullPathNodes, index, fullPathNodes.length))
                   .toString();
@@ -1583,7 +1598,8 @@ public class MTree implements Serializable {
             return index - 1;
           }
 
-          // overlap with template, cast exception for now
+          // if suffix doesn't match, but first node name matched, it's an overlap with template
+          // cast exception for now
           if (upperTemplate.getDirectNode(fullPathNodes[index]) != null) {
             throw new TemplateImcompatibeException(
                 measurementPath.getFullPath(), upperTemplate.getName(), fullPathNodes[index]);

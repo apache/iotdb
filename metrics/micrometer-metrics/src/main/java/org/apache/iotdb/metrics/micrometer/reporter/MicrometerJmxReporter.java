@@ -23,6 +23,7 @@ import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.jmx.JmxMeterRegistry;
@@ -43,10 +44,8 @@ public class MicrometerJmxReporter implements Reporter {
           Metrics.globalRegistry.getRegistries().stream()
               .filter(reporter -> reporter instanceof JmxMeterRegistry)
               .collect(Collectors.toSet());
-      for (MeterRegistry meterRegistry : meterRegistrySet) {
-        if (meterRegistry.isClosed()) {
-          ((JmxMeterRegistry) meterRegistry).start();
-        }
+      if (meterRegistrySet.size() == 0) {
+        Metrics.addRegistry(new JmxMeterRegistry(IoTDBJmxConfig.DEFAULT, Clock.SYSTEM));
       }
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer JmxReporter, because {}", e.getMessage());
@@ -65,6 +64,8 @@ public class MicrometerJmxReporter implements Reporter {
       for (MeterRegistry meterRegistry : meterRegistrySet) {
         if (!meterRegistry.isClosed()) {
           ((JmxMeterRegistry) meterRegistry).stop();
+          meterRegistry.close();
+          Metrics.removeRegistry(meterRegistry);
         }
       }
     } catch (Exception e) {

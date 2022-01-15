@@ -177,6 +177,12 @@ public class IoTDBConfig {
   /** Unit: millisecond */
   private long walPoolTrimIntervalInMS = 10_000;
 
+  /** if OOM occurs when registering bytebuffer, system will sleep awhile and then try again. */
+  private long registerBufferSleepIntervalInMs = 200;
+
+  /** if total sleep time exceeds this, system will reject this write. */
+  private long registerBufferRejectThresholdInMs = 10_000;
+
   /** Unit: byte */
   private int estimatedSeriesSize = 300;
 
@@ -381,8 +387,32 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
-  /** The target tsfile size in compaction. */
-  private long targetCompactionFileSize = 2147483648L;
+  /** The target tsfile size in compaction, 1 GB by default */
+  private long targetCompactionFileSize = 1073741824L;
+
+  /** The target chunk size in compaction. */
+  private long targetChunkSize = 1048576L;
+
+  /** The target chunk point num in compaction. */
+  private long targetChunkPointNum = 100000L;
+
+  /**
+   * If the chunk size is lower than this threshold, it will be deserialized into points, default is
+   * 1 KB
+   */
+  private long chunkSizeLowerBoundInCompaction = 1024L;
+
+  /**
+   * If the chunk point num is lower than this threshold, it will be deserialized into points,
+   * default is 100
+   */
+  private long chunkPointNumLowerBoundInCompaction = 100;
+
+  /**
+   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
+   * will be abort.
+   */
+  private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
@@ -400,10 +430,10 @@ public class IoTDBConfig {
   private int mergePagePointNumberThreshold = 100;
 
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
-  private long compactionScheduleInterval = 10_000L;
+  private long compactionScheduleInterval = 60_000L;
 
   /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 1_000L;
+  private long compactionSubmissionInterval = 60_000L;
 
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
@@ -665,7 +695,7 @@ public class IoTDBConfig {
   private String kerberosPrincipal = "your principal";
 
   /** the num of memtable in each storage group */
-  private int concurrentWritingTimePartition = 500;
+  private int concurrentWritingTimePartition = 1;
 
   /** the default fill interval in LinearFill and PreviousFill, -1 means infinite past time */
   private int defaultFillInterval = -1;
@@ -1399,6 +1429,22 @@ public class IoTDBConfig {
 
   public void setWalPoolTrimIntervalInMS(long walPoolTrimIntervalInMS) {
     this.walPoolTrimIntervalInMS = walPoolTrimIntervalInMS;
+  }
+
+  public long getRegisterBufferSleepIntervalInMs() {
+    return registerBufferSleepIntervalInMs;
+  }
+
+  public void setRegisterBufferSleepIntervalInMs(long registerBufferSleepIntervalInMs) {
+    this.registerBufferSleepIntervalInMs = registerBufferSleepIntervalInMs;
+  }
+
+  public long getRegisterBufferRejectThresholdInMs() {
+    return registerBufferRejectThresholdInMs;
+  }
+
+  public void setRegisterBufferRejectThresholdInMs(long registerBufferRejectThresholdInMs) {
+    this.registerBufferRejectThresholdInMs = registerBufferRejectThresholdInMs;
   }
 
   public int getEstimatedSeriesSize() {
@@ -2466,6 +2512,46 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public long getTargetChunkSize() {
+    return targetChunkSize;
+  }
+
+  public void setTargetChunkSize(long targetChunkSize) {
+    this.targetChunkSize = targetChunkSize;
+  }
+
+  public long getChunkSizeLowerBoundInCompaction() {
+    return chunkSizeLowerBoundInCompaction;
+  }
+
+  public void setChunkSizeLowerBoundInCompaction(long chunkSizeLowerBoundInCompaction) {
+    this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
+  }
+
+  public long getTargetChunkPointNum() {
+    return targetChunkPointNum;
+  }
+
+  public void setTargetChunkPointNum(long targetChunkPointNum) {
+    this.targetChunkPointNum = targetChunkPointNum;
+  }
+
+  public long getChunkPointNumLowerBoundInCompaction() {
+    return chunkPointNumLowerBoundInCompaction;
+  }
+
+  public void setChunkPointNumLowerBoundInCompaction(long chunkPointNumLowerBoundInCompaction) {
+    this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
+  }
+
+  public long getCompactionAcquireWriteLockTimeout() {
+    return compactionAcquireWriteLockTimeout;
+  }
+
+  public void setCompactionAcquireWriteLockTimeout(long compactionAcquireWriteLockTimeout) {
+    this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
   }
 
   public long getCompactionScheduleInterval() {
