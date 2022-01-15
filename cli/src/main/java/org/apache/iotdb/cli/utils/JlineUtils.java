@@ -74,7 +74,7 @@ public class JlineUtils {
     String historyFilePath =
         System.getProperty("user.home")
             + File.separator
-            + host
+            + host.hashCode()
             + "."
             + port
             + "."
