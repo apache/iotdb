@@ -176,7 +176,8 @@ public class AbstractCompactionTest {
   }
 
   private void addResource(
-      File file, int deviceNum, long startTime, long endTime, boolean isAlign, boolean isSeq) {
+      File file, int deviceNum, long startTime, long endTime, boolean isAlign, boolean isSeq)
+      throws IOException {
     TsFileResource resource = new TsFileResource(file);
     int deviceStartindex = 0;
     if (isAlign) {
@@ -193,6 +194,7 @@ public class AbstractCompactionTest {
     resource.updatePlanIndexes(fileVersion);
     resource.setClosed(true);
     // resource.setTimeIndexType((byte) 0);
+    resource.serialize();
     if (isSeq) {
       seqResources.add(resource);
     } else {

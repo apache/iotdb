@@ -18,7 +18,6 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
@@ -30,7 +29,8 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,96 +156,53 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       List<TsFileIdentifier> targetFileIdentifiers,
       List<TsFileIdentifier> sourceFileIdentifiers,
       String fullStorageGroupName) {
-    if (analyzer.isAllTmpTargetFilesExisted()) {
-      // move tmp target files to target files
-      for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
-        File targetFile = targetFileIdentifier.getFileFromDataDirs();
-        if (targetFile != null) {
-          try {
-            moveOneTargetFile(new TsFileResource(targetFile), fullStorageGroupName);
-          } catch (IOException e) {
-            LOGGER.error(
-                "{} Exception occurs while moving tmp file to target file in cross space recover, set allowCompaction to false",
-                fullStorageGroupName,
-                e);
-            return false;
-          }
-        }
-      }
-      return true;
-    } else {
-      // all source files exist, delete all the target files and tmp target files
-      LOGGER.info(
-          "{} [Compaction][Recover] all source files exists, delete all target files.",
-          fullStorageGroupName);
-      List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
-      for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
-        sourceTsFileResourceList.add(
-            new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
-      }
-      for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
-        // xxx.merge
-        File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
-        // xxx.tsfile
-        File targetFile =
-            getFileFromDataDirs(
-                targetFileIdentifier
-                    .getFilePath()
-                    .replace(
-                        IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
-                        TsFileConstant.TSFILE_SUFFIX));
-        TsFileResource targetResource;
-        if (tmpTargetFile != null) {
-          targetResource = new TsFileResource(tmpTargetFile);
-        } else {
-          targetResource = new TsFileResource(targetFile);
-        }
-
-        if (!targetResource.remove()) {
-          // failed to remove tmp target tsfile
-          // system should not carry out the subsequent compaction in case of data redundant
-          LOGGER.warn(
-              "{} [Compaction][Recover] failed to remove target file {}",
-              fullStorageGroupName,
-              targetResource);
-          return false;
-        }
-        // deal with compaction modification
-        try {
-          InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
-        } catch (Throwable e) {
-          LOGGER.error(
-              "{} Exception occurs while handling exception, set allowCompaction to false",
-              fullStorageGroupName,
-              e);
-          return false;
-        }
-        return true;
-      }
-      return true;
+    // all source files exist, delete all the target files and tmp target files
+    LOGGER.info(
+        "{} [Compaction][Recover] all source files exists, delete all target files.",
+        fullStorageGroupName);
+    List<TsFileResource> sourceTsFileResourceList = new ArrayList<>();
+    for (TsFileIdentifier sourceFileIdentifier : sourceFileIdentifiers) {
+      sourceTsFileResourceList.add(new TsFileResource(sourceFileIdentifier.getFileFromDataDirs()));
     }
-  }
+    for (TsFileIdentifier targetFileIdentifier : targetFileIdentifiers) {
+      // xxx.merge
+      File tmpTargetFile = targetFileIdentifier.getFileFromDataDirs();
+      // xxx.tsfile
+      File targetFile =
+          getFileFromDataDirs(
+              targetFileIdentifier
+                  .getFilePath()
+                  .replace(
+                      IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX,
+                      TsFileConstant.TSFILE_SUFFIX));
+      TsFileResource targetResource;
+      if (tmpTargetFile != null) {
+        targetResource = new TsFileResource(tmpTargetFile);
+      } else {
+        targetResource = new TsFileResource(targetFile);
+      }
 
-  private static void moveOneTargetFile(TsFileResource targetResource, String fullStorageGroupName)
-      throws IOException {
-    // move to target file and delete old tmp target file
-    if (!targetResource.getTsFile().exists()) {
-      LOGGER.info(
-          "{} [Compaction] Tmp target tsfile {} may be moved to target file after compaction.",
+      if (!targetResource.remove()) {
+        // failed to remove tmp target tsfile
+        // system should not carry out the subsequent compaction in case of data redundant
+        LOGGER.warn(
+            "{} [Compaction][Recover] failed to remove target file {}",
+            fullStorageGroupName,
+            targetResource);
+        return false;
+      }
+    }
+    // deal with compaction modification
+    try {
+      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
+    } catch (Throwable e) {
+      LOGGER.error(
+          "{} Exception occurs while handling exception, set allowCompaction to false",
           fullStorageGroupName,
-          targetResource.getTsFilePath());
-      return;
+          e);
+      return false;
     }
-    File newFile =
-        new File(
-            targetResource
-                .getTsFilePath()
-                .replace(
-                    IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
-    FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
-
-    // Todo:targerResource is empty, does not serialize
-
+    return true;
   }
 
   private boolean handleWithoutAllSourceFilesExist(List<TsFileIdentifier> sourceFileIdentifiers) {
