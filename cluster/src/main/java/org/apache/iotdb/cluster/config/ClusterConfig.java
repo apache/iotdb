@@ -78,6 +78,9 @@ public class ClusterConfig {
   /** max memory size of committed logs in memory, default 512M */
   private long maxMemorySizeForRaftLog = 536870912;
 
+  /** Ratio of write memory allocated for raft log */
+  private double RaftLogMemoryProportion = 0.2;
+
   /** deletion check period of the submitted log */
   private int logDeleteCheckIntervalSecond = -1;
 
@@ -135,6 +138,18 @@ public class ClusterConfig {
    * used to index the location of the log on the disk
    */
   private int maxRaftLogIndexSizeInMemory = 10000;
+
+  /**
+   * If leader finds too many uncommitted raft logs, raft group leader will wait for a short period
+   * of time, and then append the raft log
+   */
+  private int UnCommittedRaftLogNumForRejectThreshold = 500;
+
+  /**
+   * If followers find too many committed raft logs have not been applied, followers will reject the
+   * raft log sent by leader
+   */
+  private int UnAppliedRaftLogNumForRejectThreshold = 500;
 
   /**
    * The maximum size of the raft log saved on disk for each file (in bytes) of each raft group. The
@@ -375,6 +390,23 @@ public class ClusterConfig {
     this.maxNumOfLogsInMem = maxNumOfLogsInMem;
   }
 
+  public int getUnCommittedRaftLogNumForRejectThreshold() {
+    return UnCommittedRaftLogNumForRejectThreshold;
+  }
+
+  public void setUnCommittedRaftLogNumForRejectThreshold(
+      int unCommittedRaftLogNumForRejectThreshold) {
+    UnCommittedRaftLogNumForRejectThreshold = unCommittedRaftLogNumForRejectThreshold;
+  }
+
+  public int getUnAppliedRaftLogNumForRejectThreshold() {
+    return UnAppliedRaftLogNumForRejectThreshold;
+  }
+
+  public void setUnAppliedRaftLogNumForRejectThreshold(int unAppliedRaftLogNumForRejectThreshold) {
+    UnAppliedRaftLogNumForRejectThreshold = unAppliedRaftLogNumForRejectThreshold;
+  }
+
   public int getRaftLogBufferSize() {
     return raftLogBufferSize;
   }
@@ -421,6 +453,14 @@ public class ClusterConfig {
 
   public void setMaxMemorySizeForRaftLog(long maxMemorySizeForRaftLog) {
     this.maxMemorySizeForRaftLog = maxMemorySizeForRaftLog;
+  }
+
+  public double getRaftLogMemoryProportion() {
+    return RaftLogMemoryProportion;
+  }
+
+  public void setRaftLogMemoryProportion(double raftLogMemoryProportion) {
+    RaftLogMemoryProportion = raftLogMemoryProportion;
   }
 
   public int getMaxRaftLogPersistDataSizePerFile() {
