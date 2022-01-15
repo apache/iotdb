@@ -1084,7 +1084,8 @@ public class SessionCacheLeaderUT {
           null,
           Config.DEFAULT_INITIAL_BUFFER_CAPACITY,
           Config.DEFAULT_MAX_FRAME_SIZE,
-          enableCacheLeader);
+          enableCacheLeader,
+          Config.DEFAULT_VERSION);
     }
 
     @Override

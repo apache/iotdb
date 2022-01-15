@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
@@ -31,7 +30,8 @@ import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.exception.filter.QueryFilterOptimizationException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -54,31 +54,23 @@ import java.util.regex.Pattern;
 
 public class ContinuousQueryTask extends WrappedRunnable {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(ContinuousQueryTask.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(ContinuousQueryTask.class);
 
-  private static final Pattern PATH_NODE_NAME_PATTERN = Pattern.compile("\\$\\{\\w+}");
-  private static final int EXECUTION_BATCH_SIZE = IoTDBConstant.DEFAULT_FETCH_SIZE;
+  protected static final Pattern PATH_NODE_NAME_PATTERN = Pattern.compile("\\$\\{\\w+}");
+  protected static final int EXECUTION_BATCH_SIZE = IoTDBConstant.DEFAULT_FETCH_SIZE;
 
-  // TODO: support CQ in cluster mode
-  private static BasicServiceProvider serviceProvider;
-
-  static {
-    try {
-      serviceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      LOGGER.error(e.getMessage());
-    }
-  }
+  protected final ServiceProvider serviceProvider;
 
   // To save the continuous query info
-  private final CreateContinuousQueryPlan continuousQueryPlan;
+  protected final CreateContinuousQueryPlan continuousQueryPlan;
   // Next timestamp to execute a query
-  private final long windowEndTimestamp;
+  protected final long windowEndTimestamp;
 
   public ContinuousQueryTask(
       CreateContinuousQueryPlan continuousQueryPlan, long windowEndTimestamp) {
     this.continuousQueryPlan = continuousQueryPlan;
     this.windowEndTimestamp = windowEndTimestamp;
+    serviceProvider = IoTDB.serviceProvider;
   }
 
   @Override
@@ -119,11 +111,11 @@ public class ContinuousQueryTask extends WrappedRunnable {
       // insert data into target timeseries
       doInsert(queryDataSet, queryPlan);
     } finally {
-      QueryResourceManager.getInstance().endQuery(queryId);
+      ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
     }
   }
 
-  private String generateSQL() {
+  protected String generateSQL() {
     return continuousQueryPlan.getQuerySqlBeforeGroupByClause()
         + "group by (["
         + (windowEndTimestamp - continuousQueryPlan.getForInterval())
@@ -136,9 +128,8 @@ public class ContinuousQueryTask extends WrappedRunnable {
         + continuousQueryPlan.getQuerySqlAfterGroupByClause();
   }
 
-  private void doInsert(QueryDataSet queryDataSet, GroupByTimePlan queryPlan)
-      throws IOException, IllegalPathException, QueryProcessException, StorageGroupNotSetException,
-          StorageEngineException {
+  protected void doInsert(QueryDataSet queryDataSet, GroupByTimePlan queryPlan)
+      throws IOException, MetadataException, QueryProcessException, StorageEngineException {
     int columnSize = queryDataSet.getDataTypes().size();
     TSDataType dataType =
         TypeInferenceUtils.getAggrDataType(
@@ -180,7 +171,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     }
   }
 
-  private InsertTabletPlan[] generateInsertTabletPlans(
+  protected InsertTabletPlan[] generateInsertTabletPlans(
       int columnSize, QueryDataSet result, TSDataType dataType) throws IllegalPathException {
     List<PartialPath> targetPaths = generateTargetPaths(result.getPaths());
     InsertTabletPlan[] insertTabletPlans = new InsertTabletPlan[columnSize];
@@ -196,7 +187,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return insertTabletPlans;
   }
 
-  private Object[][] constructColumns(int columnSize, int fetchSize, TSDataType dataType) {
+  protected Object[][] constructColumns(int columnSize, int fetchSize, TSDataType dataType) {
     Object[][] columns = new Object[columnSize][1];
     for (int i = 0; i < columnSize; i++) {
       switch (dataType) {
@@ -219,7 +210,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return columns;
   }
 
-  private void fillColumns(
+  protected void fillColumns(
       Object[][] columns,
       TSDataType dataType,
       RowRecord record,
@@ -253,7 +244,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     }
   }
 
-  private List<PartialPath> generateTargetPaths(List<Path> rawPaths) throws IllegalPathException {
+  protected List<PartialPath> generateTargetPaths(List<Path> rawPaths) throws IllegalPathException {
     List<PartialPath> targetPaths = new ArrayList<>(rawPaths.size());
     for (Path rawPath : rawPaths) {
       targetPaths.add(new PartialPath(fillTargetPathTemplate((PartialPath) rawPath)));
@@ -261,7 +252,7 @@ public class ContinuousQueryTask extends WrappedRunnable {
     return targetPaths;
   }
 
-  private String fillTargetPathTemplate(PartialPath rawPath) {
+  protected String fillTargetPathTemplate(PartialPath rawPath) {
     String[] nodes = rawPath.getNodes();
     int indexOfLeftBracket = nodes[0].indexOf("(");
     if (indexOfLeftBracket != -1) {

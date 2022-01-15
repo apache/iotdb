@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.integration.auth;
+package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
@@ -70,7 +70,7 @@ public class IoTDBAuthorizationIT {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement adminStmt = adminCon.createStatement()) {
       adminStmt.execute("CREATE USER tempuser 'temppw'");
-      setUpForTriggerRelatedPrivilegesTests(adminStmt);
+
       boolean caught = false;
       try (Connection userCon =
               DriverManager.getConnection(
@@ -166,8 +166,24 @@ public class IoTDBAuthorizationIT {
           caught = true;
         }
         assertTrue(caught);
+      }
+    }
+  }
 
-        executeTriggerRelatedPrivilegesTests(userStmt);
+  @Test
+  public void testTriggerPrivileges() throws ClassNotFoundException, SQLException {
+    Class.forName(Config.JDBC_DRIVER_NAME);
+    try (Connection adminCon =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement adminStmt = adminCon.createStatement()) {
+      adminStmt.execute("CREATE USER trigger_user 'trigger_user'");
+      setUpForTriggerRelatedPrivilegesTests(adminStmt);
+      try (Connection userCon =
+              DriverManager.getConnection(
+                  Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "trigger_user", "trigger_user");
+          Statement userStmt = userCon.createStatement()) {
+        executeTriggerRelatedPrivilegesTests(adminStmt, userStmt);
       }
     }
   }
@@ -187,18 +203,86 @@ public class IoTDBAuthorizationIT {
     adminStmt.execute("stop trigger `stopped-trigger`");
   }
 
-  private static void executeTriggerRelatedPrivilegesTests(Statement userStmt) {
-    String[] statements = {
+  private static void executeTriggerRelatedPrivilegesTests(
+      Statement adminStmt, Statement userStmt) {
+    String[] userStatements = {
       "create trigger magic before insert on root.ln.wf03.wt03.software as 'org.apache.iotdb.db.engine.trigger.example.Accumulator'",
       "stop trigger `started-trigger`",
       "drop trigger `started-trigger`",
       "start trigger `stopped-trigger`",
     };
-    for (String statement : statements) {
+    for (String statement : userStatements) {
       try {
         userStmt.execute(statement);
       } catch (SQLException e) {
         assertTrue(e.getMessage().contains("602"));
+        continue;
+      }
+      fail();
+    }
+
+    String[] adminStatements =
+        new String[] {
+          "GRANT USER trigger_user PRIVILEGES CREATE_TRIGGER on root.magic.magic",
+          "GRANT USER trigger_user PRIVILEGES DROP_TRIGGER on root.magic.magic",
+          "GRANT USER trigger_user PRIVILEGES START_TRIGGER on root.magic.magic",
+          "GRANT USER trigger_user PRIVILEGES STOP_TRIGGER on root.magic.magic",
+        };
+    for (String statement : adminStatements) {
+      try {
+        adminStmt.execute(statement);
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+
+    for (String statement : userStatements) {
+      try {
+        userStmt.execute(statement);
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("602"));
+        continue;
+      }
+      fail();
+    }
+
+    adminStatements =
+        new String[] {
+          "GRANT USER trigger_user PRIVILEGES CREATE_TRIGGER on root.ln.wf03.wt03.software",
+          "GRANT USER trigger_user PRIVILEGES DROP_TRIGGER on root.ln.wf01.wt01.temperature",
+          "GRANT USER trigger_user PRIVILEGES START_TRIGGER on root.ln.wf02.wt02.hardware",
+          "GRANT USER trigger_user PRIVILEGES STOP_TRIGGER on root.ln.wf01.wt01.temperature",
+        };
+    for (String statement : adminStatements) {
+      try {
+        adminStmt.execute(statement);
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+
+    for (String statement : userStatements) {
+      try {
+        userStmt.execute(statement);
+      } catch (SQLException e) {
+        e.printStackTrace();
+        fail(e.getMessage());
+      }
+    }
+
+    userStatements =
+        new String[] {
+          "stop trigger `not-existed-trigger`",
+          "drop trigger `not-existed-trigger`",
+          "start trigger `not-existed-trigger`",
+        };
+    for (String statement : userStatements) {
+      try {
+        userStmt.execute(statement);
+      } catch (SQLException e) {
+        assertTrue(e.getMessage().contains("313"));
         continue;
       }
       fail();

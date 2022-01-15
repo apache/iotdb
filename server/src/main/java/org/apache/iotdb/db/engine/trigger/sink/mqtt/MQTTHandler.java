@@ -38,6 +38,8 @@ public class MQTTHandler implements Handler<MQTTConfiguration, MQTTEvent> {
     mqtt.setHost(configuration.getHost(), configuration.getPort());
     mqtt.setUserName(configuration.getUsername());
     mqtt.setPassword(configuration.getPassword());
+    mqtt.setConnectAttemptsMax(configuration.getConnectAttemptsMax());
+    mqtt.setReconnectDelay(configuration.getReconnectDelay());
     connection = mqtt.blockingConnection();
     connection.connect();
 
