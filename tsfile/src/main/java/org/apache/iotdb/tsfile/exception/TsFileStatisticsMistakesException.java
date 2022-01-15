@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.exception;
 
-package org.apache.iotdb.tsfile.read;
+public class TsFileStatisticsMistakesException extends TsFileRuntimeException {
 
-public class TsFileCheckStatus {
-  public static final long COMPLETE_FILE = 0;
-  public static final long FILE_EXISTS_MISTAKES = -1;
-  public static final long INCOMPATIBLE_FILE = -2;
-  public static final long FILE_NOT_FOUND = -3;
+  public TsFileStatisticsMistakesException(String message) {
+    super(message);
+  }
 }

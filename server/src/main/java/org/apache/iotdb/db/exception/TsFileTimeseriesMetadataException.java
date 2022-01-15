@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.db.exception;
 
-package org.apache.iotdb.tsfile.read;
+public class TsFileTimeseriesMetadataException extends Exception {
 
-public class TsFileCheckStatus {
-  public static final long COMPLETE_FILE = 0;
-  public static final long FILE_EXISTS_MISTAKES = -1;
-  public static final long INCOMPATIBLE_FILE = -2;
-  public static final long FILE_NOT_FOUND = -3;
+  public TsFileTimeseriesMetadataException(String message) {
+    super(message);
+  }
 }
