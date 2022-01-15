@@ -412,12 +412,17 @@ Example：
 
 ### Count Nodes
 
-IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at
+ the given level in current Metadata Tree considering a given pattern. IoTDB will find paths that
+  match the pattern and counts distinct nodes at the specified level among the matched paths.
+  This could be used to query the number of devices with specified measurements. The usage are as
+   follows:
 
 ```
 IoTDB > COUNT NODES root.** LEVEL=2
 IoTDB > COUNT NODES root.ln.** LEVEL=2
 IoTDB > COUNT NODES root.ln.wf01.** LEVEL=3
+IoTDB > COUNT NODES root.**.temperature LEVEL=3
 ```
 
 As for the above mentioned example and Metadata tree, you can get following results:
@@ -443,6 +448,14 @@ It costs 0.002s
 |count|
 +-----+
 |    1|
++-----+
+Total line number = 1
+It costs 0.002s
+
++-----+
+|count|
++-----+
+|    2|
 +-----+
 Total line number = 1
 It costs 0.002s

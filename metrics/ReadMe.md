@@ -24,10 +24,9 @@ Metric Module
   - metrics-interface
   - dropwizard metric
   - micrometer metric
-- In each implementations, you can use many types of reporter to report the details of metric
+- In each implementation, you can use many types of reporter to report the details of metric
   - Jmx Reporter
   - Prometheus Reporter
-
 
 - [1. Design](#1-design)
   - [1.1. Over all Design for acquisition System](#11-over-all-design-for-acquisition-system)
@@ -38,6 +37,9 @@ Metric Module
   - [2.3. Test parameters](#23-test-parameters)
   - [2.4. Test Result](#24-test-result)
 - [3. How to use?](#3-how-to-use)
+  - [3.1. Configuration](#31-configuration)
+  - [3.2. Module Use Guide](#32-module-use-guide)
+  - [3.3. Use Guide in IoTDB Server Module](#33-use-guide-in-iotdb-server-module)
 - [4. How to implement your own metric framework?](#4-how-to-implement-your-own-metric-framework)
 - [5. Some docs](#5-some-docs)
 
@@ -45,19 +47,20 @@ Metric Module
 
 ## 1.1. Over all Design for acquisition System
 1. The acquisition system consists of following four parts.
-   1.  Metrics：Provide tools for collecting metric in different scenarios, including Counter, Gauge, Meter, Histogram, Timer, each with tags.
+   1. Metrics：Provide tools for collecting metric in different scenarios, including Counter, Gauge, Meter, Histogram, Timer, each with tags.
    2. MetricManager
-      1. Provides functions such as creating, finding, updating, and deleting metrics.
-      2. Provides the ability to introduce default metrics(Known Metric).
-      3. Provides its own start and stop methods.
+      1. Provide functions such as creating, finding, updating, and deleting metrics.
+      2. Provide the ability to introduce default metrics(Known Metric).
+      3. Provide its own start and stop methods.
    3. CompositeReporter
-      1. Provides management of reporter, including starting and stopping reporter.
+      1. Provide management of reporter, including starting and stopping reporter.
       2. Push the collector's data to other systems, such as Prometheus, JMX, etc.
+      3. Provide its own start and stop methods.
    4. MetricService
-      1. Provide metricManager and reporter start-up.
-      2. Provide the access of metricManager and the control of reporters.
-      3. MetricService can be used in the future after being registered as Iservice.
-2. The structure of acquisition system(TODO)
+      1. Provide the start and stop method of metric module.
+      2. Provide the ability to hot load some properties.
+      4. Provide the access of metricManager and the control of reporters.
+2. The structure of acquisition system
 
 ![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2021-11-3_10-49-3.png?version=1&modificationDate=1635907745000&api=v2)
 
@@ -65,14 +68,14 @@ Metric Module
 ![](https://cwiki.apache.org/confluence/download/attachments/184616789/image2021-11-3_10-53-25.png?version=1&modificationDate=1635908006000&api=v2)
 
 # 2. Test Report
-We implemented the monitoring framework using Dropwizard and Micromometer respectively, and tested the results as follows:
+We implemented the monitoring framework using Dropwizard and Micrometer respectively, and tested the results as follows:
 
 ## 2.1. Test Environment
 1. Processor：Inter(R) Core(TM) i7-1065G7 CPU
 2. RAM: 32G
 
 ## 2.2. Test Metrics
-1. We use a single thread to create counter and run the test cases separately in two frameworks of Microsoometer and Dropwizard. The test metrics as follows:
+1. We use a single thread to create counter and run the test cases separately in two frameworks of Micrometer and Dropwizard. The test metrics as follows:
    1. memory : Memory usage in MB.
    2. create : The time required to create, in ms.
    3. searchInorder : The time required for the sequential query, in ms.
@@ -93,6 +96,8 @@ We implemented the monitoring framework using Dropwizard and Micromometer respec
 ![](https://cwiki.apache.org/confluence/download/attachments/184617400/image2021-7-14_16-32-55.png?version=1&modificationDate=1626403814000&api=v2)
 
 # 3. How to use?
+
+## 3.1. Configuration
 1. firstly, you need to set up some system property, for example:
 
 ```
@@ -106,23 +111,29 @@ System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources"
 | ------------------ | ----------------------------------------------------- | ---------------------- |
 | enableMetric       | whether enable the module                             | true                   |
 | metricReporterList | the list of reporter                                  | jmx, prometheus        |
+| predefinedMetrics  | predefined set of metrics                             | jmx, logback           |
 | monitorType        | The type of monitor manager                           | Dropwizard, Micrometer |
 | pushPeriodInSecond | the period time of push(used for prometheus, unit: s) | 5                      |
 
+## 3.2. Module Use Guide
 1. After all above, you can use it in the following way
-   1. use `MetricService.getMetricManager()` to get metric manager.
-   2. use the method in metric manager, method details in `metrics/interface/src/main/java/org/apache/iotdb/metrics/MetricManager`
+   1. use `startService` method to load manager and reporters.
+   2. use `MetricService.getMetricManager()` to get metric manager.
+   3. use the method in metric manager, method details in `metrics/interface/src/main/java/org/apache/iotdb/metrics/MetricManager`
 2. example code
 
 ```java
 public class PrometheusRunTest {
-  public MetricManager metricManager = MetricService.getMetricManager();
+  static MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
+  static MetricService metricService = new DoNothingMetricService();
+  static MetricManager metricManager;
 
   public static void main(String[] args) throws InterruptedException {
-    System.setProperty("line.separator", "\n");
-    System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
-    PrometheusRunTest prometheusRunTest = new PrometheusRunTest();
-    Counter counter = prometheusRunTest.metricManager.getOrCreateCounter("counter");
+    metricConfig.setMonitorType(MonitorType.dropwizard);
+    metricConfig.setPredefinedMetrics(new ArrayList<>());
+    metricService.startService();
+    metricManager = metricService.getMetricManager();
+    Counter counter = metricManager.getOrCreateCounter("counter");
     while (true) {
       counter.inc();
       TimeUnit.SECONDS.sleep(1);
@@ -131,18 +142,31 @@ public class PrometheusRunTest {
 }
 ```
 
+## 3.3. Use Guide in IoTDB Server Module
+1. Now, MetricsService is registered as IService in server module, you can simple set properties: `enableMetric: true` to get a instance of MetricsService.
+2. In server module you can easily use these metric by `MetricsService.getInstance().getMetricManager()`, for example:
+
+```java
+MetricsService.getInstance()
+   .getOrCreateCounter("operation_count", "name", operation.getName())
+   .inc();
+```
+
 # 4. How to implement your own metric framework?
-1. implement your MetricManager
+1. implement your MetricService
+   1. You need to implement `collectFileSystemInfo` to collect file system info as you like.
+   2. You need to implement `reloadProperties` to support hot load.
+2. implement your MetricManager
    1. The name of MetricManager should start with `monitorType`, MetricService will init manager according to the prefix of class name.
    2. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.MetricManager`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.DropwizardMetricManager`
-2. implement your reporter
+3. implement your reporter
    1. You need to implement jmx reporter and prometheus reporter, notice that your jmx bean name should be unified as `org.apache.iotdb.metrics`
    2. The name of your reporter should also start with `monitorType`
    3. You need to create `src/main/resources/META-INF/services/org.apache.iotdb.metrics.Reporter`，and record your MetricManager class name in this file, such as `org.apache.iotdb.metrics.dropwizard.reporter.DropwizardPrometheusReporter`
-3. implement your specific metric
+4. implement your specific metric
    1. They are counter, gauge, histogram, histogramSnapshot, rate and timer.
    2. These metrics will be managed by your MetricManager, and reported by your reporter.
-4. extends preDefinedMetric module:
+5. extends preDefinedMetric module:
    1. you can add value into `metrics/interface/src/main/java/org/apache/iotdb/metrics/utils/PredefinedMetric`, such as `System` and `Thread`.
    2. then you need to fix the implementation of `enablePredefinedMetric(PredefinedMetric metric)` in your manager.
 

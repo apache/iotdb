@@ -42,6 +42,7 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
+  private int numOfPointsPerPage;
 
   @Before
   public void setUp() throws Exception {
@@ -51,11 +52,13 @@ public class IOTDBInsertAlignedValuesIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   }
 
   @After
   public void tearDown() throws Exception {
     close();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }
 
