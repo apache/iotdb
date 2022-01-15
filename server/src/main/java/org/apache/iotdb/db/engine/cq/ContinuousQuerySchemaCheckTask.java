@@ -17,14 +17,16 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.cq;
+package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
+import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathNotExistException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateContinuousQueryPlan;
 import org.apache.iotdb.db.service.IoTDB;
@@ -47,8 +49,9 @@ public class ContinuousQuerySchemaCheckTask extends ContinuousQueryTask {
 
   /** we only do some checks here. we don't write any data. */
   @Override
-  protected void doInsert(QueryDataSet queryDataSet, GroupByTimePlan queryPlan)
-      throws MetadataException, IOException, ContinuousQueryException {
+  protected void doInsert(
+      String sql, QueryOperator queryOperator, GroupByTimePlan queryPlan, QueryDataSet queryDataSet)
+      throws MetadataException, StorageEngineException, IOException {
     Set<PartialPath> targetPaths = new HashSet<>(generateTargetPaths(queryDataSet.getPaths()));
     checkTargetPathNumber(queryDataSet, targetPaths);
     checkTargetPathDataType(queryPlan, targetPaths);
