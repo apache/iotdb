@@ -71,9 +71,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
 
   @Override
   public void doCompaction() throws IOException {
-    taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
-    logger.info(
-        "{} a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName, taskName);
+    logger.info("a CleanLastCrossSpaceCompactionTask {} starts...", fullStorageGroupName);
     cleanLastCrossSpaceCompactionInfo(logFile);
     for (TsFileResource seqFile : selectedSeqTsFileResourceList) {
       ModificationFile.getCompactionMods(seqFile).remove();
@@ -82,7 +80,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
 
   public void cleanLastCrossSpaceCompactionInfo(File logFile) throws IOException {
     if (!logFile.exists()) {
-      logger.info("{} no merge.log, cross space compaction clean ends.", taskName);
+      logger.info("no merge.log, cross space compaction clean ends.");
       return;
     }
     long startTime = System.currentTimeMillis();
@@ -93,8 +91,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
 
     if (logger.isInfoEnabled()) {
       logger.info(
-          "{} cross space compaction clean ends after {}ms.",
-          taskName,
+          "cross space compaction clean ends after {}ms.",
           (System.currentTimeMillis() - startTime));
     }
   }

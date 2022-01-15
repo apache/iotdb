@@ -21,6 +21,7 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
@@ -36,7 +37,6 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +64,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   private TsFileManager tsFileManager;
   private TsFileResourceList seqTsFileResourceList;
   private TsFileResourceList unseqTsFileResourceList;
+  private File logFile;
 
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
@@ -107,6 +108,13 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       executeCompaction();
     } catch (Throwable throwable) {
       // catch throwable instead of exception to handle OOM errors
+      CrossSpaceCompactionExceptionHandler.handleException(
+          storageGroupName,
+          logFile,
+          targetTsfileResourceList,
+          seqTsFileResourceList,
+          unseqTsFileResourceList,
+          tsFileManager);
       throw throwable;
     } finally {
       releaseAllLock();
@@ -135,7 +143,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         storageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
-    File logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
+    logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
     try (RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery
@@ -183,8 +191,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           "{}-crossSpaceCompactionTask Costs {} s",
           storageGroupName,
           (System.currentTimeMillis() - startTime) / 1000);
-    } finally {
-      FileUtils.delete(logFile);
     }
   }
 
@@ -215,7 +221,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           tsFileResource);
     }
     for (TsFileResource tsFileResource : targetTsfileResourceList) {
-      updateMergeModification(
+      updateCompactionModification(
           tsFileResource,
           seqFileInfoMap.get(tsFileResource.getTsFile().getName()),
           selectedUnSeqTsFileResourceList);
@@ -302,7 +308,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     }
   }
 
-  private void updateMergeModification(
+  private void updateCompactionModification(
       TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles) {
     try {
       // write mods in the seq file
