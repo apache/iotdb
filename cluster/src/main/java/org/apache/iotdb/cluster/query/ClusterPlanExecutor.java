@@ -37,7 +37,6 @@ import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
-import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
@@ -73,6 +72,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -280,52 +280,23 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
-    // Here we append a ** to the path to query the storage groups which have the prefix as 'path',
-    // if path doesn't end with **.
-    // e.g. we have SG root.sg.a and root.sg.b, the query path is root.sg, we should return the map
-    // with key root.sg.a and root.sg.b instead of an empty one.
-    PartialPath wildcardPath = path;
-    if (!wildcardPath.getMeasurement().equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-      wildcardPath = wildcardPath.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD);
-    }
-    Map<String, List<PartialPath>> sgPathMap =
-        IoTDB.metaManager.groupPathByStorageGroup(wildcardPath);
-    if (sgPathMap.isEmpty()) {
-      return 0;
-    }
-    logger.debug("The storage groups of path {} are {}", path, sgPathMap.keySet());
-    int ret = 0;
+
     try {
-      // level >= 0 is the COUNT NODE query
-      if (level >= 0 && isLevelTooSmall(path, level)) {
-        // TODO: check the semantics of COUNT NODE when LEVEL is reached before wildcards
-        // currently we return 0 if the level does not hit any wildcards
-        return 0;
-      }
-      ret += getPathCount(sgPathMap, level);
-    } catch (CheckConsistencyException
-        | PartitionTableUnavailableException
-        | NotInSameGroupException e) {
+      List<MeasurementPath> ret = CMManager.getInstance().getMatchedPaths(path);
+      int cnt = findLevelNodeInPaths(ret, level);
+      logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
+      return cnt;
+    } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
-    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
-    return ret;
   }
 
-  private boolean isLevelTooSmall(PartialPath path, int level) {
-    int prefixPartIdx = 0;
-    for (; prefixPartIdx < path.getNodeLength(); prefixPartIdx++) {
-      String currentPart = path.getNodes()[prefixPartIdx];
-      if (currentPart.equals(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD)) {
-        return false;
-      } else if (currentPart.equals(IoTDBConstant.ONE_LEVEL_PATH_WILDCARD)) {
-        // Only level equals the first * occurred level, e.g. root.sg.d1.* and level = 4, the
-        // query makes sense.
-        return level != prefixPartIdx;
-      }
+  private int findLevelNodeInPaths(List<MeasurementPath> paths, int level) {
+    Set<PartialPath> matchedNodes = new HashSet<>();
+    for (MeasurementPath path : paths) {
+      matchedNodes.add(path.getPrefix(level + 1));
     }
-    // if level is less than the query path level, there's no suitable node
-    return level < prefixPartIdx - 1;
+    return matchedNodes.size();
   }
 
   /**
@@ -336,6 +307,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @param level the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
    */
+  @Deprecated() // sgPathMap may contain paths that generate overlapping results
   private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
       throws MetadataException, CheckConsistencyException, PartitionTableUnavailableException,
           NotInSameGroupException {

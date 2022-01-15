@@ -537,4 +537,13 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
       RestorableTsFileIOWriter writer, TsFileResource tsFileResource, QueryContext context) {
     throw new UnsupportedOperationException("Should call exact sub class!");
   }
+
+  public PartialPath getPrefix(int length) {
+    if (length > nodes.length) {
+      length = nodes.length;
+    }
+
+    String[] prefixNodes = Arrays.copyOf(nodes, length);
+    return new PartialPath(prefixNodes);
+  }
 }
