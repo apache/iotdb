@@ -313,6 +313,12 @@ public class ClusterDescriptor {
                 "max_client_pernode_permember_number",
                 String.valueOf(config.getMaxClientPerNodePerMember()))));
 
+    config.setMaxIdleClientPerNodePerMember(
+        Integer.parseInt(
+            properties.getProperty(
+                "max_idle_client_pernode_permember_number",
+                String.valueOf(config.getMaxIdleClientPerNodePerMember()))));
+
     config.setWaitClientTimeoutMS(
         Long.parseLong(
             properties.getProperty(

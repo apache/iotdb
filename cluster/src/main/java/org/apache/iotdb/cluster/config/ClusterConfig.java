@@ -84,6 +84,9 @@ public class ClusterConfig {
   /** max number of clients in a ClientPool of a member for one node. */
   private int maxClientPerNodePerMember = 1000;
 
+  /** max number of idle clients in a ClientPool of a member for one node. */
+  private int maxIdleClientPerNodePerMember = 500;
+
   /**
    * If the number of connections created for a node exceeds `max_client_pernode_permember_number`,
    * we need to wait so much time for other connections to be released until timeout, or a new
@@ -205,6 +208,14 @@ public class ClusterConfig {
 
   public void setMaxClientPerNodePerMember(int maxClientPerNodePerMember) {
     this.maxClientPerNodePerMember = maxClientPerNodePerMember;
+  }
+
+  public int getMaxIdleClientPerNodePerMember() {
+    return maxIdleClientPerNodePerMember;
+  }
+
+  public void setMaxIdleClientPerNodePerMember(int maxIdleClientPerNodePerMember) {
+    this.maxIdleClientPerNodePerMember = maxIdleClientPerNodePerMember;
   }
 
   public boolean isUseBatchInLogCatchUp() {
