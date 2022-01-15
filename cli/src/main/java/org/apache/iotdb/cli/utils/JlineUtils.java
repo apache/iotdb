@@ -70,14 +70,14 @@ public class JlineUtils {
     // Handle the command history. By default, the number of commands will not exceed 500 and the
     // size of the history fill will be less than 10 KB. See:
     // org.jline.reader.impl.history#DefaultHistory
-    String historyFile = ".iotdb.history";
+    String historyFile = ".iotdb_history";
     String historyFilePath =
         System.getProperty("user.home")
             + File.separator
             + host.hashCode()
-            + "."
+            + "-"
             + port
-            + "."
+            + "-"
             + username
             + historyFile;
     builder.variable(LineReader.HISTORY_FILE, new File(historyFilePath));
