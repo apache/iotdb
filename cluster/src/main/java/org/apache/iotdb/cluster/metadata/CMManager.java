@@ -997,7 +997,7 @@ public class CMManager extends MManager {
     if (!withAlias) {
       return getMeasurementPaths(partialPath);
     } else {
-      return super.getMeasurementPathsWithAlias(partialPath, -1, -1).left;
+      return super.getMeasurementPathsWithAlias(partialPath, -1, -1, false).left;
     }
   }
 
