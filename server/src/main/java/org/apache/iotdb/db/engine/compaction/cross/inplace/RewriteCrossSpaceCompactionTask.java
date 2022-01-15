@@ -74,7 +74,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   String storageGroupName;
   InplaceCompactionLogger inplaceCompactionLogger;
   String taskName;
-  States states = States.START;
 
   public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
@@ -121,7 +120,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void abort() throws IOException {
-    states = States.ABORTED;
     cleanUp();
   }
 
@@ -144,7 +142,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     inplaceCompactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
     inplaceCompactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
     inplaceCompactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
-    states = States.COMPACTION;
     CompactionUtils.compact(
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
@@ -154,7 +151,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     // the result can be reused during a restart recovery
     inplaceCompactionLogger.logStringInfo(MAGIC_STRING);
 
-    states = States.CLEAN_UP;
     CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
 
     releaseReadAndLockWrite(selectedSeqTsFileResourceList);
@@ -306,31 +302,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
 
   public String getStorageGroupName() {
     return storageGroupName;
-  }
-
-  public String getProgress() {
-    switch (states) {
-      case ABORTED:
-        return "Aborted";
-      case CLEAN_UP:
-        return "Cleaning up";
-      case COMPACTION:
-        return "Compaction";
-      case START:
-      default:
-        return "Just started";
-    }
-  }
-
-  public String getTaskName() {
-    return taskName;
-  }
-
-  enum States {
-    START,
-    COMPACTION,
-    CLEAN_UP,
-    ABORTED
   }
 
   private void removeCompactionModification() {
