@@ -118,7 +118,6 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -548,14 +547,13 @@ public class MManager {
       mNodeCache.invalidate(path.getDevicePath());
 
       // update tag index
-      if (plan.getTags() != null) {
+
+      if (offset != -1) {
+        // offset != -1 means the timeseries has already been created and now system is recovering
+        tagManager.recoverIndex(offset, leafMNode);
+      } else if (plan.getTags() != null) {
         // tag key, tag value
-        for (Entry<String, String> entry : plan.getTags().entrySet()) {
-          if (entry.getKey() == null || entry.getValue() == null) {
-            continue;
-          }
-          tagManager.addIndex(entry.getKey(), entry.getValue(), leafMNode);
-        }
+        tagManager.addIndex(plan.getTags(), leafMNode);
       }
 
       // update statistics and schemaDataTypeNumMap

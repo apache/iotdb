@@ -381,8 +381,32 @@ public class IoTDBConfig {
    */
   private CompactionPriority compactionPriority = CompactionPriority.INNER_CROSS;
 
-  /** The target tsfile size in compaction. */
-  private long targetCompactionFileSize = 2147483648L;
+  /** The target tsfile size in compaction, 1 GB by default */
+  private long targetCompactionFileSize = 1073741824L;
+
+  /** The target chunk size in compaction. */
+  private long targetChunkSize = 1048576L;
+
+  /** The target chunk point num in compaction. */
+  private long targetChunkPointNum = 100000L;
+
+  /**
+   * If the chunk size is lower than this threshold, it will be deserialized into points, default is
+   * 1 KB
+   */
+  private long chunkSizeLowerBoundInCompaction = 1024L;
+
+  /**
+   * If the chunk point num is lower than this threshold, it will be deserialized into points,
+   * default is 100
+   */
+  private long chunkPointNumLowerBoundInCompaction = 100;
+
+  /**
+   * If compaction thread cannot acquire the write lock within this timeout, the compaction task
+   * will be abort.
+   */
+  private long compactionAcquireWriteLockTimeout = 60_000L;
 
   /** The max candidate file num in compaction */
   private int maxCompactionCandidateFileNum = 30;
@@ -2466,6 +2490,46 @@ public class IoTDBConfig {
 
   public void setTargetCompactionFileSize(long targetCompactionFileSize) {
     this.targetCompactionFileSize = targetCompactionFileSize;
+  }
+
+  public long getTargetChunkSize() {
+    return targetChunkSize;
+  }
+
+  public void setTargetChunkSize(long targetChunkSize) {
+    this.targetChunkSize = targetChunkSize;
+  }
+
+  public long getChunkSizeLowerBoundInCompaction() {
+    return chunkSizeLowerBoundInCompaction;
+  }
+
+  public void setChunkSizeLowerBoundInCompaction(long chunkSizeLowerBoundInCompaction) {
+    this.chunkSizeLowerBoundInCompaction = chunkSizeLowerBoundInCompaction;
+  }
+
+  public long getTargetChunkPointNum() {
+    return targetChunkPointNum;
+  }
+
+  public void setTargetChunkPointNum(long targetChunkPointNum) {
+    this.targetChunkPointNum = targetChunkPointNum;
+  }
+
+  public long getChunkPointNumLowerBoundInCompaction() {
+    return chunkPointNumLowerBoundInCompaction;
+  }
+
+  public void setChunkPointNumLowerBoundInCompaction(long chunkPointNumLowerBoundInCompaction) {
+    this.chunkPointNumLowerBoundInCompaction = chunkPointNumLowerBoundInCompaction;
+  }
+
+  public long getCompactionAcquireWriteLockTimeout() {
+    return compactionAcquireWriteLockTimeout;
+  }
+
+  public void setCompactionAcquireWriteLockTimeout(long compactionAcquireWriteLockTimeout) {
+    this.compactionAcquireWriteLockTimeout = compactionAcquireWriteLockTimeout;
   }
 
   public long getCompactionScheduleInterval() {

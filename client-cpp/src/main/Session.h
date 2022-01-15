@@ -440,6 +440,10 @@ public:
             : timestamp(timestamp), fields(fields) {
     }
 
+    RowRecord(const std::vector <Field> &fields)
+            : timestamp(-1), fields(fields) {
+    }
+
     RowRecord() {
         this->timestamp = -1;
     }
@@ -449,9 +453,15 @@ public:
     }
 
     std::string toString() {
-        std::string ret = std::to_string(timestamp);
-        for (size_t i = 0; i < fields.size(); i++) {
+        std::string ret = "";
+        if(this->timestamp != -1) {
+            ret.append(std::to_string(timestamp));
             ret.append("\t");
+        }
+        for (size_t i = 0; i < fields.size(); i++) {
+            if(i != 0) {
+                ret.append("\t");
+            }
             TSDataType::TSDataType dataType = fields[i].dataType;
             switch (dataType) {
                 case TSDataType::BOOLEAN: {
@@ -506,6 +516,7 @@ private:
     std::map<std::string, int> columnMap;
     // column size
     int columnSize = 0;
+    bool isIgnoreTimeStamp = false;
 
     int rowsIndex = 0; // used to record the row index in current TSQueryDataSet
     std::shared_ptr <TSQueryDataSet> tsQueryDataSet;
@@ -519,8 +530,12 @@ private:
 public:
     SessionDataSet() {}
 
-    SessionDataSet(const std::string &sql, const std::vector <std::string> &columnNameList,
-                   const std::vector <std::string> &columnTypeList, int64_t queryId, int64_t statementId,
+    SessionDataSet(const std::string &sql,
+                   const std::vector<std::string> &columnNameList,
+                   const std::vector<std::string> &columnTypeList,
+                   std::map<std::string, int> &columnNameIndexMap,
+                   bool isIgnoreTimeStamp,
+                   int64_t queryId, int64_t statementId,
                    std::shared_ptr <TSIServiceIf> client, int64_t sessionId,
                    std::shared_ptr <TSQueryDataSet> queryDataSet) : tsQueryDataSetTimeBuffer(queryDataSet->time) {
         this->sessionId = sessionId;
@@ -531,6 +546,7 @@ public:
         this->columnNameList = columnNameList;
         this->currentBitmap = new char[columnNameList.size()];
         this->columnSize = columnNameList.size();
+        this->isIgnoreTimeStamp = isIgnoreTimeStamp;
 
         // column name -> column location
         for (size_t i = 0; i < columnNameList.size(); i++) {
@@ -541,10 +557,17 @@ public:
                 this->columnMap[name] = i;
                 this->columnTypeDeduplicatedList.push_back(columnTypeList[i]);
             }
-            this->valueBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
-            this->bitmapBuffers.push_back(
-                    std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+            if(!columnNameIndexMap.empty()) {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnNameIndexMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnNameIndexMap[name]])));
+            } else {
+                this->valueBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->valueList[columnMap[name]])));
+                this->bitmapBuffers.push_back(
+                        std::unique_ptr<MyStringBuffer>(new MyStringBuffer(queryDataSet->bitmapList[columnMap[name]])));
+            }
         }
         this->tsQueryDataSet = queryDataSet;
     }
