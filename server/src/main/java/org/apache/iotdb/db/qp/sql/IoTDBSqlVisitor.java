@@ -169,8 +169,14 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private ZoneId zoneId;
   private QueryOperator queryOp;
 
+  private IoTDBConstant.ClientVersion clientVersion = IoTDBConstant.ClientVersion.V_0_13;
+
   public void setZoneId(ZoneId zoneId) {
     this.zoneId = zoneId;
+  }
+
+  public void setClientVersion(IoTDBConstant.ClientVersion clientVersion) {
+    this.clientVersion = clientVersion;
   }
 
   /** 1. Top Level Description */
