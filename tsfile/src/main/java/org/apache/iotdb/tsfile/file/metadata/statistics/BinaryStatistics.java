@@ -28,14 +28,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Set;
 
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary firstValue = new Binary("");
   private Binary lastValue = new Binary("");
-  private static final String BINARY_STATS_UNSUPPORTED_MSG =
-      "Binary statistics does not support: %s";
   static final int BINARY_STATISTICS_FIXED_RAM_SIZE = 32;
 
   @Override
@@ -75,17 +74,46 @@ public class BinaryStatistics extends Statistics<Binary> {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {}
-
-  @Override
-  public Binary getMinValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
+  public MinMaxInfo<Binary> getMinInfo() {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
   }
 
+  /** @author Yuyuan Kang */
+  @Override
+  public MinMaxInfo<Binary> getMaxInfo() {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Binary getMinValue() {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
+  }
+
+  /** @author Yuyuan Kang */
   @Override
   public Binary getMaxValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Set<Long> getBottomTimestamps() {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Set<Long> getTopTimestamps() {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
   }
 
   @Override
@@ -98,14 +126,18 @@ public class BinaryStatistics extends Statistics<Binary> {
     return lastValue;
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public double getSumDoubleValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "double sum"));
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "double sum"));
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public long getSumLongValue() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "long sum"));
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "long sum"));
   }
 
   @Override
@@ -121,6 +153,34 @@ public class BinaryStatistics extends Statistics<Binary> {
           stats.getStartTime(),
           stats.getEndTime());
     }
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public void updateMinInfo(Binary val, long timestamp) {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public void updateMinInfo(Binary val, Set<Long> timestamps) {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "min"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public void updateMaxInfo(Binary val, long timestamp) {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public void updateMaxInfo(Binary val, Set<Long> timestamps) {
+    throw new StatisticsClassException(
+        String.format(OPERATION_NOT_SUPPORT_FORMAT, "Binary", "max"));
   }
 
   @Override
@@ -145,55 +205,61 @@ public class BinaryStatistics extends Statistics<Binary> {
     return RamUsageEstimator.sizeOf(this);
   }
 
-  @Override
-  public byte[] getMinValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return firstValue.getValues();
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return lastValue.getValues();
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "sum"));
-  }
-
-  @Override
-  public ByteBuffer getMinValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "min"));
-  }
-
-  @Override
-  public ByteBuffer getMaxValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "max"));
-  }
-
-  @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ByteBuffer.wrap(firstValue.getValues());
-  }
-
-  @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ByteBuffer.wrap(lastValue.getValues());
-  }
-
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    throw new StatisticsClassException(String.format(BINARY_STATS_UNSUPPORTED_MSG, "sum"));
-  }
+  //  @Override
+  //  public byte[] getMinInfoBytes() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "min"));
+  //  }
+  //
+  //  @Override
+  //  public byte[] getMaxInfoBytes() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "max"));
+  //  }
+  //
+  //  @Override
+  //  public byte[] getFirstValueBytes() {
+  //    return firstValue.getValues();
+  //  }
+  //
+  //  @Override
+  //  public byte[] getLastValueBytes() {
+  //    return lastValue.getValues();
+  //  }
+  //
+  //  @Override
+  //  public byte[] getSumValueBytes() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "sum"));
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getMinValueBuffer() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "min"));
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getMaxValueBuffer() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "max"));
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getFirstValueBuffer() {
+  //    return ByteBuffer.wrap(firstValue.getValues());
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getLastValueBuffer() {
+  //    return ByteBuffer.wrap(lastValue.getValues());
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getSumValueBuffer() {
+  //    throw new StatisticsClassException(String.format(OPERATION_NOT_SUPPORT_FORMAT,"Binary",
+  // "sum"));
+  //  }
 
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {

@@ -20,22 +20,27 @@ package org.apache.iotdb.tsfile.file.metadata.statistics;
 
 import org.apache.iotdb.tsfile.exception.filter.StatisticsClassException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.utils.BytesUtils;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Statistics for int type. */
 public class IntegerStatistics extends Statistics<Integer> {
 
-  private int minValue;
-  private int maxValue;
+  /** @author Yuyuan Kang */
+  private MinMaxInfo<Integer> minInfo;
+
+  private MinMaxInfo<Integer> maxInfo;
   private int firstValue;
   private int lastValue;
   private long sumValue;
+  /** @author Yuyuan Kang */
+  private final TSDataType minMaxDataType = TSDataType.MIN_MAX_INT32;
 
   static final int INTEGER_STATISTICS_FIXED_RAM_SIZE = 64;
 
@@ -44,44 +49,83 @@ public class IntegerStatistics extends Statistics<Integer> {
     return TSDataType.INT32;
   }
 
+  /** @author Yuyuan Kang */
+  public IntegerStatistics() {
+    minInfo = new MinMaxInfo<>(Integer.MAX_VALUE, new HashSet<>());
+    maxInfo = new MinMaxInfo<>(Integer.MIN_VALUE, new HashSet<>());
+  }
+
+  /** @author Yuyuan Kang */
   @Override
   public int getStatsSize() {
-    return 24;
+    int len = 0;
+    // min info
+    len += 4; // value of min info, int
+    len += 4; //  size of bottom timestamps, int
+    len += 4 * minInfo.timestamps.size(); // timestamps of min info, int(s)
+    // max info
+    len += 4; // value of max info, int
+    len += 4; // size of top timestamps, int
+    len += 4 * maxInfo.timestamps.size(); // timestamps of max info, int(s)
+    len += 16; // first value, last value and sum value
+    return len;
   }
 
-  public void initializeStats(int min, int max, int first, int last, long sum) {
-    this.minValue = min;
-    this.maxValue = max;
-    this.firstValue = first;
+  /** @author Yuyuan Kang */
+  public void initializeStats(
+      MinMaxInfo<Integer> minInfo,
+      MinMaxInfo<Integer> maxInfo,
+      int firstValue,
+      int last,
+      long sum) {
+    this.minInfo = new MinMaxInfo<>(minInfo);
+    this.maxInfo = new MinMaxInfo<>(maxInfo);
+    this.firstValue = firstValue;
     this.lastValue = last;
-    this.sumValue = sum;
+    this.sumValue += sum;
   }
 
-  private void updateStats(int minValue, int maxValue, int lastValue, long sumValue) {
-    if (minValue < this.minValue) {
-      this.minValue = minValue;
-    }
-    if (maxValue > this.maxValue) {
-      this.maxValue = maxValue;
-    }
+  /** @author Yuyuan Kang */
+  public void initializeStats(
+      int min,
+      long bottomTimestamp,
+      int max,
+      long topTimestamp,
+      int firstValue,
+      int last,
+      long sum) {
+    this.minInfo = new MinMaxInfo<>(min, bottomTimestamp);
+    this.maxInfo = new MinMaxInfo<>(max, topTimestamp);
+    this.firstValue = firstValue;
+    this.lastValue = last;
+    this.sumValue += sum;
+  }
+
+  /** @author Yuyuan Kang */
+  private void updateStats(
+      int minValue,
+      long bottomTimestamp,
+      int maxValue,
+      long topTimestamp,
+      int lastValue,
+      long sumValue) {
+    updateMinInfo(minValue, bottomTimestamp);
+    updateMaxInfo(maxValue, topTimestamp);
     this.sumValue += sumValue;
     this.lastValue = lastValue;
   }
 
+  /** @author Yuyuan Kang */
   private void updateStats(
-      int minValue,
-      int maxValue,
+      MinMaxInfo<Integer> minInfo,
+      MinMaxInfo<Integer> maxInfo,
       int firstValue,
       int lastValue,
       long sumValue,
       long startTime,
       long endTime) {
-    if (minValue < this.minValue) {
-      this.minValue = minValue;
-    }
-    if (maxValue > this.maxValue) {
-      this.maxValue = maxValue;
-    }
+    updateMinInfo(minInfo.val, minInfo.timestamps);
+    updateMaxInfo(maxInfo.val, maxInfo.timestamps);
     this.sumValue += sumValue;
     // only if endTime greater or equals to the current endTime need we update the last value
     // only if startTime less or equals to the current startTime need we update the first value
@@ -94,26 +138,28 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
-  @Override
-  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
-    minValue = BytesUtils.bytesToInt(minBytes);
-    maxValue = BytesUtils.bytesToInt(maxBytes);
-  }
+  //  @Override
+  //  public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes) {
+  //    minValue = BytesUtils.bytesToInt(minBytes);
+  //    maxValue = BytesUtils.bytesToInt(maxBytes);
+  //  }
 
+  /** @author Yuyuan Kang */
   @Override
-  void updateStats(int value) {
+  void updateStats(int value, long timestamp) {
     if (isEmpty) {
-      initializeStats(value, value, value, value, value);
+      initializeStats(value, timestamp, value, timestamp, value, value, value);
       isEmpty = false;
     } else {
-      updateStats(value, value, value, value);
+      updateStats(value, timestamp, value, timestamp, value, value);
     }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  void updateStats(int[] values, int batchSize) {
+  void updateStats(int[] values, long[] timestamps, int batchSize) {
     for (int i = 0; i < batchSize; i++) {
-      updateStats(values[i]);
+      updateStats(values[i], timestamps[i]);
     }
   }
 
@@ -122,14 +168,40 @@ public class IntegerStatistics extends Statistics<Integer> {
     return INTEGER_STATISTICS_FIXED_RAM_SIZE;
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public Integer getMinValue() {
-    return minValue;
+  public MinMaxInfo<Integer> getMinInfo() {
+    return this.minInfo;
   }
 
+  /** @author Yuyuan Kang */
+  @Override
+  public MinMaxInfo<Integer> getMaxInfo() {
+    return this.maxInfo;
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Integer getMinValue() {
+    return this.minInfo.val;
+  }
+
+  /** @author Yuyuan Kang */
   @Override
   public Integer getMaxValue() {
-    return maxValue;
+    return this.maxInfo.val;
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Set<Long> getBottomTimestamps() {
+    return this.minInfo.timestamps;
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public Set<Long> getTopTimestamps() {
+    return this.maxInfo.timestamps;
   }
 
   @Override
@@ -152,21 +224,22 @@ public class IntegerStatistics extends Statistics<Integer> {
     return sumValue;
   }
 
+  /** @author Yuyuan Kang */
   @Override
   protected void mergeStatisticsValue(Statistics stats) {
     IntegerStatistics intStats = (IntegerStatistics) stats;
     if (isEmpty) {
       initializeStats(
-          intStats.getMinValue(),
-          intStats.getMaxValue(),
+          intStats.getMinInfo(),
+          intStats.getMaxInfo(),
           intStats.getFirstValue(),
           intStats.getLastValue(),
           intStats.sumValue);
       isEmpty = false;
     } else {
       updateStats(
-          intStats.getMinValue(),
-          intStats.getMaxValue(),
+          intStats.getMinInfo(),
+          intStats.getMaxInfo(),
           intStats.getFirstValue(),
           intStats.getLastValue(),
           intStats.sumValue,
@@ -175,92 +248,136 @@ public class IntegerStatistics extends Statistics<Integer> {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public ByteBuffer getMinValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(minValue);
+  public void updateMinInfo(Integer val, long timestamp) {
+    if (val < this.minInfo.val) {
+      this.minInfo.reset(val, timestamp);
+    } else if (val.equals(this.minInfo.val)) {
+      this.minInfo.timestamps.add(timestamp);
+    }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public ByteBuffer getMaxValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(maxValue);
+  public void updateMinInfo(Integer val, Set<Long> timestamps) {
+    if (val < this.minInfo.val) {
+      this.minInfo.reset(val, timestamps);
+    } else if (val.equals(this.minInfo.val)) {
+      this.minInfo.timestamps.addAll(timestamps);
+    }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public ByteBuffer getFirstValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(firstValue);
+  public void updateMaxInfo(Integer val, long timestamp) {
+    if (val > this.maxInfo.val) {
+      this.maxInfo.reset(val, timestamp);
+    } else if (val.equals(this.maxInfo.val)) {
+      this.maxInfo.timestamps.add(timestamp);
+    }
   }
 
+  /** @author Yuyuan Kang */
   @Override
-  public ByteBuffer getLastValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(lastValue);
+  public void updateMaxInfo(Integer val, Set<Long> timestamps) {
+    if (val > this.maxInfo.val) {
+      this.maxInfo.reset(val, timestamps);
+    } else if (val.equals(this.maxInfo.val)) {
+      this.maxInfo.timestamps.addAll(timestamps);
+    }
   }
 
-  @Override
-  public ByteBuffer getSumValueBuffer() {
-    return ReadWriteIOUtils.getByteBuffer(sumValue);
-  }
+  //  @Override
+  //  public ByteBuffer getMinValueBuffer() {
+  //    return ReadWriteIOUtils.getByteBuffer(minValue);
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getMaxValueBuffer() {
+  //    return ReadWriteIOUtils.getByteBuffer(maxValue);
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getFirstValueBuffer() {
+  //    return ReadWriteIOUtils.getByteBuffer(firstValue);
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getLastValueBuffer() {
+  //    return ReadWriteIOUtils.getByteBuffer(lastValue);
+  //  }
+  //
+  //  @Override
+  //  public ByteBuffer getSumValueBuffer() {
+  //    return ReadWriteIOUtils.getByteBuffer(sumValue);
+  //  }
+  //
+  //  @Override
+  //  public byte[] getMinInfoBytes() {
+  //    return BytesUtils.intToBytes(minValue);
+  //  }
+  //
+  //  @Override
+  //  public byte[] getMaxInfoBytes() {
+  //    return BytesUtils.intToBytes(maxValue);
+  //  }
+  //
+  //  @Override
+  //  public byte[] getFirstValueBytes() {
+  //    return BytesUtils.intToBytes(firstValue);
+  //  }
+  //
+  //  @Override
+  //  public byte[] getLastValueBytes() {
+  //    return BytesUtils.intToBytes(lastValue);
+  //  }
+  //
+  //  @Override
+  //  public byte[] getSumValueBytes() {
+  //    return BytesUtils.longToBytes(sumValue);
+  //  }
 
-  @Override
-  public byte[] getMinValueBytes() {
-    return BytesUtils.intToBytes(minValue);
-  }
-
-  @Override
-  public byte[] getMaxValueBytes() {
-    return BytesUtils.intToBytes(maxValue);
-  }
-
-  @Override
-  public byte[] getFirstValueBytes() {
-    return BytesUtils.intToBytes(firstValue);
-  }
-
-  @Override
-  public byte[] getLastValueBytes() {
-    return BytesUtils.intToBytes(lastValue);
-  }
-
-  @Override
-  public byte[] getSumValueBytes() {
-    return BytesUtils.longToBytes(sumValue);
-  }
-
+  /** @author Yuyuan Kang */
   @Override
   public int serializeStats(OutputStream outputStream) throws IOException {
     int byteLen = 0;
-    byteLen += ReadWriteIOUtils.write(minValue, outputStream);
-    byteLen += ReadWriteIOUtils.write(maxValue, outputStream);
+    byteLen += ReadWriteIOUtils.write(minInfo, minMaxDataType, outputStream);
+    byteLen += ReadWriteIOUtils.write(maxInfo, minMaxDataType, outputStream);
     byteLen += ReadWriteIOUtils.write(firstValue, outputStream);
     byteLen += ReadWriteIOUtils.write(lastValue, outputStream);
     byteLen += ReadWriteIOUtils.write(sumValue, outputStream);
     return byteLen;
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void deserialize(InputStream inputStream) throws IOException {
-    this.minValue = ReadWriteIOUtils.readInt(inputStream);
-    this.maxValue = ReadWriteIOUtils.readInt(inputStream);
+    this.minInfo = ReadWriteIOUtils.readMinMaxInfo(inputStream, minMaxDataType);
+    this.maxInfo = ReadWriteIOUtils.readMinMaxInfo(inputStream, minMaxDataType);
     this.firstValue = ReadWriteIOUtils.readInt(inputStream);
     this.lastValue = ReadWriteIOUtils.readInt(inputStream);
     this.sumValue = ReadWriteIOUtils.readLong(inputStream);
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void deserialize(ByteBuffer byteBuffer) {
-    this.minValue = ReadWriteIOUtils.readInt(byteBuffer);
-    this.maxValue = ReadWriteIOUtils.readInt(byteBuffer);
+    this.minInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
+    this.maxInfo = ReadWriteIOUtils.readMinMaxInfo(byteBuffer, minMaxDataType);
     this.firstValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public String toString() {
     return super.toString()
         + " [minValue:"
-        + minValue
+        + minInfo
         + ",maxValue:"
-        + maxValue
+        + maxInfo
         + ",firstValue:"
         + firstValue
         + ",lastValue:"

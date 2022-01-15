@@ -23,12 +23,15 @@ import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.aggregation.AggregationType;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MinValueAggrResult extends AggregateResult {
 
@@ -42,10 +45,11 @@ public class MinValueAggrResult extends AggregateResult {
     return hasCandidateResult() ? getValue() : null;
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void updateResultFromStatistics(Statistics statistics) {
-    Comparable<Object> minVal = (Comparable<Object>) statistics.getMinValue();
-    updateResult(minVal);
+    MinMaxInfo minInfo = statistics.getMinInfo();
+    updateResult(minInfo);
   }
 
   @Override
@@ -53,38 +57,60 @@ public class MinValueAggrResult extends AggregateResult {
     updateResultFromPageData(dataInThisPage, Long.MIN_VALUE, Long.MAX_VALUE);
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void updateResultFromPageData(BatchData dataInThisPage, long minBound, long maxBound) {
+    Comparable<Object> minVal = null;
+    Set<Long> bottomTimestamps = new HashSet<>();
     while (dataInThisPage.hasCurrent()
         && dataInThisPage.currentTime() < maxBound
         && dataInThisPage.currentTime() >= minBound) {
-      updateResult((Comparable<Object>) dataInThisPage.currentValue());
+      if (minVal == null || minVal.compareTo(dataInThisPage.currentValue()) > 0) {
+        minVal = (Comparable<Object>) dataInThisPage.currentValue();
+        bottomTimestamps.clear();
+        bottomTimestamps.add(dataInThisPage.currentTime());
+      } else if (minVal.compareTo(dataInThisPage.currentValue()) == 0) {
+        bottomTimestamps.add(dataInThisPage.currentTime());
+      }
       dataInThisPage.next();
     }
+    updateResult(new MinMaxInfo<>(minVal, bottomTimestamps));
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void updateResultUsingTimestamps(
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException {
     Comparable<Object> minVal = null;
+    Set<Long> bottomTimes = new HashSet<>();
     Object[] values = dataReader.getValuesInTimestamps(timestamps, length);
     for (int i = 0; i < length; i++) {
       if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
         minVal = (Comparable<Object>) values[i];
+        bottomTimes.clear();
+        bottomTimes.add(timestamps[i]);
+      } else if (values[i] != null && minVal.compareTo(values[i]) == 0) {
+        bottomTimes.add(timestamps[i]);
       }
     }
-    updateResult(minVal);
+    updateResult(new MinMaxInfo<>(minVal, bottomTimes));
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void updateResultUsingValues(long[] timestamps, int length, Object[] values) {
     Comparable<Object> minVal = null;
+    Set<Long> bottomTimes = new HashSet<>();
     for (int i = 0; i < length; i++) {
       if (values[i] != null && (minVal == null || minVal.compareTo(values[i]) > 0)) {
         minVal = (Comparable<Object>) values[i];
+        bottomTimes.clear();
+        bottomTimes.add(timestamps[i]);
+      } else if (values[i] != null && minVal.compareTo(values[i]) == 0) {
+        bottomTimes.add(timestamps[i]);
       }
     }
-    updateResult(minVal);
+    updateResult(new MinMaxInfo<>(minVal, bottomTimes));
   }
 
   @Override
@@ -92,11 +118,12 @@ public class MinValueAggrResult extends AggregateResult {
     return false;
   }
 
+  /** @author Yuyuan Kang */
   @Override
   public void merge(AggregateResult another) {
     if (another.getResult() != null) {
       Object value = another.getResult();
-      this.updateResult((Comparable<Object>) value);
+      this.updateResult((MinMaxInfo) value);
     }
   }
 
@@ -106,12 +133,13 @@ public class MinValueAggrResult extends AggregateResult {
   @Override
   protected void serializeSpecificFields(OutputStream outputStream) {}
 
-  private void updateResult(Comparable<Object> minVal) {
-    if (minVal == null) {
+  /** @author Yuyuan Kang */
+  private void updateResult(MinMaxInfo minInfo) {
+    if (minInfo == null || minInfo.val == null) {
       return;
     }
-    if (!hasCandidateResult() || minVal.compareTo(getValue()) < 0) {
-      setValue(minVal);
+    if (!hasCandidateResult() || minInfo.compareTo(getValue()) <= 0) {
+      setValue(minInfo);
     }
   }
 }

@@ -210,6 +210,7 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void maxValueWithoutFilterTest() throws ClassNotFoundException {
     String[] retArray = new String[] {"0,22222,null"};
@@ -226,7 +227,7 @@ public class IoTDBAggregationSmallDataIT {
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(
             e.toString().contains("500: [INTERNAL_SERVER_ERROR] Exception occurred while executing")
-                && e.toString().contains("Binary statistics does not support: max"));
+                && e.toString().contains("Binary statistics does not support operation: max"));
       }
 
       boolean hasResultSet =

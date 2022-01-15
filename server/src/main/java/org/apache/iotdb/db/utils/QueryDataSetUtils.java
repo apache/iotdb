@@ -42,6 +42,7 @@ public class QueryDataSetUtils {
 
   private QueryDataSetUtils() {}
 
+  /** @author Yuyuan Kang */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public static TSQueryDataSet convertQueryDataSetByFetchSize(
       QueryDataSet queryDataSet, int fetchSize, WatermarkEncoder watermarkEncoder)
@@ -112,6 +113,10 @@ public class QueryDataSetUtils {
                 valueOccupation[k] += 1;
                 break;
               case TEXT:
+              case MIN_MAX_DOUBLE:
+              case MIN_MAX_FLOAT:
+              case MIN_MAX_INT32:
+              case MIN_MAX_INT64:
                 dataOutputStream.writeInt(field.getBinaryV().getLength());
                 dataOutputStream.write(field.getBinaryV().getValues());
                 valueOccupation[k] = valueOccupation[k] + 4 + field.getBinaryV().getLength();
@@ -191,6 +196,7 @@ public class QueryDataSetUtils {
   }
 
   /**
+   * @author Yuyuan Kang
    * @param buffer data values
    * @param columns column number
    * @param size value count in each column
@@ -237,6 +243,10 @@ public class QueryDataSetUtils {
           values[i] = doubleValues;
           break;
         case TEXT:
+        case MIN_MAX_DOUBLE:
+        case MIN_MAX_FLOAT:
+        case MIN_MAX_INT32:
+        case MIN_MAX_INT64:
           Binary[] binaryValues = new Binary[size];
           for (int index = 0; index < size; index++) {
             int binarySize = buffer.getInt();

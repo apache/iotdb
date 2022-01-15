@@ -41,7 +41,19 @@ public enum TSDataType {
   DOUBLE((byte) 4),
 
   /** TEXT */
-  TEXT((byte) 5);
+  TEXT((byte) 5),
+
+  /** @author Yuyuan Kang */
+  MIN_MAX_INT32((byte) 6),
+
+  /** @author Yuyuan Kang */
+  MIN_MAX_INT64((byte) 7),
+
+  /** @author Yuyuan Kang */
+  MIN_MAX_FLOAT((byte) 8),
+
+  /** @author Yuyuan Kang */
+  MIN_MAX_DOUBLE((byte) 9);
 
   private final byte type;
 
@@ -50,8 +62,8 @@ public enum TSDataType {
   }
 
   /**
-   * give an integer to return a data type.
-   *
+   * @author Yuyuan Kang
+   *     <p>give an integer to return a data type.
    * @param type -param to judge enum type
    * @return -enum type
    */
@@ -73,6 +85,14 @@ public enum TSDataType {
         return TSDataType.DOUBLE;
       case 5:
         return TSDataType.TEXT;
+      case 6:
+        return TSDataType.MIN_MAX_INT32;
+      case 7:
+        return TSDataType.MIN_MAX_INT64;
+      case 8:
+        return TSDataType.MIN_MAX_FLOAT;
+      case 9:
+        return TSDataType.MIN_MAX_DOUBLE;
       default:
         throw new IllegalArgumentException("Invalid input: " + type);
     }
@@ -94,6 +114,7 @@ public enum TSDataType {
     outputStream.write(serialize());
   }
 
+  /** @author Yuyuan Kang */
   public int getDataTypeSize() {
     switch (this) {
       case BOOLEAN:
@@ -103,6 +124,10 @@ public enum TSDataType {
         return 4;
         // For text: return the size of reference here
       case TEXT:
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
       case INT64:
       case DOUBLE:
         return 8;

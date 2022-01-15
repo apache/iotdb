@@ -59,8 +59,10 @@ public class RowRecord {
     }
   }
 
+  /** @author Yuyuan Kang */
   public void addField(Object value, TSDataType dataType) {
-    this.fields.add(Field.getField(value, dataType));
+    Field f = Field.getField(value, dataType);
+    this.fields.add(f);
     if (value == null || dataType == null) {
       hasNullField = true;
     } else {

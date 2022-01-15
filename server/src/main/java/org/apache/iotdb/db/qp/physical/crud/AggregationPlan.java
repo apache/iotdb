@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.GroupByLevelController;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import java.util.ArrayList;
@@ -49,6 +50,17 @@ public class AggregationPlan extends RawDataQueryPlan {
   public AggregationPlan() {
     super();
     setOperatorType(Operator.OperatorType.AGGREGATION);
+  }
+
+  /** @author Yuyuan Kang */
+  @Override
+  public void setDataTypes(List<TSDataType> dataTypes) {
+    this.dataTypes = dataTypes;
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (aggregations.get(i).equals("min_value") || aggregations.get(i).equals("max_value")) {
+        dataTypes.set(i, SchemaUtils.transformMinMaxDataType(dataTypes.get(i)));
+      }
+    }
   }
 
   @Override

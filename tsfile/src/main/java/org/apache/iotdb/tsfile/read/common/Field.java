@@ -41,6 +41,7 @@ public class Field {
     this.dataType = dataType;
   }
 
+  /** @author Yuyuan Kang */
   public static Field copy(Field field) {
     Field out = new Field(field.dataType);
     if (out.dataType != null) {
@@ -61,13 +62,16 @@ public class Field {
           out.setBoolV(field.getBoolV());
           break;
         case TEXT:
+        case MIN_MAX_DOUBLE:
+        case MIN_MAX_FLOAT:
+        case MIN_MAX_INT32:
+        case MIN_MAX_INT64:
           out.setBinaryV(field.getBinaryV());
           break;
         default:
           throw new UnSupportedDataTypeException(out.dataType.toString());
       }
     }
-
     return out;
   }
 
@@ -142,8 +146,7 @@ public class Field {
   }
 
   /**
-   * get field value and convert to string.
-   *
+   * @author Yuyuan Kang get field value and convert to string.
    * @return value string
    */
   public String getStringValue() {
@@ -162,6 +165,10 @@ public class Field {
       case DOUBLE:
         return String.valueOf(doubleV);
       case TEXT:
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
         return binaryV.toString();
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
@@ -173,6 +180,7 @@ public class Field {
     return getStringValue();
   }
 
+  /** @author Yuyuan Kang */
   public Object getObjectValue(TSDataType dataType) {
     if (this.dataType == null) {
       return null;
@@ -189,12 +197,17 @@ public class Field {
       case BOOLEAN:
         return getBoolV();
       case TEXT:
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
         return getBinaryV();
       default:
         throw new UnSupportedDataTypeException(dataType.toString());
     }
   }
 
+  /** @author Yuyuan Kang */
   public static Field getField(Object value, TSDataType dataType) {
     if (value == null) {
       return null;
@@ -218,6 +231,12 @@ public class Field {
         break;
       case TEXT:
         field.setBinaryV((Binary) value);
+        break;
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
+        field.setBinaryV(new Binary(value.toString()));
         break;
       default:
         throw new UnSupportedDataTypeException(dataType.toString());

@@ -46,6 +46,7 @@ public class TsFileIOWriterTest {
   private static String tsfile = TestConstant.BASE_OUTPUT_PATH.concat("tsfileIOWriterTest.tsfile");
   private static String deviceId = "device1";
 
+  /** @author Yuyuan Kang */
   @Before
   public void before() throws IOException {
     File file = new File(tsfile);
@@ -65,7 +66,7 @@ public class TsFileIOWriterTest {
 
     // chunk statistics
     Statistics statistics = Statistics.getStatsByType(measurementSchema.getType());
-    statistics.updateStats(0L, 0L);
+    statistics.updateStats(0L, 10L, 0L, 20L);
 
     // chunk group 1
     writer.startChunkGroup(deviceId);

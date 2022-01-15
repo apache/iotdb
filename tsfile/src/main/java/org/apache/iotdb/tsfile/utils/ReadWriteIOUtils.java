@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileConfig;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.read.reader.TsFileInput;
 
 import java.io.DataOutputStream;
@@ -35,9 +36,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BINARY;
 import static org.apache.iotdb.tsfile.utils.ReadWriteIOUtils.ClassSerializeId.BOOLEAN;
@@ -63,6 +66,9 @@ public class ReadWriteIOUtils {
   private static final byte[] magicStringBytes;
 
   private static final String RETURN_ERROR = "Intend to read %d bytes but %d are actually returned";
+
+  /** @author Yuyuan Kang */
+  private static final String KNOWN_MINMAX_DATA_TYPE_ERROR = "Unknown min max data type %s.";
 
   static {
     magicStringBytes = BytesUtils.stringToBytes(TSFileConfig.MAGIC_STRING);
@@ -340,6 +346,41 @@ public class ReadWriteIOUtils {
     return len;
   }
 
+  /** @author Yuyuan Kang */
+  public static int write(
+      MinMaxInfo minMaxInfo, TSDataType minMaxDataType, OutputStream outputStream)
+      throws IOException {
+    int len = 0;
+    if (minMaxInfo == null) {
+      throw new IllegalArgumentException("min info is null!");
+    }
+    byte[] bytes;
+    switch (minMaxDataType) {
+      case MIN_MAX_INT64:
+        bytes = BytesUtils.longToBytes((Long) minMaxInfo.val);
+        break;
+      case MIN_MAX_INT32:
+        bytes = BytesUtils.intToBytes((Integer) minMaxInfo.val);
+        break;
+      case MIN_MAX_FLOAT:
+        bytes = BytesUtils.floatToBytes((Float) minMaxInfo.val);
+        break;
+      case MIN_MAX_DOUBLE:
+        bytes = BytesUtils.doubleToBytes((Double) minMaxInfo.val);
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format(KNOWN_MINMAX_DATA_TYPE_ERROR, minMaxDataType.toString()));
+    }
+    len += bytes.length;
+    outputStream.write(bytes);
+    len += write(minMaxInfo.timestamps.size(), outputStream);
+    for (Object timestamp : minMaxInfo.timestamps) {
+      len += write((long) timestamp, outputStream);
+    }
+    return len;
+  }
+
   /**
    * write string to outputStream.
    *
@@ -559,6 +600,35 @@ public class ReadWriteIOUtils {
     return new String(bytes, 0, strLength);
   }
 
+  /** @author Yuyuan Kang */
+  public static MinMaxInfo readMinMaxInfo(InputStream inputStream, TSDataType minMaxDataType)
+      throws IOException {
+    Object val;
+    switch (minMaxDataType) {
+      case MIN_MAX_FLOAT:
+        val = readFloat(inputStream);
+        break;
+      case MIN_MAX_INT32:
+        val = readInt(inputStream);
+        break;
+      case MIN_MAX_INT64:
+        val = readLong(inputStream);
+        break;
+      case MIN_MAX_DOUBLE:
+        val = readDouble(inputStream);
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format(KNOWN_MINMAX_DATA_TYPE_ERROR, minMaxDataType.toString()));
+    }
+    int len = readInt(inputStream);
+    Set<Long> timestamps = new HashSet<>();
+    for (int i = 0; i < len; i++) {
+      timestamps.add(readLong(inputStream));
+    }
+    return new MinMaxInfo(val, timestamps);
+  }
+
   /** string length's type is varInt */
   public static String readVarIntString(InputStream inputStream) throws IOException {
     int strLength = ReadWriteForEncodingUtils.readVarInt(inputStream);
@@ -584,6 +654,34 @@ public class ReadWriteIOUtils {
     byte[] bytes = new byte[strLength];
     buffer.get(bytes, 0, strLength);
     return new String(bytes, 0, strLength);
+  }
+
+  /** @author Yuyuan Kang */
+  public static MinMaxInfo readMinMaxInfo(ByteBuffer byteBuffer, TSDataType minMaxDataType) {
+    Object val;
+    switch (minMaxDataType) {
+      case MIN_MAX_FLOAT:
+        val = byteBuffer.getFloat();
+        break;
+      case MIN_MAX_INT32:
+        val = byteBuffer.getInt();
+        break;
+      case MIN_MAX_INT64:
+        val = byteBuffer.getLong();
+        break;
+      case MIN_MAX_DOUBLE:
+        val = byteBuffer.getDouble();
+        break;
+      default:
+        throw new IllegalArgumentException(
+            String.format(KNOWN_MINMAX_DATA_TYPE_ERROR, minMaxDataType.toString()));
+    }
+    int len = byteBuffer.getInt();
+    Set<Long> timestamps = new HashSet<>();
+    for (int i = 0; i < len; i++) {
+      timestamps.add(byteBuffer.getLong());
+    }
+    return new MinMaxInfo(val, timestamps);
   }
 
   /** string length's type is varInt */

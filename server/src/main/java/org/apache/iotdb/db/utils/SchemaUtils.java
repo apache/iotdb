@@ -172,6 +172,24 @@ public class SchemaUtils {
     return IoTDB.metaManager.getSeriesType(path);
   }
 
+  /** @author Yuyuan Kang */
+  public static TSDataType transformMinMaxDataType(TSDataType original) {
+    switch (original) {
+      case INT32:
+        return TSDataType.MIN_MAX_INT32;
+      case INT64:
+        return TSDataType.MIN_MAX_INT64;
+      case FLOAT:
+        return TSDataType.MIN_MAX_FLOAT;
+      case DOUBLE:
+        return TSDataType.MIN_MAX_DOUBLE;
+      default:
+        throw new IllegalArgumentException(
+            String.format("TSDataType %s is not supported!", original.name()));
+    }
+  }
+
+  /** @author Yuyuan Kang */
   public static List<TSDataType> getSeriesTypesByPaths(
       List<PartialPath> paths, List<String> aggregations) throws MetadataException {
     List<TSDataType> tsDataTypes = new ArrayList<>();
@@ -182,13 +200,19 @@ public class SchemaUtils {
         tsDataTypes.add(dataType);
       } else {
         PartialPath path = paths.get(i);
-        tsDataTypes.add(path == null ? null : IoTDB.metaManager.getSeriesType(path));
+        tsDataTypes.add(
+            path == null
+                ? null
+                : (aggrStr.equals("min_value") || aggrStr.equals("max_value")
+                    ? transformMinMaxDataType(IoTDB.metaManager.getSeriesType(path))
+                    : IoTDB.metaManager.getSeriesType(path)));
       }
     }
     return tsDataTypes;
   }
 
   /**
+   * @author Yuyuan Kang
    * @param aggregation aggregation function
    * @return the data type of the aggregation or null if it aggregation is null
    */
@@ -204,10 +228,10 @@ public class SchemaUtils {
       case SQLConstant.AVG:
       case SQLConstant.SUM:
         return TSDataType.DOUBLE;
-      case SQLConstant.LAST_VALUE:
-      case SQLConstant.FIRST_VALUE:
       case SQLConstant.MIN_VALUE:
       case SQLConstant.MAX_VALUE:
+      case SQLConstant.LAST_VALUE:
+      case SQLConstant.FIRST_VALUE:
       default:
         return null;
     }
@@ -239,6 +263,22 @@ public class SchemaUtils {
     if (!schemaChecker.get(dataType).contains(encoding)) {
       throw new MetadataException(
           String.format("encoding %s does not support %s", encoding, dataType), true);
+    }
+  }
+
+  /** @author Yuyuan Kang */
+  public static TSDataType transFormBackFromMinMax(TSDataType tsDataType) {
+    switch (tsDataType) {
+      case MIN_MAX_INT32:
+        return TSDataType.INT32;
+      case MIN_MAX_INT64:
+        return TSDataType.INT64;
+      case MIN_MAX_DOUBLE:
+        return TSDataType.DOUBLE;
+      case MIN_MAX_FLOAT:
+        return TSDataType.FLOAT;
+      default:
+        return tsDataType;
     }
   }
 }

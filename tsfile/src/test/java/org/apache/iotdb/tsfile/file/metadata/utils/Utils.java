@@ -147,6 +147,7 @@ public class Utils {
     }
   }
 
+  /** @author Yuyuan Kang */
   public static void isStatisticsEqual(Statistics statistics1, Statistics statistics2) {
     if ((statistics1 == null) || (statistics2 == null)) {
       System.out.println("error");
@@ -156,8 +157,8 @@ public class Utils {
       fail("one of statistics is empty while the other one is not");
     }
     if (!statistics1.isEmpty() && !statistics2.isEmpty()) {
-      assertEquals(statistics1.getMinValue(), statistics2.getMinValue());
-      assertEquals(statistics1.getMaxValue(), statistics2.getMaxValue());
+      assertEquals(statistics1.getMinInfo(), statistics2.getMinInfo());
+      assertEquals(statistics1.getMaxInfo(), statistics2.getMaxInfo());
       assertEquals(statistics1.getFirstValue(), statistics2.getFirstValue());
       if (statistics1 instanceof IntegerStatistics || statistics1 instanceof BooleanStatistics) {
         assertEquals(statistics1.getSumLongValue(), statistics2.getSumLongValue());

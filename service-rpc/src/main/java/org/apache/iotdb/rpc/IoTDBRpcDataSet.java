@@ -77,6 +77,7 @@ public class IoTDBRpcDataSet {
   public static final int FLAG =
       0x80; // used to do `and` operation with bitmap to judge whether the value is null
 
+  /** @author Yuyuan Kang */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public IoTDBRpcDataSet(
       String sql,
@@ -165,6 +166,10 @@ public class IoTDBRpcDataSet {
           values[i] = new byte[Double.BYTES];
           break;
         case TEXT:
+        case MIN_MAX_DOUBLE:
+        case MIN_MAX_FLOAT:
+        case MIN_MAX_INT32:
+        case MIN_MAX_INT64:
           values[i] = null;
           break;
         default:
@@ -251,6 +256,7 @@ public class IoTDBRpcDataSet {
     return (tsQueryDataSet != null && tsQueryDataSet.time.hasRemaining());
   }
 
+  /** @author Yuyuan Kang */
   public void constructOneRow() {
     tsQueryDataSet.time.get(time);
     for (int i = 0; i < tsQueryDataSet.bitmapList.size(); i++) {
@@ -271,6 +277,10 @@ public class IoTDBRpcDataSet {
             valueBuffer.get(values[i]);
             break;
           case TEXT:
+          case MIN_MAX_DOUBLE:
+          case MIN_MAX_FLOAT:
+          case MIN_MAX_INT32:
+          case MIN_MAX_INT64:
             int length = valueBuffer.getInt();
             values[i] = ReadWriteIOUtils.readBytes(valueBuffer, length);
             break;

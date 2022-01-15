@@ -33,6 +33,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * This class is used for recording statistic information of each measurement in a delta file. While
@@ -56,6 +57,9 @@ public abstract class Statistics<T> {
 
   private long startTime = Long.MAX_VALUE;
   private long endTime = Long.MIN_VALUE;
+
+  /** @author Yuyuan Kang */
+  final String OPERATION_NOT_SUPPORT_FORMAT = "%s statistics does not support operation: %s";
 
   /**
    * static method providing statistic instance for respective data type.
@@ -128,11 +132,23 @@ public abstract class Statistics<T> {
 
   public abstract void deserialize(ByteBuffer byteBuffer);
 
-  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
+  //  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
+
+  /** @author Yuyuan Kang */
+  public abstract MinMaxInfo<T> getMinInfo();
+
+  /** @author Yuyuan Kang */
+  public abstract MinMaxInfo<T> getMaxInfo();
 
   public abstract T getMinValue();
 
   public abstract T getMaxValue();
+
+  /** @author Yuyuan Kang */
+  public abstract Set<Long> getBottomTimestamps();
+
+  /** @author Yuyuan Kang */
+  public abstract Set<Long> getTopTimestamps();
 
   public abstract T getFirstValue();
 
@@ -142,25 +158,25 @@ public abstract class Statistics<T> {
 
   public abstract long getSumLongValue();
 
-  public abstract byte[] getMinValueBytes();
+  //  public abstract byte[] getMinInfoBytes();
+  //
+  //  public abstract byte[] getMaxInfoBytes();
+  //
+  //  public abstract byte[] getFirstValueBytes();
+  //
+  //  public abstract byte[] getLastValueBytes();
+  //
+  //  public abstract byte[] getSumValueBytes();
 
-  public abstract byte[] getMaxValueBytes();
-
-  public abstract byte[] getFirstValueBytes();
-
-  public abstract byte[] getLastValueBytes();
-
-  public abstract byte[] getSumValueBytes();
-
-  public abstract ByteBuffer getMinValueBuffer();
-
-  public abstract ByteBuffer getMaxValueBuffer();
-
-  public abstract ByteBuffer getFirstValueBuffer();
-
-  public abstract ByteBuffer getLastValueBuffer();
-
-  public abstract ByteBuffer getSumValueBuffer();
+  //  public abstract ByteBuffer getMinValueBuffer();
+  //
+  //  public abstract ByteBuffer getMaxValueBuffer();
+  //
+  //  public abstract ByteBuffer getFirstValueBuffer();
+  //
+  //  public abstract ByteBuffer getLastValueBuffer();
+  //
+  //  public abstract ByteBuffer getSumValueBuffer();
 
   /**
    * merge parameter to this statistic
@@ -199,6 +215,7 @@ public abstract class Statistics<T> {
     updateStats(value);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long time, int value) {
     if (time < this.startTime) {
       startTime = time;
@@ -207,9 +224,10 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
+    updateStats(value, time);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long time, long value) {
     if (time < this.startTime) {
       startTime = time;
@@ -218,9 +236,10 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
+    updateStats(value, time);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long time, float value) {
     if (time < this.startTime) {
       startTime = time;
@@ -229,9 +248,10 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
+    updateStats(value, time);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long time, double value) {
     if (time < this.startTime) {
       startTime = time;
@@ -240,7 +260,7 @@ public abstract class Statistics<T> {
       endTime = time;
     }
     count++;
-    updateStats(value);
+    updateStats(value, time);
   }
 
   public void update(long time, Binary value) {
@@ -265,6 +285,7 @@ public abstract class Statistics<T> {
     updateStats(values, batchSize);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long[] time, int[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -273,9 +294,10 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long[] time, long[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -284,9 +306,10 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long[] time, float[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -295,9 +318,10 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
+  /** @author Yuyuan Kang */
   public void update(long[] time, double[] values, int batchSize) {
     if (time[0] < startTime) {
       startTime = time[0];
@@ -306,7 +330,7 @@ public abstract class Statistics<T> {
       endTime = time[batchSize - 1];
     }
     count += batchSize;
-    updateStats(values, batchSize);
+    updateStats(values, time, batchSize);
   }
 
   public void update(long[] time, Binary[] values, int batchSize) {
@@ -330,23 +354,39 @@ public abstract class Statistics<T> {
     isEmpty = empty;
   }
 
+  /** @author Yuyuan Kang */
+  public abstract void updateMinInfo(T val, long timestamp);
+
+  /** @author Yuyuan Kang */
+  public abstract void updateMinInfo(T val, Set<Long> timestamps);
+
+  /** @author Yuyuan Kang */
+  public abstract void updateMaxInfo(T val, long timestamp);
+
+  /** @author Yuyuan Kang */
+  public abstract void updateMaxInfo(T val, Set<Long> timestamps);
+
   void updateStats(boolean value) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(int value) {
+  /** @author Yuyuan Kang */
+  void updateStats(int value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(long value) {
+  /** @author Yuyuan Kang */
+  void updateStats(long value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(float value) {
+  /** @author Yuyuan Kang */
+  void updateStats(float value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(double value) {
+  /** @author Yuyuan Kang */
+  void updateStats(double value, long timestamp) {
     throw new UnsupportedOperationException();
   }
 
@@ -358,19 +398,23 @@ public abstract class Statistics<T> {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(int[] values, int batchSize) {
+  /** @author Yuyuan Kang */
+  void updateStats(int[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(long[] values, int batchSize) {
+  /** @author Yuyuan Kang */
+  void updateStats(long[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(float[] values, int batchSize) {
+  /** @author Yuyuan Kang */
+  void updateStats(float[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
-  void updateStats(double[] values, int batchSize) {
+  /** @author Yuyuan Kang */
+  void updateStats(double[] values, long[] timestamps, int batchSize) {
     throw new UnsupportedOperationException();
   }
 
@@ -379,13 +423,12 @@ public abstract class Statistics<T> {
   }
 
   /**
-   * This method with two parameters is only used by {@code unsequence} which
-   * updates/inserts/deletes timestamp.
-   *
+   * @author Yuyuan Kang This method with two parameters is only used by {@code unsequence} which
+   *     updates/inserts/deletes timestamp.
    * @param min min timestamp
    * @param max max timestamp
    */
-  public void updateStats(long min, long max) {
+  public void updateStats(long min, long bottomTimestamp, long max, long topTimestamp) {
     throw new UnsupportedOperationException();
   }
 

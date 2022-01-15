@@ -42,6 +42,7 @@ import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesReaderByTimestamp;
 import org.apache.iotdb.db.query.timegenerator.ServerTimeGenerator;
 import org.apache.iotdb.db.utils.AggregateUtils;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
@@ -124,8 +125,7 @@ public class AggregationExecutor {
   }
 
   /**
-   * get aggregation result for one series
-   *
+   * @author Yuyuan Kang get aggregation result for one series
    * @param pathToAggrIndexes entry of path to aggregation indexes map
    * @param timeFilter time filter
    * @param context query context
@@ -142,12 +142,15 @@ public class AggregationExecutor {
     boolean[] isAsc = new boolean[aggregateResultList.length];
 
     PartialPath seriesPath = pathToAggrIndexes.getKey();
+    // TODO there could be a problem!
     TSDataType tsDataType = dataTypes.get(pathToAggrIndexes.getValue().get(0));
+    tsDataType = SchemaUtils.transFormBackFromMinMax(tsDataType);
 
     for (int i : pathToAggrIndexes.getValue()) {
+      TSDataType dataType = dataTypes.get(pathToAggrIndexes.getValue().get(i));
       // construct AggregateResult
       AggregateResult aggregateResult =
-          AggregateResultFactory.getAggrResultByName(aggregations.get(i), tsDataType);
+          AggregateResultFactory.getAggrResultByName(aggregations.get(i), dataType);
       if (aggregateResult.isAscending()) {
         ascAggregateResultList.add(aggregateResult);
         isAsc[i] = true;

@@ -24,6 +24,7 @@ import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.utils.Binary;
@@ -45,6 +46,8 @@ public abstract class AggregateResult {
   private float floatValue;
   private double doubleValue;
   private Binary binaryValue;
+  /** @author Yuyuan Kang */
+  private MinMaxInfo minMaxInfo;
 
   protected boolean hasCandidateResult;
 
@@ -111,6 +114,7 @@ public abstract class AggregateResult {
   /** Merge another aggregateResult into this */
   public abstract void merge(AggregateResult another);
 
+  /** @author Yuyuan Kang */
   public static AggregateResult deserializeFrom(ByteBuffer buffer) {
     AggregationType aggregationType = AggregationType.deserialize(buffer);
     TSDataType dataType = TSDataType.deserialize(buffer.get());
@@ -138,6 +142,22 @@ public abstract class AggregateResult {
         case TEXT:
           aggregateResult.setBinaryValue(ReadWriteIOUtils.readBinary(buffer));
           break;
+        case MIN_MAX_DOUBLE:
+          aggregateResult.setMinMaxValue(
+              ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_DOUBLE));
+          break;
+        case MIN_MAX_FLOAT:
+          aggregateResult.setMinMaxValue(
+              ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_FLOAT));
+          break;
+        case MIN_MAX_INT32:
+          aggregateResult.setMinMaxValue(
+              ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_INT32));
+          break;
+        case MIN_MAX_INT64:
+          aggregateResult.setMinMaxValue(
+              ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_INT64));
+          break;
         default:
           throw new IllegalArgumentException("Invalid Aggregation Type: " + dataType.name());
       }
@@ -148,6 +168,7 @@ public abstract class AggregateResult {
 
   protected abstract void deserializeSpecificFields(ByteBuffer buffer);
 
+  /** @author Yuyuan Kang */
   public void serializeTo(OutputStream outputStream) throws IOException {
     aggregationType.serializeTo(outputStream);
     ReadWriteIOUtils.write(resultDataType, outputStream);
@@ -173,6 +194,18 @@ public abstract class AggregateResult {
         case TEXT:
           ReadWriteIOUtils.write(binaryValue, outputStream);
           break;
+        case MIN_MAX_DOUBLE:
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.DOUBLE, outputStream);
+          break;
+        case MIN_MAX_FLOAT:
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.FLOAT, outputStream);
+          break;
+        case MIN_MAX_INT32:
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.INT32, outputStream);
+          break;
+        case MIN_MAX_INT64:
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.INT64, outputStream);
+          break;
         default:
           throw new IllegalArgumentException("Invalid Aggregation Type: " + resultDataType.name());
       }
@@ -182,6 +215,7 @@ public abstract class AggregateResult {
 
   protected abstract void serializeSpecificFields(OutputStream outputStream) throws IOException;
 
+  /** @author Yuyuan Kang */
   public void reset() {
     hasCandidateResult = false;
     booleanValue = false;
@@ -190,8 +224,10 @@ public abstract class AggregateResult {
     intValue = 0;
     longValue = 0;
     binaryValue = null;
+    minMaxInfo = null;
   }
 
+  /** @author Yuyuan Kang */
   protected Object getValue() {
     switch (resultDataType) {
       case BOOLEAN:
@@ -206,14 +242,18 @@ public abstract class AggregateResult {
         return intValue;
       case INT64:
         return longValue;
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
+        return minMaxInfo;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(resultDataType));
     }
   }
 
   /**
-   * set an object.
-   *
+   * @author Yuyuan Kang set an object.
    * @param v object value
    */
   protected void setValue(Object v) {
@@ -236,6 +276,16 @@ public abstract class AggregateResult {
         break;
       case INT64:
         longValue = (Long) v;
+        break;
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
+        if (minMaxInfo != null && minMaxInfo.val.equals(((MinMaxInfo) v).val)) {
+          minMaxInfo.timestamps.addAll(((MinMaxInfo) v).timestamps);
+        } else {
+          minMaxInfo = (MinMaxInfo) v;
+        }
         break;
       default:
         throw new UnSupportedDataTypeException(String.valueOf(resultDataType));
@@ -298,6 +348,12 @@ public abstract class AggregateResult {
   public void setBinaryValue(Binary binaryValue) {
     this.hasCandidateResult = true;
     this.binaryValue = binaryValue;
+  }
+
+  /** @author Yuyuan Kang */
+  public void setMinMaxValue(MinMaxInfo minMaxValue) {
+    this.hasCandidateResult = true;
+    this.minMaxInfo = minMaxValue;
   }
 
   protected boolean hasCandidateResult() {

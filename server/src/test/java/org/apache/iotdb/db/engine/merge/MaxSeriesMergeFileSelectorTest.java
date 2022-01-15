@@ -24,6 +24,7 @@ import org.apache.iotdb.db.engine.merge.selector.MaxSeriesMergeFileSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.MergeException;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -95,6 +96,7 @@ public class MaxSeriesMergeFileSelectorTest extends MergeTest {
   }
 
   @Test
+  @Ignore("it hasn't been maintained for long.")
   public void testRestrictedSelection2() throws MergeException, IOException {
     MergeResource resource = new MergeResource(seqResources, unseqResources);
     MaxSeriesMergeFileSelector mergeFileSelector = new MaxSeriesMergeFileSelector(resource, 100000);

@@ -118,6 +118,7 @@ public class SessionDataSet {
     return ioTDBRpcDataSet.next();
   }
 
+  /** @author Yuyuan Kang */
   private RowRecord constructRowRecordFromValueArray() throws StatementExecutionException {
     List<Field> outFields = new ArrayList<>();
     for (int i = 0; i < ioTDBRpcDataSet.columnSize; i++) {
@@ -159,6 +160,10 @@ public class SessionDataSet {
             field.setDoubleV(doubleValue);
             break;
           case TEXT:
+          case MIN_MAX_DOUBLE:
+          case MIN_MAX_FLOAT:
+          case MIN_MAX_INT32:
+          case MIN_MAX_INT64:
             field.setBinaryV(new Binary(valueBytes));
             break;
           default:

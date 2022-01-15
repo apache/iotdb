@@ -22,6 +22,7 @@ import org.apache.iotdb.tsfile.exception.write.UnknownColumnTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.BooleanStatistics;
 import org.apache.iotdb.tsfile.file.metadata.statistics.IntegerStatistics;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -34,6 +35,7 @@ public class StatisticsV2 {
   private StatisticsV2() {}
 
   @SuppressWarnings("rawtypes")
+  /** @author Yuyuan Kang */
   public static Statistics deserialize(InputStream inputStream, TSDataType dataType)
       throws IOException {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
@@ -47,13 +49,15 @@ public class StatisticsV2 {
         ((BooleanStatistics) statistics).initializeStats(firstBool, lastBool, 0);
         break;
       case INT32:
-        int minValue = ReadWriteIOUtils.readInt(inputStream);
-        int maxValue = ReadWriteIOUtils.readInt(inputStream);
+        MinMaxInfo<Integer> minInfo =
+            ReadWriteIOUtils.readMinMaxInfo(inputStream, TSDataType.MIN_MAX_INT32);
+        MinMaxInfo<Integer> maxInfo =
+            ReadWriteIOUtils.readMinMaxInfo(inputStream, TSDataType.MIN_MAX_INT32);
         int firstValue = ReadWriteIOUtils.readInt(inputStream);
         int lastValue = ReadWriteIOUtils.readInt(inputStream);
         long sumValue = (long) ReadWriteIOUtils.readDouble(inputStream);
         ((IntegerStatistics) statistics)
-            .initializeStats(minValue, maxValue, firstValue, lastValue, sumValue);
+            .initializeStats(minInfo, maxInfo, firstValue, lastValue, sumValue);
         break;
       case INT64:
       case TEXT:
@@ -68,6 +72,7 @@ public class StatisticsV2 {
     return statistics;
   }
 
+  /** @author Yuyuan Kang */
   @SuppressWarnings("rawtypes")
   public static Statistics deserialize(ByteBuffer buffer, TSDataType dataType) {
     Statistics<?> statistics = Statistics.getStatsByType(dataType);
@@ -81,8 +86,10 @@ public class StatisticsV2 {
         ((BooleanStatistics) statistics).initializeStats(firstBool, lastBool, 0);
         break;
       case INT32:
-        int minValue = ReadWriteIOUtils.readInt(buffer);
-        int maxValue = ReadWriteIOUtils.readInt(buffer);
+        MinMaxInfo<Integer> minValue =
+            ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_INT32);
+        MinMaxInfo<Integer> maxValue =
+            ReadWriteIOUtils.readMinMaxInfo(buffer, TSDataType.MIN_MAX_INT32);
         int firstValue = ReadWriteIOUtils.readInt(buffer);
         int lastValue = ReadWriteIOUtils.readInt(buffer);
         long sumValue = (long) ReadWriteIOUtils.readDouble(buffer);
