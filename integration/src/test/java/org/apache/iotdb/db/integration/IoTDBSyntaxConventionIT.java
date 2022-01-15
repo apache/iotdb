@@ -202,7 +202,7 @@ public class IoTDBSyntaxConventionIT {
   public void testExpression3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE root.sg1.d1.`1` INT64");
       boolean hasResult = statement.execute("SELECT sin(`1`) FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -217,14 +217,14 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE root.sg1.d1.`1` INT64");
       statement.execute("SELECT sin(1) FROM root.sg1.d1");
       fail();
     } catch (SQLException ignored) {
     }
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.1 INT32");
+      statement.execute("CREATE root.sg1.d1.1 INT64");
       boolean hasResult = statement.execute("SELECT sin(1) FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
