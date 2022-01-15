@@ -1256,7 +1256,7 @@ public class MManager {
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
   }
 
   /**
@@ -1290,7 +1290,7 @@ public class MManager {
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
       PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
+    return getMeasurementPathsWithAlias(pathPattern, limit, offset, false);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)

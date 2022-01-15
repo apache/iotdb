@@ -1214,8 +1214,31 @@ public class CMManager extends MManager {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern);
+
+    if (isPrefixMatch) {
+      // adapt to prefix match of IoTDB v0.12
+      Map<String, List<PartialPath>> prefixSgPathMap =
+          groupPathByStorageGroup(pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+      List<PartialPath> originPaths;
+      List<PartialPath> addedPaths;
+      for (String sg : prefixSgPathMap.keySet()) {
+        originPaths = sgPathMap.get(sg);
+        addedPaths = prefixSgPathMap.get(sg);
+        if (originPaths == null) {
+          sgPathMap.put(sg, addedPaths);
+        } else {
+          for (PartialPath path : addedPaths) {
+            if (!originPaths.contains(path)) {
+              originPaths.add(path);
+            }
+          }
+        }
+      }
+    }
+
     List<MeasurementPath> result = getMatchedPaths(sgPathMap, true);
 
     int skippedOffset = 0;
