@@ -1267,14 +1267,14 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSStatus insertStringRecordsOfOneDevice(TSInsertStringRecordsOfOneDeviceReq req) {
-    if (!checkLogin(req.getSessionId())) {
+    if (!serviceProvider.checkLogin(req.getSessionId())) {
       return getNotLoggedInStatus();
     }
 
     if (AUDIT_LOGGER.isDebugEnabled()) {
       AUDIT_LOGGER.debug(
           "Session {} insertRecords, device {}, first time {}",
-          sessionManager.getCurrSessionId(),
+          SESSION_MANAGER.getCurrSessionId(),
           req.prefixPath,
           req.getTimestamps().get(0));
     }
@@ -1290,7 +1290,7 @@ public class TSServiceImpl implements TSIService.Iface {
         plan.setDataTypes(new TSDataType[plan.getMeasurements().length]);
         plan.setNeedInferType(true);
         plan.setAligned(req.isAligned);
-        TSStatus status = checkAuthority(plan, req.getSessionId());
+        TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
 
         if (status != null) {
           insertRowsPlan.getResults().put(i, status);
