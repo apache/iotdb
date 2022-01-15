@@ -21,6 +21,7 @@ package org.apache.iotdb.db.qp.sql;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
 import org.apache.iotdb.db.index.common.IndexType;
@@ -2183,6 +2184,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     return new PartialPath(path);
   }
 
+  private PartialPath convertConstantToPath(String src) throws IllegalPathException {
+    return new PartialPath(src);
+  }
+
   // node name
 
   /** function for parsing node name. */
@@ -2351,21 +2356,26 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (context.constant() != null) {
       try {
         ConstantContext constantContext = context.constant();
-        if (constantContext.BOOLEAN_LITERAL() != null) {
-          return new ConstantOperand(
-              TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
-        } else if (constantContext.STRING_LITERAL() != null) {
-          String text = constantContext.STRING_LITERAL().getText();
-          return new ConstantOperand(TSDataType.TEXT, text.substring(1, text.length() - 1));
-        } else if (constantContext.INTEGER_LITERAL() != null) {
-          return new ConstantOperand(TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
-        } else if (constantContext.realLiteral() != null) {
-          return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
-        } else {
-          throw new SQLParserException(
-              "Unsupported constant operand: " + constantContext.getText());
+        if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_13)) {
+          if (constantContext.BOOLEAN_LITERAL() != null) {
+            return new ConstantOperand(
+                TSDataType.BOOLEAN, constantContext.BOOLEAN_LITERAL().getText());
+          } else if (constantContext.STRING_LITERAL() != null) {
+            String text = constantContext.STRING_LITERAL().getText();
+            return new ConstantOperand(TSDataType.TEXT, text.substring(1, text.length() - 1));
+          } else if (constantContext.INTEGER_LITERAL() != null) {
+            return new ConstantOperand(
+                TSDataType.INT64, constantContext.INTEGER_LITERAL().getText());
+          } else if (constantContext.realLiteral() != null) {
+            return new ConstantOperand(TSDataType.DOUBLE, constantContext.realLiteral().getText());
+          } else {
+            throw new SQLParserException(
+                "Unsupported constant operand: " + constantContext.getText());
+          }
+        } else if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_12)) {
+          return new TimeSeriesOperand(convertConstantToPath(context.constant().getText()));
         }
-      } catch (QueryProcessException e) {
+      } catch (QueryProcessException | IllegalPathException e) {
         throw new SQLParserException(e.getMessage());
       }
     }
