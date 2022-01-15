@@ -220,6 +220,8 @@ public class LastCacheManager {
       return getLastCache(node).getTimestamp();
     } else {
       try {
+        // for the parameter "ascending": true or false both ok here,
+        // because LastPointReader will do itself sort logic instead of depending on fillOrderIndex.
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
                 .getQueryDataSource(node.getPartialPath(), queryContext, null, false);
