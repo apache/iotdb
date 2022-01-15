@@ -176,18 +176,19 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(pathPattern);
+    mRemoteMetaCache.removeItem(pathPattern, isPrefixMatch);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(pathPattern);
+    return super.deleteTimeseries(pathPattern, isPrefixMatch);
   }
 
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     cacheLock.writeLock().lock();
     for (PartialPath storageGroup : storageGroups) {
-      mRemoteMetaCache.removeItem(storageGroup);
+      mRemoteMetaCache.removeItem(storageGroup, true);
     }
     cacheLock.writeLock().unlock();
     super.deleteStorageGroups(storageGroups);
@@ -463,9 +464,13 @@ public class CMManager extends MManager {
       return null;
     }
 
+    public synchronized void removeItem(PartialPath key, boolean isPrefixMatch) {
+      cache.keySet().removeIf(s -> isPrefixMatch ? key.matchPrefixPath(s) : key.matchFullPath(s));
+    }
+
     @Override
     public synchronized void removeItem(PartialPath key) {
-      cache.keySet().removeIf(s -> s.getFullPath().startsWith(key.getFullPath()));
+      removeItem(key, false);
     }
 
     @Override

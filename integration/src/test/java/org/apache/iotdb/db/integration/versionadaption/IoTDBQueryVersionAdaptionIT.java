@@ -19,7 +19,9 @@
 package org.apache.iotdb.db.integration.versionadaption;
 
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 import org.apache.iotdb.jdbc.Constant;
 
 import org.junit.AfterClass;
@@ -49,7 +51,7 @@ import static org.apache.iotdb.db.constant.TestConstant.VALUE_STR;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBQueryVersionAdaptionIT {
 
   private static String[] sqls =

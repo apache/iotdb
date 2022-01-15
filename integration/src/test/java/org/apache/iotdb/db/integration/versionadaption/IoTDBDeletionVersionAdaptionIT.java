@@ -22,7 +22,9 @@ package org.apache.iotdb.db.integration.versionadaption;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
+import org.apache.iotdb.itbase.category.RemoteTest;
 import org.apache.iotdb.jdbc.Constant;
 
 import org.junit.After;
@@ -39,7 +41,7 @@ import java.util.Locale;
 
 import static org.junit.Assert.assertEquals;
 
-@Category({LocalStandaloneTest.class})
+@Category({LocalStandaloneTest.class, ClusterTest.class, RemoteTest.class})
 public class IoTDBDeletionVersionAdaptionIT {
 
   private static String[] creationSqls =
