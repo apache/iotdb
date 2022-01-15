@@ -31,9 +31,9 @@ public class RequestValidationHandler {
 
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
-    Validate.isTrue(
-        sql.getRowLimit() != null && sql.getRowLimit() > 0,
-        "rowLimit can not be null and should be positive");
+    if (sql.getRowLimit() != null) {
+      Validate.isTrue(sql.getRowLimit() > 0, "rowLimit should be positive");
+    }
   }
 
   public static void validateInsertTabletRequest(InsertTabletRequest insertTabletRequest) {

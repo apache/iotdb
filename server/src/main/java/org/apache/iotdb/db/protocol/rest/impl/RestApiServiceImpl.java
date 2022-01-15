@@ -110,17 +110,6 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
 
-      // set max row limit to avoid OOM
-      Integer rowLimitInRequest = sql.getRowLimit();
-      if (rowLimitInRequest == null) {
-        rowLimitInRequest = defaultQueryRowLimit;
-      }
-      int rowLimitInQueryPlan = queryPlan.getRowLimit();
-      if (rowLimitInQueryPlan <= 0) {
-        rowLimitInQueryPlan = defaultQueryRowLimit;
-      }
-      final int actualRowSizeLimit = Math.min(rowLimitInRequest, rowLimitInQueryPlan);
-
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
@@ -133,7 +122,10 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, queryPlan, actualRowSizeLimit);
+        return QueryDataSetHandler.fillDateSet(
+            queryDataSet,
+            queryPlan,
+            sql.getRowLimit() != null ? sql.getRowLimit() : defaultQueryRowLimit);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
