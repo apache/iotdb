@@ -1617,7 +1617,11 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           insertMultiValues.get(i).measurementValue();
       for (IoTDBSqlParser.MeasurementValueContext value : values) {
         for (IoTDBSqlParser.ConstantContext constant : value.constant()) {
-          valueList.add(constant.getText());
+          if (constant.STRING_LITERAL() != null) {
+            valueList.add(parseStringWithQuotes(constant.getText()));
+          } else {
+            valueList.add(constant.getText());
+          }
         }
       }
       valueLists.add(valueList.toArray(new String[0]));
@@ -2785,22 +2789,16 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private String parseStringWithQuotes(String src) {
     if (2 <= src.length()) {
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src);
-        return unescapeString.length() == 2
-            ? ""
-            : unescapeString.replace("\"\"", "\"").substring(1, unescapeString.length() - 1);
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.length() == 0 ? "" : unescapeString.replace("\"\"", "\"");
       }
       if (src.charAt(0) == '`' && src.charAt(src.length() - 1) == '`') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src);
-        return unescapeString.length() == 2
-            ? ""
-            : unescapeString.replace("``", "`").substring(1, unescapeString.length() - 1);
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.length() == 0 ? "" : unescapeString.replace("``", "`");
       }
       if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
-        String unescapeString = StringEscapeUtils.unescapeJava(src);
-        return unescapeString.length() == 2
-            ? ""
-            : unescapeString.replace("''", "'").substring(1, unescapeString.length() - 1);
+        String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
+        return unescapeString.length() == 0 ? "" : unescapeString.replace("''", "'");
       }
     }
     return src;
