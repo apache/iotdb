@@ -120,7 +120,7 @@
 	####################
 
 	# Whether to open the sync_server_port for receiving data from sync client, the default is closed
-	is_sync_enable=false
+	is_sync_enable=true
 
 	# Sync server port to listen
 	sync_server_port=5555

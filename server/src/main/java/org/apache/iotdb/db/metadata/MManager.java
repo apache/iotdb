@@ -1869,16 +1869,16 @@ public class MManager {
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
       int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if (index != fullPath.getNodeLength() - 1) {
+      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
         // this measurement is in template, need to assure mounted node exists and set using
         // template.
-        if (!mountedNodeFound) {
-          // Without allowing overlap of template and MTree, this block run only once
-          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        // Without allowing overlap of template and MTree, this block run only once
+        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        if (!mountedNode.isUseTemplate()) {
           setUsingSchemaTemplate(mountedNode);
-          mountedNodeFound = true;
         }
+        mountedNodeFound = true;
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
@@ -2079,6 +2079,15 @@ public class MManager {
   // region Interfaces and Implementation for Template operations
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+
+      List<List<TSDataType>> dataTypes = plan.getDataTypes();
+      List<List<TSEncoding>> encodings = plan.getEncodings();
+      for (int i = 0; i < dataTypes.size(); i++) {
+        for (int j = 0; j < dataTypes.get(i).size(); j++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
+        }
+      }
+
       templateManager.createSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
@@ -2091,6 +2100,13 @@ public class MManager {
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
     try {
+
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+      for (int idx = 0; idx < dataTypes.size(); idx++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(idx), encodings.get(idx));
+      }
+
       templateManager.appendSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {

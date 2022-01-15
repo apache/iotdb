@@ -103,6 +103,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
   public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
   public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
@@ -176,4 +177,10 @@ public class IoTDBConstant {
 
   // cross space compaction
   public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".merge";
+
+  // client version number
+  public enum ClientVersion {
+    V_0_12,
+    V_0_13
+  }
 }

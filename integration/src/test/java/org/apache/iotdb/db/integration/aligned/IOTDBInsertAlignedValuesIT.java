@@ -25,7 +25,6 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,10 +41,9 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
-  private static final int oldPagePointNum =
-      TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   private static final int oldTsFileGroupSizeInByte =
       TSFileDescriptor.getInstance().getConfig().getGroupSizeInByte();
+  private int numOfPointsPerPage;
 
   @Before
   public void setUp() throws Exception {
@@ -55,13 +53,14 @@ public class IOTDBInsertAlignedValuesIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   }
 
   @After
   public void tearDown() throws Exception {
     close();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
-    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(oldPagePointNum);
     TSFileDescriptor.getInstance().getConfig().setGroupSizeInByte(oldTsFileGroupSizeInByte);
   }
 

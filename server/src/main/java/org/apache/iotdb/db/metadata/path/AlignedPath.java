@@ -170,6 +170,23 @@ public class AlignedPath extends PartialPath {
     schemaList.add(measurementPath.getMeasurementSchema());
   }
 
+  /**
+   * merge another aligned path's sub sensors into this one
+   *
+   * @param alignedPath The caller need to ensure the alignedPath must have same device as this one
+   *     and these two doesn't have same sub sensor
+   */
+  public void mergeAlignedPath(AlignedPath alignedPath) {
+    if (measurementList == null) {
+      measurementList = new ArrayList<>();
+    }
+    measurementList.addAll(alignedPath.measurementList);
+    if (schemaList == null) {
+      schemaList = new ArrayList<>();
+    }
+    schemaList.addAll(alignedPath.schemaList);
+  }
+
   public List<IMeasurementSchema> getSchemaList() {
     return this.schemaList == null ? Collections.emptyList() : this.schemaList;
   }
@@ -201,6 +218,7 @@ public class AlignedPath extends PartialPath {
     result.fullPath = fullPath;
     result.device = device;
     result.measurementList = new ArrayList<>(measurementList);
+    result.schemaList = new ArrayList<>(schemaList);
     return result;
   }
 
