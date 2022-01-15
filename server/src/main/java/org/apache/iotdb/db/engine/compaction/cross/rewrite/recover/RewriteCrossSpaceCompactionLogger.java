@@ -30,7 +30,7 @@ import java.io.IOException;
 import java.util.List;
 
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
-public class RewriteCrossSpaceCompactionLogger {
+public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
   public static final String MERGE_LOG_NAME = "cross-compaction.log";
 
@@ -41,11 +41,12 @@ public class RewriteCrossSpaceCompactionLogger {
 
   private BufferedWriter logStream;
 
-  public RewriteCrossSpaceCompactionLogger(String storageGroupDir) throws IOException {
-    logStream = new BufferedWriter(new FileWriter(new File(storageGroupDir, MERGE_LOG_NAME), true));
+  public RewriteCrossSpaceCompactionLogger(File logFile) throws IOException {
+    logStream = new BufferedWriter(new FileWriter(logFile, true));
     logStringInfo(MAGIC_STRING);
   }
 
+  @Override
   public void close() throws IOException {
     logStream.close();
   }

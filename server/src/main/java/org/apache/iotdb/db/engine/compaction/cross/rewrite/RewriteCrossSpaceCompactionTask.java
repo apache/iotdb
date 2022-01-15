@@ -73,7 +73,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
 
   String storageGroupName;
-  RewriteCrossSpaceCompactionLogger compactionLogger;
 
   public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
@@ -106,9 +105,9 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected void doCompaction() throws Exception {
     try {
       executeCompaction();
-    } catch (Exception e) {
-      abort();
-      throw e;
+    } catch (Throwable throwable) {
+      // catch throwable instead of exception to handle OOM errors
+      throw throwable;
     } finally {
       releaseAllLock();
       resetCompactionStatus();
@@ -116,10 +115,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         tsFileManager.writeUnlock();
       }
     }
-  }
-
-  private void abort() throws IOException {
-    cleanUp(true);
   }
 
   private void executeCompaction()
@@ -140,53 +135,57 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         storageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
-    compactionLogger = new RewriteCrossSpaceCompactionLogger(storageGroupDir);
-    // print the path of the temporary file first for priority check during recovery
-    compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-    compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
-    compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
-    CompactionUtils.compact(
-        selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList,
-        targetTsfileResourceList,
-        storageGroupName);
-    // indicates that the merge is complete and needs to be cleared
-    // the result can be reused during a restart recovery
-    compactionLogger.logStringInfo(MAGIC_STRING);
+    File logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
+    try (RewriteCrossSpaceCompactionLogger compactionLogger =
+        new RewriteCrossSpaceCompactionLogger(logFile)) {
+      // print the path of the temporary file first for priority check during recovery
+      compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
+      compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
+      compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
+      CompactionUtils.compact(
+          selectedSeqTsFileResourceList,
+          selectedUnSeqTsFileResourceList,
+          targetTsfileResourceList,
+          storageGroupName);
+      // indicates that the merge is complete and needs to be cleared
+      // the result can be reused during a restart recovery
+      compactionLogger.logStringInfo(MAGIC_STRING);
 
-    CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
+      CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
 
-    releaseReadAndLockWrite(selectedSeqTsFileResourceList);
-    releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
+      releaseReadAndLockWrite(selectedSeqTsFileResourceList);
+      releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
 
-    combineModsFiles();
-    try {
-      tsFileManager.writeLockWithTimeout(
-          "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
-      getWriteLockOfManager = true;
-    } catch (WriteLockFailedException e) {
-      // if current compaction thread couldn't get write lock
-      // a WriteLockFailException will be thrown, then terminate the thread itself
-      logger.error(
-          "{} [CrossSpaceCompactionTask] failed to get write lock, abort the task.",
-          fullStorageGroupName,
-          e);
-      throw new InterruptedException(
-          String.format(
-              "%s [Compaction] compaction abort because cannot acquire write lock",
-              fullStorageGroupName));
+      combineModsFiles();
+      try {
+        tsFileManager.writeLockWithTimeout(
+            "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
+        getWriteLockOfManager = true;
+      } catch (WriteLockFailedException e) {
+        // if current compaction thread couldn't get write lock
+        // a WriteLockFailException will be thrown, then terminate the thread itself
+        logger.error(
+            "{} [CrossSpaceCompactionTask] failed to get write lock, abort the task.",
+            fullStorageGroupName,
+            e);
+        throw new InterruptedException(
+            String.format(
+                "%s [Compaction] compaction abort because cannot acquire write lock",
+                fullStorageGroupName));
+      }
+
+      deleteOldFiles(selectedSeqTsFileResourceList);
+      deleteOldFiles(selectedUnSeqTsFileResourceList);
+      removeCompactionModification();
+
+      updateTsFileResource();
+      logger.info(
+          "{}-crossSpaceCompactionTask Costs {} s",
+          storageGroupName,
+          (System.currentTimeMillis() - startTime) / 1000);
+    } finally {
+      FileUtils.delete(logFile);
     }
-
-    deleteOldFiles(selectedSeqTsFileResourceList);
-    deleteOldFiles(selectedUnSeqTsFileResourceList);
-    removeCompactionModification();
-
-    updateTsFileResource();
-    cleanUp(false);
-    logger.info(
-        "{}-crossSpaceCompactionTask Costs {} s",
-        storageGroupName,
-        (System.currentTimeMillis() - startTime) / 1000);
   }
 
   private void updateTsFileResource() throws IOException {
@@ -284,25 +283,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
-  }
-
-  void cleanUp(boolean exceptionOccurs) throws IOException {
-    logger.info("[Compaction] cleaning up");
-    if (exceptionOccurs) {
-      for (TsFileResource tsFileResource : targetTsfileResourceList) {
-        tsFileResource.setDeleted(true);
-        tsFileResource.remove();
-        tsFileResource.setMerging(false);
-      }
-    }
-    for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
-      unseqFile.setMerging(false);
-    }
-    if (compactionLogger != null) {
-      compactionLogger.close();
-    }
-    File logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
-    FileUtils.delete(logFile);
   }
 
   public String getStorageGroupName() {
