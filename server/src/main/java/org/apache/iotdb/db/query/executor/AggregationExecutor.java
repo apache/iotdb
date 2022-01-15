@@ -192,7 +192,8 @@ public class AggregationExecutor {
         tsDataType,
         ascAggregateResultList,
         descAggregateResultList,
-        null);
+        null,
+        ascending);
 
     int ascIndex = 0;
     int descIndex = 0;
@@ -241,7 +242,8 @@ public class AggregationExecutor {
         TSDataType.VECTOR,
         ascAggregateResultList,
         descAggregateResultList,
-        null);
+        null,
+        ascending);
 
     for (int i = 0; i < subIndexes.size(); i++) {
       List<Integer> subIndex = subIndexes.get(i);
@@ -265,12 +267,14 @@ public class AggregationExecutor {
       TSDataType tsDataType,
       List<AggregateResult> ascAggregateResultList,
       List<AggregateResult> descAggregateResultList,
-      TsFileFilter fileFilter)
+      TsFileFilter fileFilter,
+      boolean ascending)
       throws StorageEngineException, IOException, QueryProcessException {
 
     // construct series reader without value filter
     QueryDataSource queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(seriesPath, context, timeFilter);
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(seriesPath, context, timeFilter, ascending);
     if (fileFilter != null) {
       QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
     }
@@ -315,12 +319,14 @@ public class AggregationExecutor {
       TSDataType tsDataType,
       List<List<AggregateResult>> ascAggregateResultList,
       List<List<AggregateResult>> descAggregateResultList,
-      TsFileFilter fileFilter)
+      TsFileFilter fileFilter,
+      boolean ascending)
       throws StorageEngineException, IOException, QueryProcessException {
 
     // construct series reader without value filter
     QueryDataSource queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(alignedPath, context, timeFilter);
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(alignedPath, context, timeFilter, ascending);
     if (fileFilter != null) {
       QueryUtils.filterQueryDataSource(queryDataSource, fileFilter);
     }
@@ -690,7 +696,7 @@ public class AggregationExecutor {
         queryPlan.getAllMeasurementsInDevice(path.getDevice()),
         dataType,
         context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null),
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, null, ascending),
         null,
         ascending);
   }

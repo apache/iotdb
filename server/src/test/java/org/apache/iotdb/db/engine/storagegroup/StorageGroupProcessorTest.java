@@ -724,13 +724,14 @@ public class StorageGroupProcessorTest {
 
     Thread.sleep(500);
 
+    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
+    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
+    FlushManager flushManager = FlushManager.getInstance();
+
     // flush the sequence memtable
     processor.timedFlushSeqMemTable();
 
     // wait until memtable flush task is done
-    Assert.assertEquals(1, processor.getWorkSequenceTsFileProcessors().size());
-    TsFileProcessor tsFileProcessor = processor.getWorkSequenceTsFileProcessors().iterator().next();
-    FlushManager flushManager = FlushManager.getInstance();
     int waitCnt = 0;
     while (tsFileProcessor.getFlushingMemTableSize() != 0
         || tsFileProcessor.isManagedByFlushManager()
@@ -778,14 +779,15 @@ public class StorageGroupProcessorTest {
 
     Thread.sleep(500);
 
-    // flush the unsequence memtable
-    processor.timedFlushUnseqMemTable();
-
-    // wait until memtable flush task is done
     Assert.assertEquals(1, processor.getWorkUnsequenceTsFileProcessors().size());
     TsFileProcessor tsFileProcessor =
         processor.getWorkUnsequenceTsFileProcessors().iterator().next();
     FlushManager flushManager = FlushManager.getInstance();
+
+    // flush the unsequence memtable
+    processor.timedFlushUnseqMemTable();
+
+    // wait until memtable flush task is done
     int waitCnt = 0;
     while (tsFileProcessor.getFlushingMemTableSize() != 0
         || tsFileProcessor.isManagedByFlushManager()
@@ -817,6 +819,8 @@ public class StorageGroupProcessorTest {
     Assert.assertEquals(1, MemTableManager.getInstance().getCurrentMemtableNumber());
 
     // change config & reboot timed service
+    long prevSeqTsFileSize = config.getSeqTsFileSize();
+    config.setSeqTsFileSize(1);
     boolean prevEnableTimedFlushSeqMemtable = config.isEnableTimedFlushSeqMemtable();
     long preFLushInterval = config.getSeqMemtableFlushInterval();
     config.setEnableTimedFlushSeqMemtable(true);
@@ -860,6 +864,7 @@ public class StorageGroupProcessorTest {
 
     Assert.assertTrue(tsFileProcessor.alreadyMarkedClosing());
 
+    config.setSeqTsFileSize(prevSeqTsFileSize);
     config.setEnableTimedFlushSeqMemtable(prevEnableTimedFlushSeqMemtable);
     config.setSeqMemtableFlushInterval(preFLushInterval);
     config.setEnableTimedCloseTsFile(prevEnableTimedCloseTsFile);
