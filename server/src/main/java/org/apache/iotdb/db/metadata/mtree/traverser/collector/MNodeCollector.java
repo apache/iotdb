@@ -27,11 +27,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * This class defines any node in MTree as potential target node.
- * On finding a path matching the given pattern, if a level is specified and the path is longer
- * than the specified level, MNodeLevelCounter finds the node of the specified level on the path
- * and process it. The same node will not be processed more than once.
- * If a level is not given, the current node is processed.
+ * This class defines any node in MTree as potential target node. On finding a path matching the
+ * given pattern, if a level is specified and the path is longer than the specified level,
+ * MNodeLevelCounter finds the node of the specified level on the path and process it. The same node
+ * will not be processed more than once. If a level is not given, the current node is processed.
  */
 public abstract class MNodeCollector<T> extends CollectorTraverser<T> {
 
