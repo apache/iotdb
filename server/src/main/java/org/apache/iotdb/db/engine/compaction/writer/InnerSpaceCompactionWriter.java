@@ -29,9 +29,12 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private boolean isEmptyFile;
 
+  private final TsFileResource targetTsFileResource;
+
   public InnerSpaceCompactionWriter(TsFileResource targetFileResource) throws IOException {
     fileWriter = new RestorableTsFileIOWriter(targetFileResource.getTsFile());
     isEmptyFile = true;
+    this.targetTsFileResource = targetFileResource;
   }
 
   @Override
@@ -55,6 +58,7 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
 
   @Override
   public void write(long timestamp, Object value) throws IOException {
+    updateDeviceStartAndEndTime(targetTsFileResource, timestamp);
     checkChunkSizeAndMayOpenANewChunk(fileWriter);
     writeDataPoint(timestamp, value);
     isEmptyFile = false;
@@ -78,9 +82,5 @@ public class InnerSpaceCompactionWriter extends AbstractCompactionWriter {
     }
     chunkWriter = null;
     fileWriter = null;
-  }
-
-  public TsFileIOWriter getFileWriter() {
-    return this.fileWriter;
   }
 }

@@ -38,14 +38,13 @@ import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.QueryUtils;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-import org.apache.iotdb.tsfile.file.metadata.TimeseriesMetadata;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +54,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -102,7 +100,6 @@ public class CompactionUtils {
       }
 
       compactionWriter.endFile();
-      updateDeviceStartTimeAndEndTime(targetFileResources, compactionWriter);
       updatePlanIndexes(targetFileResources, seqFileResources, unseqFileResources);
     } finally {
       QueryResourceManager.getInstance().endQuery(queryId);
@@ -241,30 +238,6 @@ public class CompactionUtils {
     }
   }
 
-  private static void updateDeviceStartTimeAndEndTime(
-      List<TsFileResource> targetResources, AbstractCompactionWriter compactionWriter) {
-    List<TsFileIOWriter> fileIOWriterList = new ArrayList<>();
-    if (compactionWriter instanceof InnerSpaceCompactionWriter) {
-      fileIOWriterList.add(((InnerSpaceCompactionWriter) compactionWriter).getFileWriter());
-    } else {
-      fileIOWriterList.addAll(((CrossSpaceCompactionWriter) compactionWriter).getFileWriters());
-    }
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
-      Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-          fileIOWriterList.get(i).getDeviceTimeseriesMetadataMap();
-      for (Map.Entry<String, List<TimeseriesMetadata>> entry :
-          deviceTimeseriesMetadataMap.entrySet()) {
-        for (TimeseriesMetadata timeseriesMetadata : entry.getValue()) {
-          targetResource.updateStartTime(
-              entry.getKey(), timeseriesMetadata.getStatistics().getStartTime());
-          targetResource.updateEndTime(
-              entry.getKey(), timeseriesMetadata.getStatistics().getEndTime());
-        }
-      }
-    }
-  }
-
   private static void updatePlanIndexes(
       List<TsFileResource> targetResources,
       List<TsFileResource> seqResources,
@@ -275,7 +248,13 @@ public class CompactionUtils {
     // however, since the data of unseq files are mixed together, we won't be able to know
     // which files are exactly contained in the new file, so we have to record all unseq files
     // in the new file
-    for (TsFileResource targetResource : targetResources) {
+    for (int i = 0; i < targetResources.size(); i++) {
+      TsFileResource targetResource = targetResources.get(i);
+      // remove the target file been deleted from list
+      if (!targetResource.getTsFile().exists()) {
+        targetResources.remove(i--);
+        continue;
+      }
       for (TsFileResource unseqResource : unseqResources) {
         targetResource.updatePlanIndexes(unseqResource);
       }
@@ -298,30 +277,9 @@ public class CompactionUtils {
     } else {
       fileSuffix = IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX;
     }
-    checkAndUpdateTargetFileResources(targetResources, fileSuffix);
+    // checkAndUpdateTargetFileResources(targetResources, fileSuffix);
     for (TsFileResource targetResource : targetResources) {
       moveOneTargetFile(targetResource, fileSuffix, fullStorageGroupName);
-    }
-  }
-
-  /**
-   * Check whether all target files is end with correct file suffix and remove target resource whose
-   * tsfile is deleted from list.
-   */
-  private static void checkAndUpdateTargetFileResources(
-      List<TsFileResource> targetResources, String tmpFileSuffix) throws WriteProcessException {
-    for (int i = 0; i < targetResources.size(); i++) {
-      TsFileResource targetResource = targetResources.get(i);
-      if (!targetResource.getTsFilePath().endsWith(tmpFileSuffix)) {
-        throw new WriteProcessException(
-            "Tmp target tsfile "
-                + targetResource.getTsFilePath()
-                + " should be end with "
-                + tmpFileSuffix);
-      }
-      if (!targetResource.getTsFile().exists()) {
-        targetResources.remove(i--);
-      }
     }
   }
 

@@ -20,6 +20,7 @@ package org.apache.iotdb.db.engine.compaction.writer;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
@@ -47,11 +48,15 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   private final long targetChunkSize =
       IoTDBDescriptor.getInstance().getConfig().getTargetChunkSize();
 
+  // point count in current measurment, which is used to check size
+  private int measurementPointCount;
+
   public abstract void startChunkGroup(String deviceId, boolean isAlign) throws IOException;
 
   public abstract void endChunkGroup() throws IOException;
 
   public void startMeasurement(List<IMeasurementSchema> measurementSchemaList) {
+    measurementPointCount = 0;
     if (isAlign) {
       chunkWriter = new AlignedChunkWriterImpl(measurementSchemaList);
     } else {
@@ -127,10 +132,11 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
       }
       chunkWriter.write(timestamp);
     }
+    measurementPointCount++;
   }
 
   protected void checkChunkSizeAndMayOpenANewChunk(TsFileIOWriter fileWriter) throws IOException {
-    if (checkChunkSize()) {
+    if (measurementPointCount % 10 == 0 && checkChunkSize()) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
       chunkWriter.writeToFileWriter(fileWriter);
     }
@@ -148,5 +154,10 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   protected void writeRateLimit(long bytesLength) {
     MergeManager.mergeRateLimiterAcquire(
         MergeManager.getINSTANCE().getMergeWriteRateLimiter(), bytesLength);
+  }
+
+  protected void updateDeviceStartAndEndTime(TsFileResource targetResource, long timestamp) {
+    targetResource.updateStartTime(deviceId, timestamp);
+    targetResource.updateEndTime(deviceId, timestamp);
   }
 }

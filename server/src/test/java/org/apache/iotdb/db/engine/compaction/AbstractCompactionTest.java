@@ -144,7 +144,7 @@ public class AbstractCompactionTest {
       File file;
       if (isAlign) {
         file =
-            TsFileGeneratorUtils.generateMixTsFile(
+            TsFileGeneratorUtils.generateAlignedTsFile(
                 filePath,
                 deviceNum,
                 measurementNum,

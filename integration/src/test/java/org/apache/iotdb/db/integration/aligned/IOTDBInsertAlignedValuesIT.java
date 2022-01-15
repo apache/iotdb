@@ -25,6 +25,7 @@ import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

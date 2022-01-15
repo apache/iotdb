@@ -2963,6 +2963,9 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
               + PATH_SEPARATOR
               + "s"
               + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d0" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d1" + PATH_SEPARATOR + "s" + i);
+      seriesPaths.add(COMPACTION_TEST_SG + PATH_SEPARATOR + "d2" + PATH_SEPARATOR + "s" + i);
     }
     generateModsFile(seriesPaths, seqResources, Long.MIN_VALUE, Long.MAX_VALUE);
     generateModsFile(seriesPaths, unseqResources, Long.MIN_VALUE, Long.MAX_VALUE);

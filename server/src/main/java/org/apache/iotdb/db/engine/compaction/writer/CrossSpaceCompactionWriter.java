@@ -45,6 +45,8 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
 
   private final boolean[] isEmptyFile;
 
+  private final List<TsFileResource> targetTsFileResources;
+
   public CrossSpaceCompactionWriter(
       List<TsFileResource> targetResources, List<TsFileResource> seqFileResources)
       throws IOException {
@@ -56,6 +58,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
       isEmptyFile[i] = true;
     }
     this.seqTsFileResources = seqFileResources;
+    this.targetTsFileResources = targetResources;
     seqFileIndex = 0;
   }
 
@@ -92,6 +95,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
   @Override
   public void write(long timestamp, Object value) throws IOException {
     checkTimeAndMayFlushChunkToCurrentFile(timestamp);
+    updateDeviceStartAndEndTime(targetTsFileResources.get(seqFileIndex), timestamp);
     checkChunkSizeAndMayOpenANewChunk(fileWriterList.get(seqFileIndex));
     writeDataPoint(timestamp, value);
     isEmptyFile[seqFileIndex] = false;
@@ -121,10 +125,6 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     fileWriterList = null;
     seqTsFileResources = null;
     chunkWriter = null;
-  }
-
-  public List<TsFileIOWriter> getFileWriters() {
-    return this.fileWriterList;
   }
 
   private void checkTimeAndMayFlushChunkToCurrentFile(long timestamp) throws IOException {
