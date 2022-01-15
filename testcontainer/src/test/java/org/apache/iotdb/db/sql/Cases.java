@@ -1491,6 +1491,8 @@ public abstract class Cases {
 
   @Test
   public void selectLimitTest() {
+    prepareData(alignByDeviceSqls);
+
     Set<String> retSet =
         new HashSet<>(
             Arrays.asList(

@@ -71,10 +71,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -299,28 +297,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
     int ret = 0;
     try {
       // level >= 0 is the COUNT NODE query
-      if (level >= 0) {
+      if (level >= 0 && isLevelTooSmall(path, level)) {
         // TODO: check the semantics of COUNT NODE when LEVEL is reached before wildcards
-        if (isLevelTooSmall(path, level)) {
-          // currently we return 0 if the level does not hit any wildcards
-          return 0;
-        }
-
-        Set<String> deletedSg = new HashSet<>();
-        Set<PartialPath> matchedPath = new HashSet<>(0);
-        for (String sg : sgPathMap.keySet()) {
-          PartialPath p = new PartialPath(sg);
-          // if the storage group path level is larger than the query level, then the prefix must be
-          // a suitable node and there's no need to query children nodes later
-          if (p.getNodeLength() - 1 >= level) {
-            deletedSg.add(sg);
-            matchedPath.add(new PartialPath(Arrays.copyOfRange(p.getNodes(), 0, level + 1)));
-          }
-        }
-        for (String sg : deletedSg) {
-          sgPathMap.remove(sg);
-        }
-        ret += matchedPath.size();
+        // currently we return 0 if the level does not hit any wildcards
+        return 0;
       }
       ret += getPathCount(sgPathMap, level);
     } catch (CheckConsistencyException
@@ -376,13 +356,16 @@ public class ClusterPlanExecutor extends PlanExecutor {
             .syncLeaderWithConsistencyCheck(false);
         int localResult = 0;
         for (PartialPath path : paths) {
-          localResult += getLocalPathCount(path, level);
+          int localPathCount = getLocalPathCount(path, level);
+          localResult += localPathCount;
+          logger.debug(
+              "{}: get path count of {} from {} locally, result {}",
+              metaGroupMember.getName(),
+              path,
+              partitionGroup,
+              localPathCount);
         }
-        logger.debug(
-            "{}: get path count of {} locally, result {}",
-            metaGroupMember.getName(),
-            partitionGroup,
-            localResult);
+
         result.addAndGet(localResult);
       } else {
         // batch the queries of the same group to reduce communication
@@ -443,8 +426,9 @@ public class ClusterPlanExecutor extends PlanExecutor {
       try {
         count = getRemotePathCountForOneNode(node, partitionGroup, pathsToQuery, level);
         logger.debug(
-            "{}: get path count of {} from {}, result {}",
+            "{}: get path count of {} from {}@{}, result {}",
             metaGroupMember.getName(),
+            pathsToQuery,
             partitionGroup,
             node,
             count);
@@ -945,8 +929,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                     mergeTimeseriesCountGroupByLevel(retMap, timeseriesCountGroupByLevel);
                     logger.debug(
                         "{}: get timeseries group count of {} from {} locally, result {}",
-                        s,
                         metaGroupMember.getName(),
+                        s,
                         partitionGroup,
                         timeseriesCountGroupByLevel);
                   }
@@ -956,8 +940,8 @@ public class ClusterPlanExecutor extends PlanExecutor {
                   mergeTimeseriesCountGroupByLevel(retMap, timeseriesCountGroupByLevel);
                   logger.debug(
                       "{}: get timeseries group count of {} from {} remotely, result {}",
-                      pathsToQuery,
                       metaGroupMember.getName(),
+                      pathsToQuery,
                       partitionGroup,
                       timeseriesCountGroupByLevel);
                 }
