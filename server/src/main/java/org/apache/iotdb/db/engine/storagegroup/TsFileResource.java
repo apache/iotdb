@@ -130,6 +130,8 @@ public class TsFileResource {
 
   private long ramSize;
 
+  private long tsFileSize = -1L;
+
   private TsFileProcessor processor;
 
   /**
@@ -170,6 +172,7 @@ public class TsFileResource {
     this.maxPlanIndex = other.maxPlanIndex;
     this.minPlanIndex = other.minPlanIndex;
     this.version = FilePathUtils.splitAndGetTsFileVersion(this.file.getName());
+    this.tsFileSize = other.tsFileSize;
   }
 
   /** for sealed TsFile, call setClosed to close TsFileResource */
@@ -385,7 +388,11 @@ public class TsFileResource {
   }
 
   public long getTsFileSize() {
-    return file.length();
+    if (closed) {
+      return tsFileSize;
+    } else {
+      return file.length();
+    }
   }
 
   public long getStartTime(String deviceId) {
@@ -428,6 +435,7 @@ public class TsFileResource {
       modFile.close();
       modFile = null;
     }
+    this.tsFileSize = file.length();
     processor = null;
     pathToChunkMetadataListMap = null;
     pathToReadOnlyMemChunkMap = null;
@@ -556,6 +564,9 @@ public class TsFileResource {
 
   public void setClosed(boolean closed) {
     this.closed = closed;
+    if (closed) {
+      tsFileSize = file.length();
+    }
   }
 
   public boolean isDeleted() {
