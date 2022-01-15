@@ -37,6 +37,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.time.ZoneId;
+import java.util.Arrays;
+import java.util.List;
 
 import static junit.framework.TestCase.fail;
 import static org.junit.Assert.assertEquals;
@@ -50,6 +52,8 @@ public class TemplateUT {
     System.setProperty(IoTDBConstant.IOTDB_CONF, "src/test/resources/");
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
+    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
+    session.open();
   }
 
   @After
@@ -59,10 +63,29 @@ public class TemplateUT {
   }
 
   @Test
+  public void testCreateFlatTemplate()
+      throws IOException, StatementExecutionException, IoTDBConnectionException {
+    String tempName = "flatTemplate";
+    List<String> measurements = Arrays.asList("x", "y", "speed");
+    List<TSDataType> dataTypes =
+        Arrays.asList(TSDataType.FLOAT, TSDataType.FLOAT, TSDataType.DOUBLE);
+    List<TSEncoding> encodings = Arrays.asList(TSEncoding.RLE, TSEncoding.RLE, TSEncoding.GORILLA);
+    List<CompressionType> compressors =
+        Arrays.asList(CompressionType.SNAPPY, CompressionType.SNAPPY, CompressionType.LZ4);
+
+    session.createSchemaTemplate(tempName, measurements, dataTypes, encodings, compressors, true);
+    session.setSchemaTemplate("flatTemplate", "root.sg.d0");
+    try {
+      session.setSchemaTemplate("flatTemplate", "root.sg.d0");
+      fail();
+    } catch (StatementExecutionException e) {
+      assertEquals("303: Template already exists on root.sg.d0", e.getMessage());
+    }
+  }
+
+  @Test
   public void testTemplateTree()
       throws IOException, MetadataException, StatementExecutionException, IoTDBConnectionException {
-    session = new Session("127.0.0.1", 6667, "root", "root", ZoneId.of("+05:00"));
-    session.open();
     Template sessionTemplate = new Template("treeTemplate", true);
     TemplateNode iNodeGPS = new InternalNode("GPS", false);
     TemplateNode iNodeV = new InternalNode("vehicle", true);

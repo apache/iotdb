@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Statistics for string type. */
 public class BinaryStatistics extends Statistics<Binary> {
@@ -213,6 +214,20 @@ public class BinaryStatistics extends Statistics<Binary> {
   public void deserialize(ByteBuffer byteBuffer) {
     this.firstValue = ReadWriteIOUtils.readBinary(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBinary(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    BinaryStatistics that = (BinaryStatistics) o;
+    return Objects.equals(firstValue, that.firstValue) && Objects.equals(lastValue, that.lastValue);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), firstValue, lastValue);
   }
 
   @Override

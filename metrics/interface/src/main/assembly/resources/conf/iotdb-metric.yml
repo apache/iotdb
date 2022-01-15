@@ -20,15 +20,20 @@
 # whether enable the module
 enableMetric: false
 
-# can be multiple reporter, e.g., jmx, prometheus
+# Multiple reporter, options: [jmx, prometheus]
 metricReporterList:
   - jmx
   - prometheus
 
-# you can check choose one type of monitor frame, such as dropwizard, micrometer
+# Type of monitor frame, options: [micrometer, dropwizard]
 monitorType: micrometer
 
-# you can set the period time of push
+# Predefined metric, options: [jvm, logback]
+predefinedMetrics:
+  - jvm
+  - logback
+
+# Period time of push, only valid for dropwizard
 pushPeriodInSecond: 5
 
 ########################################################

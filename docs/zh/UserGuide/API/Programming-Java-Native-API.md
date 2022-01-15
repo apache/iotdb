@@ -159,9 +159,9 @@ void deleteTimeseries(List<String> paths)
 boolean checkTimeseriesExists(String path)
 ```
 
-#### 物理量模版
+#### 元数据模版
 
-* 物理量模板内部支持树状结构，可以通过先后创建 Template、InternalNode、MeasurementNode 三类的对象，并通过以下接口创建模板
+* 创建元数据模板，可以通过先后创建 Template、MeasurementNode 的对象，描述模板内物理量结构与类型、编码方式、压缩方式等信息，并通过以下接口创建模板
 
 ```java
 public void createSchemaTemplate(Template template);
@@ -183,13 +183,6 @@ Abstract Class Node {
     public void deleteChild(Node node);
 }
 
-Class InternalNode extends Node {
-    boolean shareTime;
-    Map<String, Node> children;
-    public void setShareTime(boolean shareTime);
-    public InternalNode(String name, boolean isShareTime);
-}
-
 Class MeasurementNode extends Node {
     TSDataType dataType;
     TSEncoding encoding;
@@ -201,30 +194,22 @@ Class MeasurementNode extends Node {
 }
 ```
 
-通过这种方式创建物理量模板的代码示例如下：
+通过这种方式创建元数据模板的代码示例如下：
 
 ```java
 MeasurementNode nodeX = new MeasurementNode("x", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeY = new MeasurementNode("y", TSDataType.FLOAT, TSEncoding.RLE, CompressionType.SNAPPY);
 MeasurementNode nodeSpeed = new MeasurementNode("speed", TSDataType.DOUBLE, TSEncoding.GORILLA, CompressionType.SNAPPY);
 
-InternalNode internalGPS = new InternalNode("GPS", true);
-InternalNode internalVehicle = new InternalNode("vehicle", false);
-
-internalGPS.addChild(nodeX);
-internalGPS.addChild(nodeY);
-internalVehicle.addChild(GPS);
-internalVehicle.addChild(nodeSpeed);
-
-Template template = new Template("treeTemplateExample");
-template.addToTemplate(internalGPS);
-template.addToTemplate(internalVehicle);
+Template template = new Template("templateExample");
+template.addToTemplate(nodeX);
+template.addToTemplate(nodeY);
 template.addToTemplate(nodeSpeed);
 
 createSchemaTemplate(template);
 ```
 
-* 在创建概念物理量模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
+* 在创建概念元数据模板以后，还可以通过以下接口增加或删除模板内的物理量。请注意，已经挂载的模板不能删除内部的物理量。
 
 ```java
 // 为指定模板新增一组对齐的物理量，若其父节点在模板中已经存在，且不要求对齐，则报错
@@ -260,7 +245,7 @@ public void addUnalignedMeasurementsIntemplate(String templateName,
 public void deleteNodeInTemplate(String templateName, String path);
 ```
 
-* 对于已经创建的物理量模板，还可以通过以下接口查询模板信息：
+* 对于已经创建的元数据模板，还可以通过以下接口查询模板信息：
 
 ```java
 // 查询返回目前模板中所有物理量的数量
@@ -279,7 +264,7 @@ public List<String> showMeasurementsInTemplate(String templateName);
 public List<String> showMeasurementsInTemplate(String templateName, String pattern);
 ```
 
-* 将名为'templateName'的物理量模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的物理量模板
+* 将名为'templateName'的元数据模板挂载到'prefixPath'路径下，在执行这一步之前，你需要创建名为'templateName'的元数据模板
 
 ``` java
 void setSchemaTemplate(String templateName, String prefixPath)
@@ -290,7 +275,7 @@ void unsetSchemaTemplate(String prefixPath, String templateName)
 ```
 
 * 请注意，如果一个子树中有多个孩子节点需要使用模板，可以在其共同父母节点上使用 setSchemaTemplate 。而只有在已有数据点插入模板对应的物理量时，模板才会被设置为激活状态，进而被 show timeseries 等查询检测到。
-* 卸载'prefixPath'路径下的名为'templateName'的物理量模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的物理量模板。
+* 卸载'prefixPath'路径下的名为'templateName'的元数据模板。你需要保证给定的路径'prefixPath'下需要有名为'templateName'的元数据模板。
 
 注意：目前不支持从曾经在'prefixPath'路径及其后代节点使用模板插入数据后（即使数据已被删除）卸载模板。
 
@@ -459,7 +444,7 @@ void testInsertTablets(Map<String, Tablet> tablets)
 
 使用上述接口的示例代码在 ```example/session/src/main/java/org/apache/iotdb/SessionExample.java```
 
-使用对齐时间序列和物理量模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
+使用对齐时间序列和元数据模板的示例可以参见 `example/session/src/main/java/org/apache/iotdb/AlignedTimeseriesSessionExample.java`
 
 ## 针对原生接口的连接池
 

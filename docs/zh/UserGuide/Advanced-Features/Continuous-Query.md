@@ -23,6 +23,8 @@
 
 我们可以通过 SQL 语句注册、或卸载一个 CQ 实例，以及查询到所有已经注册的 CQ 配置信息。
 
+注意，目前连续查询尚未对分布式场景进行适配。敬请期待分布式版本。
+
 ## SQL 语句
 
 ### 创建 CQ
@@ -30,8 +32,8 @@
 #### 语法
 
 ```sql
-CREATE CONTINUOUS QUERY <cq_id> 
-[RESAMPLE EVERY <every_interval> FOR <for_interval>] 
+CREATE (CONTINUOUS QUERY | CQ) <cq_id> 
+[RESAMPLE EVERY <every_interval> FOR <for_interval> BOUNDARY <execution_boundary_time>] 
 BEGIN 
 SELECT <function>(<path_suffix>) INTO <full_path> | <node_name>
 FROM <path_prefix>
@@ -43,18 +45,26 @@ END
 
 * `<cq_id>` 指定 CQ 全局唯一的 id。
 * `<every_interval>` 指定查询执行时间间隔，支持 ns、us、ms、s、m、h、d、w 等单位，其值不应小于用户所配置的 `continuous_query_min_every_interval` 值。可选择指定。
-* `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。支持 ns、us、ms、s、m、h
-  、d、w 等单位。可选择指定。 
+* `<for_interval>` 指定每次查询的窗口大小，即查询时间范围为`[now() - <for_interval>, now())`，其中 `now()` 指查询时的时间戳。支持 ns、us、ms、s、m、h、d、w 等单位。可选择指定。 
+* `<execution_boundary_time>` 是一个日期参数，表示**第一个窗口的起始时间**。
+  * `<execution_boundary_time>` 可早于、等于、晚于**当前时间**。
+  * 该参数可选择指定，不指定的情况下等价于输入 `BOUNDARY now()`。
+  * **第一个窗口的结束时间**为  `<execution_boundary_time> + <for_interval>`。
+  * 第 ` i (1 <= i)` 个窗口的**开始时间** `<execution_boundary_time> + <for_interval> + （i - 1） * <every_interval>`。
+  * 第 ` i (1 <= i)` 个窗口的**结束时间** `<execution_boundary_time> + <for_interval> + i * <every_interval>`。
+  * 如果**当前时间**小于等于**第一个窗口的结束时间** ，那么连续查询的第一个执行时刻为**第一个窗口的结束时间**。
+  * 如果**当前时间**大于**第一个窗口的结束时间**，那么连续查询的第一个执行时刻为**第一个**大于等于**当前时间**的**窗口结束时间**。
+  * 每一个执行时刻执行的**查询时间范围**为`[now() - <for_interval>, now())`。
+
 * `<function>` 指定聚合函数，目前支持 `count`, `sum`, `avg`, `last_value`, `first_value`, `min_time`, `max_time`, `min_value`, `max_value` 等。
 * `<path_prefix>` 与 `<path_suffix>` 拼接成完整的查询原时间序列。
 * `<full_path>` 或 `<node_name>` 指定将查询出的数据写入的结果序列路径。
-* `<group_by_interval>` 指定时间分组长度，支持 ns、us、ms、s、m、h
-  、d、w、mo、y 等单位。
+* `<group_by_interval>` 指定时间分组长度，支持 ns、us、ms、s、m、h、d、w、mo、y 等单位。
 * `<level>`指按照序列第 `<level>` 层分组，将第 `<level>` 层同名的所有序列聚合。Group By Level 语句的具体语义及 `<level>` 的定义见 [路径层级分组聚合](../IoTDB-SQL-Language/DML-Data-Manipulation-Language.md)。
 
 注：
 
-* `<for_interval>`,`<every_interval>` 可选择指定。如果用户没有指定其中的某一项，则未指定项的值按照`<group_by_interval>` 处理。
+* `<for_interval>`, `<every_interval>` 可选择指定。如果用户没有指定其中的某一项，则未指定项的值按照`<group_by_interval>` 处理。
     * `<every_interval>`，`<for_interval>`，`<group_by_interval>` 的值均应大于 0。
     * `<group_by_interval>` 的值应小于`<for_interval>`的值，否则系统会按照等于`<for_interval>`的值处理。 
     * 用户应当结合实际需求指定合适的 `<for_interval>` 与 `<every_interval>`。
@@ -108,13 +118,20 @@ END
 （若未指定 `<level>`，则应小于等于 `<path_prefix>` 层级）。在上例中，`x` 应当小于等于 `2`。
 
 ##### 创建 `cq1`
-````
-CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature_max FROM root.ln.*.* GROUP BY time(10s) END
+````sql
+CREATE CONTINUOUS QUERY cq1 
+BEGIN 
+  SELECT max_value(temperature) 
+  INTO temperature_max 
+  FROM root.ln.*.* 
+  GROUP BY time(10s) 
+END
 ````
 
 每隔 10s 查询 `root.ln.*.*.temperature` 在前 10s 内的最大值（结果以 10s 为一组），
 将结果写入到 `root.${1}.${2}.${3}.temperature_max` 中，
 结果将产生 4 条新序列：
+
 ````
 +---------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                       timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -136,8 +153,15 @@ CREATE CONTINUOUS QUERY cq1 BEGIN SELECT max_value(temperature) INTO temperature
 +-----------------------------+---------------------------------+---------------------------------+---------------------------------+---------------------------------+
 ````
 ##### 创建 `cq2`
-````
-CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
+````sql
+CREATE CONTINUOUS QUERY cq2 
+RESAMPLE EVERY 20s FOR 20s 
+BEGIN 
+  SELECT avg(temperature) 
+  INTO temperature_avg 
+  FROM root.ln.*.* 
+  GROUP BY time(10s), level=2 
+END
 ````
 
 每隔 20s 查询 `root.ln.*.*.temperature` 在前 20s 内的平均值（结果以 10s 为一组，按照第 2 层节点分组），
@@ -165,13 +189,21 @@ CREATE CONTINUOUS QUERY cq2 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 +-----------------------------+----------------------------+----------------------------+
 ````
 ##### 创建 `cq3`
-````
-CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperature) INTO root.ln_cq.${2}.temperature_avg FROM root.ln.*.* GROUP BY time(10s), level=2 END
+````sql
+CREATE CONTINUOUS QUERY cq3 
+RESAMPLE EVERY 20s FOR 20s 
+BEGIN 
+  SELECT avg(temperature) 
+  INTO root.ln_cq.${2}.temperature_avg 
+  FROM root.ln.*.* 
+  GROUP BY time(10s), level=2 
+END
 ````
 查询模式与 cq2 相同，在这个例子中，用户自行指定结果写入到 `root.ln_cq.${2}.temperature_avg` 中。
 结果将产生如下两条新序列，
 其中 `root.ln_cq.wf02.temperature_avg` 由 `root.ln.wf02.wt02.temperature` 和 `root.ln.wf02.wt01.temperature` 聚合计算生成，
 `root.ln_cq.wf01.temperature_avg` 由 `root.ln.wf01.wt02.temperature` 和 `root.ln.wf01.wt01.temperature` 聚合计算生成。
+
 ````
 +-------------------------------+-----+-------------+--------+--------+-----------+----+----------+
 |                     timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
@@ -191,32 +223,64 @@ CREATE CONTINUOUS QUERY cq3 RESAMPLE EVERY 20s FOR 20s BEGIN SELECT avg(temperat
 +-----------------------------+-------------------------------+-------------------------------+
 ````
 
-### 展示 CQ 信息
-#### 语法
+##### 创建 `cq4`
+
+````sql
+CREATE CONTINUOUS QUERY cq4 
+RESAMPLE EVERY 20s FOR 20s BOUNDARY 2022-01-14T23:00:00.000+08:00 
+BEGIN 
+  SELECT avg(temperature) 
+  INTO root.ln_cq.${2}.temperature_avg 
+  FROM root.ln.*.* GROUP BY time(10s), level=2 
+END
 ````
-SHOW CONTINUOUS QUERIES 
+
+这个例子与创建 cq3 几乎完全相同。不同的是，在这个例子中用户自行指定了 `BOUNDARY 2022-01-14T23:00:00.000+08:00 ` 。
+
+注意这个 CQ 的第一个执行时刻大于例子中的时间，因此 `2022-01-14T23:00:20.000+08:00` 为第一个执行时刻。递推地，`2022-01-14T23:00:40.000+08:00` 为第二个执行时刻，`2022-01-14T23:01:00.000+08:00` 为第三个执行时刻…… 
+
+第一个执行时刻执行的 SQL 语句为 `select avg(temperature) from root.ln.*.* group by ([2022-01-14T23:00:00.000+08:00, 2022-01-14T23:00:20.000+08:00), 10s), level = 2`。
+
+第二个执行时刻执行的 SQL 语句为 `select avg(temperature) from root.ln.*.* group by ([2022-01-14T23:00:20.000+08:00, 2022-01-14T23:00:40.000+08:00), 10s), level = 2`。
+
+第三个执行时刻执行的 SQL 语句为 `select avg(temperature) from root.ln.*.* group by ([2022-01-14T23:00:40.000+08:00, 2022-01-14T23:01:00.000+08:00), 10s), level = 2`。
+
+……
+
+
+### 展示 CQ 信息
+
+#### 语法
+````sql
+SHOW (CONTINUOUS QUERIES | CQS) 
 ````
 #### 结果示例
 ````
-+-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
-|cq name|every interval|for interval|                                                                               query sql|                        target path|
-+-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
-|    cq1|         10000|       10000|     select max_value(temperature) from root.ln.*.* group by ([now() - 10s, now()), 10s)|root.${1}.${2}.${3}.temperature_max|
-|    cq3|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|    root.ln_cq.${2}.temperature_avg|
-|    cq2|         20000|       20000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|     root.${1}.${2}.temperature_avg|
-+-------+--------------+------------+----------------------------------------------------------------------------------------+-----------------------------------+
++-------+--------------+------------+-------------+----------------------------------------------------------------------------------------+-----------------------------------+
+|cq name|every interval|for interval|     boundary|                                                                               query sql|                        target path|
++-------+--------------+------------+-------------+----------------------------------------------------------------------------------------+-----------------------------------+
+|    cq1|         10000|       10000|1642166102238|     select max_value(temperature) from root.ln.*.* group by ([now() - 10s, now()), 10s)|root.${1}.${2}.${3}.temperature_max|
+|    cq3|         20000|       20000|1642166118339|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|    root.ln_cq.${2}.temperature_avg|
+|    cq2|         20000|       20000|1642166111493|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|     root.${1}.${2}.temperature_avg|
+|    cq4|         20000|       20000|1642172400000|select avg(temperature) from root.ln.*.* group by ([now() - 20s, now()), 10s), level = 2|    root.ln_cq.${2}.temperature_avg|
++-------+--------------+------------+-------------+----------------------------------------------------------------------------------------+-----------------------------------+
 ````
 ### 删除 CQ
 #### 语法
-````
-DROP CONTINUOUS QUERY <cq_id> 
+````sql
+DROP (CONTINUOUS QUERY | CQ) <cq_id> 
 ````
 #### 示例
-````
+````sql
 DROP CONTINUOUS QUERY cq3
 ````
 
+``` sql
+DROP CQ cq3
+```
+
 ## 系统参数配置
+
 | 参数名          | 描述           |  数据类型| 默认值 |
 | :---------------------------------- |-------- | ----| -----|
 | `continuous_query_execution_thread` | 执行连续查询任务的线程池的线程数 | int | max(1, CPU 核数 / 2)|

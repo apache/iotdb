@@ -33,7 +33,7 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 
 ### 系统文件
 
-系统 Schema 文件，存储了数据文件的元数据信息。可通过 base_dir 配置项进行配置（详情见 [base_dir 配置项](../Appendix/Config-Manual.md)）。
+系统 Schema 文件，存储了数据文件的元数据信息。可通过 system_dir 配置项进行配置（详情见 [system_dir 配置项](../Appendix/Config-Manual.md)）。
 
 ### 写前日志文件
 
@@ -43,12 +43,12 @@ IoTDB 需要存储的数据分为三类，分别为数据文件、系统文件�
 
 接下来我们将举一个数据目录配置的例子，来具体说明如何配置数据的存储目录。
 
-IoTDB 涉及到的所有数据目录路径有：data_dirs, multi_dir_strategy, base_dir 和 wal_dir，它们分别涉及的是 IoTDB 的数据文件、数据文件多目录存储策略、系统文件以及写前日志文件。您可以选择输入路径自行配置，也可以不进行任何操作使用系统默认的配置项。
+IoTDB 涉及到的所有数据目录路径有：data_dirs, multi_dir_strategy, system_dir 和 wal_dir，它们分别涉及的是 IoTDB 的数据文件、数据文件多目录存储策略、系统文件以及写前日志文件。您可以选择输入路径自行配置，也可以不进行任何操作使用系统默认的配置项。
 
 以下我们给出一个用户对五个目录都进行自行配置的例子。
 
 ```
-base_dir = $IOTDB_HOME/data
+system_dir = $IOTDB_HOME/data
 data_dirs = /data1/data, /data2/data, /data3/data 
 multi_dir_strategy=MaxDiskUsableSpaceFirstStrategy
 wal_dir= $IOTDB_HOME/data/wal

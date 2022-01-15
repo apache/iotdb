@@ -139,6 +139,8 @@ components:
       properties:
         sql:
           type: string
+        rowLimit:
+          type: Integer
 
     InsertTabletRequest:
       title: InsertTabletRequest
