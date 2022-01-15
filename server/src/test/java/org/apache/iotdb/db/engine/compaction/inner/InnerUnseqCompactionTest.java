@@ -364,10 +364,8 @@ public class InnerUnseqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              //              InnerSpaceCompactionUtils.compact(targetTsFileResource,
-              // toMergeResources, false);
-              //              InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource,
-              // COMPACTION_TEST_SG);
+              // InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, false);
+              // InnerSpaceCompactionUtils.moveTargetFile(targetTsFileResource, COMPACTION_TEST_SG);
               CompactionUtils.compact(
                   Collections.emptyList(),
                   toMergeResources,

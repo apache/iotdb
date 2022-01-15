@@ -109,7 +109,7 @@ public class CompactionFileGeneratorUtils {
     if (sequence) {
       return new TsFileResource(
           new File(
-              TestConstant.OUTPUT_DATA_DIR
+              TestConstant.BASE_OUTPUT_PATH
                   .concat(File.separator)
                   .concat("sequence")
                   .concat(File.separator)
@@ -131,7 +131,7 @@ public class CompactionFileGeneratorUtils {
     } else {
       return new TsFileResource(
           new File(
-              TestConstant.OUTPUT_DATA_DIR
+              TestConstant.BASE_OUTPUT_PATH
                   .concat(File.separator)
                   .concat("unsequence")
                   .concat(File.separator)

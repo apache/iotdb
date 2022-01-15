@@ -54,7 +54,7 @@ public class TsFileSequenceRead {
   }) // Suppress high Cognitive Complexity and Standard outputs warning
   public static void main(String[] args) throws IOException {
     String filename =
-        "C:\\IOTDB\\projects\\choubenson\\iotdb\\server\\target\\10001-10001-1-0.tsfile";
+        "C:\\IOTDB\\projects\\choubenson\\iotdb\\server\\target\\unsequence\\root.compactionTest\\0\\0\\10001-10001-0-0.tsfile";
     if (args.length >= 1) {
       filename = args[0];
     }
