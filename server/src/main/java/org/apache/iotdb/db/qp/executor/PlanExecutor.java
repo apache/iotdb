@@ -1113,7 +1113,7 @@ public class PlanExecutor implements IPlanExecutor {
     File file = plan.getFile();
     if (!file.exists()) {
       throw new QueryProcessException(
-          String.format("File path %s doesn't exists.", file.getPath()));
+          String.format("File path '%s' doesn't exists.", file.getPath()));
     }
     if (file.isDirectory()) {
       loadDir(file, plan);
@@ -1359,9 +1359,9 @@ public class PlanExecutor implements IPlanExecutor {
 
   private void operateRemoveFile(OperateFilePlan plan) throws QueryProcessException {
     try {
-      if (!StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
+      if (!plan.getFile().exists() || !StorageEngine.getInstance().deleteTsfile(plan.getFile())) {
         throw new QueryProcessException(
-            String.format("File %s doesn't exist.", plan.getFile().getName()));
+            String.format("File '%s' doesn't exist.", plan.getFile().getAbsolutePath()));
       }
     } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
@@ -1372,18 +1372,19 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateUnloadFile(OperateFilePlan plan) throws QueryProcessException {
     if (!plan.getTargetDir().exists() || !plan.getTargetDir().isDirectory()) {
       throw new QueryProcessException(
-          String.format("Target dir %s is invalid.", plan.getTargetDir().getPath()));
+          String.format("Target dir '%s' is invalid.", plan.getTargetDir().getAbsolutePath()));
     }
     try {
-      if (!StorageEngine.getInstance().unloadTsfile(plan.getFile(), plan.getTargetDir())) {
+      if (!plan.getFile().exists()
+          || !StorageEngine.getInstance().unloadTsfile(plan.getFile(), plan.getTargetDir())) {
         throw new QueryProcessException(
-            String.format("File %s doesn't exist.", plan.getFile().getName()));
+            String.format("File '%s' doesn't exist.", plan.getFile().getAbsolutePath()));
       }
     } catch (StorageEngineException | IllegalPathException e) {
       throw new QueryProcessException(
           String.format(
-              "Cannot unload file %s to target directory %s because %s",
-              plan.getFile().getPath(), plan.getTargetDir().getPath(), e.getMessage()));
+              "Cannot unload file '%s' to target directory '%s' because %s",
+              plan.getFile().getAbsolutePath(), plan.getTargetDir().getPath(), e.getMessage()));
     }
   }
 

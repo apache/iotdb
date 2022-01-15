@@ -950,8 +950,19 @@ public class StorageEngine implements IService {
    * @param file internal file
    * @return sg name
    */
-  public String getSgByEngineFile(File file) {
-    return file.getParentFile().getParentFile().getParentFile().getName();
+  public String getSgByEngineFile(File file) throws IllegalPathException {
+    File dataDir =
+        file.getParentFile().getParentFile().getParentFile().getParentFile().getParentFile();
+    if (dataDir.exists()) {
+      String[] dataDirs = IoTDBDescriptor.getInstance().getConfig().getDataDirs();
+      for (String dir : dataDirs) {
+        File f = new File(dir);
+        if (dataDir.getAbsolutePath().equals(f.getAbsolutePath())) {
+          return file.getParentFile().getParentFile().getParentFile().getName();
+        }
+      }
+    }
+    throw new IllegalPathException(file.getAbsolutePath(), "it's not an internal tsfile.");
   }
 
   /** @return TsFiles (seq or unseq) grouped by their storage group and partition number. */
