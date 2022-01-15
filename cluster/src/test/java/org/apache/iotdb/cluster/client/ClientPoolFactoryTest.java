@@ -48,8 +48,10 @@ public class ClientPoolFactoryTest {
 
   private long mockMaxWaitTimeoutMs = 10 * 1000L;
   private int mockMaxClientPerMember = 10;
+  private int mockMaxIdleClientPerMember = 5;
 
   private int maxClientPerNodePerMember = clusterConfig.getMaxClientPerNodePerMember();
+  private int maxIdleClientPerNodePerMember = clusterConfig.getMaxIdleClientPerNodePerMember();
   private long waitClientTimeoutMS = clusterConfig.getWaitClientTimeoutMS();
 
   private ClientPoolFactory clientPoolFactory;
@@ -58,6 +60,7 @@ public class ClientPoolFactoryTest {
   @Before
   public void setUp() {
     clusterConfig.setMaxClientPerNodePerMember(mockMaxClientPerMember);
+    clusterConfig.setMaxIdleClientPerNodePerMember(mockMaxIdleClientPerMember);
     clusterConfig.setWaitClientTimeoutMS(mockMaxWaitTimeoutMs);
     clientPoolFactory = new ClientPoolFactory();
     mockClientManager =
@@ -80,6 +83,7 @@ public class ClientPoolFactoryTest {
   @After
   public void tearDown() {
     clusterConfig.setMaxClientPerNodePerMember(maxClientPerNodePerMember);
+    clusterConfig.setMaxIdleClientPerNodePerMember(maxIdleClientPerNodePerMember);
     clusterConfig.setWaitClientTimeoutMS(waitClientTimeoutMS);
   }
 
@@ -134,9 +138,6 @@ public class ClientPoolFactoryTest {
     GenericKeyedObjectPool<Node, RaftService.AsyncClient> pool =
         clientPoolFactory.createAsyncDataPool(ClientCategory.DATA);
 
-    int oldMaxTotalPerKey = pool.getMaxTotalPerKey();
-    pool.setMaxTotalPerKey(2 * pool.getMaxIdlePerKey());
-
     Node node = constructDefaultNode();
     List<RaftService.AsyncClient> clientList = new ArrayList<>();
     for (int i = 0; i < pool.getMaxTotalPerKey(); i++) {
@@ -157,8 +158,6 @@ public class ClientPoolFactoryTest {
       Assert.assertNotNull(client);
       Assert.assertTrue(clientList.contains(client));
     }
-
-    pool.setMaxTotalPerKey(oldMaxTotalPerKey);
   }
 
   @Test
