@@ -124,7 +124,8 @@ public class RawDataQueryExecutor {
         TSDataType dataType = path.getSeriesType();
 
         QueryDataSource queryDataSource =
-            QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+            QueryResourceManager.getInstance()
+                .getQueryDataSource(path, context, timeFilter, queryPlan.isAscending());
         timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
 
         ManagedSeriesReader reader =
@@ -283,7 +284,8 @@ public class RawDataQueryExecutor {
         allSensors,
         dataType,
         context,
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, null),
+        QueryResourceManager.getInstance()
+            .getQueryDataSource(path, context, null, queryPlan.isAscending()),
         null,
         queryPlan.isAscending());
   }
