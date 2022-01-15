@@ -55,10 +55,6 @@ public class Planner {
         sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
   }
 
-  public PhysicalPlan operatorToPhysicalPlan(Operator operator) throws QueryProcessException {
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
   public PhysicalPlan parseSQLToPhysicalPlan(
       String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws QueryProcessException {
@@ -83,6 +79,28 @@ public class Planner {
     // from TSLastDataQueryReq to logical operator
     Operator operator = LogicalGenerator.generate(lastDataQueryReq, zoneId);
     return generatePhysicalPlanFromOperator(operator, clientVersion);
+  }
+
+  public PhysicalPlan parseSQLToRestQueryPlan(String sqlStr, ZoneId zoneId)
+      throws QueryProcessException {
+    // from SQL to logical operator
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // extra check for rest query
+    PhysicalPlanValidationHandler.checkRestQuery(operator);
+    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
+  }
+
+  public PhysicalPlan parseSQLToGrafanaQueryPlan(String sqlStr, ZoneId zoneId)
+      throws QueryProcessException {
+    // from SQL to logical operator
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
+    // extra check for grafana query
+    PhysicalPlanValidationHandler.checkGrafanaQuery(operator);
+    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
+  }
+
+  public PhysicalPlan operatorToPhysicalPlan(Operator operator) throws QueryProcessException {
+    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   private PhysicalPlan generatePhysicalPlanFromOperator(
@@ -152,23 +170,4 @@ public class Planner {
     operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator()));
     return operator;
   }
-
-  public PhysicalPlan parseSQLToRestQueryPlan(String sqlStr, ZoneId zoneId)
-          throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // extra check for rest query
-    PhysicalPlanValidationHandler.checkRestQuery(operator);
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
-  public PhysicalPlan parseSQLToGrafanaQueryPlan(String sqlStr, ZoneId zoneId)
-          throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // extra check for grafana query
-    PhysicalPlanValidationHandler.checkGrafanaQuery(operator);
-    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
-  }
-
 }
