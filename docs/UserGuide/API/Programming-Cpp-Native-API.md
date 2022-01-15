@@ -31,18 +31,9 @@
 - GCC 5.5.0+
 
 
-## Installation
+## Installation From Source Code
 
-### Download From the Official Website
-
-Download zip from the official website. This is the recommended method, in which you will get a package which is out-of-the-box.
-
-Dowload Link: [Apache Archives | IoTDB](https://archive.apache.org/dist/iotdb/)
-
-
-### Installation From Source Code
-
-#### Install CPP Dependencies
+### Install CPP Dependencies
 
 - **MAC**
 
@@ -119,7 +110,7 @@ Dowload Link: [Apache Archives | IoTDB](https://archive.apache.org/dist/iotdb/)
         * Download and install [OpenSSL](http://slproweb.com/products/Win32OpenSSL.html) .
 
 
-#### Compile
+### Compile
 
 You can download the source code from:
 ```shell
@@ -142,7 +133,7 @@ Under the root path of iotdb:
     ```shell
     mvn package -P compile-cpp -pl client-cpp, server, example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
     ```
-    - When building client-cpp project, use `-Dcmake.generator=""` option to specify a Cmake generator. E.g. `-Dcmake.generator="Visual Studio 16 2019"`
+    - When building client-cpp project, use `-Dcmake.generator=""` option to specify a Cmake generator. E.g. `-Dcmake.generator="Visual Studio 16 2019"` (`cmake --help` shows a long list of supported Cmake generators.)
     - To help CMake find your Boost libraries on windows, you should set `-DboostIncludeDir="C:\Program Files (x86)\boost_1_78_0" -DboostLibraryDir="C:\Program Files (x86)\boost_1_78_0\stage\lib"` to your mvn build command.
 ``
 

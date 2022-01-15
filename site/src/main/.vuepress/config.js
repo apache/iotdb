@@ -699,7 +699,6 @@ var config = {
 					},
 					{
 						title: 'API',
-						sidebarDepth: 1,
 						children: [
 							['API/Programming-Java-Native-API','Java Native API'],
 							['API/Programming-JDBC','JDBC (Not Recommend)'],
@@ -1505,7 +1504,6 @@ var config = {
 					},
 					{
 						title: '应用编程接口',
-						sidebarDepth: 1,
 						children: [
 							['API/Programming-Java-Native-API','Java 原生接口'],
 							['API/Programming-JDBC','JDBC (不推荐)'],

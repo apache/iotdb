@@ -34,15 +34,7 @@
 
 ## 安装
 
-### 从官网下载（推荐）
-
-从官方网站直接下载，您将获得一个开箱即用的包。
-
-下载链接：[Apache Archives | IoTDB](https://archive.apache.org/dist/iotdb/)
-
-### 从源代码构建
-
-#### 安装相关依赖
+### 安装相关依赖
 
 - **MAC**
 
@@ -112,7 +104,7 @@
        * 下载安装 [OpenSSL](http://slproweb.com/products/Win32OpenSSL.html) 。
 
 
-#### 执行编译
+### 执行编译
 
 从 git 克隆源代码:
 ```shell
@@ -135,7 +127,7 @@ git checkout rel/0.13
     ```shell
     mvn package -P compile-cpp -pl client-cpp, server, example/client-cpp-example -am -Dcmake.generator="your cmake generator" -Dboost.include.dir=${your boost header folder} -Dboost.library.dir=${your boost lib (stage) folder} -DskipTests
     ```
-     - CMake 根据不同编译平台使用不同的生成器，需添加`-Dcmake.generator=""`选项来指定使用的生成器名称，例如： `-Dcmake.generator="Visual Studio 16 2019"`
+     - CMake 根据不同编译平台使用不同的生成器，需添加`-Dcmake.generator=""`选项来指定使用的生成器名称，例如： `-Dcmake.generator="Visual Studio 16 2019"`。（通过`cmake --help`命令可以查看 CMake 支持的生成器列表）
      - 为了帮助 CMake 找到本地安装好的 Boost，在编译命令中需添加相关参数，例如：`-DboostIncludeDir="C:\Program Files (x86)\boost_1_78_0" -DboostLibraryDir="C:\Program Files (x86)\boost_1_78_0\stage\lib"`
 
 编译成功后，打包好的 zip 文件位于 `client-cpp/target/client-cpp-${project.version}-cpp-${os}.zip`
