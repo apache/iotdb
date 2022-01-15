@@ -21,10 +21,20 @@ package org.apache.iotdb.db.newsync.receiver.load;
 import org.apache.iotdb.db.exception.LoadFileException;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.MManager;
 
 public class SchemaLoader implements ILoader {
   @Override
   public boolean load() throws StorageEngineException, LoadFileException, MetadataException {
     return false;
+  }
+
+  public void createTimeseries(){
+//    MManager.getInstance().createTimeseries();
+//    MManager.getInstance().createAlignedTimeSeries();
+  }
+
+  public void setStorageGroup() throws MetadataException {
+    MManager.getInstance().setStorageGroup(null);
   }
 }
