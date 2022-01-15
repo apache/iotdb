@@ -53,6 +53,7 @@ public class IoTDBNewTsFileCompactionIT {
   private int preMaxNumberOfPointsInPage;
   private PartialPath storageGroupPath;
   private int originCompactionFileNum;
+  private long originSeqTsFileSize;
   // the unit is ns
   private static final long MAX_WAIT_TIME_FOR_MERGE = Long.MAX_VALUE;
   private static final float FLOAT_DELTA = 0.00001f;
@@ -69,7 +70,9 @@ public class IoTDBNewTsFileCompactionIT {
     TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(1);
     originCompactionFileNum =
         IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
+    originSeqTsFileSize = IoTDBDescriptor.getInstance().getConfig().getSeqTsFileSize();
     IoTDBDescriptor.getInstance().getConfig().setMaxCompactionCandidateFileNum(2);
+    IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(1);
     EnvironmentUtils.envSetUp();
     Class.forName(Config.JDBC_DRIVER_NAME);
 
@@ -94,6 +97,7 @@ public class IoTDBNewTsFileCompactionIT {
     TSFileDescriptor.getInstance()
         .getConfig()
         .setMaxNumberOfPointsInPage(preMaxNumberOfPointsInPage);
+    IoTDBDescriptor.getInstance().getConfig().setSeqTsFileSize(originSeqTsFileSize);
   }
 
   /**
