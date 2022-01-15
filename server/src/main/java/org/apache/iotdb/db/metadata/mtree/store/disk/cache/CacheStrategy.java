@@ -162,6 +162,10 @@ public class CacheStrategy implements ICacheStrategy {
   @Override
   public void pinMNode(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
+    if (cacheEntry == null) {
+      cacheEntry = new CacheEntry();
+      node.setCacheEntry(cacheEntry);
+    }
     cacheEntry.pin();
   }
 
@@ -169,6 +173,12 @@ public class CacheStrategy implements ICacheStrategy {
   public void unPinMNode(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.unPin();
+  }
+
+  @Override
+  public boolean isPinned(IMNode node) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    return cacheEntry != null && cacheEntry.isPinned();
   }
 
   @Override

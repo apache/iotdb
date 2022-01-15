@@ -71,6 +71,7 @@ public class CachedMTreeStore implements IMTreeStore {
         node = file.getChildNode(parent, name);
         if (node != null && cacheStrategy.isCached(parent)) {
           if (cacheMNodeInMemory(node)) {
+            parent.addChild(name, node);
             cacheStrategy.updateCacheStatusAfterRead(node);
           }
         }
@@ -83,9 +84,24 @@ public class CachedMTreeStore implements IMTreeStore {
     return node;
   }
 
+  // must pin parent first
   @Override
   public IMNode getPinnedChild(IMNode parent, String name) {
-    return null;
+    IMNode node = parent.getChild(name);
+    if (node == null) {
+      if (!getCachedMNodeContainer(parent).isVolatile()) {
+        node = file.getChildNode(parent, name);
+        if (node != null) {
+          pinMNodeInMemory(node);
+          cacheStrategy.updateCacheStatusAfterRead(node);
+          parent.addChild(node);
+        }
+      }
+    } else {
+      pinMNodeInMemory(node);
+      cacheStrategy.updateCacheStatusAfterRead(node);
+    }
+    return node;
   }
 
   @Override
@@ -93,14 +109,11 @@ public class CachedMTreeStore implements IMTreeStore {
     return new CachedMNodeIterator(parent);
   }
 
+  // must pin parent first
   @Override
   public void addChild(IMNode parent, String childName, IMNode child) {
-    if (cacheMNodeInMemory(child)) {
-      cacheStrategy.updateCacheStatusAfterAppend(child);
-    } else {
-      parent.addChild(childName, child);
-      file.writeMNode(parent);
-    }
+    pinMNodeInMemory(child);
+    cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
   @Override
@@ -165,7 +178,6 @@ public class CachedMTreeStore implements IMTreeStore {
   }
 
   private void executeMemoryRelease() {
-
     flushVolatileNodes();
     List<IMNode> evictedMNodes;
     while (!memManager.isUnderThreshold()) {
@@ -183,6 +195,14 @@ public class CachedMTreeStore implements IMTreeStore {
       if (cacheStrategy.isCached(volatileNode)) {
         cacheStrategy.updateCacheStatusAfterPersist(volatileNode);
       }
+    }
+  }
+
+  private void pinMNodeInMemory(IMNode node) {
+    memManager.requestPinnedMemResource(node);
+    cacheStrategy.pinMNode(node);
+    if (!memManager.isUnderThreshold()) {
+      executeMemoryRelease();
     }
   }
 

@@ -32,5 +32,9 @@ public interface IMemManager {
 
   void releaseMemResource(IMNode node);
 
+  void requestPinnedMemResource(IMNode node);
+
+  void releasePinnedMemResource(IMNode node);
+
   void clear();
 }

@@ -26,6 +26,8 @@ public class MemManager implements IMemManager {
 
   private int size;
 
+  private int pinnedSize;
+
   @Override
   public void initCapacity(int capacity) {
     this.capacity = capacity;
@@ -38,12 +40,12 @@ public class MemManager implements IMemManager {
 
   @Override
   public boolean isUnderThreshold() {
-    return size <= capacity * 0.6;
+    return size <= (capacity - pinnedSize) * 0.6;
   }
 
   @Override
   public boolean requestMemResource(IMNode node) {
-    if (size < capacity - 1) {
+    if (size < capacity - 1 - pinnedSize) {
       size++;
       return true;
     }
@@ -53,6 +55,16 @@ public class MemManager implements IMemManager {
   @Override
   public void releaseMemResource(IMNode node) {
     size--;
+  }
+
+  @Override
+  public void requestPinnedMemResource(IMNode node) {
+    pinnedSize++;
+  }
+
+  @Override
+  public void releasePinnedMemResource(IMNode node) {
+    pinnedSize--;
   }
 
   @Override

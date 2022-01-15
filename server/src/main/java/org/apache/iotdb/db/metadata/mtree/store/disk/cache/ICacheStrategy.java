@@ -44,5 +44,7 @@ public interface ICacheStrategy {
 
   void unPinMNode(IMNode node);
 
+  boolean isPinned(IMNode node);
+
   void clear();
 }
