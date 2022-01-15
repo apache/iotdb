@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.library.dquality;
+package org.apache.iotdb.library.dmatch;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
