@@ -850,7 +850,8 @@ RS_BRACKET : ']';
 // String Literal
 
 STRING_LITERAL
-    : '\'' ((~'\'') | '\'\'')* '\''
+    : DQUOTA_STRING
+    | SQUOTA_STRING
     ;
 
 
@@ -906,9 +907,15 @@ NAN_LITERAL
  */
 
 ID
-    : FIRST_NAME_CHAR NAME_CHAR*
-    | '"' (~('"' | '.') | '""')+ '"'
-    | '`' (~('`' | '.') | '``')+ '`'
+    : NAME_CHAR+
+    ;
+
+QUTOED_ID_WITHOUT_DOT
+    : BQUOTA_STRING_WITHOUT_DOT
+    ;
+
+QUTOED_ID
+    : BQUOTA_STRING
     ;
 
 fragment NAME_CHAR
@@ -925,23 +932,25 @@ fragment NAME_CHAR
     | CN_CHAR
     ;
 
-fragment FIRST_NAME_CHAR
-    : 'A'..'Z'
-    | 'a'..'z'
-    | '_'
-    | ':'
-    | '@'
-    | '#'
-    | '$'
-    | '{'
-    | '}'
-    | CN_CHAR
-    ;
-
 fragment CN_CHAR
     : '\u2E80'..'\u9FFF'
     ;
 
+fragment DQUOTA_STRING
+    : '"' ( '\\'. | '""' | ~('"'| '\\') )* '"'
+    ;
+
+fragment SQUOTA_STRING
+    : '\'' ('\\'. | '\'\'' | ~('\'' | '\\'))* '\''
+    ;
+
+fragment BQUOTA_STRING
+    : '`' ( '\\'. | '``' | ~('`'|'\\'))* '`'
+    ;
+
+fragment BQUOTA_STRING_WITHOUT_DOT
+    : '`' ( '\\'. | '``' | ~('`'|'\\'|'.'))* '`'
+    ;
 
 // Characters and write it this way for case sensitivity
 
