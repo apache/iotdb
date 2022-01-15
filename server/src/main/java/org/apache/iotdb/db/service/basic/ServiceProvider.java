@@ -146,7 +146,11 @@ public abstract class ServiceProvider {
   }
 
   public BasicOpenSessionResp openSession(
-      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      String username,
+      String password,
+      String zoneId,
+      TSProtocolVersion tsProtocolVersion,
+      IoTDBConstant.ClientVersion clientVersion)
       throws TException {
     BasicOpenSessionResp openSessionResp = new BasicOpenSessionResp();
 
@@ -180,7 +184,8 @@ public abstract class ServiceProvider {
       openSessionResp.setCode(TSStatusCode.SUCCESS_STATUS.getStatusCode());
       openSessionResp.setMessage("Login successfully");
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
+
       LOGGER.info(
           "{}: Login status: {}. User : {}, opens Session-{}",
           IoTDBConstant.GLOBAL_DB_NAME,
@@ -191,12 +196,19 @@ public abstract class ServiceProvider {
       openSessionResp.setMessage(loginMessage != null ? loginMessage : "Authentication failed.");
       openSessionResp.setCode(TSStatusCode.WRONG_LOGIN_PASSWORD_ERROR.getStatusCode());
 
-      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId);
+      sessionId = SESSION_MANAGER.requestSessionId(username, zoneId, clientVersion);
       AUDIT_LOGGER.info("User {} opens Session failed with an incorrect password", username);
     }
 
     SessionTimeoutManager.getInstance().register(sessionId);
     return openSessionResp.sessionId(sessionId);
+  }
+
+  public BasicOpenSessionResp openSession(
+      String username, String password, String zoneId, TSProtocolVersion tsProtocolVersion)
+      throws TException {
+    return openSession(
+        username, password, zoneId, tsProtocolVersion, IoTDBConstant.ClientVersion.V_0_12);
   }
 
   public boolean closeSession(long sessionId) {

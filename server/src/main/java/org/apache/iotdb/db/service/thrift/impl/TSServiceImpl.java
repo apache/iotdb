@@ -251,11 +251,21 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
+    IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     BasicOpenSessionResp openSessionResp =
-        serviceProvider.openSession(req.username, req.password, req.zoneId, req.client_protocol);
+        serviceProvider.openSession(
+            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
+  }
+
+  private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    if (configuration != null && configuration.containsKey("version")) {
+      return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
+    }
+    return IoTDBConstant.ClientVersion.V_0_12;
   }
 
   @Override

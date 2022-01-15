@@ -401,6 +401,10 @@ UDF 的使用方法与普通内建函数的类似。
 * 支持值过滤
 * 支持时间过滤
 
+### 对齐时间序列查询
+
+UDF 查询目前不支持对对齐时间序列(Aligned Timeseries)进行查询，当您在`SELECT`子句中选择的序列中包含对齐时间序列时，会提示错误。
+
 ### 带 * 查询
 
 假定现在有时间序列 `root.sg.d1.s1`和 `root.sg.d1.s2`。
@@ -502,7 +506,7 @@ SHOW FUNCTIONS
 
 ## 已知的 UDF 库实现
 
-+ [IoTDB-Quality](https://thulab.github.io/iotdb-quality)，一个关于数据质量的 UDF 库实现，包括数据画像、数据质量评估与修复等一系列函数。
++ [IoTDB-Quality](../Library-UDF/Get-Started.md)，一个关于数据质量的 UDF 库实现，包括数据画像、数据质量评估与修复等一系列函数。
 
 ## Q&A
 

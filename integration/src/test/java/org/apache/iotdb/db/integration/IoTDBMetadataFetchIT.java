@@ -586,7 +586,7 @@ public class IoTDBMetadataFetchIT {
             "COUNT NODES root.ln.wf01.* level=3",
             "COUNT NODES root.ln.wf01.* level=4"
           };
-      String[] standards = new String[] {"3,\n", "1,\n", "0,\n", "0,\n", "2,\n", "0,\n"};
+      String[] standards = new String[] {"3,\n", "1,\n", "1,\n", "1,\n", "2,\n", "0,\n"};
       for (int n = 0; n < sqls.length; n++) {
         String sql = sqls[n];
         String standard = standards[n];

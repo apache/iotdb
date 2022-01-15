@@ -46,7 +46,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class SettleService implements IService {
   private static final Logger logger = LoggerFactory.getLogger(SettleService.class);
 
-  private AtomicInteger threadCnt = new AtomicInteger();
   private ExecutorService settleThreadPool;
   private boolean isRecoverFinish;
 
