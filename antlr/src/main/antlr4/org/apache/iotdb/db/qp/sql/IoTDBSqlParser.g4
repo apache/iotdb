@@ -442,12 +442,12 @@ whereClause
 
 // Create User
 createUser
-    : CREATE USER userName=identifier password=STRING_LITERAL
+    : CREATE USER userName=ID password=STRING_LITERAL
     ;
 
 // Create Role
 createRole
-    : CREATE ROLE roleName=identifier
+    : CREATE ROLE roleName=ID
     ;
 
 // Alter Password
@@ -457,42 +457,42 @@ alterUser
 
 // Grant User Privileges
 grantUser
-    : GRANT USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT USER userName=ID PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant Role Privileges
 grantRole
-    : GRANT ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : GRANT ROLE roleName=ID PRIVILEGES privileges ON prefixPath
     ;
 
 // Grant User Role
 grantRoleToUser
-    : GRANT roleName=identifier TO userName=identifier
+    : GRANT roleName=ID TO userName=ID
     ;
 
 // Revoke User Privileges
 revokeUser
-    : REVOKE USER userName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE USER userName=ID PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role Privileges
 revokeRole
-    : REVOKE ROLE roleName=identifier PRIVILEGES privileges ON prefixPath
+    : REVOKE ROLE roleName=ID PRIVILEGES privileges ON prefixPath
     ;
 
 // Revoke Role From User
 revokeRoleFromUser
-    : REVOKE roleName=identifier FROM userName=identifier
+    : REVOKE roleName=ID FROM userName=ID
     ;
 
 // Drop User
 dropUser
-    : DROP USER userName=identifier
+    : DROP USER userName=ID
     ;
 
 // Drop Role
 dropRole
-    : DROP ROLE roleName=identifier
+    : DROP ROLE roleName=ID
     ;
 
 // List Users
@@ -512,7 +512,7 @@ listPrivilegesUser
 
 // List Privileges of Roles On Specific Path
 listPrivilegesRole
-    : LIST PRIVILEGES ROLE roleName=identifier ON prefixPath
+    : LIST PRIVILEGES ROLE roleName=ID ON prefixPath
     ;
 
 // List Privileges of Users
@@ -522,7 +522,7 @@ listUserPrivileges
 
 // List Privileges of Roles
 listRolePrivileges
-    : LIST ROLE PRIVILEGES roleName=identifier
+    : LIST ROLE PRIVILEGES roleName=ID
     ;
 
 // List Roles of Users
@@ -532,7 +532,7 @@ listAllRoleOfUser
 
 // List Users of Role
 listAllUserOfRole
-    : LIST ALL USER OF ROLE roleName=identifier
+    : LIST ALL USER OF ROLE roleName=ID
     ;
 
 privileges
@@ -546,7 +546,7 @@ privilegeValue
 
 usernameWithRoot
     : ROOT
-    | identifier
+    | ID
     ;
 
 
@@ -856,7 +856,7 @@ attributeClauses
     ;
 
 alias
-    : LR_BRACKET identifier RR_BRACKET
+    : LR_BRACKET nodeNameCanInExpr RR_BRACKET
     ;
 
 tagClause

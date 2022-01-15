@@ -249,8 +249,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
       IoTDBSqlParser.AttributeClausesContext ctx,
       CreateTimeSeriesOperator createTimeSeriesOperator) {
     if (ctx.alias() != null) {
-
-      createTimeSeriesOperator.setAlias(parseStringWithQuotes(ctx.alias().identifier().getText()));
+      createTimeSeriesOperator.setAlias(parseNodeNameCanInExpr(ctx.alias().nodeNameCanInExpr()));
     }
     final String dataType = ctx.dataType.getText().toUpperCase();
     final TSDataType tsDataType = TSDataType.valueOf(dataType);
@@ -1698,7 +1697,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateUser(IoTDBSqlParser.CreateUserContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_USER);
-    authorOperator.setUserName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setUserName(ctx.userName.getText());
     authorOperator.setPassWord(parseStringWithQuotes(ctx.password.getText()));
     return authorOperator;
   }
@@ -1709,7 +1708,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitCreateRole(IoTDBSqlParser.CreateRoleContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_CREATE, AuthorOperator.AuthorType.CREATE_ROLE);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
     return authorOperator;
   }
 
@@ -1720,8 +1719,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     AuthorOperator authorOperator =
         new AuthorOperator(
             SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorOperator.AuthorType.UPDATE_USER);
-    authorOperator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
-    authorOperator.setNewPassword(parseStringWithQuotes(ctx.password.getText()));
+    authorOperator.setUserName(ctx.userName.getText());
+    authorOperator.setNewPassword(ctx.password.getText());
     return authorOperator;
   }
 
@@ -1731,7 +1730,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGrantUser(IoTDBSqlParser.GrantUserContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_USER);
-    authorOperator.setUserName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setUserName(ctx.userName.getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorOperator;
@@ -1743,7 +1742,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitGrantRole(IoTDBSqlParser.GrantRoleContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.GRANT_ROLE);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorOperator;
@@ -1756,8 +1755,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     AuthorOperator authorOperator =
         new AuthorOperator(
             SQLConstant.TOK_AUTHOR_GRANT, AuthorOperator.AuthorType.GRANT_ROLE_TO_USER);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.roleName.getText()));
-    authorOperator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
+    authorOperator.setUserName(ctx.userName.getText());
     return authorOperator;
   }
 
@@ -1767,7 +1766,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitRevokeUser(IoTDBSqlParser.RevokeUserContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_USER);
-    authorOperator.setUserName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setUserName(ctx.userName.getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorOperator;
@@ -1779,7 +1778,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitRevokeRole(IoTDBSqlParser.RevokeRoleContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
     authorOperator.setPrivilegeList(parsePrivilege(ctx.privileges()));
     authorOperator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return authorOperator;
@@ -1791,8 +1790,8 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitRevokeRoleFromUser(IoTDBSqlParser.RevokeRoleFromUserContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_GRANT, AuthorType.REVOKE_ROLE_FROM_USER);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.roleName.getText()));
-    authorOperator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
+    authorOperator.setUserName(ctx.userName.getText());
     return authorOperator;
   }
 
@@ -1802,7 +1801,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitDropUser(IoTDBSqlParser.DropUserContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_USER);
-    authorOperator.setUserName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setUserName(ctx.userName.getText());
     return authorOperator;
   }
 
@@ -1812,7 +1811,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitDropRole(IoTDBSqlParser.DropRoleContext ctx) {
     AuthorOperator authorOperator =
         new AuthorOperator(SQLConstant.TOK_AUTHOR_DROP, AuthorOperator.AuthorType.DROP_ROLE);
-    authorOperator.setRoleName(parseStringWithQuotes(ctx.identifier().getText()));
+    authorOperator.setRoleName(ctx.roleName.getText());
     return authorOperator;
   }
 
@@ -1836,7 +1835,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListPrivilegesUser(IoTDBSqlParser.ListPrivilegesUserContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
+    operator.setUserName(ctx.userName.getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return operator;
   }
@@ -1847,7 +1846,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListPrivilegesRole(IoTDBSqlParser.ListPrivilegesRoleContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName(parseStringWithQuotes(ctx.roleName.getText()));
+    operator.setRoleName(ctx.roleName.getText());
     operator.setNodeNameList(parsePrefixPath(ctx.prefixPath()));
     return operator;
   }
@@ -1858,7 +1857,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListUserPrivileges(IoTDBSqlParser.ListUserPrivilegesContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_PRIVILEGE);
-    operator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
+    operator.setUserName(ctx.userName.getText());
     return operator;
   }
 
@@ -1868,7 +1867,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListRolePrivileges(IoTDBSqlParser.ListRolePrivilegesContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_PRIVILEGE);
-    operator.setRoleName(parseStringWithQuotes(ctx.roleName.getText()));
+    operator.setRoleName(ctx.roleName.getText());
     return operator;
   }
 
@@ -1878,7 +1877,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListAllRoleOfUser(IoTDBSqlParser.ListAllRoleOfUserContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_USER_ROLES);
-    operator.setUserName(parseStringWithQuotes(ctx.userName.getText()));
+    operator.setUserName(ctx.userName.getText());
     return operator;
   }
 
@@ -1888,7 +1887,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   public Operator visitListAllUserOfRole(IoTDBSqlParser.ListAllUserOfRoleContext ctx) {
     AuthorOperator operator =
         new AuthorOperator(SQLConstant.TOK_LIST, AuthorOperator.AuthorType.LIST_ROLE_USERS);
-    operator.setRoleName(parseStringWithQuotes(ctx.roleName.getText()));
+    operator.setRoleName(ctx.roleName.getText());
     return operator;
   }
 

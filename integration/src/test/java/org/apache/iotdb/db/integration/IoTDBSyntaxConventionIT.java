@@ -22,6 +22,7 @@ import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.itbase.category.RemoteTest;
+import org.apache.iotdb.jdbc.Constant;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -131,6 +132,106 @@ public class IoTDBSyntaxConventionIT {
       statement.execute("INSERT INTO root.sg1.d1(time, s1) values (1, `string`)");
       fail();
     } catch (SQLException ignored) {
+    }
+  }
+
+  @Test
+  public void testExpression1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      boolean hasResult = statement.execute("SELECT `1` FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testIllegalExpression1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("SELECT 1 FROM root.sg1.d1");
+      fail();
+    } catch (SQLException ignored) {
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.1 INT32");
+      boolean hasResult = statement.execute("SELECT 1 FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testExpression2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      boolean hasResult = statement.execute("SELECT `1` + 1 FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testIllegalExpression2() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("SELECT 1 + 1 FROM root.sg1.d1");
+      fail();
+    } catch (SQLException ignored) {
+    }
+  }
+
+  @Test
+  public void testExpression3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      boolean hasResult = statement.execute("SELECT sin(`1`) FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
+    }
+  }
+
+  @Test
+  public void testIllegalExpression3() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("SELECT sin(1) FROM root.sg1.d1");
+      fail();
+    } catch (SQLException ignored) {
+    }
+    try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE root.sg1.d1.1 INT32");
+      boolean hasResult = statement.execute("SELECT sin(1) FROM root.sg1.d1");
+      Assert.assertTrue(hasResult);
+
+      ResultSet resultSet = statement.getResultSet();
+      Assert.assertFalse(resultSet.next());
+    } catch (SQLException e) {
+      e.printStackTrace();
     }
   }
 }
