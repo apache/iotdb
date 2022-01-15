@@ -102,6 +102,7 @@ What you need to know about identifiers:
   - ['\u2E80'..'\u9FFF'] (UNICODE Chinese characters)
 - Identifiers may begin with a digit and consist solely of digits, **which is not recommended!**
 - Identifiers are case sensitive.
+- Note: User and role names are not case-sensitive, and special characters are not allowed to be escaped.
 
 If an identifier contains special characters or is a reserved word, you must quote it whenever you refer to it.
 The identifier quote character is the backtick (`):
