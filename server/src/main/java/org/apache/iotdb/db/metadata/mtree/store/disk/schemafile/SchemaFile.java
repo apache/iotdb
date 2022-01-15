@@ -1,5 +1,7 @@
 package org.apache.iotdb.db.metadata.mtree.store.disk.schemafile;
 
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.exception.metadata.SchemaPageOverflowException;
 import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.utils.TestOnly;
@@ -12,14 +14,14 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 
 /**
  * TODO: Specify durability design
+ *
+ * This class is mainly aimed to manage space all over the file.
+ *
  * This class is meant to open a .pmt(Persistent MTree) file, and maintains the header of the file.
  * It Loads or writes a page length bytes at once, with an 32 bits int to index a page inside a file.
  * Use SlottedFile to manipulate segment(sp) inside a page(an array of bytes).
@@ -28,65 +30,152 @@ public class SchemaFile implements ISchemaFile{
 
   private static final Logger logger = LoggerFactory.getLogger(SchemaFile.class);
 
-  static final int PAGE_LENGTH = 16 * 1024;  // 16 kib for default
-  static final int INDEX_LENGTH = 4;  // 32 bit for page pointer, maximum .pmt file as 2^(32+14) bytes, 64 TiB
-  static final int HEADER_INDEX = 0;  // index of header page
-  static final int PMT_HEADER_SIZE = 256;  // size of file header in bytes
-  static final int PAGE_HEADER_SIZE = 256;
-  static final String PMT_FOLDER = "./pst/";  // folder to store .pmt files
-
-  // attributes inside this schema file
+  // attributes for this schema file
   String filePath;
   String storageGroupName;
 
-  ByteBuffer headerContent, currentPage;
-  int currentPageIndex, lastPageIndex;
+  ByteBuffer headerContent;
+  int lastPageIndex;  // last page index of the file, boundary to grow
+
+  // work as a naive cache for page instance
+  Map<Integer, ISchemaPage> pageInstCache;
+  ISchemaPage rootPage;
 
   // attributes inside current page
-  boolean pageDelFlag;
-  List<Short> segAddress;  // segment address array inside a page
-  short freeAddressInPage;
-
 
   FileChannel channel;
 
   @TestOnly
-  public SchemaFile() throws IOException {
+  public SchemaFile() throws IOException, MetadataException {
     this("testPMT");
   }
 
-  public SchemaFile(String sgName) throws IOException {
+  public SchemaFile(String sgName) throws IOException, MetadataException {
     this.storageGroupName = sgName;
-    filePath = SchemaFile.PMT_FOLDER + sgName + ".pmt";
+    filePath = SchemaFile.FILE_FOLDER + sgName + ".pmt";
+
+    pageInstCache = new HashMap<>();
 
     File pmtFile = new File(filePath);
     if (!pmtFile.exists() || !pmtFile.isFile()) {
-      File folder = new File(SchemaFile.PMT_FOLDER);
+      File folder = new File(SchemaFile.FILE_FOLDER);
       folder.mkdirs();
       pmtFile.createNewFile();
     }
 
     channel = new RandomAccessFile(pmtFile, "rw").getChannel();
-    headerContent = ByteBuffer.allocate(SchemaFile.PMT_HEADER_SIZE);
-    currentPage = ByteBuffer.allocate(SchemaFile.PAGE_LENGTH);
+    headerContent = ByteBuffer.allocate(SchemaFile.FILE_HEADER_SIZE);
     initFileHeader();
   }
 
-  // region interface implementation
-  /**
-   * Check whether root node for this file (for now, it is pstAddress == -1)
-   *
-   * */
+  // region Interface Implementation
+
   @Override
-  public void write(IMNode node) {
-    boolean isRootNode = true;
-    // root node
-    if (isRootNode) {
+  public void write(IMNode node) throws MetadataException, IOException {
+    int pageIndex;
+    short curSegIdx;
+    ISchemaPage curPage;
 
+    // Get corresponding page instance, segment id
+    long curSegAddr = node.getChildren().getSegment().getSegmentAddress();
+    if (curSegAddr < 0) {
+      if (node.getParent() == null) {
+        // root node
+        curPage = getRootPage();
+        pageIndex = curPage.getPageIndex();
+        curSegIdx = 0;
+      } else {
+        throw new MetadataException("Cannot store a node without segment address except for root.");
+      }
     } else {
-
+      pageIndex = ISchemaFile.getPageIndex(curSegAddr);
+      curSegIdx = ISchemaFile.getSegIndex(curSegAddr);
+      curPage = getPageInstance(pageIndex);
     }
 
+    // Translate node.child into buffer and Pre-Allocate segment for internal child.
+    for(Map.Entry<String, IMNode> entry:
+        node.getChildren().getSegment().getNewChildBuffer().entrySet()) {
+      IMNode child = entry.getValue();
+      if (!child.isMeasurement()) {
+        if (child.getChildren().getSegment().getSegmentAddress() < 0) {
+          short estSegSize = estimateSegmentSize(child);
+          long glbIndex = preAllocateSegment(estSegSize);
+          child.getChildren().getSegment().setSegmentAddress(glbIndex);
+        } else {
+          // new child with a valid segment address, weird
+          throw new MetadataException("A child in newChildBuffer shall not have segmentAddress.");
+        }
+      }
+
+      ByteBuffer childBuffer = RecordUtils.node2Buffer(child);
+
+      // Write and Handle Overflow
+      // (inside curPage.write)
+      // write to curSeg, return 0 if succeeded, positive if next page, exception if no next and no spare
+      // (inside this method)
+      // get next segment if existed, retry till succeeded or exception
+      // allocate new page if exception, link or transplant by original segment size, write buffer to new segment
+      // throw exception if record larger than one page
+      try {
+        long npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
+        while (npAddress > 0) {
+          // get next page and retry
+          pageIndex = ISchemaFile.getPageIndex(npAddress);
+          curSegIdx = ISchemaFile.getSegIndex(npAddress);
+          curPage = getPageInstance(pageIndex);
+          npAddress = curPage.write(curSegIdx, entry.getKey(), childBuffer);
+        }
+
+      } catch (SchemaPageOverflowException e) {
+        // there is no more next page, need allocate new page
+        short newSegSize = ISchemaFile.reEstimateSegSize(curPage.getSegmentSize(curSegIdx));
+        ISchemaPage newPage = getMinApplicablePageInMem(newSegSize);
+
+        if (newSegSize == curPage.getSegmentSize(curSegIdx)) {
+          // segment on multi pages
+          short newSegId = newPage.allocNewSegment(newSegSize);
+          long newSegAddr = ISchemaFile.getGlobalIndex(newPage.getPageIndex(), newSegId);
+
+          // note that it doesn't modify address of node nor parental record
+          newPage.setPrevSegAddress(newSegId, curSegAddr);
+          curPage.setNextSegAddress(curSegIdx, newSegAddr);
+
+          curSegAddr = newSegAddr;
+        } else {
+          // segment on single page
+          curSegAddr = newPage.transplantSegment(curPage, curSegIdx, newSegSize);
+          if (curSegAddr < 0) {
+            throw new MetadataException("Transplant segment filed for unknown reason.");
+          }
+
+          curPage.deleteSegment(curSegIdx);
+
+          curSegIdx = ISchemaFile.getSegIndex(curSegAddr);
+        }
+        curPage = newPage;
+        curPage.write(curSegIdx, entry.getKey(), childBuffer);
+      }
+    }
+
+    // handle update child
+    for(Map.Entry<String, IMNode> entry:
+        node.getChildren().getSegment().getUpdatedChildBuffer().entrySet()) {
+
+    }
+  }
+
+  private ISchemaPage getRootPage() {
+    return rootPage;
+  }
+
+  private short estimateSegmentSize(IMNode node) {
+    return (short) ( ISchemaFile.SEG_SIZE_LST[0] / 2 );
+  }
+
+  private long preAllocateSegment(short size) throws IOException, MetadataException {
+    ISchemaPage page = getMinApplicablePageInMem(size);
+    return ISchemaFile.getGlobalIndex(page.getPageIndex(), page.allocNewSegment(size));
   }
 
   @Override
@@ -111,91 +200,121 @@ public class SchemaFile implements ISchemaFile{
 
   @Override
   public void close() throws IOException {
+    updateHeader();
+    for (Map.Entry<Integer, ISchemaPage> entry: pageInstCache.entrySet()) {
+      flushPageToFile(entry.getValue());
+    }
     channel.close();
+  }
+
+  @Override
+  public String inspect() throws MetadataException, IOException {
+    StringBuilder builder = new StringBuilder(String.format(
+        "SchemaFile inspect: %s, totalPages:%d\n", storageGroupName, lastPageIndex));
+    int cnt = 0;
+    while (cnt <= lastPageIndex) {
+      ISchemaPage page = getPageInstance(cnt);
+      builder.append(String.format("----------\n%s\n", page.inspect()));
+      cnt ++;
+    }
+    return builder.toString();
   }
   // endregion
 
-  // region file decoder
+  // region File Operations
 
   /**
-   * File Header:
-   * int: last page index
-   * root node info
-   *  a. var length string: name
-   *  (b. boolean: alignment)
+   * File Header Structure:
+   * 1 int (4 bytes): last page index
+   * var length: root(SG) node info
+   *    a. var length string (less than 200 bytes): path to root(SG) node
+   *    b. fixed length buffer (13 bytes): internal or entity node buffer
    * */
-  private void initFileHeader() throws IOException {
+  private void initFileHeader() throws IOException, MetadataException {
     if (channel.size() == 0) {
       // new schema file
-      currentPageIndex = 0;
       lastPageIndex = 0;
       ReadWriteIOUtils.write(lastPageIndex, headerContent);
       ReadWriteIOUtils.write(storageGroupName, headerContent);
-      updateHeader(0L);
-
-      initPageHeader();
-      segAddress.add(freeAddressInPage);
-      // init this segment as root segment
-
+      initRootPage();
     } else {
       channel.read(headerContent);
-      headerContent.position(0);
+      headerContent.clear();
       lastPageIndex = ReadWriteIOUtils.readInt(headerContent);
       storageGroupName = ReadWriteIOUtils.readString(headerContent);
+      rootPage = getPageInstance(0);
     }
   }
 
-  private void updateHeader(long position) throws IOException{
-    headerContent.position(0);
-    channel.write(headerContent, position);
+  private void updateHeader() throws IOException{
+    headerContent.clear();
+
+    ReadWriteIOUtils.write(lastPageIndex, headerContent);
+    ReadWriteIOUtils.write(storageGroupName, headerContent);
+
+    headerContent.clear();
+    channel.write(headerContent, 0);
     channel.force(true);
   }
 
-  // endregion
-  // region page decoder
+  private void initRootPage() throws IOException, MetadataException{
+    if (rootPage == null) {
+      rootPage = SchemaPage.initPage(ByteBuffer.allocate(PAGE_LENGTH), 0);
+      rootPage.allocNewSegment(SEG_MAX_SIZ);
 
-  /**
-   * Page Header Structure:
-   * boolean: delete flag
-   * var length short list: segment address
-   * short: free space index
-   * (short: last delete segment address)
-   * */
-  private void initPageHeader() {
-    pageDelFlag = false;
-    segAddress = new ArrayList<>();
-    freeAddressInPage = SchemaFile.PAGE_HEADER_SIZE;
-  }
+      lastPageIndex = 0;
 
-  private ByteBuffer getSegmentBuffer(int index) {
-    short segAddr = segAddress.get(index);
-    currentPage.position(segAddr);
-    short length = ReadWriteIOUtils.readShort(currentPage);
-    currentPage.position(segAddr);
-    currentPage.limit(segAddr + length);
-    return currentPage.slice();
+      pageInstCache.put(rootPage.getPageIndex(), rootPage);
+    }
   }
 
   // endregion
 
   // region space management
 
-  private void allocateNewPage() throws IOException{
-    // TODO: improve rather than append way
-    loadPage(++currentPageIndex);
-    initPageHeader();
+
+  /**
+   * This method checks with cached page container, get a minimum applicable page for allocation.
+   * @param size
+   * @return
+   */
+  private ISchemaPage getMinApplicablePageInMem(short size) {
+    for (Map.Entry<Integer, ISchemaPage> entry: pageInstCache.entrySet()) {
+      if (entry.getValue().isCapableForSize(size)) {
+        return entry.getValue();
+      }
+    }
+    return allocateNewPage();
   }
 
   /**
-   * Try to allocate segment within current page
-   * Will allocate new page if no available segment
-   * Record segment address into segAddress
-   * @param size target size of the segment
-   * @return concatenation of PAGE_INDEX and SEG_INDEX
-   * @throws IOException
+   * Get from cache, or load from file.
+   * TODO: improve with file-wide page cache
+   * @param pageIdx target page index
+   * @return an existed page
    */
-  private long allocateSegment(short size) throws IOException {
-    return 0L;
+  private ISchemaPage getPageInstance(int pageIdx) throws IOException, MetadataException {
+    if (pageIdx > lastPageIndex) {
+      throw new MetadataException(String.format("Page index %d out of range.", pageIdx));
+    }
+
+    if (pageInstCache.containsKey(pageIdx)) {
+      return pageInstCache.get(pageIdx);
+    }
+
+    ByteBuffer newBuf = ByteBuffer.allocate(PAGE_LENGTH);
+
+    loadFromFile(newBuf, pageIdx);
+    return SchemaPage.loadPage(newBuf, pageIdx);
+  }
+
+  private ISchemaPage allocateNewPage() {
+    lastPageIndex += 1;
+    ISchemaPage newPage = SchemaPage.initPage(ByteBuffer.allocate(PAGE_LENGTH), lastPageIndex);
+
+    pageInstCache.put(newPage.getPageIndex(), newPage);
+
+    return newPage;
   }
 
   // endregion
@@ -204,18 +323,21 @@ public class SchemaFile implements ISchemaFile{
   // region utils
 
   private long getPageAddress(int pageIndex) {
-    return pageIndex * PAGE_LENGTH + PMT_HEADER_SIZE;
+    return pageIndex * PAGE_LENGTH + FILE_HEADER_SIZE;
   }
 
-  private void loadPage(int pageIndex) throws IOException {
-    writePage2File();
-    currentPage.clear();
-    currentPageIndex = pageIndex;
-    channel.read(currentPage, getPageAddress(currentPageIndex));
+  private int loadFromFile(ByteBuffer dst, int pageIndex) throws IOException{
+    dst.clear();
+    return channel.read(dst, getPageAddress(pageIndex));
   }
 
-  private void writePage2File() throws IOException{
-    channel.write(currentPage, getPageAddress(currentPageIndex));
+  private void flushPageToFile(ISchemaPage src) throws IOException{
+    src.syncPageBuffer();
+
+    ByteBuffer srcBuf = ByteBuffer.allocate(ISchemaFile.PAGE_LENGTH);
+    src.getPageBuffer(srcBuf);
+    srcBuf.clear();
+    channel.write(srcBuf, getPageAddress(src.getPageIndex()));
   }
 
   // endregion

@@ -20,7 +20,7 @@ package org.apache.iotdb.db.metadata.mnode;
 
 public class MNodeContainers {
 
-  public static final boolean IS_DISK_MODE = false;
+  public static final boolean IS_DISK_MODE = true;
 
   @SuppressWarnings("rawtypes")
   private static final IMNodeContainer EMPTY_CONTAINER = new MNodeContainerMapImpl();

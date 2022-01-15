@@ -15,27 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.exception.metadata;
 
-import java.util.Iterator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-@Deprecated
-public interface ISchemaFile {
+public class SegmentNotFoundException extends MetadataException {
 
-  IMNode getChildNode(IMNode parent, String childName);
+  public SegmentNotFoundException(int pageIndex, short segIndex) {
+    super(
+        String.format("Segment(index:%d) not found in page(index:%d).", segIndex, pageIndex),
+        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        true);
+  }
 
-  Iterator<IMNode> getChildren(IMNode parent);
-
-  void writeMNode(IMNode parent);
-
-  void deleteMNode(IMNode targetNode);
-
-  void sync();
-
-  void close();
-
-  void clear();
+  public SegmentNotFoundException(short segIndex) {
+    super(
+        String.format("Segment(index:%d) is not the last segment within the page", segIndex),
+        TSStatusCode.SEGMENT_NOT_FOUND.getStatusCode(),
+        true);
+  }
 }

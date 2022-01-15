@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+@Deprecated
 public class MockSchemaFile implements ISchemaFile {
 
   private long fileTail = 0;

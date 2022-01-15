@@ -15,27 +15,26 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.exception.metadata;
 
-import java.util.Iterator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-@Deprecated
-public interface ISchemaFile {
+public class SegmentOverflowException extends MetadataException {
 
-  IMNode getChildNode(IMNode parent, String childName);
+  public SegmentOverflowException(int tarIndex) {
+    super(
+        String.format("Segment overflow  : " + tarIndex),
+        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
+        true);
+  }
 
-  Iterator<IMNode> getChildren(IMNode parent);
-
-  void writeMNode(IMNode parent);
-
-  void deleteMNode(IMNode targetNode);
-
-  void sync();
-
-  void close();
-
-  void clear();
+  public SegmentOverflowException() {
+    super(
+        String.format("Segment not enough space"),
+        TSStatusCode.SEGMENT_OUT_OF_SPACE.getStatusCode(),
+        true);
+  }
 }

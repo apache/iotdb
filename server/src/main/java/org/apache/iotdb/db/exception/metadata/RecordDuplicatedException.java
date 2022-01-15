@@ -15,27 +15,19 @@
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
  * under the License.
+ *
  */
-package org.apache.iotdb.db.metadata.mtree.store.disk.file;
 
-import org.apache.iotdb.db.metadata.mnode.IMNode;
+package org.apache.iotdb.db.exception.metadata;
 
-import java.util.Iterator;
+import org.apache.iotdb.rpc.TSStatusCode;
 
-@Deprecated
-public interface ISchemaFile {
+public class RecordDuplicatedException extends MetadataException {
 
-  IMNode getChildNode(IMNode parent, String childName);
-
-  Iterator<IMNode> getChildren(IMNode parent);
-
-  void writeMNode(IMNode parent);
-
-  void deleteMNode(IMNode targetNode);
-
-  void sync();
-
-  void close();
-
-  void clear();
+  public RecordDuplicatedException(String recordKey) {
+    super(
+        String.format("Segment index is out of range : " + recordKey),
+        TSStatusCode.RECORD_DUPLICATED.getStatusCode(),
+        true);
+  }
 }
