@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
@@ -30,8 +31,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +114,6 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
             break;
           }
         }
-
         if (isAllSourcesFileExisted) {
           handleSuccess =
               handleWithAllSourceFilesExist(
@@ -246,7 +244,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
                     IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX, TsFileConstant.TSFILE_SUFFIX));
     FSFactoryProducer.getFSFactory().moveFile(targetResource.getTsFile(), newFile);
 
-    // Todo:targerResource是空，没有序列化
+    // Todo:targerResource is empty, does not serialize
 
   }
 
