@@ -17,10 +17,10 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.task;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -37,11 +37,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
-
 /**
  * CrossSpaceCompactionTask merges given seqFiles and unseqFiles into new ones, which basically
  * consists of three steps: 1. rewrite overflowed, modified or small-sized chunks into temp merge
@@ -50,7 +45,6 @@ import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.Inplac
  */
 public class CrossSpaceCompactionTask implements Callable<Void> {
 
-  public static final String MERGE_SUFFIX = ".merge";
   private static final Logger logger = LoggerFactory.getLogger(CrossSpaceCompactionTask.class);
   private List<TsFileResource> targetTsfileResourceList;
   private List<TsFileResource> holdReadLockList = new ArrayList<>();
@@ -60,7 +54,6 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
   List<TsFileResource> unsequenceTsFileResourceList;
   String storageGroupSysDir;
   String storageGroupName;
-  InplaceCompactionLogger inplaceCompactionLogger;
   String taskName;
   States states = States.START;
 
@@ -109,20 +102,12 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     addReadLock(sequenceTsFileResourceList);
     addReadLock(unsequenceTsFileResourceList);
     logger.info("{}-crossSpaceCompactionTask start.", storageGroupName);
-    inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupSysDir);
-    // print the path of the temporary file first for priority check during recovery
-    inplaceCompactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-    inplaceCompactionLogger.logFiles(sequenceTsFileResourceList, STR_SEQ_FILES);
-    inplaceCompactionLogger.logFiles(unsequenceTsFileResourceList, STR_UNSEQ_FILES);
     states = States.COMPACTION;
     CompactionUtils.compact(
         sequenceTsFileResourceList,
         unsequenceTsFileResourceList,
         targetTsfileResourceList,
         storageGroupName);
-    // indicates that the merge is complete and needs to be cleared
-    // the result can be reused during a restart recovery
-    inplaceCompactionLogger.logStringInfo(MAGIC_STRING);
 
     states = States.CLEAN_UP;
     CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
@@ -187,10 +172,7 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     for (TsFileResource unseqFile : unsequenceTsFileResourceList) {
       unseqFile.setMerging(false);
     }
-    if (inplaceCompactionLogger != null) {
-      inplaceCompactionLogger.close();
-    }
-    File logFile = new File(storageGroupSysDir, InplaceCompactionLogger.MERGE_LOG_NAME);
+    File logFile = new File(storageGroupSysDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
     logFile.delete();
   }
 

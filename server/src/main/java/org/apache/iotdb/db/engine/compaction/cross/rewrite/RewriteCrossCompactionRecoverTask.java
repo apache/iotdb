@@ -16,11 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.inplace;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
@@ -89,7 +89,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     if (mergeLogCrashed(logFile)) {
       reuseLastTargetFiles(logFile);
     }
-    cleanUp();
+    // TODO: do recover in detail
 
     if (logger.isInfoEnabled()) {
       logger.info(
@@ -103,18 +103,21 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     FileChannel fileChannel = FileChannel.open(logFile.toPath(), StandardOpenOption.READ);
     long totalSize = fileChannel.size();
     ByteBuffer magicStringBytes =
-        ByteBuffer.allocate(InplaceCompactionLogger.MAGIC_STRING.getBytes().length);
+        ByteBuffer.allocate(RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes().length);
     fileChannel.read(
-        magicStringBytes, totalSize - InplaceCompactionLogger.MAGIC_STRING.getBytes().length);
+        magicStringBytes,
+        totalSize - RewriteCrossSpaceCompactionLogger.MAGIC_STRING.getBytes().length);
     magicStringBytes.flip();
-    if (!InplaceCompactionLogger.MAGIC_STRING.equals(new String(magicStringBytes.array()))) {
+    if (!RewriteCrossSpaceCompactionLogger.MAGIC_STRING.equals(
+        new String(magicStringBytes.array()))) {
       return false;
     }
     magicStringBytes.clear();
     fileChannel.read(magicStringBytes, 0);
     magicStringBytes.flip();
     fileChannel.close();
-    return InplaceCompactionLogger.MAGIC_STRING.equals(new String(magicStringBytes.array()));
+    return RewriteCrossSpaceCompactionLogger.MAGIC_STRING.equals(
+        new String(magicStringBytes.array()));
   }
 
   void reuseLastTargetFiles(File logFile) throws IOException {
@@ -125,11 +128,11 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     List<File> mergeTmpFile = new ArrayList<>();
     while ((line = br.readLine()) != null) {
       switch (line) {
-        case InplaceCompactionLogger.STR_TARGET_FILES:
+        case RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES:
           isTargetFile = 1;
           break;
-        case InplaceCompactionLogger.STR_SEQ_FILES:
-        case InplaceCompactionLogger.STR_UNSEQ_FILES:
+        case RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES:
+        case RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES:
           isTargetFile = 2;
           break;
         default:

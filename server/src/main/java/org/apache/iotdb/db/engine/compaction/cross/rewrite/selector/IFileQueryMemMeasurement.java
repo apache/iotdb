@@ -17,11 +17,20 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-public enum MergeFileStrategy {
-  MAX_SERIES_NUM,
-  MAX_FILE_NUM,
-  // TODO: HOW?
-  TRADE_OFF,
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+
+import java.io.IOException;
+
+@FunctionalInterface
+/**
+ * Estimate how much memory a file may occupy when being queried during merge.
+ *
+ * @param resource
+ * @return
+ * @throws IOException
+ */
+interface IFileQueryMemMeasurement {
+  long measure(TsFileResource resource) throws IOException;
 }

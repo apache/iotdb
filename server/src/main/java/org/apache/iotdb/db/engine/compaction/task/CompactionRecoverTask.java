@@ -22,7 +22,7 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
 import org.slf4j.Logger;
@@ -69,7 +69,7 @@ public class CompactionRecoverTask {
       for (Long timePartition : timePartitions) {
         String timePartitionDir = storageGroupDir + File.separator + timePartition;
         File[] compactionLogs =
-            InplaceCompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir);
+            RewriteCrossSpaceCompactionLogger.findCrossSpaceCompactionLogs(timePartitionDir);
         for (File compactionLog : compactionLogs) {
           logger.info("calling cross compaction task");
           IoTDBDescriptor.getInstance()

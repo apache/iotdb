@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iotdb.db.engine.compaction.cross.inplace;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
@@ -36,6 +36,7 @@ import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,10 +48,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.MAGIC_STRING;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_SEQ_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_TARGET_FILES;
-import static org.apache.iotdb.db.engine.compaction.cross.inplace.recover.InplaceCompactionLogger.STR_UNSEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
+import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_UNSEQ_FILES;
 
 public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactionTask {
 
@@ -72,8 +73,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       IoTDBDescriptor.getInstance().getConfig().getCompactionAcquireWriteLockTimeout();
 
   String storageGroupName;
-  InplaceCompactionLogger inplaceCompactionLogger;
-  String taskName;
+  RewriteCrossSpaceCompactionLogger compactionLogger;
 
   public RewriteCrossSpaceCompactionTask(
       String logicalStorageGroupName,
@@ -100,16 +100,15 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     this.tsFileManager = tsFileManager;
     this.seqTsFileResourceList = seqTsFileResourceList;
     this.unseqTsFileResourceList = unseqTsFileResourceList;
-    taskName = fullStorageGroupName + "-" + System.currentTimeMillis();
   }
 
   @Override
   protected void doCompaction() throws Exception {
     try {
-      startCompaction();
+      executeCompaction();
     } catch (Exception e) {
-      logger.error("Runtime exception in merge {}", taskName, e);
       abort();
+      throw e;
     } finally {
       releaseAllLock();
       resetCompactionStatus();
@@ -120,10 +119,10 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   }
 
   private void abort() throws IOException {
-    cleanUp();
+    cleanUp(true);
   }
 
-  private void startCompaction()
+  private void executeCompaction()
       throws IOException, StorageEngineException, MetadataException, InterruptedException,
           WriteProcessException {
     long startTime = System.currentTimeMillis();
@@ -136,12 +135,16 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       return;
     }
 
-    logger.info("{}-crossSpaceCompactionTask start.", storageGroupName);
-    inplaceCompactionLogger = new InplaceCompactionLogger(storageGroupDir);
+    logger.info(
+        "{}-crossSpaceCompactionTask start. Sequence files : {}, unsequence files : {}",
+        storageGroupName,
+        selectedSeqTsFileResourceList,
+        selectedUnSeqTsFileResourceList);
+    compactionLogger = new RewriteCrossSpaceCompactionLogger(storageGroupDir);
     // print the path of the temporary file first for priority check during recovery
-    inplaceCompactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
-    inplaceCompactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
-    inplaceCompactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
+    compactionLogger.logFiles(targetTsfileResourceList, STR_TARGET_FILES);
+    compactionLogger.logFiles(selectedSeqTsFileResourceList, STR_SEQ_FILES);
+    compactionLogger.logFiles(selectedUnSeqTsFileResourceList, STR_UNSEQ_FILES);
     CompactionUtils.compact(
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
@@ -149,7 +152,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         storageGroupName);
     // indicates that the merge is complete and needs to be cleared
     // the result can be reused during a restart recovery
-    inplaceCompactionLogger.logStringInfo(MAGIC_STRING);
+    compactionLogger.logStringInfo(MAGIC_STRING);
 
     CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
 
@@ -164,7 +167,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     } catch (WriteLockFailedException e) {
       // if current compaction thread couldn't get write lock
       // a WriteLockFailException will be thrown, then terminate the thread itself
-      logger.warn(
+      logger.error(
           "{} [CrossSpaceCompactionTask] failed to get write lock, abort the task.",
           fullStorageGroupName,
           e);
@@ -179,7 +182,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     removeCompactionModification();
 
     updateTsFileResource();
-    cleanUp();
+    cleanUp(false);
     logger.info(
         "{}-crossSpaceCompactionTask Costs {} s",
         storageGroupName,
@@ -276,28 +279,30 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     for (TsFileResource tsFileResource : tsFileResourceList) {
       FileReaderManager.getInstance().closeFileAndRemoveReader(tsFileResource.getTsFilePath());
       tsFileResource.setDeleted(true);
-      tsFileResource.delete();
+      tsFileResource.remove();
       logger.info(
           "[CrossSpaceCompaction] Delete TsFile :{}.",
           tsFileResource.getTsFile().getAbsolutePath());
     }
   }
 
-  void cleanUp() throws IOException {
-    logger.info("{} is cleaning up", taskName);
-    // TODO: must have big problem
-    for (TsFileResource tsFileResource : targetTsfileResourceList) {
-      tsFileResource.getTsFile().delete();
-      tsFileResource.setMerging(false);
+  void cleanUp(boolean exceptionOccurs) throws IOException {
+    logger.info("[Compaction] cleaning up");
+    if (exceptionOccurs) {
+      for (TsFileResource tsFileResource : targetTsfileResourceList) {
+        tsFileResource.setDeleted(true);
+        tsFileResource.remove();
+        tsFileResource.setMerging(false);
+      }
     }
     for (TsFileResource unseqFile : selectedUnSeqTsFileResourceList) {
       unseqFile.setMerging(false);
     }
-    if (inplaceCompactionLogger != null) {
-      inplaceCompactionLogger.close();
+    if (compactionLogger != null) {
+      compactionLogger.close();
     }
-    File logFile = new File(storageGroupDir, InplaceCompactionLogger.MERGE_LOG_NAME);
-    logFile.delete();
+    File logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
+    FileUtils.delete(logFile);
   }
 
   public String getStorageGroupName() {

@@ -19,9 +19,9 @@
 package org.apache.iotdb.db.engine.compaction.cross;
 
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossCompactionRecoverTask;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossSpaceCompactionSelector;
-import org.apache.iotdb.db.engine.compaction.cross.inplace.RewriteCrossSpaceCompactionTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossCompactionRecoverTask;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionSelector;
+import org.apache.iotdb.db.engine.compaction.cross.rewrite.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;

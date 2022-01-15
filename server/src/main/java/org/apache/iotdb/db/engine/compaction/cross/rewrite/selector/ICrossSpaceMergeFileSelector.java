@@ -17,15 +17,19 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.selector;
 
-import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.exception.MergeException;
 
-import java.util.Iterator;
 import java.util.List;
 
 /**
- * IMergePathSelector select paths to be merged at a time if all paths of a device cannot be merged
- * at the same time.
+ * IMergeFileSelector selects a set of files from given seqFiles and unseqFiles which can be merged
+ * without exceeding given memory budget.
  */
-public interface IMergePathSelector extends Iterator<List<PartialPath>> {}
+public interface ICrossSpaceMergeFileSelector {
+
+  List[] select() throws MergeException;
+
+  int getConcurrentMergeNum();
+}

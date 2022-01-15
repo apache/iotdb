@@ -17,20 +17,24 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.engine.compaction.cross.inplace.selector;
+package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 
-import java.io.IOException;
+import java.io.File;
+import java.util.List;
 
 @FunctionalInterface
-/**
- * Estimate how much memory a file may occupy when being queried during merge.
- *
- * @param resource
- * @return
- * @throws IOException
- */
-interface IFileQueryMemMeasurement {
-  long measure(TsFileResource resource) throws IOException;
+public interface MergeCallback {
+
+  /**
+   * On calling this method, the callee should: 1. replace the modification files of seqFiles with
+   * merging modifications since the old modifications have been merged into the new files. 2.
+   * remove the unseqFiles since they have been merged into new files. 3. remove the merge log file
+   * 4. exit merging status
+   *
+   * @param seqFiles
+   * @param unseqFiles
+   */
+  void call(List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles, File logFile);
 }

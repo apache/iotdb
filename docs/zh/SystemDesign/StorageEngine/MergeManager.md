@@ -57,12 +57,12 @@
 
 此外，每一个自定义的 MergeTask 均需继承 Callable\<void\>接口，以保证可以被回调
 
-* org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeContext
+* org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.MergeContext
 
   Merge 过程中的公用上下文类
 
 
-* org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeResource
+* org.apache.iotdb.db.engine.compaction.cross.rewrite.manage.MergeResource
 
   Merge 过程中的资源类，负责管理 merge 过程中的 files,readers,writers,measurementSchemas,modifications 等资源
 
