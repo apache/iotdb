@@ -1720,7 +1720,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
         new AuthorOperator(
             SQLConstant.TOK_AUTHOR_UPDATE_USER, AuthorOperator.AuthorType.UPDATE_USER);
     authorOperator.setUserName(ctx.userName.getText());
-    authorOperator.setNewPassword(ctx.password.getText());
+    authorOperator.setNewPassword(parseStringWithQuotes(ctx.password.getText()));
     return authorOperator;
   }
 
