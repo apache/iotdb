@@ -29,12 +29,12 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.MergeManager.TaskStatus;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.flush.pool.FlushTaskPoolManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor.TimePartitionFilter;
@@ -189,6 +189,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CANCELLED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_NODES;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CHILD_PATHS;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_COLUMN;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_BOUNDARY;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_CONTINUOUS_QUERY_NAME;
@@ -1035,10 +1036,12 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_NAME, false),
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL, false),
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL, false),
+                new PartialPath(COLUMN_CONTINUOUS_QUERY_BOUNDARY, false),
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_QUERY_SQL, false),
                 new PartialPath(COLUMN_CONTINUOUS_QUERY_TARGET_PATH, false)),
             Arrays.asList(
                 TSDataType.TEXT,
+                TSDataType.INT64,
                 TSDataType.INT64,
                 TSDataType.INT64,
                 TSDataType.TEXT,
@@ -1052,6 +1055,7 @@ public class PlanExecutor implements IPlanExecutor {
       record.addField(Binary.valueOf(result.getContinuousQueryName()), TSDataType.TEXT);
       record.addField(result.getEveryInterval(), TSDataType.INT64);
       record.addField(result.getForInterval(), TSDataType.INT64);
+      record.addField(result.getBoundary(), TSDataType.INT64);
       record.addField(Binary.valueOf(result.getQuerySql()), TSDataType.TEXT);
       record.addField(Binary.valueOf(result.getTargetPath().getFullPath()), TSDataType.TEXT);
       listDataSet.putRecord(record);

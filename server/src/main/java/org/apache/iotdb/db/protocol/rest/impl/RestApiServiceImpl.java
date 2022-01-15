@@ -43,6 +43,8 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
+import java.time.ZoneId;
+
 public class RestApiServiceImpl extends RestApiService {
 
   public static ServiceProvider serviceProvider = IoTDB.serviceProvider;
@@ -91,7 +93,8 @@ public class RestApiServiceImpl extends RestApiService {
     try {
       RequestValidationHandler.validateSQL(sql);
 
-      PhysicalPlan physicalPlan = planner.parseSQLToPhysicalPlan(sql.getSql());
+      PhysicalPlan physicalPlan =
+          planner.parseSQLToRestQueryPlan(sql.getSql(), ZoneId.systemDefault());
       if (!(physicalPlan instanceof QueryPlan)) {
         return Response.ok()
             .entity(
@@ -107,17 +110,6 @@ public class RestApiServiceImpl extends RestApiService {
         return response;
       }
 
-      // set max row limit to avoid OOM
-      Integer rowLimitInRequest = sql.getRowLimit();
-      if (rowLimitInRequest == null) {
-        rowLimitInRequest = defaultQueryRowLimit;
-      }
-      int rowLimitInQueryPlan = queryPlan.getRowLimit();
-      if (rowLimitInQueryPlan <= 0) {
-        rowLimitInQueryPlan = defaultQueryRowLimit;
-      }
-      final int actualRowSizeLimit = Math.min(rowLimitInRequest, rowLimitInQueryPlan);
-
       final long queryId = QueryResourceManager.getInstance().assignQueryId(true);
       try {
         QueryContext queryContext =
@@ -130,7 +122,10 @@ public class RestApiServiceImpl extends RestApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, queryPlan, actualRowSizeLimit);
+        return QueryDataSetHandler.fillDateSet(
+            queryDataSet,
+            queryPlan,
+            sql.getRowLimit() != null ? sql.getRowLimit() : defaultQueryRowLimit);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }

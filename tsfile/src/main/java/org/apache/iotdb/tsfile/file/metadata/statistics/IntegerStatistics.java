@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 /** Statistics for int type. */
 public class IntegerStatistics extends Statistics<Integer> {
@@ -252,6 +253,24 @@ public class IntegerStatistics extends Statistics<Integer> {
     this.firstValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readInt(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    IntegerStatistics that = (IntegerStatistics) o;
+    return minValue == that.minValue
+        && maxValue == that.maxValue
+        && firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && sumValue == that.sumValue;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override
