@@ -72,7 +72,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -280,23 +279,10 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
-
-    try {
-      List<MeasurementPath> ret = CMManager.getInstance().getMatchedPaths(path);
-      int cnt = findLevelNodeInPaths(ret, level);
-      logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
-      return cnt;
-    } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
-      throw new MetadataException(e);
-    }
-  }
-
-  private int findLevelNodeInPaths(List<MeasurementPath> paths, int level) {
-    Set<PartialPath> matchedNodes = new HashSet<>();
-    for (MeasurementPath path : paths) {
-      matchedNodes.add(path.getPrefix(level + 1));
-    }
-    return matchedNodes.size();
+    List<PartialPath> ret = getNodesList(path, level);
+    int cnt = ret.size();
+    logger.debug("The number of paths satisfying {}@{} is {}", path, level, ret);
+    return cnt;
   }
 
   /**
