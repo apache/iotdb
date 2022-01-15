@@ -282,7 +282,7 @@ public class IoTDBDDLVersionAdaptionIT {
           new HashSet<>(Collections.singletonList("3,")),
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("4,")),
-          new HashSet<>(Collections.singletonList("0,")),
+          new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("1,")),
           new HashSet<>(Collections.singletonList("2,")),
           new HashSet<>(Collections.singletonList("4,"))
