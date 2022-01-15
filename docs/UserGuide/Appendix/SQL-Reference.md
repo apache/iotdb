@@ -112,7 +112,7 @@ Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is t
 ```
 CREATE TIMESERIES <FullPath> <SimplifiedAttributeClauses>
 SimplifiedAttributeClauses
-    : <DataTypeValue> 
+    : WITH? (DATATYPE OPERATOR_EQ)? <DataTypeValue> 
     ENCODING OPERATOR_EQ <EncodingValue>
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ <CompressorValue>)?
     (COMMA property)*
