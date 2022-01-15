@@ -66,7 +66,7 @@ public class LogCatchUpHandler implements AsyncMethodCallback<Long> {
     } else if (resp == RESPONSE_TOO_BUSY) {
       // this may occur when the follower has too many logs unapplied, so we abort the
       // catch-up task
-      logger.debug("{}: Catchup task rejected by receiver {}", memberName, follower);
+      logger.info("{}: Catchup task rejected by receiver {}", memberName, follower);
       synchronized (appendSucceed) {
         appendSucceed.set(false);
         appendSucceed.notifyAll();

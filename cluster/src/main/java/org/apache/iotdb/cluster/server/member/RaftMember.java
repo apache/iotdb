@@ -992,12 +992,12 @@ public abstract class RaftMember implements RaftMemberMBean {
       return StatusUtils.INTERNAL_ERROR;
     }
 
+    long startWaitingTime = System.currentTimeMillis();
     while (true) {
       // assign term and index to the new log and append it
       synchronized (logManager) {
-        if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
-            || (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
-                <= config.getUnCommittedRaftLogNumForRejectThreshold())) {
+        if (logManager.getLastLogIndex() - logManager.getCommitLogIndex()
+            <= config.getUnCommittedRaftLogNumForRejectThreshold()) {
           if (!(plan instanceof LogPlan)) {
             plan.setIndex(logManager.getLastLogIndex() + 1);
           }
@@ -1010,7 +1010,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(
             IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime
+        if (System.currentTimeMillis() - startWaitingTime
             > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
           return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
         }
@@ -1062,6 +1062,7 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
     long startTime =
         Statistic.RAFT_SENDER_COMPETE_LOG_MANAGER_BEFORE_APPEND_V2.getOperationStartTime();
+    long startWaitingTime = System.currentTimeMillis();
     while (true) {
       synchronized (logManager) {
         if (!IoTDBDescriptor.getInstance().getConfig().isEnableMemControl()
@@ -1086,7 +1087,7 @@ public abstract class RaftMember implements RaftMemberMBean {
       try {
         TimeUnit.MILLISECONDS.sleep(
             IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
-        if (System.currentTimeMillis() - startTime
+        if (System.currentTimeMillis() - startWaitingTime
             > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
           return StatusUtils.getStatus(TSStatusCode.WRITE_PROCESS_REJECT);
         }
@@ -1985,13 +1986,27 @@ public abstract class RaftMember implements RaftMemberMBean {
     }
 
     long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+    long startWaitingTime = System.currentTimeMillis();
     long success;
-    synchronized (logManager) {
-      if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-          > config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        return Response.RESPONSE_TOO_BUSY;
+    while (true) {
+      synchronized (logManager) {
+        // TODO: Consider memory footprint to execute a precise rejection
+        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+            <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
+          success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
+          break;
+        }
+        try {
+          TimeUnit.MILLISECONDS.sleep(
+              IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+          if (System.currentTimeMillis() - startWaitingTime
+              > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+            return Response.RESPONSE_TOO_BUSY;
+          }
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+        }
       }
-      success = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, log);
     }
     Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
     if (success != -1) {
@@ -2072,22 +2087,36 @@ public abstract class RaftMember implements RaftMemberMBean {
       return resp;
     }
 
-    synchronized (logManager) {
-      if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
-          > config.getUnAppliedRaftLogNumForRejectThreshold()) {
-        return Response.RESPONSE_TOO_BUSY;
-      }
-      long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
-      resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
-      Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
-      if (resp != -1) {
-        if (logger.isDebugEnabled()) {
-          logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
+    long startWaitingTime = System.currentTimeMillis();
+    while (true) {
+      synchronized (logManager) {
+        // TODO: Consider memory footprint to execute a precise rejection
+        if ((logManager.getCommitLogIndex() - logManager.getMaxHaveAppliedCommitIndex())
+            <= config.getUnAppliedRaftLogNumForRejectThreshold()) {
+          long startTime = Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.getOperationStartTime();
+          resp = logManager.maybeAppend(prevLogIndex, prevLogTerm, leaderCommit, logs);
+          Timer.Statistic.RAFT_RECEIVER_APPEND_ENTRY.calOperationCostTimeFromStart(startTime);
+          if (resp != -1) {
+            if (logger.isDebugEnabled()) {
+              logger.debug("{} append a new log list {}, commit to {}", name, logs, leaderCommit);
+            }
+            resp = Response.RESPONSE_AGREE;
+          } else {
+            // the incoming log points to an illegal position, reject it
+            resp = Response.RESPONSE_LOG_MISMATCH;
+          }
+          break;
         }
-        resp = Response.RESPONSE_AGREE;
-      } else {
-        // the incoming log points to an illegal position, reject it
-        resp = Response.RESPONSE_LOG_MISMATCH;
+      }
+      try {
+        TimeUnit.MILLISECONDS.sleep(
+            IoTDBDescriptor.getInstance().getConfig().getCheckPeriodWhenInsertBlocked());
+        if (System.currentTimeMillis() - startWaitingTime
+            > IoTDBDescriptor.getInstance().getConfig().getMaxWaitingTimeWhenInsertBlocked()) {
+          return Response.RESPONSE_TOO_BUSY;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
       }
     }
     return resp;
