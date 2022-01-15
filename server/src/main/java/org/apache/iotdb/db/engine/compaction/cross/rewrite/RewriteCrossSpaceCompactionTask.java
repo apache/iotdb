@@ -61,7 +61,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
   protected List<TsFileResource> selectedUnSeqTsFileResourceList;
   protected String logicalStorageGroupName;
   protected String virtualStorageGroupName;
-  private TsFileManager tsFileManager;
+  protected TsFileManager tsFileManager;
   private TsFileResourceList seqTsFileResourceList;
   private TsFileResourceList unseqTsFileResourceList;
 

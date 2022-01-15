@@ -82,7 +82,8 @@ public class CompactionRecoverTask {
                   storageGroupDir,
                   tsFileManager.getSequenceListByTimePartition(timePartition),
                   tsFileManager.getUnsequenceListByTimePartition(timePartition),
-                  compactionLog)
+                  compactionLog,
+                  tsFileManager)
               .call();
         }
       }

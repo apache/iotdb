@@ -177,7 +177,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -277,7 +278,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     // all source file should still exist
     Assert.assertTrue(seqResources.get(0).getTsFile().exists());
@@ -398,7 +400,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     // all source files should be deleted
     Assert.assertFalse(seqResources.get(0).getTsFile().exists());
@@ -488,7 +491,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             logFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     // all source file should exist
     for (int i = 0; i < seqResources.size(); i++) {
@@ -571,7 +575,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             logFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     // all source files should not exist
     for (int i = 0; i < seqResources.size(); i++) {
@@ -681,7 +686,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -789,7 +795,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     path =
         SchemaTestUtils.getMeasurementPath(
@@ -897,7 +904,8 @@ public class SizeTieredCompactionRecoverTest extends AbstractInnerSpaceCompactio
             compactionLogFile,
             tempSGDir.getAbsolutePath(),
             true,
-            CompactionTaskManager.currentTaskNum)
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager)
         .call();
     path =
         SchemaTestUtils.getMeasurementPath(

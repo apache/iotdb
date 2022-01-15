@@ -69,7 +69,8 @@ public enum InnerCompactionStrategy {
       long timePartition,
       File compactionLogFile,
       String dataDir,
-      boolean sequence) {
+      boolean sequence,
+      TsFileManager tsFileManager) {
     switch (this) {
       case SIZE_TIERED_COMPACTION:
       default:
@@ -80,7 +81,8 @@ public enum InnerCompactionStrategy {
             compactionLogFile,
             dataDir,
             sequence,
-            CompactionTaskManager.currentTaskNum);
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager);
     }
   }
 

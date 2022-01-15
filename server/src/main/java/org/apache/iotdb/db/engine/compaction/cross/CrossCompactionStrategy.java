@@ -73,7 +73,8 @@ public enum CrossCompactionStrategy {
       String storageGroupDir,
       TsFileResourceList seqTsFileResourceList,
       TsFileResourceList unSeqTsFileResourceList,
-      File logFile) {
+      File logFile,
+      TsFileManager tsFileManager) {
     switch (this) {
       case INPLACE_COMPACTION:
       default:
@@ -85,7 +86,8 @@ public enum CrossCompactionStrategy {
             seqTsFileResourceList,
             unSeqTsFileResourceList,
             logFile,
-            CompactionTaskManager.currentTaskNum);
+            CompactionTaskManager.currentTaskNum,
+            tsFileManager);
     }
   }
 
