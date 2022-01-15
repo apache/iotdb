@@ -55,8 +55,7 @@ public class Planner {
   }
 
   public PhysicalPlan operatorToPhysicalPlan(Operator operator) throws QueryProcessException {
-    return parseSQLToPhysicalPlan(
-            sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
+    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   public PhysicalPlan parseSQLToPhysicalPlan(
