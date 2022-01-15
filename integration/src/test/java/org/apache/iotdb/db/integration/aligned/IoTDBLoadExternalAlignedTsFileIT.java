@@ -119,10 +119,7 @@ public class IoTDBLoadExternalAlignedTsFileIT {
       };
 
   private static String[] deleteTimeseiresSqls =
-          new String[]{
-                  "delete from root.vehicle.** where time >= 10 and time<=20",
-                  "flush"
-          };
+      new String[] {"delete from root.vehicle.** where time >= 10 and time<=20", "flush"};
 
   private static final String TIMESTAMP_STR = "Time";
   private static final String VEHICLE_D0_S0_STR = "root.vehicle.d0.s0";
@@ -534,41 +531,40 @@ public class IoTDBLoadExternalAlignedTsFileIT {
     }
   }
 
-
   @Test
-  public void loadTsfileWithModsTest() throws SQLException{
+  public void loadTsfileWithModsTest() throws SQLException {
     prepareData(insertUnsequenceSqls);
     prepareData(deleteTimeseiresSqls);
     String[] queryRes =
-            new String[] {
-                    "1,null,null,null,null,null,null,110",
-                    "2,null,null,null,null,null,1209,null",
-                    "4,null,null,null,null,null,null,330",
-                    "6,120,null,null,null,null,null,null",
-                    "9,null,123,null,null,null,null,null",
-                    "10,null,null,null,null,106,null,1100",
-                    "13,null,null,null,null,427,528,null",
-                    "14,null,null,null,null,107,108,430",
-                    "16,null,null,null,null,null,109,null",
-                    "20,null,null,null,null,426,null,null",
-                    "29,null,null,1205.0,true,null,null,null",
-                    "30,null,null,null,null,1006,null,null",
-                    "33,null,null,null,true,null,null,null",
-                    "34,null,null,null,null,1007,1008,null",
-                    "36,null,null,null,null,null,1090,null",
-                    "38,121,122,null,null,null,null,null",
-                    "45,null,null,null,null,126,null,null",
-                    "68,null,null,null,null,127,128,null",
-                    "78,null,null,null,null,null,129,null",
-                    "80,null,null,null,null,127,128,null",
-                    "99,null,1234,null,null,null,null,null",
-                    "140,null,null,null,null,null,null,430",
-                    "150,null,null,null,null,426,null,null",
-                    "200,null,null,null,null,null,129,null"
-            };
+        new String[] {
+          "1,null,null,null,null,null,null,110",
+          "2,null,null,null,null,null,1209,null",
+          "4,null,null,null,null,null,null,330",
+          "6,120,null,null,null,null,null,null",
+          "9,null,123,null,null,null,null,null",
+          "10,null,null,null,null,106,null,1100",
+          "13,null,null,null,null,427,528,null",
+          "14,null,null,null,null,107,108,430",
+          "16,null,null,null,null,null,109,null",
+          "20,null,null,null,null,426,null,null",
+          "29,null,null,1205.0,true,null,null,null",
+          "30,null,null,null,null,1006,null,null",
+          "33,null,null,null,true,null,null,null",
+          "34,null,null,null,null,1007,1008,null",
+          "36,null,null,null,null,null,1090,null",
+          "38,121,122,null,null,null,null,null",
+          "45,null,null,null,null,126,null,null",
+          "68,null,null,null,null,127,128,null",
+          "78,null,null,null,null,null,129,null",
+          "80,null,null,null,null,127,128,null",
+          "99,null,1234,null,null,null,null,null",
+          "140,null,null,null,null,null,null,430",
+          "150,null,null,null,null,426,null,null",
+          "200,null,null,null,null,null,129,null"
+        };
     try (Connection connection =
-                 DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
-         Statement statement = connection.createStatement()) {
+            DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
 
       // check query result
       boolean hasResultSet = statement.execute("SELECT * FROM root.**");
@@ -577,36 +573,36 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         int cnt = 0;
         while (resultSet.next()) {
           String queryString =
-                  resultSet.getString(TIMESTAMP_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S0_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S1_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S2_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S3_STR)
-                          + ","
-                          + resultSet.getString(TEST_D0_S0_STR)
-                          + ","
-                          + resultSet.getString(TEST_D0_S1_STR)
-                          + ","
-                          + resultSet.getString(TEST_D1_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S0_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S1_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S2_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S3_STR)
+                  + ","
+                  + resultSet.getString(TEST_D0_S0_STR)
+                  + ","
+                  + resultSet.getString(TEST_D0_S1_STR)
+                  + ","
+                  + resultSet.getString(TEST_D1_STR);
           Assert.assertEquals(queryRes[cnt++], queryString);
         }
       }
 
       // move root.vehicle
       List<TsFileResource> resources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.vehicle"))
-                              .getSequenceFileTreeSet());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.vehicle"))
+                  .getSequenceFileTreeSet());
       assertEquals(2, resources.size());
       File tmpDir =
-              new File(
-                      resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
-                      "tmp" + File.separator + new PartialPath("root.vehicle") + File.separator + "0");
+          new File(
+              resources.get(0).getTsFile().getParentFile().getParentFile().getParentFile(),
+              "tmp" + File.separator + new PartialPath("root.vehicle") + File.separator + "0");
       if (!tmpDir.exists()) {
         tmpDir.mkdirs();
       }
@@ -614,10 +610,10 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
       }
       resources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.vehicle"))
-                              .getUnSequenceFileList());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.vehicle"))
+                  .getUnSequenceFileList());
       assertEquals(1, resources.size());
       for (TsFileResource resource : resources) {
         statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
@@ -625,10 +621,10 @@ public class IoTDBLoadExternalAlignedTsFileIT {
 
       // move root.test
       resources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.test"))
-                              .getSequenceFileTreeSet());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet());
       assertEquals(2, resources.size());
       tmpDir = new File(tmpDir.getParentFile().getParentFile(), "root.test" + File.separator + "0");
       if (!tmpDir.exists()) {
@@ -638,10 +634,10 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
       }
       resources =
-              new ArrayList<>(
-                      StorageEngine.getInstance()
-                              .getProcessor(new PartialPath("root.test"))
-                              .getUnSequenceFileList());
+          new ArrayList<>(
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getUnSequenceFileList());
       assertEquals(2, resources.size());
       for (TsFileResource resource : resources) {
         statement.execute(String.format("unload '%s' '%s'", resource.getTsFilePath(), tmpDir));
@@ -651,60 +647,60 @@ public class IoTDBLoadExternalAlignedTsFileIT {
       tmpDir = tmpDir.getParentFile().getParentFile();
       statement.execute(String.format("load '%s'", tmpDir.getAbsolutePath()));
       assertEquals(
-              2,
-              StorageEngine.getInstance()
-                      .getProcessor(new PartialPath("root.vehicle"))
-                      .getSequenceFileTreeSet()
-                      .size());
+          2,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.vehicle"))
+              .getSequenceFileTreeSet()
+              .size());
       assertEquals(
-              1,
-              StorageEngine.getInstance()
-                      .getProcessor(new PartialPath("root.vehicle"))
-                      .getUnSequenceFileList()
-                      .size());
+          1,
+          StorageEngine.getInstance()
+              .getProcessor(new PartialPath("root.vehicle"))
+              .getUnSequenceFileList()
+              .size());
       if (config.getTimeIndexLevel().equals(TimeIndexLevel.DEVICE_TIME_INDEX)) {
         if (StorageEngine.getInstance()
                 .getProcessor(new PartialPath("root.test"))
                 .getUnSequenceFileList()
                 .size()
-                == 1) {
+            == 1) {
           assertEquals(
-                  3,
-                  StorageEngine.getInstance()
-                          .getProcessor(new PartialPath("root.test"))
-                          .getSequenceFileTreeSet()
-                          .size());
+              3,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
         } else {
           assertEquals(
-                  2,
-                  StorageEngine.getInstance()
-                          .getProcessor(new PartialPath("root.test"))
-                          .getSequenceFileTreeSet()
-                          .size());
+              2,
+              StorageEngine.getInstance()
+                  .getProcessor(new PartialPath("root.test"))
+                  .getSequenceFileTreeSet()
+                  .size());
         }
       } else if (config.getTimeIndexLevel().equals(TimeIndexLevel.FILE_TIME_INDEX)) {
         assertEquals(
-                2,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getUnSequenceFileList()
-                        .size());
+            2,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getUnSequenceFileList()
+                .size());
         assertEquals(
-                2,
-                StorageEngine.getInstance()
-                        .getProcessor(new PartialPath("root.test"))
-                        .getSequenceFileTreeSet()
-                        .size());
+            2,
+            StorageEngine.getInstance()
+                .getProcessor(new PartialPath("root.test"))
+                .getSequenceFileTreeSet()
+                .size());
       }
       assertNotNull(tmpDir.listFiles());
       assertEquals(
-              0,
-              new File(tmpDir, new PartialPath("root.vehicle") + File.separator + "0")
-                      .listFiles()
-                      .length);
+          0,
+          new File(tmpDir, new PartialPath("root.vehicle") + File.separator + "0")
+              .listFiles()
+              .length);
       assertEquals(
-              0,
-              new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
+          0,
+          new File(tmpDir, new PartialPath("root.test") + File.separator + "0").listFiles().length);
 
       // check query result
       hasResultSet = statement.execute("SELECT * FROM root.**");
@@ -713,21 +709,21 @@ public class IoTDBLoadExternalAlignedTsFileIT {
         int cnt = 0;
         while (resultSet.next()) {
           String queryString =
-                  resultSet.getString(TIMESTAMP_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S0_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S1_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S2_STR)
-                          + ","
-                          + resultSet.getString(VEHICLE_D0_S3_STR)
-                          + ","
-                          + resultSet.getString(TEST_D0_S0_STR)
-                          + ","
-                          + resultSet.getString(TEST_D0_S1_STR)
-                          + ","
-                          + resultSet.getString(TEST_D1_STR);
+              resultSet.getString(TIMESTAMP_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S0_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S1_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S2_STR)
+                  + ","
+                  + resultSet.getString(VEHICLE_D0_S3_STR)
+                  + ","
+                  + resultSet.getString(TEST_D0_S0_STR)
+                  + ","
+                  + resultSet.getString(TEST_D0_S1_STR)
+                  + ","
+                  + resultSet.getString(TEST_D1_STR);
           Assert.assertEquals(queryRes[cnt++], queryString);
         }
       }
