@@ -141,7 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)?;
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
 
 // Create Snapshot for Schema
 createSnapshot
