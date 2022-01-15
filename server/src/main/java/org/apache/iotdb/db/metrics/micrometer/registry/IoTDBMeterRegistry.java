@@ -28,7 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metrics.metricsUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -51,7 +52,7 @@ import java.util.concurrent.TimeUnit;
 
 public class IoTDBMeterRegistry extends StepMeterRegistry {
   private static final Logger logger = LoggerFactory.getLogger(IoTDBMeterRegistry.class);
-  private BasicServiceProvider basicServiceProvider;
+  private final ServiceProvider serviceProvider;
   private final int rpcPort;
   private final String address;
 
@@ -60,11 +61,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
     IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     rpcPort = ioTDBConfig.getRpcPort();
     address = ioTDBConfig.getRpcAddress();
-    try {
-      basicServiceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
+    serviceProvider = IoTDB.serviceProvider;
   }
 
   @Override
@@ -135,7 +132,7 @@ public class IoTDBMeterRegistry extends StepMeterRegistry {
                     new ArrayList<>(Arrays.asList(TSDataType.DOUBLE)),
                     new ArrayList<>(Arrays.asList(value))),
                 false);
-        basicServiceProvider.executeNonQuery(insertRowPlan);
+        serviceProvider.executeNonQuery(insertRowPlan);
       } catch (IllegalPathException
           | IoTDBConnectionException
           | QueryProcessException

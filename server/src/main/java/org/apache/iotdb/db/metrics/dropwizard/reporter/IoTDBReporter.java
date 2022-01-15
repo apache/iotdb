@@ -28,7 +28,8 @@ import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metrics.metricsUtils;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
-import org.apache.iotdb.db.service.basic.BasicServiceProvider;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.basic.ServiceProvider;
 import org.apache.iotdb.db.utils.DataTypeUtils;
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -58,7 +59,7 @@ public class IoTDBReporter extends ScheduledReporter {
   private static final TimeUnit RATE_UNIT = TimeUnit.SECONDS;
   private final String prefix;
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBReporter.class);
-  private BasicServiceProvider basicServiceProvider;
+  private final ServiceProvider serviceProvider;
   private final int rpcPort;
   private final String address;
 
@@ -80,11 +81,7 @@ public class IoTDBReporter extends ScheduledReporter {
     IoTDBConfig ioTDBConfig = IoTDBDescriptor.getInstance().getConfig();
     rpcPort = ioTDBConfig.getRpcPort();
     address = ioTDBConfig.getRpcAddress();
-    try {
-      basicServiceProvider = new BasicServiceProvider();
-    } catch (QueryProcessException e) {
-      e.printStackTrace();
-    }
+    serviceProvider = IoTDB.serviceProvider;
   }
 
   public static class Builder {
@@ -216,7 +213,7 @@ public class IoTDBReporter extends ScheduledReporter {
                   new ArrayList<>(Arrays.asList(TSDataType.DOUBLE)),
                   new ArrayList<>(Arrays.asList(value))),
               false);
-      basicServiceProvider.executeNonQuery(insertRowPlan);
+      serviceProvider.executeNonQuery(insertRowPlan);
     } catch (IllegalPathException
         | IoTDBConnectionException
         | QueryProcessException
