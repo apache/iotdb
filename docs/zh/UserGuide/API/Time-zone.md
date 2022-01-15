@@ -33,7 +33,7 @@ Session: session.setTimeZone("+08:00");
 
 在 CLI 命令行工具中，通过 SQL 手动设置时区的方式为：
 
-```java
+```sql
 SET time_zone=+08:00
 ```
 
@@ -43,6 +43,12 @@ SET time_zone=+08:00
 JDBC: (IoTDBConnection) connection.getTimeZone();
 
 Session: session.getTimeZone();
+```
+
+CLI 中的方法为：
+
+```sql
+SHOW time_zone
 ```
 
 ## 时区使用场景

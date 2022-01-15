@@ -25,13 +25,18 @@ import org.apache.iotdb.cluster.coordinator.Coordinator;
 import org.apache.iotdb.cluster.exception.SnapshotInstallationException;
 import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
+import org.apache.iotdb.cluster.utils.CreateTemplatePlanUtil;
 import org.apache.iotdb.db.auth.AuthException;
 import org.apache.iotdb.db.auth.authorizer.BasicAuthorizer;
 import org.apache.iotdb.db.auth.entity.Role;
 import org.apache.iotdb.db.auth.entity.User;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.metadata.UndefinedTemplateException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.metadata.template.Template;
+import org.apache.iotdb.db.metadata.template.TemplateManager;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.junit.After;
@@ -46,6 +51,7 @@ import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 public class MetaSimpleSnapshotTest extends IoTDBTest {
 
@@ -62,7 +68,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     metaGroupMember =
         new TestMetaGroupMember() {
           @Override
-          protected void startSubServers() {
+          protected void rebuildDataGroups() {
             subServerInitialized = true;
           }
         };
@@ -83,6 +89,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
       Map<String, User> userMap = new HashMap<>();
       Map<String, Role> roleMap = new HashMap<>();
+      Map<String, Template> templateMap = new HashMap<>();
       PartitionTable partitionTable = TestUtils.getPartitionTable(10);
       long lastLogIndex = 10;
       long lastLogTerm = 5;
@@ -104,8 +111,17 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
         roleMap.put(roleName, role);
       }
 
+      CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+
+      for (int i = 0; i < 10; i++) {
+        String templateName = "template_" + i;
+        Template template = new Template(createTemplatePlan);
+        templateMap.put(templateName, template);
+      }
+
       MetaSimpleSnapshot metaSimpleSnapshot =
-          new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
+          new MetaSimpleSnapshot(
+              storageGroupTTLMap, userMap, roleMap, templateMap, partitionTable.serialize());
 
       metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
       metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
@@ -118,6 +134,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       assertEquals(storageGroupTTLMap, newSnapshot.getStorageGroupTTLMap());
       assertEquals(userMap, newSnapshot.getUserMap());
       assertEquals(roleMap, newSnapshot.getRoleMap());
+      assertEquals(templateMap, newSnapshot.getTemplateMap());
 
       assertEquals(partitionTable.serialize(), newSnapshot.getPartitionTableBuffer());
       assertEquals(lastLogIndex, newSnapshot.getLastLogIndex());
@@ -136,6 +153,7 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
     Map<PartialPath, Long> storageGroupTTLMap = new HashMap<>();
     Map<String, User> userMap = new HashMap<>();
     Map<String, Role> roleMap = new HashMap<>();
+    Map<String, Template> templateMap = new HashMap<>();
     PartitionTable partitionTable = TestUtils.getPartitionTable(10);
     long lastLogIndex = 10;
     long lastLogTerm = 5;
@@ -157,8 +175,18 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       roleMap.put(roleName, role);
     }
 
+    CreateTemplatePlan createTemplatePlan = CreateTemplatePlanUtil.getCreateTemplatePlan();
+
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      createTemplatePlan.setName(templateName);
+      Template template = new Template(createTemplatePlan);
+      templateMap.put(templateName, template);
+    }
+
     MetaSimpleSnapshot metaSimpleSnapshot =
-        new MetaSimpleSnapshot(storageGroupTTLMap, userMap, roleMap, partitionTable.serialize());
+        new MetaSimpleSnapshot(
+            storageGroupTTLMap, userMap, roleMap, templateMap, partitionTable.serialize());
     metaSimpleSnapshot.setLastLogIndex(lastLogIndex);
     metaSimpleSnapshot.setLastLogTerm(lastLogTerm);
 
@@ -181,6 +209,16 @@ public class MetaSimpleSnapshotTest extends IoTDBTest {
       String roleName = "role_" + i;
       Role role = BasicAuthorizer.getInstance().getRole(roleName);
       assertEquals(roleMap.get(roleName), role);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      String templateName = "template_" + i;
+      try {
+        Template template = TemplateManager.getInstance().getTemplate(templateName);
+        assertEquals(templateMap.get(templateName), template);
+      } catch (UndefinedTemplateException e) {
+        fail();
+      }
     }
 
     assertEquals(partitionTable, metaGroupMember.getPartitionTable());

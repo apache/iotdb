@@ -30,7 +30,7 @@ import org.apache.iotdb.cluster.server.member.DataGroupMember;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.RawQueryDataSetWithoutValueFilter;
@@ -85,11 +85,7 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     try {
       List<ManagedSeriesReader> readersOfSelectedSeries = initMultSeriesReader(context);
       return new RawQueryDataSetWithoutValueFilter(
-          context.getQueryId(),
-          queryPlan.getDeduplicatedPaths(),
-          queryPlan.getDeduplicatedDataTypes(),
-          readersOfSelectedSeries,
-          queryPlan.isAscending());
+          context.getQueryId(), queryPlan, readersOfSelectedSeries);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new StorageEngineException(e.getMessage());
@@ -129,9 +125,9 @@ public class ClusterDataQueryExecutor extends RawDataQueryExecutor {
     for (int i = 0; i < queryPlan.getDeduplicatedPaths().size(); i++) {
       PartialPath partialPath = queryPlan.getDeduplicatedPaths().get(i);
       TSDataType dataType = queryPlan.getDeduplicatedDataTypes().get(i);
-      String fullPath = PartialPath.getExactFullPath(partialPath);
+      String fullPath = partialPath.getFullPath();
       AssignPathManagedMergeReader assignPathManagedMergeReader =
-          new AssignPathManagedMergeReader(fullPath, dataType);
+          new AssignPathManagedMergeReader(fullPath, dataType, queryPlan.isAscending());
       for (AbstractMultPointReader multPointReader : multPointReaders) {
         if (multPointReader.getAllPaths().contains(fullPath)) {
           assignPathManagedMergeReader.addReader(multPointReader, 0);

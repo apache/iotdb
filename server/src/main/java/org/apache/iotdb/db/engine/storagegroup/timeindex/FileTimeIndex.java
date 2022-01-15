@@ -21,26 +21,25 @@ package org.apache.iotdb.db.engine.storagegroup.timeindex;
 
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.PartitionViolationException;
-import org.apache.iotdb.db.rescon.CachedStringPool;
-import org.apache.iotdb.db.utils.FilePathUtils;
-import org.apache.iotdb.db.utils.SerializeUtils;
+import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
-import io.netty.util.internal.ConcurrentSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 public class FileTimeIndex implements ITimeIndex {
 
-  protected static final Map<String, String> cachedDevicePool =
-      CachedStringPool.getInstance().getCachedPool();
+  private static final Logger logger = LoggerFactory.getLogger(FileTimeIndex.class);
 
   /** start time */
   protected long startTime;
@@ -48,64 +47,31 @@ public class FileTimeIndex implements ITimeIndex {
   /** end times. The value is Long.MIN_VALUE if it's an unsealed sequence tsfile */
   protected long endTime;
 
-  /** devices */
-  protected Set<String> devices;
-
   public FileTimeIndex() {
-    this.devices = new ConcurrentSet<>();
     this.startTime = Long.MAX_VALUE;
     this.endTime = Long.MIN_VALUE;
   }
 
-  public FileTimeIndex(Set<String> devices, long startTime, long endTime) {
+  public FileTimeIndex(long startTime, long endTime) {
     this.startTime = startTime;
     this.endTime = endTime;
-    this.devices = devices;
   }
 
   @Override
   public void serialize(OutputStream outputStream) throws IOException {
-    ReadWriteIOUtils.write(devices.size(), outputStream);
-    Set<String> stringMemoryReducedSet = new ConcurrentSet<>();
-    for (String device : devices) {
-      // To reduce the String number in memory,
-      // use the deviceId from cached pool
-      stringMemoryReducedSet.add(cachedDevicePool.computeIfAbsent(device, k -> k));
-      ReadWriteIOUtils.write(device, outputStream);
-    }
     ReadWriteIOUtils.write(startTime, outputStream);
     ReadWriteIOUtils.write(endTime, outputStream);
-    devices = stringMemoryReducedSet;
   }
 
   @Override
   public FileTimeIndex deserialize(InputStream inputStream) throws IOException {
-    int size = ReadWriteIOUtils.readInt(inputStream);
-    Set<String> deviceSet = new HashSet<>();
-    for (int i = 0; i < size; i++) {
-      String path = ReadWriteIOUtils.readString(inputStream);
-      // To reduce the String number in memory,
-      // use the deviceId from memory instead of the deviceId read from disk
-      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
-      deviceSet.add(cachedPath);
-    }
     return new FileTimeIndex(
-        deviceSet, ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
+        ReadWriteIOUtils.readLong(inputStream), ReadWriteIOUtils.readLong(inputStream));
   }
 
   @Override
   public FileTimeIndex deserialize(ByteBuffer buffer) {
-    int size = buffer.getInt();
-    Set<String> deviceSet = new HashSet<>(size);
-
-    for (int i = 0; i < size; i++) {
-      String path = SerializeUtils.deserializeString(buffer);
-      // To reduce the String number in memory,
-      // use the deviceId from memory instead of the deviceId read from disk
-      String cachedPath = cachedDevicePool.computeIfAbsent(path, k -> k);
-      deviceSet.add(cachedPath);
-    }
-    return new FileTimeIndex(deviceSet, buffer.getLong(), buffer.getLong());
+    return new FileTimeIndex(buffer.getLong(), buffer.getLong());
   }
 
   @Override
@@ -114,8 +80,14 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
-  public Set<String> getDevices() {
-    return devices;
+  public Set<String> getDevices(String tsFilePath) {
+    try {
+      TsFileSequenceReader fileReader = FileReaderManager.getInstance().get(tsFilePath, true);
+      return new HashSet<>(fileReader.getAllDevices());
+    } catch (IOException e) {
+      logger.error("Can't read file {} from disk ", tsFilePath, e);
+      throw new RuntimeException("Can't read file " + tsFilePath + " from disk");
+    }
   }
 
   @Override
@@ -134,17 +106,12 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public long calculateRamSize() {
-    return RamUsageEstimator.sizeOf(devices)
-        + RamUsageEstimator.sizeOf(startTime)
-        + RamUsageEstimator.sizeOf(endTime);
+    return RamUsageEstimator.sizeOf(startTime) + RamUsageEstimator.sizeOf(endTime);
   }
 
   @Override
   public long getTimePartition(String tsFilePath) {
     try {
-      if (devices != null && !devices.isEmpty()) {
-        return StorageEngine.getTimePartition(startTime);
-      }
       String[] filePathSplits = FilePathUtils.splitTsFilePath(tsFilePath);
       return Long.parseLong(filePathSplits[filePathSplits.length - 2]);
     } catch (NumberFormatException e) {
@@ -178,7 +145,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateStartTime(String deviceId, long time) {
-    devices.add(deviceId);
     if (this.startTime > time) {
       this.startTime = time;
     }
@@ -186,7 +152,6 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void updateEndTime(String deviceId, long time) {
-    devices.add(deviceId);
     if (this.endTime < time) {
       this.endTime = time;
     }
@@ -194,13 +159,11 @@ public class FileTimeIndex implements ITimeIndex {
 
   @Override
   public void putStartTime(String deviceId, long time) {
-    devices.add(deviceId);
     this.startTime = time;
   }
 
   @Override
   public void putEndTime(String deviceId, long time) {
-    devices.add(deviceId);
     this.endTime = time;
   }
 
@@ -210,12 +173,34 @@ public class FileTimeIndex implements ITimeIndex {
   }
 
   @Override
+  public long getMinStartTime() {
+    return startTime;
+  }
+
+  @Override
   public long getEndTime(String deviceId) {
+    return endTime;
+  }
+
+  @Override
+  public long getMaxEndTime() {
     return endTime;
   }
 
   @Override
   public boolean checkDeviceIdExist(String deviceId) {
     return true;
+  }
+
+  @Override
+  public int compareDegradePriority(ITimeIndex timeIndex) {
+    if (timeIndex instanceof DeviceTimeIndex) {
+      return 1;
+    } else if (timeIndex instanceof FileTimeIndex) {
+      return Long.compare(startTime, timeIndex.getMinStartTime());
+    } else {
+      logger.error("Wrong timeIndex type {}", timeIndex.getClass().getName());
+      throw new RuntimeException("Wrong timeIndex type " + timeIndex.getClass().getName());
+    }
   }
 }

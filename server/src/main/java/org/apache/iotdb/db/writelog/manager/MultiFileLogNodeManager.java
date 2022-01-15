@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.writelog.manager;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StartupException;
@@ -33,7 +34,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -46,16 +46,30 @@ import java.util.function.Supplier;
 public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
 
   private static final Logger logger = LoggerFactory.getLogger(MultiFileLogNodeManager.class);
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  // if OOM occurs when registering bytebuffer, getNode method will sleep awhile and then try again
+  private static final long REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS =
+      config.getRegisterBufferSleepIntervalInMs();
+  // if total sleep time exceeds this, getNode method will reject this write
+  private static final long REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS =
+      config.getRegisterBufferRejectThresholdInMs();
+
   private final Map<String, WriteLogNode> nodeMap;
 
   private ScheduledExecutorService executorService;
-  private final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+
+  // For fixing too many warn logs when system changes to read-only mode
+  private boolean firstReadOnly = true;
 
   private void forceTask() {
     if (IoTDBDescriptor.getInstance().getConfig().isReadOnly()) {
-      logger.warn("system mode is read-only, the force flush WAL task is stopped");
+      if (firstReadOnly) {
+        logger.warn("system mode is read-only, the force flush WAL task is stopped");
+        firstReadOnly = false;
+      }
       return;
     }
+    firstReadOnly = true;
     if (Thread.interrupted()) {
       logger.info("WAL force thread exits.");
       return;
@@ -85,9 +99,34 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
       node = new ExclusiveWriteLogNode(identifier);
       WriteLogNode oldNode = nodeMap.putIfAbsent(identifier, node);
       if (oldNode != null) {
-        return oldNode;
+        node = oldNode;
       } else {
-        node.initBuffer(supplier.get());
+        ByteBuffer[] buffers = supplier.get();
+        int sleepTimeInMs = 0;
+        while (buffers == null) {
+          // log error if this is the first time
+          if (sleepTimeInMs == 0) {
+            logger.error(
+                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
+          }
+          // sleep awhile and then try again
+          try {
+            Thread.sleep(REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS);
+            sleepTimeInMs += REGISTER_BUFFER_SLEEP_INTERVAL_IN_MS;
+          } catch (InterruptedException e) {
+            nodeMap.remove(identifier);
+          }
+          // sleep too long, throw exception
+          if (sleepTimeInMs >= REGISTER_BUFFER_REJECT_THRESHOLD_IN_MS) {
+            nodeMap.remove(identifier);
+            throw new RuntimeException(
+                "Cannot allocate bytebuffer for wal, please reduce wal_buffer_size or storage groups number");
+          }
+          // try to get bytebuffer repeatedly
+          buffers = supplier.get();
+        }
+        // initialize node with bytebuffers
+        node.initBuffer(buffers);
       }
     }
     return node;
@@ -122,7 +161,8 @@ public class MultiFileLogNodeManager implements WriteLogNodeManager, IService {
         return;
       }
       if (config.getForceWalPeriodInMs() > 0) {
-        executorService = Executors.newSingleThreadScheduledExecutor();
+        executorService = IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor("WAL-ForceSync");
+
         executorService.scheduleWithFixedDelay(
             this::forceTask,
             config.getForceWalPeriodInMs(),

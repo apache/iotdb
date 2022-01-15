@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.modification;
 
 import org.apache.iotdb.db.constant.TestConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 
 import org.junit.Test;
 

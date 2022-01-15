@@ -18,9 +18,8 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
 
 import java.io.IOException;
@@ -56,13 +55,13 @@ public interface IMNode extends Serializable {
 
   void replaceChild(String oldChildName, IMNode newChildNode);
 
-  IMNode getChildOfAlignedTimeseries(String name) throws MetadataException;
-
   Map<String, IMNode> getChildren();
 
   void setChildren(Map<String, IMNode> children);
 
   boolean isUseTemplate();
+
+  void setUseTemplate(boolean useTemplate);
 
   Template getUpperTemplate();
 
@@ -70,13 +69,21 @@ public interface IMNode extends Serializable {
 
   void setSchemaTemplate(Template schemaTemplate);
 
-  int getMeasurementMNodeCount();
+  // EmptyInternal means there's no child or template under this node
+  // and this node is not the root nor a storageGroup nor a measurement.
+  boolean isEmptyInternal();
 
   boolean isStorageGroup();
 
   boolean isEntity();
 
   boolean isMeasurement();
+
+  IStorageGroupMNode getAsStorageGroupMNode();
+
+  IEntityMNode getAsEntityMNode();
+
+  IMeasurementMNode getAsMeasurementMNode();
 
   void serializeTo(MLogWriter logWriter) throws IOException;
 }

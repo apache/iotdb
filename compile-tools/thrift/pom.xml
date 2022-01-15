@@ -33,49 +33,16 @@
         <thrift.with.cpp>ON</thrift.with.cpp>
         <thrift.with.csharp>ON</thrift.with.csharp>
         <thrift.with.python>ON</thrift.with.python>
-        <chmod.command>chmod</chmod.command>
-        <chmod.command.para>+x cmake</chmod.command.para>
     </properties>
     <profiles>
-        <profile>
-            <id>os-windows</id>
-            <activation>
-                <os>
-                    <family>windows</family>
-                </os>
-            </activation>
-            <properties>
-                <chmod.command>echo</chmod.command>
-                <chmod.command.para>"do nothing"</chmod.command.para>
-            </properties>
-        </profile>
         <profile>
             <id>compile-cpp</id>
             <build>
                 <plugins>
                     <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.6.0</version>
-                        <executions>
-                            <execution>
-                                <id>make-cmake-executable</id>
-                                <phase>process-sources</phase>
-                                <goals>
-                                    <goal>exec</goal>
-                                </goals>
-                                <configuration>
-                                    <basedir>${cmake.root.dir}/bin</basedir>
-                                    <executable>${chmod.command}</executable>
-                                    <commandlineArgs>${chmod.command.para}</commandlineArgs>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <!-- Download the CMake binary distribution for this platform. -->
                             <execution>
@@ -152,6 +119,7 @@
                                         <option>-DTHRIFT_COMPILER_LUA=OFF</option>
                                         <option>-DTHRIFT_COMPILER_NETCORE=ON</option>
                                         <option>-DTHRIFT_COMPILER_NETSTD=ON</option>
+                                        <option>-DTHRIFT_COMPILER_NODEJS=OFF</option>
                                         <option>-DTHRIFT_COMPILER_OCAML=OFF</option>
                                         <option>-DTHRIFT_COMPILER_PERL=OFF</option>
                                         <option>-DTHRIFT_COMPILER_PHP=OFF</option>
@@ -169,6 +137,7 @@
                                         <option>-DBUILD_CSHARP=${thrift.with.csharp}</option>
                                         <!-- Don't build Java, as the libs are available via Maven -->
                                         <option>-DBUILD_JAVA=OFF</option>
+                                        <option>-DBUILD_NODEJS=OFF</option>
                                         <option>-DBUILD_PYTHON=${thrift.with.python}</option>
                                         <option>-DBUILD_JAVASCRIPT=OFF</option>
                                         <option>-DBUILD_HASKELL=OFF</option>
@@ -210,7 +179,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-thrift-config</id>

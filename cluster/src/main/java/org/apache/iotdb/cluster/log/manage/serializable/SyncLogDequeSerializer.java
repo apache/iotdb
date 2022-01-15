@@ -219,6 +219,7 @@ public class SyncLogDequeSerializer implements StableEntryManager {
   }
 
   /** for log tools */
+  @Override
   public LogManagerMeta getMeta() {
     return meta;
   }
@@ -234,6 +235,30 @@ public class SyncLogDequeSerializer implements StableEntryManager {
       return Collections.emptyList();
     }
     return getLogs(meta.getMaxHaveAppliedCommitIndex(), meta.getCommitLogIndex());
+  }
+
+  /**
+   * When raft log files flushed,meta would not be flushed synchronously.So data has flushed to disk
+   * is uncommitted for persistent LogManagerMeta(meta's info is stale).We need to recover these
+   * already persistent logs.
+   *
+   * <p>For example,commitIndex is 5 in persistent LogManagerMeta,But the log file has actually been
+   * flushed to 7,when we restart cluster,we need to recover 6 and 7.
+   *
+   * <p>Maybe,we can extract getAllEntriesAfterAppliedIndex and getAllEntriesAfterCommittedIndex
+   * into getAllEntriesByIndex,but now there are too many test cases using it.
+   */
+  @Override
+  public List<Log> getAllEntriesAfterCommittedIndex() {
+    long lastIndex = firstLogIndex + logIndexOffsetList.size() - 1;
+    logger.debug(
+        "getAllEntriesAfterCommittedIndex, firstUnCommitIndex={}, lastIndexBeforeStart={}",
+        meta.getCommitLogIndex() + 1,
+        lastIndex);
+    if (meta.getCommitLogIndex() >= lastIndex) {
+      return Collections.emptyList();
+    }
+    return getLogs(meta.getCommitLogIndex() + 1, lastIndex);
   }
 
   @Override
@@ -450,11 +475,6 @@ public class SyncLogDequeSerializer implements StableEntryManager {
     this.firstLogIndex = meta.getCommitLogIndex() + 1;
     try {
       recoverLogFiles();
-
-      logDataFileList.sort(this::comparePersistLogFileName);
-
-      logIndexFileList.sort(this::comparePersistLogFileName);
-
       // add init log file
       if (logDataFileList.isEmpty()) {
         createNewLogFile(metaFile.getParentFile().getPath(), meta.getCommitLogIndex() + 1);
@@ -472,6 +492,10 @@ public class SyncLogDequeSerializer implements StableEntryManager {
 
     // 2. recover the log data file
     recoverLogFiles(LOG_DATA_FILE_SUFFIX);
+
+    // sort by name before recover
+    logDataFileList.sort(this::comparePersistLogFileName);
+    logIndexFileList.sort(this::comparePersistLogFileName);
 
     // 3. recover the last log file in case of abnormal exit
     recoverTheLastLogFile();

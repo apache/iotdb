@@ -20,7 +20,7 @@ package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.index.common.IndexType;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -38,11 +38,11 @@ public class DropIndexPlan extends PhysicalPlan {
   private IndexType indexType;
 
   public DropIndexPlan() {
-    super(false, Operator.OperatorType.DROP_INDEX);
+    super(Operator.OperatorType.DROP_INDEX);
   }
 
   public DropIndexPlan(List<PartialPath> paths, IndexType indexType) {
-    super(false, OperatorType.DROP_INDEX);
+    super(OperatorType.DROP_INDEX);
     this.paths = paths;
     this.indexType = indexType;
   }
@@ -79,7 +79,7 @@ public class DropIndexPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.DROP_INDEX.ordinal();
     buffer.put((byte) type);
     buffer.put((byte) indexType.serialize());

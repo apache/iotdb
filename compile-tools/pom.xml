@@ -65,6 +65,30 @@
             </properties>
         </profile>
         <profile>
+            <id>os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>linux</os.suffix>
+                <os.classifier>linux-arm_32</os.classifier>
+                <cmake.url>https://github.com/Kitware/CMake/releases/download/v3.21.2/cmake-3.21.2-linux-aarch64.tar.gz</cmake.url>
+                <cmake.root.dir>${project.build.directory}/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <boost.url>https://boostorg.jfrog.io/artifactory/main/release/${boost.version}/source/boost_${boost.version.underline}.zip</boost.url>
+                <boost.bootstrap.executable>./bootstrap.sh</boost.bootstrap.executable>
+                <boost.build.executable>./b2</boost.build.executable>
+                <thrift.bootstrap.executable>./bootstrap.sh</thrift.bootstrap.executable>
+                <thrift.configure.executable>./configure</thrift.configure.executable>
+                <thrift.make.executable>make</thrift.make.executable>
+                <thrift.compiler.executable>thrift</thrift.compiler.executable>
+                <gradlew.executable>./gradlew</gradlew.executable>
+            </properties>
+        </profile>
+        <profile>
             <id>os-mac</id>
             <activation>
                 <os>

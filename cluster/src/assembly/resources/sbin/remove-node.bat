@@ -64,7 +64,7 @@ for %%i in (%*) do (
 	set CONF_PARAMS=!CONF_PARAMS! %%i
 )
 
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterIoTDB
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ set CLASSPATH="%IOTDB_HOME%\lib"
 
 @REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
 set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
-set CLASSPATH=%CLASSPATH%;iotdb.ClusterMain
+set CLASSPATH=%CLASSPATH%;iotdb.ClusterIoTDB
 goto okClasspath
 
 :append

@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,11 +35,11 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   private PartialPath path;
 
   public SetStorageGroupPlan() {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+    super(Operator.OperatorType.SET_STORAGE_GROUP);
   }
 
   public SetStorageGroupPlan(PartialPath path) {
-    super(false, Operator.OperatorType.SET_STORAGE_GROUP);
+    super(Operator.OperatorType.SET_STORAGE_GROUP);
     this.path = path;
   }
 
@@ -64,7 +64,7 @@ public class SetStorageGroupPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.SET_STORAGE_GROUP.ordinal());
     putString(buffer, path.getFullPath());
     buffer.putLong(index);

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.engine.trigger.service;
 
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEvent;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.CreateTriggerPlan;
 
 import java.util.Map;

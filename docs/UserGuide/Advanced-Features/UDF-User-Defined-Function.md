@@ -388,8 +388,9 @@ The process of registering a UDF in IoTDB is as follows:
 
 1. Implement a complete UDF class, assuming the full class name of this class is `org.apache.iotdb.udf.ExampleUDTF`.
 2. Package your project into a JAR. If you use Maven to manage your project, you can refer to the Maven project example above.
-3. Place the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT/ext/udf` or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT/ext/udf`.
-    
+3. Place the JAR package in the directory `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf` or in a subdirectory of `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
+   **Note that when deploying a cluster, you need to ensure that there is a corresponding JAR package in the UDF JAR package path of each node. **
+   
     > You can specify the root path for the UDF to load the Jar by modifying the 'udf_root_dir' in the configuration file.
 4. Register the UDF with the SQL statement, assuming that the name given to the UDF is `example`.
 
@@ -402,7 +403,7 @@ CREATE FUNCTION <UDF-NAME> AS <UDF-CLASS-FULL-PATHNAME>
 Here is an example:
 
 ```sql
-CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"
+CREATE FUNCTION example AS 'org.apache.iotdb.udf.ExampleUDTF'
 ```
 
 Since UDF instances are dynamically loaded through reflection technology, you do not need to restart the server during the UDF registration process.
@@ -447,6 +448,12 @@ The usage of UDF is similar to that of built-in aggregation functions.
 
 
 
+### Queries with Aligned Timeseries 
+
+Aligned Timeseries has not been supported in UDF queries yet. An error message is expected if you use UDF functions with Aligned Timeseries selected.
+
+
+
 ### Queries with * in SELECT Clauses
 
 Assume that there are 2 time series (`root.sg.d1.s1` and `root.sg.d1.s2`)  in the system.
@@ -470,19 +477,19 @@ Then the result set will include the results of  `example(root.sg.d1.s1, root.sg
 You can pass any number of key-value pair parameters to the UDF when constructing a UDF query. The key and value in the key-value pair need to be enclosed in single or double quotes. Note that key-value pair parameters can only be passed in after all time series have been passed in. Here is a set of examples:
 
 ``` sql
-SELECT example(s1, "key1"="value1", "key2"="value2"), example(*, "key3"="value3") FROM root.sg.d1;
-SELECT example(s1, s2, "key1"="value1", "key2"="value2") FROM root.sg.d1;
+SELECT example(s1, 'key1'='value1', 'key2'='value2'), example(*, 'key3'='value3') FROM root.sg.d1;
+SELECT example(s1, s2, 'key1'='value1', 'key2'='value2') FROM root.sg.d1;
 ```
 
 
 
-### Hybrid Queries
-
-Currently IoTDB supports hybrid queries of UDF queries and raw data queries, for example:
+### Nested Queries
 
 ``` sql
 SELECT s1, s2, example(s1, s2) FROM root.sg.d1;
-SELECT *, example(*) FROM root.sg.d1 NON ALIGN;
+SELECT *, example(*) FROM root.sg.d1 DISABLE ALIGN;
+SELECT s1 * example(* / s1 + s2) FROM root.sg.d1;
+SELECT s1, s2, s1 + example(s1, s2), s1 - example(s1 + example(s1, s2) / s2) FROM root.sg.d1;
 ```
 
 
@@ -576,12 +583,12 @@ When you have prepared the UDF source code, test cases, and instructions, you ar
 
 ## Q&A
 
-Q1: **How to modify the registered UDF? **
+Q1: How to modify the registered UDF? 
 
 A1: Assume that the name of the UDF is `example` and the full class name is `org.apache.iotdb.udf.ExampleUDTF`, which is introduced by `example.jar`.
 
 1. Unload the registered function by executing `DROP FUNCTION example`.
-2. Delete `example.jar` under `iotdb-server-0.13.0-SNAPSHOT/ext/udf`.
+2. Delete `example.jar` under `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
 3. Modify the logic in `org.apache.iotdb.udf.ExampleUDTF` and repackage it. The name of the JAR package can still be `example.jar`.
-4. Upload the new JAR package to `iotdb-server-0.13.0-SNAPSHOT/ext/udf`.
+4. Upload the new JAR package to `iotdb-server-0.13.0-SNAPSHOT-all-bin/ext/udf`.
 5. Load the new UDF by executing `CREATE FUNCTION example AS "org.apache.iotdb.udf.ExampleUDTF"`.

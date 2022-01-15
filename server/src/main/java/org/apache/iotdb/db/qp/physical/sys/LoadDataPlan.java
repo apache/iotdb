@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -33,7 +33,7 @@ public class LoadDataPlan extends PhysicalPlan {
 
   /** Constructor of LoadDataPlan. */
   public LoadDataPlan(String inputFilePath, String measureType) {
-    super(false, Operator.OperatorType.LOAD_DATA);
+    super(Operator.OperatorType.LOAD_DATA);
     this.inputFilePath = inputFilePath;
     this.measureType = measureType;
   }

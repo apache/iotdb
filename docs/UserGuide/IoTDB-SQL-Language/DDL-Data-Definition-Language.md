@@ -47,11 +47,11 @@ Besides, if deploy on Windows system, the LayerName is case-insensitive, which m
 
 ### Show Storage Group
 
-After creating the storage group, we can use the [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PrefixPath>](../Appendix/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
+After creating the storage group, we can use the [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) statement and [SHOW STORAGE GROUP \<PathPattern>](../Appendix/SQL-Reference.md) to view the storage groups. The SQL statements are as follows:
 
 ```
 IoTDB> show storage group
-IoTDB> show storage group root.ln
+IoTDB> show storage group root.**
 ```
 
 The result is as follows:
@@ -69,15 +69,16 @@ It costs 0.060s
 
 ### Delete Storage Group
 
-User can use the `DELETE STORAGE GROUP <PrefixPath>` statement to delete all storage groups under the prefixPath. Please note the data in the storage group will also be deleted. 
+User can use the `DELETE STORAGE GROUP <PathPattern>` statement to delete all storage groups matching the pathPattern. Please note the data in the storage group will also be deleted. 
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // delete all data, all timeseries and all storage groups
-IoTDB > DELETE STORAGE GROUP root.*
+IoTDB > DELETE STORAGE GROUP root.**
 ```
 ## Timeseries Management
+
 ### Create Timeseries
 
 According to the storage model selected before, we can create corresponding timeseries in the two storage groups respectively. The SQL statements for creating timeseries are as follows:
@@ -91,6 +92,17 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
+From v0.13, you can use a simplified version of the SQL statements to create timeseries:
+
+```
+IoTDB > create timeseries root.ln.wf01.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.ln.wf01.wt01.temperature FLOAT encoding=RLE
+IoTDB > create timeseries root.ln.wf02.wt02.hardware TEXT encoding=PLAIN
+IoTDB > create timeseries root.ln.wf02.wt02.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.temperature FLOAT encoding=RLE
+```
+
 Notice that when in the CREATE TIMESERIES statement the encoding method conflicts with the data type, the system gives the corresponding error prompt as shown below:
 
 ```
@@ -100,9 +112,21 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 Please refer to [Encoding](../Data-Concept/Encoding.md) for correspondence between data type and encoding.
 
+### Create Aligned Timeseries (From v0.13)
+
+The SQL statement for creating a group of timeseries are as follows:
+
+```
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY)
+```
+
+You can set different datatype, encoding, and compression for the timeseries in a group of aligned timeseries
+
+It is not currently supported to set an alias, tag, and attribute for aligned timeseries.
+
 ### Delete Timeseries
 
-To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PrefixPath>` statement.
+To delete the timeseries we created before, we are able to use `DELETE TimeSeries <PathPattern>` statement.
 
 The usage are as follows:
 
@@ -112,22 +136,9 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-As for **aligned** timeseries, we could delete them by explicit declaration with parentheses.
-
-```
-IoTDB > delete timeseries root.sg.d1.(s1,s2)
-```
-
-Attention: Deleting part of aligned timeseries is **not supported** currently.
-
-```
-IoTDB > delete timeseries root.sg.d1.s1
-error: Not support deleting part of aligned timeseies!
-```
-
 ### Show Timeseries
 
-* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
   There are four optional clauses added in SHOW TIMESERIES, return information of time series 
   
@@ -139,13 +150,13 @@ Examples:
 
   presents all timeseries information in JSON form
  
-* SHOW TIMESERIES <`Path`> 
+* SHOW TIMESERIES <`PathPattern`> 
   
-  returns all timeseries information under the given <`Path`>.  <`Path`> needs to be a prefix path or a path with star or a timeseries path. SQL statements are as follows:
+  returns all timeseries information matching the given <`PathPattern`>. SQL statements are as follows:
 
 ```
-IoTDB> show timeseries root
-IoTDB> show timeseries root.ln
+IoTDB> show timeseries root.**
+IoTDB> show timeseries root.ln.**
 ```
 
 The results are shown below respectively:
@@ -177,15 +188,15 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause
+* SHOW TIMESERIES (<`PathPattern`>)? WhereClause
  
-  returns all the timeseries information that satisfy the where condition and start with the prefixPath SQL statements are as follows:
+  returns all the timeseries information that satisfy the where condition and match the pathPattern. SQL statements are as follows:
 
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
 ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln where unit=c
-show timeseries root.ln where description contains 'test1'
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
 ```
 
 The results are shown below respectly:
@@ -223,11 +234,11 @@ It is worth noting that when the queried path does not exist, the system will re
 
 ### Count Timeseries
 
-IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries in the path. SQL statements are as follows:
+IoTDB is able to use `COUNT TIMESERIES <Path>` to count the number of timeseries matching the path. SQL statements are as follows:
 
 ```
-IoTDB > COUNT TIMESERIES root
-IoTDB > COUNT TIMESERIES root.ln
+IoTDB > COUNT TIMESERIES root.**
+IoTDB > COUNT TIMESERIES root.ln.**
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
@@ -259,9 +270,9 @@ Then the Metadata Tree will be as below:
 As can be seen, `root` is considered as `LEVEL=0`. So when you enter statements such as:
 
 ```
-IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
 ```
 
 You will get following results:
@@ -346,10 +357,10 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag3=v3, tag4=v4)
 ### Show Child Paths
 
 ```
-SHOW CHILD PATHS prefixPath
+SHOW CHILD PATHS pathPattern
 ```
 
-Return all child paths of the prefixPath, the prefixPath could contains *.
+Return all child paths of all the paths matching pathPattern.
 
 Example：
 
@@ -371,10 +382,10 @@ It costs 0.002s
 ### Show Child Nodes
 
 ```
-SHOW CHILD NODES prefixPath
+SHOW CHILD NODES pathPattern
 ```
 
-Return all child nodes of the prefixPath.
+Return all child nodes of the pathPattern.
 
 Example：
 
@@ -388,7 +399,7 @@ Example：
 +------------+
 ```
 
-* return the child nodes of root.vehicle：show child nodes root.ln
+* return the child nodes of root.ln：show child nodes root.ln
 
 ```
 +------------+
@@ -401,12 +412,17 @@ Example：
 
 ### Count Nodes
 
-IoTDB is able to use `COUNT NODES <PrefixPath> LEVEL=<INTEGER>` to count the number of nodes at the given level in current Metadata Tree. This could be used to query the number of devices. The usage are as follows:
+IoTDB is able to use `COUNT NODES <PathPattern> LEVEL=<INTEGER>` to count the number of nodes at
+ the given level in current Metadata Tree considering a given pattern. IoTDB will find paths that
+  match the pattern and counts distinct nodes at the specified level among the matched paths.
+  This could be used to query the number of devices with specified measurements. The usage are as
+   follows:
 
 ```
-IoTDB > COUNT NODES root LEVEL=2
-IoTDB > COUNT NODES root.ln LEVEL=2
-IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+IoTDB > COUNT NODES root.** LEVEL=2
+IoTDB > COUNT NODES root.ln.** LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01.** LEVEL=3
+IoTDB > COUNT NODES root.**.temperature LEVEL=3
 ```
 
 As for the above mentioned example and Metadata tree, you can get following results:
@@ -435,87 +451,136 @@ It costs 0.002s
 +-----+
 Total line number = 1
 It costs 0.002s
+
++-----+
+|count|
++-----+
+|    2|
++-----+
+Total line number = 1
+It costs 0.002s
 ```
 
 > Note: The path of timeseries is just a filter condition, which has no relationship with the definition of level.
-`PrefixPath` could contains `*`, but all nodes after `*` would be ignored. Only the prefix path before `*` is valid.
 
 ### Show Devices
 
-* SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
 
 Similar to `Show Timeseries`, IoTDB also supports two ways of viewing devices:
 
-* `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root`.
-* `SHOW DEVICES <PrefixPath>` statement specifies the `PrefixPath` and returns the devices information under the given level.
+* `SHOW DEVICES` statement presents all devices' information, which is equal to `SHOW DEVICES root.**`.
+* `SHOW DEVICES <PathPattern>` statement specifies the `PathPattern` and returns the devices information matching the pathPattern and under the given level.
 
 SQL statement is as follows:
 
 ```
 IoTDB> show devices
-IoTDB> show devices root.ln
+IoTDB> show devices root.ln.**
 ```
 
 You can get results below:
 
 ```
-+-------------------+
-|            devices|
-+-------------------+
-|  root.ln.wf01.wt01|
-|  root.ln.wf02.wt02|
-|root.sgcc.wf03.wt01|
-|    root.turbine.d1|
-+-------------------+
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|  root.ln.wf01.wt01|    false|
+|  root.ln.wf02.wt02|    false|
+|root.sgcc.wf03.wt01|    false|
+|    root.turbine.d1|    false|
++-------------------+---------+
 Total line number = 4
 It costs 0.002s
 
-+-----------------+
-|          devices|
-+-----------------+
-|root.ln.wf01.wt01|
-|root.ln.wf02.wt02|
-+-----------------+
++-----------------+---------+
+|          devices|isAligned|
++-----------------+---------+
+|root.ln.wf01.wt01|    false|
+|root.ln.wf02.wt02|    false|
++-----------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
 
+`isAligned` indicates whether the timeseries under the device are aligned.
+
 To view devices' information with storage group, we can use `SHOW DEVICES WITH STORAGE GROUP` statement.
 
 * `SHOW DEVICES WITH STORAGE GROUP` statement presents all devices' information with their storage group.
-* `SHOW DEVICES <PrefixPath> WITH STORAGE GROUP` statement specifies the `PrefixPath` and returns the 
+* `SHOW DEVICES <PathPattern> WITH STORAGE GROUP` statement specifies the `PathPattern` and returns the 
 devices' information under the given level with their storage group information.
 
 SQL statement is as follows:
 
 ```
 IoTDB> show devices with storage group
-IoTDB> show devices root.ln with storage group
+IoTDB> show devices root.ln.** with storage group
 ```
 
 You can get results below:
 
 ```
-+-------------------+-------------+
-|            devices|storage group|
-+-------------------+-------------+
-|  root.ln.wf01.wt01|      root.ln|
-|  root.ln.wf02.wt02|      root.ln|
-|root.sgcc.wf03.wt01|    root.sgcc|
-|    root.turbine.d1| root.turbine|
-+-------------------+-------------+
++-------------------+-------------+---------+
+|            devices|storage group|isAligned|
++-------------------+-------------+---------+
+|  root.ln.wf01.wt01|      root.ln|    false|
+|  root.ln.wf02.wt02|      root.ln|    false|
+|root.sgcc.wf03.wt01|    root.sgcc|    false|
+|    root.turbine.d1| root.turbine|    false|
++-------------------+-------------+---------+
 Total line number = 4
 It costs 0.003s
 
-+-----------------+-------------+
-|          devices|storage group|
-+-----------------+-------------+
-|root.ln.wf01.wt01|      root.ln|
-|root.ln.wf02.wt02|      root.ln|
-+-----------------+-------------+
++-----------------+-------------+---------+
+|          devices|storage group|isAligned|
++-----------------+-------------+---------+
+|root.ln.wf01.wt01|      root.ln|    false|
+|root.ln.wf02.wt02|      root.ln|    false|
++-----------------+-------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
+
+## Schema Template
+
+IoTDB supports the schema template function, enabling different entities of the same type to share metadata, reduce the memory usage of metadata, and simplify the management of numerous entities and measurements.
+
+### Create Schema Template
+
+The SQL Statement for creating schema template is as follow:
+
+```
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+The` lat` and `lon` measurements under the `GPS` device are aligned.
+
+### Set Schema Template
+
+The SQL Statement for setting schema template is as follow:
+
+```
+IoTDB> set schema template temp1 to root.ln.wf01
+```
+
+After setting the schema template, you can insert data into the timeseries. For example, suppose there's a storage group root.ln and temp1 has been set to root.ln.wf01, then timeseries like root.ln.wf01.GPS.lat and root.ln.wf01.status are available and data points can be inserted.
+
+**Attention**: Before inserting data, timeseries defined by the schema template will not be created. You can use the following SQL statement to create the timeseries before inserting data:
+
+```
+IoTDB> create timeseries of schema template on root.ln.wf01
+```
+
+### Uset Schema Template
+
+The SQL Statement for unsetting schema template is as follow:
+
+```
+IoTDB> unset schema template temp1 from root.beijing
+```
+
+**Attention**: Unsetting the template from entities, which have already inserted records using the template, is not supported.
 
 ## TTL
 

@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -35,11 +35,11 @@ public class DropFunctionPlan extends PhysicalPlan {
   private String udfName;
 
   public DropFunctionPlan() {
-    super(false, OperatorType.DROP_FUNCTION);
+    super(OperatorType.DROP_FUNCTION);
   }
 
   public DropFunctionPlan(String udfName) {
-    super(false, OperatorType.DROP_FUNCTION);
+    super(OperatorType.DROP_FUNCTION);
     this.udfName = udfName;
   }
 

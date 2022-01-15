@@ -29,9 +29,12 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.partition.slot.SlotPartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.server.member.DataGroupMember;
-import org.apache.iotdb.db.metadata.mnode.IMNode;
-import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.write.schema.TimeseriesSchema;
 
 import org.slf4j.Logger;
@@ -44,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * PartitionedSnapshotLogManager provides a PartitionedSnapshot as snapshot, dividing each log to a
@@ -69,11 +73,25 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
       Node thisNode,
       SnapshotFactory<T> factory,
       DataGroupMember dataGroupMember) {
-    super(new SyncLogDequeSerializer(header.nodeIdentifier), logApplier, header.toString());
+    super(
+        new SyncLogDequeSerializer(header.nodeIdentifier),
+        logApplier,
+        Integer.toString(header.getNodeIdentifier()));
     this.partitionTable = partitionTable;
     this.factory = factory;
     this.thisNode = thisNode;
     this.dataGroupMember = dataGroupMember;
+
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CLUSTER_UNCOMMITTED_LOG.toString(),
+              getUnCommittedEntryManager().getAllEntries(),
+              List::size,
+              Tag.NAME.toString(),
+              thisNode.internalIp + "_" + dataGroupMember.getName());
+    }
   }
 
   public void takeSnapshotForSpecificSlots(List<Integer> requiredSlots, boolean needLeader)
@@ -96,19 +114,21 @@ public abstract class PartitionedSnapshotLogManager<T extends Snapshot> extends 
 
   void collectTimeseriesSchemas(List<Integer> requiredSlots) {
     slotTimeseries.clear();
-    List<IStorageGroupMNode> allSgNodes = IoTDB.metaManager.getAllStorageGroupNodes();
-    for (IMNode sgNode : allSgNodes) {
-      String storageGroupName = sgNode.getFullPath();
+    List<PartialPath> allSgPaths = IoTDB.metaManager.getAllStorageGroupPaths();
+
+    Set<Integer> requiredSlotsSet = new HashSet<Integer>(requiredSlots);
+    for (PartialPath sgPath : allSgPaths) {
+      String storageGroupName = sgPath.getFullPath();
       int slot =
           SlotPartitionTable.getSlotStrategy()
               .calculateSlotByTime(storageGroupName, 0, ClusterConstant.SLOT_NUM);
 
-      if (!requiredSlots.contains(slot)) {
+      if (!requiredSlotsSet.contains(slot)) {
         continue;
       }
       Collection<TimeseriesSchema> schemas =
           slotTimeseries.computeIfAbsent(slot, s -> new HashSet<>());
-      IoTDB.metaManager.collectTimeseriesSchema(sgNode, schemas);
+      IoTDB.metaManager.collectTimeseriesSchema(sgPath, schemas);
       logger.debug("{}: {} timeseries are snapshot in slot {}", getName(), schemas.size(), slot);
     }
   }

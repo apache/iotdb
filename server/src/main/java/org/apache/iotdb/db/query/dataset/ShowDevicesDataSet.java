@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.query.dataset;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.sys.ShowDevicesPlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
@@ -32,16 +32,23 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_DEVICES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_IS_ALIGNED;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_STORAGE_GROUP;
 
 public class ShowDevicesDataSet extends ShowDataSet {
 
   private static final Path[] resourcePathsWithSg = {
-    new PartialPath(COLUMN_DEVICES, false), new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_DEVICES, false),
+    new PartialPath(COLUMN_STORAGE_GROUP, false),
+    new PartialPath(COLUMN_IS_ALIGNED, false)
   };
-  private static final TSDataType[] resourceTypesWithSg = {TSDataType.TEXT, TSDataType.TEXT};
-  private static final Path[] resourcePaths = {new PartialPath(COLUMN_DEVICES, false)};
-  private static final TSDataType[] resourceTypes = {TSDataType.TEXT};
+  private static final TSDataType[] resourceTypesWithSg = {
+    TSDataType.TEXT, TSDataType.TEXT, TSDataType.TEXT
+  };
+  private static final Path[] resourcePaths = {
+    new PartialPath(COLUMN_DEVICES, false), new PartialPath(COLUMN_IS_ALIGNED, false)
+  };
+  private static final TSDataType[] resourceTypes = {TSDataType.TEXT, TSDataType.TEXT};
 
   private boolean hasSgCol;
 
@@ -61,7 +68,8 @@ public class ShowDevicesDataSet extends ShowDataSet {
 
   @Override
   public List<RowRecord> getQueryDataSet() throws MetadataException {
-    List<ShowDevicesResult> devicesList = IoTDB.metaManager.getDevices((ShowDevicesPlan) plan);
+    List<ShowDevicesResult> devicesList =
+        IoTDB.metaManager.getMatchedDevices((ShowDevicesPlan) plan);
     List<RowRecord> records = new ArrayList<>();
     for (ShowDevicesResult result : devicesList) {
       RowRecord record = new RowRecord(0);
@@ -69,6 +77,7 @@ public class ShowDevicesDataSet extends ShowDataSet {
       if (hasSgCol) {
         updateRecord(record, result.getSgName());
       }
+      updateRecord(record, String.valueOf(result.isAligned()));
       records.add(record);
       putRecord(record);
     }

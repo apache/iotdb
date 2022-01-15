@@ -26,23 +26,13 @@ import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
 
 public class ShowFunctionsOperator extends ShowOperator {
 
-  private boolean showTemporary;
-
   public ShowFunctionsOperator(int tokenIntType) {
     super(tokenIntType);
-  }
-
-  public void setShowTemporary(boolean showTemporary) {
-    this.showTemporary = showTemporary;
-  }
-
-  public boolean showTemporary() {
-    return showTemporary;
   }
 
   @Override
   public PhysicalPlan generatePhysicalPlan(PhysicalGenerator generator)
       throws QueryProcessException {
-    return new ShowFunctionsPlan(showTemporary);
+    return new ShowFunctionsPlan();
   }
 }

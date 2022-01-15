@@ -21,7 +21,7 @@ package org.apache.iotdb.db.conf.adapter;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
-import org.apache.iotdb.db.utils.FilePathUtils;
+import org.apache.iotdb.tsfile.utils.FilePathUtils;
 
 import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.commons.io.FileUtils;

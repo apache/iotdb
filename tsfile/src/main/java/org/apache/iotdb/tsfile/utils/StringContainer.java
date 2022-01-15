@@ -327,8 +327,12 @@ public class StringContainer {
 
   @Override
   public boolean equals(Object sc) {
-    if (sc == null) return false;
-    if (this.getClass() != sc.getClass()) return false;
+    if (sc == null) {
+      return false;
+    }
+    if (this.getClass() != sc.getClass()) {
+      return false;
+    }
     return this.equals((StringContainer) sc);
   }
 

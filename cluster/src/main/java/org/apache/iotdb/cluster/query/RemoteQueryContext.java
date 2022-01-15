@@ -42,8 +42,9 @@ public class RemoteQueryContext extends QueryContext {
     super(jobId);
   }
 
-  public RemoteQueryContext(long jobId, boolean debug) {
-    super(jobId, debug);
+  public RemoteQueryContext(
+      long jobId, boolean debug, long startTime, String statement, long timeout) {
+    super(jobId, debug, startTime, statement, timeout);
   }
 
   public void registerRemoteNode(Node node, RaftNode header) {

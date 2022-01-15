@@ -32,6 +32,8 @@ import java.io.IOException;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class ElasticSerializableRowRecordListTest extends SerializableListTest {
@@ -85,28 +87,31 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
         Object[] rowRecord = new Object[DATA_TYPES.length + 1];
         rowRecord[DATA_TYPES.length] = (long) i;
-        for (int j = 0; j < DATA_TYPES.length; ++j) {
-          switch (DATA_TYPES[j]) {
-            case INT32:
-              rowRecord[j] = i;
-              break;
-            case INT64:
-              rowRecord[j] = (long) i;
-              break;
-            case FLOAT:
-              rowRecord[j] = (float) i;
-              break;
-            case DOUBLE:
-              rowRecord[j] = (double) i;
-              break;
-            case BOOLEAN:
-              rowRecord[j] = i % 2 == 0;
-              break;
-            case TEXT:
-              rowRecord[j] = Binary.valueOf(String.valueOf(i));
-              break;
+        if (i % 7 != 0) {
+          for (int j = 0; j < DATA_TYPES.length; ++j) {
+            switch (DATA_TYPES[j]) {
+              case INT32:
+                rowRecord[j] = i;
+                break;
+              case INT64:
+                rowRecord[j] = (long) i;
+                break;
+              case FLOAT:
+                rowRecord[j] = (float) i;
+                break;
+              case DOUBLE:
+                rowRecord[j] = (double) i;
+                break;
+              case BOOLEAN:
+                rowRecord[j] = i % 2 == 0;
+                break;
+              case TEXT:
+                rowRecord[j] = Binary.valueOf(String.valueOf(i));
+                break;
+            }
           }
         }
+
         rowRecordList.put(rowRecord);
       }
     } catch (IOException | QueryProcessException e) {
@@ -144,7 +149,12 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
   private void testOrderedAccessByIndex() {
     try {
       for (int i = 0; i < ITERATION_TIMES; ++i) {
-        testRowRecord(rowRecordList.getRowRecord(i), i);
+        if (i % 7 == 0) {
+          assertTrue(rowRecordList.fieldsHasAnyNull(i));
+        } else {
+          assertFalse(rowRecordList.fieldsHasAnyNull(i));
+          testRowRecord(rowRecordList.getRowRecord(i), i);
+        }
       }
     } catch (IOException e) {
       fail(e.toString());
@@ -160,32 +170,77 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
     Random random = new Random();
 
     try {
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        rowRecordList.put(
-            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+        } else {
+          rowRecordList.put(
+              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        }
       }
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          assertTrue(rowRecordList.fieldsHasAnyNull(i));
+        } else {
+          assertFalse(rowRecordList.fieldsHasAnyNull(i));
+        }
+      }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 16;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 32;
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        rowRecordList.put(
-            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+        } else {
+          rowRecordList.put(
+              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        }
       }
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          assertTrue(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
+        } else {
+          assertFalse(rowRecordList.fieldsHasAnyNull(i + ITERATION_TIMES));
+        }
+      }
 
       byteLengthMin = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 256;
       byteLengthMax = SerializableList.INITIAL_BYTE_ARRAY_LENGTH_FOR_MEMORY_CONTROL * 512;
-      for (int i = 0; i < ITERATION_TIMES; ++i) {
-        rowRecordList.put(
-            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+        } else {
+          rowRecordList.put(
+              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        }
       }
       rowRecordList.setEvictionUpperBound(rowRecordList.size());
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          assertTrue(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
+        } else {
+          assertFalse(rowRecordList.fieldsHasAnyNull(i + 2 * ITERATION_TIMES));
+        }
+      }
 
-      for (int i = 0; i < 2 * ITERATION_TIMES; ++i) {
-        rowRecordList.put(
-            generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+      for (int i = 0; i < 2 * ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          rowRecordList.put(generateRowRecordWithAllNullFields(i));
+        } else {
+          rowRecordList.put(
+              generateRowRecord(i, byteLengthMin + random.nextInt(byteLengthMax - byteLengthMin)));
+        }
         rowRecordList.setEvictionUpperBound(rowRecordList.size());
+      }
+
+      for (int i = 0; i < ITERATION_TIMES; i++) {
+        if (i % 7 == 0) {
+          assertTrue(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+        } else {
+          assertFalse(rowRecordList.fieldsHasAnyNull(i + 3 * ITERATION_TIMES));
+        }
       }
 
       assertEquals(ITERATION_TIMES * 5, rowRecordList.size());
@@ -220,6 +275,12 @@ public class ElasticSerializableRowRecordListTest extends SerializableListTest {
           break;
       }
     }
+    return rowRecord;
+  }
+
+  private Object[] generateRowRecordWithAllNullFields(int time) {
+    Object[] rowRecord = new Object[DATA_TYPES.length + 1];
+    rowRecord[DATA_TYPES.length] = (long) time;
     return rowRecord;
   }
 

@@ -107,6 +107,10 @@ public class TimePageWriter {
 
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = uncompressedSize;
+    } else if (compressor.getType().equals(CompressionType.GZIP)) {
+      compressedBytes =
+          compressor.compress(pageData.array(), pageData.position(), uncompressedSize);
+      compressedSize = compressedBytes.length;
     } else {
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       // data is never a directByteBuffer now, so we can use data.array()

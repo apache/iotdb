@@ -82,7 +82,7 @@ Monitor 下有几个属性，包括数据文件目录，写入数据统计信息
 | :--: | :---------------------------------------- |
 | 描述 |  成功的请求数 |
 | 类型 |     Long                               |
-  
+
 - GlobalReqFailNum
   
 | 名称 | GlobalReqFailNum                       |
@@ -122,10 +122,10 @@ Monitor 下有几个属性，包括数据文件目录，写入数据统计信息
 
 * TOTAL_POINTS （全局，存储组）
 
-|     名字     | TOTAL\_POINTS                                             |
-|:------------:|:--------------------------------------------------------- |
-|     描述     | 写入总点数                                                |
-| 时间序列名称 | root.stats.{"global" \| "storageGroupName"}.TOTAL\_POINTS |
+|     名字     | TOTAL\_POINTS                                                |
+| :----------: | :----------------------------------------------------------- |
+|     描述     | 写入总点数                                                   |
+| 时间序列名称 | root.stats."global".TOTAL\_POINTS <br />root.stats."{storageGroupName}".TOTAL\_POINTS<br />其中 storageGroupName 是将存储组中的 `.` 替换成 `#` 得到<br />例如存储组 `root.sg` 的写入总点数记录在  root.stats."root#sg".TOTAL\_POINTS |
 
 * TOTAL\_REQ\_SUCCESS （全局）
 
@@ -180,7 +180,9 @@ select last TOTAL_POINTS from root.stats."global"
 
 配置文件位置：conf/iotdb-engine.properties
 
-<center>**表 -配置参数以及描述项**
+<center>
+
+**表 -配置参数以及描述项**
 
 |参数|默认值|描述|
 |:---|:---|:---|

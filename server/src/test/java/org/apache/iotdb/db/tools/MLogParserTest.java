@@ -22,10 +22,11 @@ package org.apache.iotdb.db.tools;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MetadataConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.qp.physical.sys.ActivateTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.tools.mlog.MLogParser;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -101,17 +102,17 @@ public class MLogParserTest {
 
     try {
       IoTDB.metaManager.setStorageGroup(new PartialPath("root.sg"));
-      IoTDB.metaManager.createSchemaTemplate(genCreateTemplatePlan());
-      SetSchemaTemplatePlan setSchemaTemplatePlan =
-          new SetSchemaTemplatePlan("template1", "root.sg");
-      IoTDB.metaManager.setSchemaTemplate(setSchemaTemplatePlan);
-      IoTDB.metaManager.getDeviceNodeWithAutoCreate(new PartialPath("root.sg.d1"), true, true, 1);
-    } catch (MetadataException | IOException e) {
+      IoTDB.metaManager.createSchemaTemplate(genCreateSchemaTemplatePlan());
+      SetTemplatePlan setTemplatePlan = new SetTemplatePlan("template1", "root.sg");
+      IoTDB.metaManager.setSchemaTemplate(setTemplatePlan);
+      IoTDB.metaManager.setUsingSchemaTemplate(
+          new ActivateTemplatePlan(new PartialPath("root.sg.d1")));
+    } catch (MetadataException e) {
       e.printStackTrace();
     }
   }
 
-  private CreateTemplatePlan genCreateTemplatePlan() {
+  private CreateTemplatePlan genCreateSchemaTemplatePlan() {
     List<List<String>> measurementList = new ArrayList<>();
     measurementList.add(Collections.singletonList("s11"));
     measurementList.add(Collections.singletonList("s12"));
@@ -124,9 +125,9 @@ public class MLogParserTest {
     encodingList.add(Collections.singletonList(TSEncoding.RLE));
     encodingList.add(Collections.singletonList(TSEncoding.GORILLA));
 
-    List<CompressionType> compressionTypes = new ArrayList<>();
-    compressionTypes.add(CompressionType.SNAPPY);
-    compressionTypes.add(CompressionType.SNAPPY);
+    List<List<CompressionType>> compressionTypes = new ArrayList<>();
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
+    compressionTypes.add(Collections.singletonList(CompressionType.SNAPPY));
 
     List<String> schemaNames = new ArrayList<>();
     schemaNames.add("s11");
@@ -169,9 +170,10 @@ public class MLogParserTest {
         // delete timeseries, delete sg, add tags.
         // The final operation changeAlias only change the mtree in memory, so it will not write
         // record to mlog.
-        // Then, we set 1 more storage group, create a template with 2 measurements, set
-        // the template to this storage group and create 1 device using template.
-        // Finally, the mlog should have 100 + 2 + 6 + 1 + 2 + 1 + 1 = 113 records
+        // Then, we set 1 more storage group, create a template with 2 measurements(1 line), set
+        // the template to this storage group and set 1 device using template. The device will be
+        // auto created.
+        // Finally, the mlog should have 100 + 2 + 6 + 1 + 1 + 1 + 1 + 1 = 113 records
         for (String content : lines) {
           System.out.println(content);
         }
@@ -214,7 +216,8 @@ public class MLogParserTest {
         // Next, we do 4 operations which will be record in mtree, include set 2 sgs, delete
         // timeseries, delete sg.
         // Then, we set 1 more storage group, create a template with 2 measurements and set
-        // the template to this storage group and create 1 device using template.
+        // the template to this storage group and set 1 device using template. The device will be
+        // auto created.
         // The snapshot should have 100 + 2 + 5 * 2 + 2 - 1 - 1 + 1 + 1 = 114 records,
         // and we have root record,
         // so we have 114 + 1 = 115 records finally.

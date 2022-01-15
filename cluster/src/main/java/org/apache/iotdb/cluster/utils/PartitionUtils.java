@@ -23,28 +23,33 @@ import org.apache.iotdb.cluster.partition.PartitionTable;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
-import org.apache.iotdb.db.qp.physical.crud.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
-import org.apache.iotdb.db.qp.physical.crud.SetSchemaTemplatePlan;
+import org.apache.iotdb.db.qp.physical.sys.AppendTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
 import org.apache.iotdb.db.qp.physical.sys.ClearCachePlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateSnapshotPlan;
+import org.apache.iotdb.db.qp.physical.sys.CreateTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropFunctionPlan;
 import org.apache.iotdb.db.qp.physical.sys.FlushPlan;
+import org.apache.iotdb.db.qp.physical.sys.KillQueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan;
 import org.apache.iotdb.db.qp.physical.sys.LoadConfigurationPlan.LoadConfigurationPlanType;
 import org.apache.iotdb.db.qp.physical.sys.LoadDataPlan;
 import org.apache.iotdb.db.qp.physical.sys.MergePlan;
 import org.apache.iotdb.db.qp.physical.sys.OperateFilePlan;
+import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetSystemModePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
+import org.apache.iotdb.db.qp.physical.sys.SetTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowTTLPlan;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.Murmur128Hash;
 
 import java.util.List;
@@ -67,6 +72,7 @@ public class PartitionUtils {
   public static boolean isLocalNonQueryPlan(PhysicalPlan plan) {
     return plan instanceof LoadDataPlan
         || plan instanceof OperateFilePlan
+        || plan instanceof KillQueryPlan
         || (plan instanceof LoadConfigurationPlan
             && ((LoadConfigurationPlan) plan)
                 .getLoadConfigurationPlanType()
@@ -92,9 +98,12 @@ public class PartitionUtils {
         // DataAuthPlan is global because all nodes must have all user info
         || plan instanceof DataAuthPlan
         || plan instanceof CreateTemplatePlan
+        || plan instanceof AppendTemplatePlan
+        || plan instanceof PruneTemplatePlan
         || plan instanceof CreateFunctionPlan
         || plan instanceof DropFunctionPlan
-        || plan instanceof CreateSnapshotPlan;
+        || plan instanceof CreateSnapshotPlan
+        || plan instanceof SetSystemModePlan;
   }
 
   /**
@@ -110,7 +119,7 @@ public class PartitionUtils {
         || plan instanceof DeleteTimeSeriesPlan
         || plan instanceof MergePlan
         || plan instanceof FlushPlan
-        || plan instanceof SetSchemaTemplatePlan
+        || plan instanceof SetTemplatePlan
         || plan instanceof ClearCachePlan;
   }
 
@@ -126,12 +135,14 @@ public class PartitionUtils {
     return Math.abs(hash % slotNum);
   }
 
-  public static InsertTabletPlan copy(InsertTabletPlan plan, long[] times, Object[] values) {
-    InsertTabletPlan newPlan = new InsertTabletPlan(plan.getPrefixPath(), plan.getMeasurements());
+  public static InsertTabletPlan copy(
+      InsertTabletPlan plan, long[] times, Object[] values, BitMap[] bitMaps) {
+    InsertTabletPlan newPlan = new InsertTabletPlan(plan.getDevicePath(), plan.getMeasurements());
     newPlan.setDataTypes(plan.getDataTypes());
     // according to TSServiceImpl.insertBatch(), only the deviceId, measurements, dataTypes,
     // times, columns, and rowCount are need to be maintained.
     newPlan.setColumns(values);
+    newPlan.setBitMaps(bitMaps);
     newPlan.setTimes(times);
     newPlan.setRowCount(times.length);
     newPlan.setMeasurementMNodes(plan.getMeasurementMNodes());

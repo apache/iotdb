@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.qp.physical.sys;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -30,7 +30,7 @@ public class KillQueryPlan extends PhysicalPlan {
   private long queryId = -1;
 
   public KillQueryPlan(long queryId) {
-    super(false, OperatorType.KILL);
+    super(OperatorType.KILL);
     this.queryId = queryId;
   }
 

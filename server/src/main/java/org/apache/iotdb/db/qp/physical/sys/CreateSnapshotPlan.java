@@ -20,7 +20,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -33,7 +33,7 @@ import java.util.List;
 public class CreateSnapshotPlan extends PhysicalPlan {
 
   public CreateSnapshotPlan() {
-    super(false, OperatorType.CREATE_SCHEMA_SNAPSHOT);
+    super(OperatorType.CREATE_SCHEMA_SNAPSHOT);
   }
 
   @Override
@@ -47,7 +47,7 @@ public class CreateSnapshotPlan extends PhysicalPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     buffer.put((byte) PhysicalPlanType.CREATE_SNAPSHOT.ordinal());
   }
 

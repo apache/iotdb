@@ -25,7 +25,6 @@ import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.write.TsFileWriter;
 import org.apache.iotdb.tsfile.write.record.Tablet;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.schema.Schema;
 
@@ -56,7 +55,7 @@ public class TsFileTestHelper {
       }
 
       Schema schema = new Schema();
-      List<IMeasurementSchema> schemaList = new ArrayList<>();
+      List<MeasurementSchema> schemaList = new ArrayList<>();
 
       // the number of rows to include in the tablet
       int rowNum = 1000000;
@@ -71,7 +70,7 @@ public class TsFileTestHelper {
                 TSDataType.INT64,
                 TSEncoding.TS_2DIFF,
                 CompressionType.UNCOMPRESSED);
-        schema.registerTimeseries(new Path("device_1", "sensor_" + (i + 1)), measurementSchema);
+        schema.registerTimeseries(new Path("device_1"), measurementSchema);
         schemaList.add(measurementSchema);
       }
 

@@ -56,7 +56,28 @@ def test_non_time_query():
 
         session.close()
 
-    assert list(df.columns) == ['timeseries', 'alias', 'storage group', 'dataType', 'encoding', 'compression', 'tags',
-                                'attributes']
-    assert_array_equal(df.values,
-                       [['root.device.pressure', None, 'root.device', 'FLOAT', 'GORILLA', 'SNAPPY', None, None]])
+    assert list(df.columns) == [
+        "timeseries",
+        "alias",
+        "storage group",
+        "dataType",
+        "encoding",
+        "compression",
+        "tags",
+        "attributes",
+    ]
+    assert_array_equal(
+        df.values,
+        [
+            [
+                "root.device.pressure",
+                None,
+                "root.device",
+                "FLOAT",
+                "GORILLA",
+                "SNAPPY",
+                None,
+                None,
+            ]
+        ],
+    )

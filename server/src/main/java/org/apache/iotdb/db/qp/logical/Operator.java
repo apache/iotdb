@@ -140,7 +140,7 @@ public abstract class Operator {
 
     LOAD_FILES,
     REMOVE_FILE,
-    MOVE_FILE,
+    UNLOAD_FILE,
 
     CREATE_TRIGGER,
     DROP_TRIGGER,
@@ -148,8 +148,8 @@ public abstract class Operator {
     STOP_TRIGGER,
 
     CREATE_TEMPLATE,
-    SET_SCHEMA_TEMPLATE,
-    SET_USING_SCHEMA_TEMPLATE,
+    SET_TEMPLATE,
+    ACTIVATE_TEMPLATE,
 
     MERGE,
     FULL_MERGE,
@@ -170,6 +170,13 @@ public abstract class Operator {
 
     CREATE_CONTINUOUS_QUERY,
     DROP_CONTINUOUS_QUERY,
-    SHOW_CONTINUOUS_QUERIES
+    SHOW_CONTINUOUS_QUERIES,
+    SET_SYSTEM_MODE,
+
+    SETTLE,
+
+    UNSET_TEMPLATE,
+    PRUNE_TEMPLATE,
+    APPEND_TEMPLATE
   }
 }

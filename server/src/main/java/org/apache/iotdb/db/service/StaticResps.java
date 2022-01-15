@@ -28,19 +28,21 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES;
+import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_TIMESERIES_DATATYPE;
 import static org.apache.iotdb.db.conf.IoTDBConstant.COLUMN_VALUE;
 
 /** Static responses that won't change for all requests. */
-class StaticResps {
+public class StaticResps {
 
   private StaticResps() {
     // enum-like class
   }
 
-  static final TSExecuteStatementResp LAST_RESP =
+  public static final TSExecuteStatementResp LAST_RESP =
       getExecuteResp(
-          Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE),
-          Arrays.asList(TSDataType.TEXT.toString(), TSDataType.TEXT.toString()),
+          Arrays.asList(COLUMN_TIMESERIES, COLUMN_VALUE, COLUMN_TIMESERIES_DATATYPE),
+          Arrays.asList(
+              TSDataType.TEXT.toString(), TSDataType.TEXT.toString(), TSDataType.TEXT.toString()),
           false);
 
   public static TSExecuteStatementResp getNoTimeExecuteResp(

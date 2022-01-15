@@ -25,14 +25,12 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimePlan;
 import org.apache.iotdb.db.qp.physical.crud.RawDataQueryPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.dataset.groupby.GroupByWithValueFilterDataSet;
-import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.query.timegenerator.TimeGenerator;
 
 import java.util.ArrayList;
@@ -44,8 +42,7 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
   private ClusterReaderFactory readerFactory;
 
   public ClusterGroupByVFilterDataSet(
-      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember)
-      throws StorageEngineException, QueryProcessException {
+      QueryContext context, GroupByTimePlan groupByPlan, MetaGroupMember metaGroupMember) {
     initQueryDataSetFields(
         new ArrayList<>(groupByPlan.getDeduplicatedPaths()),
         groupByPlan.getDeduplicatedDataTypes(),
@@ -55,7 +52,6 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
     this.timeStampFetchSize = IoTDBDescriptor.getInstance().getConfig().getBatchSize();
     this.metaGroupMember = metaGroupMember;
     this.readerFactory = new ClusterReaderFactory(metaGroupMember);
-    initGroupBy(context, groupByPlan);
   }
 
   @Override
@@ -66,16 +62,12 @@ public class ClusterGroupByVFilterDataSet extends GroupByWithValueFilterDataSet 
 
   @Override
   protected IReaderByTimestamp getReaderByTime(
-      PartialPath path,
-      RawDataQueryPlan dataQueryPlan,
-      TSDataType dataType,
-      QueryContext context,
-      TsFileFilter fileFilter)
+      PartialPath path, RawDataQueryPlan dataQueryPlan, QueryContext context)
       throws StorageEngineException, QueryProcessException {
     return readerFactory.getReaderByTimestamp(
         path,
         dataQueryPlan.getAllMeasurementsInDevice(path.getDevice()),
-        dataType,
+        path.getSeriesType(),
         context,
         dataQueryPlan.isAscending(),
         null);

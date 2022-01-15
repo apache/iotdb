@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
-public class TimeStatistics extends Statistics {
+public class TimeStatistics extends Statistics<Long> {
 
   static final int TIME_STATISTICS_FIXED_RAM_SIZE = 40;
 
@@ -96,7 +96,7 @@ public class TimeStatistics extends Statistics {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {}
+  protected void mergeStatisticsValue(Statistics<Long> stats) {}
 
   @Override
   public byte[] getMinValueBytes() {

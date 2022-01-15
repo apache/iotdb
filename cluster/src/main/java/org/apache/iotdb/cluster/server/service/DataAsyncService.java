@@ -438,7 +438,7 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
         | QueryProcessException
         | IOException
         | StorageEngineException
-        | IllegalPathException e) {
+        | MetadataException e) {
       resultHandler.onError(e);
     }
   }
@@ -452,6 +452,18 @@ public class DataAsyncService extends BaseAsyncService implements TSDataService.
     try {
       resultHandler.onComplete(
           dataGroupMember.getLocalQueryExecutor().getPathCount(pathsToQuery, level));
+    } catch (CheckConsistencyException | MetadataException e) {
+      resultHandler.onError(e);
+    }
+  }
+
+  @Override
+  public void getDeviceCount(
+      RaftNode header, List<String> pathsToQuery, AsyncMethodCallback<Integer> resultHandler)
+      throws TException {
+    try {
+      resultHandler.onComplete(
+          dataGroupMember.getLocalQueryExecutor().getDeviceCount(pathsToQuery));
     } catch (CheckConsistencyException | MetadataException e) {
       resultHandler.onError(e);
     }

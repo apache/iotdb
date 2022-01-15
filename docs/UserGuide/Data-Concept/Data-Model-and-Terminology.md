@@ -18,8 +18,8 @@
     under the License.
 
 -->
-# Data Concept
-## Data Model
+
+# Data Model
 
 A wind power IoT scenario is taken as an example to illustrate how to creat a correct data model in IoTDB.
 
@@ -29,25 +29,17 @@ According to the enterprise organization structure and equipment entity hierarch
 
 Here are the basic concepts of the model involved in IoTDB. 
 
+## Measurement, Entity, Storage Group, Path
 
+### Measurement (Also called field)
 
-### Measurement, Entity, Storage Group, Path
+It is information measured by detection equipment in an actual scene and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB.  In IoTDB, all data and paths stored are organized in units of measurements.
 
-* Measurement (Also called field)
-
-**Univariable or multi-variable measurement**. It is information measured by a detection equipment in an actual scene, and can transform the sensed information into an electrical signal or other desired form of information output and send it to IoTDB.  In IoTDB, all data and paths stored are organized in units of measuements.
-
-* Sub-measurement
-
-In multi-variable measurements, there are many sub-measurement. For example, GPS is a multi-variable measurements, including three sub-measurement: longitude, dimension and altitude. Multi-variable measurements are usually collected at the same time and share time series.
-
-The univariable measurement overlaps the sub-measurement name with the measurement name. For example, temperature is a univariable measurement.
-
-* Entity (Also called device)
+### Entity (Also called device)
 
 **An entity** is an equipped with measurements in real scenarios. In IoTDB, all measurements should have their corresponding entities.
 
-* Storage Group
+### Storage Group
 
 **A group of entities.** Users can set any prefix path as a storage group. Provided that there are four timeseries `root.ln.wf01.wt01.status`, `root.ln.wf01.wt01.temperature`, `root.ln.wf02.wt02.hardware`, `root.ln.wf02.wt02.status`, two devices `wt01`, `wt02` under the path `root.ln` may belong to the same owner or the same manufacturer, so d1 and d2 are closely related. At this point, the prefix path root.vehicle can be designated as a storage group, which will enable IoTDB to store all devices under it in the same folder. Newly added devices under `root.ln` will also belong to this storage group.
 
@@ -61,97 +53,98 @@ After a storage group is set, the ancestral layers, children and descendant laye
 
 The Layer Name of storage group can only consist of characters, numbers, underscores and hyphen, like `root.storagegroup_1-sg1`.
 
-* Path
+### Path
 
-In IoTDB, a path is an expression that conforms to the following constraints:
+A `path` is an expression that conforms to the following constraints:
 
+```sql
+path       
+    : layer_name ('.' layer_name)*
+    ;
+layer_name
+    : wildcard? id wildcard?
+    | wildcard
+    ;
+wildcard 
+    : '*' 
+    | '**'
+    ;
 ```
-path: LayerName (DOT LayerName)+
-LayerName: Identifier | STAR
-```
 
-Among them, STAR is "*" and DOT is ".".
+You can refer to the definition of `id` in [Syntax-Conventions](../IoTDB-SQL-Language/Syntax-Conventions.md).
 
-We call the middle part of a path between two "." as a layer, and thus `root.A.B.C` is a path with four layers. 
+We call the part of a path divided by `'.'` as a layer (`layer_name`). For example: `root.a.b.c` is a path with 4 layers.
 
-It is worth noting that in the path, root is a reserved character, which is only allowed to appear at the beginning of the time series mentioned below. If root appears in other layers, it cannot be parsed and an error is reported.
+The following are the constraints on the layer (`layer_name`):
 
-Single quotes are not allowed in the path. If you want to use special characters such as "." in LayerName, use double quotes. For example, `root.sg."d.1"."s.1"`. 
+* `root` is a reserved character, and it is only allowed to appear at the beginning layer of the time series mentioned below. If `root` appears in other layers, it cannot be parsed and an error will be reported.
 
-The characters supported in LayerName without double quotes are as below:
+* Except for the beginning layer (`root`) of the time series, the characters supported in other layers are as follows:
 
-* Chinese characters '\u2E80' to '\u9FFF'
-* '+', '&', '%', '$', '#', '@', '/', '_', '-', ':'
-* 'A' to 'Z', 'a' to 'z', '0' to '9'
-* '[', ']' (eg. 's[1', 's[1]', s[ab]')
+  * Chinese characters:  `"\u2E80"` to `"\u9FFF"`
+  * `"_"，"@"，"#"，"$"`
+  * `"A"` to `"Z"`, `"a"` to `"z"`, `"0"` to `"9"`
 
-'-' and ':' cannot be the first character. '+' cannot use alone.
+* In addition to the beginning layer (`root`) of the time series and the storage group layer, other layers also support the use of special strings referenced by \` or `" ` as its name. It should be noted that the quoted string cannot contain `.` characters. Here are some legal examples:
 
-> Note: the LayerName of storage group can only be characters, numbers, underscores and hyphen. 
->
-> Besides, if deploy on Windows system, the LayerName is case-insensitive, which means it's not allowed to set storage groups `root.ln` and `root.LN` at the same time.
+  * root.sg."select"."+-from="."where""where"""."\$", which contains 6 layers: root, sg, select, +-from, where"where", \$
+  * root.sg.\`\`\`\`.\`select\`.\`+="from"\`.\`\$\`, which contains 6 layers: root, sg, \`, select, +-"from", \$
 
+* Layer (`layer_name`) cannot start with a digit unless the layer(`layer_name`) is quoted with \` or `"`.
 
-* Prefix Path
+* In particular, if the system is deployed on a Windows machine, the storage group layer name will be case-insensitive. For example, creating both `root.ln` and `root.LN` at the same time is not allowed.
 
-The prefix path refers to the path where the prefix of a timeseries path is located. A prefix path contains all timeseries paths prefixed by the path. For example, suppose that we have three sensors: `root.vehicle.device1.sensor1`, `root.vehicle.device1.sensor2`, `root.vehicle.device2.sensor1`, the prefix path `root.vehicle.device1` contains two timeseries paths `root.vehicle.device1.sensor1` and `root.vehicle.device1.sensor2` while `root.vehicle.device2.sensor1` is excluded.
+### Path Pattern
 
-* Path With Star
+In order to make it easier and faster to express multiple timeseries paths, IoTDB provides users with the path pattern. Users can construct a path pattern by using wildcard `*` and `**`. Wildcard can appear in any layer of the path. 
 
-In order to make it easier and faster to express multiple timeseries paths or prefix paths, IoTDB provides users with the path pith star. `*` can appear in any layer of the path. According to the position where `*` appears, the path with star can be divided into two types:
+`*` represents one layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.
 
-`*` appears at the end of the path;
+`**` represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc; `root.vehicle.**.sensor1` represents a path which is prefixed with `root.vehicle` and suffixed with `sensor1` and has at least 4 layers.
 
-`*` appears in the middle of the path;
-
-When `*` appears at the end of the path, it represents (`*`)+, which is one or more layers of `*`. For example, `root.vehicle.device1.*` represents all paths prefixed by `root.vehicle.device1` with layers greater than or equal to 4, like `root.vehicle.device1.*`, `root.vehicle.device1.*.*`, `root.vehicle.device1.*.*.*`, etc.
-
-When `*` appears in the middle of the path, it represents `*` itself, i.e., a layer. For example, `root.vehicle.*.sensor1` represents a 4-layer path which is prefixed with `root.vehicle` and suffixed with `sensor1`.   
-
-> Note1: `*` cannot be placed at the beginning of the path.
-
-> Note2: A path with `*` at the end has the same meaning as a prefix path, e.g., `root.vehicle.*` and `root.vehicle` is the same.
+> Note1: Wildcard `*` and `**` cannot be placed at the beginning of the path.
 
 
+## Timeseries
 
-### Timeseries
+### Timestamp
 
-* Data point
+The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps. For detailed description, please go to [Data Type doc](./Data-Type.md).
+
+### Data point
 
 **A "time-value" pair**.
 
-* Timeseries (A measurement of an entity corresponds to a timeseries. Also called meter, timeline, and tag, parameter in real time database)
+### Timeseries
 
 **The record of a measurement of an entity on the time axis.** Timeseries is a series of data points.
 
+A measurement of an entity corresponds to a timeseries. 
+
+Also called meter, timeline, and tag, parameter in real time database.
+
 For example, if entity wt01 in power plant wf01 of power group ln has a measurement named status, its timeseries  can be expressed as: `root.ln.wf01.wt01.status`.
 
+### Aligned timeseries
 
-* Multi-variable timeseries (Also called aligned timeseries, from v0.13)
+There is a situation that multiple measurements of an entity are sampled simultaneously in practical applications, forming multiple timeseries aligned on a time column.
 
-A multi-variable measurements of an entity corresponds to a multi-variable timeseries. These timeseries are called **multi-variable timeseries**, also called **aligned timeseries**.
+By using aligned timeseries, the timestamp columns of a group of aligned timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries.
 
-Multi-variable timeseries need to be created, inserted and deleted at the same time. However, when querying, you can query each sub-measurement separately.
+It would be best if you created a group of aligned timeseries at the same time.
 
-By using multi-variable timeseries, the timestamp columns of a group of multi-variable timeseries need to be stored only once in memory and disk when inserting data, instead of once per timeseries:
+You cannot create non-aligned timeseries under the entity to which the aligned timeseries belong, nor can you create aligned timeseries under the entity to which the non-aligned timeseries belong.
+
+When querying, you can query each timeseries separately.
+
+When inserting data, it is allowed to insert null value in the aligned timeseries.
 
 <img style="width:100%; max-width:800px; max-height:600px; margin-left:auto; margin-right:auto; display:block;" src="https://user-images.githubusercontent.com/19167280/114125919-f4850800-9929-11eb-8211-81d4c04af1ec.png">
 
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to multi-variable timeseries will be introduced one by one.
+In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to aligned timeseries will be introduced one by one.
 
-* Timestamp
+## Schema Template
 
-The timestamp is the time point at which data is produced. It includes absolute timestamps and relative timestamps. For detailed description, please go to Data Type doc.
+In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **schema template** can be declared to define the collectable measurements set. Schema template helps save memory by implementing schema sharing. For detailed description, please refer to [Schema Template doc](./Schema-Template.md).
 
-
-
-### Measurement Template
-
-
-* Measurement template (From v0.13)
-
-In the actual scenario, many entities collect the same measurements, that is, they have the same measurements name and type. A **measurement template** can be declared to define the collectable measurements set. Measurement template is hung on any node of the tree data pattern, which means that all entities under the node have the same measurements set.
-
-Currently you can only set one **measurement template** on a specific path. If there's one measurement template on one node, it will be forbidden to set any measurement template on the ancestors or descendants of this node.  An entity will use it's own measurement template or ancestor's measurement template.
-
-In the following chapters of data definition language, data operation language and Java Native Interface, various operations related to measurement template will be introduced one by one.
+In the following chapters of, data definition language, data operation language and Java Native Interface, various operations related to schema template will be introduced one by one.

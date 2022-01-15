@@ -120,7 +120,7 @@ Next, introduce the code of the consumer. The main logic of the consumer is to t
 
 First introduce some important fields of consumer tasks
 
-* TreeSet\<Long\> timeHeap
+* TimeSelector timeHeap;
 
   The smallest heap of timestamps for timestamp alignment
 
@@ -143,13 +143,13 @@ The `init ()` method was first called in the constructor of the consumer `RawQue
 
 ```
 private void init() throws InterruptedException {
-	timeHeap = new TreeSet<>();
+	timeHeap = new TimeSelector(seriesReaderList.size() << 1, ascending);
 	// Build producer tasks for each time series
 	for (int i = 0; i < seriesReaderList.size(); i++) {
 	  ManagedSeriesReader reader = seriesReaderList.get(i);
 	  reader.setHasRemaining(true);
 	  reader.setManagedByQueryManager(true);
-	  pool.submit(new ReadTask(reader, blockingQueueArray[i]));
+	  pool.submit(new ReadTask(reader, blockingQueueArray[i], paths.get(i).getFullPath()));
 	}
 	// Initialize the minimum heap and fill the cache for each time series
 	for (int i = 0; i < seriesReaderList.size(); i++) {
@@ -175,7 +175,15 @@ private void fillCache(int seriesIndex) throws InterruptedException {
 	// If it is a signal BatchData, set oMoreDataInQueue of the corresponding time series to false
 	if (batchData instanceof SignalBatchData) {
 	  noMoreDataInQueueArray[seriesIndex] = true;
-	}
+	} else if (batchData instanceof ExceptionBatchData) {
+      // exception happened in producer thread
+      ExceptionBatchData exceptionBatchData = (ExceptionBatchData) batchData;
+      LOGGER.error("exception happened in producer thread", exceptionBatchData.getException());
+      if (exceptionBatchData.getException() instanceof IOException) {
+        throw (IOException) exceptionBatchData.getException();
+      } else if (exceptionBatchData.getException() instanceof RuntimeException) {
+        throw (RuntimeException) exceptionBatchData.getException();
+      }
 	else {
 	  // Cache the retrieved BatchData into cachedBatchDataArray
 	  cachedBatchDataArray[seriesIndex] = batchData;
@@ -242,25 +250,25 @@ The specific query logic is not repeated here. You can refer to the query logic 
 
 ## Include value filter + result set aligned by timestamp
 
-### org.apache.iotdb.db.query.dataset.EngineDataSetWithValueFilter
+### org.apache.iotdb.db.query.dataset.RawQueryDataSetWithValueFilter
 
 `EngineDataSetWithValueFilter` implements query logic with value filter conditions.
 
 Its query logic is to first generate a timestamp that meets the filtering conditions according to the query conditions, query the value of the projection column by the timestamp that meets the conditions, and then return the result set.  It has four fields
 
-* private EngineTimeGenerator timeGenerator;
+* TimeGenerator timeGenerator;
 
   Is used to generate timestamps that satisfy the filter
   
-* private List\<IReaderByTimestamp\> seriesReaderByTimestampList;
+* List\<IReaderByTimestamp\> seriesReaderByTimestampList;
 
   Reader for each time series, used to get data based on timestamp
 
-* private boolean hasCachedRowRecord;
+* List<Boolean> cached;
 
   Whether data rows are currently cached
   
-* private RowRecord cachedRowRecord;
+* List<RowRecord> cachedRowRecords
 
   Data lines currently cached
   

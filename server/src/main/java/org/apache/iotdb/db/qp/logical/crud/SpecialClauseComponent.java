@@ -19,6 +19,8 @@
 
 package org.apache.iotdb.db.qp.logical.crud;
 
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
+
 public class SpecialClauseComponent {
 
   protected int rowLimit = 0;
@@ -32,7 +34,8 @@ public class SpecialClauseComponent {
   // if true, we don't need the row whose all columns are null
   protected boolean withoutAllNull;
 
-  protected int level = -1;
+  protected GroupByLevelController groupByLevelController;
+  protected int[] levels;
 
   protected boolean isAlignByDevice = false;
   protected boolean isAlignByTime = true;
@@ -79,6 +82,10 @@ public class SpecialClauseComponent {
     return seriesLimit > 0;
   }
 
+  public boolean hasSoffset() {
+    return seriesOffset > 0;
+  }
+
   public boolean isAscending() {
     return ascending;
   }
@@ -103,12 +110,16 @@ public class SpecialClauseComponent {
     this.withoutAllNull = withoutAllNull;
   }
 
-  public int getLevel() {
-    return level;
+  public int[] getLevels() {
+    return levels;
   }
 
-  public void setLevel(int level) {
-    this.level = level;
+  public void setLevels(int[] levels) {
+    this.levels = levels;
+  }
+
+  public void setGroupByLevelController(GroupByLevelController groupByLevelController) {
+    this.groupByLevelController = groupByLevelController;
   }
 
   public boolean isAlignByDevice() {

@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
@@ -52,7 +53,7 @@ public class ValuePageWriter {
    * statistic of current page. It will be reset after calling {@code
    * writePageHeaderAndDataIntoBuff()}
    */
-  private Statistics<?> statistics;
+  private Statistics<? extends Serializable> statistics;
 
   private byte bitmap;
 
@@ -218,11 +219,18 @@ public class ValuePageWriter {
     return buffer;
   }
 
+  public int writeEmptyPageIntoBuff(PublicBAOS pageBuffer) {
+    return ReadWriteForEncodingUtils.writeUnsignedVarInt(0, pageBuffer);
+  }
+
   /** write the page header and data into the PageWriter's output stream. */
   public int writePageHeaderAndDataIntoBuff(PublicBAOS pageBuffer, boolean first)
       throws IOException {
     if (size == 0) {
       return 0;
+    } else if (statistics.getCount() == 0) {
+      // this page is full of null point data
+      return writeEmptyPageIntoBuff(pageBuffer);
     }
 
     ByteBuffer pageData = getUncompressedBytes();
@@ -232,6 +240,10 @@ public class ValuePageWriter {
 
     if (compressor.getType().equals(CompressionType.UNCOMPRESSED)) {
       compressedSize = uncompressedSize;
+    } else if (compressor.getType().equals(CompressionType.GZIP)) {
+      compressedBytes =
+          compressor.compress(pageData.array(), pageData.position(), uncompressedSize);
+      compressedSize = compressedBytes.length;
     } else {
       compressedBytes = new byte[compressor.getMaxBytesForCompression(uncompressedSize)];
       // data is never a directByteBuffer now, so we can use data.array()
@@ -297,7 +309,7 @@ public class ValuePageWriter {
     return statistics.getCount();
   }
 
-  public Statistics<?> getStatistics() {
+  public Statistics<? extends Serializable> getStatistics() {
     return statistics;
   }
 

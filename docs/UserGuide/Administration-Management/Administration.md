@@ -91,16 +91,16 @@ Msg: 602: No permissions for this operation INSERT
 Now, we grant the two users write privileges to the corresponding storage groups, and try to write data again. The SQL statement is:
 
 ```
-GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
-GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 The execution result is as follows:
 
 ```
-IoTDB> GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
+IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
@@ -144,10 +144,10 @@ At the same time, changes to roles are immediately reflected on all users who ow
 |REVOKE\_ROLE\_PRIVILEGE|revoke role privileges; path independent|
 |CREATE_FUNCTION|register UDFs; path independent|
 |DROP_FUNCTION|deregister UDFs; path independent|
-|CREATE_TRIGGER|create triggers; path independent|
-|DROP_TRIGGER|drop triggers; path independent|
-|START_TRIGGER|start triggers; path independent|
-|STOP_TRIGGER|stop triggers; path independent|
+|CREATE_TRIGGER|create triggers; path dependent|
+|DROP_TRIGGER|drop triggers; path dependent|
+|START_TRIGGER|start triggers; path dependent|
+|STOP_TRIGGER|stop triggers; path dependent|
 |CREATE_CONTINUOUS_QUERY|create continuous queries; path independent|
 |DROP_CONTINUOUS_QUERY|drop continuous queries; path independent|
 

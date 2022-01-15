@@ -24,7 +24,7 @@ import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.StorageGroupNotSetException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 
 import org.apache.commons.collections4.map.MultiKeyMap;
@@ -34,7 +34,7 @@ import java.util.List;
 
 /**
  * PartitionTable manages the map whose key is the StorageGroupName with a time interval and the
- * value is a PartitionGroup witch contains all nodes that manage the corresponding data.
+ * value is a PartitionGroup which contains all nodes that manage the corresponding data.
  */
 public interface PartitionTable {
 
@@ -88,10 +88,10 @@ public interface PartitionTable {
   List<PartitionGroup> getLocalGroups();
 
   /**
-   * @param raftNode
+   * @param headerNode from which node the partition starts
    * @return the partition group starting from the header.
    */
-  PartitionGroup getHeaderGroup(RaftNode raftNode);
+  PartitionGroup getPartitionGroup(RaftNode headerNode);
 
   ByteBuffer serialize();
 
@@ -124,7 +124,7 @@ public interface PartitionTable {
    */
   default PartitionGroup partitionByPathTime(PartialPath path, long timestamp)
       throws MetadataException {
-    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
+    PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(path);
     return this.route(storageGroup.getFullPath(), timestamp);
   }
 
@@ -138,7 +138,7 @@ public interface PartitionTable {
     long partitionInterval = StorageEngine.getTimePartitionInterval();
 
     MultiKeyMap<Long, PartitionGroup> timeRangeMapRaftGroup = new MultiKeyMap<>();
-    PartialPath storageGroup = IoTDB.metaManager.getStorageGroupPath(path);
+    PartialPath storageGroup = IoTDB.metaManager.getBelongedStorageGroup(path);
     startTime = StorageEngine.convertMilliWithPrecision(startTime);
     endTime = StorageEngine.convertMilliWithPrecision(endTime);
     while (startTime <= endTime) {

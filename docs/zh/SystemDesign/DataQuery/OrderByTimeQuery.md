@@ -112,7 +112,7 @@
 BatchData 类似一个二维数组的格式，封装了写入和读取的方法，对于倒序，抽象了下面的子类：
 ```java
 
-public class DescBatchData extends BatchData {
+public class DescReadBatchData extends BatchData {
   //判断是否还有值，正序时候判断是否读到写入的 size 位置，倒序就是判断是否读到了 0 的位置
   public boolean hasCurrent();
   //指针移动到下一个数据，正序为 index+1 操作， 倒序为 index-1 操作

@@ -31,12 +31,18 @@ public class IoTDBConstant {
       IoTDBConstant.class.getPackage().getImplementationVersion() != null
           ? IoTDBConstant.class.getPackage().getImplementationVersion()
           : "UNKNOWN";
+  public static final String MAJOR_VERSION =
+      "UNKNOWN".equals(VERSION)
+          ? "UNKNOWN"
+          : VERSION.split("\\.")[0] + "." + VERSION.split("\\.")[1];
 
   public static final String AUDIT_LOGGER_NAME = "IoTDB_AUDIT_LOGGER";
+  public static final String SLOW_SQL_LOGGER_NAME = "SLOW_SQL";
 
   public static final String IOTDB_JMX_PORT = "iotdb.jmx.port";
 
   public static final String IOTDB_PACKAGE = "org.apache.iotdb.service";
+  public static final String IOTDB_THREADPOOL_PACKAGE = "org.apache.iotdb.threadpool";
   public static final String JMX_TYPE = "type";
 
   public static final long GB = 1024 * 1024 * 1024L;
@@ -72,6 +78,7 @@ public class IoTDBConstant {
   public static final String COLUMN_COUNT = "count";
   public static final String COLUMN_TAGS = "tags";
   public static final String COLUMN_ATTRIBUTES = "attributes";
+  public static final String COLUMN_IS_ALIGNED = "isAligned";
   public static final String QUERY_ID = "queryId";
   public static final String STATEMENT = "statement";
 
@@ -96,6 +103,7 @@ public class IoTDBConstant {
   public static final String COLUMN_CONTINUOUS_QUERY_NAME = "cq name";
   public static final String COLUMN_CONTINUOUS_QUERY_EVERY_INTERVAL = "every interval";
   public static final String COLUMN_CONTINUOUS_QUERY_FOR_INTERVAL = "for interval";
+  public static final String COLUMN_CONTINUOUS_QUERY_BOUNDARY = "boundary";
   public static final String COLUMN_CONTINUOUS_QUERY_TARGET_PATH = "target path";
   public static final String COLUMN_CONTINUOUS_QUERY_QUERY_SQL = "query sql";
 
@@ -115,7 +123,8 @@ public class IoTDBConstant {
   public static final String COLUMN_TRIGGER_STATUS_STARTED = "started";
   public static final String COLUMN_TRIGGER_STATUS_STOPPED = "stopped";
 
-  public static final String PATH_WILDCARD = "*";
+  public static final String ONE_LEVEL_PATH_WILDCARD = "*";
+  public static final String MULTI_LEVEL_PATH_WILDCARD = "**";
   public static final String TIME = "time";
 
   // sdt parameters
@@ -152,6 +161,8 @@ public class IoTDBConstant {
 
   // thrift
   public static final int LEFT_SIZE_IN_REQUEST = 4 * 1024 * 1024;
+  public static final int DEFAULT_FETCH_SIZE = 5000;
+  public static final int DEFAULT_CONNECTION_TIMEOUT_MS = 0;
 
   // change tsFile name
   public static final int FILE_NAME_SUFFIX_INDEX = 0;
@@ -160,4 +171,13 @@ public class IoTDBConstant {
   public static final int FILE_NAME_SUFFIX_MERGECNT_INDEX = 2;
   public static final int FILE_NAME_SUFFIX_UNSEQMERGECNT_INDEX = 3;
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
+
+  // compaction
+  public static final String COMPACTION_TMP_FILE_SUFFIX = ".target";
+
+  // client version number
+  public enum ClientVersion {
+    V_0_12,
+    V_0_13
+  }
 }

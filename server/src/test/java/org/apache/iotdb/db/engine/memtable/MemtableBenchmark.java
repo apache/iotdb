@@ -18,9 +18,14 @@
  */
 package org.apache.iotdb.db.engine.memtable;
 
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.idtable.entry.DeviceIDFactory;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
+
+import java.util.Collections;
 
 /** Memtable insert benchmark. Bench the Memtable and get its performance. */
 public class MemtableBenchmark {
@@ -38,17 +43,18 @@ public class MemtableBenchmark {
     }
   }
 
-  public static void main(String[] args) {
+  public static void main(String[] args) throws IllegalPathException {
     IMemTable memTable = new PrimitiveMemTable();
     final long startTime = System.currentTimeMillis();
     // cpu not locality
     for (int i = 0; i < numOfPoint; i++) {
       for (int j = 0; j < numOfMeasurement; j++) {
         memTable.write(
-            deviceId,
-            new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN),
+            DeviceIDFactory.getInstance().getDeviceID(new PartialPath(deviceId)),
+            Collections.singletonList(
+                new MeasurementSchema(measurementId[j], tsDataType, TSEncoding.PLAIN)),
             System.nanoTime(),
-            String.valueOf(System.currentTimeMillis()));
+            new Object[] {String.valueOf(System.currentTimeMillis())});
       }
     }
 

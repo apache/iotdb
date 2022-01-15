@@ -19,7 +19,7 @@
 package org.apache.iotdb.db.qp.strategy;
 
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.logical.Operator;
 import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
@@ -29,9 +29,9 @@ import org.apache.iotdb.db.qp.logical.crud.LastQueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlParser;
 import org.apache.iotdb.db.qp.sql.IoTDBSqlVisitor;
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
-import org.apache.iotdb.db.qp.sql.SqlBaseParser;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.query.expression.unary.TimeSeriesOperand;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
@@ -56,30 +56,43 @@ public class LogicalGenerator {
   public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
     IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
     ioTDBSqlVisitor.setZoneId(zoneId);
+
     CharStream charStream1 = CharStreams.fromString(sql);
-    SqlBaseLexer lexer1 = new SqlBaseLexer(charStream1);
+
+    IoTDBSqlLexer lexer1 = new IoTDBSqlLexer(charStream1);
     lexer1.removeErrorListeners();
     lexer1.addErrorListener(SQLParseError.INSTANCE);
+
     CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-    SqlBaseParser parser1 = new SqlBaseParser(tokens1);
+
+    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
     parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
     parser1.removeErrorListeners();
     parser1.addErrorListener(SQLParseError.INSTANCE);
+
     ParseTree tree;
     try {
-      tree = parser1.singleStatement(); // STAGE 1
+      // STAGE 1: try with simpler/faster SLL(*)
+      tree = parser1.singleStatement();
+      // if we get here, there was no syntax error and SLL(*) was enough;
+      // there is no need to try full LL(*)
     } catch (Exception ex) {
       CharStream charStream2 = CharStreams.fromString(sql);
-      SqlBaseLexer lexer2 = new SqlBaseLexer(charStream2);
+
+      IoTDBSqlLexer lexer2 = new IoTDBSqlLexer(charStream2);
       lexer2.removeErrorListeners();
       lexer2.addErrorListener(SQLParseError.INSTANCE);
+
       CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
-      SqlBaseParser parser2 = new SqlBaseParser(tokens2);
+
+      IoTDBSqlParser parser2 = new IoTDBSqlParser(tokens2);
       parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
       parser2.removeErrorListeners();
       parser2.addErrorListener(SQLParseError.INSTANCE);
-      tree = parser2.singleStatement(); // STAGE 2
-      // if we parse ok, it's LL not SLL
+
+      // STAGE 2: parser with full LL(*)
+      tree = parser2.singleStatement();
+      // if we get here, it's LL not SLL
     }
     return ioTDBSqlVisitor.visit(tree);
   }

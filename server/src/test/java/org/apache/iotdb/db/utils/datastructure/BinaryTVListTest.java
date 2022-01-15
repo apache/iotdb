@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.utils.datastructure;
 
 import org.apache.iotdb.tsfile.utils.Binary;
+import org.apache.iotdb.tsfile.utils.BitMap;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.junit.Assert;
@@ -42,17 +43,69 @@ public class BinaryTVListTest {
   }
 
   @Test
-  public void testBinaryTVLists() {
+  public void testPutBinariesWithoutBitMap() {
     BinaryTVList tvList = new BinaryTVList();
     Binary[] binaryList = new Binary[1001];
     List<Long> timeList = new ArrayList<>();
     for (int i = 1000; i >= 0; i--) {
       timeList.add((long) i);
-      binaryList[i] = Binary.valueOf(String.valueOf(i));
+      binaryList[1000 - i] = Binary.valueOf(String.valueOf(i));
     }
-    tvList.putBinaries(ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, 0, 1000);
+    tvList.putBinaries(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, null, 0, 1000);
     for (long i = 0; i < tvList.size; i++) {
       Assert.assertEquals(tvList.size - i, tvList.getTime((int) i));
+    }
+  }
+
+  @Test
+  public void testPutBinariesWithBitMap() {
+    BinaryTVList tvList = new BinaryTVList();
+    Binary[] binaryList = new Binary[1001];
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      binaryList[1000 - i] = Binary.valueOf(String.valueOf(i));
+      if (i % 100 == 0) {
+        bitMap.mark(i);
+      }
+    }
+    tvList.putBinaries(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, bitMap, 0, 1000);
+    tvList.sort();
+    int nullCnt = 0;
+    for (long i = 1; i < binaryList.length; i++) {
+      if (i % 100 == 0) {
+        nullCnt++;
+        continue;
+      }
+      Assert.assertEquals(
+          Binary.valueOf(String.valueOf(i)), tvList.getBinary((int) i - nullCnt - 1));
+      Assert.assertEquals(i, tvList.getTime((int) i - nullCnt - 1));
+    }
+  }
+
+  @Test
+  public void testClone() {
+    BinaryTVList tvList = new BinaryTVList();
+    Binary[] binaryList = new Binary[1001];
+    List<Long> timeList = new ArrayList<>();
+    BitMap bitMap = new BitMap(1001);
+    for (int i = 1000; i >= 0; i--) {
+      timeList.add((long) i);
+      binaryList[i] = Binary.valueOf(String.valueOf(i));
+      if (i % 100 == 0) {
+        bitMap.mark(i);
+      }
+    }
+    tvList.putBinaries(
+        ArrayUtils.toPrimitive(timeList.toArray(new Long[0])), binaryList, bitMap, 0, 1000);
+    tvList.sort();
+    BinaryTVList clonedTvList = tvList.clone();
+    for (long i = 0; i < tvList.size; i++) {
+      Assert.assertEquals(tvList.getBinary((int) i), clonedTvList.getBinary((int) i));
+      Assert.assertEquals(tvList.getTime((int) i), clonedTvList.getTime((int) i));
     }
   }
 }

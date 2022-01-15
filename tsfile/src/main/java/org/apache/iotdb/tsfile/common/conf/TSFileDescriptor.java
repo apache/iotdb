@@ -127,8 +127,6 @@ public class TSFileDescriptor {
           Integer.parseInt(
               properties.getProperty(
                   "max_degree_of_index_node", Integer.toString(conf.getMaxDegreeOfIndexNode()))));
-      conf.setTimeSeriesDataType(
-          properties.getProperty("time_series_data_type", conf.getTimeSeriesDataType()));
       conf.setMaxStringLength(
           Integer.parseInt(
               properties.getProperty(

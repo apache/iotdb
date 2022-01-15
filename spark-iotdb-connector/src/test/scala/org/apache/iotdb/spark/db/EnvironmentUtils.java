@@ -33,6 +33,7 @@ import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.flush.FlushManager;
@@ -43,7 +44,7 @@ import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.service.MetricsService;
+import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.writelog.manager.MultiFileLogNodeManager;
 import org.apache.iotdb.jdbc.Config;
 import org.junit.Assert;
@@ -93,7 +94,8 @@ public class EnvironmentUtils {
   public static long TEST_QUERY_JOB_ID = QueryResourceManager.getInstance().assignQueryId(true);
   public static QueryContext TEST_QUERY_CONTEXT = new QueryContext(TEST_QUERY_JOB_ID);
 
-  private static long oldTsFileThreshold = config.getTsFileSizeThreshold();
+  private static long oldSeqTsFileSize = config.getSeqTsFileSize();
+  private static long oldUnSeqTsFileSize = config.getUnSeqTsFileSize();
 
   private static long oldGroupSizeInByte = config.getMemtableSizeThreshold();
 
@@ -119,6 +121,7 @@ public class EnvironmentUtils {
     if (config.isMetaDataCacheEnable()) {
       ChunkCache.getInstance().clear();
       TimeSeriesMetadataCache.getInstance().clear();
+      BloomFilterCache.getInstance().clear();
     }
     // close metadata
     IoTDB.metaManager.clear();
@@ -126,7 +129,8 @@ public class EnvironmentUtils {
     // delete all directory
     cleanAllDir();
 
-    config.setTsFileSizeThreshold(oldTsFileThreshold);
+    config.setSeqTsFileSize(oldSeqTsFileSize);
+    config.setUnSeqTsFileSize(oldUnSeqTsFileSize);
     config.setMemtableSizeThreshold(oldGroupSizeInByte);
   }
 

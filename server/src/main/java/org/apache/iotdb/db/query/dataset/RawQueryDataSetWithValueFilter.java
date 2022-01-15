@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.db.query.dataset;
 
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -30,16 +30,21 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFInputDataSet {
+public class RawQueryDataSetWithValueFilter extends QueryDataSet implements IUDFInputDataSet {
 
   private final TimeGenerator timeGenerator;
   private final List<IReaderByTimestamp> seriesReaderByTimestampList;
+  // reader -> index list in Result RowRecord
+  // if the reader is an aligned sensor's reader, the corresponding index list will contain more
+  // than one
+  private final List<List<Integer>> readerToIndexList;
+
   private final List<Boolean> cached;
 
-  private List<RowRecord> cachedRowRecords = new ArrayList<>();
+  private final List<RowRecord> cachedRowRecords = new ArrayList<>();
 
   /** Used for UDF. */
-  private List<Object[]> cachedRowInObjects = new ArrayList<>();
+  private final List<Object[]> cachedRowInObjects = new ArrayList<>();
 
   /**
    * constructor of EngineDataSetWithValueFilter.
@@ -56,11 +61,13 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       List<TSDataType> dataTypes,
       TimeGenerator timeGenerator,
       List<IReaderByTimestamp> readers,
+      List<List<Integer>> readerToIndexList,
       List<Boolean> cached,
       boolean ascending) {
     super(new ArrayList<>(paths), dataTypes, ascending);
     this.timeGenerator = timeGenerator;
     this.seriesReaderByTimestampList = readers;
+    this.readerToIndexList = readerToIndexList;
     this.cached = cached;
   }
 
@@ -100,6 +107,9 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
     RowRecord[] rowRecords = new RowRecord[cachedTimeCnt];
     for (int i = 0; i < cachedTimeCnt; i++) {
       rowRecords[i] = new RowRecord(cachedTimeArray[i]);
+      for (int columnIndex = 0; columnIndex < columnNum; columnIndex++) {
+        rowRecords[i].addField(null);
+      }
     }
 
     boolean[] hasField = new boolean[cachedTimeCnt];
@@ -118,15 +128,26 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] == null) {
-          rowRecords[j].addField(null);
+        if (results == null || results[j] == null) {
+          for (int index : readerToIndexList.get(i)) {
+            rowRecords[j].setField(index, null);
+          }
         } else {
-          hasField[j] = true;
           if (dataTypes.get(i) == TSDataType.VECTOR) {
             TsPrimitiveType[] result = (TsPrimitiveType[]) results[j];
-            rowRecords[j].addField(result[0].getValue(), result[0].getDataType());
+            for (int k = 0; k < result.length; k++) {
+              TsPrimitiveType value = result[k];
+              int index = readerToIndexList.get(i).get(k);
+              if (value == null) {
+                rowRecords[j].setField(index, null);
+              } else {
+                hasField[j] = true;
+                rowRecords[j].setField(index, value.getValue(), value.getDataType());
+              }
+            }
           } else {
-            rowRecords[j].addField(results[j], dataTypes.get(i));
+            hasField[j] = true;
+            rowRecords[j].setField(readerToIndexList.get(i).get(0), results[j], dataTypes.get(i));
           }
         }
       }
@@ -178,9 +199,9 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
       return false;
     }
 
-    Object[][] rowsInObject = new Object[cachedTimeCnt][seriesReaderByTimestampList.size() + 1];
+    Object[][] rowsInObject = new Object[cachedTimeCnt][columnNum + 1];
     for (int i = 0; i < cachedTimeCnt; i++) {
-      rowsInObject[i][seriesReaderByTimestampList.size()] = cachedTimeArray[i];
+      rowsInObject[i][columnNum] = cachedTimeArray[i];
     }
 
     boolean[] hasField = new boolean[cachedTimeCnt];
@@ -199,8 +220,30 @@ public class RawQueryDataSetWithValueFilter extends QueryDataSet implements UDFI
 
       // 3. use values in results to fill row record
       for (int j = 0; j < cachedTimeCnt; j++) {
-        if (results[j] != null) {
+        if (results != null && results[j] != null) {
+
+          if (dataTypes.get(i) == TSDataType.VECTOR) {
+            TsPrimitiveType[] result = (TsPrimitiveType[]) results[j];
+            for (int k = 0; k < result.length; k++) {
+              TsPrimitiveType value = result[k];
+              int index = readerToIndexList.get(i).get(k);
+              if (value == null) {
+                rowsInObject[j][index] = null;
+              } else {
+                hasField[j] = true;
+                rowsInObject[j][index] = value.getValue();
+              }
+            }
+          } else {
+            hasField[j] = true;
+
+            rowsInObject[j][readerToIndexList.get(i).get(0)] = results[j];
+          }
+
           hasField[j] = true;
+          for (int index : readerToIndexList.get(i)) {
+            rowsInObject[j][index] = results[j];
+          }
           rowsInObject[j][i] = results[j];
         }
       }

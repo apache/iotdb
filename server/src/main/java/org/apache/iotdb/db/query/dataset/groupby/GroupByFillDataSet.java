@@ -19,202 +19,322 @@
 package org.apache.iotdb.db.query.dataset.groupby;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.query.UnSupportedFillTypeException;
 import org.apache.iotdb.db.qp.physical.crud.GroupByTimeFillPlan;
 import org.apache.iotdb.db.query.context.QueryContext;
-import org.apache.iotdb.db.query.executor.LastQueryExecutor;
 import org.apache.iotdb.db.query.executor.fill.IFill;
+import org.apache.iotdb.db.query.executor.fill.LinearFill;
 import org.apache.iotdb.db.query.executor.fill.PreviousFill;
+import org.apache.iotdb.db.query.executor.fill.ValueFill;
+import org.apache.iotdb.db.query.udf.datastructure.tv.ElasticSerializableTVList;
+import org.apache.iotdb.db.utils.TypeInferenceUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.utils.Pair;
+import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 
-public class GroupByFillDataSet extends QueryDataSet {
+public class GroupByFillDataSet extends GroupByEngineDataSet {
 
-  private GroupByEngineDataSet groupByEngineDataSet;
-  private Map<TSDataType, IFill> fillTypes;
-  // the first value for each time series
-  private Object[] previousValue;
-  private long[] previousTime;
-  // last timestamp for each time series
-  private long[] lastTimeArray;
-  private TimeValuePair[] firstNotNullTV;
-  private boolean isPeekEnded = false;
+  private static final Logger logger = LoggerFactory.getLogger(GroupByFillDataSet.class);
 
-  public GroupByFillDataSet(
-      List<PartialPath> paths,
-      List<TSDataType> dataTypes,
-      GroupByEngineDataSet groupByEngineDataSet,
-      Map<TSDataType, IFill> fillTypes,
-      QueryContext context,
-      GroupByTimeFillPlan groupByFillPlan)
-      throws StorageEngineException, IOException, QueryProcessException {
-    super(new ArrayList<>(paths), dataTypes, groupByFillPlan.isAscending());
-    this.groupByEngineDataSet = groupByEngineDataSet;
-    this.fillTypes = fillTypes;
-    List<StorageGroupProcessor> list = StorageEngine.getInstance().mergeLock(paths);
+  private QueryDataSet dataSet;
+
+  private final Map<TSDataType, IFill> fillTypes;
+  private final IFill singleFill;
+  private final List<String> aggregations;
+  private boolean[] unsupportedFillMethod;
+
+  // the result datatype for each aggregation
+  private final TSDataType[] resultDataType;
+
+  // the last value and time for each aggregation
+  private long[] previousTimes;
+  private Object[] previousValues;
+
+  // the next not null and unused rowId for each aggregation
+  private int[] nextIndices;
+  // the next value and time for each aggregation
+  private List<ElasticSerializableTVList> nextTVLists;
+
+  private final float groupByFillCacheSizeInMB =
+      IoTDBDescriptor.getInstance().getConfig().getGroupByFillCacheSizeInMB();
+
+  public GroupByFillDataSet(QueryContext context, GroupByTimeFillPlan groupByTimeFillPlan)
+      throws QueryProcessException {
+    super(context, groupByTimeFillPlan);
+    this.aggregations = groupByTimeFillPlan.getDeduplicatedAggregations();
+    this.fillTypes = groupByTimeFillPlan.getFillType();
+    this.singleFill = groupByTimeFillPlan.getSingleFill();
+
+    this.resultDataType = new TSDataType[aggregations.size()];
+    initArrays(context);
+  }
+
+  private void initArrays(QueryContext context) throws QueryProcessException {
+    for (int i = 0; i < aggregations.size(); i++) {
+      resultDataType[i] = TypeInferenceUtils.getAggrDataType(aggregations.get(i), dataTypes.get(i));
+    }
+
+    previousTimes = new long[aggregations.size()];
+    previousValues = new Object[aggregations.size()];
+    nextIndices = new int[aggregations.size()];
+    unsupportedFillMethod = new boolean[aggregations.size()];
+    Arrays.fill(previousTimes, Long.MAX_VALUE);
+    Arrays.fill(previousValues, null);
+    Arrays.fill(nextIndices, 0);
+    Arrays.fill(unsupportedFillMethod, false);
+
+    nextTVLists = new ArrayList<>(aggregations.size());
+    for (int i = 0; i < aggregations.size(); i++) {
+      nextTVLists.add(
+          ElasticSerializableTVList.newElasticSerializableTVList(
+              resultDataType[i], context.getQueryId(), groupByFillCacheSizeInMB, 2));
+    }
+  }
+
+  public void setDataSet(QueryDataSet dataSet) {
+    this.dataSet = dataSet;
+  }
+
+  public void initCache() throws QueryProcessException {
+    BitSet cacheSet = new BitSet(aggregations.size());
     try {
-      initPreviousParis(context, groupByFillPlan);
-      initLastTimeArray(context, groupByFillPlan);
-    } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
-    }
-  }
+      while (cacheSet.cardinality() < aggregations.size() && dataSet.hasNextWithoutConstraint()) {
+        RowRecord record = dataSet.nextWithoutConstraint();
+        long timestamp = record.getTimestamp();
+        List<Field> fields = record.getFields();
+        for (int i = 0; i < fields.size(); i++) {
+          Field field = fields.get(i);
+          if (field == null) {
+            continue;
+          }
 
-  private void initPreviousParis(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
-      throws StorageEngineException, IOException, QueryProcessException {
-    previousValue = new Object[paths.size()];
-    previousTime = new long[paths.size()];
-    firstNotNullTV = new TimeValuePair[paths.size()];
-
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = (PartialPath) paths.get(i);
-      TSDataType dataType = dataTypes.get(i);
-      IFill fill;
-      if (fillTypes.containsKey(dataType)) {
-        fill =
-            new PreviousFill(
-                dataType,
-                groupByEngineDataSet.getStartTime(),
-                ((PreviousFill) fillTypes.get(dataType)).getBeforeRange(),
-                ((PreviousFill) fillTypes.get(dataType)).isUntilLast());
-      } else {
-        fill =
-            new PreviousFill(
-                dataType,
-                groupByEngineDataSet.getStartTime(),
-                IoTDBDescriptor.getInstance().getConfig().getDefaultFillInterval());
+          if (ascending && timestamp < startTime) {
+            previousTimes[i] = timestamp;
+            previousValues[i] = field.getObjectValue(resultDataType[i]);
+          } else if (!ascending && timestamp >= endTime) {
+            previousTimes[i] = timestamp;
+            previousValues[i] = field.getObjectValue(resultDataType[i]);
+          } else {
+            nextTVLists.get(i).put(timestamp, field.getObjectValue(resultDataType[i]));
+            cacheSet.set(i);
+          }
+        }
       }
-      fill.configureFill(
-          path,
-          dataType,
-          groupByEngineDataSet.getStartTime(),
-          groupByFillPlan.getAllMeasurementsInDevice(path.getDevice()),
-          context);
-
-      firstNotNullTV[i] = fill.getFillResult();
-      TimeValuePair timeValuePair = firstNotNullTV[i];
-      previousValue[i] = null;
-      previousTime[i] = Long.MAX_VALUE;
-      if (ascending && timeValuePair != null && timeValuePair.getValue() != null) {
-        previousValue[i] = timeValuePair.getValue().getValue();
-        previousTime[i] = timeValuePair.getTimestamp();
-      }
-    }
-  }
-
-  private void initLastTimeArray(QueryContext context, GroupByTimeFillPlan groupByFillPlan)
-      throws IOException, StorageEngineException, QueryProcessException {
-    lastTimeArray = new long[paths.size()];
-    Arrays.fill(lastTimeArray, Long.MAX_VALUE);
-    List<PartialPath> seriesPaths = new ArrayList<>();
-    for (int i = 0; i < paths.size(); i++) {
-      seriesPaths.add((PartialPath) paths.get(i));
-    }
-    List<Pair<Boolean, TimeValuePair>> lastValueContainer =
-        LastQueryExecutor.calculateLastPairForSeriesLocally(
-            seriesPaths, dataTypes, context, null, groupByFillPlan.getDeviceToMeasurements());
-    for (int i = 0; i < lastValueContainer.size(); i++) {
-      if (Boolean.TRUE.equals(lastValueContainer.get(i).left)) {
-        lastTimeArray[i] = lastValueContainer.get(i).right.getTimestamp();
-      }
+    } catch (IOException e) {
+      logger.error("there has an exception while init: ", e);
+      throw new QueryProcessException(e.getMessage());
     }
   }
 
   @Override
-  public boolean hasNextWithoutConstraint() {
-    return groupByEngineDataSet.hasNextWithoutConstraint();
-  }
-
-  @Override
-  @SuppressWarnings("squid:S3776")
   public RowRecord nextWithoutConstraint() throws IOException {
-    RowRecord rowRecord = groupByEngineDataSet.nextWithoutConstraint();
+    if (!hasCachedTimeInterval) {
+      throw new IOException(
+          "need to call hasNext() before calling next() " + "in GroupByFillDataSet.");
+    }
 
-    for (int i = 0; i < paths.size(); i++) {
-      Field field = rowRecord.getFields().get(i);
-      // current group by result is null
-      if (field == null || field.getDataType() == null) {
-        TSDataType tsDataType = dataTypes.get(i);
-        // for desc query peek previous time and value
-        if (!ascending && !isPeekEnded && !canUseCacheData(rowRecord, tsDataType, i)) {
-          fillCache(i);
-        }
+    hasCachedTimeInterval = false;
+    RowRecord record;
+    long curTimestamp;
+    if (leftCRightO) {
+      curTimestamp = curStartTime;
+      record = new RowRecord(curStartTime);
+    } else {
+      curTimestamp = curEndTime - 1;
+      record = new RowRecord(curEndTime - 1);
+    }
 
-        if (canUseCacheData(rowRecord, tsDataType, i)) {
-          rowRecord.getFields().set(i, Field.getField(previousValue[i], tsDataType));
-        }
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (nextTVLists.get(i).size() == nextIndices[i]) {
+        fillRecord(i, record);
+        continue;
+      }
+
+      long cacheTime = nextTVLists.get(i).getTime(nextIndices[i]);
+      if (cacheTime == curTimestamp) {
+        record.addField(getNextCacheValue(i), resultDataType[i]);
       } else {
-        // use now value update previous value
-        previousValue[i] = field.getObjectValue(field.getDataType());
-        previousTime[i] = rowRecord.getTimestamp();
+        fillRecord(i, record);
       }
     }
-    return rowRecord;
+
+    try {
+      slideCache(record.getTimestamp());
+    } catch (QueryProcessException e) {
+      logger.error("group by fill has an exception while sliding: ", e);
+    }
+
+    return record;
   }
 
-  private void fillCache(int i) throws IOException {
-    Pair<Long, Object> data = groupByEngineDataSet.peekNextNotNullValue(paths.get(i), i);
-    if (data == null) {
-      isPeekEnded = true;
-      previousTime[i] = Long.MIN_VALUE;
-      previousValue[i] = null;
-      if (!firstCacheIsEmpty(i)) {
-        previousValue[i] = firstNotNullTV[i].getValue().getValue();
-        previousTime[i] = firstNotNullTV[i].getTimestamp();
+  private void fillRecord(int index, RowRecord record) throws IOException {
+    if (unsupportedFillMethod[index]) {
+      record.addField(null);
+      return;
+    }
+
+    IFill fill;
+    if (fillTypes != null) {
+      // old type fill logic
+      fill = fillTypes.get(resultDataType[index]);
+    } else {
+      fill = singleFill;
+    }
+    if (fill == null) {
+      record.addField(null);
+      return;
+    }
+
+    Pair<Long, Object> beforePair, afterPair;
+    if (ascending) {
+      if (previousValues[index] != null) {
+        beforePair = new Pair<>(previousTimes[index], previousValues[index]);
+      } else {
+        beforePair = null;
+      }
+      if (nextIndices[index] < nextTVLists.get(index).size()) {
+        afterPair =
+            new Pair<>(
+                nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
+      } else {
+        afterPair = null;
       }
     } else {
-      previousValue[i] = data.right;
-      previousTime[i] = data.left;
+      if (nextIndices[index] < nextTVLists.get(index).size()) {
+        beforePair =
+            new Pair<>(
+                nextTVLists.get(index).getTime(nextIndices[index]), getNextCacheValue(index));
+      } else {
+        beforePair = null;
+      }
+      if (previousValues[index] != null) {
+        afterPair = new Pair<>(previousTimes[index], previousValues[index]);
+      } else {
+        afterPair = null;
+      }
+    }
+
+    if (fill instanceof PreviousFill) {
+      if (beforePair != null
+          && (fill.getBeforeRange() == -1
+              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
+          && ((!((PreviousFill) fill).isUntilLast())
+              || (afterPair != null && afterPair.left < endTime))) {
+        record.addField(beforePair.right, resultDataType[index]);
+      } else {
+        record.addField(null);
+      }
+    } else if (fill instanceof LinearFill) {
+      LinearFill linearFill = new LinearFill();
+      if (beforePair != null
+          && afterPair != null
+          && (fill.getBeforeRange() == -1
+              || fill.insideBeforeRange(beforePair.left, record.getTimestamp()))
+          && (fill.getAfterRange() == -1
+              || fill.insideAfterRange(afterPair.left, record.getTimestamp()))) {
+        try {
+          TimeValuePair filledPair =
+              linearFill.averageWithTimeAndDataType(
+                  new TimeValuePair(
+                      beforePair.left,
+                      TsPrimitiveType.getByType(resultDataType[index], beforePair.right)),
+                  new TimeValuePair(
+                      afterPair.left,
+                      TsPrimitiveType.getByType(resultDataType[index], afterPair.right)),
+                  record.getTimestamp(),
+                  resultDataType[index]);
+          record.addField(filledPair.getValue().getValue(), resultDataType[index]);
+        } catch (UnSupportedFillTypeException ignore) {
+          // Don't fill and ignore unsupported fill type exception
+          record.addField(null);
+          unsupportedFillMethod[index] = true;
+          logger.info("Linear fill doesn't support the " + index + "-th column in SQL.");
+        }
+      } else {
+        record.addField(null);
+      }
+    } else if (fill instanceof ValueFill) {
+      try {
+        TimeValuePair filledPair = fill.getFillResult();
+        if (filledPair == null) {
+          filledPair = ((ValueFill) fill).getSpecifiedFillResult(resultDataType[index]);
+        }
+        record.addField(filledPair.getValue().getValue(), resultDataType[index]);
+      } catch (NumberFormatException ignore) {
+        // Don't fill and ignore type convert exception
+        record.addField(null);
+        unsupportedFillMethod[index] = true;
+        logger.info("Value fill doesn't support the " + index + "-th column in SQL.");
+      } catch (QueryProcessException | StorageEngineException e) {
+        throw new IOException(e);
+      }
     }
   }
 
-  // the previous value is not null
-  // and (fill type is not previous until last or now time is before last time)
-  // and (previous before range is not limited or previous before range contains the previous
-  // interval)
-  private boolean canUseCacheData(RowRecord rowRecord, TSDataType tsDataType, int i) {
-    PreviousFill previousFill = (PreviousFill) fillTypes.get(tsDataType);
-    return !cacheIsEmpty(i)
-        && satisfyTime(rowRecord, tsDataType, previousFill, lastTimeArray[i])
-        && satisfyRange(tsDataType, previousFill)
-        && isIncreasingTime(rowRecord, previousTime[i]);
+  private Object getNextCacheValue(int index) throws IOException {
+    switch (resultDataType[index]) {
+      case INT32:
+        return nextTVLists.get(index).getInt(nextIndices[index]);
+      case INT64:
+        return nextTVLists.get(index).getLong(nextIndices[index]);
+      case FLOAT:
+        return nextTVLists.get(index).getFloat(nextIndices[index]);
+      case DOUBLE:
+        return nextTVLists.get(index).getDouble(nextIndices[index]);
+      case BOOLEAN:
+        return nextTVLists.get(index).getBoolean(nextIndices[index]);
+      case TEXT:
+        return nextTVLists.get(index).getBinary(nextIndices[index]);
+      default:
+        throw new IOException("unknown data type!");
+    }
   }
 
-  private boolean isIncreasingTime(RowRecord rowRecord, long time) {
-    return rowRecord.getTimestamp() >= time;
-  }
+  private void slideCache(long curTimestamp) throws IOException, QueryProcessException {
+    BitSet slideSet = new BitSet(aggregations.size());
+    for (int i = 0; i < aggregations.size(); i++) {
+      if (nextTVLists.get(i).size() == nextIndices[i]) {
+        continue;
+      }
 
-  private boolean satisfyTime(
-      RowRecord rowRecord, TSDataType tsDataType, PreviousFill previousFill, long lastTime) {
-    return (fillTypes.containsKey(tsDataType) && !previousFill.isUntilLast())
-        || rowRecord.getTimestamp() <= lastTime;
-  }
+      // slide cache when the current TV is used
+      if (nextTVLists.get(i).getTime(nextIndices[i]) == curTimestamp) {
+        previousTimes[i] = curTimestamp;
+        previousValues[i] = getNextCacheValue(i);
+        nextIndices[i]++;
+        nextTVLists.get(i).setEvictionUpperBound(nextIndices[i]);
+        slideSet.set(i);
+      }
+    }
 
-  private boolean satisfyRange(TSDataType tsDataType, PreviousFill previousFill) {
-    return !fillTypes.containsKey(tsDataType)
-        || previousFill.getBeforeRange() < 0
-        || previousFill.getBeforeRange() >= groupByEngineDataSet.interval;
-  }
-
-  private boolean cacheIsEmpty(int i) {
-    return previousValue[i] == null;
-  }
-
-  private boolean firstCacheIsEmpty(int i) {
-    return firstNotNullTV[i] == null || firstNotNullTV[i].getValue() == null;
+    while (slideSet.cardinality() > 0 && dataSet.hasNextWithoutConstraint()) {
+      RowRecord record = dataSet.nextWithoutConstraint();
+      long timestamp = record.getTimestamp();
+      List<Field> fields = record.getFields();
+      for (int i = 0; i < fields.size(); i++) {
+        Field field = fields.get(i);
+        if (field == null) {
+          continue;
+        }
+        nextTVLists.get(i).put(timestamp, field.getObjectValue(resultDataType[i]));
+        slideSet.clear(i);
+      }
+    }
   }
 }

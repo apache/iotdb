@@ -19,7 +19,10 @@
 
 -->
 
-## Encoding 
+# Encoding
+
+
+## Encoding Methods
 
 To improve the efficiency of data storage, it is necessary to encode data during data writing, thereby reducing the amount of disk space used. In the process of writing and reading data, the amount of data involved in the I/O operations can be reduced to improve performance. IoTDB supports the following encoding methods for different data types:
 
@@ -33,7 +36,7 @@ Second-order differential encoding is more suitable for encoding monotonically i
 
 * RLE
 
-Run-length encoding is suitable for storing sequence with continuous integer values, and is not recommended for sequence data with most of the time different values.
+Run-length encoding is suitable for storing sequence with continuous values, and is not recommended for sequence data with most of the time different values.
 
 Run-length encoding can also be used to encode floating-point numbers, while it is necessary to specify reserved decimal digits (MAX\_POINT\_NUMBER) when creating time series. It is more suitable to store sequence data where floating-point values appear continuously, monotonously increasing or decreasing, and it is not suitable for storing sequence data with high precision requirements after the decimal point or with large fluctuations.
 
@@ -50,11 +53,15 @@ Usage restrictions: When using GORILLA to encode INT32 data, you need to ensure 
 * DICTIONARY
 
 DICTIONARY encoding is lossless. It is suitable for TEXT data with low cardinality (i.e. low number of distinct values). It is not recommended to use it for high-cardinality data. 
-* Correspondence between data type and encoding
+
+
+## Correspondence between data type and encoding
 
 The five encodings described in the previous sections are applicable to different data types. If the correspondence is wrong, the time series cannot be created correctly. The correspondence between the data type and its supported encodings is summarized in the Table below.
 
-<center> **The correspondence between the data type and its supported encodings**
+<div style="text-align: center;"> 
+
+**The correspondence between the data type and its supported encodings**
 
 |Data Type	|Supported Encoding|
 |:---:|:---:|
@@ -65,4 +72,4 @@ The five encodings described in the previous sections are applicable to differen
 |DOUBLE	|PLAIN, RLE, TS_2DIFF, GORILLA|
 |TEXT	|PLAIN, DICTIONARY|
 
-</center>
+</div>

@@ -22,16 +22,16 @@ package org.apache.iotdb.db.query.dataset.groupby;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.aggregation.AggregateResult;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
 import org.apache.iotdb.db.query.reader.series.IAggregateReader;
 import org.apache.iotdb.db.query.reader.series.SeriesAggregateReader;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.read.common.TimeRange;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
@@ -53,14 +53,13 @@ public class LocalGroupByExecutor implements GroupByExecutor {
   // used for resetting the batch data to the last index
   private int lastReadCurArrayIndex;
   private int lastReadCurListIndex;
-  private boolean ascending;
+  private final boolean ascending;
 
-  private QueryDataSource queryDataSource;
+  private final QueryDataSource queryDataSource;
 
   public LocalGroupByExecutor(
       PartialPath path,
       Set<String> allSensors,
-      TSDataType dataType,
       QueryContext context,
       Filter timeFilter,
       TsFileFilter fileFilter,
@@ -70,27 +69,27 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
     // update filter by TTL
     timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
-    this.reader =
+    // init SeriesAggregateReader for non-aligned series
+    reader =
         new SeriesAggregateReader(
             path,
             allSensors,
-            dataType,
+            path.getSeriesType(),
             context,
             queryDataSource,
             timeFilter,
             null,
             fileFilter,
             ascending);
-    this.preCachedData = null;
+    preCachedData = null;
     timeRange = new TimeRange(Long.MIN_VALUE, Long.MAX_VALUE);
     lastReadCurArrayIndex = 0;
     lastReadCurListIndex = 0;
     this.ascending = ascending;
   }
 
-  public boolean isEmpty() {
-    return queryDataSource.getSeqResources().isEmpty()
-        && queryDataSource.getUnseqResources().isEmpty();
+  public boolean isEmpty() throws IOException {
+    return !reader.hasNextFile();
   }
 
   @Override
@@ -133,23 +132,27 @@ public class LocalGroupByExecutor implements GroupByExecutor {
       }
       // lazy reset batch data for calculation
       batchData.resetBatchData(lastReadCurArrayIndex, lastReadCurListIndex);
+      IBatchDataIterator batchIterator = batchData.getBatchDataIterator();
       if (ascending) {
         // skip points that cannot be calculated
-        while (batchData.hasCurrent() && batchData.currentTime() < curStartTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() < curStartTime) {
+          batchIterator.next();
         }
       } else {
-        while (batchData.hasCurrent() && batchData.currentTime() >= curEndTime) {
-          batchData.next();
+        while (batchIterator.hasNext() && batchIterator.currentTime() >= curEndTime) {
+          batchIterator.next();
         }
       }
 
-      if (batchData.hasCurrent()) {
-        result.updateResultFromPageData(batchData, curStartTime, curEndTime);
+      if (batchIterator.hasNext()) {
+        result.updateResultFromPageData(batchIterator, curStartTime, curEndTime);
       }
     }
+
+    // reset the last position to current Index
     lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
     lastReadCurListIndex = batchData.getReadCurListIndex();
+
     // can calc for next interval
     if (batchData.hasCurrent()) {
       preCachedData = batchData;
@@ -173,13 +176,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     return true;
   }
 
-  private void calcFromStatistics(Statistics pageStatistics) throws QueryProcessException {
+  private void calcFromStatistics(Statistics statistics) throws QueryProcessException {
     for (AggregateResult result : results) {
-      // cacl is compile
       if (result.hasFinalResult()) {
         continue;
       }
-      result.updateResultFromStatistics(pageStatistics);
+      result.updateResultFromStatistics(statistics);
     }
   }
 
@@ -211,7 +213,12 @@ public class LocalGroupByExecutor implements GroupByExecutor {
     while (reader.hasNextFile()) {
       Statistics fileStatistics = reader.currentFileStatistics();
       if (fileStatistics.getStartTime() >= curEndTime) {
-        return results;
+        if (ascending) {
+          return results;
+        } else {
+          reader.skipCurrentFile();
+          continue;
+        }
       }
       // calc from fileMetaData
       if (reader.canUseCurrentFileStatistics()
@@ -289,6 +296,7 @@ public class LocalGroupByExecutor implements GroupByExecutor {
         reader.skipCurrentChunk();
         continue;
       }
+      // read page
       if (readAndCalcFromPage(curStartTime, curEndTime)) {
         return true;
       }
@@ -323,23 +331,24 @@ public class LocalGroupByExecutor implements GroupByExecutor {
           continue;
         }
       }
+
       // calc from page data
       BatchData batchData = reader.nextPage();
       if (batchData == null || !batchData.hasCurrent()) {
         continue;
       }
-      // stop calc and cached current batchData
-      if (ascending && batchData.currentTime() >= curEndTime) {
-        preCachedData = batchData;
-        // reset the last position to current Index
-        lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
-        lastReadCurListIndex = batchData.getReadCurListIndex();
-        return true;
-      }
 
       // reset the last position to current Index
       lastReadCurArrayIndex = batchData.getReadCurArrayIndex();
       lastReadCurListIndex = batchData.getReadCurListIndex();
+
+      // stop calc and cached current batchData
+      if (ascending && batchData.currentTime() >= curEndTime) {
+        preCachedData = batchData;
+        return true;
+      }
+
+      // calc from batch data
       calcFromBatch(batchData, curStartTime, curEndTime);
 
       // judge whether the calculation finished

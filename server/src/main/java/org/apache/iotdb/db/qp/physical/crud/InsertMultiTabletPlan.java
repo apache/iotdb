@@ -18,20 +18,25 @@
  */
 package org.apache.iotdb.db.qp.physical.crud;
 
+import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.BatchPlan;
+import org.apache.iotdb.db.utils.StatusUtils;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -91,7 +96,13 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   /** record the result of creation of time series */
   private Map<Integer, TSStatus> results = new TreeMap<>();
 
+  private List<PartialPath> prefixPaths;
+
   boolean[] isExecuted;
+
+  Boolean isEnableMultithreading;
+
+  Integer differentStorageGroupsCount;
 
   public InsertMultiTabletPlan() {
     super(OperatorType.MULTI_BATCH_INSERT);
@@ -127,6 +138,18 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
+  public List<PartialPath> getPrefixPaths() {
+    if (prefixPaths != null) {
+      return prefixPaths;
+    }
+    prefixPaths = new ArrayList<>(insertTabletPlanList.size());
+    for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+      prefixPaths.add(insertTabletPlan.getDevicePath());
+    }
+    return prefixPaths;
+  }
+
+  @Override
   public long getMinTime() {
     long minTime = Long.MAX_VALUE;
     for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
@@ -151,6 +174,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     return insertTabletPlanList.size();
   }
 
+  @Override
   public Map<Integer, TSStatus> getResults() {
     return results;
   }
@@ -179,7 +203,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   public PartialPath getFirstDeviceId() {
-    return insertTabletPlanList.get(0).getPrefixPath();
+    return insertTabletPlanList.get(0).getDevicePath();
   }
 
   public InsertTabletPlan getInsertTabletPlan(int index) {
@@ -226,6 +250,10 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     return insertTabletPlanList;
   }
 
+  public TSStatus[] getFailingStatus() {
+    return StatusUtils.getFailingStatus(results, insertTabletPlanList.size());
+  }
+
   public void setResults(Map<Integer, TSStatus> results) {
     this.results = results;
   }
@@ -238,7 +266,7 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
   }
 
   @Override
-  public void serialize(ByteBuffer buffer) {
+  public void serializeImpl(ByteBuffer buffer) {
     int type = PhysicalPlanType.MULTI_BATCH_INSERT.ordinal();
     buffer.put((byte) type);
     buffer.putInt(insertTabletPlanList.size());
@@ -363,5 +391,57 @@ public class InsertMultiTabletPlan extends InsertPlan implements BatchPlan {
     } else {
       results.remove(i);
     }
+  }
+
+  public int getDifferentStorageGroupsCount() {
+    if (differentStorageGroupsCount == null) {
+      Set<String> insertPlanSGSet = new HashSet<>();
+      int defaultStorageGroupLevel = new IoTDBConfig().getDefaultStorageGroupLevel();
+      for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+        String[] nodes = insertTabletPlan.getDevicePath().getNodes();
+        StringBuilder stringBuilder = new StringBuilder();
+        for (int i = 0; i <= defaultStorageGroupLevel && i < nodes.length; i++) {
+          stringBuilder.append(nodes[i]).append(".");
+        }
+        insertPlanSGSet.add(stringBuilder.toString());
+      }
+      differentStorageGroupsCount = insertPlanSGSet.size();
+    }
+    return differentStorageGroupsCount;
+  }
+
+  public boolean isEnableMultiThreading() {
+    // If we enable multithreading, we need to consider the loss of switching between threads,
+    // so we need to judge the core threads of the thread pool and the size of the tablet.
+
+    // Therefore, we set the number of core threads in the thread pool to
+    // min(the number of different sg, availableProcessors()/2),
+    // and need columns >= insertMultiTabletEnableMultithreadingColumnThreshold.
+
+    // It should be noted that if the number of sg is large and exceeds twice of the recommended
+    // number of CPU threads,
+    // it may lead to failure to allocate out of heap memory and NPE.
+    // Therefore, we will also turn off multithreading in this case.
+    if (isEnableMultithreading == null) {
+      int sgSize = getDifferentStorageGroupsCount();
+      // SG should be >= 1 so that it will not be locked and degenerate into serial.
+      // SG should be <= Runtime.getRuntime().availableProcessors()*2  so that to avoid failure to
+      // allocate out of heap memory and NPE
+      if (sgSize <= 1 || sgSize >= Runtime.getRuntime().availableProcessors() * 2) {
+        isEnableMultithreading = false;
+      } else {
+        int count = 0;
+        for (InsertTabletPlan insertTabletPlan : insertTabletPlanList) {
+          if (insertTabletPlan.getColumns().length
+              >= IoTDBDescriptor.getInstance()
+                  .getConfig()
+                  .getInsertMultiTabletEnableMultithreadingColumnThreshold()) {
+            count++;
+          }
+        }
+        isEnableMultithreading = count * 2 >= insertTabletPlanList.size();
+      }
+    }
+    return isEnableMultithreading;
   }
 }

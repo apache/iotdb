@@ -22,7 +22,8 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.LogicalOptimizeException;
 import org.apache.iotdb.db.exception.query.PathNumOverLimitException;
 import org.apache.iotdb.db.exception.runtime.SQLParserException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.MeasurementPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.constant.FilterConstant.FilterType;
 import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.qp.logical.Operator;
@@ -30,9 +31,13 @@ import org.apache.iotdb.db.qp.logical.crud.BasicFunctionOperator;
 import org.apache.iotdb.db.qp.logical.crud.FilterOperator;
 import org.apache.iotdb.db.qp.logical.crud.FromComponent;
 import org.apache.iotdb.db.qp.logical.crud.FunctionOperator;
+import org.apache.iotdb.db.qp.logical.crud.InOperator;
+import org.apache.iotdb.db.qp.logical.crud.LikeOperator;
 import org.apache.iotdb.db.qp.logical.crud.QueryOperator;
+import org.apache.iotdb.db.qp.logical.crud.RegexpOperator;
 import org.apache.iotdb.db.qp.logical.crud.SelectComponent;
 import org.apache.iotdb.db.qp.logical.crud.WhereComponent;
+import org.apache.iotdb.db.qp.utils.GroupByLevelController;
 import org.apache.iotdb.db.qp.utils.WildcardsRemover;
 import org.apache.iotdb.db.query.expression.ResultColumn;
 import org.apache.iotdb.db.service.IoTDB;
@@ -42,6 +47,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -103,16 +109,30 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
       return;
     }
 
-    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     List<ResultColumn> resultColumns = new ArrayList<>();
+    // Only used for group by level
+    GroupByLevelController groupByLevelController = null;
+    if (queryOperator.isGroupByLevel()) {
+      groupByLevelController = new GroupByLevelController(queryOperator);
+      queryOperator.resetSLimitOffset();
+      resultColumns = new LinkedList<>();
+    }
+
+    WildcardsRemover wildcardsRemover = new WildcardsRemover(queryOperator);
     for (ResultColumn resultColumn : queryOperator.getSelectComponent().getResultColumns()) {
       resultColumn.removeWildcards(wildcardsRemover, resultColumns);
+      if (groupByLevelController != null) {
+        groupByLevelController.control(resultColumn, resultColumns);
+      }
       if (wildcardsRemover.checkIfPathNumberIsOverLimit(resultColumns)) {
         break;
       }
     }
     wildcardsRemover.checkIfSoffsetIsExceeded(resultColumns);
     queryOperator.getSelectComponent().setResultColumns(resultColumns);
+    if (groupByLevelController != null) {
+      queryOperator.getSpecialClauseComponent().setGroupByLevelController(groupByLevelController);
+    }
   }
 
   private void concatFilterAndRemoveWildcards(QueryOperator queryOperator)
@@ -144,14 +164,18 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     }
     FunctionOperator functionOperator = (FunctionOperator) operator;
     PartialPath filterPath = functionOperator.getSinglePath();
-    // do nothing in the cases of "where time > 5" or "where root.d1.s1 > 5"
-    if (SQLConstant.isReservedPath(filterPath)
-        || filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+    List<PartialPath> concatPaths = new ArrayList<>();
+    if (SQLConstant.isReservedPath(filterPath)) {
+      // do nothing in the case of "where time > 5"
       filterPaths.add(filterPath);
       return operator;
+    } else if (filterPath.getFirstNode().startsWith(SQLConstant.ROOT)) {
+      // do nothing in the case of "where root.d1.s1 > 5"
+      concatPaths.add(filterPath);
+    } else {
+      fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
     }
-    List<PartialPath> concatPaths = new ArrayList<>();
-    fromPaths.forEach(fromPath -> concatPaths.add(fromPath.concatPath(filterPath)));
+
     List<PartialPath> noStarPaths = removeWildcardsInConcatPaths(concatPaths);
     filterPaths.addAll(noStarPaths);
     if (noStarPaths.size() == 1) {
@@ -180,11 +204,32 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
         currentNode = newInnerNode;
       }
       try {
-        currentNode.addChildOperator(
-            new BasicFunctionOperator(
-                operator.getFilterType(),
-                noStarPaths.get(i),
-                ((BasicFunctionOperator) operator).getValue()));
+        if (operator instanceof InOperator) {
+          currentNode.addChildOperator(
+              new InOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((InOperator) operator).getNot(),
+                  ((InOperator) operator).getValues()));
+        } else if (operator instanceof LikeOperator) {
+          currentNode.addChildOperator(
+              new LikeOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((LikeOperator) operator).getValue()));
+        } else if (operator instanceof RegexpOperator) {
+          currentNode.addChildOperator(
+              new RegexpOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((RegexpOperator) operator).getValue()));
+        } else {
+          currentNode.addChildOperator(
+              new BasicFunctionOperator(
+                  operator.getFilterType(),
+                  noStarPaths.get(i),
+                  ((BasicFunctionOperator) operator).getValue()));
+        }
       } catch (SQLParserException e) {
         throw new LogicalOptimizeException(e.getMessage());
       }
@@ -197,8 +242,8 @@ public class ConcatPathOptimizer implements ILogicalOptimizer {
     HashSet<PartialPath> actualPaths = new HashSet<>();
     try {
       for (PartialPath originalPath : originalPaths) {
-        List<PartialPath> all =
-            IoTDB.metaManager.getAllTimeseriesPathWithAlias(originalPath, 0, 0).left;
+        List<MeasurementPath> all =
+            IoTDB.metaManager.getMeasurementPathsWithAlias(originalPath, 0, 0).left;
         if (all.isEmpty()) {
           throw new LogicalOptimizeException(
               String.format("Unknown time series %s in `where clause`", originalPath));

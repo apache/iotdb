@@ -41,8 +41,16 @@ public abstract class BinaryFilter implements Filter, Serializable {
     this.right = right;
   }
 
+  public void setLeft(Filter left) {
+    this.left = left;
+  }
+
   public Filter getLeft() {
     return left;
+  }
+
+  public void setRight(Filter right) {
+    this.right = right;
   }
 
   public Filter getRight() {

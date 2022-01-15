@@ -21,7 +21,7 @@ package org.apache.iotdb.tsfile.write.chunk;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.write.record.Tablet;
 import org.apache.iotdb.tsfile.write.record.datapoint.DataPoint;
-import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
+import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 import org.apache.iotdb.tsfile.write.writer.TsFileIOWriter;
 
 import java.io.IOException;
@@ -42,7 +42,7 @@ public interface IChunkGroupWriter {
    * @throws WriteProcessException exception in write process
    * @throws IOException exception in IO
    */
-  void write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
+  int write(long time, List<DataPoint> data) throws WriteProcessException, IOException;
 
   /**
    * receive a tablet, write it to chunk writers
@@ -50,7 +50,7 @@ public interface IChunkGroupWriter {
    * @throws WriteProcessException exception in write process
    * @throws IOException exception in IO
    */
-  void write(Tablet tablet) throws WriteProcessException, IOException;
+  int write(Tablet tablet) throws WriteProcessException, IOException;
 
   /**
    * flushing method for serializing to local file system or HDFS. Implemented by
@@ -75,9 +75,16 @@ public interface IChunkGroupWriter {
    * ChunkGroupWriter.
    *
    * @param measurementSchema a measurement descriptor containing the message of the series
-   * @param pageSize the specified page size
    */
-  void tryToAddSeriesWriter(IMeasurementSchema measurementSchema, int pageSize);
+  void tryToAddSeriesWriter(MeasurementSchema measurementSchema);
+
+  /**
+   * given a measurement descriptor list, create corresponding writers and put into this
+   * ChunkGroupWriter.
+   *
+   * @param measurementSchemas
+   */
+  void tryToAddSeriesWriter(List<MeasurementSchema> measurementSchemas);
 
   /**
    * get the serialized size of current chunkGroup header + all chunks. Notice, the value does not
@@ -86,6 +93,4 @@ public interface IChunkGroupWriter {
    * @return the serialized size of current chunkGroup header + all chunk
    */
   long getCurrentChunkGroupSize();
-
-  int getSeriesNumber();
 }

@@ -30,6 +30,33 @@ if [ $max_num -le 65535 ]; then
     fi
 fi
 
+# Set somaxconn to a better value to avoid meaningless connection reset issues when the system is under high load.
+# The original somaxconn will be set back when the system reboots.
+# For more detail, see: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=19f92a030ca6d772ab44b22ee6a01378a8cb32d4
+SOMAXCONN=65535
+case "$(uname)" in
+    Linux)
+        somaxconn=$(sysctl -n net.core.somaxconn)
+        if [ "$somaxconn" -lt $SOMAXCONN ]; then
+            echo "WARN:"
+            echo "WARN: the value of net.core.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
+            echo "WARN:     sudo sysctl -w net.core.somaxconn=$SOMAXCONN"
+            echo "WARN: The original net.core.somaxconn value will be set back when the os reboots."
+            echo "WARN:"
+        fi
+    ;;
+    FreeBSD | Darwin)
+        somaxconn=$(sysctl -n kern.ipc.somaxconn)
+        if [ "$somaxconn" -lt $SOMAXCONN ]; then
+            echo "WARN:"
+            echo "WARN: the value of kern.ipc.somaxconn (=$somaxconn) is too small, please set it to a larger value using the following command."
+            echo "WARN:     sudo sysctl -w kern.ipc.somaxconn=$SOMAXCONN"
+            echo "WARN: The original kern.ipc.somaxconn value will be set back when the os reboots."
+            echo "WARN:"
+        fi
+    ;;
+esac
+
 calculate_heap_sizes()
 {
     case "`uname`" in
@@ -178,8 +205,16 @@ calculate_heap_sizes
 #MAX_HEAP_SIZE="2G"
 # Minimum heap size
 #HEAP_NEWSIZE="2G"
-# maximum direct memory size
+# Maximum direct memory size
 MAX_DIRECT_MEMORY_SIZE=${MAX_HEAP_SIZE}
+
+# threads number that may use direct memory, including query threads(8) + merge threads(4) + space left for system(4)
+threads_number="16"
+# the size of buffer cache pool(IOV_MAX) depends on operating system
+temp_buffer_pool_size="1024"
+# Max cached buffer size, Note: unit can only be B!
+# which equals DIRECT_MEMORY_SIZE / threads_number / temp_buffer_pool_size
+MAX_CACHED_BUFFER_SIZE=`expr $max_heap_size_in_mb \* 1024 \* 1024 / $threads_number / $temp_buffer_pool_size`
 
 #true or false
 #DO NOT FORGET TO MODIFY THE PASSWORD FOR SECURITY (${IOTDB_CONF}/jmx.password and ${IOTDB_CONF}/jmx.access)
@@ -214,6 +249,7 @@ fi
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xms${HEAP_NEWSIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Xmx${MAX_HEAP_SIZE}"
 IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -XX:MaxDirectMemorySize=${MAX_DIRECT_MEMORY_SIZE}"
+IOTDB_JMX_OPTS="$IOTDB_JMX_OPTS -Djdk.nio.maxCachedBufferSize=${MAX_CACHED_BUFFER_SIZE}"
 
 echo "Maximum memory allocation pool = ${MAX_HEAP_SIZE}B, initial memory allocation pool = ${HEAP_NEWSIZE}B"
 echo "If you want to change this configuration, please check conf/iotdb-env.sh(Unix or OS X, if you use Windows, check conf/iotdb-env.bat)."

@@ -42,7 +42,7 @@ public class GroupByFillDataSetTest {
   private String[] sqls = {
     "SET STORAGE GROUP TO root.vehicle",
     "CREATE TIMESERIES root.vehicle.d0.s0 WITH DATATYPE=INT32, ENCODING=RLE",
-    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=TEXT, ENCODING=PLAIN",
+    "CREATE TIMESERIES root.vehicle.d0.s1 WITH DATATYPE=INT32, ENCODING=RLE",
     "CREATE TIMESERIES root.vehicle.d0.s2 WITH DATATYPE=INT32, ENCODING=RLE",
     "insert into root.vehicle.d0(timestamp,s0) values(1,1)",
     "insert into root.vehicle.d0(timestamp,s1) values(1,1)",
@@ -155,7 +155,7 @@ public class GroupByFillDataSetTest {
     QueryPlan queryPlan =
         (QueryPlan)
             processor.parseSQLToPhysicalPlan(
-                "select last_value(s0) from root.vehicle.* where s1 > 1 or s0 > 1  group by ([5,20), 1ms) fill (int32[Previous]) order by time desc");
+                "select last_value(s0) from root.vehicle.* where s1 > 1 or s0 >= 1  group by ([5,20), 1ms) fill (int32[Previous, 11ms]) order by time desc");
     QueryDataSet dataSet =
         queryExecutor.processQuery(queryPlan, EnvironmentUtils.TEST_QUERY_CONTEXT);
     for (int i = 19; i >= 8; i--) {

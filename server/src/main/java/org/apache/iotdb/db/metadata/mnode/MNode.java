@@ -19,7 +19,8 @@
 package org.apache.iotdb.db.metadata.mnode;
 
 import org.apache.iotdb.db.conf.IoTDBConstant;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.exception.metadata.IllegalPathException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.rescon.CachedStringPool;
 
 import java.util.ArrayList;
@@ -73,6 +74,13 @@ public abstract class MNode implements IMNode {
    */
   @Override
   public PartialPath getPartialPath() {
+    if (fullPath != null) {
+      try {
+        return new PartialPath(fullPath);
+      } catch (IllegalPathException ignored) {
+
+      }
+    }
     List<String> detachedPath = new ArrayList<>();
     IMNode temp = this;
     detachedPath.add(temp.getName());
@@ -114,6 +122,16 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public boolean isEmptyInternal() {
+    return !IoTDBConstant.PATH_ROOT.equals(name)
+        && !isStorageGroup()
+        && !isMeasurement()
+        && getSchemaTemplate() == null
+        && !isUseTemplate()
+        && getChildren().size() == 0;
+  }
+
+  @Override
   public boolean isUseTemplate() {
     return false;
   }
@@ -134,6 +152,33 @@ public abstract class MNode implements IMNode {
   }
 
   @Override
+  public IStorageGroupMNode getAsStorageGroupMNode() {
+    if (isStorageGroup()) {
+      return (IStorageGroupMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IEntityMNode getAsEntityMNode() {
+    if (isEntity()) {
+      return (IEntityMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
+  public IMeasurementMNode getAsMeasurementMNode() {
+    if (isMeasurement()) {
+      return (IMeasurementMNode) this;
+    } else {
+      throw new UnsupportedOperationException("Wrong MNode Type");
+    }
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;
@@ -145,7 +190,7 @@ public abstract class MNode implements IMNode {
     if (fullPath == null) {
       return Objects.equals(getFullPath(), mNode.getFullPath());
     } else {
-      return Objects.equals(fullPath, mNode.fullPath);
+      return Objects.equals(fullPath, mNode.getFullPath());
     }
   }
 

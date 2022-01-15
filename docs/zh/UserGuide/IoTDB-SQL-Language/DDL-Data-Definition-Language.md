@@ -48,11 +48,12 @@ Msg: 300: root.ln has already been set to storage group.
 
 ### 查看存储组
 
-在存储组创建后，我们可以使用 [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) 语句和 [SHOW STORAGE GROUP \<PrefixPath>](../Appendix/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
+在存储组创建后，我们可以使用 [SHOW STORAGE GROUP](../Appendix/SQL-Reference.md) 语句和 [SHOW STORAGE GROUP \<PathPattern>](../Appendix/SQL-Reference.md) 来查看存储组，SQL 语句如下所示：
 
 ```
 IoTDB> show storage group
-IoTDB> show storage group root.ln
+IoTDB> show storage group root.*
+IoTDB> show storage group root.**
 ```
 
 执行结果为：
@@ -70,13 +71,13 @@ It costs 0.060s
 
 ### 删除存储组
 
-用户可以使用`DELETE STORAGE GROUP <PrefixPath>`语句删除该前缀路径下所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
+用户可以使用`DELETE STORAGE GROUP <PathPattern>`语句删除该路径模式匹配的所有的存储组。在删除的过程中，需要注意的是存储组的数据也会被删除。
 
 ```
 IoTDB > DELETE STORAGE GROUP root.ln
 IoTDB > DELETE STORAGE GROUP root.sgcc
 // 删除所有数据，时间序列以及存储组
-IoTDB > DELETE STORAGE GROUP root.*
+IoTDB > DELETE STORAGE GROUP root.**
 ```
 ## 时间序列管理
 
@@ -93,6 +94,17 @@ IoTDB > create timeseries root.sgcc.wf03.wt01.status with datatype=BOOLEAN,encod
 IoTDB > create timeseries root.sgcc.wf03.wt01.temperature with datatype=FLOAT,encoding=RLE
 ```
 
+从 v0.13 起，可以使用简化版的 SQL 语句创建时间序列：
+
+```
+IoTDB > create timeseries root.ln.wf01.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.ln.wf01.wt01.temperature FLOAT encoding=RLE
+IoTDB > create timeseries root.ln.wf02.wt02.hardware TEXT encoding=PLAIN
+IoTDB > create timeseries root.ln.wf02.wt02.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.status BOOLEAN encoding=PLAIN
+IoTDB > create timeseries root.sgcc.wf03.wt01.temperature FLOAT encoding=RLE
+```
+
 需要注意的是，当创建时间序列时指定的编码方式与数据类型不对应时，系统会给出相应的错误提示，如下所示：
 ```
 IoTDB> create timeseries root.ln.wf02.wt02.status WITH DATATYPE=BOOLEAN, ENCODING=TS_2DIFF
@@ -101,9 +113,21 @@ error: encoding TS_2DIFF does not support BOOLEAN
 
 详细的数据类型与编码方式的对应列表请参见 [编码方式](../Data-Concept/Encoding.md)。
 
+### 创建对齐时间序列 (v0.13 起支持)
+
+创建一组对齐时间序列的SQL语句如下所示：
+
+```
+IoTDB> CREATE ALIGNED TIMESERIES root.ln.wf01.GPS(latitude FLOAT encoding=PLAIN compressor=SNAPPY, longitude FLOAT encoding=PLAIN compressor=SNAPPY) 
+```
+
+一组对齐序列中的序列可以有不同的数据类型、编码方式以及压缩方式。
+
+对齐的时间序列暂不支持设置别名、标签、属性。
+
 ### 删除时间序列
 
-我们可以使用`DELETE TimeSeries <PrefixPath>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
+我们可以使用`DELETE TimeSeries <PathPattern>`语句来删除我们之前创建的时间序列。SQL 语句如下所示：
 
 ```
 IoTDB> delete timeseries root.ln.wf01.wt01.status
@@ -111,22 +135,9 @@ IoTDB> delete timeseries root.ln.wf01.wt01.temperature, root.ln.wf02.wt02.hardwa
 IoTDB> delete timeseries root.ln.wf02.*
 ```
 
-对于**对齐**时间序列，我们可以通过括号来显式地删除整组序列：
-
-```
-IoTDB > delete timeseries root.sg.d1.(s1,s2)
-```
-
-注意：目前暂不支持删除部分对齐时间序列。
-
-```
-IoTDB > delete timeseries root.sg.d1.s1
-error: Not support deleting part of aligned timeseies!
-```
-
 ### 查看时间序列
 
-* SHOW LATEST? TIMESERIES prefixPath? showWhereClause? limitClause?
+* SHOW LATEST? TIMESERIES pathPattern? whereClause? limitClause?
 
   SHOW TIMESERIES 中可以有四种可选的子句，查询结果为这些时间序列的所有信息
 
@@ -140,11 +151,11 @@ error: Not support deleting part of aligned timeseies!
 
 * SHOW TIMESERIES <`Path`>
 
-  返回给定路径的下的所有时间序列信息。其中 `Path` 需要为一个前缀路径、带星路径或时间序列路径。例如，分别查看`root`路径和`root.ln`路径下的时间序列，SQL 语句如下所示：
+  返回给定路径的下的所有时间序列信息。其中 `Path` 需要为一个时间序列路径或路径模式。例如，分别查看`root`路径和`root.ln`路径下的时间序列，SQL 语句如下所示：
 
 ```
-IoTDB> show timeseries root
-IoTDB> show timeseries root.ln
+IoTDB> show timeseries root.**
+IoTDB> show timeseries root.ln.**
 ```
 
 执行结果分别为：
@@ -176,15 +187,15 @@ Total line number = 4
 It costs 0.004s
 ```
 
-* SHOW TIMESERIES (<`PrefixPath`>)? WhereClause 
+* SHOW TIMESERIES (<`PathPattern`>)? WhereClause 
   
   返回给定路径的下的所有满足条件的时间序列信息，SQL 语句如下所示：
 
 ```
 ALTER timeseries root.ln.wf02.wt02.hardware ADD TAGS unit=c
 ALTER timeseries root.ln.wf02.wt02.status ADD TAGS description=test1
-show timeseries root.ln where unit=c
-show timeseries root.ln where description contains 'test1'
+show timeseries root.ln.** where unit=c
+show timeseries root.ln.** where description contains 'test1'
 ```
 
 执行结果分别为：
@@ -223,8 +234,8 @@ It costs 0.004s
 
 IoTDB 支持使用`COUNT TIMESERIES<Path>`来统计一条路径中的时间序列个数。SQL 语句如下所示：
 ```
-IoTDB > COUNT TIMESERIES root
-IoTDB > COUNT TIMESERIES root.ln
+IoTDB > COUNT TIMESERIES root.**
+IoTDB > COUNT TIMESERIES root.ln.**
 IoTDB > COUNT TIMESERIES root.ln.*.*.status
 IoTDB > COUNT TIMESERIES root.ln.wf01.wt01.status
 ```
@@ -256,40 +267,43 @@ It costs 0.004s
 可以看到，`root`被定义为`LEVEL=0`。那么当你输入如下语句时：
 
 ```
-IoTDB > COUNT TIMESERIES root GROUP BY LEVEL=1
-IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.** GROUP BY LEVEL=1
+IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
+IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
 ```
 
 你将得到以下结果：
 
 ```
-IoTDB> COUNT TIMESERIES root GROUP BY LEVEL=1
-+---------+-----+
-|   column|count|
-+---------+-----+
-|  root.ln|    4|
-|root.sgcc|    2|
-+---------+-----+
+IoTDB> COUNT TIMESERIES root.** GROUP BY LEVEL=1
++------------+-----+
+|      column|count|
++------------+-----+
+|   root.sgcc|    2|
+|root.turbine|    1|
+|     root.ln|    4|
++------------+-----+
+Total line number = 3
+It costs 0.002s
+
+IoTDB > COUNT TIMESERIES root.ln.** GROUP BY LEVEL=2
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf02|    2|
+|root.ln.wf01|    2|
++------------+-----+
 Total line number = 2
-It costs 0.103s
-IoTDB > COUNT TIMESERIES root.ln GROUP BY LEVEL=2
-+--------------+-----+
-|        column|count|
-+--------------+-----+
-|  root.ln.wf02|    1|
-|  root.ln.wf01|    3|
-+--------------+-----+
-Total line number = 2
-It costs 0.003s
-IoTDB > COUNT TIMESERIES root.ln.wf01 GROUP BY LEVEL=2
-+--------------+-----+
-|        column|count|
-+--------------+-----+
-|  root.ln.wf01|    4|
-+--------------+-----+
+It costs 0.002s
+
+IoTDB > COUNT TIMESERIES root.ln.wf01.* GROUP BY LEVEL=2
++------------+-----+
+|      column|count|
++------------+-----+
+|root.ln.wf01|    2|
++------------+-----+
 Total line number = 1
-It costs 0.001s
+It costs 0.002s
 ```
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
@@ -345,10 +359,10 @@ ALTER timeseries root.turbine.d1.s1 UPSERT ALIAS=newAlias TAGS(tag2=newV2, tag3=
 ### 查看子路径
 
 ```
-SHOW CHILD PATHS prefixPath
+SHOW CHILD PATHS pathPattern
 ```
 
-可以查看此前缀路径的下一层的所有路径，前缀路径允许使用 * 通配符。
+可以查看此路径模式所匹配的所有路径的下一层的所有路径，即pathPattern.*所匹配的路径。
 
 示例：
 
@@ -377,10 +391,10 @@ SHOW CHILD PATHS prefixPath
 ### 查看子节点
 
 ```
-SHOW CHILD NODES prefixPath
+SHOW CHILD NODES pathPattern
 ```
 
-可以查看此前缀路径的下一层的所有节点。
+可以查看此路径模式所匹配的节点的下一层的所有节点。
 
 示例：
 
@@ -394,7 +408,7 @@ SHOW CHILD NODES prefixPath
 +------------+
 ```
 
-* 查询 root.vehicle 的下一层 ：show child nodes root.ln
+* 查询 root.ln 的下一层 ：show child nodes root.ln
 
 ```
 +------------+
@@ -407,12 +421,14 @@ SHOW CHILD NODES prefixPath
 
 ### 统计节点数
 
-IoTDB 支持使用`COUNT NODES <PrefixPath> LEVEL=<INTEGER>`来统计当前 Metadata 树下指定层级的节点个数，这条语句可以用来统计设备数。例如：
+IoTDB 支持使用`COUNT NODES <PathPattern> LEVEL=<INTEGER>`来统计当前 Metadata
+ 树下满足某路径模式的路径中指定层级的节点个数。这条语句可以用来统计带有特定采样点的设备数。例如：
 
 ```
-IoTDB > COUNT NODES root LEVEL=2
-IoTDB > COUNT NODES root.ln LEVEL=2
-IoTDB > COUNT NODES root.ln.wf01 LEVEL=3
+IoTDB > COUNT NODES root.** LEVEL=2
+IoTDB > COUNT NODES root.ln.** LEVEL=2
+IoTDB > COUNT NODES root.ln.wf01.* LEVEL=3
+IoTDB > COUNT NODES root.**.temperature LEVEL=3
 ```
 
 对于上面提到的例子和 Metadata Tree，你可以获得如下结果：
@@ -441,86 +457,135 @@ It costs 0.002s
 +-----+
 Total line number = 1
 It costs 0.002s
+
++-----+
+|count|
++-----+
+|    2|
++-----+
+Total line number = 1
+It costs 0.002s
 ```
 
 > 注意：时间序列的路径只是过滤条件，与 level 的定义无关。
-其中`PrefixPath`可以包含`*`，但是`*`及其后的所有节点将被忽略，仅在`*`前的前缀路径有效。
 
 ### 查看设备
 
-* SHOW DEVICES prefixPath? (WITH STORAGE GROUP)? limitClause? #showDevices
+* SHOW DEVICES pathPattern? (WITH STORAGE GROUP)? limitClause? #showDevices
 
 与 `Show Timeseries` 相似，IoTDB 目前也支持两种方式查看设备。
 
-* `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root`。
-* `SHOW DEVICES <PrefixPath>` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息。
+* `SHOW DEVICES` 语句显示当前所有的设备信息，等价于 `SHOW DEVICES root.**`。
+* `SHOW DEVICES <PathPattern>` 语句规定了 `PathPattern`，返回给定的路径模式所匹配的设备信息。
 
 SQL 语句如下所示：
 
 ```
 IoTDB> show devices
-IoTDB> show devices root.ln
+IoTDB> show devices root.ln.**
 ```
 
 你可以获得如下数据：
 
 ```
-+-------------------+
-|            devices|
-+-------------------+
-|  root.ln.wf01.wt01|
-|  root.ln.wf02.wt02|
-|root.sgcc.wf03.wt01|
-|    root.turbine.d1|
-+-------------------+
++-------------------+---------+
+|            devices|isAligned|
++-------------------+---------+
+|  root.ln.wf01.wt01|    false|
+|  root.ln.wf02.wt02|    false|
+|root.sgcc.wf03.wt01|    false|
+|    root.turbine.d1|    false|
++-------------------+---------+
 Total line number = 4
 It costs 0.002s
 
-+-----------------+
-|          devices|
-+-----------------+
-|root.ln.wf01.wt01|
-|root.ln.wf02.wt02|
-+-----------------+
++-----------------+---------+
+|          devices|isAligned|
++-----------------+---------+
+|root.ln.wf01.wt01|    false|
+|root.ln.wf02.wt02|    false|
++-----------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
 
+其中，`isAligned`表示该设备下的时间序列是否对齐。
+
 查看设备及其存储组信息，可以使用 `SHOW DEVICES WITH STORAGE GROUP` 语句。
 
-* `SHOW DEVICES WITH STORAGE GROUP` 语句显示当前所有的设备信息和其所在的存储组，等价于 `SHOW DEVICES root`。
-* `SHOW DEVICES <PrefixPath> WITH STORAGE GROUP` 语句规定了 `PrefixPath`，返回在给定的前缀路径下的设备信息和其所在的存储组。
+* `SHOW DEVICES WITH STORAGE GROUP` 语句显示当前所有的设备信息和其所在的存储组，等价于 `SHOW DEVICES root.**`。
+* `SHOW DEVICES <PathPattern> WITH STORAGE GROUP` 语句规定了 `PathPattern`，返回给定的路径模式所匹配的设备信息和其所在的存储组。
 
 SQL 语句如下所示：
 
 ```
 IoTDB> show devices with storage group
-IoTDB> show devices root.ln with storage group
+IoTDB> show devices root.ln.** with storage group
 ```
 
 你可以获得如下数据：
 
 ```
-+-------------------+-------------+
-|            devices|storage group|
-+-------------------+-------------+
-|  root.ln.wf01.wt01|      root.ln|
-|  root.ln.wf02.wt02|      root.ln|
-|root.sgcc.wf03.wt01|    root.sgcc|
-|    root.turbine.d1| root.turbine|
-+-------------------+-------------+
++-------------------+-------------+---------+
+|            devices|storage group|isAligned|
++-------------------+-------------+---------+
+|  root.ln.wf01.wt01|      root.ln|    false|
+|  root.ln.wf02.wt02|      root.ln|    false|
+|root.sgcc.wf03.wt01|    root.sgcc|    false|
+|    root.turbine.d1| root.turbine|    false|
++-------------------+-------------+---------+
 Total line number = 4
 It costs 0.003s
 
-+-----------------+-------------+
-|          devices|storage group|
-+-----------------+-------------+
-|root.ln.wf01.wt01|      root.ln|
-|root.ln.wf02.wt02|      root.ln|
-+-----------------+-------------+
++-----------------+-------------+---------+
+|          devices|storage group|isAligned|
++-----------------+-------------+---------+
+|root.ln.wf01.wt01|      root.ln|    false|
+|root.ln.wf02.wt02|      root.ln|    false|
++-----------------+-------------+---------+
 Total line number = 2
 It costs 0.001s
 ```
+
+## 元数据模板
+
+IoTDB 支持元数据模板功能，实现同类型不同实体的物理量元数据共享，减少元数据内存占用，同时简化同类型实体的管理。
+
+### 创建元数据模板
+
+创建元数据模板的 SQL 语句如下所示：
+
+```
+IoTDB> create schema template temp1(GPS(lat FLOAT encoding=Gorilla, lon FLOAT encoding=Gorilla compression=SNAPPY), status BOOLEAN encoding=PLAIN compression=SNAPPY)
+```
+
+其中，`GPS` 设备下的物理量 `lat` 和 `lon` 是对齐的。
+
+### 挂载元数据模板
+
+挂载元数据模板的 SQL 语句如下所示：
+
+```
+IoTDB> set schema template temp1 to root.ln.wf01
+```
+
+挂载好元数据模板后，即可进行数据的写入。例如存储组为root.ln，模板temp1被挂载到了节点root.ln.wf01，那么可直接向时间序列（如root.ln.wf01.GPS.lat和root.ln.wf01.status）写入时间序列数据，该时间序列已可被当作正常创建的序列使用。
+
+**注意**：在插入数据之前，模板定义的时间序列不会被创建。可以使用如下SQL语句在插入数据前创建时间序列：
+
+```
+IoTDB> create timeseries of schema template on root.ln.wf01
+```
+
+### 卸载元数据模板
+
+卸载元数据模板的 SQL 语句如下所示：
+
+```
+IoTDB> unset schema template temp1 from root.beijing
+```
+
+**注意**：目前不支持从曾经使用模板插入数据后（即使数据已被删除）的实体中卸载模板。
 
 ## 数据存活时间（TTL）
 

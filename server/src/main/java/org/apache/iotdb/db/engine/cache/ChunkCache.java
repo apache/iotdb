@@ -22,13 +22,16 @@ package org.apache.iotdb.db.engine.cache;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.db.service.metrics.Metric;
+import org.apache.iotdb.db.service.metrics.MetricsService;
+import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.utils.RamUsageEstimator;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import com.github.benmanes.caffeine.cache.Weigher;
@@ -63,57 +66,36 @@ public class ChunkCache {
         Caffeine.newBuilder()
             .maximumWeight(MEMORY_THRESHOLD_IN_CHUNK_CACHE)
             .weigher(
-                new Weigher<ChunkMetadata, Chunk>() {
-
-                  int count = 0;
-                  int averageSize = 0;
-
-                  /**
-                   * The calculation is time consuming, so we won't calculate each entry' size each
-                   * time. Every 100,000 entry, we will calculate the average size of the first 10
-                   * entries, and use that to represent the next 99,990 entries' size.
-                   */
-                  @Override
-                  public int weigh(ChunkMetadata chunkMetadata, Chunk chunk) {
-                    int currentSize;
-                    if (count < 10) {
-                      currentSize =
-                          (int)
-                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                  + RamUsageEstimator.sizeOf(chunk));
-                      averageSize = ((averageSize * count) + currentSize) / (++count);
-                      entryAverageSize.set(averageSize);
-                    } else if (count < 100000) {
-                      count++;
-                      currentSize = averageSize;
-                    } else {
-                      averageSize =
-                          (int)
-                              (RamUsageEstimator.NUM_BYTES_OBJECT_REF
-                                  + RamUsageEstimator.sizeOf(chunk));
-                      count = 1;
-                      currentSize = averageSize;
-                      entryAverageSize.set(averageSize);
-                    }
-                    return currentSize;
-                  }
-                })
+                (Weigher<ChunkMetadata, Chunk>)
+                    (chunkMetadata, chunk) ->
+                        (int)
+                            (RamUsageEstimator.NUM_BYTES_OBJECT_REF
+                                + RamUsageEstimator.sizeOf(chunk)))
             .recordStats()
             .build(
-                new CacheLoader<ChunkMetadata, Chunk>() {
-                  @Override
-                  public Chunk load(ChunkMetadata chunkMetadata) throws Exception {
-                    try {
-                      TsFileSequenceReader reader =
-                          FileReaderManager.getInstance()
-                              .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
-                      return reader.readMemChunk(chunkMetadata);
-                    } catch (IOException e) {
-                      logger.error("Something wrong happened in reading {}", chunkMetadata, e);
-                      throw e;
-                    }
+                chunkMetadata -> {
+                  try {
+                    TsFileSequenceReader reader =
+                        FileReaderManager.getInstance()
+                            .get(chunkMetadata.getFilePath(), chunkMetadata.isClosed());
+                    return reader.readMemChunk(chunkMetadata);
+                  } catch (IOException e) {
+                    logger.error("Something wrong happened in reading {}", chunkMetadata, e);
+                    throw e;
                   }
                 });
+
+    // add metrics
+    if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
+      MetricsService.getInstance()
+          .getMetricManager()
+          .getOrCreateAutoGauge(
+              Metric.CACHE_HIT.toString(),
+              lruCache,
+              l -> (long) (l.stats().hitRate() * 100),
+              Tag.NAME.toString(),
+              "chunk");
+    }
   }
 
   public static ChunkCache getInstance() {
@@ -133,7 +115,7 @@ public class ChunkCache {
       return new Chunk(
           chunk.getHeader(),
           chunk.getData().duplicate(),
-          chunk.getDeleteIntervalList(),
+          chunkMetaData.getDeleteIntervalList(),
           chunkMetaData.getStatistics());
     }
 
@@ -146,7 +128,7 @@ public class ChunkCache {
     return new Chunk(
         chunk.getHeader(),
         chunk.getData().duplicate(),
-        chunk.getDeleteIntervalList(),
+        chunkMetaData.getDeleteIntervalList(),
         chunkMetaData.getStatistics());
   }
 

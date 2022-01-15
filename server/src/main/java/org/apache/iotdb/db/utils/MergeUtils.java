@@ -19,10 +19,10 @@
 
 package org.apache.iotdb.db.utils;
 
-import org.apache.iotdb.db.engine.merge.manage.MergeResource;
+import org.apache.iotdb.db.engine.compaction.cross.inplace.manage.CrossSpaceMergeResource;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
@@ -30,7 +30,7 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.write.chunk.IChunkWriter;
+import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,28 +50,25 @@ public class MergeUtils {
     // util class
   }
 
-  public static void writeTVPair(TimeValuePair timeValuePair, IChunkWriter chunkWriter) {
+  public static void writeTVPair(TimeValuePair timeValuePair, ChunkWriterImpl chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
         break;
       case DOUBLE:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
         break;
       case BOOLEAN:
-        chunkWriter.write(
-            timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
         break;
       case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
         break;
       case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
         break;
       case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat(), false);
+        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
         break;
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
@@ -95,7 +92,7 @@ public class MergeUtils {
     return totalSize;
   }
 
-  public static int writeChunkWithoutUnseq(Chunk chunk, IChunkWriter chunkWriter)
+  public static int writeChunkWithoutUnseq(Chunk chunk, ChunkWriterImpl chunkWriter)
       throws IOException {
     ChunkReader chunkReader = new ChunkReader(chunk, null);
     int ptWritten = 0;
@@ -109,25 +106,25 @@ public class MergeUtils {
     return ptWritten;
   }
 
-  public static void writeBatchPoint(BatchData batchData, int i, IChunkWriter chunkWriter) {
+  public static void writeBatchPoint(BatchData batchData, int i, ChunkWriterImpl chunkWriter) {
     switch (chunkWriter.getDataType()) {
       case TEXT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
         break;
       case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
         break;
       case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
         break;
       case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
         break;
       case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
         break;
       case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i), false);
+        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
         break;
       default:
         throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
@@ -166,7 +163,9 @@ public class MergeUtils {
    * @param paths names of the timeseries
    */
   public static List<Chunk>[] collectUnseqChunks(
-      List<PartialPath> paths, List<TsFileResource> unseqResources, MergeResource mergeResource)
+      List<PartialPath> paths,
+      List<TsFileResource> unseqResources,
+      CrossSpaceMergeResource mergeResource)
       throws IOException {
     List<Chunk>[] ret = new List[paths.size()];
     for (int i = 0; i < paths.size(); i++) {
@@ -189,7 +188,7 @@ public class MergeUtils {
   private static void buildMetaHeap(
       List<PartialPath> paths,
       TsFileSequenceReader tsFileReader,
-      MergeResource resource,
+      CrossSpaceMergeResource resource,
       TsFileResource tsFileResource,
       PriorityQueue<MetaListEntry> chunkMetaHeap)
       throws IOException {

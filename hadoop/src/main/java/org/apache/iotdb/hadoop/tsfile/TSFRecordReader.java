@@ -19,7 +19,7 @@
 package org.apache.iotdb.hadoop.tsfile;
 
 import org.apache.iotdb.hadoop.fileSystem.HDFSInput;
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.Path;
@@ -108,7 +108,7 @@ public class TSFRecordReader extends RecordReader<NullWritable, MapWritable> imp
     readerSet.setReadDeviceId(TSFInputFormat.getReadDeviceId(configuration));
     readerSet.setReadTime(TSFInputFormat.getReadTime(configuration));
 
-    try (ReadOnlyTsFile queryEngine = new ReadOnlyTsFile(reader)) {
+    try (TsFileReader queryEngine = new TsFileReader(reader)) {
       for (String deviceId : deviceIds) {
         List<Path> paths =
             measurementIds.stream()

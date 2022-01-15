@@ -25,7 +25,9 @@ import java.util.regex.Pattern;
 /** Utils to convert between thrift format and TsFile format. */
 public class Utils {
 
-  static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})/?");
+  static final Pattern URL_PATTERN = Pattern.compile("([^:]+):([0-9]{1,5})(/|\\?.*=.*(&.*=.*)*)?");
+
+  static final String RPC_COMPRESS = "rpc_compress";
 
   /**
    * Parse JDBC connection URL The only supported format of the URL is:
@@ -42,13 +44,16 @@ public class Utils {
       String subURL = url.substring(Config.IOTDB_URL_PREFIX.length());
       matcher = URL_PATTERN.matcher(subURL);
       if (matcher.matches()) {
-        isUrlLegal = true;
+        if (parseUrlParam(subURL)) {
+          isUrlLegal = true;
+        }
       }
     }
     if (!isUrlLegal) {
       throw new IoTDBURLException(
-          "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port");
+          "Error url format, url should be jdbc:iotdb://anything:port/ or jdbc:iotdb://anything:port?property1=value1&property2=value2");
     }
+
     params.setHost(matcher.group(1));
     params.setPort(Integer.parseInt(matcher.group(2)));
 
@@ -66,7 +71,46 @@ public class Utils {
       params.setThriftMaxFrameSize(
           Integer.parseInt(info.getProperty(Config.THRIFT_FRAME_MAX_SIZE)));
     }
+    if (info.containsKey(Config.VERSION)) {
+      params.setVersion(Constant.Version.valueOf(info.getProperty(Config.VERSION)));
+    }
 
     return params;
+  }
+
+  /**
+   * Parse the parameters in the URL and assign values to those that meet the conditions
+   *
+   * @param subURL Need to deal with url ,format like a=b&c=d
+   * @return Judge whether it is legal. Illegal situations include: 1.there is a key that does not
+   *     need to be resolved 2.the value corresponding to the key that needs to be resolved does not
+   *     match the type
+   */
+  private static boolean parseUrlParam(String subURL) {
+    if (!subURL.contains("?")) {
+      return true;
+    }
+    String paramURL = subURL.substring(subURL.indexOf('?') + 1);
+    String[] params = paramURL.split("&");
+    for (String tmpParam : params) {
+      String[] paramSplit = tmpParam.split("=");
+      if (paramSplit.length != 2) {
+        return false;
+      }
+      String key = tmpParam.split("=")[0];
+      String value = tmpParam.split("=")[1];
+      switch (key) {
+        case RPC_COMPRESS:
+          if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
+            Config.rpcThriftCompressionEnable = Boolean.getBoolean(value);
+          } else {
+            return false;
+          }
+          break;
+        default:
+          return false;
+      }
+    }
+    return true;
   }
 }

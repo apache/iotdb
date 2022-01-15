@@ -51,7 +51,7 @@ The `intoClause` is the mark clause for query write-back.
 
 ```sql
 intoClause
-  : INTO intoPath (COMMA intoPath)*
+  : INTO ALIGNED? intoPath (COMMA intoPath)*
   ;
 
 intoPath
@@ -115,9 +115,26 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
 
 
 
+**You can specify whether the target timeseries are aligned via the keyword `ALIGNED`. **
+
+When the target aligned timeseries are existed, you need to ensure that the types of the source and target time series match.
+
+When the target aligned timeseries are not existed, the system will automatically create the target aligned time series.
+
+
+   * Example:
+
+     ```sql
+     select s1, s2, s3
+     into aligned root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
+     from root.sg.d1
+     ````
+
+
+
 ### Supported Query Types
 
-**Note that except for the following types of queries, other types of queries (such as `LAST` queries) are not supported. **
+**Note that except for the following types of queries, other types of queries (such as `LAST` queries and raw aggregation queries) are not supported. **
 
 * Raw time series query
 
@@ -143,6 +160,14 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
   from root.sg.d1
   ```
 
+* Nested query
+
+  ```sql
+  select -s1, sin(cos(tan(s1 + s2 * s3))) + cos(s3), top_k(s1 + s3, 'k'='1') 
+  into t1, t2, t3 
+  from root.sg.d1
+  ```
+  
 * Fill query
 
   ```sql
@@ -215,6 +240,7 @@ For example, for the path `root.sg1.d1.v1`,  `${1}` means `sg1`,  `${2}` means `
 * When the target series in the `into` clause already exist, you need to ensure that the source series in the `select` clause and the target series in the `into` clause have the same data types.
 * The target series in the `into` clause must be different from each other.
 * Only one prefix path of a series is allowed in the `from` clause.
+* Aligned Timeseries has not been supported in Time series generating function query（including UDF query）/ Arithmetic query / Nested query yet. An error message is expected if you use these types of query with Aligned Timeseries selected in the `select` clause.
 
 
 

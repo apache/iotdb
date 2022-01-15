@@ -25,22 +25,25 @@ import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.modification.io.LocalTextModificationAccessor;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
 import org.apache.iotdb.db.engine.querycontext.ReadOnlyMemChunk;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.query.control.QueryResourceManager;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
+import org.apache.iotdb.db.utils.SchemaTestUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.reader.IPointReader;
+import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.record.TSRecord;
 import org.apache.iotdb.tsfile.write.record.datapoint.DoubleDataPoint;
 
@@ -54,6 +57,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_CONTEXT;
 import static org.apache.iotdb.db.utils.EnvironmentUtils.TEST_QUERY_JOB_ID;
@@ -73,12 +77,9 @@ public class DeletionFileNodeTest {
   private String processorName = "root.test";
   private TSDataType dataType = TSDataType.DOUBLE;
   private TSEncoding encoding = TSEncoding.PLAIN;
-  private int prevUnseqLevelNum = 0;
 
   @Before
   public void setup() throws MetadataException {
-    prevUnseqLevelNum = IoTDBDescriptor.getInstance().getConfig().getUnseqLevelNum();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(2);
     EnvironmentUtils.envSetUp();
 
     IoTDB.metaManager.setStorageGroup(new PartialPath(processorName));
@@ -95,18 +96,11 @@ public class DeletionFileNodeTest {
   @After
   public void teardown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
-    IoTDBDescriptor.getInstance().getConfig().setUnseqLevelNum(prevUnseqLevelNum);
-  }
-
-  private void insertToStorageEngine(TSRecord record)
-      throws StorageEngineException, IllegalPathException {
-    InsertRowPlan insertRowPlan = new InsertRowPlan(record);
-    StorageEngine.getInstance().insert(insertRowPlan);
   }
 
   @Test
   public void testDeleteInBufferWriteCache()
-      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
 
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -116,42 +110,107 @@ public class DeletionFileNodeTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
+    checkSeriesPointCount(5, 50);
+  }
+
+  @Test
+  public void testDeleteWithTimePartitionFilter()
+      throws IllegalPathException, StorageEngineException, QueryProcessException, IOException {
+    boolean prevEnablePartition = StorageEngine.isEnablePartition();
+    long prevPartitionInterval = StorageEngine.getTimePartitionInterval();
+    int prevConcurrentTimePartition =
+        IoTDBDescriptor.getInstance().getConfig().getConcurrentWritingTimePartition();
+    try {
+      StorageEngine.setEnablePartition(true);
+      IoTDBDescriptor.getInstance().getConfig().setConcurrentWritingTimePartition(10);
+      long newPartitionInterval = 100;
+      StorageEngine.setTimePartitionInterval(newPartitionInterval);
+      // generate 10 time partitions
+      for (int i = 0; i < 10; i++) {
+        TSRecord record = new TSRecord(i * newPartitionInterval, processorName);
+        record.addTuple(new DoubleDataPoint(measurements[0], i * 1.0));
+        StorageEngine.getInstance().insert(new InsertRowPlan(record));
+      }
+      // the filter only allows to delete the first 5 partitions
+      StorageEngine.getInstance()
+          .delete(
+              new PartialPath(processorName, measurements[0]),
+              0,
+              Long.MAX_VALUE,
+              -1,
+              (storageGroupName, timePartitionId) -> timePartitionId < 5);
+      checkSeriesPointCount(0, 5);
+    } catch (MetadataException e) {
+      e.printStackTrace();
+    } finally {
+      StorageEngine.setEnablePartition(prevEnablePartition);
+      StorageEngine.setTimePartitionInterval(prevPartitionInterval);
+      IoTDBDescriptor.getInstance()
+          .getConfig()
+          .setConcurrentWritingTimePartition(prevConcurrentTimePartition);
+    }
+  }
+
+  private void checkSeriesPointCount(int measurementIdx, int expectedCount)
+      throws MetadataException, StorageEngineException, QueryProcessException, IOException {
     SingleSeriesExpression expression =
         new SingleSeriesExpression(
-            new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+            SchemaTestUtils.getMeasurementPath(
+                processorName + TsFileConstant.PATH_SEPARATOR + measurements[measurementIdx]),
+            null);
+
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
+
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
-      List<ReadOnlyMemChunk> timeValuePairs =
-          dataSource.getSeqResources().get(0).getReadOnlyMemChunk();
+
       int count = 0;
-      for (ReadOnlyMemChunk chunk : timeValuePairs) {
-        IPointReader iterator = chunk.getPointReader();
-        while (iterator.hasNextTimeValuePair()) {
-          iterator.nextTimeValuePair();
-          count++;
+      for (TsFileResource seqResource : dataSource.getSeqResources()) {
+        List<ReadOnlyMemChunk> timeValuePairs =
+            seqResource.getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
+        if (timeValuePairs == null) {
+          continue;
+        }
+        for (ReadOnlyMemChunk chunk : timeValuePairs) {
+          IPointReader iterator = chunk.getPointReader();
+          while (iterator.hasNextTimeValuePair()) {
+            iterator.nextTimeValuePair();
+            count++;
+          }
         }
       }
-      assertEquals(50, count);
+      assertEquals(expectedCount, count);
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
   @Test
   public void testDeleteInBufferWriteFile()
-      throws StorageEngineException, IOException, IllegalPathException {
+      throws StorageEngineException, IOException, MetadataException {
     for (int i = 1; i <= 100; i++) {
       TSRecord record = new TSRecord(i, processorName);
       for (int j = 0; j < 10; j++) {
@@ -161,9 +220,12 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     Modification[] realModifications =
         new Modification[] {
@@ -219,7 +281,7 @@ public class DeletionFileNodeTest {
 
   @Test
   public void testDeleteInOverflowCache()
-      throws StorageEngineException, QueryProcessException, IOException, IllegalPathException {
+      throws StorageEngineException, QueryProcessException, IOException, MetadataException {
     // insert sequence data
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -239,27 +301,44 @@ public class DeletionFileNodeTest {
       StorageEngine.getInstance().insert(new InsertRowPlan(record));
     }
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 30, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 30, 50, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 30, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 30, 50, -1, null);
 
     SingleSeriesExpression expression =
         new SingleSeriesExpression(
-            new PartialPath(processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]), null);
+            SchemaTestUtils.getMeasurementPath(
+                processorName + TsFileConstant.PATH_SEPARATOR + measurements[5]),
+            null);
 
-    List<StorageGroupProcessor> list =
-        StorageEngine.getInstance()
-            .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    Pair<List<VirtualStorageGroupProcessor>, Map<VirtualStorageGroupProcessor, List<PartialPath>>>
+        lockListAndProcessorToSeriesMapPair =
+            StorageEngine.getInstance()
+                .mergeLock(Collections.singletonList((PartialPath) expression.getSeriesPath()));
+    List<VirtualStorageGroupProcessor> lockList = lockListAndProcessorToSeriesMapPair.left;
+    Map<VirtualStorageGroupProcessor, List<PartialPath>> processorToSeriesMap =
+        lockListAndProcessorToSeriesMapPair.right;
 
     try {
+      // init QueryDataSource Cache
+      QueryResourceManager.getInstance()
+          .initQueryDataSourceCache(processorToSeriesMap, TEST_QUERY_CONTEXT, null);
+
       QueryDataSource dataSource =
           QueryResourceManager.getInstance()
               .getQueryDataSource(
                   (PartialPath) expression.getSeriesPath(), TEST_QUERY_CONTEXT, null);
 
       List<ReadOnlyMemChunk> timeValuePairs =
-          dataSource.getUnseqResources().get(0).getReadOnlyMemChunk();
+          dataSource
+              .getUnseqResources()
+              .get(0)
+              .getReadOnlyMemChunk((PartialPath) expression.getSeriesPath());
       int count = 0;
       for (ReadOnlyMemChunk chunk : timeValuePairs) {
         IPointReader iterator = chunk.getPointReader();
@@ -272,12 +351,12 @@ public class DeletionFileNodeTest {
 
       QueryResourceManager.getInstance().endQuery(TEST_QUERY_JOB_ID);
     } finally {
-      StorageEngine.getInstance().mergeUnLock(list);
+      StorageEngine.getInstance().mergeUnLock(lockList);
     }
   }
 
   @Test
-  public void testDeleteInOverflowFile() throws StorageEngineException, IllegalPathException {
+  public void testDeleteInOverflowFile() throws StorageEngineException, MetadataException {
     // insert into BufferWrite
     for (int i = 101; i <= 200; i++) {
       TSRecord record = new TSRecord(i, processorName);
@@ -298,9 +377,12 @@ public class DeletionFileNodeTest {
     }
     StorageEngine.getInstance().syncCloseAllProcessor();
 
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[5]), 0, 50, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[4]), 0, 40, -1);
-    StorageEngine.getInstance().delete(new PartialPath(processorName, measurements[3]), 0, 30, -1);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[5]), 0, 50, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[4]), 0, 40, -1, null);
+    StorageEngine.getInstance()
+        .delete(new PartialPath(processorName, measurements[3]), 0, 30, -1, null);
 
     Modification[] realModifications =
         new Modification[] {

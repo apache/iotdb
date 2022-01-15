@@ -21,7 +21,7 @@
 package org.apache.iotdb.db.qp.physical.sys;
 
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 
@@ -45,7 +45,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
   public LoadConfigurationPlan(
       LoadConfigurationPlanType loadConfigurationPlanType, Properties[] propertiesArray)
       throws QueryProcessException {
-    super(false, OperatorType.LOAD_CONFIGURATION);
+    super(OperatorType.LOAD_CONFIGURATION);
     if (loadConfigurationPlanType != LoadConfigurationPlanType.GLOBAL) {
       throw new QueryProcessException(
           "The constructor with 2 parameters is for load global configuration");
@@ -59,7 +59,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
 
   public LoadConfigurationPlan(LoadConfigurationPlanType loadConfigurationPlanType)
       throws QueryProcessException {
-    super(false, OperatorType.LOAD_CONFIGURATION);
+    super(OperatorType.LOAD_CONFIGURATION);
     if (loadConfigurationPlanType != LoadConfigurationPlanType.LOCAL) {
       throw new QueryProcessException(
           "The constructor with 1 parameters is for load local configuration");
@@ -69,7 +69,7 @@ public class LoadConfigurationPlan extends PhysicalPlan {
 
   // only for deserialize
   public LoadConfigurationPlan() {
-    super(false, OperatorType.LOAD_CONFIGURATION);
+    super(OperatorType.LOAD_CONFIGURATION);
   }
 
   @Override

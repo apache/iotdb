@@ -19,23 +19,26 @@
 package org.apache.iotdb.db.query.reader.series;
 
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.query.context.QueryContext;
 import org.apache.iotdb.db.query.filter.TsFileFilter;
+import org.apache.iotdb.db.utils.TestOnly;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
-import org.apache.iotdb.tsfile.read.filter.basic.UnaryFilter;
+import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 public class SeriesReaderByTimestamp implements IReaderByTimestamp {
 
-  private SeriesReader seriesReader;
+  private final SeriesReader seriesReader;
   private BatchData batchData;
-  private boolean ascending;
+  private final boolean ascending;
 
   public SeriesReaderByTimestamp(
       PartialPath seriesPath,
@@ -45,24 +48,39 @@ public class SeriesReaderByTimestamp implements IReaderByTimestamp {
       QueryDataSource dataSource,
       TsFileFilter fileFilter,
       boolean ascending) {
-    UnaryFilter timeFilter =
-        ascending ? TimeFilter.gtEq(Long.MIN_VALUE) : TimeFilter.ltEq(Long.MAX_VALUE);
+    Filter timeFilter = TimeFilter.defaultTimeFilter(ascending);
     this.seriesReader =
-        new SeriesReader(
-            seriesPath,
-            allSensors,
-            dataType,
-            context,
-            dataSource,
-            timeFilter,
-            null,
-            fileFilter,
-            ascending);
+        seriesPath.createSeriesReader(
+            allSensors, dataType, context, dataSource, timeFilter, null, fileFilter, ascending);
     this.ascending = ascending;
   }
 
   public SeriesReaderByTimestamp(SeriesReader seriesReader, boolean ascending) {
     this.seriesReader = seriesReader;
+    this.ascending = ascending;
+  }
+
+  @TestOnly
+  public SeriesReaderByTimestamp(
+      PartialPath seriesPath,
+      Set<String> allSensors,
+      TSDataType dataType,
+      QueryContext context,
+      List<TsFileResource> seqFileResource,
+      List<TsFileResource> unseqFileResource,
+      boolean ascending) {
+    Filter timeFilter = TimeFilter.defaultTimeFilter(ascending);
+    seriesReader =
+        new SeriesReader(
+            seriesPath,
+            allSensors,
+            dataType,
+            context,
+            seqFileResource,
+            unseqFileResource,
+            timeFilter,
+            null,
+            ascending);
     this.ascending = ascending;
   }
 

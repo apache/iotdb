@@ -29,18 +29,18 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        java: [8, 11, 16]
-          # to reduce the CI time cost; we split the whole CI to 3 parts:
-          # modules except the server and the cluster:
-          #   -Diotdb.skip.test=true -Dcluster.skip.test=true
-          # the server module:
-          #   -pl server -am -DskipTests=true -Diotdb.test.only=true
-          # the cluster module:
-          #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
-          # but we just add labels here to make the action name more graceful
-        it_task: ['others',
-                  'server',
-                  'cluster'
+        java: [ 8, 11, 17 ]
+        # to reduce the CI time cost; we split the whole CI to 3 parts:
+        # modules except the server and the cluster:
+        #   -Diotdb.skip.test=true -Dcluster.skip.test=true
+        # the server module:
+        #   -pl server -am -DskipTests=true -Diotdb.test.only=true
+        # the cluster module:
+        #   -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        # but we just add labels here to make the action name more graceful
+        it_task: [ 'others',
+                   'server',
+                   'cluster'
         ]
     runs-on: windows-latest
 
@@ -100,13 +100,14 @@ jobs:
       - name: Test Server Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'server'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl server -am -DskipTests=true -Diotdb.test.only=true
       - name: Test Cluster Module with Maven
         shell: bash
         if: ${{ matrix.it_task == 'cluster'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
+        run: source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -pl cluster -am -DskipTests=true -Dcluster.test.only=true
       - name: Test Other Modules with Maven
         shell: bash
         if: ${{ matrix.it_task == 'others'}}
-        run:  source ~/.bash_profile && mvn -B clean integration-test -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true
+        # we can skip influxdb-protocol because it has been tested separately in influxdb-protocol.yml
+        run: source ~/.bash_profile && mvn -B clean verify -Dtest.port.closed=true -Diotdb.test.skip=true -Dcluster.test.skip=true -P '!influxdb-protocol'
 

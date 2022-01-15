@@ -19,7 +19,7 @@
 
 package org.apache.iotdb.db.qp.constant;
 
-import org.apache.iotdb.db.qp.sql.SqlBaseLexer;
+import org.apache.iotdb.db.qp.sql.IoTDBSqlLexer;
 
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -44,17 +44,21 @@ public class FilterConstant {
     LESSTHAN,
     GREATERTHANOREQUALTO,
     GREATERTHAN,
-    IN
+    IN,
+    REGEXP,
+    LIKE
   }
 
   static {
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_EQ, FilterType.EQUAL);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_NEQ, FilterType.NOTEQUAL);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_LTE, FilterType.LESSTHANOREQUALTO);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_LT, FilterType.LESSTHAN);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_GTE, FilterType.GREATERTHANOREQUALTO);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_GT, FilterType.GREATERTHAN);
-    lexerToFilterType.put(SqlBaseLexer.OPERATOR_IN, FilterType.IN);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_EQ, FilterType.EQUAL);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_NEQ, FilterType.NOTEQUAL);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_LTE, FilterType.LESSTHANOREQUALTO);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_LT, FilterType.LESSTHAN);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_GTE, FilterType.GREATERTHANOREQUALTO);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_GT, FilterType.GREATERTHAN);
+    lexerToFilterType.put(IoTDBSqlLexer.OPERATOR_IN, FilterType.IN);
+    lexerToFilterType.put(IoTDBSqlLexer.REGEXP, FilterType.REGEXP);
+    lexerToFilterType.put(IoTDBSqlLexer.LIKE, FilterType.LIKE);
   }
 
   static {
@@ -67,6 +71,7 @@ public class FilterConstant {
     filterSymbol.put(FilterType.LESSTHAN, "<");
     filterSymbol.put(FilterType.GREATERTHANOREQUALTO, ">=");
     filterSymbol.put(FilterType.GREATERTHAN, ">");
+    filterSymbol.put(FilterType.LIKE, "%");
   }
 
   static {
@@ -80,6 +85,8 @@ public class FilterConstant {
     filterNames.put(FilterType.GREATERTHANOREQUALTO, "greaterthan_or_equalto");
     filterNames.put(FilterType.GREATERTHAN, "greaterthan");
     filterNames.put(FilterType.IN, "in");
+    filterNames.put(FilterType.REGEXP, "regexp");
+    filterNames.put(FilterType.LIKE, "like");
   }
 
   static {

@@ -84,9 +84,17 @@ IoTDB的主要特点如下:
 ## 环境准备
 
 要使用IoTDB，您需要:
-1. Java >= 1.8 (目前 1.8、11和15 已经被验证可用。请确保环变量境路径已正确设置)。
+1. Java >= 1.8 (目前 1.8、11 到 17 已经被验证可用。请确保环变量境路径已正确设置)。
 2. Maven >= 3.6 (如果希望从源代码编译和安装IoTDB)。
 3. 设置 max open files 为 65535，以避免"too many open files"错误。
+4. （可选） 将 somaxconn 设置为 65535 以避免系统在高负载时出现 "connection reset" 错误。 
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## 安装
 
@@ -149,7 +157,7 @@ git checkout vx.x.x
 
 执行完成之后，可以在**distribution/target/apache-iotdb-{project.version}-all-bin.zip**找到编译完成的二进制版本(包括服务器和客户端)
 
-**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift/target/generated-sources/thrift`" 和 "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
+**注意："`thrift/target/generated-sources/thrift`"， "`thrift-sync/target/generated-sources/thrift`"，"`thrift-cluster/target/generated-sources/thrift`" 和 "`antlr/target/generated-sources/antlr4`" 目录需要添加到源代码根中，以免在 IDE 中产生编译错误。**
 
 **IDEA的操作方法：在上述maven命令编译好后，右键项目名称，选择"`Maven->Reload project`"，即可。**
 
@@ -236,12 +244,12 @@ IoTDB> SET STORAGE GROUP TO root.ln
 
 ```
 IoTDB> SHOW STORAGE GROUP
-+-----------------------------------+
-|                      Storage Group|
-+-----------------------------------+
-|                            root.ln|
-+-----------------------------------+
-storage group number = 1
++-------------+
+|storage group|
++-------------+
+|      root.ln|
++-------------+
+Total line number = 1
 ```
 
 在设置存储组之后，我们可以使用CREATE TIMESERIES来创建一个新的TIMESERIES。
@@ -260,25 +268,25 @@ IoTDB> CREATE TIMESERIES root.ln.wf01.wt01.temperature WITH DATATYPE=FLOAT, ENCO
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 2
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 2
 ```
 
 2. 查询指定的 timeseries(root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 1
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 1
 ```
 
 插入 timeseries 数据是IoTDB的一个基本操作，你可以使用`INSERT` 命令来完成这个操作。
@@ -293,12 +301,12 @@ IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp,status,temperature) values(200,fa
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
-+-----------------------+------------------------+
-|                   Time|root.ln.wf01.wt01.status|
-+-----------------------+------------------------+
-|1970-01-01T08:00:00.100|                    true|
-|1970-01-01T08:00:00.200|                   false|
-+-----------------------+------------------------+
++-----------------------------+------------------------+
+|                         Time|root.ln.wf01.wt01.status|
++-----------------------------+------------------------+
+|1970-01-01T08:00:00.100+08:00|                    true|
+|1970-01-01T08:00:00.200+08:00|                   false|
++-----------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -306,12 +314,34 @@ Total line number = 2
 
 ```
 IoTDB> SELECT * FROM root.ln.wf01.wt01
-+-----------------------+--------------------------+-----------------------------+
-|                   Time|  root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------+--------------------------+-----------------------------+
-|1970-01-01T08:00:00.100|                      true|                         null|
-|1970-01-01T08:00:00.200|                     false|                        20.71|
-+-----------------------+--------------------------+-----------------------------+
++-----------------------------+-----------------------------+------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++-----------------------------+-----------------------------+------------------------+
+|1970-01-01T08:00:00.100+08:00|                         null|                    true|
+|1970-01-01T08:00:00.200+08:00|                        20.71|                   false|
++-----------------------------+-----------------------------+------------------------+
+Total line number = 2
+```
+
+如果需要修改 Cli 中的时区，您可以使用以下语句:
+
+```
+IoTDB> SET time_zone=+00:00
+Time zone has set to +00:00
+IoTDB> SHOW time_zone
+Current time zone: Z
+```
+
+之后查询结果将会以更新后的新时区显示:
+
+```
+IoTDB> SELECT * FROM root.ln.wf01.wt01
++------------------------+-----------------------------+------------------------+
+|                    Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++------------------------+-----------------------------+------------------------+
+|1970-01-01T00:00:00.100Z|                         null|                    true|
+|1970-01-01T00:00:00.200Z|                        20.71|                   false|
++------------------------+-----------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -323,7 +353,7 @@ or
 IoTDB> exit
 ```
 
-有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](http://iotdb.apache.org/zh/UserGuide/Master/Operation%20Manual/SQL%20Reference.html)。
+有关IoTDB SQL支持的命令的更多信息，请参见[SQL 参考文档](https://iotdb.apache.org/zh/UserGuide/Master/Appendix/SQL-Reference.html)。
 
 ### 停止 IoTDB
 

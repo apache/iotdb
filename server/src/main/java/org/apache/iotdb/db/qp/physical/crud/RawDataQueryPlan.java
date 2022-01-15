@@ -20,12 +20,10 @@ package org.apache.iotdb.db.qp.physical.crud;
 
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
-import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
-import org.apache.iotdb.db.metadata.VectorPartialPath;
-import org.apache.iotdb.db.qp.logical.Operator;
+import org.apache.iotdb.db.metadata.path.AlignedPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.strategy.PhysicalGenerator;
-import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.db.utils.SchemaUtils;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -42,21 +40,16 @@ import java.util.Set;
 public class RawDataQueryPlan extends QueryPlan {
 
   private List<PartialPath> deduplicatedPaths = new ArrayList<>();
-  private List<TSDataType> deduplicatedDataTypes = new ArrayList<>();
+
   private IExpression expression = null;
   private Map<String, Set<String>> deviceToMeasurements = new HashMap<>();
 
+  // TODO: remove this when all types of query supporting vector
   /** used to group all the sub sensors of one vector into VectorPartialPath */
   private List<PartialPath> deduplicatedVectorPaths = new ArrayList<>();
 
-  private List<TSDataType> deduplicatedVectorDataTypes = new ArrayList<>();
-
   public RawDataQueryPlan() {
     super();
-  }
-
-  public RawDataQueryPlan(boolean isQuery, Operator.OperatorType operatorType) {
-    super(isQuery, operatorType);
   }
 
   @Override
@@ -68,7 +61,6 @@ public class RawDataQueryPlan extends QueryPlan {
     }
     indexedPaths.sort(Comparator.comparing(pair -> pair.left));
 
-    Map<String, Integer> pathNameToReaderIndex = new HashMap<>();
     Set<String> columnForReaderSet = new HashSet<>();
     Set<String> columnForDisplaySet = new HashSet<>();
 
@@ -76,11 +68,10 @@ public class RawDataQueryPlan extends QueryPlan {
       PartialPath originalPath = indexedPath.left;
       Integer originalIndex = indexedPath.right;
 
+      // TODO this method must have some big problem
       String columnForReader = getColumnForReaderFromPath(originalPath, originalIndex);
       if (!columnForReaderSet.contains(columnForReader)) {
         addDeduplicatedPaths(originalPath);
-        addDeduplicatedDataTypes(dataTypes.get(originalIndex));
-        pathNameToReaderIndex.put(columnForReader, pathNameToReaderIndex.size());
         if (this instanceof AggregationPlan) {
           ((AggregationPlan) this)
               .addDeduplicatedAggregations(getAggregations().get(originalIndex));
@@ -95,17 +86,8 @@ public class RawDataQueryPlan extends QueryPlan {
       }
     }
 
-    // TODO Maybe we should get VectorPartialPath above from MTree
-    // Currently, the above processing will only produce PartialPath instead of VectorPartialPath
-    // even if the queried time series is vector
-    // So, we need to transform the PartialPath to VectorPartialPath if is is a vector.
-    if (!isRawQuery()) {
-      transformPaths(IoTDB.metaManager);
-    } else {
-      // if it is a RawQueryWithoutValueFilter, we also need to group all the subSensors of one
-      // vector into one VectorPartialPath
-      transformVectorPaths(physicalGenerator, columnForDisplaySet);
-    }
+    // group all the aligned sensors of one device into one AlignedPath
+    groupVectorPaths(physicalGenerator);
   }
 
   public IExpression getExpression() {
@@ -127,6 +109,10 @@ public class RawDataQueryPlan extends QueryPlan {
     this.deduplicatedPaths.add(path);
   }
 
+  public List<TSDataType> getDeduplicatedDataTypes() {
+    return SchemaUtils.getSeriesTypesByPaths(deduplicatedPaths);
+  }
+
   /**
    * used for AlignByDevice Query, the query is executed by each device, So we only maintain
    * measurements of current device.
@@ -137,11 +123,10 @@ public class RawDataQueryPlan extends QueryPlan {
         path -> {
           Set<String> set =
               deviceToMeasurements.computeIfAbsent(path.getDevice(), key -> new HashSet<>());
-          set.add(path.getMeasurement());
-          if (path instanceof VectorPartialPath) {
-            ((VectorPartialPath) path)
-                .getSubSensorsPathList()
-                .forEach(subSensor -> set.add(subSensor.getMeasurement()));
+          if (path instanceof AlignedPath) {
+            set.addAll(((AlignedPath) path).getMeasurementList());
+          } else {
+            set.add(path.getMeasurement());
           }
         });
     this.deduplicatedPaths = deduplicatedPaths;
@@ -149,18 +134,6 @@ public class RawDataQueryPlan extends QueryPlan {
 
   public void setDeduplicatedPaths(List<PartialPath> deduplicatedPaths) {
     this.deduplicatedPaths = deduplicatedPaths;
-  }
-
-  public List<TSDataType> getDeduplicatedDataTypes() {
-    return deduplicatedDataTypes;
-  }
-
-  public void addDeduplicatedDataTypes(TSDataType dataType) {
-    this.deduplicatedDataTypes.add(dataType);
-  }
-
-  public void setDeduplicatedDataTypes(List<TSDataType> deduplicatedDataTypes) {
-    this.deduplicatedDataTypes = deduplicatedDataTypes;
   }
 
   public Set<String> getAllMeasurementsInDevice(String device) {
@@ -177,70 +150,28 @@ public class RawDataQueryPlan extends QueryPlan {
     return deviceToMeasurements;
   }
 
-  public void transformPaths(MManager mManager) throws MetadataException {
-    for (int i = 0; i < deduplicatedPaths.size(); i++) {
-      PartialPath path = mManager.transformPath(deduplicatedPaths.get(i));
-      if (path instanceof VectorPartialPath) {
-        deduplicatedPaths.set(i, path);
-      }
-    }
-  }
-
   /**
    * Group all the subSensors of one vector into one VectorPartialPath save the grouped
-   * VectorPartialPath in deduplicatedVectorPaths and deduplicatedVectorDataTypes instead of putting
-   * them directly into deduplicatedPaths and deduplicatedDataTypes, because we don't know whether
-   * the raw query has value filter here.
+   * VectorPartialPath in deduplicatedVectorPaths instead of putting them directly into
+   * deduplicatedPaths, because we don't know whether the raw query has value filter here.
    */
-  public void transformVectorPaths(
-      PhysicalGenerator physicalGenerator, Set<String> columnForDisplaySet)
-      throws MetadataException {
-    Pair<List<PartialPath>, Map<String, Integer>> pair =
-        physicalGenerator.getSeriesSchema(getDeduplicatedPaths());
-
-    List<PartialPath> vectorizedDeduplicatedPaths = pair.left;
-    List<TSDataType> vectorizedDeduplicatedDataTypes =
-        new ArrayList<>(physicalGenerator.getSeriesTypes(vectorizedDeduplicatedPaths));
+  public void groupVectorPaths(PhysicalGenerator physicalGenerator) throws MetadataException {
+    List<PartialPath> vectorizedDeduplicatedPaths =
+        physicalGenerator.groupVectorPaths(getDeduplicatedPaths());
     setDeduplicatedVectorPaths(vectorizedDeduplicatedPaths);
-    setDeduplicatedVectorDataTypes(vectorizedDeduplicatedDataTypes);
-
-    Map<String, Integer> columnForDisplayToQueryDataSetIndex = pair.right;
-    Map<String, Integer> pathToIndex = new HashMap<>();
-    for (String columnForDisplay : columnForDisplaySet) {
-      pathToIndex.put(columnForDisplay, columnForDisplayToQueryDataSetIndex.get(columnForDisplay));
-    }
-    setVectorPathToIndex(pathToIndex);
-  }
-
-  public List<PartialPath> getDeduplicatedVectorPaths() {
-    return deduplicatedVectorPaths;
   }
 
   public void setDeduplicatedVectorPaths(List<PartialPath> deduplicatedVectorPaths) {
     this.deduplicatedVectorPaths = deduplicatedVectorPaths;
   }
 
-  public List<TSDataType> getDeduplicatedVectorDataTypes() {
-    return deduplicatedVectorDataTypes;
-  }
-
-  public void setDeduplicatedVectorDataTypes(List<TSDataType> deduplicatedVectorDataTypes) {
-    this.deduplicatedVectorDataTypes = deduplicatedVectorDataTypes;
-  }
-
   /**
    * RawQueryWithoutValueFilter should call this method to use grouped vector partial path to
-   * replace the previous deduplicatedPaths and deduplicatedDataTypes
+   * replace the previous deduplicatedPaths
    */
   public void transformToVector() {
     if (!this.deduplicatedVectorPaths.isEmpty()) {
       this.deduplicatedPaths = this.deduplicatedVectorPaths;
-      this.deduplicatedDataTypes = this.deduplicatedVectorDataTypes;
-      setPathToIndex(getVectorPathToIndex());
     }
-  }
-
-  public boolean isRawQuery() {
-    return true;
   }
 }

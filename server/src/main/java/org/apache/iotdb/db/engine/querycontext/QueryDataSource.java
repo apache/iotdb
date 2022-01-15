@@ -32,8 +32,18 @@ import java.util.List;
  */
 public class QueryDataSource {
 
+  /**
+   * TsFileResources used by query job.
+   *
+   * <p>Note: Sequences under the same virtual storage group share two lists of TsFileResources (seq
+   * and unseq).
+   */
   private List<TsFileResource> seqResources;
+
   private List<TsFileResource> unseqResources;
+
+  /* The traversal order of unseqResources (different for each device) */
+  private int[] unSeqFileOrderIndex;
 
   /** data older than currentTime - dataTTL should be ignored. */
   private long dataTTL = Long.MAX_VALUE;
@@ -49,6 +59,10 @@ public class QueryDataSource {
 
   public List<TsFileResource> getUnseqResources() {
     return unseqResources;
+  }
+
+  public void setUnSeqFileOrderIndex(int[] index) {
+    this.unSeqFileOrderIndex = index;
   }
 
   public long getDataTTL() {
@@ -69,5 +83,36 @@ public class QueryDataSource {
       }
     }
     return filter;
+  }
+
+  public TsFileResource getSeqResourceByIndex(int curIndex) {
+    if (curIndex < seqResources.size()) {
+      return seqResources.get(curIndex);
+    }
+    return null;
+  }
+
+  public TsFileResource getUnseqResourceByIndex(int curIndex) {
+    int actualIndex = unSeqFileOrderIndex[curIndex];
+    if (actualIndex < unseqResources.size()) {
+      return unseqResources.get(actualIndex);
+    }
+    return null;
+  }
+
+  public boolean hasNextSeqResource(int curIndex, boolean ascending) {
+    return ascending ? curIndex < seqResources.size() : curIndex >= 0;
+  }
+
+  public boolean hasNextUnseqResource(int curIndex) {
+    return curIndex < unseqResources.size();
+  }
+
+  public int getSeqResourcesSize() {
+    return seqResources.size();
+  }
+
+  public int getUnseqResourcesSize() {
+    return unseqResources.size();
   }
 }

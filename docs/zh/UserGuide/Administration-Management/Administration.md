@@ -96,16 +96,16 @@ Msg: 602: No permissions for this operation INSERT
 
 现在，我们分别赋予他们向对应存储组数据的写入权限，并再次尝试向对应的存储组进行数据写入。SQL 语句为：
 ```
-GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
-GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
+GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 ```
 执行状态如下所示：
 
 ```
-IoTDB> GRANT USER ln_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.ln
+IoTDB> GRANT USER ln_write_user PRIVILEGES INSERT_TIMESERIES on root.ln
 Msg: The statement is executed successfully.
-IoTDB> GRANT USER sgcc_write_user PRIVILEGES 'INSERT_TIMESERIES' on root.sgcc
+IoTDB> GRANT USER sgcc_write_user PRIVILEGES INSERT_TIMESERIES on root.sgcc
 Msg: The statement is executed successfully.
 IoTDB> INSERT INTO root.ln.wf01.wt01(timestamp, status) values(1509465600000, true)
 Msg: The statement is executed successfully.
@@ -149,10 +149,10 @@ Msg: The statement is executed successfully.
 |REVOKE\_ROLE\_PRIVILEGE|撤销角色权限。路径无关|
 |CREATE_FUNCTION|注册 UDF。路径无关|
 |DROP_FUNCTION|卸载 UDF。路径无关|
-|CREATE_TRIGGER|创建触发器。路径无关|
-|DROP_TRIGGER|卸载触发器。路径无关|
-|START_TRIGGER|启动触发器。路径无关|
-|STOP_TRIGGER|停止触发器。路径无关|
+|CREATE_TRIGGER|创建触发器。路径相关|
+|DROP_TRIGGER|卸载触发器。路径相关|
+|START_TRIGGER|启动触发器。路径相关|
+|STOP_TRIGGER|停止触发器。路径相关|
 |CREATE_CONTINUOUS_QUERY|创建连续查询。路径无关|
 |DROP_CONTINUOUS_QUERY|卸载连续查询。路径无关|
 

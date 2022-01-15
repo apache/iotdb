@@ -18,7 +18,7 @@
  */
 package org.apache.iotdb.tsfile;
 
-import org.apache.iotdb.tsfile.read.ReadOnlyTsFile;
+import org.apache.iotdb.tsfile.read.TsFileReader;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
 import org.apache.iotdb.tsfile.read.common.Path;
 import org.apache.iotdb.tsfile.read.expression.IExpression;
@@ -43,13 +43,13 @@ public class TsFileRead {
   private static final String DEVICE1 = "device_1";
 
   private static void queryAndPrint(
-      ArrayList<Path> paths, ReadOnlyTsFile readTsFile, IExpression statement) throws IOException {
+      ArrayList<Path> paths, TsFileReader readTsFile, IExpression statement) throws IOException {
     QueryExpression queryExpression = QueryExpression.create(paths, statement);
     QueryDataSet queryDataSet = readTsFile.query(queryExpression);
     while (queryDataSet.hasNext()) {
       System.out.println(queryDataSet.next());
     }
-    System.out.println("------------");
+    System.out.println("----------------");
   }
 
   public static void main(String[] args) throws IOException {
@@ -59,7 +59,7 @@ public class TsFileRead {
 
     // create reader and get the readTsFile interface
     try (TsFileSequenceReader reader = new TsFileSequenceReader(path);
-        ReadOnlyTsFile readTsFile = new ReadOnlyTsFile(reader)) {
+        TsFileReader readTsFile = new TsFileReader(reader)) {
 
       // use these paths(all measurements) for all the queries
       ArrayList<Path> paths = new ArrayList<>();

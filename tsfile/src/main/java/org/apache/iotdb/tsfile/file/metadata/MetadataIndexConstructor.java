@@ -62,21 +62,17 @@ public class MetadataIndexConstructor {
       TimeseriesMetadata timeseriesMetadata;
       MetadataIndexNode currentIndexNode =
           new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
-      int serializedTimeseriesMetadataNum = 0;
       for (int i = 0; i < entry.getValue().size(); i++) {
         timeseriesMetadata = entry.getValue().get(i);
-        if (serializedTimeseriesMetadataNum == 0
-            || serializedTimeseriesMetadataNum >= config.getMaxDegreeOfIndexNode()) {
+        if (i % config.getMaxDegreeOfIndexNode() == 0) {
           if (currentIndexNode.isFull()) {
             addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
             currentIndexNode = new MetadataIndexNode(MetadataIndexNodeType.LEAF_MEASUREMENT);
           }
           currentIndexNode.addEntry(
               new MetadataIndexEntry(timeseriesMetadata.getMeasurementId(), out.getPosition()));
-          serializedTimeseriesMetadataNum = 0;
         }
         timeseriesMetadata.serializeTo(out.wrapAsStream());
-        serializedTimeseriesMetadataNum++;
       }
       addCurrentIndexNodeToQueue(currentIndexNode, measurementMetadataIndexQueue, out);
       deviceMetadataIndexMap.put(

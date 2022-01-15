@@ -22,13 +22,13 @@
 # DML (Data Manipulation Language)
 
 ## INSERT
-### Insert Real-time Data
 
 IoTDB provides users with a variety of ways to insert real-time data, such as directly inputting [INSERT SQL statement](../Appendix/SQL-Reference.md) in [Client/Shell tools](../CLI/Command-Line-Interface.md), or using [Java JDBC](../API/Programming-JDBC.md) to perform single or batch execution of [INSERT SQL statement](../Appendix/SQL-Reference.md).
 
 This section mainly introduces the use of [INSERT SQL statement](../Appendix/SQL-Reference.md) for real-time data import in the scenario.
 
-#### Use of INSERT Statements
+### Use of INSERT Statements
+
 The [INSERT SQL statement](../Appendix/SQL-Reference.md) statement is used to insert data into one or more specified timeseries created. For each point of data inserted, it consists of a [timestamp](../Data-Concept/Data-Model-and-Terminology.md) and a sensor acquisition value (see [Data Type](../Data-Concept/Data-Type.md)).
 
 In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` and `root.ln.wf02.wt02.hardware` as an example, and their data types are BOOLEAN and TEXT, respectively.
@@ -36,7 +36,7 @@ In the scenario of this section, take two timeseries `root.ln.wf02.wt02.status` 
 The sample code for single column data insertion is as follows:
 ```
 IoTDB > insert into root.ln.wf02.wt02(timestamp,status) values(1,true)
-IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, "v1")
+IoTDB > insert into root.ln.wf02.wt02(timestamp,hardware) values(1, 'v1')
 ```
 
 The above example code inserts the long integer timestamp and the value "true" into the timeseries `root.ln.wf02.wt02.status` and inserts the long integer timestamp and the value "v1" into the timeseries `root.ln.wf02.wt02.hardware`. When the execution is successful, cost time is shown to indicate that the data insertion has been completed.
@@ -45,20 +45,20 @@ The above example code inserts the long integer timestamp and the value "true" i
 
 The INSERT statement can also support the insertion of multi-column data at the same time point.  The sample code of  inserting the values of the two timeseries at the same time point '2' is as follows:
 
-```
+```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (2, false, 'v2')
 ```
 
 In addition, The INSERT statement support insert multi-rows at once. The sample code of inserting two rows as follows:
 
-```
+```sql
 IoTDB > insert into root.ln.wf02.wt02(timestamp, status, hardware) VALUES (3, false, 'v3'),(4, true, 'v4')
 ```
 
 After inserting the data, we can simply query the inserted data using the SELECT statement:
 
-```
-IoTDB > select * from root.ln.wf02 where time < 5
+```sql
+IoTDB > select * from root.ln.wf02.wt02 where time < 5
 ```
 
 The result is shown below. The query result shows that the insertion statements of single column and multi column data are performed correctly.
@@ -73,7 +73,40 @@ The result is shown below. The query result shows that the insertion statements 
 |1970-01-01T08:00:00.004+08:00|                        v4|                    true|
 +-----------------------------+--------------------------+------------------------+
 Total line number = 4
-It costs 0.170s
+It costs 0.004s
+```
+
+In addition, we can omit the timestamp column, and the system will use the current system timestamp as the timestamp of the data point. The sample code is as follows:
+```sql
+IoTDB > insert into root.ln.wf02.wt02(status, hardware) values (false, 'v2')
+```
+**Note:** Timestamps must be specified when inserting multiple rows of data in a SQL.
+
+### Insert Data Into Aligned Timeseries
+
+To insert data into a group of aligned time series, we only need to add the `ALIGNED` keyword in SQL, and others are similar.
+
+The sample code is as follows:
+
+```sql
+IoTDB > create aligned timeseries root.sg1.d1(s1 INT32, s2 DOUBLE)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(1, 1, 1)
+IoTDB > insert into root.sg1.d1(time, s1, s2) aligned values(2, 2, 2), (3, 3, 3)
+IoTDB > select * from root.sg1.d1
+```
+
+The result is shown below. The query result shows that the insertion statements are performed correctly.
+
+```
++-----------------------------+--------------+--------------+
+|                         Time|root.sg1.d2.s1|root.sg1.d2.s2|
++-----------------------------+--------------+--------------+
+|1970-01-01T08:00:00.001+08:00|             1|           1.0|
+|1970-01-01T08:00:00.002+08:00|             2|           2.0|
+|1970-01-01T08:00:00.003+08:00|             3|           3.0|
++-----------------------------+--------------+--------------+
+Total line number = 3
+It costs 0.004s
 ```
 
 ## SELECT
@@ -86,7 +119,7 @@ This chapter mainly introduces the relevant examples of time slice query using I
 
 The SQL statement is:
 
-```
+```sql
 select temperature from root.ln.wf01.wt01 where time < 2017-11-01T00:08:00.000
 ```
 which means:
@@ -116,7 +149,7 @@ It costs 0.026s
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000;
 ```
 which means:
@@ -144,7 +177,7 @@ It costs 0.018s
 
 IoTDB supports specifying multiple time interval conditions in a query. Users can combine time interval conditions at will according to their needs. For example, the SQL statement is:
 
-```
+```sql
 select status,temperature from root.ln.wf01.wt01 where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 which means:
@@ -175,7 +208,7 @@ It costs 0.018s
 
 The system supports the selection of data in any column in a query, i.e., the selected columns can come from different devices. For example, the SQL statement is:
 
-```
+```sql
 select wf01.wt01.status,wf02.wt02.hardware from root.ln where (time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000) or (time >= 2017-11-01T16:35:00.000 and time <= 2017-11-01T16:37:00.000);
 ```
 which means:
@@ -207,7 +240,7 @@ IoTDB supports the 'order by time' statement since 0.11, it's used to display re
 For example, the SQL statement is:
 
 ```sql
-select * from root.ln where time > 1 order by time desc limit 10;
+select * from root.ln.** where time > 1 order by time desc limit 10;
 ```
 The execution result of this SQL statement is as follows:
 
@@ -230,6 +263,50 @@ Total line number = 10
 It costs 0.016s
 ```
 
+### Arithmetic Query
+
+> Please note that Aligned Timeseries has not been supported in Arithmetic Query yet. An error message is expected if you use Arithmetic Query with Aligned Timeseries selected.
+
+#### Unary Arithmetic Operators
+
+Supported operators: `+`, `-`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: consistent with the input data type
+
+#### Binary Arithmetic Operators
+
+Supported operators: `+`, `-`, `*`, `/`, `%`
+
+Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+
+Output data type: `DOUBLE`
+
+Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
+
+#### Example
+
+```sql
+select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
+```
+
+Result:
+
+```
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|                         Time|root.sg.d1.s1|-root.sg.d1.s1|root.sg.d1.s2|root.sg.d1.s2|root.sg.d1.s1 + root.sg.d1.s2|root.sg.d1.s1 - root.sg.d1.s2|root.sg.d1.s1 * root.sg.d1.s2|root.sg.d1.s1 / root.sg.d1.s2|root.sg.d1.s1 % root.sg.d1.s2|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+|1970-01-01T08:00:00.001+08:00|          1.0|          -1.0|          1.0|          1.0|                          2.0|                          0.0|                          1.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.002+08:00|          2.0|          -2.0|          2.0|          2.0|                          4.0|                          0.0|                          4.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.003+08:00|          3.0|          -3.0|          3.0|          3.0|                          6.0|                          0.0|                          9.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.004+08:00|          4.0|          -4.0|          4.0|          4.0|                          8.0|                          0.0|                         16.0|                          1.0|                          0.0|
+|1970-01-01T08:00:00.005+08:00|          5.0|          -5.0|          5.0|          5.0|                         10.0|                          0.0|                         25.0|                          1.0|                          0.0|
++-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+Total line number = 5
+It costs 0.014s
+```
+
 ### Time Series Generating Functions
 
 The time series generating function takes several time series as input and outputs one time series. Unlike the aggregation function, the result set of the time series generating function has a timestamp column.
@@ -238,9 +315,11 @@ All time series generating functions can accept * as input.
 
 IoTDB supports hybrid queries of time series generating function queries and raw data queries.
 
+> Please note that Aligned Timeseries has not been supported in queries with hybrid functions yet. An error message is expected if you use hybrid functions with Aligned Timeseries selected in a query statement.
+
 #### Mathematical Functions
 
-Currently IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
+Currently, IoTDB supports the following mathematical functions. The behavior of these mathematical functions is consistent with the behavior of these functions in the Java Math standard library.
 
 | Function Name | Allowed Input Series Data Types | Output Series Data Type       | Corresponding Implementation in the Java Standard Library    |
 | ------------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
@@ -289,7 +368,7 @@ It costs 0.008s
 
 #### String Processing Functions
 
-Currently IoTDB supports the following string processing functions:
+Currently, IoTDB supports the following string processing functions:
 
 | Function Name   | Allowed Input Series Data Types | Required Attributes                                          | Output Series Data Type | Description                                            |
 | --------------- | ------------------------------- | ------------------------------------------------------------ | ----------------------- | ------------------------------------------------------ |
@@ -299,7 +378,7 @@ Currently IoTDB supports the following string processing functions:
 Example：
 
 ```   sql
-select s1, string_contains(s1, "s"="warn"), string_matches(s1, "regex"="[^\\s]+37229") from root.sg1.d4;
+select s1, string_contains(s1, 's'='warn'), string_matches(s1, 'regex'='[^\\s]+37229') from root.sg1.d4;
 ```
 
 Result：
@@ -318,7 +397,7 @@ It costs 0.007s
 
 #### Selector Functions
 
-Currently IoTDB supports the following selector functions:
+Currently, IoTDB supports the following selector functions:
 
 | Function Name | Allowed Input Series Data Types       | Required Attributes                                          | Output Series Data Type       | Description                                                  |
 | ------------- | ------------------------------------- | ------------------------------------------------------------ | ----------------------------- | ------------------------------------------------------------ |
@@ -328,7 +407,7 @@ Currently IoTDB supports the following selector functions:
 Example：
 
 ```   sql
-select s1, top_k(s1, "k"="2"), bottom_k(s1, "k"="2") from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
+select s1, top_k(s1, 'k'='2'), bottom_k(s1, 'k'='2') from root.sg1.d2 where time > 2020-12-10T20:36:15.530+08:00;
 ```
 
 Result：
@@ -349,7 +428,7 @@ It costs 0.006s
 
 #### Variation Trend Calculation Functions
 
-Currently IoTDB supports the following variation trend calculation functions:
+Currently, IoTDB supports the following variation trend calculation functions:
 
 | Function Name           | Allowed Input Series Data Types                 | Output Series Data Type       | Description                                                  |
 | ----------------------- | ----------------------------------------------- | ----------------------------- | ------------------------------------------------------------ |
@@ -381,59 +460,359 @@ Total line number = 5
 It costs 0.014s
 ```
 
-#### User Defined Timeseries Generating Functions
+#### Constant Timeseries Generating Functions
 
-Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
+The constant timeseries generating function is used to generate a timeseries in which the values of all data points are the same.
 
-#### Arithmetic query
+The constant timeseries generating function accepts one or more timeseries inputs, and the timestamp set of the output data points is the union of the timestamp sets of the input timeseries.
 
-##### Unary arithmetic operators
+Currently, IoTDB supports the following constant timeseries generating functions:
 
-Supported operators: `+`, `-`
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Description                                                  |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ------------------------------------------------------------ |
+| CONST         | `value`: the value of the output data point <br />`type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Output the user-specified constant timeseries according to the  attributes `value` and `type`. |
+| PI            | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `π`, the ratio of the circumference of a circle to its diameter, which is equals to `Math.PI` in the *Java Standard Library*. |
+| E             | None                                                         | DOUBLE                                       | Data point value: a `double` value of  `e`, the base of the natural logarithms, which is equals to `Math.E` in the *Java Standard Library*. |
 
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
+Example:
 
-Output data type: consistent with the input data type
-
-##### Binary arithmetic operators
-
-Supported operators: `+`, `-`, `*`, `/`, `%`
-
-Supported input data types: `INT32`, `INT64`, `FLOAT` and `DOUBLE`
-
-Output data type: `DOUBLE`
-
-Note: Only when the left operand and the right operand under a certain timestamp are not  `null`, the binary arithmetic operation will have an output value.
-
-##### Example
-
-```sql
-select s1, - s1, s2, + s2, s1 + s2, s1 - s2, s1 * s2, s1 / s2, s1 % s2 from root.sg.d1
+```   sql
+select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from root.sg1.d1; 
 ```
 
 Result:
 
 ```
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
-|                         Time|root.sg.d1.s1|-root.sg.d1.s1|root.sg.d1.s2|root.sg.d1.s2|root.sg.d1.s1 + root.sg.d1.s2|root.sg.d1.s1 - root.sg.d1.s2|root.sg.d1.s1 * root.sg.d1.s2|root.sg.d1.s1 / root.sg.d1.s2|root.sg.d1.s1 % root.sg.d1.s2|
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
-|1970-01-01T08:00:00.001+08:00|          1.0|          -1.0|          1.0|          1.0|                          2.0|                          0.0|                          1.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.002+08:00|          2.0|          -2.0|          2.0|          2.0|                          4.0|                          0.0|                          4.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.003+08:00|          3.0|          -3.0|          3.0|          3.0|                          6.0|                          0.0|                          9.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.004+08:00|          4.0|          -4.0|          4.0|          4.0|                          8.0|                          0.0|                         16.0|                          1.0|                          0.0|
-|1970-01-01T08:00:00.005+08:00|          5.0|          -5.0|          5.0|          5.0|                         10.0|                          0.0|                         25.0|                          1.0|                          0.0|
-+-----------------------------+-------------+--------------+-------------+-------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+-----------------------------+
+select s1, s2, const(s1, 'value'='1024', 'type'='INT64'), pi(s2), e(s1, s2) from root.sg1.d1; 
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
+|                         Time|root.sg1.d1.s1|root.sg1.d1.s2|const(root.sg1.d1.s1, "value"="1024", "type"="INT64")|pi(root.sg1.d1.s2)|e(root.sg1.d1.s1, root.sg1.d1.s2)|
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
+|1970-01-01T08:00:00.000+08:00|           0.0|           0.0|                                                 1024| 3.141592653589793|                2.718281828459045|
+|1970-01-01T08:00:00.001+08:00|           1.0|          null|                                                 1024|              null|                2.718281828459045|
+|1970-01-01T08:00:00.002+08:00|           2.0|          null|                                                 1024|              null|                2.718281828459045|
+|1970-01-01T08:00:00.003+08:00|          null|           3.0|                                                 null| 3.141592653589793|                2.718281828459045|
+|1970-01-01T08:00:00.004+08:00|          null|           4.0|                                                 null| 3.141592653589793|                2.718281828459045|
++-----------------------------+--------------+--------------+-----------------------------------------------------+------------------+---------------------------------+
 Total line number = 5
-It costs 0.014s
+It costs 0.005s
+```
+#### Data Type Conversion Function
+The IoTDB currently supports 6 data types, including INT32, INT64 ,FLOAT, DOUBLE, BOOLEAN, TEXT. When we query or evaluate data, we may need to convert data types, such as TEXT to INT32, or improve the accuracy of the data, such as FLOAT to DOUBLE. Therefore, IoTDB supports the use of cast functions to convert data types.
+
+| Function Name | Required Attributes                                          | Output Series Data Type                      | Series Data Type  Description                               |
+| ------------- | ------------------------------------------------------------ | -------------------------------------------- | ----------------------------------------------------------- |
+| CAST          | `type`: the type of the output data point, it can only be INT32 / INT64 / FLOAT / DOUBLE / BOOLEAN / TEXT | Determined by the required attribute  `type` | Converts data to the type specified by the `type` argument. |
+
+
+
+##### Notes
+1. The value of type BOOLEAN is `true`, when data is converted to BOOLEAN if INT32 and INT64 are not 0, FLOAT and DOUBLE are not 0.0, TEXT is not empty string or "false", otherwise `false`.    
+2. The value of type INT32, INT64, FLOAT, DOUBLE are 1 or 1.0 and TEXT is "true", when BOOLEAN data is true, otherwise 0, 0.0 or "false".  
+3. When TEXT is converted to INT32, INT64, or FLOAT, the TEXT is first converted to DOUBLE and then to the corresponding type, which may cause loss of precision. It will skip directly if the data can not be converted.
+
+##### Syntax
+Example data:
+```
+IoTDB> select text from root.test;
++-----------------------------+--------------+
+|                         Time|root.test.text|
++-----------------------------+--------------+
+|1970-01-01T08:00:00.001+08:00|           1.1|
+|1970-01-01T08:00:00.002+08:00|             1|
+|1970-01-01T08:00:00.003+08:00|   hello world|
+|1970-01-01T08:00:00.004+08:00|         false|
++-----------------------------+--------------+
+```
+SQL:
+```sql
+select cast(text, 'type'='BOOLEAN'), cast(text, 'type'='INT32'), cast(text, 'type'='INT64'), cast(text, 'type'='FLOAT'), cast(text, 'type'='DOUBLE') from root.test;
+```
+Result:
+```
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|                         Time|cast(root.test.text, "type"="BOOLEAN")|cast(root.test.text, "type"="INT32")|cast(root.test.text, "type"="INT64")|cast(root.test.text, "type"="FLOAT")|cast(root.test.text, "type"="DOUBLE")|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+|1970-01-01T08:00:00.001+08:00|                                  true|                                   1|                                   1|                                 1.1|                                  1.1|
+|1970-01-01T08:00:00.002+08:00|                                  true|                                   1|                                   1|                                 1.0|                                  1.0|
+|1970-01-01T08:00:00.003+08:00|                                  true|                                null|                                null|                                null|                                 null|
+|1970-01-01T08:00:00.004+08:00|                                 false|                                null|                                null|                                null|                                 null|
++-----------------------------+--------------------------------------+------------------------------------+------------------------------------+------------------------------------+-------------------------------------+
+Total line number = 4
+It costs 0.078s
+```
+#### User Defined Timeseries Generating Functions
+
+Please refer to [UDF (User Defined Function)](../Advanced-Features/UDF-User-Defined-Function.md).
+
+Known Implementation UDF Libraries:
+
++ [IoTDB-Quality](https://thulab.github.io/iotdb-quality), a UDF library about data quality, including data profiling, data quality evalution and data repairing, etc.
+
+### Nested Expressions
+
+IoTDB supports the execution of arbitrary nested expressions consisting of **numbers, time series, arithmetic expressions, and time series generating functions (including user-defined functions)** in the `select` clause.
+
+> Please note that Aligned Timeseries has not been supported in Nested Expressions yet. An error message is expected if you use Nested Expressions with Aligned Timeseries selected in a query statement.
+
+#### Syntax
+
+The following is the syntax definition of the `select` clause:
+
+```sql
+selectClause
+    : SELECT resultColumn (',' resultColumn)*
+    ;
+
+resultColumn
+    : expression (AS ID)?
+    ;
+
+expression
+    : '(' expression ')'
+    | '-' expression
+    | expression ('*' | '/' | '%') expression
+    | expression ('+' | '-') expression
+    | functionName '(' expression (',' expression)* functionAttribute* ')'
+    | timeSeriesSuffixPath
+    | number
+    ;
+```
+
+#### Example
+
+SQL:
+
+```sql
+select a,
+       b,
+       ((a + 1) * 2 - 1) % 2 + 1.5,
+       sin(a + sin(a + sin(b))),
+       -(a + b) * (sin(a + b) * sin(a + b) + cos(a + b) * cos(a + b))
+from root.sg1.d1;
+```
+
+Result:
+
+```
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|                         Time|root.sg1.d1.a|root.sg1.d1.b|((((root.sg1.d1.a + 1) * 2) - 1) % 2) + 1.5|sin(root.sg1.d1.a + sin(root.sg1.d1.a + sin(root.sg1.d1.b)))|-root.sg1.d1.a + root.sg1.d1.b * ((sin(root.sg1.d1.a + root.sg1.d1.b) * sin(root.sg1.d1.a + root.sg1.d1.b)) + (cos(root.sg1.d1.a + root.sg1.d1.b) * cos(root.sg1.d1.a + root.sg1.d1.b)))|
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+|1970-01-01T08:00:00.000+08:00|            0|            0|                                        2.5|                                                         0.0|                                                                                                                                                                                    -0.0|
+|1970-01-01T08:00:00.001+08:00|            1|            1|                                        2.5|                                          0.9238430524420609|                                                                                                                                                                                    -2.0|
+|1970-01-01T08:00:00.002+08:00|            2|            2|                                        2.5|                                          0.7903505371876317|                                                                                                                                                                                    -4.0|
++-----------------------------+-------------+-------------+-------------------------------------------+------------------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+Total line number = 3
+It costs 0.170s
+```
+
+### Fill Null Value
+
+In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be filled. Therefore, the IoTDB system introduces fill methods.
+
+Fill methods refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
+
+#### Fill Methods
+
+IoTDB supports previous, linear, and value fill methods. Table 3-1 lists the data types and supported fill methods.
+
+<center>
+
+**Table 3-1 Data types and the supported fill methods**
+
+|Data Type|Supported Fill Methods|
+|:---|:---|
+|boolean|previous, value|
+|int32|previous, linear, value|
+|int64|previous, linear, value|
+|float|previous, linear, value|
+|double|previous, linear, value|
+|text|previous|
+</center>
+
+> Note: Only one Fill method can be specified in a Fill statement. Null value fill is compatible with version 0.12 and previous syntax (fill((<data_type>[<fill_method>(, <before_range>, <after_range>)?])+)), but the old syntax could not specify multiple fill methods at the same time
+
+#### Single Fill Query
+
+When data in a particular timestamp is null, the null values can be filled using single fill, as described below:
+
+* Previous Function
+
+When the value in the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(previous(, <before_range>)?)
+```
+
+Detailed descriptions of all parameters are given in Table 3-2.
+
+<center>
+
+**Table 3-2 Previous fill paramter list**
+
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
+</center>
+
+Here we give an example of filling null values using the previous method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1s) 
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                          21.93|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.016s
+```
+
+It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
+
+```
+IoTDB> select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                           null|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.004s
+```
+
+* Linear Method
+
+When the value in the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(linear(, <before_range>, <after_range>)?)
+```
+Detailed descriptions of all parameters are given in Table 3-3.
+
+<center>
+
+**Table 3-3 Linear fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
+Otherwise, if there is no valid fill value in either range [T - before_range, T] or [T, T + after_range], linear fill method will return null.
+
+Here we give an example of filling null values using the linear method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(linear, 1m, 1m)
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                      24.746666|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.017s
+```
+
+* Value Method
+
+When the value in the queried timestamp is null, given fill value is used to fill the blank. The formalized value method is as follows:
+
+```sql
+select <path> from <prefixPath> where time = <T> fill(constant)
+```
+Detailed descriptions of all parameters are given in Table 3-4.
+
+<center>
+
+**Table 3-4 Specific value fill paramter list**
+
+|Parameter name (case insensitive)|Interpretation|
+|:---|:---|
+|path, prefixPath|query path; mandatory field|
+|T|query timestamp (only one can be specified); mandatory field|
+|constant|represents given fill value|
+</center>
+
+**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the specific fill value.
+
+Here we give an example of filling null values using the value method. The SQL statement is as follows:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(2.0)
+```
+which means:
+
+Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses given specific value 2.0 to fill
+
+On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                            2.0|
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
+```
+
+When using the ValueFill, note that IoTDB will not fill the query result if the data type is different from the input constant
+
+example:
+
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill('test')
+```
+
+result:
+
+```
++-----------------------------+-------------------------------+
+|                         Time|root.sgcc.wf03.wt01.temperature|
++-----------------------------+-------------------------------+
+|2017-11-01T16:37:50.000+08:00|                          null |
++-----------------------------+-------------------------------+
+Total line number = 1
+It costs 0.007s
 ```
 
 ### Aggregate Query
 
 This section mainly introduces the related examples of aggregate query.
 
+> Please note that mixed use of `Aggregate Query` and `Timeseries Query` is not allowed. Below are examples for queries that are not allowed.
+>
+> ```
+> select a, count(a) from root.sg 
+> select sin(a), count(a) from root.sg
+> select a, count(a) from root.sg group by ([10,100),10ms)
+> ```
+
 #### Count Points
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01;
 ```
 Result:
@@ -448,72 +827,116 @@ Total line number = 1
 It costs 0.016s
 ```
 
-##### Aggregation By Level
+#### Aggregation By Level
 
-**Aggregation by level statement** is used for aggregating upon specific hierarchical level of timeseries path.
-For all timeseries paths, by convention, "level=0" represents *root* level. 
-That is, to tally the points of any measurements under "root.ln", the level should be set to 1.
+Aggregation by level statement is used to group the query result whose name is the same at the given level. Keyword `LEVEL` is used to specify the level that need to be grouped.  By convention, `level=0` represents *root* level. 
 
-For example, there are multiple series under "root.ln.wf01", such as "root.ln.wf01.wt01.status","root.ln.wf01.wt02.status","root.ln.wf01.wt03.status".
-To count the number of "status" points of all these series, use query:
+For example：there are multiple series named `status` under different storage groups， like "root.ln.wf01.wt01.status", "root.ln.wf02.wt02.status", and "root.sgcc.wf03.wt01.status". If you need to count the number of data points of the `status` sequence under different storage groups, use the following query:
+
+```sql
+select count(status)
+from root.**
+group by level = 1
 ```
-select count(status) from root.ln.wf01.* group by level=2
-```
-Result:
+
+Result：
 
 ```
-+----------------------------+
-|COUNT(root.ln.wf01.*.status)|
-+----------------------------+
-|                       10080|
-+----------------------------+
++-------------------------+---------------------------+
+|count(root.ln.*.*.status)|count(root.sgcc.*.*.status)|
++-------------------------+---------------------------+
+|                    20160|                      10080|
++-------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Similarly，if you need to count the number of data points under different devices, you can specify level = 3,
+
+```sql
+select count(status)
+from root.**
+group by level = 3
+```
+
+Result：
+
+```
++---------------------------+---------------------------+
+|count(root.*.*.wt01.status)|count(root.*.*.wt02.status)|
++---------------------------+---------------------------+
+|                      20160|                      10080|
++---------------------------+---------------------------+
+Total line number = 1
+It costs 0.003s
+```
+
+Attention，the devices named `wt01` under storage groups `ln` and `sgcc` are grouped together, since they are regarded as devices with the same name. If you need to further count the number of data points in different devices under different storage groups, you can use the following query:
+
+```sql
+select count(status)
+from root.**
+group by level = 1, 3
+```
+
+Result：
+
+```
++----------------------------+----------------------------+------------------------------+
+|count(root.ln.*.wt01.status)|count(root.ln.*.wt02.status)|count(root.sgcc.*.wt01.status)|
++----------------------------+----------------------------+------------------------------+
+|                       10080|                       10080|                         10080|
++----------------------------+----------------------------+------------------------------+
 Total line number = 1
 It costs 0.003s
 ```
 
 
-Suppose we add another two timeseries, "root.ln.wf01.wt01.temperature" and "root.ln.wf02.wt01.temperature".
-To query the count and the sum of "temperature" under path "root.ln.*.*", 
-aggregating on level=2, use following statement:
 
+Assuming that you want to query the maximum value of temperature sensor under all time series, you can use the following query statement:
+
+```sql
+select max_value(temperature)
+from root.**
+group by level = 0
 ```
-select count(temperature), sum(temperature) from root.ln.*.* group by level=2
-```
+
 Result：
 
 ```
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|count(root.ln.wf02.*.temperature)|count(root.ln.wf01.*.temperature)|sum(root.ln.wf02.*.temperature)|sum(root.ln.wf01.*.temperature)|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
-|                                8|                                4|                          228.0|              91.83000183105469|
-+---------------------------------+---------------------------------+-------------------------------+-------------------------------+
++---------------------------------+
+|max_value(root.*.*.*.temperature)|
++---------------------------------+
+|                             26.0|
++---------------------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
-To query the count and the sum of path "root.ln.\*.\*.temperature" aggregating on "root.ln" level,
-simply set level=1
+The above queries are for a certain sensor. In particular, **if you want to query the total data points owned by all sensors at a certain level**, you need to explicitly specify `*` is selected.
 
+```sql
+select count(*)
+from root.ln.**
+group by level = 2
 ```
-select count(temperature), sum(temperature) from root.ln.*.* group by level=1
-```
+
 Result：
 
 ```
-+------------------------------+----------------------------+
-|count(root.ln.*.*.temperature)|sum(root.ln.*.*.temperature)|
-+------------------------------+----------------------------+
-|                            12|           319.8300018310547|
-+------------------------------+----------------------------+
++----------------------+----------------------+
+|count(root.*.wf01.*.*)|count(root.*.wf02.*.*)|
++----------------------+----------------------+
+|                 20160|                 20160|
++----------------------+----------------------+
 Total line number = 1
 It costs 0.013s
 ```
 
 All supported aggregation functions are: count, sum, avg, last_value, first_value, min_time, max_time, min_value, max_value, extreme.
-When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type.
-Otherwise, it will generate a syntax error.
+When using four aggregations: sum, avg, min_value, max_value and extreme please make sure all the aggregated series have exactly the same data type. Otherwise, it will generate a syntax error.
 
-### Down-Frequency Aggregate Query
+#### Down-Frequency Aggregate Query
 
 This section mainly introduces the related examples of down-frequency aggregation query, 
 using the [GROUP BY clause](../Appendix/SQL-Reference.md), 
@@ -539,11 +962,11 @@ and value filtering conditions specified.
 
 **Figure 5.2 The actual meanings of the three types of parameters**
 
-#### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
+##### Down-Frequency Aggregate Query without Specifying the Sliding Step Length
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d);
 ```
 which means:
@@ -574,11 +997,11 @@ Total line number = 7
 It costs 0.024s
 ```
 
-#### Down-Frequency Aggregate Query Specifying the Sliding Step Length
+##### Down-Frequency Aggregate Query Specifying the Sliding Step Length
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d);
 ```
 
@@ -614,11 +1037,11 @@ Total line number = 7
 It costs 0.006s
 ```
 
-#### Down-Frequency Aggregate Query by Natural Month
+##### Down-Frequency Aggregate Query by Natural Month
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by([2017-11-01T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
@@ -660,7 +1083,7 @@ The SQL execution result is:
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by([2017-10-31T00:00:00, 2019-11-07T23:00:00), 1mo, 2mo);
 ```
 
@@ -702,11 +1125,11 @@ The SQL execution result is:
 +-----------------------------+-------------------------------+
 ```
 
-#### Left Open And Right Close Range
+##### Left Open And Right Close Range
 
 The SQL statement is:
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d);
 ```
 
@@ -730,6 +1153,196 @@ Total line number = 7
 It costs 0.004s
 ```
 
+#### Down-Frequency Aggregate Query with Fill Clause
+IoTDB supports null value filling of original down-frequency aggregate results. Previous, Linear, and Value fill methods can be used in any aggregation operator in a query statement, but only one fill method can be used in a query statement. In addition, the following two points should be paid attention to when using:
+- GroupByFill will not fill the aggregate result of count in any case, because in IoTDB, if there is no data in a time range, the aggregate result of count is 0
+- GroupByFill will classify sum aggregation results. In IoTDB, if a query interval does not contain any data, sum aggregation result is null, and GroupByFill will fill sum. If the sum of a time range happens to be 0, GroupByFill will not fill the value
+
+The syntax of down-frequency aggregate query is similar to that of single fill query. Simple examples and usage details are listed below:
+
+##### Difference Between PREVIOUSUNTILLAST And PREVIOUS:
+
+* PREVIOUS will fill any null value as long as there exist value is not null before it.
+* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
+
+first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:49:00.
+
+```
+IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:49:00
++-----------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|
++-----------------------------+-----------------------------+
+|2017-11-07T23:49:00.000+08:00|                         23.7|
+|2017-11-07T23:51:00.000+08:00|                        22.24|
+|2017-11-07T23:53:00.000+08:00|                        24.58|
+|2017-11-07T23:54:00.000+08:00|                        22.52|
+|2017-11-07T23:57:00.000+08:00|                        24.39|
+|2017-11-08T00:00:00.000+08:00|                        21.07|
++-----------------------------+-----------------------------+
+Total line number = 6
+It costs 0.010s
+```
+
+we will find that in root.ln.wf01.wt01.temperature the first time and value are 2017-11-07T23:49:00 and 23.7 and the last time and value are 2017-11-08T00:00:00 and 21.07 respectively.
+
+Then execute SQL statements:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUSUNTILLAST);
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS);
+```
+
+result:
+
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUSUNTILLAST);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     null|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                    22.52|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     null|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.007s
+
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     null|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                    22.52|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                    24.39|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.006s
+```
+
+which means:
+
+using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:57.
+
+##### Fill The First And Last Null Value
+
+The fill methods of IoTDB can be divided into three categories: PreviousFill, LinearFill and ValueFill. Where PreviousFill needs to know the first not-null value before the null value, LinearFill needs to know the first not-null value before and after the null value to fill. If the first or last value in the result returned by a query statement is null, a sequence of null values may exist at the beginning or the end of the result set, which does not meet GroupByFill's expectations.
+
+In the above example, there is no data in the first time interval [2017-11-07T23:50:00, 2017-11-07T23:51:00). The previous time interval with data is [2017-11-01T23:49:00, 2017-11-07T23:50:00). The first interval can be filled by setting PREVIOUS to fill the forward query parameter before_range as shown in the following example:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
+```
+
+result:
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (PREVIOUS, 1m);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     23.7|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    22.24|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                    22.52|
+|2017-11-07T23:56:00.000+08:00|                                     null|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                    24.39|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.005s
+```
+
+explain:
+
+In order not to conflict with the original semantics, when before_range and after_range parameters are not set, the null value of GroupByFill is filled with the first/next not-null value of the null value. When setting before_range, after_range parameters, and the timestamp of the null record is set to T. GroupByFill takes the previous/last not-null value in [t-before_range, t+after_range) to complete the fill.
+
+Because there is no data in the time interval [2017-11-07T23:55:00, 2017-11-07T23:57:00), Therefore, although this example fills the data of [2017-11-07T23:50:00, 2017-11-07T23:51:00) by setting before_range, due to the small before_range, [2017-11-07T23:56:00, 2017-11-07T23:57:00) data cannot be filled.
+
+Before_range and after_range parameters can also be filled with LINEAR, as shown in the following example:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
+```
+
+result：
+
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (LINEAR, 5m, 5m);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                22.970001|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                    23.41|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                23.143333|
+|2017-11-07T23:56:00.000+08:00|                                23.766666|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                23.283333|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.008s
+```
+
+> Note: Set the initial down-frequency query interval to [start_time, end_time). The query result will keep the same as not setting before_range and after_range parameters. However, the query interval is changed to [start_time - before_range, end_time + after_range). Therefore, the efficiency will be affected when these two parameters are set too large. Please pay attention to them when using.
+
+##### ValueFill
+The ValueFill method parses the input constant value into a string. During fill, the string constant is converted to the corresponding type of data. If the conversion succeeds, the null record will be filled; otherwise, it is not filled. Examples are as follows:
+
+```sql
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (20.0)
+SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL ('temperature')
+```
+
+result:
+```
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL (20.0);
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     20.0|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                     20.0|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     20.0|
+|2017-11-07T23:56:00.000+08:00|                                     20.0|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     20.0|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.007s
+
+IoTDB> SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-07T23:59:00),1m) FILL ('temperature');
++-----------------------------+-----------------------------------------+
+|                         Time|last_value(root.ln.wf01.wt01.temperature)|
++-----------------------------+-----------------------------------------+
+|2017-11-07T23:50:00.000+08:00|                                     null|
+|2017-11-07T23:51:00.000+08:00|                                    22.24|
+|2017-11-07T23:52:00.000+08:00|                                     null|
+|2017-11-07T23:53:00.000+08:00|                                    24.58|
+|2017-11-07T23:54:00.000+08:00|                                    22.52|
+|2017-11-07T23:55:00.000+08:00|                                     null|
+|2017-11-07T23:56:00.000+08:00|                                     null|
+|2017-11-07T23:57:00.000+08:00|                                    24.39|
+|2017-11-07T23:58:00.000+08:00|                                     null|
++-----------------------------+-----------------------------------------+
+Total line number = 9
+It costs 0.005s
+```
 
 #### Down-Frequency Aggregate Query with Level Clause
 
@@ -741,7 +1354,7 @@ The SQL statement is:
 
 Get down-frequency aggregate query by level.
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ((2017-11-01T00:00:00, 2017-11-07T23:00:00],1d), level=1;
 ```
 Result:
@@ -764,7 +1377,7 @@ It costs 0.006s
 
 Down-frequency aggregate query with sliding step and by level.
 
-```
+```sql
 select count(status) from root.ln.wf01.wt01 group by ([2017-11-01 00:00:00, 2017-11-07 23:00:00), 3h, 1d), level=1;
 ```
 
@@ -786,93 +1399,104 @@ Total line number = 7
 It costs 0.004s
 ```
 
-#### Down-Frequency Aggregate Query with Fill Clause
+#### Nested Expressions query with aggregations
 
-In group by fill, sliding step is not supported in group by clause
+IoTDB supports aggregation query nested by any other expressions.
 
-Now, only last_value aggregation function is supported in group by fill.
+##### Example
 
-Linear fill is not supported in group by fill.
+1. Aggregation query without `GROUP BY`.
 
+Input:
 
-##### Difference Between PREVIOUSUNTILLAST And PREVIOUS
-
-* PREVIOUS will fill any null value as long as there exist value is not null before it.
-* PREVIOUSUNTILLAST won't fill the result whose time is after the last time of that time series.
-
-first, we check value root.ln.wf01.wt01.temperature when time after 2017-11-07T23:50:00.
-
-```
-IoTDB> SELECT temperature FROM root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+
-|                         Time|root.ln.wf01.wt01.temperature|
-+-----------------------------+-----------------------------+
-|2017-11-07T23:50:00.000+08:00|                         23.7|
-|2017-11-07T23:51:00.000+08:00|                        22.24|
-|2017-11-07T23:52:00.000+08:00|                        20.18|
-|2017-11-07T23:53:00.000+08:00|                        24.58|
-|2017-11-07T23:54:00.000+08:00|                        22.52|
-|2017-11-07T23:55:00.000+08:00|                         25.9|
-|2017-11-07T23:56:00.000+08:00|                        24.44|
-|2017-11-07T23:57:00.000+08:00|                        24.39|
-|2017-11-07T23:58:00.000+08:00|                        22.93|
-|2017-11-07T23:59:00.000+08:00|                        21.07|
-+-----------------------------+-----------------------------+
-Total line number = 10
-It costs 0.002s
+```sql
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware)
+from root.ln.wf01.wt01;
 ```
 
-we will find the last time and value of root.ln.wf01.wt01.temperature are 2017-11-07T23:59:00 and 21.07 respectively. 
-
-Then execute SQL statements:
+Result:
 
 ```
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUSUNTILLAST]);
-SELECT last_value(temperature) FROM root.ln.wf01.wt01 GROUP BY([2017-11-07T23:50:00, 2017-11-08T00:01:00),1m) FILL (float[PREVIOUS]);
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|avg(root.ln.wf01.wt01.temperature) + sum(root.ln.wf01.wt01.hardware)|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+|                15.927999999999999|                   -0.21826546964855045|                    16.927999999999997|                         -7426.0|                                                            7441.928|
++----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+--------------------------------------------------------------------+
+Total line number = 1
+It costs 0.009s
 ```
 
-result:
-```
-+-----------------------------+-----------------------------------------+
-|                         Time|last_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
-|2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
-|2017-11-07T23:53:00.000+08:00|                                    24.58|
-|2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
-|2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                     null|
-+-----------------------------+-----------------------------------------+
-Total line number = 11
-It costs 0.005s
+Input:
 
-+-----------------------------+-----------------------------------------+
-|                         Time|last_value(root.ln.wf01.wt01.temperature)|
-+-----------------------------+-----------------------------------------+
-|2017-11-07T23:50:00.000+08:00|                                     23.7|
-|2017-11-07T23:51:00.000+08:00|                                    22.24|
-|2017-11-07T23:52:00.000+08:00|                                    20.18|
-|2017-11-07T23:53:00.000+08:00|                                    24.58|
-|2017-11-07T23:54:00.000+08:00|                                    22.52|
-|2017-11-07T23:55:00.000+08:00|                                     25.9|
-|2017-11-07T23:56:00.000+08:00|                                    24.44|
-|2017-11-07T23:57:00.000+08:00|                                    24.39|
-|2017-11-07T23:58:00.000+08:00|                                    22.93|
-|2017-11-07T23:59:00.000+08:00|                                    21.07|
-|2017-11-08T00:00:00.000+08:00|                                    21.07|
-+-----------------------------+-----------------------------------------+
-Total line number = 11
-It costs 0.006s
+```sql
+select count(a),
+       count(b),
+       ((count(a) + 1) * 2 - 1) % 2 + 1.5,
+       -(count(a) + count(b)) * (count(a) * count(b)) + count(a) / count(b)
+from root.sg;
 ```
 
-which means:
+Result:
 
-using PREVIOUSUNTILLAST won't fill time after 2017-11-07T23:59.
+```
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|count(root.sg.a)|count(root.sg.b)|((((count(root.sg.a) + 1) * 2) - 1) % 2) + 1.5|(-count(root.sg.a) + count(root.sg.b) * (count(root.sg.a) * count(root.sg.b))) + (count(root.sg.a) / count(root.sg.b))|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+|               4|               3|                                           2.5|                                                                                                    -82.66666666666667|
++----------------+----------------+----------------------------------------------+----------------------------------------------------------------------------------------------------------------------+
+Total line number = 1
+It costs 0.013s
+```
+
+2. Aggregation with `GROUP BY`.
+
+Input:
+
+```sql
+select avg(temperature),
+       sin(avg(temperature)),
+       avg(temperature) + 1,
+       -sum(hardware),
+       avg(temperature) + sum(hardware) as custom_sum
+from root.ln.wf01.wt01
+GROUP BY([10, 90), 10ms);
+```
+
+Result:
+
+```
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|                         Time|avg(root.ln.wf01.wt01.temperature)|sin(avg(root.ln.wf01.wt01.temperature))|avg(root.ln.wf01.wt01.temperature) + 1|-sum(root.ln.wf01.wt01.hardware)|custom_sum|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+|1970-01-01T08:00:00.010+08:00|                13.987499999999999|                     0.9888207947857667|                    14.987499999999999|                         -3211.0| 3224.9875|
+|1970-01-01T08:00:00.020+08:00|                              29.6|                    -0.9701057337071853|                                  30.6|                         -3720.0|    3749.6|
+|1970-01-01T08:00:00.030+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.040+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.050+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.060+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.070+08:00|                              null|                                   null|                                  null|                            null|      null|
+|1970-01-01T08:00:00.080+08:00|                              null|                                   null|                                  null|                            null|      null|
++-----------------------------+----------------------------------+---------------------------------------+--------------------------------------+--------------------------------+----------+
+Total line number = 8
+It costs 0.012s
+```
+
+##### Note
+
+> Automated fill (`FILL`) and grouped by level (`GROUP BY LEVEL`) are not supported in an aggregation query with expression nested. They may be supported in future versions.
+>
+> The aggregation expression must be the lowest level input of one expression tree. Any kind expressions except timeseries are not valid as aggregation function parameters。
+>
+> In a word, the following queries are not valid.
+> ```sql
+> SELECT avg(s1+1) FROM root.sg.d1; -- The aggregation function has expression parameters.
+> SELECT avg(s1) + avg(s2) FROM root.sg.* GROUP BY LEVEL=1; -- Grouped by level
+> SELECT avg(s1) + avg(s2) FROM root.sg.d1 GROUP BY([0, 10000), 1s) FILL(previous); -- Automated fill
+> ```
 
 ### Last point Query
 
@@ -882,7 +1506,7 @@ The Last point query is to return the most recent data point of the given timese
 
 The SQL statement is defined as:
 
-```
+```sql
 select last <Path> [COMMA <Path>]* from < PrefixPath > [COMMA < PrefixPath >]* <WhereClause>
 ```
 
@@ -890,21 +1514,23 @@ which means: Query and return the last data points of timeseries prefixPath.path
 
 Only time filter with '>' or '>=' is supported in \<WhereClause\>. Any other filters given in the \<WhereClause\> will give an exception.
 
-The result will be returned in a three column table format.
+The result will be returned in a four column table format.
 
 ```
-| Time | Path | Value |
+| Time | timeseries | value | dataType |
 ```
+
+**Note:** The `value` colum will always return the value as `string` and thus also has `TSDataType.TEXT`. Therefore the colum `dataType` is returned also which contains the _real_ type how the value should be interpreted.
 
 Example 1: get the last point of root.ln.wf01.wt01.status:
 
 ```
 IoTDB> select last status from root.ln.wf01.wt01
-+-----------------------------+------------------------+-----+
-|                         Time|              timeseries|value|
-+-----------------------------+------------------------+-----+
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false|
-+-----------------------------+------------------------+-----+
++-----------------------------+------------------------+-----+--------+
+|                         Time|              timeseries|value|dataType|
++-----------------------------+------------------------+-----+--------+
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.status|false| BOOLEAN|
++-----------------------------+------------------------+-----+--------+
 Total line number = 1
 It costs 0.000s
 ```
@@ -914,162 +1540,116 @@ whose timestamp larger or equal to 2017-11-07T23:50:00。
 
 ```
 IoTDB> select last status, temperature from root.ln.wf01.wt01 where time >= 2017-11-07T23:50:00
-+-----------------------------+-----------------------------+---------+
-|                         Time|                   timeseries|    value|
-+-----------------------------+-----------------------------+---------+
-|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false|
-|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|
-+-----------------------------+-----------------------------+---------+
++-----------------------------+-----------------------------+---------+--------+
+|                         Time|                   timeseries|    value|dataType|
++-----------------------------+-----------------------------+---------+--------+
+|2017-11-07T23:59:00.000+08:00|     root.ln.wf01.wt01.status|    false| BOOLEAN|
+|2017-11-07T23:59:00.000+08:00|root.ln.wf01.wt01.temperature|21.067368|  DOUBLE|
++-----------------------------+-----------------------------+---------+--------+
 Total line number = 2
 It costs 0.002s
 ```
 
+### Fuzzy query
 
-### Automated Fill
+Fuzzy query is divided into Like statement and Regexp statement, both of which can support fuzzy matching of TEXT type data.
 
-In the actual use of IoTDB, when doing the query operation of timeseries, situations where the value is null at some time points may appear, which will obstruct the further analysis by users. In order to better reflect the degree of data change, users expect missing values to be automatically filled. Therefore, the IoTDB system introduces the function of Automated Fill.
+Like statement:
 
-Automated fill function refers to filling empty values according to the user's specified method and effective time range when performing timeseries queries for single or multiple columns. If the queried point's value is not null, the fill function will not work.
-
-> Note: In the current version, IoTDB provides users with two methods: Previous and Linear. The previous method fills blanks with previous value. The linear method fills blanks through linear fitting. And the fill function can only be used when performing point-in-time queries.
-
-#### Fill Function
-
-* Previous Function
-
-When the value of the queried timestamp is null, the value of the previous timestamp is used to fill the blank. The formalized previous method is as follows (see Section 7.1.3.6 for detailed syntax):
+Example 1: Query data containing `'cc'` in `value` under `root.sg.d1`. 
+The percentage (`%`) wildcard matches any string of zero or more characters.
 
 ```
-select <path> from <prefixPath> where time = <T> fill(<data_type>[previous, <before_range>], …)
+IoTDB> select * from root.sg.d1 where value like '%cc%'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
+Total line number = 2
+It costs 0.002s
 ```
 
-Detailed descriptions of all parameters are given in Table 3-4.
-
-<center>**Table 3-4 Previous fill paramter list**
-
-|Parameter name (case insensitive)|Interpretation|
-|:---|:---|
-|path, prefixPath|query path; mandatory field|
-|T|query timestamp (only one can be specified); mandatory field|
-|data\_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range|represents the valid time range of the previous method. The previous method works when there are values in the [T-before\_range, T] range. When before\_range is not specified, before\_range takes the default value default\_fill\_interval; -1 represents infinit; optional field|
-</center>
-
-Here we give an example of filling null values using the previous method. The SQL statement is as follows:
+Example 2: Query data that consists of 3 characters and the second character is `'b'` in `value` under `root.sg.d1`.
+The underscore (`_`) wildcard matches any single character.
 
 ```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
-```
-which means:
-
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) for fill and display.
-
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                          21.93|
-+-----------------------------+-------------------------------+
+IoTDB> select * from root.sg.device where value like '_b_'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:02.000+08:00|             abc| 
++-----------------------------+----------------+
 Total line number = 1
-It costs 0.016s
+It costs 0.002s
 ```
 
-It is worth noting that if there is no value in the specified valid time range, the system will not fill the null value, as shown below:
+Regexp statement：
+
+The filter conditions that need to be passed in are regular expressions in the Java standard library style
+
+Example 1: Query a string composed of 26 English characters for the value under root.sg.d1
 
 ```
-IoTDB> select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1s]) 
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                           null|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.004s
+IoTDB> select * from root.sg.d1 where value regexp '^[A-Za-z]+$'
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
+Total line number = 2
+It costs 0.002s
 ```
 
-* Linear Method
-
-When the value of the queried timestamp is null, the value of the previous and the next timestamp is used to fill the blank. The formalized linear method is as follows:
+Example 2: Query root.sg.d1 where the value value is a string composed of 26 lowercase English characters and the time is greater than 100
 
 ```
-select <path> from <prefixPath> where time = <T> fill(<data_type>[linear, <before_range>, <after_range>]…)
-```
-Detailed descriptions of all parameters are given in Table 3-5.
-
-<center>**Table 3-5 Linear fill paramter list**
-
-|Parameter name (case insensitive)|Interpretation|
-|:---|:---|
-|path, prefixPath|query path; mandatory field|
-|T|query timestamp (only one can be specified); mandatory field|
-|data_type|the type of data used by the fill method. Optional values are int32, int64, float, double, boolean, text; optional field|
-|before\_range, after\_range|represents the valid time range of the linear method. The previous method works when there are values in the [T-before\_range, T+after\_range] range. When before\_range and after\_range are not explicitly specified, default\_fill\_interval is used. -1 represents infinity; optional field|
-</center>
-
-**Note** if the timeseries has a valid value at query timestamp T, this value will be used as the linear fill value.
-Otherwise, if there is no valid fill value in either range [T-before_range，T] or [T, T + after_range], linear fill method will return null.
-
-Here we give an example of filling null values using the linear method. The SQL statement is as follows:
-
-```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float [linear, 1m, 1m])
-```
-which means:
-
-Because the timeseries root.sgcc.wf03.wt01.temperature is null at 2017-11-01T16:37:50.000, the system uses the previous timestamp 2017-11-01T16:37:00.000 (and the timestamp is in the [2017-11-01T16:36:50.000, 2017-11-01T16:37:50.000] time range) and its value 21.927326, the next timestamp 2017-11-01T16:38:00.000 (and the timestamp is in the [2017-11-01T16:37:50.000, 2017-11-01T16:38:50.000] time range) and its value 25.311783 to perform linear fitting calculation: 21.927326 + (25.311783-21.927326)/60s * 50s = 24.747707
-
-On the [sample data](https://github.com/thulab/iotdb/files/4438687/OtherMaterial-Sample.Data.txt), the execution result of this statement is shown below:
-
-```
-+-----------------------------+-------------------------------+
-|                         Time|root.sgcc.wf03.wt01.temperature|
-+-----------------------------+-------------------------------+
-|2017-11-01T16:37:50.000+08:00|                      24.746666|
-+-----------------------------+-------------------------------+
-Total line number = 1
-It costs 0.017s
+IoTDB> select * from root.sg.d1 where value regexp '^[a-z]+$' and time > 100
++-----------------------------+----------------+
+|                         Time|root.sg.d1.value|
++-----------------------------+----------------+
+|2017-11-01T00:00:00.000+08:00|        aabbccdd| 
+|2017-11-01T00:00:01.000+08:00|              cc|
++-----------------------------+----------------+
+Total line number = 2
+It costs 0.002s
 ```
 
-#### Correspondence between Data Type and Fill Method
+Examples of common regular matching:
 
-Data types and the supported fill methods are shown in Table 3-6.
+```
+All characters with a length of 3-20: ^.{3,20}$
+Uppercase english characters: ^[A-Z]+$
+Numbers and English characters: ^[A-Za-z0-9]+$
+Beginning with a: ^a.*
+```
 
-<center>**Table 3-6 Data types and the supported fill methods**
+For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 
-|Data Type|Supported Fill Methods|
-|:---|:---|
-|boolean|previous|
-|int32|previous, linear|
-|int64|previous, linear|
-|float|previous, linear|
-|double|previous, linear|
-|text|previous|
-</center>
+### Alias
 
-When the fill method is not specified, each data type bears its own default fill methods and parameters. The corresponding relationship is shown in Table 3-7.
+Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
 
-<center>**Table 3-7 Default fill methods and parameters for various data types**
+For example：
 
-|Data Type|Default Fill Methods and Parameters|
-|:---|:---|
-|boolean|previous, 600000|
-|int32|previous, 600000|
-|int64|previous, 600000|
-|float|previous, 600000|
-|double|previous, 600000|
-|text|previous, 600000|
-</center>
+```sql
+select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```
 
-> Note: In version 0.7.0, at least one fill method should be specified in the Fill statement.
+The result set is：
+
+| Time | temperature | speed |
+| ---- | ----------- | ----- |
+| ...  | ...         | ...   |
 
 ### Row and Column Control over Query Results
 
 IoTDB provides [LIMIT/SLIMIT](../Appendix/SQL-Reference.md) clause and [OFFSET/SOFFSET](../Appendix/SQL-Reference.md) 
 clause in order to make users have more control over query results. 
 The use of LIMIT and SLIMIT clauses allows users to control the number of rows and columns of query results, 
-and the use of OFFSET and SOFSET clauses allows users to set the starting position of the results for display.
+and the use of OFFSET and SOFFSET clauses allows users to set the starting position of the results for display.
 
 Note that the LIMIT and OFFSET are not supported in group by query.
 
@@ -1083,7 +1663,7 @@ By using LIMIT and OFFSET clauses, users control the query results in a row-rela
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 limit 10
 ```
 which means:
@@ -1115,7 +1695,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select status, temperature from root.ln.wf01.wt01 limit 5 offset 3
 ```
 which means:
@@ -1142,7 +1722,7 @@ It costs 0.342s
 
 The SQL statement is:
 
-```
+```sql
 select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time< 2017-11-01T00:12:00.000 limit 2 offset 3
 ```
 which means:
@@ -1169,7 +1749,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select count(status), max_value(temperature) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) limit 5 offset 3
 ```
 which means:
@@ -1193,14 +1773,14 @@ It costs 0.016s
 
 It is worth noting that because the current FILL clause can only fill in the missing value of timeseries at a certain time point, that is to say, the execution result of FILL clause is exactly one line, so LIMIT and OFFSET are not expected to be used in combination with FILL clause, otherwise errors will be prompted. For example, executing the following SQL statement:
 
-```
-select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(float[previous, 1m]) limit 10
+```sql
+select temperature from root.sgcc.wf03.wt01 where time = 2017-11-01T16:37:50.000 fill(previous, 1m) limit 10
 ```
 
 The SQL statement will not be executed and the corresponding error prompt is given as follows:
 
 ```
-Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, SLIMIT, SOFFSET, GROUP, DISABLE, ALIGN}
+Msg: 401: line 1:107 mismatched input 'limit' expecting {<EOF>, ';'}
 ```
 
 #### Column Control over Query Results
@@ -1211,7 +1791,7 @@ By using SLIMIT and SOFFSET clauses, users can control the query results in a co
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1
 ```
 which means:
@@ -1239,7 +1819,7 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 1
 ```
 which means:
@@ -1267,7 +1847,7 @@ It costs 0.003s
 
 The SQL statement is:
 
-```
+```sql
 select max_value(*) from root.ln.wf01.wt01 group by ([2017-11-01T00:00:00, 2017-11-07T23:00:00),1d) slimit 1 soffset 1
 ```
 
@@ -1293,8 +1873,8 @@ It costs 0.000s
 
 The SQL statement is:
 
-```
-select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(float[previous, 1m]) slimit 1 soffset 1
+```sql
+select * from root.sgcc.wf03.wt01 where time = 2017-11-01T16:35:00 fill(previous, 1m) slimit 1 soffset 1
 ```
 which means:
 
@@ -1318,7 +1898,7 @@ In addition to row or column control over query results, IoTDB allows users to c
 
 The SQL statement is:
 
-```
+```sql
 select * from root.ln.wf01.wt01 limit 10 offset 100 slimit 2 soffset 0
 ```
 which means:
@@ -1346,46 +1926,110 @@ Total line number = 10
 It costs 0.009s
 ```
 
-#### Null Value Control over Query Results
+####  Error Handling
+
+If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
+```
+
+The result is shown below:
+
+```
++-----------------------------+------------------------+-----------------------------+
+|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++-----------------------------+------------------------+-----------------------------+
+|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
+|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
+|2017-11-01T00:08:00.000+08:00|                   false|                        22.58|
+|2017-11-01T00:09:00.000+08:00|                   false|                        20.98|
+|2017-11-01T00:10:00.000+08:00|                    true|                        25.52|
+|2017-11-01T00:11:00.000+08:00|                   false|                        22.91|
++-----------------------------+------------------------+-----------------------------+
+Total line number = 6
+It costs 0.005s
+```
+
+If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
+```
+
+If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, ';'}
+```
+
+If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
+
+```sql
+select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
+```
+
+The result is shown below:
+
+```
++----+------------------------+-----------------------------+
+|Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
++----+------------------------+-----------------------------+
++----+------------------------+-----------------------------+
+Empty set.
+It costs 0.005s
+```
+
+If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
+
+```sql
+select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
+```
+
+The SQL statement will not be executed and the corresponding error prompt is given as follows:
+
+```
+Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
+```
+
+### Null Value Control over Query Results
 
 * IoTDB will join all the sensor value by its time, and if some sensors don't have values in that timestamp, we will fill it with null. In some analysis scenarios, we only need the row if all the columns of it have value.
 
-```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ANY
 ```
 
 * In group by query, we will fill null for any group by interval if the columns don't have values in that group by interval. However, if all columns in that group by interval are null, maybe users don't need that RowRecord, so we can use `WITHOUT NULL ALL` to filter that row.
 
-```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
-```
-
-### Use Alias
-
-Since the unique data model of IoTDB, lots of additional information like device will be carried before each sensor. Sometimes, we want to query just one specific device, then these prefix information show frequently will be redundant in this situation, influencing the analysis of result set. At this time, we can use `AS` function provided by IoTDB, assign an alias to time series selected in query.  
-
-For example：
-
-```
-select s1 as temperature, s2 as speed from root.ln.wf01.wt01;
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 WITHOUT NULL ALL
 ```
 
-The result set is：
-
-| Time | temperature | speed |
-| ---- | ----------- | ----- |
-| ...  | ...         | ...   |
-
-#### Other ResultSet Format
+### Other ResultSet Formats
 
 In addition, IoTDB supports two other results set format: 'align by device' and 'disable align'.
+
+#### align by device
 
 The 'align by device' indicates that the deviceId is considered as a column. Therefore, there are totally limited columns in the dataset. 
 
 The SQL statement is:
 
-```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 align by device
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 align by device
 ```
 
 The result shows below:
@@ -1405,15 +2049,16 @@ Total line number = 6
 It costs 0.012s
 ```
 
-
 For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
+
+#### disable align
 
 The 'disable align' indicates that there are 2 columns for each time series in the result set. Disable Align Clause can only be used at the end of a query statement. Disable Align Clause cannot be used with Aggregation, Fill Statements, Group By or Group By Device Statements, but can with Limit Statements. The display principle of the result table is that only when the column (or row) has existing data will the column (or row) be shown, with nonexistent cells being empty.
 
 The SQL statement is:
 
-```
-select * from root.ln.* where time <= 2017-11-01T00:01:00 disable align
+```sql
+select * from root.ln.** where time <= 2017-11-01T00:01:00 disable align
 ```
 
 The result shows below:
@@ -1434,79 +2079,6 @@ It costs 0.018s
 
 For more syntax description, please read [SQL Reference](../Appendix/SQL-Reference.md).
 
-####  Error Handling
-
-If the parameter N/SN of LIMIT/SLIMIT exceeds the size of the result set, IoTDB returns all the results as expected. For example, the query result of the original SQL statement consists of six rows, and we select the first 100 rows through the LIMIT clause:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 100
-```
-The result is shown below:
-
-```
-+-----------------------------+------------------------+-----------------------------+
-|                         Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------------+------------------------+-----------------------------+
-|2017-11-01T00:06:00.000+08:00|                   false|                        20.71|
-|2017-11-01T00:07:00.000+08:00|                   false|                        21.45|
-|2017-11-01T00:08:00.000+08:00|                   false|                        22.58|
-|2017-11-01T00:09:00.000+08:00|                   false|                        20.98|
-|2017-11-01T00:10:00.000+08:00|                    true|                        25.52|
-|2017-11-01T00:11:00.000+08:00|                   false|                        22.91|
-+-----------------------------+------------------------+-----------------------------+
-Total line number = 6
-It costs 0.005s
-```
-
-If the parameter N/SN of LIMIT/SLIMIT clause exceeds the allowable maximum value (N/SN is of type int32), the system prompts errors. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 1234567890123456789
-```
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 303: check metadata error: Out of range. LIMIT <N>: N should be Int32.
-```
-
-If the parameter N/SN of LIMIT/SLIMIT clause is not a positive intege, the system prompts errors. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 13.1
-```
-
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 401: line 1:129 mismatched input '.' expecting {<EOF>, SLIMIT, OFFSET, SOFFSET, GROUP, DISABLE, ALIGN}
-```
-
-If the parameter OFFSET of LIMIT clause exceeds the size of the result set, IoTDB will return an empty result set. For example, executing the following SQL statement:
-
-```
-select status,temperature from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 limit 2 offset 6
-```
-The result is shown below:
-```
-+----+------------------------+-----------------------------+
-|Time|root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+----+------------------------+-----------------------------+
-+----+------------------------+-----------------------------+
-Empty set.
-It costs 0.005s
-```
-
-If the parameter SOFFSET of SLIMIT clause is not smaller than the number of available timeseries, the system prompts errors. For example, executing the following SQL statement:
-
-```
-select * from root.ln.wf01.wt01 where time > 2017-11-01T00:05:00.000 and time < 2017-11-01T00:12:00.000 slimit 1 soffset 2
-```
-The SQL statement will not be executed and the corresponding error prompt is given as follows:
-
-```
-Msg: 411: Meet error in query process: The value of SOFFSET (2) is equal to or exceeds the number of sequences (2) that can actually be returned.
-```
-
 ## DELETE
 
 Users can delete data that meet the deletion condition in the specified timeseries by using the [DELETE statement](../Appendix/SQL-Reference.md). When deleting data, users can select one or more timeseries paths, prefix paths, or paths with star  to delete data within a certain time interval.
@@ -1518,18 +2090,18 @@ Taking ln Group as an example, there exists such a usage scenario:
 
 The wf02 plant's wt02 device has many segments of errors in its power supply status before 2017-11-01 16:26:00, and the data cannot be analyzed correctly. The erroneous data affected the correlation analysis with other devices. At this point, the data before this time point needs to be deleted. The SQL statement for this operation is
 
-```
+```sql
 delete from root.ln.wf02.wt02.status where time<=2017-11-01T16:26:00;
 ```
 
 In case we hope to merely delete the data before 2017-11-01 16:26:00 in the year of 2017, The SQL statement is:
-```
+```sql
 delete from root.ln.wf02.wt02.status where time>=2017-01-01T00:00:00 and time<=2017-11-01T16:26:00;
 ```
 
 IoTDB supports to delete a range of timeseries points. Users can write SQL expressions as follows to specify the delete interval:
 
-```
+```sql
 delete from root.ln.wf02.wt02.status where time < 10
 delete from root.ln.wf02.wt02.status where time <= 10
 delete from root.ln.wf02.wt02.status where time < 20 and time > 10
@@ -1549,7 +2121,7 @@ expressions like : time > XXX, time <= XXX, or two atomic expressions connected 
 
 If no "where" clause specified in a delete statement, all the data in a timeseries will be deleted.
 
-```
+```sql
 delete from root.ln.wf02.status
 ```
 
@@ -1557,24 +2129,24 @@ delete from root.ln.wf02.status
 ### Delete Multiple Timeseries
 If both the power supply status and hardware version of the ln group wf02 plant wt02 device before 2017-11-01 16:26:00 need to be deleted, [the prefix path with broader meaning or the path with star](../Data-Concept/Data-Model-and-Terminology.md) can be used to delete the data. The SQL statement for this operation is:
 
-```
+```sql
 delete from root.ln.wf02.wt02 where time <= 2017-11-01T16:26:00;
 ```
 or
 
-```
+```sql
 delete from root.ln.wf02.wt02.* where time <= 2017-11-01T16:26:00;
 ```
 It should be noted that when the deleted path does not exist, IoTDB will not prompt that the path does not exist, but that the execution is successful, because SQL is a declarative programming method. Unless it is a syntax error, insufficient permissions and so on, it is not considered an error, as shown below:
 ```
 IoTDB> delete from root.ln.wf03.wt02.status where time < now()
-Msg: The statement is executed successfully.
+Msg: TimeSeries does not exist and its data cannot be deleted
 ```
 
 ### Delete Time Partition (experimental)
 You may delete all data in a time partition of a storage group using the following grammar:
 
-```
+```sql
 DELETE PARTITION root.ln 0,1,2
 ```
 

@@ -85,6 +85,18 @@ public class UtilsTest {
   }
 
   @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl3() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//6667?rpc_compress=1", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
+  public void testParseWrongUrl4() throws IoTDBURLException {
+    Properties properties = new Properties();
+    Utils.parseUrl("jdbc:iotdb//6667?rpc_compress=true&aaa=bbb", properties);
+  }
+
+  @Test(expected = IoTDBURLException.class)
   public void testParseWrongPort() throws IoTDBURLException {
     String userName = "test";
     String userPwd = "test";

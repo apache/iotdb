@@ -25,6 +25,7 @@ import org.apache.iotdb.cluster.exception.TruncateCommittedEntryException;
 import org.apache.iotdb.cluster.log.Log;
 import org.apache.iotdb.cluster.log.Snapshot;
 import org.apache.iotdb.cluster.log.logtypes.EmptyContentLog;
+import org.apache.iotdb.cluster.log.manage.serializable.LogManagerMeta;
 import org.apache.iotdb.db.utils.TestOnly;
 
 import org.slf4j.Logger;
@@ -50,6 +51,17 @@ public class CommittedEntryManager {
   CommittedEntryManager(int maxNumOfLogInMem) {
     entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
     entries.add(new EmptyContentLog(-1, -1));
+    entryTotalMemSize = 0;
+  }
+
+  CommittedEntryManager(int maxNumOfLogInMem, LogManagerMeta meta) {
+    entries = Collections.synchronizedList(new ArrayList<>(maxNumOfLogInMem));
+    entries.add(
+        new EmptyContentLog(
+            meta.getMaxHaveAppliedCommitIndex() == -1
+                ? -1
+                : meta.getMaxHaveAppliedCommitIndex() - 1,
+            meta.getLastLogTerm()));
     entryTotalMemSize = 0;
   }
 

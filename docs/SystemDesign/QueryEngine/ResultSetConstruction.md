@@ -91,7 +91,7 @@ The result set table header construction logic for the Latest data query is main
 
 - org.apache.iotdb.db.service.StaticResps.LAST_RESP
 
-The latest data query calculates the result with the largest timestamp of the timeseries to be queried and displays it in three columns: time, timeseries and the corresponding value.
+The latest data query calculates the result with the largest timestamp of the timeseries to be queried and displays it in four columns: time, timeseries, data type and the corresponding value.
 
 Next, we will give an example：
 
@@ -99,10 +99,10 @@ Assuming there are two timeseries now: `root.sg.d1.s1`, `root.sg.d1.s2`， then 
 
 SQL：`SELECT last s1, s2 FROM root.sg.d1;`
 
-| Time | timeseries    | value |
-| ---- | ------------- | ----- |
-| ...  | root.sg.d1.s1 | ...   |
-| ...  | root.sg.d1.s2 | ...   |
+| Time | timeseries    | value | dataType|
+| ---- | ------------- | ----- |----- |
+| ...  | root.sg.d1.s1 | ...   |...   |
+| ...  | root.sg.d1.s2 | ...   |...   |
 
 ## Generate non repeated result set
 

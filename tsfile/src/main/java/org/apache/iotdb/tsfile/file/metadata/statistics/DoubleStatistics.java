@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class DoubleStatistics extends Statistics<Double> {
 
@@ -161,7 +162,7 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Double> stats) {
     DoubleStatistics doubleStats = (DoubleStatistics) stats;
     if (this.isEmpty) {
       initializeStats(
@@ -260,6 +261,25 @@ public class DoubleStatistics extends Statistics<Double> {
     this.firstValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readDouble(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readDouble(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    double e = 0.00001;
+    DoubleStatistics that = (DoubleStatistics) o;
+    return Math.abs(that.minValue - minValue) < e
+        && Math.abs(that.maxValue - maxValue) < e
+        && Math.abs(that.firstValue - firstValue) < e
+        && Math.abs(that.lastValue - lastValue) < e
+        && Math.abs(that.sumValue - sumValue) < e;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), minValue, maxValue, firstValue, lastValue, sumValue);
   }
 
   @Override

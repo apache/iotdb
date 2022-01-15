@@ -22,10 +22,11 @@ package org.apache.iotdb.db.query.aggregation;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.db.query.reader.series.IReaderByTimestamp;
+import org.apache.iotdb.db.utils.ValueIterator;
 import org.apache.iotdb.tsfile.exception.write.UnSupportedDataTypeException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
-import org.apache.iotdb.tsfile.read.common.BatchData;
+import org.apache.iotdb.tsfile.read.common.IBatchDataIterator;
 import org.apache.iotdb.tsfile.utils.Binary;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
 
@@ -70,22 +71,24 @@ public abstract class AggregateResult {
       throws QueryProcessException;
 
   /**
-   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page.
+   * This method is used in global aggregation query.
    *
-   * @param dataInThisPage the data in Page
+   * @param batchIterator the data in Page
    */
-  public abstract void updateResultFromPageData(BatchData dataInThisPage)
+  public abstract void updateResultFromPageData(IBatchDataIterator batchIterator)
       throws IOException, QueryProcessException;
 
   /**
-   * Aggregate results cannot be calculated using Statistics directly, using the data in each page
+   * Aggregate results cannot be calculated using Statistics directly, using the data in each page.
+   * This method is used in GROUP BY aggregation query.
    *
-   * @param dataInThisPage the data in Page
+   * @param batchIterator the data in Page
    * @param minBound calculate points whose time >= bound
    * @param maxBound calculate points whose time < bound
    */
   public abstract void updateResultFromPageData(
-      BatchData dataInThisPage, long minBound, long maxBound) throws IOException;
+      IBatchDataIterator batchIterator, long minBound, long maxBound) throws IOException;
 
   /**
    * This method calculates the aggregation using common timestamps of the cross series filter.
@@ -96,7 +99,8 @@ public abstract class AggregateResult {
       long[] timestamps, int length, IReaderByTimestamp dataReader) throws IOException;
 
   /** This method calculates the aggregation using values that have been calculated */
-  public abstract void updateResultUsingValues(long[] timestamps, int length, Object[] values);
+  public abstract void updateResultUsingValues(
+      long[] timestamps, int length, ValueIterator valueIterator);
 
   /**
    * Judge if aggregation results have been calculated. In other words, if the aggregated result
@@ -311,6 +315,10 @@ public abstract class AggregateResult {
     return aggregationType;
   }
 
+  /**
+   * Whether the AggregationResult accepts data in time ascending order, if it returns false, the
+   * data should be passed in time descending order.
+   */
   public boolean isAscending() {
     return true;
   }

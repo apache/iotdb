@@ -48,7 +48,8 @@ public abstract class UDTFValueTrend implements UDTF {
             0, TSDataType.INT32, TSDataType.INT64, TSDataType.FLOAT, TSDataType.DOUBLE);
   }
 
-  protected void updatePreviousValue(Row row) throws UDFInputSeriesDataTypeNotValidException {
+  protected void updatePreviousValue(Row row)
+      throws UDFInputSeriesDataTypeNotValidException, IOException {
     switch (dataType) {
       case INT32:
         previousInt = row.getInt(0);

@@ -24,8 +24,8 @@ import org.apache.iotdb.rpc.RedirectException;
 import org.apache.iotdb.rpc.RpcTransportFactory;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.rpc.TConfigurationConst;
 import org.apache.iotdb.service.rpc.thrift.EndPoint;
+import org.apache.iotdb.service.rpc.thrift.TSAppendSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSCloseSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateAlignedTimeseriesReq;
 import org.apache.iotdb.service.rpc.thrift.TSCreateMultiTimeseriesReq;
@@ -45,15 +45,19 @@ import org.apache.iotdb.service.rpc.thrift.TSInsertTabletsReq;
 import org.apache.iotdb.service.rpc.thrift.TSLastDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionReq;
 import org.apache.iotdb.service.rpc.thrift.TSOpenSessionResp;
+import org.apache.iotdb.service.rpc.thrift.TSPruneSchemaTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateReq;
+import org.apache.iotdb.service.rpc.thrift.TSQueryTemplateResp;
 import org.apache.iotdb.service.rpc.thrift.TSRawDataQueryReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetSchemaTemplateReq;
 import org.apache.iotdb.service.rpc.thrift.TSSetTimeZoneReq;
 import org.apache.iotdb.service.rpc.thrift.TSStatus;
+import org.apache.iotdb.service.rpc.thrift.TSUnsetSchemaTemplateReq;
+import org.apache.iotdb.session.util.SessionUtils;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
 import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.transport.TSocket;
 import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
@@ -105,11 +109,7 @@ public class SessionConnection {
       transport =
           RpcTransportFactory.INSTANCE.getTransport(
               // as there is a try-catch already, we do not need to use TSocket.wrap
-              new TSocket(
-                  TConfigurationConst.defaultTConfiguration,
-                  endPoint.getIp(),
-                  endPoint.getPort(),
-                  session.connectionTimeoutInMs));
+              endPoint.getIp(), endPoint.getPort(), session.connectionTimeoutInMs);
       transport.open();
     } catch (TTransportException e) {
       throw new IoTDBConnectionException(e);
@@ -126,6 +126,7 @@ public class SessionConnection {
     openReq.setUsername(session.username);
     openReq.setPassword(session.password);
     openReq.setZoneId(zoneId.toString());
+    openReq.putToConfiguration("version", session.version.toString());
 
     try {
       TSOpenSessionResp openResp = client.openSession(openReq);
@@ -183,6 +184,10 @@ public class SessionConnection {
         transport.close();
       }
     }
+  }
+
+  protected TSIService.Iface getClient() {
+    return client;
   }
 
   protected void setTimeZone(String zoneId)
@@ -502,7 +507,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertRecords(request), request.getDeviceIds());
+          client.insertRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -522,7 +527,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertStringRecords(request), request.getDeviceIds());
+          client.insertStringRecords(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -580,7 +585,7 @@ public class SessionConnection {
     request.setSessionId(sessionId);
     try {
       RpcUtils.verifySuccessWithRedirectionForMultiDevices(
-          client.insertTablets(request), request.getDeviceIds());
+          client.insertTablets(request), request.getPrefixPaths());
     } catch (TException e) {
       if (reconnect()) {
         try {
@@ -799,6 +804,66 @@ public class SessionConnection {
     }
   }
 
+  protected void appendSchemaTemplate(TSAppendSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.appendSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.appendSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void pruneSchemaTemplate(TSPruneSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.pruneSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.pruneSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req)
+      throws StatementExecutionException, IoTDBConnectionException {
+    TSQueryTemplateResp execResp;
+    try {
+      execResp = client.querySchemaTemplate(req);
+      RpcUtils.verifySuccess(execResp.getStatus());
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          execResp = client.querySchemaTemplate(req);
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+
+    RpcUtils.verifySuccess(execResp.getStatus());
+    return execResp;
+  }
+
   protected void setSchemaTemplate(TSSetSchemaTemplateReq request)
       throws IoTDBConnectionException, StatementExecutionException {
     request.setSessionId(sessionId);
@@ -809,6 +874,25 @@ public class SessionConnection {
         try {
           request.setSessionId(sessionId);
           RpcUtils.verifySuccess(client.setSchemaTemplate(request));
+        } catch (TException tException) {
+          throw new IoTDBConnectionException(tException);
+        }
+      } else {
+        throw new IoTDBConnectionException(MSG_RECONNECTION_FAIL);
+      }
+    }
+  }
+
+  protected void unsetSchemaTemplate(TSUnsetSchemaTemplateReq request)
+      throws IoTDBConnectionException, StatementExecutionException {
+    request.setSessionId(sessionId);
+    try {
+      RpcUtils.verifySuccess(client.unsetSchemaTemplate(request));
+    } catch (TException e) {
+      if (reconnect()) {
+        try {
+          request.setSessionId(sessionId);
+          RpcUtils.verifySuccess(client.unsetSchemaTemplate(request));
         } catch (TException tException) {
           throw new IoTDBConnectionException(tException);
         }

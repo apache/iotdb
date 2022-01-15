@@ -56,13 +56,13 @@ public class JDBCExample {
       statement.executeBatch();
       statement.clearBatch();
 
-      ResultSet resultSet = statement.executeQuery("select * from root where time <= 10");
+      ResultSet resultSet = statement.executeQuery("select ** from root where time <= 10");
       outputResult(resultSet);
-      resultSet = statement.executeQuery("select count(*) from root");
+      resultSet = statement.executeQuery("select count(**) from root");
       outputResult(resultSet);
       resultSet =
           statement.executeQuery(
-              "select count(*) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
+              "select count(**) from root where time >= 1 and time <= 100 group by ([0, 100), 20ms, 20ms)");
       outputResult(resultSet);
     } catch (IoTDBSQLException e) {
       System.out.println(e.getMessage());

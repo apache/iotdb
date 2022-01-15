@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class BooleanStatistics extends Statistics<Boolean> {
 
@@ -158,7 +159,7 @@ public class BooleanStatistics extends Statistics<Boolean> {
   }
 
   @Override
-  protected void mergeStatisticsValue(Statistics stats) {
+  protected void mergeStatisticsValue(Statistics<Boolean> stats) {
     BooleanStatistics boolStats = (BooleanStatistics) stats;
     if (isEmpty) {
       initializeStats(boolStats.getFirstValue(), boolStats.getLastValue(), boolStats.sumValue);
@@ -219,6 +220,22 @@ public class BooleanStatistics extends Statistics<Boolean> {
     this.firstValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.lastValue = ReadWriteIOUtils.readBool(byteBuffer);
     this.sumValue = ReadWriteIOUtils.readLong(byteBuffer);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    if (!super.equals(o)) return false;
+    BooleanStatistics that = (BooleanStatistics) o;
+    return firstValue == that.firstValue
+        && lastValue == that.lastValue
+        && sumValue == that.sumValue;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(super.hashCode(), firstValue, lastValue, sumValue);
   }
 
   @Override

@@ -41,12 +41,16 @@ for /f tokens^=2-5^ delims^=.-_+^" %%j in ('java -fullversion 2^>^&1') do (
 
 set JAVA_VERSION=%MAJOR_VERSION%
 
-IF NOT %JAVA_VERSION% == 8 (
-	IF NOT %JAVA_VERSION% == 11 (
-		echo IoTDB only supports jdk8 or jdk11, please check your java version.
-		goto finally
-	)
+@REM we do not check jdk that version less than 1.8 because they are too stale...
+IF "%JAVA_VERSION%" == "6" (
+	echo IoTDB only supports jdk >= 8, please check your java version.
+	goto finally
 )
+IF "%JAVA_VERSION%" == "7" (
+	echo IoTDB only supports jdk >= 8, please check your java version.
+	goto finally
+)
+
 
 if "%OS%" == "Windows_NT" setlocal
 
@@ -87,7 +91,7 @@ IF EXIST "%IOTDB_CONF%\iotdb-env.bat" (
 
 @setlocal ENABLEDELAYEDEXPANSION ENABLEEXTENSIONS
 set CONF_PARAMS=-s
-if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterMain
+if NOT DEFINED MAIN_CLASS set MAIN_CLASS=org.apache.iotdb.cluster.ClusterIoTDB
 if NOT DEFINED JAVA_HOME goto :err
 
 @REM -----------------------------------------------------------------------------
@@ -101,11 +105,10 @@ set JAVA_OPTS=-ea^
 
 @REM ***** CLASSPATH library setting *****
 @REM Ensure that any user defined CLASSPATH variables are not used on startup
-set CLASSPATH="%IOTDB_HOME%\lib"
+set CLASSPATH="%IOTDB_HOME%\lib\*"
 
-@REM For each jar in the IOTDB_HOME lib directory call append to build the CLASSPATH variable.
-set CLASSPATH=%CLASSPATH%;"%IOTDB_HOME%\lib\*"
-set CLASSPATH=%CLASSPATH%;iotdb.ClusterMain
+@REM this special suffix 'iotdb.ClusterIoTDB' is mandatory as stop-node.bat uses it to filter the process id.
+set CLASSPATH=%CLASSPATH%;iotdb.ClusterIoTDB
 goto okClasspath
 
 :append

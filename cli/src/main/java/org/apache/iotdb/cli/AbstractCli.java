@@ -19,8 +19,10 @@
 package org.apache.iotdb.cli;
 
 import org.apache.iotdb.exception.ArgsErrorException;
+import org.apache.iotdb.jdbc.AbstractIoTDBJDBCResultSet;
 import org.apache.iotdb.jdbc.IoTDBConnection;
 import org.apache.iotdb.jdbc.IoTDBJDBCResultSet;
+import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.RpcUtils;
 import org.apache.iotdb.service.rpc.thrift.ServerProperties;
 import org.apache.iotdb.tool.ImportCsv;
@@ -288,6 +290,9 @@ public abstract class AbstractCli {
 
       execute = executeCommand.toString();
       hasExecuteSQL = true;
+      // When execute sql in CLI with -e mode, we should print all results by setting continuePrint
+      // is true.
+      continuePrint = true;
       args = Arrays.copyOfRange(args, 0, index);
       return args;
     }
@@ -475,8 +480,17 @@ public abstract class AbstractCli {
       return;
     }
     println(cmd.split(" ")[1]);
-    ImportCsv.importCsvFromFile(
-        host, port, username, password, cmd.split(" ")[1], connection.getTimeZone());
+    try {
+      ImportCsv.importFromTargetPath(
+          host,
+          Integer.valueOf(port),
+          username,
+          password,
+          cmd.split(" ")[1],
+          connection.getTimeZone());
+    } catch (IoTDBConnectionException e) {
+      e.printStackTrace();
+    }
   }
 
   private static void executeQuery(IoTDBConnection connection, String cmd) {
@@ -509,7 +523,7 @@ public abstract class AbstractCli {
                     maxPrintRowCount));
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             try {
-              if (br.readLine().equals("")) {
+              if ("".equals(br.readLine())) {
                 maxSizeList = new ArrayList<>(columnLength);
                 lists =
                     cacheResult(resultSet, maxSizeList, columnLength, resultSetMetaData, zoneId);
@@ -520,6 +534,12 @@ public abstract class AbstractCli {
             } catch (IOException e) {
               e.printStackTrace();
             }
+          }
+          // output tracing activity
+          if (((AbstractIoTDBJDBCResultSet) resultSet).isSetTracingInfo()) {
+            maxSizeList = new ArrayList<>(2);
+            lists = cacheTracingInfo(resultSet, maxSizeList);
+            outputTracingInfo(lists, maxSizeList);
           }
         }
       } else {
@@ -628,6 +648,54 @@ public abstract class AbstractCli {
     return lists;
   }
 
+  private static List<List<String>> cacheTracingInfo(ResultSet resultSet, List<Integer> maxSizeList)
+      throws Exception {
+    List<List<String>> lists = new ArrayList<>(2);
+    lists.add(0, new ArrayList<>());
+    lists.add(1, new ArrayList<>());
+
+    String ACTIVITY_STR = "Activity";
+    String ELAPSED_TIME_STR = "Elapsed Time";
+    lists.get(0).add(ACTIVITY_STR);
+    lists.get(1).add(ELAPSED_TIME_STR);
+    maxSizeList.add(0, ACTIVITY_STR.length());
+    maxSizeList.add(1, ELAPSED_TIME_STR.length());
+
+    List<String> activityList = ((AbstractIoTDBJDBCResultSet) resultSet).getActivityList();
+    List<Long> elapsedTimeList = ((AbstractIoTDBJDBCResultSet) resultSet).getElapsedTimeList();
+    String[] statisticsInfoList = {
+      "seriesPathNum", "seqFileNum", "unSeqFileNum", "seqChunkInfo", "unSeqChunkInfo", "pageNumInfo"
+    };
+
+    for (int i = 0; i < activityList.size(); i++) {
+
+      if (i == activityList.size() - 1) {
+        // cache Statistics
+        for (String infoName : statisticsInfoList) {
+          String info = ((AbstractIoTDBJDBCResultSet) resultSet).getStatisticsInfoByName(infoName);
+          lists.get(0).add(info);
+          lists.get(1).add("");
+          if (info.length() > maxSizeList.get(0)) {
+            maxSizeList.set(0, info.length());
+          }
+        }
+      }
+
+      String activity = activityList.get(i);
+      String elapsedTime = elapsedTimeList.get(i).toString();
+      if (activity.length() > maxSizeList.get(0)) {
+        maxSizeList.set(0, activity.length());
+      }
+      if (elapsedTime.length() > maxSizeList.get(1)) {
+        maxSizeList.set(1, elapsedTime.length());
+      }
+      lists.get(0).add(activity);
+      lists.get(1).add(elapsedTime);
+    }
+
+    return lists;
+  }
+
   private static void output(List<List<String>> lists, List<Integer> maxSizeList) {
     printBlockLine(maxSizeList);
     printRow(lists, 0, maxSizeList);
@@ -642,6 +710,18 @@ public abstract class AbstractCli {
     } else {
       lineCount += maxPrintRowCount;
     }
+  }
+
+  private static void outputTracingInfo(List<List<String>> lists, List<Integer> maxSizeList) {
+    println();
+    println("Tracing Activties:");
+    printBlockLine(maxSizeList);
+    printRow(lists, 0, maxSizeList);
+    printBlockLine(maxSizeList);
+    for (int i = 1; i < lists.get(0).size(); i++) {
+      printRow(lists, i, maxSizeList);
+    }
+    printBlockLine(maxSizeList);
   }
 
   private static void resetArgs() {

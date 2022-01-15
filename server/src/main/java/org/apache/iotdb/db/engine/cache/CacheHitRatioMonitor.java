@@ -105,6 +105,31 @@ public class CacheHitRatioMonitor implements CacheHitRatioMonitorMXBean, IServic
     return TimeSeriesMetadataCache.getInstance().getAverageSize();
   }
 
+  @Override
+  public double getBloomFilterHitRatio() {
+    return BloomFilterCache.getInstance().calculateChunkHitRatio();
+  }
+
+  @Override
+  public long getBloomFilterCacheEvictionCount() {
+    return BloomFilterCache.getInstance().getEvictionCount();
+  }
+
+  @Override
+  public long getBloomFilterCacheMaxMemory() {
+    return BloomFilterCache.getInstance().getMaxMemory();
+  }
+
+  @Override
+  public double getBloomFilterCacheAverageLoadPenalty() {
+    return BloomFilterCache.getInstance().getAverageLoadPenalty();
+  }
+
+  @Override
+  public long getBloomFilterCacheAverageSize() {
+    return BloomFilterCache.getInstance().getAverageSize();
+  }
+
   public static CacheHitRatioMonitor getInstance() {
     return instance;
   }

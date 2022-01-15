@@ -20,7 +20,7 @@ package org.apache.iotdb.cluster.partition;
 
 import org.apache.iotdb.db.metadata.MManager;
 
-import org.mockito.internal.util.reflection.Whitebox;
+import org.powermock.reflect.Whitebox;
 
 import java.io.File;
 import java.lang.reflect.Constructor;

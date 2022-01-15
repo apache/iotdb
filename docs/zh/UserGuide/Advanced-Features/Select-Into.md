@@ -51,7 +51,7 @@ specialClause?
 
 ```sql
 intoClause
-  : INTO intoPath (COMMA intoPath)*
+  : INTO ALIGNED? intoPath (COMMA intoPath)*
   ;
 
 intoPath
@@ -115,9 +115,27 @@ intoPath
 
 
 
+**您可以通过关键词  `ALIGNED` 指定 `intoPath`（目标序列）是否为一个对齐时间序列。**
+
+当目标序列存在时，您需要保证源序列和目标时间序列的类型匹配。
+
+当目标序列不存在时，系统将自动创建一个新的目标对齐时间序列。
+
+
+  * 例子：
+
+    ```sql
+    select s1, s2, s3
+    into aligned root.sg.d2.t1, root.sg.d2.t2, root.sg.d2.t3
+    from root.sg.d1
+    ```
+
+
+
+
 ### 支持写回的查询类型
 
-**注意，除了下述类型的查询，其余类型的查询（如`LAST`查询）都不被支持。**
+**注意，除了下述类型的查询，其余类型的查询（如`LAST`查询和原始聚合查询）都不被支持。**
 
 * 原始序列查询
 
@@ -139,6 +157,14 @@ intoPath
 
   ```sql
   select s1, sin(s2), s1 + s3 
+  into t1, t2, t3 
+  from root.sg.d1
+  ```
+
+* 嵌套查询
+
+  ```sql
+  select -s1, sin(cos(tan(s1 + s2 * s3))) + cos(s3), top_k(s1 + s3, 'k'='1') 
   into t1, t2, t3 
   from root.sg.d1
   ```
@@ -215,6 +241,7 @@ intoPath
 * 当`into`子句中的目标序列已存在时，您需要保证`select`子句中的源序列和`into`子句中的目标序列的数据类型一致
 * `into`子句中的目标序列必须是互不相同的
 * `from`子句只允许有一列序列前缀
+* 由于时间序列生成函数查询（UDF查询）/ 数学表达式查询 / 嵌套查询 尚不支持对齐时间序列（Aligned Timeseries），所以如果您在`select`子句中使用了上述查询，并且对应操作数包含对齐时间序列，会提示错误。
 
 
 

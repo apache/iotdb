@@ -77,6 +77,9 @@ public class MetaHeartbeatThread extends HeartbeatThread {
     super.startElection();
 
     if (localMetaMember.getCharacter() == NodeCharacter.LEADER) {
+      // if the node becomes the leader,
+      localMetaMember.buildMetaEngineServiceIfNotReady();
+
       // A new raft leader needs to have at least one log in its term for committing logs with older
       // terms.
       // In the meta group, log frequency is very low. When the leader is changed whiling changing
@@ -85,6 +88,9 @@ public class MetaHeartbeatThread extends HeartbeatThread {
       localMetaMember
           .getAppendLogThreadPool()
           .submit(() -> localMetaMember.processEmptyContentLog());
+      // this is a risk that (1) put a task into a pool
+      // and (2) the task puts more sub-tasks into the same pool, especially the task can only
+      // terminal when all sub-tasks finish.
     }
   }
 }

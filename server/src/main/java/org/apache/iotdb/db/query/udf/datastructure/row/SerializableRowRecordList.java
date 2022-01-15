@@ -45,6 +45,14 @@ public class SerializableRowRecordList implements SerializableList {
     return new SerializableRowRecordList(recorder, dataTypes, internalRowRecordListCapacity);
   }
 
+  /**
+   * Calculate the number of rows that can be cached given the memory limit.
+   *
+   * @param dataTypes Data types of columns.
+   * @param memoryLimitInMB Memory limit.
+   * @param byteArrayLengthForMemoryControl Max memory usage for a {@link TSDataType#TEXT}.
+   * @return Number of rows that can be cached.
+   */
   protected static int calculateCapacity(
       TSDataType[] dataTypes, float memoryLimitInMB, int byteArrayLengthForMemoryControl)
       throws QueryProcessException {
@@ -75,7 +83,8 @@ public class SerializableRowRecordList implements SerializableList {
       }
     }
 
-    int size = (int) (memoryLimitInMB * MB / 2 / rowLength);
+    // 1 extra bit for null fields mark in bitMap
+    int size = (int) (memoryLimitInMB * MB / 2 / (rowLength + ReadWriteIOUtils.BIT_LEN));
     if (size <= 0) {
       throw new QueryProcessException("Memory is not enough for current query.");
     }

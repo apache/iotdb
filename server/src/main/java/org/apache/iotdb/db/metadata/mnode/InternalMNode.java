@@ -18,17 +18,12 @@
  */
 package org.apache.iotdb.db.metadata.mnode;
 
-import org.apache.iotdb.db.exception.metadata.AlignedTimeseriesException;
-import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.MetaUtils;
-import org.apache.iotdb.db.metadata.PartialPath;
 import org.apache.iotdb.db.metadata.logfile.MLogWriter;
 import org.apache.iotdb.db.metadata.template.Template;
 import org.apache.iotdb.db.qp.physical.sys.MNodePlan;
 
 import java.io.IOException;
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +47,8 @@ public class InternalMNode extends MNode {
 
   // schema template
   protected Template schemaTemplate = null;
+
+  private volatile boolean useTemplate = false;
 
   /** Constructor of MNode. */
   public InternalMNode(IMNode parent, String name) {
@@ -109,6 +106,7 @@ public class InternalMNode extends MNode {
    * @param child child's node
    * @return return the MNode already added
    */
+  @Override
   public IMNode addChild(IMNode child) {
     /* use cpu time to exchange memory
      * measurementNode's children should be null to save memory
@@ -159,13 +157,13 @@ public class InternalMNode extends MNode {
 
     if (newChildNode.isEntity() && oldChildNode.isEntity()) {
       Map<String, IMeasurementMNode> grandAliasChildren =
-          ((IEntityMNode) oldChildNode).getAliasChildren();
+          oldChildNode.getAsEntityMNode().getAliasChildren();
       if (!grandAliasChildren.isEmpty()) {
-        ((IEntityMNode) newChildNode).setAliasChildren(grandAliasChildren);
+        newChildNode.getAsEntityMNode().setAliasChildren(grandAliasChildren);
         grandAliasChildren.forEach(
             (grandAliasChildName, grandAliasChild) -> grandAliasChild.setParent(newChildNode));
       }
-      ((IEntityMNode) newChildNode).setUseTemplate(oldChildNode.isUseTemplate());
+      newChildNode.getAsEntityMNode().setUseTemplate(oldChildNode.isUseTemplate());
     }
 
     newChildNode.setSchemaTemplate(oldChildNode.getSchemaTemplate());
@@ -174,25 +172,6 @@ public class InternalMNode extends MNode {
 
     this.deleteChild(oldChildName);
     this.addChild(newChildNode.getName(), newChildNode);
-  }
-
-  @Override
-  public IMNode getChildOfAlignedTimeseries(String name) throws MetadataException {
-    IMNode node = null;
-    // for aligned timeseries
-    List<String> measurementList = MetaUtils.getMeasurementsInPartialPath(new PartialPath(name));
-    for (String measurement : measurementList) {
-      IMNode nodeOfMeasurement = getChild(measurement);
-      if (node == null) {
-        node = nodeOfMeasurement;
-      } else {
-        if (node != nodeOfMeasurement) {
-          throw new AlignedTimeseriesException(
-              "Cannot get node of children in different aligned timeseries", name);
-        }
-      }
-    }
-    return node;
   }
 
   @Override
@@ -236,17 +215,14 @@ public class InternalMNode extends MNode {
     this.schemaTemplate = schemaTemplate;
   }
 
-  /** get the count of all MeasurementMNode whose ancestor is current node */
   @Override
-  public int getMeasurementMNodeCount() {
-    if (children == null) {
-      return 0;
-    }
-    int measurementMNodeCount = 0;
-    for (IMNode child : children.values()) {
-      measurementMNodeCount += child.getMeasurementMNodeCount();
-    }
-    return measurementMNodeCount;
+  public boolean isUseTemplate() {
+    return useTemplate;
+  }
+
+  @Override
+  public void setUseTemplate(boolean useTemplate) {
+    this.useTemplate = useTemplate;
   }
 
   @Override

@@ -58,7 +58,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-existing-site</id>
@@ -313,7 +313,7 @@
                                 </goals>
                                 <phase>compile</phase>
                                 <configuration>
-                                    <nodeVersion>v12.16.2</nodeVersion>
+                                    <nodeVersion>v16.9.1</nodeVersion>
                                     <npmVersion>6.14.4</npmVersion>
                                 </configuration>
                             </execution>
@@ -346,7 +346,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-package-json</id>
@@ -372,7 +372,7 @@
                                 </configuration>
                             </execution>
                             <!-- remove files if `existing` folder exist-->
-                            <execution>
+                            <!--<execution>
                                 <id>clean-stale-master-doc</id>
                                 <phase>compile</phase>
                                 <goals>
@@ -393,7 +393,7 @@
                                     <sourceFile>${project.build.directory}/existing/zh/UserGuide/Master</sourceFile>
                                     <destinationFile>${project.build.directory}/existing/zh/Master</destinationFile>
                                 </configuration>
-                            </execution>
+                            </execution>-->
                             <execution>
                                 <id>copy-asf-yaml</id>
                                 <phase>compile</phase>
@@ -449,7 +449,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.12-docs</id>
@@ -459,6 +459,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.12.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.12.x.zip</outputFileName>
                                 </configuration>
@@ -500,36 +502,6 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- remove files if `existing` folder exist-->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>clean-stale-0.12-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.12.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/V0.12.x</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-0.12-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.12.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/V0.12.x</destinationFile>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -541,7 +513,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.11-docs</id>
@@ -551,6 +523,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.11.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.11.x.zip</outputFileName>
                                 </configuration>
@@ -592,36 +566,6 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- remove files if `existing` folder exist-->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>clean-stale-0.11-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.11.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/V0.11.x</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-0.11-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.11.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/V0.11.x</destinationFile>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -633,7 +577,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.10-docs</id>
@@ -643,6 +587,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.10.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.10.x.zip</outputFileName>
                                 </configuration>
@@ -684,36 +630,6 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- remove files if `existing` folder exist-->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>clean-stale-0.10-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.10.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/V0.10.x</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-0.10-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.10.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/V0.10.x</destinationFile>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -725,7 +641,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.9-docs</id>
@@ -735,6 +651,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.9.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.9.x.zip</outputFileName>
                                 </configuration>
@@ -776,36 +694,6 @@
                             </execution>
                         </executions>
                     </plugin>
-                    <!-- remove files if `existing` folder exist-->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>clean-stale-0.9-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.9.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/V0.9.x</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-0.9-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.9.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/V0.9.x</destinationFile>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
                 </plugins>
             </build>
         </profile>
@@ -817,7 +705,7 @@
                     <plugin>
                         <groupId>com.googlecode.maven-download-plugin</groupId>
                         <artifactId>download-maven-plugin</artifactId>
-                        <version>1.3.0</version>
+                        <version>1.6.7</version>
                         <executions>
                             <execution>
                                 <id>get-0.8-docs</id>
@@ -827,6 +715,8 @@
                                 </goals>
                                 <configuration>
                                     <url>https://github.com/apache/iotdb/archive/rel/0.8.zip</url>
+                                    <skipCache>true</skipCache>
+                                    <overwrite>true</overwrite>
                                     <outputDirectory>${project.build.directory}/download</outputDirectory>
                                     <outputFileName>0.8.x.zip</outputFileName>
                                 </configuration>
@@ -864,36 +754,6 @@
                                         <directory>${project.build.directory}/download/0.8.x.zip/iotdb-rel-0.8/docs/zh/UserGuide</directory>
                                         <outputDirectory>${project.build.directory}/vue-source/src/zh/UserGuide/V0.8.x</outputDirectory>
                                     </fileset>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <!-- remove files if `existing` folder exist-->
-                    <plugin>
-                        <groupId>com.coderplus.maven.plugins</groupId>
-                        <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
-                        <executions>
-                            <execution>
-                                <id>clean-stale-0.8-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/UserGuide/V0.8.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/V0.8.x</destinationFile>
-                                </configuration>
-                            </execution>
-                            <execution>
-                                <id>clean-stale-0.8-zh-doc</id>
-                                <phase>compile</phase>
-                                <goals>
-                                    <goal>rename</goal>
-                                </goals>
-                                <configuration>
-                                    <sourceFile>${project.build.directory}/existing/zh/UserGuide/V0.8.x</sourceFile>
-                                    <destinationFile>${project.build.directory}/existing/zh/V0.8.x</destinationFile>
                                 </configuration>
                             </execution>
                         </executions>

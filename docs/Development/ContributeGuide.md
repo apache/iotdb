@@ -25,13 +25,23 @@
 
 IoTDB official website：https://iotdb.apache.org/
 
-Code library：https://github.com/apache/iotdb/tree/master
+Code library：https://github.com/apache/iotdb
 
-Get started quickly：http://iotdb.apache.org/UserGuide/master/Get%20Started/QuickStart.html
+Code library for go language: https://github.com/apache/iotdb-client-go
+
+Library for resources (project's documents, compiler, etc): https://github.com/apache/iotdb-bin-resources
+
+Get started quickly：http://iotdb.apache.org/UserGuide/Master/QuickStart/QuickStart.html
 
 Jira Task Management：https://issues.apache.org/jira/projects/IOTDB/issues
 
 Wiki Document Management：https://cwiki.apache.org/confluence/display/IOTDB/Home\
+
+Mailing list: https://lists.apache.org/list.html?dev@iotdb.apache.org
+
+Everyday build: https://ci-builds.apache.org/job/IoTDB/job/IoTDB-Pipe/job/master/
+
+Slack: https://apacheiotdb.slack.com/join/shared_invite/zt-qvso1nj8-7715TpySZtZqmyG5qXQwpg#/shared-invite/email
 
 ## Subscribe to mailing list
 
@@ -172,7 +182,12 @@ org.apache.maven.wagon.TransferFailedException: Transfer failed for https://gith
       * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-ubuntu
 
       * https://github.com/apache/iotdb-bin-resources/blob/main/compile-tools/thrift-0.14-MacOS
- 
+
  * Put the file to thrift/target/tools/
 
  * Re-run maven command like `mvn compile`
+
+
+## Recommended Debug Tool 
+
+The initial committer of IoTDB is using this  [Java profiler](https://www.ej-technologies.com/products/jprofiler/overview.html) to debug. Welcome all IoTDB contributors to use it.

@@ -19,7 +19,9 @@
 
 package org.apache.iotdb.cluster.query.reader;
 
-import org.apache.iotdb.cluster.client.DataClientProvider;
+import org.apache.iotdb.cluster.ClusterIoTDB;
+import org.apache.iotdb.cluster.client.ClientCategory;
+import org.apache.iotdb.cluster.client.IClientManager;
 import org.apache.iotdb.cluster.client.async.AsyncDataClient;
 import org.apache.iotdb.cluster.common.TestUtils;
 import org.apache.iotdb.cluster.config.ClusterDescriptor;
@@ -27,6 +29,7 @@ import org.apache.iotdb.cluster.partition.PartitionGroup;
 import org.apache.iotdb.cluster.query.RemoteQueryContext;
 import org.apache.iotdb.cluster.rpc.thrift.Node;
 import org.apache.iotdb.cluster.rpc.thrift.RaftNode;
+import org.apache.iotdb.cluster.rpc.thrift.RaftService;
 import org.apache.iotdb.cluster.rpc.thrift.SingleSeriesQueryRequest;
 import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.db.exception.StorageEngineException;
@@ -37,7 +40,6 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.async.AsyncMethodCallback;
-import org.apache.thrift.protocol.TBinaryProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,64 +65,82 @@ public class RemoteSeriesReaderByTimestampTest {
   public void setUp() {
     prevUseAsyncServer = ClusterDescriptor.getInstance().getConfig().isUseAsyncServer();
     ClusterDescriptor.getInstance().getConfig().setUseAsyncServer(true);
-    metaGroupMember.setClientProvider(
-        new DataClientProvider(new Factory()) {
-          @Override
-          public AsyncDataClient getAsyncDataClient(Node node, int timeout) throws IOException {
-            return new AsyncDataClient(null, null, node, null) {
+    ClusterIoTDB.getInstance()
+        .setClientManager(
+            new IClientManager() {
               @Override
-              public void fetchSingleSeriesByTimestamps(
-                  RaftNode header,
-                  long readerId,
-                  List<Long> timestamps,
-                  AsyncMethodCallback<ByteBuffer> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
+              public RaftService.AsyncClient borrowAsyncClient(Node node, ClientCategory category)
+                  throws IOException {
+                return new AsyncDataClient(null, null, node, ClientCategory.DATA) {
 
-                new Thread(
-                        () -> {
-                          ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                          DataOutputStream dataOutputStream =
-                              new DataOutputStream(byteArrayOutputStream);
-                          Object[] results = new Object[timestamps.size()];
-                          for (int i = 0; i < timestamps.size(); i++) {
-                            while (batchData.hasCurrent()) {
-                              long currentTime = batchData.currentTime();
-                              if (currentTime == timestamps.get(i)) {
-                                results[i] = batchData.currentValue();
-                                batchData.next();
-                                break;
-                              } else if (currentTime > timestamps.get(i)) {
-                                results[i] = null;
-                                break;
+                  @Override
+                  public void querySingleSeriesByTimestamp(
+                      SingleSeriesQueryRequest request,
+                      org.apache.thrift.async.AsyncMethodCallback<java.lang.Long> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(() -> resultHandler.onComplete(1L)).start();
+                  }
+
+                  @Override
+                  public void fetchSingleSeriesByTimestamps(
+                      RaftNode header,
+                      long readerId,
+                      List<Long> timestamps,
+                      AsyncMethodCallback<ByteBuffer> resultHandler)
+                      throws TException {
+                    if (failedNodes.contains(node)) {
+                      throw new TException("Node down.");
+                    }
+
+                    new Thread(
+                            () -> {
+                              ByteArrayOutputStream byteArrayOutputStream =
+                                  new ByteArrayOutputStream();
+                              DataOutputStream dataOutputStream =
+                                  new DataOutputStream(byteArrayOutputStream);
+                              Object[] results = new Object[timestamps.size()];
+                              for (int i = 0; i < timestamps.size(); i++) {
+                                while (batchData.hasCurrent()) {
+                                  long currentTime = batchData.currentTime();
+                                  if (currentTime == timestamps.get(i)) {
+                                    results[i] = batchData.currentValue();
+                                    batchData.next();
+                                    break;
+                                  } else if (currentTime > timestamps.get(i)) {
+                                    results[i] = null;
+                                    break;
+                                  }
+                                  // time < timestamp, continue
+                                  batchData.next();
+                                }
                               }
-                              // time < timestamp, continue
-                              batchData.next();
-                            }
-                          }
-                          SerializeUtils.serializeObjects(results, dataOutputStream);
+                              SerializeUtils.serializeObjects(results, dataOutputStream);
 
-                          resultHandler.onComplete(
-                              ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
-                        })
-                    .start();
+                              resultHandler.onComplete(
+                                  ByteBuffer.wrap(byteArrayOutputStream.toByteArray()));
+                            })
+                        .start();
+                  }
+                };
               }
 
               @Override
-              public void querySingleSeriesByTimestamp(
-                  SingleSeriesQueryRequest request, AsyncMethodCallback<Long> resultHandler)
-                  throws TException {
-                if (failedNodes.contains(node)) {
-                  throw new TException("Node down.");
-                }
-
-                new Thread(() -> resultHandler.onComplete(1L)).start();
+              public RaftService.Client borrowSyncClient(Node node, ClientCategory category) {
+                return null;
               }
-            };
-          }
-        });
+
+              @Override
+              public void returnAsyncClient(
+                  RaftService.AsyncClient client, Node node, ClientCategory category) {}
+
+              @Override
+              public void returnSyncClient(
+                  RaftService.Client client, Node node, ClientCategory category) {}
+            });
   }
 
   @After
@@ -142,7 +162,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
 
       RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);
@@ -175,7 +195,7 @@ public class RemoteSeriesReaderByTimestampTest {
 
     try {
       DataSourceInfo sourceInfo =
-          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, metaGroupMember, group);
+          new DataSourceInfo(group, TSDataType.DOUBLE, request, context, group);
       long startTime = System.currentTimeMillis();
       sourceInfo.hasNextDataClient(true, Long.MIN_VALUE);
       RemoteSeriesReaderByTimestamp reader = new RemoteSeriesReaderByTimestamp(sourceInfo);

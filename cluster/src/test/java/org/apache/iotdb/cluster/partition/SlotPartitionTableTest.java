@@ -34,7 +34,7 @@ import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.query.QueryProcessException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.qp.logical.Operator.OperatorType;
 import org.apache.iotdb.db.qp.logical.sys.AuthorOperator.AuthorType;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
@@ -42,7 +42,6 @@ import org.apache.iotdb.db.qp.physical.crud.DeletePlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertRowPlan;
 import org.apache.iotdb.db.qp.physical.crud.InsertTabletPlan;
 import org.apache.iotdb.db.qp.physical.sys.AuthorPlan;
-import org.apache.iotdb.db.qp.physical.sys.CountPlan;
 import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DataAuthPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
@@ -64,7 +63,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
-import org.mockito.internal.util.reflection.Whitebox;
+import org.powermock.reflect.Whitebox;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -206,7 +205,7 @@ public class SlotPartitionTableTest {
 
   private void assertGetHeaderGroup(int start, int last) {
     PartitionGroup group =
-        localTable.getHeaderGroup(
+        localTable.getPartitionGroup(
             new RaftNode(
                 new Node(
                     "localhost",
@@ -486,42 +485,6 @@ public class SlotPartitionTableTest {
                 subtimes[0] / StorageEngine.getTimePartitionInterval(),
                 subtimes[2] / StorageEngine.getTimePartitionInterval());
           });
-    } catch (Exception e) {
-      e.printStackTrace();
-      fail(e.getMessage());
-    }
-  }
-
-  // @Test
-  public void testCountPlan() throws IllegalPathException {
-    PhysicalPlan countPlan1 =
-        new CountPlan(
-            ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".l4.28.*"));
-    PhysicalPlan countPlan2 =
-        new CountPlan(ShowContentType.COUNT_TIMESERIES, new PartialPath("root.sg.*.l3" + ".*"));
-    PhysicalPlan countPlan3 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3.l4.28"));
-    PhysicalPlan countPlan4 =
-        new CountPlan(
-            ShowContentType.COUNT_NODE_TIMESERIES, new PartialPath("root.sg" + ".l2.l3"), 6);
-    PhysicalPlan countPlan5 =
-        new CountPlan(ShowContentType.COUNT_NODES, new PartialPath("root.sg.l2.l3"), 5);
-    try {
-      ClusterPlanRouter router = new ClusterPlanRouter(localTable);
-      assertTrue(countPlan1.canBeSplit());
-      Map<PhysicalPlan, PartitionGroup> result1 = router.splitAndRoutePlan(countPlan1);
-      assertEquals(1, result1.size());
-      Map<PhysicalPlan, PartitionGroup> result2 = router.splitAndRoutePlan(countPlan2);
-      assertEquals(40, result2.size());
-      Map<PhysicalPlan, PartitionGroup> result3 = router.splitAndRoutePlan(countPlan3);
-      assertEquals(1, result3.size());
-      Map<PhysicalPlan, PartitionGroup> result4 = router.splitAndRoutePlan(countPlan4);
-      // TODO this case can be optimized
-      assertEquals(40, result4.size());
-      Map<PhysicalPlan, PartitionGroup> result5 = router.splitAndRoutePlan(countPlan5);
-      // TODO this case can be optimized
-      assertEquals(40, result5.size());
     } catch (Exception e) {
       e.printStackTrace();
       fail(e.getMessage());

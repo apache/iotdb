@@ -40,7 +40,28 @@ public class MetadataConstant {
   public static final String MTREE_SNAPSHOT_TMP =
       MTREE_PREFIX + IoTDBConstant.FILE_NAME_SEPARATOR + MTREE_VERSION + ".snapshot.bin.tmp";
 
-  public static final short MNODE_TYPE = 0;
-  public static final short STORAGE_GROUP_MNODE_TYPE = 1;
-  public static final short MEASUREMENT_MNODE_TYPE = 2;
+  public static final byte INTERNAL_MNODE_TYPE = 0;
+  public static final byte STORAGE_GROUP_MNODE_TYPE = 1;
+  public static final byte MEASUREMENT_MNODE_TYPE = 2;
+  public static final byte ENTITY_MNODE_TYPE = 3;
+
+  public static final String INTERNAL_MNODE_TYPE_NAME = "InternalMNode";
+  public static final String STORAGE_GROUP_MNODE_TYPE_NAME = "StorageGroupMNode";
+  public static final String MEASUREMENT_MNODE_TYPE_NAME = "MeasurementMNode";
+  public static final String ENTITY_MNODE_TYPE_NAME = "EntityMNode";
+
+  public static String getMNodeTypeName(byte type) {
+    switch (type) {
+      case INTERNAL_MNODE_TYPE:
+        return INTERNAL_MNODE_TYPE_NAME;
+      case STORAGE_GROUP_MNODE_TYPE:
+        return STORAGE_GROUP_MNODE_TYPE_NAME;
+      case MEASUREMENT_MNODE_TYPE:
+        return MEASUREMENT_MNODE_TYPE_NAME;
+      case ENTITY_MNODE_TYPE:
+        return ENTITY_MNODE_TYPE_NAME;
+      default:
+        throw new RuntimeException("Undefined MNode type " + type);
+    }
+  }
 }

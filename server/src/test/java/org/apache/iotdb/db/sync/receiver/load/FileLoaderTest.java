@@ -22,14 +22,13 @@ import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.StorageEngine;
-import org.apache.iotdb.db.engine.storagegroup.StorageGroupProcessor;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.virtualSg.HashVirtualPartitioner;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.metadata.MManager;
-import org.apache.iotdb.db.metadata.PartialPath;
+import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.service.IoTDB;
 import org.apache.iotdb.db.sync.conf.SyncConstant;
 import org.apache.iotdb.db.utils.EnvironmentUtils;
@@ -62,10 +61,13 @@ public class FileLoaderTest {
   private String dataDir;
   private IFileLoader fileLoader;
 
+  private int prevVirtualPartitionNum;
+
   @Before
   public void setUp() throws Exception {
+    prevVirtualPartitionNum = IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum();
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(1);
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(true);
-    HashVirtualPartitioner.getInstance().setStorageGroupNum(1);
     EnvironmentUtils.closeStatMonitor();
     EnvironmentUtils.envSetUp();
     dataDir =
@@ -87,8 +89,7 @@ public class FileLoaderTest {
   public void tearDown() throws IOException, StorageEngineException {
     EnvironmentUtils.cleanEnv();
     IoTDBDescriptor.getInstance().getConfig().setSyncEnable(false);
-    HashVirtualPartitioner.getInstance()
-        .setStorageGroupNum(IoTDBDescriptor.getInstance().getConfig().getVirtualStorageGroupNum());
+    IoTDBDescriptor.getInstance().getConfig().setVirtualStorageGroupNum(prevVirtualPartitionNum);
   }
 
   @Test
@@ -165,7 +166,7 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -198,7 +199,7 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> sequenceLoadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       sequenceLoadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(10, processor.getSequenceFileTreeSet().size());
@@ -284,7 +285,7 @@ public class FileLoaderTest {
     }
 
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       assertTrue(processor.getSequenceFileTreeSet().isEmpty());
       assertTrue(processor.getUnSequenceFileList().isEmpty());
@@ -317,7 +318,7 @@ public class FileLoaderTest {
     assertFalse(new File(getReceiverFolderFile(), SyncConstant.RECEIVER_DATA_FOLDER_NAME).exists());
     Map<String, Set<String>> loadedFileMap = new HashMap<>();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       assertEquals(25, processor.getSequenceFileTreeSet().size());
@@ -375,7 +376,7 @@ public class FileLoaderTest {
 
     loadedFileMap.clear();
     for (int i = 0; i < 3; i++) {
-      StorageGroupProcessor processor =
+      VirtualStorageGroupProcessor processor =
           StorageEngine.getInstance().getProcessor(new PartialPath(SG_NAME + i));
       loadedFileMap.putIfAbsent(SG_NAME + i, new HashSet<>());
       for (TsFileResource tsFileResource : processor.getSequenceFileTreeSet()) {

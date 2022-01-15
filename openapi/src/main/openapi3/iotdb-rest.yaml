@@ -1,0 +1,230 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+openapi: 3.0.0
+info:
+  title: iotdb-rest
+  description: IoTDB Rest API for Grafana, Prometheus, etc..
+  license:
+    name: Apache 2.0
+  version: 1.0.0
+servers:
+- url: http://127.0.0.1:18080/
+  description: api
+security:
+- basic: []
+paths:
+  /ping:
+    get:
+      responses:
+        "200":
+          description: ExecutionStatus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatus'
+      operationId: tryPing
+
+  /rest/v1/insertTablet:
+    post:
+      summary: insertTablet
+      description: insertTablet
+      operationId: insertTablet
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InsertTabletRequest'
+      responses:
+        "200":
+          description: ExecutionStatus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatus'
+
+  /rest/v1/nonQuery:
+    post:
+      summary: executeNonQueryStatement
+      description: executeNonQueryStatement
+      operationId: executeNonQueryStatement
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQL'
+      responses:
+        "200":
+          description: ExecutionStatus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionStatus'
+
+  /rest/v1/query:
+    post:
+      summary: executeQueryStatement
+      description: executeQueryStatement
+      operationId: executeQueryStatement
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQL'
+      responses:
+        "200":
+          description: QueryDataSet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryDataSet'
+
+  /grafana/v1/query/expression:
+    post:
+      summary: expression
+      description: expression
+      operationId: expression
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpressionRequest'
+      responses:
+        "200":
+          description: QueryDataSet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueryDataSet'
+
+  /grafana/v1/variable:
+    post:
+      summary: variables
+      description: variables
+      operationId: variables
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SQL'
+      responses:
+        "200":
+          description: VariablesResult
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VariablesResult'
+
+components:
+  schemas:
+    SQL:
+      title: SQL
+      type: object
+      properties:
+        sql:
+          type: string
+        rowLimit:
+          type: Integer
+
+    InsertTabletRequest:
+      title: InsertTabletRequest
+      type: object
+      properties:
+        timestamps:
+          type: array
+          items:
+            type: long
+        measurements:
+          type: array
+          items:
+            type: string
+        dataTypes:
+          type: array
+          items:
+            type: string
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              type: object
+        isAligned:
+          type: boolean
+        deviceId:
+          type: string
+
+    ExecutionStatus:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+
+    QueryDataSet:
+      type: object
+      properties:
+        expressions:
+          type: array
+          items:
+            type: string
+        timestamps:
+          type: array
+          items:
+            type: long
+        values:
+          type: array
+          items:
+            type: array
+            items:
+              type: object
+
+    ExpressionRequest:
+      type: object
+      properties:
+        expression:
+          type: array
+          items:
+            type: string
+        prefixPath:
+          type: array
+          items:
+            type: string
+        condition:
+          type: string
+        control:
+           type: string
+        startTime:
+          type: number
+        endTime:
+          type: number
+
+    VariablesResult:
+      type: array
+      items:
+        type: object
+
+  securitySchemes:
+    basic:
+      type: http
+      scheme: basic
+    APIKey:
+      type: apiKey
+      name: API Key
+      in: header

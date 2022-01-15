@@ -22,6 +22,7 @@ import org.apache.iotdb.db.rescon.PrimitiveArrayManager;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
+import org.apache.iotdb.tsfile.utils.BitMap;
 import org.apache.iotdb.tsfile.utils.TsPrimitiveType;
 
 import java.util.ArrayList;
@@ -31,6 +32,8 @@ import static org.apache.iotdb.db.rescon.PrimitiveArrayManager.ARRAY_SIZE;
 
 public class IntTVList extends TVList {
 
+  // list of primitive array, add 1 when expanded -> int primitive array
+  // index relation: arrayIndex -> elementIndex
   private List<int[]> values;
 
   private int[][] sortedValues;
@@ -192,11 +195,25 @@ public class IntTVList extends TVList {
   }
 
   @Override
-  public void putInts(long[] time, int[] value, int start, int end) {
+  public void putInts(long[] time, int[] value, BitMap bitMap, int start, int end) {
     checkExpansion();
-    int idx = start;
 
-    updateMinTimeAndSorted(time, start, end);
+    int idx = start;
+    // constraint: time.length + timeIdxOffset == value.length
+    int timeIdxOffset = 0;
+    if (bitMap != null && !bitMap.isAllUnmarked()) {
+      // time array is a reference, should clone necessary time values
+      long[] clonedTime = new long[end - start];
+      System.arraycopy(time, start, clonedTime, 0, end - start);
+      time = clonedTime;
+      timeIdxOffset = start;
+      // drop null at the end of value array
+      int nullCnt =
+          dropNullValThenUpdateMinTimeAndSorted(time, value, bitMap, start, end, timeIdxOffset);
+      end -= nullCnt;
+    } else {
+      updateMinTimeAndSorted(time, start, end);
+    }
 
     while (idx < end) {
       int inputRemaining = end - idx;
@@ -205,20 +222,52 @@ public class IntTVList extends TVList {
       int internalRemaining = ARRAY_SIZE - elementIdx;
       if (internalRemaining >= inputRemaining) {
         // the remaining inputs can fit the last array, copy all remaining inputs into last array
-        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, inputRemaining);
+        System.arraycopy(
+            time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, inputRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, inputRemaining);
         size += inputRemaining;
         break;
       } else {
         // the remaining inputs cannot fit the last array, fill the last array and create a new
         // one and enter the next loop
-        System.arraycopy(time, idx, timestamps.get(arrayIdx), elementIdx, internalRemaining);
+        System.arraycopy(
+            time, idx - timeIdxOffset, timestamps.get(arrayIdx), elementIdx, internalRemaining);
         System.arraycopy(value, idx, values.get(arrayIdx), elementIdx, internalRemaining);
         idx += internalRemaining;
         size += internalRemaining;
         checkExpansion();
       }
     }
+  }
+
+  // move null values to the end of time array and value array, then return number of null values
+  int dropNullValThenUpdateMinTimeAndSorted(
+      long[] time, int[] values, BitMap bitMap, int start, int end, int tIdxOffset) {
+    long inPutMinTime = Long.MAX_VALUE;
+    boolean inputSorted = true;
+
+    int nullCnt = 0;
+    for (int vIdx = start; vIdx < end; vIdx++) {
+      if (bitMap.isMarked(vIdx)) {
+        nullCnt++;
+        continue;
+      }
+      // move value ahead to replace null
+      int tIdx = vIdx - tIdxOffset;
+      if (nullCnt != 0) {
+        time[tIdx - nullCnt] = time[tIdx];
+        values[vIdx - nullCnt] = values[vIdx];
+      }
+      // update minTime and sorted
+      tIdx = tIdx - nullCnt;
+      inPutMinTime = Math.min(inPutMinTime, time[tIdx]);
+      if (inputSorted && tIdx > 0 && time[tIdx - 1] > time[tIdx]) {
+        inputSorted = false;
+      }
+    }
+    minTime = Math.min(inPutMinTime, minTime);
+    sorted = sorted && inputSorted && (size == 0 || inPutMinTime >= getTime(size - 1));
+    return nullCnt;
   }
 
   @Override

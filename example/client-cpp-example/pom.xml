@@ -47,6 +47,21 @@
             </properties>
         </profile>
         <profile>
+            <id>os-unix-arm</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <arch>aarch64</arch>
+                </os>
+            </activation>
+            <properties>
+                <os.suffix>linux</os.suffix>
+                <os.classifier>linux-arm_32</os.classifier>
+                <cmake.generator>Unix Makefiles</cmake.generator>
+                <cmake.root.dir>${project.parent.basedir}/../compile-tools/thrift/target/cmake-3.21.2-linux-aarch64/</cmake.root.dir>
+            </properties>
+        </profile>
+        <profile>
             <id>os-mac</id>
             <activation>
                 <os>
@@ -79,7 +94,7 @@
                     <plugin>
                         <groupId>com.coderplus.maven.plugins</groupId>
                         <artifactId>copy-rename-maven-plugin</artifactId>
-                        <version>1.0</version>
+                        <version>1.0.1</version>
                         <executions>
                             <execution>
                                 <id>copy-thrift-source</id>
@@ -93,12 +108,12 @@
                                             <destinationFile>${project.build.directory}/SessionExample.cpp</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
-                                            <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
+                                            <sourceFile>${project.basedir}/src/AlignedTimeseriesSessionExample.cpp</sourceFile>
+                                            <destinationFile>${project.build.directory}/AlignedTimeseriesSessionExample.cpp</destinationFile>
                                         </fileSet>
                                         <fileSet>
-                                            <sourceFile>${project.parent.basedir}/../client-cpp/target/client-cpp-${project.version}-cpp-${os.classifier}.zip</sourceFile>
-                                            <destinationFile>${project.build.directory}/client-cpp-${project.version}-cpp-${os.classifier}.zip</destinationFile>
+                                            <sourceFile>${project.basedir}/src/CMakeLists.txt</sourceFile>
+                                            <destinationFile>${project.build.directory}/CMakeLists.txt</destinationFile>
                                         </fileSet>
                                     </fileSets>
                                 </configuration>

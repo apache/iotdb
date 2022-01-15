@@ -87,9 +87,17 @@ This short guide will walk you through the basic process of using IoTDB. For a m
 
 To use IoTDB, you need to have:
 
-1. Java >= 1.8 (1.8, 11, and 15 are verified. Please make sure the environment path has been set accordingly).
+1. Java >= 1.8 (1.8, 11 to 17 are verified. Please make sure the environment path has been set accordingly).
 2. Maven >= 3.6 (If you want to compile and install IoTDB from source code).
 3. Set the max open files num as 65535 to avoid "too many open files" error.
+4. (Optional) Set the somaxconn as 65535 to avoid "connection reset" error when the system is under high load.
+    ```
+    # Linux
+    > sudo sysctl -w net.core.somaxconn=65535
+   
+    # FreeBSD or Darwin
+    > sudo sysctl -w kern.ipc.somaxconn=65535
+    ```
 
 ## Installation
 
@@ -250,12 +258,12 @@ We can also use SHOW STORAGE GROUP to check the storage group being created:
 
 ```
 IoTDB> SHOW STORAGE GROUP
-+-----------------------------------+
-|                      Storage Group|
-+-----------------------------------+
-|                            root.ln|
-+-----------------------------------+
-storage group number = 1
++-------------+
+|storage group|
++-------------+
+|      root.ln|
++-------------+
+Total line number = 1
 ```
 
 After the storage group is set, we can use CREATE TIMESERIES to create a new timeseries. When creating a timeseries, we should define its data type and the encoding scheme. Here We create two timeseries:
@@ -271,25 +279,25 @@ In order to query the specific timeseries, we can use SHOW TIMESERIES <Path>. <P
 
 ```
 IoTDB> SHOW TIMESERIES
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-|  root.ln.wf01.wt01.temperature|  null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 2
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|                   timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.temperature| null|      root.ln|   FLOAT|     RLE|     SNAPPY|null|      null|
+|     root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++-----------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 2
 ```
 
 2. Querying a specific timeseries(root.ln.wf01.wt01.status):
 
 ```
 IoTDB> SHOW TIMESERIES root.ln.wf01.wt01.status
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|                   timeseries  | alias|storage group|dataType|encoding|compression|tags|attributes|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-|       root.ln.wf01.wt01.status|  null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
-+-------------------------------+------+-------------+--------+--------+-----------+----+----------+
-Total timeseries number = 1
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|              timeseries|alias|storage group|dataType|encoding|compression|tags|attributes|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+|root.ln.wf01.wt01.status| null|      root.ln| BOOLEAN|   PLAIN|     SNAPPY|null|      null|
++------------------------+-----+-------------+--------+--------+-----------+----+----------+
+Total line number = 1
 ```
 
 Insert timeseries data is a basic operation of IoTDB, you can use ‘INSERT’ command to finish this. Before insertion, you should assign the timestamp and the suffix path name:
@@ -303,12 +311,12 @@ The data that you have just inserted will display as follows:
 
 ```
 IoTDB> SELECT status FROM root.ln.wf01.wt01
-+-----------------------+------------------------+
-|                   Time|root.ln.wf01.wt01.status|
-+-----------------------+------------------------+
-|1970-01-01T08:00:00.100|                    true|
-|1970-01-01T08:00:00.200|                   false|
-+-----------------------+------------------------+
++------------------------+------------------------+
+|                    Time|root.ln.wf01.wt01.status|
++------------------------+------------------------+
+|1970-01-01T00:00:00.100Z|                    true|
+|1970-01-01T00:00:00.200Z|                   false|
++------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -316,12 +324,34 @@ You can also query several timeseries data using one SQL statement:
 
 ```
 IoTDB> SELECT * FROM root.ln.wf01.wt01
-+-----------------------+--------------------------+-----------------------------+
-|                   Time|  root.ln.wf01.wt01.status|root.ln.wf01.wt01.temperature|
-+-----------------------+--------------------------+-----------------------------+
-|1970-01-01T08:00:00.100|                      true|                         null|
-|1970-01-01T08:00:00.200|                     false|                        20.71|
-+-----------------------+--------------------------+-----------------------------+
++------------------------+-----------------------------+------------------------+
+|                    Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++------------------------+-----------------------------+------------------------+
+|1970-01-01T00:00:00.100Z|                         null|                    true|
+|1970-01-01T00:00:00.200Z|                        20.71|                   false|
++------------------------+-----------------------------+------------------------+
+Total line number = 2
+```
+
+To change the time zone in Cli, you can use the following SQL:
+
+```
+IoTDB> SET time_zone=+08:00
+Time zone has set to +08:00
+IoTDB> SHOW time_zone
+Current time zone: Asia/Shanghai
+```
+
+Add then the query result will show using the new time zone.
+
+```
+IoTDB> SELECT * FROM root.ln.wf01.wt01
++-----------------------------+-----------------------------+------------------------+
+|                         Time|root.ln.wf01.wt01.temperature|root.ln.wf01.wt01.status|
++-----------------------------+-----------------------------+------------------------+
+|1970-01-01T08:00:00.100+08:00|                         null|                    true|
+|1970-01-01T08:00:00.200+08:00|                        20.71|                   false|
++-----------------------------+-----------------------------+------------------------+
 Total line number = 2
 ```
 
@@ -333,7 +363,7 @@ or
 IoTDB> exit
 ```
 
-For more information about the commands supported by IoTDB SQL, please see [SQL Reference](http://iotdb.apache.org/UserGuide/Master/Operation%20Manual/SQL%20Reference.html).
+For more information about the commands supported by IoTDB SQL, please see [SQL Reference](https://iotdb.apache.org/UserGuide/Master/Appendix/SQL-Reference.html).
 
 ### Stop IoTDB
 

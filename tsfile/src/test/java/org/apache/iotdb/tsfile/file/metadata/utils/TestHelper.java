@@ -31,6 +31,8 @@ import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 import org.apache.iotdb.tsfile.utils.PublicBAOS;
 import org.apache.iotdb.tsfile.write.schema.MeasurementSchema;
 
+import java.io.Serializable;
+
 public class TestHelper {
 
   public static TsFileMetadata createSimpleFileMetaData() {
@@ -52,7 +54,8 @@ public class TestHelper {
   }
 
   public static TimeseriesMetadata createSimpleTimseriesMetaData(String measurementuid) {
-    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    Statistics<? extends Serializable> statistics =
+        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     TimeseriesMetadata timeseriesMetaData = new TimeseriesMetadata();
     timeseriesMetaData.setMeasurementId(measurementuid);
@@ -65,7 +68,8 @@ public class TestHelper {
   }
 
   public static PageHeader createTestPageHeader() {
-    Statistics<?> statistics = Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
+    Statistics<? extends Serializable> statistics =
+        Statistics.getStatsByType(PageHeaderTest.DATA_TYPE);
     statistics.setEmpty(false);
     return new PageHeader(
         PageHeaderTest.UNCOMPRESSED_SIZE, PageHeaderTest.COMPRESSED_SIZE, statistics);
