@@ -54,11 +54,15 @@ public class Planner {
         sqlStr, ZoneId.systemDefault(), IoTDBConstant.ClientVersion.V_0_13);
   }
 
+  public PhysicalPlan operatorToPhysicalPlan(Operator operator) throws QueryProcessException {
+    return generatePhysicalPlanFromOperator(operator, IoTDBConstant.ClientVersion.V_0_13);
+  }
+
   public PhysicalPlan parseSQLToPhysicalPlan(
       String sqlStr, ZoneId zoneId, IoTDBConstant.ClientVersion clientVersion)
       throws QueryProcessException {
     // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId, clientVersion);
+    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
     return generatePhysicalPlanFromOperator(operator, clientVersion);
   }
 

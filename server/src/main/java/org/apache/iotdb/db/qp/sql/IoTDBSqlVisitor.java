@@ -2373,6 +2373,7 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
                 "Unsupported constant operand: " + constantContext.getText());
           }
         } else if (clientVersion.equals(IoTDBConstant.ClientVersion.V_0_12)) {
+          // if client version is before 0.13, node name in expression may be a constant
           return new TimeSeriesOperand(convertConstantToPath(context.constant().getText()));
         }
       } catch (QueryProcessException | IllegalPathException e) {
