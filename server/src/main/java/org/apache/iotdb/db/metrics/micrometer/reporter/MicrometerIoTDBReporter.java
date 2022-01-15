@@ -20,10 +20,12 @@
 package org.apache.iotdb.db.metrics.micrometer.reporter;
 
 import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBMeterRegistry;
+import org.apache.iotdb.db.metrics.micrometer.registry.IoTDBRegistryConfig;
 import org.apache.iotdb.metrics.MetricManager;
 import org.apache.iotdb.metrics.Reporter;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
+import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
@@ -45,10 +47,14 @@ public class MicrometerIoTDBReporter implements Reporter {
           Metrics.globalRegistry.getRegistries().stream()
               .filter(reporter -> reporter instanceof IoTDBMeterRegistry)
               .collect(Collectors.toSet());
-      for (MeterRegistry meterRegistry : meterRegistrySet) {
-        ((IoTDBMeterRegistry) meterRegistry)
-            .start(new NamedThreadFactory("iotdb-metrics-publisher"));
+      IoTDBMeterRegistry ioTDBMeterRegistry;
+      if (meterRegistrySet.size() == 0) {
+        ioTDBMeterRegistry = new IoTDBMeterRegistry(IoTDBRegistryConfig.DEFAULT, Clock.SYSTEM);
+        Metrics.addRegistry(ioTDBMeterRegistry);
+      } else {
+        ioTDBMeterRegistry = (IoTDBMeterRegistry) meterRegistrySet.toArray()[0];
       }
+      ioTDBMeterRegistry.start(new NamedThreadFactory("iotdb-metrics-publisher"));
     } catch (Exception e) {
       LOGGER.error("Failed to start Micrometer IoTDBReporter, because {}", e.getMessage());
       return false;
@@ -65,7 +71,8 @@ public class MicrometerIoTDBReporter implements Reporter {
               .collect(Collectors.toSet());
       for (MeterRegistry meterRegistry : meterRegistrySet) {
         if (!meterRegistry.isClosed()) {
-          ((IoTDBMeterRegistry) meterRegistry).stop();
+          meterRegistry.close();
+          Metrics.removeRegistry(meterRegistry);
         }
       }
     } catch (Exception e) {

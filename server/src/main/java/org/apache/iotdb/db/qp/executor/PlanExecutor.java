@@ -1559,11 +1559,11 @@ public class PlanExecutor implements IPlanExecutor {
   @Override
   public void insertTablet(InsertMultiTabletPlan insertMultiTabletPlan)
       throws QueryProcessException {
-    //    if (insertMultiTabletPlan.isEnableMultiThreading()) {
-    insertTabletParallel(insertMultiTabletPlan);
-    //    } else {
-    //      insertTabletSerial(insertMultiTabletPlan);
-    //    }
+    if (insertMultiTabletPlan.isEnableMultiThreading()) {
+      insertTabletParallel(insertMultiTabletPlan);
+    } else {
+      insertTabletSerial(insertMultiTabletPlan);
+    }
   }
 
   private void insertTabletSerial(InsertMultiTabletPlan insertMultiTabletPlan)

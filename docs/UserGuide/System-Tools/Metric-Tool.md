@@ -198,7 +198,7 @@ The metrics collection switch is disabled by default，you need to enable it fro
 # whether enable the module
 enableMetric: false
 
-# Multiple reporter, options: [jmx, prometheus,iotdb]. iotdb is off by default.
+# Multiple reporter, options: [jmx, prometheus, iotdb]. iotdb is off by default.
 metricReporterList:
   - jmx
   - prometheus
