@@ -33,18 +33,18 @@ import java.util.Scanner;
 /** Class for computing data quality index. */
 public class TimeSeriesQuality {
   public static final int windowSize = 10;
-  private boolean downtime = true; // 是否考虑停机异常
-  private int cnt = 0; // 数据点总数
-  private int missCnt = 0; // 缺失点个数
-  private int specialCnt = 0; // 特殊值点个数
-  private int lateCnt = 0; // 延迟点个数
-  private int redundancyCnt = 0; // 过密点个数
-  private int valueCnt = 0; // 违背取值范围约束的数据点个数
-  private int variationCnt = 0; // 违背取值变化约束的数据点个数
-  private int speedCnt = 0; // 违背速度约束的数据点个数
-  private int speedchangeCnt = 0; // 违背速度变化约束的数据点个数
-  private final double[] time; // 除去特殊值的时间序列
-  private final double[] origin; // 除去特殊值的时间序列
+  private boolean downtime = true; // count for shutdown period
+  private int cnt = 0; // total number of points
+  private int missCnt = 0; // number of missing points
+  private int specialCnt = 0; // number of special values
+  private int lateCnt = 0; // number of latency points
+  private int redundancyCnt = 0; // number of redundancy points
+  private int valueCnt = 0; // number of out of range points
+  private int variationCnt = 0; // number of variation out of range points
+  private int speedCnt = 0; // number of speed out of range points
+  private int speedchangeCnt = 0; // number of speed change(acceleration) out of range points
+  private final double[] time; // series without special values
+  private final double[] origin; // series without special values
 
   public TimeSeriesQuality(RowIterator dataIterator) throws Exception {
     ArrayList<Double> timeList = new ArrayList<>();
@@ -57,7 +57,7 @@ public class TimeSeriesQuality {
       if (Double.isFinite(v)) {
         timeList.add(t);
         originList.add(v);
-      } else { // 对特殊值的处理，包括NAN，INF等
+      } else {  // processing NAN，INF
         specialCnt++;
         timeList.add(t);
         originList.add(Double.NaN);
