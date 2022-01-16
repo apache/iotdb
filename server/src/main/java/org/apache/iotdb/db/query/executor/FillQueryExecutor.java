@@ -247,7 +247,8 @@ public class FillQueryExecutor {
       PartialPath path = selectedSeries.get(i);
       TSDataType dataType = dataTypes.get(i);
       QueryDataSource queryDataSource =
-          QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+          QueryResourceManager.getInstance()
+              .getQueryDataSource(path, context, timeFilter, plan.isAscending());
       timeFilter = queryDataSource.updateFilterUsingTTL(timeFilter);
       ManagedSeriesReader reader =
           new SeriesRawDataBatchReader(

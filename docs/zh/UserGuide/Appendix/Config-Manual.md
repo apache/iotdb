@@ -153,6 +153,25 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 1024 |
 |改后生效方式|重启服务生效|
 
+### InfluxDB 协议适配器配置
+
+* enable_influxdb_rpc_service
+
+|     名字     | enable_influxdb_rpc_service  |
+| :----------: | :--------------------------- |
+|     描述     | 是否开启InfluxDB RPC service |
+|     类型     | Boolean                      |
+|    默认值    | true                         |
+| 改后生效方式 | 重启服务生效                 |
+
+* influxdb_rpc_port
+
+|     名字     | influxdb_rpc_port            |
+| :----------: | :--------------------------- |
+|     描述     | influxdb rpc service占用端口 |
+|     类型     | INT32                        |
+|    默认值    | 8086                         |
+| 改后生效方式 | 重启服务生效                 |
 ### 写前日志配置
 
 * enable\_wal
@@ -750,6 +769,26 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| -1 |
 |改后生效方式|重启服务生效|
 
+* group_by_fill_cache_size_in_mb
+
+|     名字     | group_by_fill_cache_size_in_mb     |
+| :----------: | :--------------------------------- |
+|     描述     | 填充查询中使用的缓存大小，单位是MB |
+|     类型     | Float                              |
+|    默认值    | 1.0                                |
+| 改后生效方式 | 重启服务生效                       |
+
+### 插入配置
+
+- insert_multi_tablet_enable_multithreading_column_threshold
+
+|     名字     | insert_multi_tablet_enable_multithreading_column_threshold |
+| :----------: | :--------------------------------------------------------- |
+|     描述     | 插入时启用多线程插入列数的阈值                             |
+|     类型     | Int32                                                      |
+|    默认值    | 10                                                         |
+| 改后生效方式 | 重启服务生效                                               |
+
 ### 合并配置
 
 * concurrent\_compaction\_thread
@@ -988,7 +1027,7 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| 300000 |
 |改后生效方式|重启服务生效|
 
-## 最新点缓存配置
+### 最新点缓存配置
 
 * enable\_last\_stat
 
@@ -1609,9 +1648,70 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 |默认值| root |
 |改后生效方式|仅允许在第一次启动服务前修改|
 
+### SELECT-INTO配置
+
+* select_into_insert_tablet_plan_row_limit
+
+|     名字     | select_into_insert_tablet_plan_row_limit                     |
+| :----------: | :----------------------------------------------------------- |
+|     描述     | 执行 select-into 语句时，一个 insert-tablet-plan 中可以处理的最大行数 |
+|     类型     | Int32                                                        |
+|    默认值    | 10000                                                        |
+| 改后生效方式 | 触发生效                                                     |
+
+### 触发器配置
+
+- concurrent_window_evaluation_thread
+
+|     名字     | concurrent_window_evaluation_thread |
+| :----------: | :---------------------------------- |
+|     描述     | 窗口计算线程池的默认线程数          |
+|     类型     | Int32                               |
+|    默认值    | CPU核数                             |
+| 改后生效方式 | 重启服务生效                        |
+
+- max_pending_window_evaluation_tasks
+
+|     名字     | max_pending_window_evaluation_tasks |
+| :----------: | :---------------------------------- |
+|     描述     | 最多允许堆积的窗口计算任务          |
+|     类型     | Int32                               |
+|    默认值    | 64                                  |
+| 改后生效方式 | 重启服务生效                        |
+
+### 连续查询配置
+
+- continuous_query_execution_thread
+
+|     名字     | continuous_query_execution_thread |
+| :----------: | :-------------------------------- |
+|     描述     | 执行连续查询任务的线程池的线程数  |
+|     类型     | Int32                             |
+|    默认值    | max(1, CPU 核数 / 2)              |
+| 改后生效方式 | 重启服务生效                      |
+
+- max_pending_continuous_query_tasks
+
+|     名字     | max_pending_continuous_query_tasks |
+| :----------: | :--------------------------------- |
+|     描述     | 队列中连续查询最大任务堆积数       |
+|     类型     | Int32                              |
+|    默认值    | 64                                 |
+| 改后生效方式 | 重启服务生效                       |
+
+- continuous_query_min_every_interval
+
+|     名字     | continuous_query_min_every_interval |
+| :----------: | :---------------------------------- |
+|     描述     | 连续查询执行时间间隔的最小值        |
+|     类型     | duration                            |
+|    默认值    | 1s                                  |
+| 改后生效方式 | 重启服务生效                        |
+
 ## 开启 GC 日志
 
-GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。 若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
+GC 日志默认是关闭的。为了性能调优，用户可能会需要收集 GC 信息。
+若要打开 GC 日志，则需要在启动 IoTDB Server 的时候加上"printgc"参数：
 
 ```bash
 nohup sbin/start-server.sh printgc >/dev/null 2>&1 &
