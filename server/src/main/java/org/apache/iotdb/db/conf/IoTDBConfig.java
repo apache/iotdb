@@ -607,7 +607,7 @@ public class IoTDBConfig {
   private boolean forceFullMerge = true;
 
   /** The limit of compaction merge can reach per second */
-  private int mergeWriteThroughputMbPerSec = 8;
+  private int compactionWriteThroughputMbPerSec = 8;
 
   /**
    * How many thread will be set up to perform compaction, 10 by default. Set to 1 when less than or
@@ -1647,12 +1647,12 @@ public class IoTDBConfig {
         insertMultiTabletEnableMultithreadingColumnThreshold;
   }
 
-  public int getMergeWriteThroughputMbPerSec() {
-    return mergeWriteThroughputMbPerSec;
+  public int getCompactionWriteThroughputMbPerSec() {
+    return compactionWriteThroughputMbPerSec;
   }
 
-  public void setMergeWriteThroughputMbPerSec(int mergeWriteThroughputMbPerSec) {
-    this.mergeWriteThroughputMbPerSec = mergeWriteThroughputMbPerSec;
+  public void setCompactionWriteThroughputMbPerSec(int compactionWriteThroughputMbPerSec) {
+    this.compactionWriteThroughputMbPerSec = compactionWriteThroughputMbPerSec;
   }
 
   public boolean isEnableMemControl() {
