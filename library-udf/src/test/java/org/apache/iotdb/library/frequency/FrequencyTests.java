@@ -175,7 +175,8 @@ public class FrequencyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result1 = Double.parseDouble(resultSet.getString(1));
-      Double result2 = Double.parseDouble(resultSet.getString(2));
+      resultSet.next();
+      Double result2 = Double.parseDouble(resultSet.getString(1));
       assert Math.abs(result1 - 2d) < 1e-5 && Math.abs(result2 - 7d) < 1e-5;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -191,9 +192,12 @@ public class FrequencyTests {
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       Double result1 = Double.parseDouble(resultSet.getString(1));
-      Double result2 = Double.parseDouble(resultSet.getString(2));
-      Double result3 = Double.parseDouble(resultSet.getString(3));
-      Double result4 = Double.parseDouble(resultSet.getString(4));
+      resultSet.next();
+      Double result2 = Double.parseDouble(resultSet.getString(1));
+      resultSet.next();
+      Double result3 = Double.parseDouble(resultSet.getString(1));
+      resultSet.next();
+      Double result4 = Double.parseDouble(resultSet.getString(1));
       assert Math.abs(result1) < 1e-5
           && Math.abs(result2) < 1e-5
           && Math.abs(result3 - 2d) < 1e-5
@@ -252,8 +256,10 @@ public class FrequencyTests {
       ResultSet resultSet1 = statement.executeQuery(sqlStr);
       ResultSet resultSet2 = statement.executeQuery("select d1.s1 from root.vehicle");
       for (int i = 1; i < ITERATION_TIMES; ++i) {
-        Double result1 = Double.parseDouble(resultSet1.getString(i));
-        Double result2 = Double.parseDouble(resultSet2.getString(i));
+        Double result1 = Double.parseDouble(resultSet1.getString(1));
+        Double result2 = Double.parseDouble(resultSet2.getString(1));
+        resultSet1.next();
+        resultSet2.next();
         assert Math.abs(result1 - 0.5 * result2) < 1e-2;
       }
     } catch (SQLException throwable) {
@@ -271,8 +277,10 @@ public class FrequencyTests {
       ResultSet resultSet1 = statement.executeQuery(sqlStr);
       ResultSet resultSet2 = statement.executeQuery("select d1.s2 from root.vehicle");
       for (int i = 1; i < ITERATION_TIMES; ++i) {
-        Double result1 = Double.parseDouble(resultSet1.getString(i));
-        Double result2 = Double.parseDouble(resultSet2.getString(i));
+        Double result1 = Double.parseDouble(resultSet1.getString(1));
+        Double result2 = Double.parseDouble(resultSet2.getString(1));
+        resultSet1.next();
+        resultSet2.next();
         assert Math.abs(result1 - result2) < 1e-2;
       }
     } catch (SQLException throwable) {
