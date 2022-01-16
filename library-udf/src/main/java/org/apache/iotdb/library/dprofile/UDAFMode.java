@@ -29,22 +29,31 @@ import org.apache.iotdb.library.dprofile.util.MaxSelector;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.eclipse.collections.impl.map.mutable.primitive.DoubleIntHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.DoubleLongHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.FloatIntHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.FloatLongHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.IntIntHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.IntLongHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.eclipse.collections.impl.map.mutable.primitive.LongLongHashMap;
 
 /** This function aggregates mode of input series. */
 public class UDAFMode implements UDTF {
 
   private IntIntHashMap intMap;
+  private IntLongHashMap itMap;
   private LongIntHashMap longMap;
+  private LongLongHashMap ltMap;
   private FloatIntHashMap floatMap;
+  private FloatLongHashMap ftMap;
   private DoubleIntHashMap doubleMap;
+  private DoubleLongHashMap dtMap;
   private int booleanCnt;
   private HashMap<String, Integer> stringMap;
+  private HashMap<String, Long> stMap;
   private TSDataType dataType;
 
   @Override
@@ -62,18 +71,23 @@ public class UDAFMode implements UDTF {
     switch (dataType) {
       case INT32:
         intMap = new IntIntHashMap();
+        itMap = new IntLongHashMap();
         break;
       case INT64:
         longMap = new LongIntHashMap();
+        ltMap = new LongLongHashMap();
         break;
       case FLOAT:
         floatMap = new FloatIntHashMap();
+        ftMap = new FloatLongHashMap();
         break;
       case DOUBLE:
         doubleMap = new DoubleIntHashMap();
+        dtMap = new DoubleLongHashMap();
         break;
       case TEXT:
         stringMap = new HashMap<>();
+        stMap = new HashMap<>();
         break;
       case BOOLEAN:
         booleanCnt = 0;
@@ -85,18 +99,33 @@ public class UDAFMode implements UDTF {
     switch (dataType) {
       case INT32:
         intMap.addToValue(row.getInt(0), 1);
+        if(!itMap.containsKey(row.getInt(0))){
+          itMap.addToValue(row.getInt(0), row.getTime());
+        }
         break;
       case INT64:
         longMap.addToValue(row.getLong(0), 1);
+        if(!ltMap.containsKey(row.getLong(0))){
+          ltMap.addToValue(row.getLong(0), row.getTime());
+        }
         break;
       case FLOAT:
         floatMap.addToValue(row.getFloat(0), 1);
+        if(!ftMap.containsKey(row.getFloat(0))){
+          ftMap.addToValue(row.getFloat(0), row.getTime());
+        }
         break;
       case DOUBLE:
         doubleMap.addToValue(row.getDouble(0), 1);
+        if(!dtMap.containsKey(row.getDouble(0))){
+          dtMap.addToValue(row.getDouble(0), row.getTime());
+        }
         break;
       case TEXT:
         stringMap.put(row.getString(0), stringMap.getOrDefault(row.getString(0), 0) + 1);
+        if(!stMap.containsKey(row.getString(0))){
+          stMap.put(row.getString(0), row.getTime());
+        }
         break;
       case BOOLEAN:
         boolean v = row.getBoolean(0);
@@ -110,19 +139,23 @@ public class UDAFMode implements UDTF {
     switch (dataType) {
       case INT32:
         intMap.forEachKeyValue(max::insert);
-        pc.putInt(0, max.getInt());
+        int im = max.getInt();
+        pc.putInt(itMap.get(im), im);
         break;
       case INT64:
         longMap.forEachKeyValue(max::insert);
-        pc.putLong(0, max.getLong());
+        long lm = max.getLong();
+        pc.putLong(ltMap.get(lm), lm);
         break;
       case FLOAT:
         floatMap.forEachKeyValue(max::insert);
-        pc.putFloat(0, max.getFloat());
+        float fm = max.getFloat();
+        pc.putFloat(ftMap.get(fm), fm);
         break;
       case DOUBLE:
         doubleMap.forEachKeyValue(max::insert);
-        pc.putDouble(0, max.getDouble());
+        double dm = max.getDouble();
+        pc.putDouble(dtMap.get(dm), dm);
         break;
       case TEXT:
         int maxTimes = 0;
@@ -135,7 +168,7 @@ public class UDAFMode implements UDTF {
             s = key;
           }
         }
-        pc.putString(0, s);
+        pc.putString(stMap.get(s), s);
         break;
       case BOOLEAN:
         pc.putBoolean(0, booleanCnt > 0);

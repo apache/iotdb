@@ -617,7 +617,7 @@ This function is used to calculate the mode of time series, that is, the value t
 
 **Input Series:** Only support a single input series. The type is arbitrary.
 
-**Output Series:** Output a single series. The type is the same as the input. There is only one data point in the series, whose timestamp is 0 and value is the mode.
+**Output Series:** Output a single series. The type is the same as the input. There is only one data point in the series, whose timestamp is the same as which the first mode value has and value is the mode.
 
 **Note:**
 + If there are multiple values with the most occurrences, the arbitrary one will be output.
@@ -657,7 +657,7 @@ Output series:
 +-----------------------------+---------------------+
 |                         Time|mode(root.test.d2.s2)|
 +-----------------------------+---------------------+
-|1970-01-01T08:00:00.000+08:00|                World|
+|1970-01-01T08:00:00.004+08:00|                World|
 +-----------------------------+---------------------+
 ```
 
@@ -825,7 +825,7 @@ The function is used to compute the exact or approximate percentile of a numeric
 + `rank`: The rank percentage of the percentile. It should be (0,1] and the default value is 0.5. For instance, a percentile with `rank`=0.5 is the median.
 + `error`: The rank error of the approximate percentile. It should be within [0,1) and the default value is 0. For instance, a 0.5-percentile with `error`=0.01 is the value of the element with rank percentage 0.49~0.51. With `error`=0, the output is the exact percentile.
 
-**Output Series:** Output a single series. The type is DOUBLE. There is only one data point in the series, whose timestamp is 0 and value is the percentile.
+**Output Series:** Output a single series. The type is DOUBLE. There is only one data point in the series, whose timestamp is the same has which the first percentile value has, and value is the percentile.
 
 **Note:** Missing points, null points and `NaN` in the input series will be ignored.
 
@@ -879,7 +879,7 @@ Output series:
 +-----------------------------+------------------------------------------------------+
 |                         Time|percentile(root.test.s0, "rank"="0.2", "error"="0.01")|
 +-----------------------------+------------------------------------------------------+
-|1970-01-01T08:00:00.000+08:00|                                    0.1801469624042511|
+|2021-03-17T10:35:02.054+08:00|                                    0.1801469624042511|
 +-----------------------------+------------------------------------------------------+
 ```
 
