@@ -195,16 +195,16 @@ public abstract class AggregateResult {
           ReadWriteIOUtils.write(binaryValue, outputStream);
           break;
         case MIN_MAX_DOUBLE:
-          ReadWriteIOUtils.write(minMaxInfo, TSDataType.DOUBLE, outputStream);
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.MIN_MAX_DOUBLE, outputStream);
           break;
         case MIN_MAX_FLOAT:
-          ReadWriteIOUtils.write(minMaxInfo, TSDataType.FLOAT, outputStream);
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.MIN_MAX_FLOAT, outputStream);
           break;
         case MIN_MAX_INT32:
-          ReadWriteIOUtils.write(minMaxInfo, TSDataType.INT32, outputStream);
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.MIN_MAX_INT32, outputStream);
           break;
         case MIN_MAX_INT64:
-          ReadWriteIOUtils.write(minMaxInfo, TSDataType.INT64, outputStream);
+          ReadWriteIOUtils.write(minMaxInfo, TSDataType.MIN_MAX_INT64, outputStream);
           break;
         default:
           throw new IllegalArgumentException("Invalid Aggregation Type: " + resultDataType.name());

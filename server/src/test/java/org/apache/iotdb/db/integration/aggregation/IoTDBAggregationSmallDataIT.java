@@ -213,7 +213,7 @@ public class IoTDBAggregationSmallDataIT {
   /** @author Yuyuan Kang */
   @Test
   public void maxValueWithoutFilterTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,22222,null"};
+    String[] retArray = new String[] {"0,22222[1000],null"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -227,7 +227,7 @@ public class IoTDBAggregationSmallDataIT {
       } catch (IoTDBSQLException e) {
         Assert.assertTrue(
             e.toString().contains("500: [INTERNAL_SERVER_ERROR] Exception occurred while executing")
-                && e.toString().contains("Binary statistics does not support operation: max"));
+                && e.toString().contains("TSDataType TEXT is not supported!"));
       }
 
       boolean hasResultSet =
@@ -606,7 +606,7 @@ public class IoTDBAggregationSmallDataIT {
 
   @Test
   public void minValueWithMultiValueFiltersTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,90,180,2.22,ddddd,true"};
+    String[] retArray = new String[] {"0,90[104],180[102],2.22[2]"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -614,8 +614,8 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT min_value(s0),min_value(s1),min_value(s2),"
-                  + "min_value(s3),min_value(s4) FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100");
+              "SELECT min_value(s0),min_value(s1),min_value(s2)"
+                  + " FROM root.vehicle.d0 WHERE s1 < 50000 AND s1 != 100");
       Assert.assertTrue(hasResultSet);
 
       try (ResultSet resultSet = statement.getResultSet()) {
@@ -628,12 +628,8 @@ public class IoTDBAggregationSmallDataIT {
                   + ","
                   + resultSet.getString(min_value(d0s1))
                   + ","
-                  + resultSet.getString(min_value(d0s2))
-                  + ","
-                  + resultSet.getString(min_value(d0s3))
-                  + ","
-                  + resultSet.getString(min_value(d0s4));
-          Assert.assertEquals(ans, retArray[cnt]);
+                  + resultSet.getString(min_value(d0s2));
+          Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }
         Assert.assertEquals(1, cnt);
@@ -645,9 +641,10 @@ public class IoTDBAggregationSmallDataIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void maxValueWithMultiValueFiltersTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"0,99,40000,11.11,fffff,true"};
+    String[] retArray = new String[] {"0,99[105],40000[2],11.11[105]"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =
@@ -655,8 +652,7 @@ public class IoTDBAggregationSmallDataIT {
         Statement statement = connection.createStatement()) {
       boolean hasResultSet =
           statement.execute(
-              "SELECT max_value(s0),max_value(s1),max_value(s2),"
-                  + "max_value(s3),max_value(s4) FROM root.vehicle.d0 "
+              "SELECT max_value(s0),max_value(s1),max_value(s2) FROM root.vehicle.d0 "
                   + "WHERE s1 < 50000 AND s1 != 100");
 
       Assert.assertTrue(hasResultSet);
@@ -670,11 +666,7 @@ public class IoTDBAggregationSmallDataIT {
                   + ","
                   + resultSet.getString(max_value(d0s1))
                   + ","
-                  + resultSet.getString(max_value(d0s2))
-                  + ","
-                  + resultSet.getString(max_value(d0s3))
-                  + ","
-                  + resultSet.getString(max_value(d0s4));
+                  + resultSet.getString(max_value(d0s2));
           Assert.assertEquals(retArray[cnt], ans);
           cnt++;
         }

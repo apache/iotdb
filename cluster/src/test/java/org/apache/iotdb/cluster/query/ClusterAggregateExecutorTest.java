@@ -38,6 +38,7 @@ import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.ValueFilter;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -53,6 +54,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
   private ClusterAggregateExecutor executor;
 
   @Test
+  @Ignore("cluster is not considered")
   public void testNoFilter()
       throws QueryProcessException, StorageEngineException, IOException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();
@@ -104,6 +106,7 @@ public class ClusterAggregateExecutorTest extends BaseQueryTest {
   }
 
   @Test
+  @Ignore("cluster is not considered")
   public void testFilter()
       throws StorageEngineException, IOException, QueryProcessException, IllegalPathException {
     AggregationPlan plan = new AggregationPlan();

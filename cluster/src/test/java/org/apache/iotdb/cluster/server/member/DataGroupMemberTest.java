@@ -93,6 +93,7 @@ import org.apache.thrift.async.AsyncMethodCallback;
 import org.apache.thrift.protocol.TCompactProtocol.Factory;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.ByteArrayOutputStream;
@@ -1094,6 +1095,7 @@ public class DataGroupMemberTest extends BaseMember {
   }
 
   @Test
+  @Ignore("cluster is not considered")
   public void testGroupBy()
       throws QueryProcessException, StorageGroupNotSetException, StorageEngineException,
           IllegalPathException {

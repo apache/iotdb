@@ -44,11 +44,7 @@ public class SessionExample2 {
     session = new Session(LOCAL_HOST, 6667, "root", "root");
     session.open(false);
 
-    // set session fetchSize
-    session.setFetchSize(10000);
-
     SessionDataSet dataSet = session.executeQueryStatement(statement3);
-
     System.out.println(dataSet.getColumnNames());
     dataSet.setFetchSize(1024); // default is 10000
     while (dataSet.hasNext()) {

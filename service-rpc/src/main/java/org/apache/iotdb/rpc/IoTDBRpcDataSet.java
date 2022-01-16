@@ -443,6 +443,7 @@ public class IoTDBRpcDataSet {
     return getString(index, columnTypeDeduplicatedList.get(index), values);
   }
 
+  /** @author Yuyuan Kang */
   public String getString(int index, TSDataType tsDataType, byte[][] values) {
     switch (tsDataType) {
       case BOOLEAN:
@@ -456,6 +457,10 @@ public class IoTDBRpcDataSet {
       case DOUBLE:
         return String.valueOf(BytesUtils.bytesToDouble(values[index]));
       case TEXT:
+      case MIN_MAX_DOUBLE:
+      case MIN_MAX_FLOAT:
+      case MIN_MAX_INT32:
+      case MIN_MAX_INT64:
         return new String(values[index], StandardCharsets.UTF_8);
       default:
         return null;

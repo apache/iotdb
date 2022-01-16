@@ -49,6 +49,7 @@ import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 
 import junit.framework.TestCase;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -90,6 +91,7 @@ public class ClusterQueryRouterTest extends BaseQueryTest {
   }
 
   @Test
+  @Ignore("cluster is not considered")
   public void testAggregation()
       throws StorageEngineException, IOException, QueryProcessException,
           QueryFilterOptimizationException, IllegalPathException {

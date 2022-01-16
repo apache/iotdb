@@ -335,20 +335,21 @@ public class IOTDBGroupByIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void maxMinValueTimeTest() {
     String[] retArray1 =
         new String[] {
           "2,null,null,null,null",
-          "4,5.5,4.4,5,4",
+          "4,5.5[5],4.4[4],5,4",
           "6,null,null,null,null",
           "8,null,null,null,null",
-          "10,10.1,10.1,10,10",
+          "10,10.1[10],10.1[10],10,10",
           "12,null,null,null,null",
           "14,null,null,null,null",
           "16,null,null,null,null",
           "18,null,null,null,null",
-          "20,20.2,20.2,20,20",
+          "20,20.2[20],20.2[20],20,20",
           "22,null,null,null,null",
           "24,null,null,null,null",
           "26,null,null,null,null",
@@ -356,19 +357,19 @@ public class IOTDBGroupByIT {
         };
     String[] retArray2 =
         new String[] {
-          "2,20.2,3.3,20,3",
-          "22,40.4,30.3,40,30",
-          "42,50.5,50.5,50,50",
+          "2,20.2[20],3.3[3],20,3",
+          "22,40.4[40],30.3[30],40,30",
+          "42,50.5[50],50.5[50],50,50",
           "62,null,null,null,null",
-          "82,100.1,100.1,100,100",
+          "82,100.1[100],100.1[100],100,100",
           "102,null,null,null,null",
           "122,null,null,null,null",
-          "142,200.2,200.2,150,150",
+          "142,200.2[150],200.2[150],150,150",
           "162,null,null,null,null",
-          "182,300.3,300.3,200,200",
+          "182,300.3[200],300.3[200],200,200",
           "202,null,null,null,null",
           "222,null,null,null,null",
-          "242,400.4,400.4,250,250",
+          "242,400.4[250],400.4[250],250,250",
           "262,null,null,null,null",
           "282,null,null,null,null",
         };
@@ -614,11 +615,12 @@ public class IOTDBGroupByIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void largeIntervalTest() {
     System.out.println("largeIntervalTest");
-    String[] retArray1 = new String[] {"0,4.4,12,300,4", "340,100.1,10,620,500"};
-    String[] retArray2 = new String[] {"0,3.3,13,300,3", "340,100.1,10,620,500"};
+    String[] retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[500, 580],10,620,500"};
+    String[] retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[500, 580],10,620,500"};
 
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
@@ -676,6 +678,8 @@ public class IOTDBGroupByIT {
         Assert.assertEquals(retArray2.length, cnt);
       }
 
+      retArray1 = new String[] {"0,4.4[4],12,300,4", "340,100.1[580, 500],10,620,500"};
+      retArray2 = new String[] {"0,3.3[3],13,300,3", "340,100.1[580, 500],10,620,500"};
       // order by time desc
       hasResultSet =
           statement.execute(

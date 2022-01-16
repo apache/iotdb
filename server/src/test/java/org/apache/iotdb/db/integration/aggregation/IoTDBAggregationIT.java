@@ -619,9 +619,10 @@ public class IoTDBAggregationIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void maxminValueTest() {
-    String[] retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
+    String[] retArray = new String[] {"0,8499[8499],500.0[500]", "0,2499[2499],500.0[500]"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

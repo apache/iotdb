@@ -35,6 +35,7 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.filter.TimeFilter;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -44,6 +45,7 @@ import java.util.List;
 public class MergeGroupByExecutorTest extends BaseQueryTest {
 
   @Test
+  @Ignore("cluster is not considered")
   public void testNoTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));
@@ -83,6 +85,7 @@ public class MergeGroupByExecutorTest extends BaseQueryTest {
   }
 
   @Test
+  @Ignore("cluster is not considered")
   public void testTimeFilter()
       throws QueryProcessException, IOException, IllegalPathException, StorageEngineException {
     PartialPath path = new PartialPath(TestUtils.getTestSeries(0, 0));

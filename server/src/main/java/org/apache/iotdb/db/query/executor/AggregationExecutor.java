@@ -125,10 +125,12 @@ public class AggregationExecutor {
   }
 
   /**
-   * @author Yuyuan Kang get aggregation result for one series
+   * get aggregation result for one series
+   *
    * @param pathToAggrIndexes entry of path to aggregation indexes map
    * @param timeFilter time filter
    * @param context query context
+   * @author Yuyuan Kang
    */
   protected void aggregateOneSeries(
       Map.Entry<PartialPath, List<Integer>> pathToAggrIndexes,
@@ -147,7 +149,7 @@ public class AggregationExecutor {
     tsDataType = SchemaUtils.transFormBackFromMinMax(tsDataType);
 
     for (int i : pathToAggrIndexes.getValue()) {
-      TSDataType dataType = dataTypes.get(pathToAggrIndexes.getValue().get(i));
+      TSDataType dataType = dataTypes.get(i);
       // construct AggregateResult
       AggregateResult aggregateResult =
           AggregateResultFactory.getAggrResultByName(aggregations.get(i), dataType);

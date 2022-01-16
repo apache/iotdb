@@ -94,6 +94,7 @@ public class IoTDBRecoverUnclosedIT {
     EnvironmentUtils.cleanEnv();
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void test() throws SQLException, IOException, StartupException {
     String[] retArray = new String[] {"0,2", "0,4", "0,3"};
@@ -170,7 +171,7 @@ public class IoTDBRecoverUnclosedIT {
     }
 
     // maxminValueTest
-    retArray = new String[] {"0,8499,500.0", "0,2499,500.0"};
+    retArray = new String[] {"0,8499[8499],500.0[500]", "0,2499[2499],500.0[500]"};
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {

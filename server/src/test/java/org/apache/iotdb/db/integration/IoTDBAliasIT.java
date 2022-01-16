@@ -234,9 +234,10 @@ public class IoTDBAliasIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void selectAggregationWithAliasTest() throws ClassNotFoundException {
-    String[] retArray = new String[] {"4,4,28.3,26.3,"};
+    String[] retArray = new String[] {"4,4,28.3[400],26.3[400],"};
 
     Class.forName(Config.JDBC_DRIVER_NAME);
     try (Connection connection =

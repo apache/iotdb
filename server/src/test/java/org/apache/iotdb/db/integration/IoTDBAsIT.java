@@ -220,11 +220,12 @@ public class IoTDBAsIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void aggregationWithAsTest() throws ClassNotFoundException {
     String[] retArray =
         new String[] {
-          "4,28.3,",
+          "4,28.3[400],",
         };
 
     Class.forName(Config.JDBC_DRIVER_NAME);

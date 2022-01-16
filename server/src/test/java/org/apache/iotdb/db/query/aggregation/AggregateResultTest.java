@@ -24,6 +24,7 @@ import org.apache.iotdb.db.qp.constant.SQLConstant;
 import org.apache.iotdb.db.query.aggregation.impl.AvgAggrResult;
 import org.apache.iotdb.db.query.factory.AggregateResultFactory;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.statistics.MinMaxInfo;
 import org.apache.iotdb.tsfile.file.metadata.statistics.Statistics;
 
 import org.junit.Assert;
@@ -62,12 +63,15 @@ public class AggregateResultTest {
     Assert.assertEquals(1.333d, (double) result.getResult(), 0.01);
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void maxValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult maxValueAggrResult1 =
-        AggregateResultFactory.getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.MAX_VALUE, TSDataType.MIN_MAX_DOUBLE, true);
     AggregateResult maxValueAggrResult2 =
-        AggregateResultFactory.getAggrResultByName(SQLConstant.MAX_VALUE, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.MAX_VALUE, TSDataType.MIN_MAX_DOUBLE, true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
@@ -78,13 +82,13 @@ public class AggregateResultTest {
     maxValueAggrResult2.updateResultFromStatistics(statistics2);
     maxValueAggrResult1.merge(maxValueAggrResult2);
 
-    Assert.assertEquals(2d, (double) maxValueAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(2d, (Double) ((MinMaxInfo) maxValueAggrResult1.getResult()).val, 0.01);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     maxValueAggrResult1.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(2d, (double) result.getResult(), 0.01);
+    Assert.assertEquals(2d, (Double) ((MinMaxInfo) result.getResult()).val, 0.01);
   }
 
   @Test
@@ -112,12 +116,15 @@ public class AggregateResultTest {
     Assert.assertEquals(2L, (long) result.getResult());
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void minValueAggrResultTest() throws QueryProcessException, IOException {
     AggregateResult minValueAggrResult1 =
-        AggregateResultFactory.getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.MIN_VALUE, TSDataType.MIN_MAX_DOUBLE, true);
     AggregateResult minValueAggrResult2 =
-        AggregateResultFactory.getAggrResultByName(SQLConstant.MIN_VALUE, TSDataType.DOUBLE, true);
+        AggregateResultFactory.getAggrResultByName(
+            SQLConstant.MIN_VALUE, TSDataType.MIN_MAX_DOUBLE, true);
 
     Statistics statistics1 = Statistics.getStatsByType(TSDataType.DOUBLE);
     Statistics statistics2 = Statistics.getStatsByType(TSDataType.DOUBLE);
@@ -128,13 +135,13 @@ public class AggregateResultTest {
     minValueAggrResult2.updateResultFromStatistics(statistics2);
     minValueAggrResult1.merge(minValueAggrResult2);
 
-    Assert.assertEquals(1d, (double) minValueAggrResult1.getResult(), 0.01);
+    Assert.assertEquals(1d, (double) ((MinMaxInfo) minValueAggrResult1.getResult()).val, 0.01);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     minValueAggrResult1.serializeTo(outputStream);
     ByteBuffer byteBuffer = ByteBuffer.wrap(outputStream.toByteArray());
     AggregateResult result = AggregateResult.deserializeFrom(byteBuffer);
-    Assert.assertEquals(1d, (double) result.getResult(), 0.01);
+    Assert.assertEquals(1d, (double) ((MinMaxInfo) result.getResult()).val, 0.01);
   }
 
   @Test

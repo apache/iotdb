@@ -200,11 +200,12 @@ public class IoTDBAggregationByLevelIT {
     }
   }
 
+  /** @author Yuyuan Kang */
   @Test
   public void valueFuncGroupByLevelTest() throws Exception {
     String[] retArray =
         new String[] {
-          "61.22,125.5", "71.12,62.15,71.12,62.15",
+          "61.22,125.5[500]", "71.12,62.15,71.12[600],62.15[700]",
         };
     try (Connection connection =
             DriverManager.getConnection("jdbc:iotdb://127.0.0.1:6667/", "root", "root");
