@@ -19,83 +19,295 @@
 
 package org.apache.iotdb.library.series;
 
-import org.apache.iotdb.rpc.IoTDBConnectionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.db.exception.metadata.MetadataException;
+import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.service.IoTDB;
+import org.apache.iotdb.integration.env.ConfigFactory;
+import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.jdbc.Config;
+import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
+import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import io.jsonwebtoken.lang.Assert;
-import org.junit.jupiter.api.Test;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class SeriesTest {
+  protected static final int ITERATION_TIMES = 10_000;
+
+  protected static final long TIMESTAMP_INTERVAL = 60; // gap = 60ms
+  
+  protected static final long START_TIMESTAMP = 0;
+  
+  protected static final long END_TIMESTAMP = START_TIMESTAMP + ITERATION_TIMES * ITERATION_TIMES;
+
+  @BeforeClass
+  public static void setUp() throws Exception {
+    ConfigFactory.getConfig()
+        .setUdfCollectorMemoryBudgetInMB(5)
+        .setUdfTransformerMemoryBudgetInMB(5)
+        .setUdfReaderMemoryBudgetInMB(5);
+    EnvFactory.getEnv().initBeforeClass();
+    createTimeSeries();
+    generateData();
+    registerUDF();
+  }
+  private static void createTimeSeries() throws MetadataException {
+    IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s1"),
+        TSDataType.INT32,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d1.s2"),
+        TSDataType.INT64,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s1"),
+        TSDataType.FLOAT,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+    IoTDB.metaManager.createTimeseries(
+        new PartialPath("root.vehicle.d2.s2"),
+        TSDataType.DOUBLE,
+        TSEncoding.PLAIN,
+        CompressionType.UNCOMPRESSED,
+        null);
+  }
+  
+  private static void generateData() {
+    double x = -100d, y = 100d; // borders of random value
+    long t = START_TIMESTAMP;
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      for (int i = 1; i <= ITERATION_TIMES; ++i) {
+        t = t + TIMESTAMP_INTERVAL;
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",
+                t,
+                (int) Math.floor(x + Math.random() * y % (y - x + 1)),
+                (int) Math.floor(x + Math.random() * y % (y - x + 1))));
+        statement.execute(
+            (String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
+                t,
+                x + Math.random() * y % (y - x + 1),
+                x + Math.random() * y % (y - x + 1))));
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  private static void registerUDF() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+          session.execute(
+            "create function ConsecutiveSequences as 'org.apache.iotdb.library.series.UDTFConsecutiveSequences'");
+          session.execute(
+            "create function ConsecutiveWindows as 'org.apache.iotdb.library.series.UDTFConsecutiveWindows'");
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @AfterClass
+  public static void tearDown() throws Exception {
+    EnvFactory.getEnv().cleanAfterClass();
+    ConfigFactory.getConfig()
+        .setUdfCollectorMemoryBudgetInMB(100)
+        .setUdfTransformerMemoryBudgetInMB(100)
+        .setUdfReaderMemoryBudgetInMB(100);
+  }
+  
   @Test
-  public void test() throws IoTDBConnectionException, IOException, InterruptedException {
-    final String[] udfList = {"UDTFConsecutiveSequences", "UDTFConsecutiveWindows"};
-    Gson gson = new Gson();
-    Reader reader = Files.newBufferedReader(Paths.get("src/resources/SeriesQueries.json"));
-    HashMap<String, ArrayList<String>> udfQueries =
-        gson.fromJson(reader, new TypeToken<HashMap<String, ArrayList<String>>>() {}.getType());
-    reader.close();
-
-    Assert.isTrue(udfList.length == udfQueries.size());
-    Session session;
-    try {
-      session = new Session("127.0.0.1", "6667", "root", "root");
-      session.open();
-    } catch (Exception e) {
-      System.out.println(
-          "Failed to connect to session. Please start IoTDB and use default host, port, username and password.");
-      System.out.println(e.getMessage());
-      return;
+  public void testConsecutiveSequences1() {
+    String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2) from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
-    for (String functionName : udfList) {
-      try { // register function
-        session.executeNonQueryStatement("drop function " + functionName);
-        session.executeNonQueryStatement(
-            "create function "
-                + functionName
-                + " as 'org.apache.iotdb.library.series."
-                + functionName
-                + "'");
-      } catch (Exception e) {
-        try {
-          session.executeNonQueryStatement(
-              "create function "
-                  + functionName
-                  + " as 'org.apache.iotdb.library.series."
-                  + functionName
-                  + "'");
-        } catch (Exception f) {
-          System.out.println("Cannot register function " + functionName + ".");
-          System.out.println(f.getMessage());
-          continue;
-        }
-      }
+  }
 
-      // run query
-      ArrayList<String> queries = udfQueries.get(functionName);
-      for (String query : queries) {
-        try {
-          session.executeQueryStatement(query);
-        } catch (Exception e) {
-          System.out.println("Query failed at function " + functionName);
-          System.out.println(e.getMessage());
-        }
-        Thread.sleep(1000);
+  @Test
+  public void testConsecutiveSequences2() {
+    String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2) from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
       }
-
-      try { // drop function
-        session.executeNonQueryStatement("drop function " + functionName);
-      } catch (Exception ignored) {
-      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
     }
-    session.close();
+  }
+
+  @Test
+  public void testConsecutiveSequences3() {
+    String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2,\"gap\"=\"60ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConsecutiveSequences4() {
+    String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2,\"gap\"=\"60ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConsecutiveWindows1() {
+    String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConsecutiveWindows2() {
+    String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConsecutiveWindows3() {
+    String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
+  }
+
+  @Test
+  public void testConsecutiveWindows4() {
+    String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+    try (Connection connection =
+            DriverManager.getConnection(
+                Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+        Statement statement = connection.createStatement()) {
+      ResultSet resultSet = statement.executeQuery(sqlStr);
+      int resultSetLength = resultSet.getRow();
+      assert resultSetLength > 0;
+      while (resultSet.next()) {
+        long timeStamp = Long.parseLong(resultSet.getString(0));
+        int value = Integer.parseInt(resultSet.getString(1));
+        assert timeStamp >= START_TIMESTAMP;
+        assert timeStamp <= END_TIMESTAMP;
+        assert value <= ITERATION_TIMES;
+      }
+    } catch (SQLException throwable) {
+      fail(throwable.getMessage());
+    }
   }
 }
