@@ -415,7 +415,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -429,7 +428,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -446,7 +444,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -461,7 +458,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -475,7 +471,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -489,7 +484,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -503,7 +497,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -517,7 +510,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -531,7 +523,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -545,7 +536,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -559,7 +549,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -573,7 +562,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -587,7 +575,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -601,7 +588,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -615,7 +601,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -629,7 +614,6 @@ public class DProfileTests {
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
-      Double result = Double.parseDouble(resultSet.getString(1));
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
