@@ -91,25 +91,75 @@ public class SeriesTest {
   }
 
   private static void generateData() {
-    double x = -100d, y = 100d; // borders of random value
-    long t = START_TIMESTAMP;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
-      for (int i = 1; i <= ITERATION_TIMES; ++i) {
-        t = t + TIMESTAMP_INTERVAL;
+        // d1
         statement.execute(
             String.format(
-                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)",
-                t,
-                (int) Math.floor(x + Math.random() * y % (y - x + 1)),
-                (int) Math.floor(x + Math.random() * y % (y - x + 1))));
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577808000, 1, 1));
         statement.execute(
-            (String.format(
-                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
-                t, x + Math.random() * y % (y - x + 1), x + Math.random() * y % (y - x + 1))));
-      }
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577808300, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577808600, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577809200, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577809500, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577809800, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577810100, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1) values(%d,%d)", 1577810400, 1)); // s2 == null 
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577810700, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d1(timestamp,s1,s2) values(%d,%d,%d)", 1577811000, 1, 1));
+        // d2
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577808000, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577808300, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577808600, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577809200, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577809500, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577809800, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577810100, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1) values(%d,%d)", 1577810400, 1)); // s2 == null 
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577810700, 1, 1));
+        statement.execute(
+            String.format(
+                "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%d,%d)", 1577811000, 1, 1));
+      
+
+              
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -139,20 +189,34 @@ public class SeriesTest {
   @Test
   public void testConsecutiveSequences1() {
     String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2) from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 4;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577810700;
+      assert value == 2;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -161,20 +225,34 @@ public class SeriesTest {
   @Test
   public void testConsecutiveSequences2() {
     String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2) from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 4;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577810700;
+      assert value == 2;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -182,21 +260,35 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveSequences3() {
-    String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2,\"gap\"=\"60ms\") from root.vehicle";
+    String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2,\"gap\"=\"5m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 4;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577810700;
+      assert value == 2;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -204,21 +296,35 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveSequences4() {
-    String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2,\"gap\"=\"60ms\") from root.vehicle";
+    String sqlStr = "select ConsecutiveSequences(d2.s1,d2.s2,\"gap\"=\"5m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 4;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577810700;
+      assert value == 2;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -226,21 +332,35 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveWindows1() {
-    String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\") from root.vehicle";
+    String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"10m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809500;
+      assert value == 3;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -248,21 +368,35 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveWindows2() {
-    String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\") from root.vehicle";
+    String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"10m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809500;
+      assert value == 3;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -271,21 +405,35 @@ public class SeriesTest {
   @Test
   public void testConsecutiveWindows3() {
     String sqlStr =
-        "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+        "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"10m\",\"gap\"=\"5m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809500;
+      assert value == 3;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -294,21 +442,35 @@ public class SeriesTest {
   @Test
   public void testConsecutiveWindows4() {
     String sqlStr =
-        "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+        "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"10m\",\"gap\"=\"5m\") from root.vehicle";
+    long timeStamp = 0;
+    int value = 0;
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
         Statement statement = connection.createStatement()) {
       ResultSet resultSet = statement.executeQuery(sqlStr);
       int resultSetLength = resultSet.getRow();
-      assert resultSetLength > 0;
-      while (resultSet.next()) {
-        long timeStamp = Long.parseLong(resultSet.getString(0));
-        int value = Integer.parseInt(resultSet.getString(1));
-        assert timeStamp >= START_TIMESTAMP;
-        assert timeStamp <= END_TIMESTAMP;
-        assert value <= ITERATION_TIMES;
-      }
+      assert resultSetLength == 3;      
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577808000;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809200;
+      assert value == 3;
+      
+      resultSet.next();
+      
+      timeStamp = Long.parseLong(resultSet.getString(0));
+      value = Integer.parseInt(resultSet.getString(1));
+      assert timeStamp == 1577809500;
+      assert value == 3;
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
