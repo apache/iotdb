@@ -948,7 +948,10 @@ public class StorageEngine implements IService {
    * files which are not loaded.
    *
    * @param file internal file
+   * @param needCheck check if the tsfile is an internal TsFile. If you make sure it is inside, no
+   *     need to check
    * @return sg name
+   * @throws IllegalPathException throw if tsfile is not an internal TsFile
    */
   public String getSgByEngineFile(File file, boolean needCheck) throws IllegalPathException {
     if (needCheck) {
