@@ -512,8 +512,12 @@ Server，客户端的使用方式详见 [SQL 命令行终端（CLI）](https://i
 
 * concurrent\_sub\_rawQuery\_thread
 
-|名字| concurrent\_sub\_rawQuery\_thread | |:---:|:--| |描述| 当 IoTDB 对内存中的数据进行原始数据查询时，最多启动多少个线程来执行该操作。如果该值小于等于 0，那么采用机器所安装的
-CPU 核的数量。默认值为 8。| |类型| Int32 | |默认值| 8 | |改后生效方式|重启服务生效|
+|名字| concurrent\_sub\_rawQuery\_thread | 
+|:---:|:--| 
+|描述| 原始数据查询时，最多启动多少个线程来执行该操作。如果设置小于等于 0，会采用机器 CPU 核数。| 
+|类型| Int32 | 
+|默认值| 8 | 
+|改后生效方式|重启服务生效|
 
 * raw\_query\_blocking\_queue\_capacity
 
