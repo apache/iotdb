@@ -40,7 +40,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -361,12 +360,13 @@ public class InnerUnseqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
+              // InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, false);
               CompactionUtils.compact(
                   Collections.emptyList(),
                   toMergeResources,
                   Collections.singletonList(targetTsFileResource),
                   COMPACTION_TEST_SG);
-              CompactionUtils.moveToTargetFile(
+              CompactionUtils.moveTargetFile(
                   Collections.singletonList(targetTsFileResource), true, COMPACTION_TEST_SG);
               InnerSpaceCompactionUtils.combineModsInCompaction(
                   toMergeResources, targetTsFileResource);

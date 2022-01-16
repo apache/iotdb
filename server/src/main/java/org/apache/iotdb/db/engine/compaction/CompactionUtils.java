@@ -18,12 +18,16 @@
  */
 package org.apache.iotdb.db.engine.compaction;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.engine.compaction.inner.utils.MultiTsFileDeviceIterator;
 import org.apache.iotdb.db.engine.compaction.writer.AbstractCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.CrossSpaceCompactionWriter;
 import org.apache.iotdb.db.engine.compaction.writer.InnerSpaceCompactionWriter;
+import org.apache.iotdb.db.engine.modification.Modification;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.querycontext.QueryDataSource;
+import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
@@ -44,16 +48,18 @@ import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.reader.IBatchReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -268,7 +274,7 @@ public class CompactionUtils {
    * Update the targetResource. Move tmp target file to target file and serialize
    * xxx.tsfile.resource.
    */
-  public static void moveToTargetFile(
+  public static void moveTargetFile(
       List<TsFileResource> targetResources, boolean isInnerSpace, String fullStorageGroupName)
       throws IOException, WriteProcessException {
     String fileSuffix;
@@ -303,5 +309,79 @@ public class CompactionUtils {
     targetResource.setFile(newFile);
     targetResource.serialize();
     targetResource.close();
+  }
+
+  /**
+   * Collect all the compaction modification files of source files, and combines them as the
+   * modification file of target file.
+   */
+  public static void combineModsInCompaction(
+      List<TsFileResource> seqResources,
+      List<TsFileResource> unseqResources,
+      List<TsFileResource> targetResources)
+      throws IOException {
+    // target file may less than source seq files, so we should find each target file with its
+    // corresponding source seq file.
+    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
+    for (TsFileResource tsFileResource : seqResources) {
+      seqFileInfoMap.put(
+          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
+          tsFileResource);
+    }
+    // update each target mods file.
+    for (TsFileResource tsFileResource : targetResources) {
+      updateOneTargetMods(
+          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqResources);
+    }
+  }
+
+  private static void updateOneTargetMods(
+      TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles)
+      throws IOException {
+    // write mods in the seq file
+    if (seqFile != null) {
+      ModificationFile seqCompactionModificationFile = ModificationFile.getCompactionMods(seqFile);
+      for (Modification modification : seqCompactionModificationFile.getModifications()) {
+        targetFile.getModFile().write(modification);
+      }
+    }
+    // write mods in all unseq files
+    for (TsFileResource unseqFile : unseqFiles) {
+      ModificationFile compactionUnseqModificationFile =
+          ModificationFile.getCompactionMods(unseqFile);
+      for (Modification modification : compactionUnseqModificationFile.getModifications()) {
+        targetFile.getModFile().write(modification);
+      }
+    }
+    targetFile.getModFile().close();
+  }
+
+  /**
+   * This method is called to recover modifications while an exception occurs during compaction. It
+   * append new modifications of each selected tsfile to its corresponding old mods file and delete
+   * the compaction mods file.
+   *
+   * @param selectedTsFileResources
+   * @throws IOException
+   */
+  public static void appendNewModificationsToOldModsFile(
+      List<TsFileResource> selectedTsFileResources) throws IOException {
+    for (TsFileResource sourceFile : selectedTsFileResources) {
+      // if there are modifications to this seqFile during compaction
+      if (sourceFile.getCompactionModFile().exists()) {
+        ModificationFile compactionModificationFile =
+            ModificationFile.getCompactionMods(sourceFile);
+        Collection<Modification> newModification = compactionModificationFile.getModifications();
+        compactionModificationFile.close();
+        sourceFile.resetModFile();
+        // write the new modifications to its old modification file
+        try (ModificationFile oldModificationFile = sourceFile.getModFile()) {
+          for (Modification modification : newModification) {
+            oldModificationFile.write(modification);
+          }
+        }
+        FileUtils.delete(new File(ModificationFile.getCompactionMods(sourceFile).getFilePath()));
+      }
+    }
   }
 }

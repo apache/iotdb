@@ -43,7 +43,6 @@ import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
 import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -61,6 +60,8 @@ import java.util.Set;
 import static org.junit.Assert.fail;
 
 public class CrossSpaceCompactionTest {
+  private final String oldThreadName = Thread.currentThread().getName();
+  int index = 0;
 
   static final String COMPACTION_TEST_SG = "root.compactionTest";
   static final String[] fullPaths =
@@ -103,6 +104,7 @@ public class CrossSpaceCompactionTest {
           TSFileDescriptor.getInstance().getConfig().getCompressor(),
           Collections.emptyMap());
     }
+    Thread.currentThread().setName("pool-1-IoTDB-Compaction-1");
   }
 
   @After
@@ -112,10 +114,12 @@ public class CrossSpaceCompactionTest {
     TimeSeriesMetadataCache.getInstance().clear();
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
+    Thread.currentThread().setName(oldThreadName);
   }
 
   // test one seq file overlaps with six unseq files with six type of relation(Contains, In,
-  // Prefix-Overlap, Suffix-Overlap, Prefix-Non-Overlap, Suffix-Non-Overlap)
+  // Prefix-Overlap, Suffix-Overlap, Prefix-Non-Overlap, Suffix-Non-Overlap). While some timestamp
+  // of timeseries in unseq files may later than seq files.
   @Test
   public void testOneSeqFileAndSixUnseqFile() throws Exception {
     for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
@@ -411,6 +415,7 @@ public class CrossSpaceCompactionTest {
           ICrossSpaceMergeFileSelector fileSelector =
               new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
           List[] mergeFiles = fileSelector.select();
+          index++;
           if (mergeFiles.length > 0) {
             CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
             AbstractCompactionTask compactionTask =
@@ -419,13 +424,25 @@ public class CrossSpaceCompactionTest {
                     "0",
                     0,
                     "target",
-                    null,
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
                     seqTsFileResourceList,
                     unseqTsFileResourceList,
                     mergeResource.getSeqFiles(),
                     mergeResource.getUnseqFiles());
             compactionTask.call();
-            CompactionCheckerUtils.checkDataAndResource(sourceData, seqResources);
+            List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
+            for (TsFileResource seqResource : seqResources) {
+              TsFileResource targetResource =
+                  new TsFileResource(
+                      TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.deserialize();
+              targetResource.setClosed(true);
+              targetTsfileResourceList.add(targetResource);
+            }
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
             CompactionClearUtils.clearAllCompactionFiles();
           } else {
             fail();
@@ -436,9 +453,10 @@ public class CrossSpaceCompactionTest {
   }
 
   // test five seq files overlaps with one unseq file with five type of relation(Contains,
-  // Prefix-Overlap, Suffix-Overlap, Prefix-Non-Overlap, Suffix-Non-Overlap)
+  // Prefix-Overlap, Suffix-Overlap, Prefix-Non-Overlap, Suffix-Non-Overlap). Seq files do not have
+  // device d1.
   @Test
-  public void testFiveSeqFileAndOneUnseqFile() throws Exception {
+  public void testFiveSeqFileAndOneUnseqFileWithSomeDeviceNotInSeqFiles() throws Exception {
     for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
       for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
         for (boolean compactionHasMod : compactionHasMods) {
@@ -457,11 +475,9 @@ public class CrossSpaceCompactionTest {
             fullPath.add(fullPaths[5]);
             fullPath.add(fullPaths[6]);
             fullPath.add(fullPaths[7]);
-            fullPath.add(fullPaths[14]);
           } else {
             fullPath = new HashSet<>();
-            fullPath.add(fullPaths[0]);
-            fullPath.add(fullPaths[14]);
+            fullPath.add(fullPaths[1]);
           }
           List<List<Long>> chunkPagePointsNum = new ArrayList<>();
           List<Long> pagePointsNum = new ArrayList<>();
@@ -500,7 +516,313 @@ public class CrossSpaceCompactionTest {
             fullPath.add(fullPaths[8]);
           } else {
             fullPath = new HashSet<>();
+            fullPath.add(fullPaths[2]);
+          }
+          chunkPagePointsNum = new ArrayList<>();
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(100L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(100L);
+          pagePointsNum.add(50L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource seqFile1 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 1, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 0L, seqFile1);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[0], new Pair<>(0L, 25L));
+            CompactionFileGeneratorUtils.generateMods(toDeleteTimeseriesAndTime, seqFile1, false);
+          }
+          seqResources.add(seqFile1);
+
+          // seq file with Prefix-Overlap relation
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[2]);
+            fullPath.add(fullPaths[3]);
+            fullPath.add(fullPaths[4]);
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+            fullPath.add(fullPaths[8]);
+            fullPath.add(fullPaths[9]);
+            fullPath.add(fullPaths[14]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[0]);
+            fullPath.add(fullPaths[14]);
+          }
+          chunkPagePointsNum = new ArrayList<>();
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          pagePointsNum.add(500L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource seqFile2 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 2, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 1000L, seqFile2);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(3000L, 3100L));
+            CompactionFileGeneratorUtils.generateMods(toDeleteTimeseriesAndTime, seqFile2, false);
+          }
+          seqResources.add(seqFile2);
+
+          // seq file with Contains relation
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[3]);
+            fullPath.add(fullPaths[4]);
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+            fullPath.add(fullPaths[8]);
+            fullPath.add(fullPaths[9]);
+            fullPath.add(fullPaths[10]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[3]);
+          }
+          chunkPagePointsNum = new ArrayList<>();
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(100L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(100L);
+          pagePointsNum.add(50L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource seqFile3 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 3, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3500L, seqFile3);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[3], new Pair<>(3500L, 3525L));
+            CompactionFileGeneratorUtils.generateMods(toDeleteTimeseriesAndTime, seqFile3, false);
+          }
+          seqResources.add(seqFile3);
+
+          // seq file with Suffix-Overlap relation
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[4]);
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+            fullPath.add(fullPaths[8]);
+            fullPath.add(fullPaths[9]);
+            fullPath.add(fullPaths[10]);
+            fullPath.add(fullPaths[11]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[4]);
+          }
+          chunkPagePointsNum = new ArrayList<>();
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          pagePointsNum.add(500L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource seqFile4 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 4, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 3750L, seqFile4);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[4], new Pair<>(3800L, 3900L));
+            CompactionFileGeneratorUtils.generateMods(toDeleteTimeseriesAndTime, seqFile4, false);
+          }
+          seqResources.add(seqFile4);
+
+          // seq file with Suffix-Non-Overlap relation
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+            fullPath.add(fullPaths[8]);
+            fullPath.add(fullPaths[9]);
+            fullPath.add(fullPaths[10]);
+            fullPath.add(fullPaths[11]);
+            fullPath.add(fullPaths[12]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[5]);
+          }
+          chunkPagePointsNum = new ArrayList<>();
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          pagePointsNum.add(500L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource seqFile5 =
+              CompactionFileGeneratorUtils.generateTsFileResource(true, 5, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(fullPath, chunkPagePointsNum, 6250L, seqFile5);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[5], new Pair<>(6300L, 6400L));
+            CompactionFileGeneratorUtils.generateMods(toDeleteTimeseriesAndTime, seqFile5, false);
+          }
+          seqResources.add(seqFile5);
+
+          List<TsFileResource> sourceResources = new ArrayList<>(unseqResources);
+          for (int i = 1; i < 4; i++) {
+            sourceResources.add(seqResources.get(i));
+          }
+          Map<String, List<TimeValuePair>> sourceData =
+              CompactionCheckerUtils.readFiles(sourceResources);
+          if (compactionHasMod) {
+            // unseq mods
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(2500L, 2600L));
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, unseqResources.get(0), true);
+            // seq mods
+            toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[1], new Pair<>(0L, 100L));
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, seqResources.get(0), true);
+
+            // remove data in source data list
+            List<TimeValuePair> timeValuePairs = sourceData.get(fullPaths[1]);
+            timeValuePairs.removeIf(
+                timeValuePair ->
+                    timeValuePair.getTimestamp() >= 2500L && timeValuePair.getTimestamp() <= 2600L);
+            timeValuePairs.removeIf(
+                timeValuePair ->
+                    timeValuePair.getTimestamp() >= 0L && timeValuePair.getTimestamp() <= 100L);
+          }
+          TsFileResourceList seqTsFileResourceList = new TsFileResourceList();
+          seqTsFileResourceList.addAll(seqResources);
+          TsFileResourceList unseqTsFileResourceList = new TsFileResourceList();
+          unseqTsFileResourceList.addAll(unseqResources);
+          long timeLowerBound = System.currentTimeMillis() - Long.MAX_VALUE;
+          CrossSpaceMergeResource mergeResource =
+              new CrossSpaceMergeResource(
+                  seqTsFileResourceList, unseqTsFileResourceList, timeLowerBound);
+          ICrossSpaceMergeFileSelector fileSelector =
+              new MaxFileMergeFileSelector(mergeResource, Long.MAX_VALUE);
+          List[] mergeFiles = fileSelector.select();
+          if (mergeFiles.length > 0) {
+            CrossSpaceCompactionTaskFactory taskFactory = new CrossSpaceCompactionTaskFactory();
+            AbstractCompactionTask compactionTask =
+                taskFactory.createTask(
+                    COMPACTION_TEST_SG,
+                    "0",
+                    0,
+                    "target",
+                    new TsFileManager(
+                        "root.compactionTest",
+                        "0",
+                        "target\\data\\sequence\\test\\root.compactionTest\\0\\0\\"),
+                    seqTsFileResourceList,
+                    unseqTsFileResourceList,
+                    mergeResource.getSeqFiles(),
+                    mergeResource.getUnseqFiles());
+            compactionTask.call();
+            List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
+            for (TsFileResource seqResource : seqResources.subList(1, 4)) {
+              TsFileResource targetResource =
+                  new TsFileResource(
+                      TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.deserialize();
+              targetResource.setClosed(true);
+              targetTsfileResourceList.add(targetResource);
+            }
+            CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
+            CompactionClearUtils.clearAllCompactionFiles();
+          } else {
+            fail();
+          }
+        }
+      }
+    }
+  }
+
+  // test five seq files overlaps with one unseq file with five type of relation(Contains,
+  // Prefix-Overlap, Suffix-Overlap, Prefix-Non-Overlap, Suffix-Non-Overlap)
+  @Test
+  public void testFiveSeqFileAndOneUnseqFile() throws Exception {
+    for (CompactionTimeseriesType compactionTimeseriesType : compactionTimeseriesTypes) {
+      for (boolean compactionBeforeHasMod : compactionBeforeHasMods) {
+        for (boolean compactionHasMod : compactionHasMods) {
+          // unseq file
+          List<TsFileResource> unseqResources = new ArrayList<>();
+          Set<String> fullPath;
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[0]);
             fullPath.add(fullPaths[1]);
+            fullPath.add(fullPaths[2]);
+            fullPath.add(fullPaths[3]);
+            fullPath.add(fullPaths[4]);
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[1]);
+          }
+          List<List<Long>> chunkPagePointsNum = new ArrayList<>();
+          List<Long> pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          chunkPagePointsNum.add(pagePointsNum);
+          pagePointsNum = new ArrayList<>();
+          pagePointsNum.add(1000L);
+          pagePointsNum.add(500L);
+          chunkPagePointsNum.add(pagePointsNum);
+          TsFileResource tsFileResource =
+              CompactionFileGeneratorUtils.generateTsFileResource(false, 1, COMPACTION_TEST_SG);
+          CompactionFileGeneratorUtils.writeTsFile(
+              fullPath, chunkPagePointsNum, 2000L, tsFileResource);
+          // has mods files before compaction
+          if (compactionBeforeHasMod) {
+            Map<String, Pair<Long, Long>> toDeleteTimeseriesAndTime = new HashMap<>();
+            toDeleteTimeseriesAndTime.put(fullPaths[0], new Pair<>(2000L, 2500L));
+            CompactionFileGeneratorUtils.generateMods(
+                toDeleteTimeseriesAndTime, tsFileResource, false);
+          }
+          unseqResources.add(tsFileResource);
+
+          // seq file with Prefix-Non-Overlap relation
+          List<TsFileResource> seqResources = new ArrayList<>();
+          if (compactionTimeseriesType == CompactionTimeseriesType.ALL_SAME) {
+            fullPath = new HashSet<>(Arrays.asList(fullPaths));
+          } else if (compactionTimeseriesType == CompactionTimeseriesType.PART_SAME) {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[1]);
+            fullPath.add(fullPaths[2]);
+            fullPath.add(fullPaths[3]);
+            fullPath.add(fullPaths[4]);
+            fullPath.add(fullPaths[5]);
+            fullPath.add(fullPaths[6]);
+            fullPath.add(fullPaths[7]);
+            fullPath.add(fullPaths[8]);
+            fullPath.add(fullPaths[14]);
+          } else {
+            fullPath = new HashSet<>();
+            fullPath.add(fullPaths[0]);
+            fullPath.add(fullPaths[14]);
           }
           chunkPagePointsNum = new ArrayList<>();
           pagePointsNum = new ArrayList<>();
@@ -721,9 +1043,13 @@ public class CrossSpaceCompactionTest {
                     mergeResource.getUnseqFiles());
             compactionTask.call();
             List<TsFileResource> targetTsfileResourceList = new ArrayList<>();
-            for (TsFileResource targetFile : seqResources.subList(1, 4)) {
-              targetTsfileResourceList.add(
-                  TsFileNameGenerator.increaseCrossCompactionCnt(targetFile));
+            for (TsFileResource seqResource : seqResources.subList(1, 4)) {
+              TsFileResource targetResource =
+                  new TsFileResource(
+                      TsFileNameGenerator.increaseCrossCompactionCnt(seqResource).getTsFile());
+              targetResource.deserialize();
+              targetResource.setClosed(true);
+              targetTsfileResourceList.add(targetResource);
             }
             CompactionCheckerUtils.checkDataAndResource(sourceData, targetTsfileResourceList);
             CompactionClearUtils.clearAllCompactionFiles();

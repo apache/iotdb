@@ -107,7 +107,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     tsFilesReader =
         new SeriesRawDataBatchReader(
@@ -190,7 +190,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 5; j++) {
@@ -277,7 +277,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 2; i++) {
       for (int j = 0; j < 3; j++) {
@@ -381,7 +381,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 9; i++) {
       for (int j = 0; j < 9; j++) {
@@ -515,7 +515,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -639,7 +639,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -749,7 +749,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 5; i++) {
       for (int j = 0; j < 7; j++) {
@@ -828,7 +828,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2;
@@ -934,7 +934,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1051,7 +1051,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(seqResources, true);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1174,7 +1174,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1346,7 +1346,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1499,7 +1499,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 5;
@@ -1604,7 +1604,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getInnerCompactionTargetTsFileResources(unseqResources, false);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, true, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, true, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 2;
@@ -1696,7 +1696,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsFilesReader =
         new SeriesRawDataBatchReader(
@@ -1808,7 +1808,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -1960,7 +1960,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2110,7 +2110,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2252,7 +2252,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2396,7 +2396,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 5; j++) {
@@ -2512,7 +2512,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     tsFilesReader =
         new SeriesRawDataBatchReader(
@@ -2638,7 +2638,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -2837,7 +2837,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3042,7 +3042,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;
@@ -3251,7 +3251,7 @@ public class CompactionUtilsTest extends AbstractCompactionTest {
     List<TsFileResource> targetResources =
         CompactionFileGeneratorUtils.getCrossCompactionTargetTsFileResources(seqResources);
     CompactionUtils.compact(seqResources, unseqResources, targetResources, COMPACTION_TEST_SG);
-    CompactionUtils.moveToTargetFile(targetResources, false, COMPACTION_TEST_SG);
+    CompactionUtils.moveTargetFile(targetResources, false, COMPACTION_TEST_SG);
 
     for (int i = TsFileGeneratorUtils.getAlignDeviceOffset();
         i < TsFileGeneratorUtils.getAlignDeviceOffset() + 4;

@@ -18,8 +18,10 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.TsFileIdentifier;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogAnalyzer;
 import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
@@ -29,8 +31,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,7 +194,7 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
     }
     // deal with compaction modification
     try {
-      InnerSpaceCompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
+      CompactionUtils.appendNewModificationsToOldModsFile(sourceTsFileResourceList);
     } catch (Throwable e) {
       LOGGER.error(
           "{} Exception occurs while handling exception, set allowCompaction to false",

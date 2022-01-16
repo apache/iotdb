@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionT
 import org.apache.iotdb.db.engine.compaction.cross.CrossSpaceCompactionExceptionHandler;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
-import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
@@ -36,16 +35,13 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
@@ -143,7 +139,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         storageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
-    logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
+    logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
     try (RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery
@@ -159,12 +155,13 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       // the result can be reused during a restart recovery
       compactionLogger.logStringInfo(MAGIC_STRING);
 
-      CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
+      CompactionUtils.moveTargetFile(targetTsfileResourceList, false, storageGroupName);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
 
-      combineModsFiles();
+      CompactionUtils.combineModsInCompaction(
+          selectedSeqTsFileResourceList, selectedUnSeqTsFileResourceList, targetTsfileResourceList);
       try {
         tsFileManager.writeLockWithTimeout(
             "rewrite-cross-space compaction", ACQUIRE_WRITE_LOCK_TIMEOUT);
@@ -210,21 +207,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
     }
     for (TsFileResource resource : selectedUnSeqTsFileResourceList) {
       unseqTsFileResourceList.remove(resource);
-    }
-  }
-
-  private void combineModsFiles() throws IOException {
-    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
-    for (TsFileResource tsFileResource : selectedSeqTsFileResourceList) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
-    }
-    for (TsFileResource tsFileResource : targetTsfileResourceList) {
-      updateCompactionModification(
-          tsFileResource,
-          seqFileInfoMap.get(tsFileResource.getTsFile().getName()),
-          selectedUnSeqTsFileResourceList);
     }
   }
 
@@ -305,40 +287,6 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
       }
     } catch (IOException e) {
       logger.error("{} cannot remove merging modification ", fullStorageGroupName, e);
-    }
-  }
-
-  private void updateCompactionModification(
-      TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles) {
-    try {
-      // write mods in the seq file
-      if (seqFile != null) {
-        ModificationFile seqCompactionModificationFile =
-            ModificationFile.getCompactionMods(seqFile);
-        for (Modification modification : seqCompactionModificationFile.getModifications()) {
-          targetFile.getModFile().write(modification);
-        }
-      }
-      // write mods in all un-seq files
-      for (TsFileResource unseqFile : unseqFiles) {
-        ModificationFile compactionUnseqModificationFile =
-            ModificationFile.getCompactionMods(unseqFile);
-        for (Modification modification : compactionUnseqModificationFile.getModifications()) {
-          targetFile.getModFile().write(modification);
-        }
-      }
-      try {
-        targetFile.getModFile().close();
-      } catch (IOException e) {
-        logger.error(
-            "Cannot close the ModificationFile {}", targetFile.getModFile().getFilePath(), e);
-      }
-    } catch (IOException e) {
-      logger.error(
-          "{} cannot clean the ModificationFile of {} after cross space merge",
-          fullStorageGroupName,
-          targetFile.getTsFile(),
-          e);
     }
   }
 

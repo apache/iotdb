@@ -68,8 +68,14 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     this.isAlign = isAlign;
     this.seqFileIndex = 0;
     checkIsDeviceExistAndGetDeviceEndTime();
+    boolean isCurrentDeviceExistInAtLeastOneFile = false;
     for (int i = 0; i < seqTsFileResources.size(); i++) {
       if (isCurrentDeviceExist[i]) {
+        fileWriterList.get(i).startChunkGroup(deviceId);
+        isCurrentDeviceExistInAtLeastOneFile = true;
+      } else if (!isCurrentDeviceExistInAtLeastOneFile && i == seqTsFileResources.size() - 1) {
+        // Due to various factor, unseq files may have the device which is not exist in the seq
+        // file, than write the data of this device into the last target file.
         fileWriterList.get(i).startChunkGroup(deviceId);
       }
     }
@@ -90,6 +96,7 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
     chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
     chunkWriter = null;
+    seqFileIndex = 0;
   }
 
   @Override
@@ -131,7 +138,16 @@ public class CrossSpaceCompactionWriter extends AbstractCompactionWriter {
     // if timestamp is later than the current source seq tsfile, than flush chunk writer
     while (timestamp > currentDeviceEndTime[seqFileIndex]) {
       writeRateLimit(chunkWriter.estimateMaxSeriesMemSize());
-      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex++));
+      chunkWriter.writeToFileWriter(fileWriterList.get(seqFileIndex));
+
+      // If the seq file is deleted for various reasons, the following two situations may occur when
+      // selecting the source files: (1) unseq files may have some devices or measurements which are
+      // not exist in seq files. (2) timestamp of one timeseries in unseq files may later than any
+      // seq files. Then write these data into the last target file.
+      if (seqFileIndex == seqTsFileResources.size() - 1) {
+        return;
+      }
+      seqFileIndex++;
     }
   }
 

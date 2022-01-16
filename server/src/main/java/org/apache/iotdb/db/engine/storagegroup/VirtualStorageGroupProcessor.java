@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.storagegroup;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.concurrent.ThreadName;
 import org.apache.iotdb.db.conf.IoTDBConfig;
@@ -90,8 +91,6 @@ import org.apache.iotdb.tsfile.fileSystem.fsFactory.FSFactory;
 import org.apache.iotdb.tsfile.read.filter.basic.Filter;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.writer.RestorableTsFileIOWriter;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -544,6 +543,13 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
+    timedCompactionScheduleTask =
+        IoTDBThreadPoolFactory.newSingleThreadScheduledExecutor(
+            ThreadName.COMPACTION_SCHEDULE.getName()
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,

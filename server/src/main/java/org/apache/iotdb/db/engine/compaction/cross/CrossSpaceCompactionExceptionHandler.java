@@ -19,16 +19,15 @@
 
 package org.apache.iotdb.db.engine.compaction.cross;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
+import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUtils;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-import org.apache.iotdb.db.engine.storagegroup.TsFileNameGenerator;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,9 +39,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class CrossSpaceCompactionExceptionHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
@@ -220,10 +217,7 @@ public class CrossSpaceCompactionExceptionHandler {
     }
 
     // compaction finish, rename the target file
-    CompactionUtils.moveToTargetFile(targetResources, false, storageGroup);
-
-    // move the modification of old files to new files
-    moveCompactionModification(targetResources, seqFileList, unseqFileList);
+    CompactionUtils.moveTargetFile(targetResources, false, storageGroup);
 
     // delete the source files
     for (TsFileResource unseqFile : unseqFileList) {
@@ -234,50 +228,10 @@ public class CrossSpaceCompactionExceptionHandler {
       seqFile.remove();
     }
 
+    // delete compaction mods files
+    InnerSpaceCompactionUtils.deleteModificationForSourceFile(seqFileList, storageGroup);
+    InnerSpaceCompactionUtils.deleteModificationForSourceFile(unseqFileList, storageGroup);
+
     return true;
-  }
-
-  private static void moveCompactionModification(
-      List<TsFileResource> targetTsFileResources,
-      List<TsFileResource> seqFiles,
-      List<TsFileResource> unseqFiles)
-      throws IOException {
-    Map<String, TsFileResource> seqFileInfoMap = new HashMap<>();
-    for (TsFileResource tsFileResource : seqFiles) {
-      seqFileInfoMap.put(
-          TsFileNameGenerator.increaseCrossCompactionCnt(tsFileResource.getTsFile()).getName(),
-          tsFileResource);
-    }
-    for (TsFileResource tsFileResource : targetTsFileResources) {
-      updateCompactionModification(
-          tsFileResource, seqFileInfoMap.get(tsFileResource.getTsFile().getName()), unseqFiles);
-    }
-  }
-
-  private static void updateCompactionModification(
-      TsFileResource targetFile, TsFileResource seqFile, List<TsFileResource> unseqFiles)
-      throws IOException {
-    ModificationFile modificationFileForTargetFile = ModificationFile.getNormalMods(targetFile);
-    // remove the previous modification file
-    if (modificationFileForTargetFile.exists()) {
-      modificationFileForTargetFile.remove();
-    }
-    modificationFileForTargetFile = ModificationFile.getNormalMods(targetFile);
-    // write mods in the seq file
-    if (seqFile != null) {
-      ModificationFile seqCompactionModificationFile = ModificationFile.getCompactionMods(seqFile);
-      for (Modification modification : seqCompactionModificationFile.getModifications()) {
-        modificationFileForTargetFile.write(modification);
-      }
-    }
-    // write mods in all un-seq files
-    for (TsFileResource unseqFile : unseqFiles) {
-      ModificationFile compactionUnseqModificationFile =
-          ModificationFile.getCompactionMods(unseqFile);
-      for (Modification modification : compactionUnseqModificationFile.getModifications()) {
-        modificationFileForTargetFile.write(modification);
-      }
-    }
-    modificationFileForTargetFile.close();
   }
 }

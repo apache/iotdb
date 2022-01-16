@@ -27,7 +27,6 @@ import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,7 +109,7 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
         storageGroupName);
 
     states = States.CLEAN_UP;
-    CompactionUtils.moveToTargetFile(targetTsfileResourceList, false, storageGroupName);
+    CompactionUtils.moveTargetFile(targetTsfileResourceList, false, storageGroupName);
 
     releaseReadAndLockWrite(sequenceTsFileResourceList);
     releaseReadAndLockWrite(unsequenceTsFileResourceList);
@@ -172,7 +171,8 @@ public class CrossSpaceCompactionTask implements Callable<Void> {
     for (TsFileResource unseqFile : unsequenceTsFileResourceList) {
       unseqFile.setMerging(false);
     }
-    File logFile = new File(storageGroupSysDir, RewriteCrossSpaceCompactionLogger.MERGE_LOG_NAME);
+    File logFile =
+        new File(storageGroupSysDir, RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
     logFile.delete();
   }
 

@@ -32,7 +32,7 @@ import java.util.List;
 /** MergeLogger records the progress of a merge in file "merge.log" as text lines. */
 public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
 
-  public static final String MERGE_LOG_NAME = "cross-compaction.log";
+  public static final String COMPACTION_LOG_NAME = "cross-compaction.log";
 
   public static final String STR_SEQ_FILES = "seqFiles";
   public static final String STR_TARGET_FILES = "targetFiles";
@@ -78,7 +78,7 @@ public class RewriteCrossSpaceCompactionLogger implements AutoCloseable {
   public static File[] findCrossSpaceCompactionLogs(String directory) {
     File timePartitionDir = new File(directory);
     if (timePartitionDir.exists()) {
-      return timePartitionDir.listFiles((dir, name) -> name.endsWith(MERGE_LOG_NAME));
+      return timePartitionDir.listFiles((dir, name) -> name.endsWith(COMPACTION_LOG_NAME));
     } else {
       return new File[0];
     }
