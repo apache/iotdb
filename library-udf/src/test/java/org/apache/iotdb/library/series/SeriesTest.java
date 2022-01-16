@@ -39,13 +39,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+import static org.junit.Assert.fail;
+
 public class SeriesTest {
   protected static final int ITERATION_TIMES = 10_000;
 
   protected static final long TIMESTAMP_INTERVAL = 60; // gap = 60ms
-  
+
   protected static final long START_TIMESTAMP = 0;
-  
+
   protected static final long END_TIMESTAMP = START_TIMESTAMP + ITERATION_TIMES * ITERATION_TIMES;
 
   @BeforeClass
@@ -59,6 +61,7 @@ public class SeriesTest {
     generateData();
     registerUDF();
   }
+
   private static void createTimeSeries() throws MetadataException {
     IoTDB.metaManager.setStorageGroup(new PartialPath("root.vehicle"));
     IoTDB.metaManager.createTimeseries(
@@ -86,7 +89,7 @@ public class SeriesTest {
         CompressionType.UNCOMPRESSED,
         null);
   }
-  
+
   private static void generateData() {
     double x = -100d, y = 100d; // borders of random value
     long t = START_TIMESTAMP;
@@ -105,9 +108,7 @@ public class SeriesTest {
         statement.execute(
             (String.format(
                 "insert into root.vehicle.d2(timestamp,s1,s2) values(%d,%f,%f)",
-                t,
-                x + Math.random() * y % (y - x + 1),
-                x + Math.random() * y % (y - x + 1))));
+                t, x + Math.random() * y % (y - x + 1), x + Math.random() * y % (y - x + 1))));
       }
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
@@ -117,10 +118,10 @@ public class SeriesTest {
   private static void registerUDF() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-          session.execute(
-            "create function ConsecutiveSequences as 'org.apache.iotdb.library.series.UDTFConsecutiveSequences'");
-          session.execute(
-            "create function ConsecutiveWindows as 'org.apache.iotdb.library.series.UDTFConsecutiveWindows'");
+      statement.execute(
+          "create function ConsecutiveSequences as 'org.apache.iotdb.library.series.UDTFConsecutiveSequences'");
+      statement.execute(
+          "create function ConsecutiveWindows as 'org.apache.iotdb.library.series.UDTFConsecutiveWindows'");
     } catch (SQLException throwable) {
       fail(throwable.getMessage());
     }
@@ -134,7 +135,7 @@ public class SeriesTest {
         .setUdfTransformerMemoryBudgetInMB(100)
         .setUdfReaderMemoryBudgetInMB(100);
   }
-  
+
   @Test
   public void testConsecutiveSequences1() {
     String sqlStr = "select ConsecutiveSequences(d1.s1,d1.s2) from root.vehicle";
@@ -269,7 +270,8 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveWindows3() {
-    String sqlStr = "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+    String sqlStr =
+        "select ConsecutiveWindows(d1.s1,d1.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
@@ -291,7 +293,8 @@ public class SeriesTest {
 
   @Test
   public void testConsecutiveWindows4() {
-    String sqlStr = "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
+    String sqlStr =
+        "select ConsecutiveWindows(d2.s1,d2.s2,\"length\"=\"180ms\",\"gap\"=\"60ms\") from root.vehicle";
     try (Connection connection =
             DriverManager.getConnection(
                 Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
