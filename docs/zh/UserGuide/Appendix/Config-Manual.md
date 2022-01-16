@@ -517,7 +517,11 @@ CPU 核的数量。默认值为 8。| |类型| Int32 | |默认值| 8 | |改后�
 
 * raw\_query\_blocking\_queue\_capacity
 
-|名字| raw\_query\_blocking\_queue\_capacity | |:---:|:--| |描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。| |类型| Int32 | |默认值| 5 |
+|名字| raw\_query\_blocking\_queue\_capacity | 
+|:---:|:--| 
+|描述| 原始数据查询中，读任务的阻塞队列长度。默认值为 5。| 
+|类型| Int32 | 
+|默认值| 5 |
 |改后生效方式|重启服务生效|
 
 * chunk\_buffer\_pool\_enable
