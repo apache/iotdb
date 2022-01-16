@@ -35,10 +35,10 @@ import org.eclipse.collections.impl.map.mutable.primitive.FloatLongHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.IntIntHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.IntLongHashMap;
 import org.eclipse.collections.impl.map.mutable.primitive.LongIntHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.LongLongHashMap;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.eclipse.collections.impl.map.mutable.primitive.LongLongHashMap;
 
 /** This function aggregates mode of input series. */
 public class UDAFMode implements UDTF {
@@ -99,31 +99,31 @@ public class UDAFMode implements UDTF {
     switch (dataType) {
       case INT32:
         intMap.addToValue(row.getInt(0), 1);
-        if(!itMap.containsKey(row.getInt(0))){
+        if (!itMap.containsKey(row.getInt(0))) {
           itMap.addToValue(row.getInt(0), row.getTime());
         }
         break;
       case INT64:
         longMap.addToValue(row.getLong(0), 1);
-        if(!ltMap.containsKey(row.getLong(0))){
+        if (!ltMap.containsKey(row.getLong(0))) {
           ltMap.addToValue(row.getLong(0), row.getTime());
         }
         break;
       case FLOAT:
         floatMap.addToValue(row.getFloat(0), 1);
-        if(!ftMap.containsKey(row.getFloat(0))){
+        if (!ftMap.containsKey(row.getFloat(0))) {
           ftMap.addToValue(row.getFloat(0), row.getTime());
         }
         break;
       case DOUBLE:
         doubleMap.addToValue(row.getDouble(0), 1);
-        if(!dtMap.containsKey(row.getDouble(0))){
+        if (!dtMap.containsKey(row.getDouble(0))) {
           dtMap.addToValue(row.getDouble(0), row.getTime());
         }
         break;
       case TEXT:
         stringMap.put(row.getString(0), stringMap.getOrDefault(row.getString(0), 0) + 1);
-        if(!stMap.containsKey(row.getString(0))){
+        if (!stMap.containsKey(row.getString(0))) {
           stMap.put(row.getString(0), row.getTime());
         }
         break;
