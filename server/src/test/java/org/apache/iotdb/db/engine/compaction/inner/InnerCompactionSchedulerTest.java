@@ -19,6 +19,7 @@
 package org.apache.iotdb.db.engine.compaction.inner;
 
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.compaction.AbstractCompactionTest;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.task.FakedInnerSpaceCompactionTaskFactory;
@@ -29,22 +30,33 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import java.io.IOException;
 import java.util.List;
 
-public class InnerCompactionSchedulerTest {
+public class InnerCompactionSchedulerTest extends AbstractCompactionTest {
 
   private long originFileSize;
   long MAX_WAITING_TIME = 120_000L;
+  boolean oldEnableSeqSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableSeqSpaceCompaction();
+  boolean oldEnableUnSeqSpaceCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
+  int oldConcurrentCompactionThread =
+      IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread();
+  int oldMaxCompactionCandidateFileNum =
+      IoTDBDescriptor.getInstance().getConfig().getMaxCompactionCandidateFileNum();
 
   @Before
   public void setUp() throws IOException, WriteProcessException, MetadataException {
     CompactionTaskManager.getInstance().start();
+    super.setUp();
     originFileSize = IoTDBDescriptor.getInstance().getConfig().getTargetCompactionFileSize();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(90);
   }
@@ -53,10 +65,23 @@ public class InnerCompactionSchedulerTest {
   public void tearDown() throws IOException, StorageEngineException {
     CompactionTaskManager.getInstance().stop();
     IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(originFileSize);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableSeqSpaceCompaction(oldEnableSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(oldEnableUnSeqSpaceCompaction);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setConcurrentCompactionThread(oldConcurrentCompactionThread);
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setMaxCompactionCandidateFileNum(oldMaxCompactionCandidateFileNum);
+    super.tearDown();
   }
 
-  @Test
-  public void testFileSelector1() {
+  @Ignore
+  public void testFileSelector1() throws IOException, MetadataException, WriteProcessException {
     IoTDBDescriptor.getInstance().getConfig().setEnableSeqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
     IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(50);

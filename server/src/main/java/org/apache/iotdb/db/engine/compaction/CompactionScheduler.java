@@ -28,6 +28,7 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFacto
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

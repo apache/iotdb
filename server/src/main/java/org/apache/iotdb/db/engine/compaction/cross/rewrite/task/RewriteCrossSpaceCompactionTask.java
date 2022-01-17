@@ -34,6 +34,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,11 +147,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
           selectedUnSeqTsFileResourceList,
           targetTsfileResourceList,
           storageGroupName);
-      // indicates that the merge is complete and needs to be cleared
-      // the result can be reused during a restart recovery
-      compactionLogger.logStringInfo(MAGIC_STRING);
 
       CompactionUtils.moveTargetFile(targetTsfileResourceList, false, storageGroupName);
+
+      // indicates that the cross compaction is complete and the result can be reused during a
+      // restart recovery
+      compactionLogger.logStringInfo(MAGIC_STRING);
 
       releaseReadAndLockWrite(selectedSeqTsFileResourceList);
       releaseReadAndLockWrite(selectedUnSeqTsFileResourceList);
