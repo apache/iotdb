@@ -112,7 +112,7 @@ Note: For SDT, it is optional to set compression maximum COMPMAXTIME, which is t
 ```
 CREATE TIMESERIES <FullPath> <SimplifiedAttributeClauses>
 SimplifiedAttributeClauses
-    : <DataTypeValue> 
+    : WITH? (DATATYPE OPERATOR_EQ)? <DataTypeValue> 
     ENCODING OPERATOR_EQ <EncodingValue>
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ <CompressorValue>)?
     (COMMA property)*
@@ -144,8 +144,8 @@ Note: It is not currently supported to set an alias, tag, and attribute for alig
 ```
 CREATE SCHEMA TEMPLATE <TemplateName> LR_BRACKET <TemplateMeasurementClause> (COMMA plateMeasurementClause>)* RR_BRACKET
 templateMeasurementClause
-    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
-    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses 
+    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
+    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses 
     (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET #alignedTemplateMeasurement
     ;
 Eg: CREATE SCHEMA TEMPLATE temp1(
@@ -158,19 +158,19 @@ Eg: CREATE SCHEMA TEMPLATE temp1(
 
 * Set Schema Template Statement
 ```
-SET SCHEMA TEMPLATE <TemplateName> TO <STORAGE_GROUP_NAME>
+SET SCHEMA TEMPLATE <TemplateName> TO <PrefixPath>
 Eg: SET SCHEMA TEMPLATE temp1 TO root.beijing
 ```
 
 * Create Timeseries Of Schema Template Statement
 ```
-CREATE TIMESERIES OF SCHEMA TEMPLATE ON <STORAGE_GROUP_NAME>
+CREATE TIMESERIES OF SCHEMA TEMPLATE ON <PrefixPath>
 Eg: CREATE TIMESERIES OF SCHEMA TEMPLATE ON root.beijing
 ```
 
 * Unset Schema Template Statement
 ```
-UNSET SCHEMA TEMPLATE <TemplateName> FROM <STORAGE_GROUP_NAME>
+UNSET SCHEMA TEMPLATE <TemplateName> FROM <PrefixPath>
 Eg: UNSET SCHEMA TEMPLATE temp1 FROM root.beijing
 ```
 

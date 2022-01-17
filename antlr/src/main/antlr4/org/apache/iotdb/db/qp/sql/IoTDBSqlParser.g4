@@ -94,8 +94,8 @@ createSchemaTemplate
     ;
 
 templateMeasurementClause
-    : nodeNameWithoutWildcard attributeClauses #nonAlignedTemplateMeasurement
-    | alignedDevice=nodeNameWithoutWildcard LR_BRACKET nodeNameWithoutWildcard attributeClauses
+    : suffixPath attributeClauses #nonAlignedTemplateMeasurement
+    | suffixPath LR_BRACKET nodeNameWithoutWildcard attributeClauses
     (COMMA nodeNameWithoutWildcard attributeClauses)+ RR_BRACKET  #alignedTemplateMeasurement
     ;
 
@@ -141,7 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)?;
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
 
 // Create Snapshot for Schema
 createSnapshot
@@ -404,12 +404,6 @@ timeInterval
     | LR_BRACKET startTime=timeValue COMMA endTime=timeValue RS_BRACKET
     ;
 
-timeValue
-    : datetimeLiteral
-    | dateExpression
-    | INTEGER_LITERAL
-    ;
-
 // Insert Statement
 insertStatement
     : INSERT INTO prefixPath insertColumnsSpec ALIGNED? VALUES insertValuesSpec
@@ -424,8 +418,7 @@ insertValuesSpec
     ;
 
 insertMultiValue
-    : LR_BRACKET datetimeLiteral (COMMA measurementValue)+ RR_BRACKET
-    | LR_BRACKET INTEGER_LITERAL (COMMA measurementValue)+ RR_BRACKET
+    : LR_BRACKET timeValue (COMMA measurementValue)+ RR_BRACKET
     | LR_BRACKET (measurementValue COMMA?)+ RR_BRACKET
     ;
 
@@ -723,6 +716,11 @@ realLiteral
     | EXPONENT_NUM_PART
     ;
 
+timeValue
+    : datetimeLiteral
+    | dateExpression
+    | INTEGER_LITERAL
+    ;
 
 // Expression & Predicate
 
@@ -826,7 +824,7 @@ attributeClauses
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? dataType=DATATYPE_VALUE
+    | alias? WITH? (DATATYPE OPERATOR_EQ)? dataType=DATATYPE_VALUE
     (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     propertyClause*

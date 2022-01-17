@@ -17,10 +17,12 @@
 
 package org.apache.iotdb.db.protocol.rest.handler;
 
+import org.apache.iotdb.db.protocol.rest.model.ExecutionStatus;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.db.qp.physical.crud.QueryPlan;
 import org.apache.iotdb.db.qp.physical.sys.ShowChildPathsPlan;
 import org.apache.iotdb.db.query.expression.ResultColumn;
+import org.apache.iotdb.rpc.TSStatusCode;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.read.common.Field;
 import org.apache.iotdb.tsfile.read.common.RowRecord;
@@ -37,7 +39,11 @@ public class QueryDataSetHandler {
 
   private QueryDataSetHandler() {}
 
-  public static Response fillDateSet(QueryDataSet dataSet, QueryPlan queryPlan) {
+  /**
+   * @param actualRowSizeLimit max number of rows to return. no limit when actualRowSizeLimit <= 0.
+   */
+  public static Response fillDateSet(
+      QueryDataSet dataSet, QueryPlan queryPlan, final int actualRowSizeLimit) {
     org.apache.iotdb.db.protocol.rest.model.QueryDataSet queryDataSet =
         new org.apache.iotdb.db.protocol.rest.model.QueryDataSet();
 
@@ -52,7 +58,20 @@ public class QueryDataSetHandler {
         dataSetIndexes[i] = sourcePathToQueryDataSetIndex.get(resultColumn.getResultColumnName());
       }
 
+      int fetched = 0;
       while (dataSet.hasNext()) {
+        if (0 < actualRowSizeLimit && actualRowSizeLimit <= fetched) {
+          return Response.ok()
+              .entity(
+                  new ExecutionStatus()
+                      .code(TSStatusCode.QUERY_PROCESS_ERROR.getStatusCode())
+                      .message(
+                          String.format(
+                              "Dataset row size exceeded the given max row size (%d)",
+                              actualRowSizeLimit)))
+              .build();
+        }
+
         RowRecord rowRecord = dataSet.next();
         List<Field> fields = rowRecord.getFields();
 
@@ -69,6 +88,8 @@ public class QueryDataSetHandler {
                     : field.getObjectValue(field.getDataType()));
           }
         }
+
+        ++fetched;
       }
     } catch (IOException e) {
       return Response.ok().entity(ExceptionHandler.tryCatchException(e)).build();

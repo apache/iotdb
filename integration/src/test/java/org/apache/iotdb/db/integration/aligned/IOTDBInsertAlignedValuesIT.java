@@ -24,6 +24,7 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 import org.apache.iotdb.jdbc.Config;
 import org.apache.iotdb.jdbc.IoTDBSQLException;
+import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -41,6 +42,7 @@ import java.util.Objects;
 @Category({LocalStandaloneTest.class})
 public class IOTDBInsertAlignedValuesIT {
   private static Connection connection;
+  private int numOfPointsPerPage;
 
   @Before
   public void setUp() throws Exception {
@@ -50,11 +52,13 @@ public class IOTDBInsertAlignedValuesIT {
     Class.forName(Config.JDBC_DRIVER_NAME);
     connection =
         DriverManager.getConnection(Config.IOTDB_URL_PREFIX + "127.0.0.1:6667/", "root", "root");
+    numOfPointsPerPage = TSFileDescriptor.getInstance().getConfig().getMaxNumberOfPointsInPage();
   }
 
   @After
   public void tearDown() throws Exception {
     close();
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(numOfPointsPerPage);
     EnvironmentUtils.cleanEnv();
   }
 
@@ -222,6 +226,120 @@ public class IOTDBInsertAlignedValuesIT {
       Assert.fail();
     } catch (IoTDBSQLException e) {
       Assert.assertEquals(313, e.getErrorCode());
+    }
+  }
+
+  @Test
+  public void testInsertAlignedWithEmptyPage() throws SQLException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(2);
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
+      for (int i = 0; i < 100; i++) {
+        if (i == 99) {
+          st1.execute(
+              "insert into root.lz.dev.GPS(time,S1,S3) aligned values("
+                  + i
+                  + ","
+                  + i
+                  + ","
+                  + i
+                  + ")");
+        } else {
+          st1.execute(
+              "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
+                  + i
+                  + ","
+                  + i
+                  + ","
+                  + i
+                  + ")");
+        }
+      }
+      st1.execute("flush");
+    }
+    try (Statement st2 = connection.createStatement()) {
+      ResultSet rs1 = st2.executeQuery("select S3 from root.lz.dev.GPS");
+      int rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(99, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(1, rowCount);
+
+      rs1 = st2.executeQuery("select S2 from root.lz.dev.GPS");
+      rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(rowCount, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(99, rowCount);
+
+      rs1 = st2.executeQuery("select S1 from root.lz.dev.GPS");
+      rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(rowCount, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(100, rowCount);
+    }
+  }
+
+  @Test
+  public void testInsertAlignedWithEmptyPage2() throws SQLException {
+    TSFileDescriptor.getInstance().getConfig().setMaxNumberOfPointsInPage(4);
+    try (Statement st1 = connection.createStatement()) {
+      st1.execute(
+          "CREATE ALIGNED TIMESERIES root.lz.dev.GPS(S1 INT32 encoding=PLAIN compressor=SNAPPY, S2 INT32 encoding=PLAIN compressor=SNAPPY, S3 INT32 encoding=PLAIN compressor=SNAPPY) ");
+      for (int i = 0; i < 100; i++) {
+        if (i >= 49) {
+          st1.execute(
+              "insert into root.lz.dev.GPS(time,S1,S2,S3) aligned values("
+                  + i
+                  + ","
+                  + i
+                  + ","
+                  + i
+                  + ","
+                  + i
+                  + ")");
+        } else {
+          st1.execute(
+              "insert into root.lz.dev.GPS(time,S1,S2) aligned values("
+                  + i
+                  + ","
+                  + i
+                  + ","
+                  + i
+                  + ")");
+        }
+      }
+      st1.execute("flush");
+    }
+    try (Statement st2 = connection.createStatement()) {
+      ResultSet rs1 = st2.executeQuery("select S3 from root.lz.dev.GPS");
+      int rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(rowCount + 49, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(51, rowCount);
+
+      rs1 = st2.executeQuery("select S2 from root.lz.dev.GPS");
+      rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(rowCount, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(100, rowCount);
+
+      rs1 = st2.executeQuery("select S1 from root.lz.dev.GPS");
+      rowCount = 0;
+      while (rs1.next()) {
+        Assert.assertEquals(rowCount, rs1.getInt(2));
+        rowCount++;
+      }
+      Assert.assertEquals(100, rowCount);
     }
   }
 }

@@ -140,6 +140,7 @@ public class TsFileSketchTool {
     printlnBoth(
         pw,
         "---------------------------------- TsFile Sketch End ----------------------------------");
+    reader.close();
     pw.close();
   }
 

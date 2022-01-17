@@ -75,6 +75,7 @@ public class LastQueryExecutor {
   // for test to reload this parameter after restart, it can't be final
   private static boolean ID_TABLE_ENABLED =
       IoTDBDescriptor.getInstance().getConfig().isEnableIDTable();
+  private static boolean ascending;
 
   private static final Logger logger = LoggerFactory.getLogger(LastQueryExecutor.class);
 
@@ -82,6 +83,7 @@ public class LastQueryExecutor {
     this.selectedSeries = lastQueryPlan.getDeduplicatedPaths();
     this.dataTypes = lastQueryPlan.getDeduplicatedDataTypes();
     this.expression = lastQueryPlan.getExpression();
+    this.ascending = lastQueryPlan.isAscending();
   }
 
   public LastQueryExecutor(List<PartialPath> selectedSeries, List<TSDataType> dataTypes) {
@@ -190,7 +192,7 @@ public class LastQueryExecutor {
       for (int i = 0; i < nonCachedPaths.size(); i++) {
         QueryDataSource dataSource =
             QueryResourceManager.getInstance()
-                .getQueryDataSource(nonCachedPaths.get(i), context, filter);
+                .getQueryDataSource(nonCachedPaths.get(i), context, filter, ascending);
         LastPointReader lastReader =
             nonCachedPaths
                 .get(i)

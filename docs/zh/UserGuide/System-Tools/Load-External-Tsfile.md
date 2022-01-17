@@ -31,7 +31,7 @@
 
 #### 加载 tsfile 文件
 
-加载 tsfile 文件的指令为：`load <path/dir> [autoregister=true/false][,sglevel=int][,verify=true/false]`
+加载 tsfile 文件的指令为：`load '<path/dir>' [autoregister=true/false][,sglevel=int][,verify=true/false]`
 
 该指令有两种用法：
 
@@ -74,22 +74,20 @@ VERIFY 选项表示是否对载入的 tsfile 中的所有时间序列进行元�
 
 #### 删除 tsfile 文件
 
-删除 tsfile 文件的指令为：`remove "<path>"`
+删除 tsfile 文件的指令为：`remove '<path>'`
 
 该指令通过指定文件路径删除 tsfile 文件，具体做法是将该 tsfile 和其对应的`.resource`和`.modification`文件全部删除。
 
 示例：
 
-* `remove 'root.vehicle/1575028885956-101-0.tsfile'`
-* `remove '1575028885956-101-0.tsfile'`
+* `remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'`
 
 #### 卸载 tsfile 文件至指定目录
 
-卸载 tsfile 文件的指令为：`unload "<path>" "<dir>"`
+卸载 tsfile 文件的指令为：`unload '<path>' '<dir>'`
 
 该指令将指定路径的 tsfile 文件卸载并移动至目标文件夹（绝对路径）中，具体做法是在引擎中卸载该 tsfile，并将该 tsfile 文件和其对应的`.resource`文件移动到目标文件夹下
 
 示例：
 
-* `unload 'root.vehicle/1575029224130-101-0.tsfile' '/data/data/tmp'`
-* `unload '1575029224130-101-0.tsfile' '/data/data/tmp'`
+* `unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'`

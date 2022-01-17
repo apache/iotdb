@@ -121,6 +121,37 @@ public class IOTDBInsertIT {
   @Test(expected = Exception.class)
   public void testInsertWithTimesColumns() throws SQLException {
     Statement st1 = connection.createStatement();
-    st1.execute("insert into root.t1.wf01.wt01(timestamp) values(11000)");
+    st1.execute("insert into root.t1.wf01.wt01(timestamp, status) values(11000)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException1() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(timestamp, status) values(11000, true, 17.1)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException2() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute(
+        "insert into root.t1.wf01.wt01(timestamp, status, temperature) values(11000, true, 20.1, false)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException3() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(status) values(11000, true)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException4() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(status, temperature) values(true)");
+  }
+
+  @Test(expected = Exception.class)
+  public void testInsertWithException5() throws SQLException {
+    Statement st1 = connection.createStatement();
+    st1.execute("insert into root.t1.wf01.wt01(status, temperature) values(true, 20.1, false)");
   }
 }

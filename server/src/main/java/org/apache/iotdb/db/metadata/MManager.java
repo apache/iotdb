@@ -22,8 +22,10 @@ import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
+import org.apache.iotdb.db.exception.ContinuousQueryException;
 import org.apache.iotdb.db.exception.metadata.AliasAlreadyExistException;
 import org.apache.iotdb.db.exception.metadata.DataTypeMismatchException;
 import org.apache.iotdb.db.exception.metadata.DeleteFailedException;
@@ -496,6 +498,15 @@ public class MManager {
       case UNSET_TEMPLATE:
         UnsetTemplatePlan unsetTemplatePlan = (UnsetTemplatePlan) plan;
         unsetSchemaTemplate(unsetTemplatePlan);
+        break;
+      case CREATE_CONTINUOUS_QUERY:
+        CreateContinuousQueryPlan createContinuousQueryPlan = (CreateContinuousQueryPlan) plan;
+        createContinuousQuery(createContinuousQueryPlan);
+        break;
+      case DROP_CONTINUOUS_QUERY:
+        DropContinuousQueryPlan dropContinuousQueryPlan = (DropContinuousQueryPlan) plan;
+        dropContinuousQuery(dropContinuousQueryPlan);
+        break;
       default:
         logger.error("Unrecognizable command {}", plan.getOperatorType());
     }
@@ -503,11 +514,27 @@ public class MManager {
   // endregion
 
   // region Interfaces for CQ
-  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws IOException {
+  public void createContinuousQuery(CreateContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().register(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws MetadataException {
+    try {
+      ContinuousQueryService.getInstance().deregister(plan, false);
+    } catch (ContinuousQueryException e) {
+      throw new MetadataException(e);
+    }
+  }
+
+  public void writeCreateContinuousQueryLog(CreateContinuousQueryPlan plan) throws IOException {
     logWriter.createContinuousQuery(plan);
   }
 
-  public void dropContinuousQuery(DropContinuousQueryPlan plan) throws IOException {
+  public void writeDropContinuousQueryLog(DropContinuousQueryPlan plan) throws IOException {
     logWriter.dropContinuousQuery(plan);
   }
   // endregion
@@ -1842,16 +1869,16 @@ public class MManager {
     for (String measurementId : measurementList) {
       PartialPath fullPath = devicePath.concatNode(measurementId);
       int index = mtree.getMountedNodeIndexOnMeasurementPath(fullPath);
-      if (index != fullPath.getNodeLength() - 1) {
+      if ((index != fullPath.getNodeLength() - 1) && !mountedNodeFound) {
         // this measurement is in template, need to assure mounted node exists and set using
         // template.
-        if (!mountedNodeFound) {
-          // Without allowing overlap of template and MTree, this block run only once
-          String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
-          IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        // Without allowing overlap of template and MTree, this block run only once
+        String[] mountedPathNodes = Arrays.copyOfRange(fullPath.getNodes(), 0, index + 1);
+        IMNode mountedNode = getDeviceNodeWithAutoCreate(new PartialPath(mountedPathNodes));
+        if (!mountedNode.isUseTemplate()) {
           setUsingSchemaTemplate(mountedNode);
-          mountedNodeFound = true;
         }
+        mountedNodeFound = true;
       }
     }
     // get logical device node, may be in template. will be multiple if overlap is allowed.
@@ -2052,6 +2079,15 @@ public class MManager {
   // region Interfaces and Implementation for Template operations
   public void createSchemaTemplate(CreateTemplatePlan plan) throws MetadataException {
     try {
+
+      List<List<TSDataType>> dataTypes = plan.getDataTypes();
+      List<List<TSEncoding>> encodings = plan.getEncodings();
+      for (int i = 0; i < dataTypes.size(); i++) {
+        for (int j = 0; j < dataTypes.get(i).size(); j++) {
+          SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(i).get(j), encodings.get(i).get(j));
+        }
+      }
+
       templateManager.createSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {
@@ -2064,6 +2100,13 @@ public class MManager {
 
   public void appendSchemaTemplate(AppendTemplatePlan plan) throws MetadataException {
     try {
+
+      List<TSDataType> dataTypes = plan.getDataTypes();
+      List<TSEncoding> encodings = plan.getEncodings();
+      for (int idx = 0; idx < dataTypes.size(); idx++) {
+        SchemaUtils.checkDataTypeWithEncoding(dataTypes.get(idx), encodings.get(idx));
+      }
+
       templateManager.appendSchemaTemplate(plan);
       // write wal
       if (!isRecovering) {

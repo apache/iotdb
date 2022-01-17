@@ -58,7 +58,7 @@ import java.util.TreeMap;
 /**
  * TsFileIOWriter is used to construct metadata and write data stored in memory to output stream.
  */
-public class TsFileIOWriter {
+public class TsFileIOWriter implements AutoCloseable {
 
   protected static final byte[] MAGIC_STRING_BYTES;
   public static final byte VERSION_NUMBER_BYTE;
