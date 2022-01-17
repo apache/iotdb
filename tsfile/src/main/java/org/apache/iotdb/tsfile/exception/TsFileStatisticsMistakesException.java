@@ -16,29 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.iotdb.tsfile.exception;
 
-package org.apache.iotdb.db.engine.compaction.cross.rewrite;
+public class TsFileStatisticsMistakesException extends TsFileRuntimeException {
 
-import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
-
-public class CrossSpaceCompactionUtils {
-
-  public static List<TsFileResource> convertArrayListByResourceList(
-      TsFileResourceList tsFileResources) {
-    if (tsFileResources == null) {
-      return Collections.emptyList();
-    }
-    Iterator<TsFileResource> seqIterator = tsFileResources.iterator();
-    List<TsFileResource> tsFileResourceArrayList = new ArrayList<>();
-    while (seqIterator.hasNext()) {
-      tsFileResourceArrayList.add(seqIterator.next());
-    }
-    return tsFileResourceArrayList;
+  public TsFileStatisticsMistakesException(String message) {
+    super(message);
   }
 }

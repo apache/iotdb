@@ -746,7 +746,6 @@ public class TSServiceImpl implements TSIService.Iface {
           queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
       TRACING_MANAGER.setSeriesPathNum(queryId, plan.getPaths().size());
     }
-    context.setAscending(plan.isAscending());
 
     TSExecuteStatementResp resp = null;
     // execute it before createDataSet since it may change the content of query plan

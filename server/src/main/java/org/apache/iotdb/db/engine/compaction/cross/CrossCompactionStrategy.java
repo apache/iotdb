@@ -46,7 +46,7 @@ public enum CrossCompactionStrategy {
       String storageGroupDir,
       TsFileManager tsFileManager,
       TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList UNseqTsFileResourceList,
+      TsFileResourceList unseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
@@ -59,7 +59,7 @@ public enum CrossCompactionStrategy {
             storageGroupDir,
             tsFileManager,
             seqTsFileResourceList,
-            UNseqTsFileResourceList,
+            unseqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
             CompactionTaskManager.currentTaskNum);

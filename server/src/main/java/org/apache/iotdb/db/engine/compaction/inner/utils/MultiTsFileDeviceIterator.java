@@ -208,9 +208,7 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    for (TsFileSequenceReader reader : readerMap.values()) {
-      reader.close();
-    }
+    // do nothing
   }
 
   public class AlignedMeasurmentIterator {
@@ -264,7 +262,6 @@ public class MultiTsFileDeviceIterator implements AutoCloseable {
     }
 
     public Set<String> getAllMeasurements() throws IOException {
-      // Todo:Set
       Set<String> measurementsSet = new HashSet<>();
       for (TsFileSequenceReader reader : readerMap.values()) {
         measurementsSet.addAll(reader.readDeviceMetadata(device).keySet());

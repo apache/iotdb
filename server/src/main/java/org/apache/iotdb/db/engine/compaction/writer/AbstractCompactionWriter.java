@@ -138,7 +138,6 @@ public abstract class AbstractCompactionWriter implements AutoCloseable {
   }
 
   private boolean checkChunkSize() {
-    // Todo: optimize performance by reducing calling this method
     if (chunkWriter instanceof AlignedChunkWriterImpl) {
       return ((AlignedChunkWriterImpl) chunkWriter).checkIsChunkSizeOverThreshold(targetChunkSize);
     } else {

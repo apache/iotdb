@@ -251,7 +251,8 @@ public class CompactionTaskManager implements IService {
   }
 
   public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
+    setWriteMergeRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 

@@ -158,7 +158,7 @@ public class QueryResourceManager {
    *     an aligned device, it should be AlignedPath instead of MeasurementPath
    */
   public QueryDataSource getQueryDataSource(
-      PartialPath selectedPath, QueryContext context, Filter timeFilter)
+      PartialPath selectedPath, QueryContext context, Filter timeFilter, boolean ascending)
       throws StorageEngineException, QueryProcessException {
 
     long queryId = context.getQueryId();
@@ -192,7 +192,7 @@ public class QueryResourceManager {
     queryDataSource.setDataTTL(cachedQueryDataSource.getDataTTL());
 
     // calculate the read order of unseqResources
-    QueryUtils.fillOrderIndexes(queryDataSource, deviceId, context.isAscending());
+    QueryUtils.fillOrderIndexes(queryDataSource, deviceId, ascending);
 
     return queryDataSource;
   }

@@ -45,6 +45,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,6 +119,7 @@ public class InnerUnseqCompactionTest {
     IoTDB.metaManager.clear();
     EnvironmentUtils.cleanAllDir();
     Thread.currentThread().setName(oldThreadName);
+    CompactionClearUtils.deleteTestDir(new File("target"));
   }
 
   // unseq space only do deserialize page
@@ -361,7 +363,6 @@ public class InnerUnseqCompactionTest {
                         timeValuePair.getTimestamp() >= 250L
                             && timeValuePair.getTimestamp() <= 300L);
               }
-              // InnerSpaceCompactionUtils.compact(targetTsFileResource, toMergeResources, false);
               CompactionUtils.compact(
                   Collections.emptyList(),
                   toMergeResources,

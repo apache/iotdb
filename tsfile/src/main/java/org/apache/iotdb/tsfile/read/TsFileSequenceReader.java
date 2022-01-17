@@ -23,6 +23,7 @@ import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.compress.IUnCompressor;
 import org.apache.iotdb.tsfile.encoding.decoder.Decoder;
 import org.apache.iotdb.tsfile.exception.TsFileRuntimeException;
+import org.apache.iotdb.tsfile.exception.TsFileStatisticsMistakesException;
 import org.apache.iotdb.tsfile.file.MetaMarker;
 import org.apache.iotdb.tsfile.file.header.ChunkGroupHeader;
 import org.apache.iotdb.tsfile.file.header.ChunkHeader;
@@ -1400,6 +1401,140 @@ public class TsFileSequenceReader implements AutoCloseable {
     // Despite the completeness of the data section, we will discard current FileMetadata
     // so that we can continue to write data into this tsfile.
     return truncatedSize;
+  }
+
+  /**
+   * Self Check the file and return whether the file is safe.
+   *
+   * @param filename the path of file
+   * @param fastFinish if true, the method will only check the format of head (Magic String TsFile,
+   *     Version Number) and tail (Magic String TsFile) of TsFile.
+   * @return the status of TsFile
+   */
+  public long selfCheckWithInfo(
+      String filename,
+      boolean fastFinish,
+      Map<Long, Pair<Path, TimeseriesMetadata>> timeseriesMetadataMap)
+      throws IOException, TsFileStatisticsMistakesException {
+    String message = " exists statistics mistakes at position ";
+    File checkFile = FSFactoryProducer.getFSFactory().getFile(filename);
+    if (!checkFile.exists()) {
+      return TsFileCheckStatus.FILE_NOT_FOUND;
+    }
+    long fileSize = checkFile.length();
+    logger.info("file length: " + fileSize);
+
+    int headerLength = TSFileConfig.MAGIC_STRING.getBytes().length + Byte.BYTES;
+    if (fileSize < headerLength) {
+      return TsFileCheckStatus.INCOMPATIBLE_FILE;
+    }
+    try {
+      if (!TSFileConfig.MAGIC_STRING.equals(readHeadMagic())
+          || (TSFileConfig.VERSION_NUMBER != readVersionNumber())) {
+        return TsFileCheckStatus.INCOMPATIBLE_FILE;
+      }
+      tsFileInput.position(headerLength);
+      if (isComplete()) {
+        loadMetadataSize();
+        if (fastFinish) {
+          return TsFileCheckStatus.COMPLETE_FILE;
+        }
+      }
+    } catch (IOException e) {
+      logger.error("Error occurred while fast checking TsFile.");
+      throw e;
+    }
+    for (Map.Entry<Long, Pair<Path, TimeseriesMetadata>> entry : timeseriesMetadataMap.entrySet()) {
+      TimeseriesMetadata timeseriesMetadata = entry.getValue().right;
+      TSDataType dataType = timeseriesMetadata.getTSDataType();
+      Statistics<? extends Serializable> timeseriesMetadataSta = timeseriesMetadata.getStatistics();
+      Statistics<? extends Serializable> chunkMetadatasSta = Statistics.getStatsByType(dataType);
+      for (IChunkMetadata chunkMetadata : getChunkMetadataList(entry.getValue().left)) {
+        long tscheckStatus = TsFileCheckStatus.COMPLETE_FILE;
+        try {
+          tscheckStatus = checkChunkAndPagesStatistics(chunkMetadata);
+        } catch (IOException e) {
+          logger.error("Error occurred while checking the statistics of chunk and its pages");
+          throw e;
+        }
+        if (tscheckStatus == TsFileCheckStatus.FILE_EXISTS_MISTAKES) {
+          throw new TsFileStatisticsMistakesException(
+              "Chunk" + message + chunkMetadata.getOffsetOfChunkHeader());
+        }
+        chunkMetadatasSta.mergeStatistics(chunkMetadata.getStatistics());
+      }
+      if (!timeseriesMetadataSta.equals(chunkMetadatasSta)) {
+        long timeseriesMetadataPos = entry.getKey();
+        throw new TsFileStatisticsMistakesException(
+            "TimeseriesMetadata" + message + timeseriesMetadataPos);
+      }
+    }
+    return TsFileCheckStatus.COMPLETE_FILE;
+  }
+
+  public long checkChunkAndPagesStatistics(IChunkMetadata chunkMetadata) throws IOException {
+    long offsetOfChunkHeader = chunkMetadata.getOffsetOfChunkHeader();
+    tsFileInput.position(offsetOfChunkHeader);
+    byte marker = this.readMarker();
+    ChunkHeader chunkHeader = this.readChunkHeader(marker);
+    TSDataType dataType = chunkHeader.getDataType();
+    Statistics<? extends Serializable> chunkStatistics = Statistics.getStatsByType(dataType);
+    int dataSize = chunkHeader.getDataSize();
+    if (((byte) (chunkHeader.getChunkType() & 0x3F)) == MetaMarker.CHUNK_HEADER) {
+      while (dataSize > 0) {
+        // a new Page
+        PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), true);
+        chunkStatistics.mergeStatistics(pageHeader.getStatistics());
+        this.skipPageData(pageHeader);
+        dataSize -= pageHeader.getSerializedPageSize();
+        chunkHeader.increasePageNums(1);
+      }
+    } else {
+      // only one page without statistic, we need to iterate each point to generate
+      // statistic
+      PageHeader pageHeader = this.readPageHeader(chunkHeader.getDataType(), false);
+      Decoder valueDecoder =
+          Decoder.getDecoderByType(chunkHeader.getEncodingType(), chunkHeader.getDataType());
+      ByteBuffer pageData = readPage(pageHeader, chunkHeader.getCompressionType());
+      Decoder timeDecoder =
+          Decoder.getDecoderByType(
+              TSEncoding.valueOf(TSFileDescriptor.getInstance().getConfig().getTimeEncoder()),
+              TSDataType.INT64);
+      PageReader reader =
+          new PageReader(
+              pageHeader, pageData, chunkHeader.getDataType(), valueDecoder, timeDecoder, null);
+      BatchData batchData = reader.getAllSatisfiedPageData();
+      while (batchData.hasCurrent()) {
+        switch (dataType) {
+          case INT32:
+            chunkStatistics.update(batchData.currentTime(), batchData.getInt());
+            break;
+          case INT64:
+            chunkStatistics.update(batchData.currentTime(), batchData.getLong());
+            break;
+          case FLOAT:
+            chunkStatistics.update(batchData.currentTime(), batchData.getFloat());
+            break;
+          case DOUBLE:
+            chunkStatistics.update(batchData.currentTime(), batchData.getDouble());
+            break;
+          case BOOLEAN:
+            chunkStatistics.update(batchData.currentTime(), batchData.getBoolean());
+            break;
+          case TEXT:
+            chunkStatistics.update(batchData.currentTime(), batchData.getBinary());
+            break;
+          default:
+            throw new IOException("Unexpected type " + dataType);
+        }
+        batchData.next();
+      }
+      chunkHeader.increasePageNums(1);
+    }
+    if (chunkMetadata.getStatistics().equals(chunkStatistics)) {
+      return TsFileCheckStatus.COMPLETE_FILE;
+    }
+    return TsFileCheckStatus.FILE_EXISTS_MISTAKES;
   }
 
   /**

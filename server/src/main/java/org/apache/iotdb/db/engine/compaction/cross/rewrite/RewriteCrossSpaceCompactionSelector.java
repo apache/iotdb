@@ -42,9 +42,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompactionSelector {
-
   private static final Logger LOGGER = LoggerFactory.getLogger("COMPACTION");
-  private static IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
+  private static final IoTDBConfig config = IoTDBDescriptor.getInstance().getConfig();
 
   public RewriteCrossSpaceCompactionSelector(
       String logicalStorageGroupName,

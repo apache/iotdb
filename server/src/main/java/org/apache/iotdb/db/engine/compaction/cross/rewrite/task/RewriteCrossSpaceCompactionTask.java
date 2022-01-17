@@ -35,6 +35,7 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -129,8 +130,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
 
     if (targetTsfileResourceList.isEmpty()
-        && selectedSeqTsFileResourceList.isEmpty()
-        && selectedUnSeqTsFileResourceList.isEmpty()) {
+        || selectedSeqTsFileResourceList.isEmpty()
+        || selectedUnSeqTsFileResourceList.isEmpty()) {
       return;
     }
 
@@ -139,7 +140,12 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         storageGroupName,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList);
-    logFile = new File(storageGroupDir, RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
+    logFile =
+        new File(
+            selectedSeqTsFileResourceList.get(0).getTsFile().getParent()
+                + File.separator
+                + targetTsfileResourceList.get(0).getTsFile().getName()
+                + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
     try (RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(logFile)) {
       // print the path of the temporary file first for priority check during recovery

@@ -21,7 +21,6 @@ package org.apache.iotdb.db.engine.compaction.task;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
-import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 
@@ -55,9 +54,6 @@ public class CompactionRecoverTask {
     logger.info("try to synchronize CompactionScheduler");
     CompactionScheduler.decPartitionCompaction(
         logicalStorageGroupName + "-" + virtualStorageGroupId, 0);
-    logger.info(
-        "recover task finish, current compaction thread is {}",
-        CompactionTaskManager.getInstance().getExecutingTaskCount());
   }
 
   private void recoverCrossCompaction() throws Exception {

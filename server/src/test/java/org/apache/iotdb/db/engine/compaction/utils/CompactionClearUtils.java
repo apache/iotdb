@@ -74,4 +74,14 @@ public class CompactionClearUtils {
       }
     }
   }
+
+  public static void deleteTestDir(File dir) {
+    if (!dir.isDirectory()) {
+      return;
+    }
+    for (File f : dir.listFiles()) {
+      deleteTestDir(f);
+    }
+    dir.delete();
+  }
 }
