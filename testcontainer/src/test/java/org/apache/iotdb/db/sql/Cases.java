@@ -1667,6 +1667,37 @@ public abstract class Cases {
     }
   }
 
+  @Test
+  public void showCountTimeSeries() {
+    prepareData(metadataSqls);
+    for (Statement statement : readStatements) {
+      String[] sqls = new String[] {"COUNT TIMESERIES root.ln.**", "COUNT TIMESERIES"};
+      String[] standards = new String[] {"4,\n", "8,\n"};
+      for (int n = 0; n < sqls.length; n++) {
+        String sql = sqls[n];
+        String standard = standards[n];
+        StringBuilder builder = new StringBuilder();
+        try {
+          boolean hasResultSet = statement.execute(sql);
+          if (hasResultSet) {
+            try (ResultSet resultSet = statement.getResultSet()) {
+              ResultSetMetaData resultSetMetaData = resultSet.getMetaData();
+              while (resultSet.next()) {
+                for (int i = 1; i <= resultSetMetaData.getColumnCount(); i++) {
+                  builder.append(resultSet.getString(i)).append(",");
+                }
+                builder.append("\n");
+              }
+            }
+          }
+          Assert.assertEquals(standard, builder.toString());
+        } catch (SQLException e) {
+          fail(e.getMessage());
+        }
+      }
+    }
+  }
+
   // ------------------ Sorted Show Timeseries ---------------
   private static String[] sortedShowTimeseriesSqls =
       new String[] {

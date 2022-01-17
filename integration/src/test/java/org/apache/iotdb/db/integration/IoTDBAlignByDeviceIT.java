@@ -423,7 +423,7 @@ public class IoTDBAlignByDeviceIT {
   @Test
   public void aggregateTest() {
     String[] retArray =
-        new String[] {"root.vehicle.d1,2,null,null,null,null,", "root.vehicle.d0,11,11,6,6,1,"};
+        new String[] {"root.vehicle.d0,11,11,6,6,1,", "root.vehicle.d1,2,null,null,null,null,"};
 
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {

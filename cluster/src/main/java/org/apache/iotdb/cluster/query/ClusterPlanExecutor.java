@@ -274,7 +274,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
 
   @Override
   protected int getPathsNum(PartialPath path) throws MetadataException {
-    return getNodesNumInGivenLevel(path, -1);
+    Map<String, List<PartialPath>> sgPathMap = IoTDB.metaManager.groupPathByStorageGroup(path);
+    try {
+      return getPathCount(sgPathMap, -1);
+    } catch (CheckConsistencyException
+        | PartitionTableUnavailableException
+        | NotInSameGroupException e) {
+      throw new MetadataException(e);
+    }
   }
 
   @Override
@@ -293,7 +300,7 @@ public class ClusterPlanExecutor extends PlanExecutor {
    * @param level the max depth to match the pattern, -1 means matching the whole pattern
    * @return the number of paths that match the pattern at given level
    */
-  @Deprecated() // sgPathMap may contain paths that generate overlapping results
+  @Deprecated() // when level != -1, sgPathMap may contain paths that generate overlapping results
   private int getPathCount(Map<String, List<PartialPath>> sgPathMap, int level)
       throws MetadataException, CheckConsistencyException, PartitionTableUnavailableException,
           NotInSameGroupException {

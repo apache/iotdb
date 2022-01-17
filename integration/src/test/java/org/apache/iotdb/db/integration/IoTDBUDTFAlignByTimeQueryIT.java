@@ -21,6 +21,7 @@ package org.apache.iotdb.db.integration;
 
 import org.apache.iotdb.integration.env.ConfigFactory;
 import org.apache.iotdb.integration.env.EnvFactory;
+import org.apache.iotdb.integration.env.FiveNodeCluster1Env;
 import org.apache.iotdb.itbase.category.ClusterTest;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
 
@@ -832,6 +833,9 @@ public class IoTDBUDTFAlignByTimeQueryIT {
   // This case can be removed once aligned timeseries is supported in above queries.
   @Test
   public void testAlignedTimeseriesNotSupported() {
+    if (EnvFactory.getEnv() instanceof FiveNodeCluster1Env) {
+      return;
+    }
     try (Connection connection = EnvFactory.getEnv().getConnection()) {
       try (Statement statement = connection.createStatement();
           ResultSet resultSet = statement.executeQuery("select sin(s1) + cos(s2) from root.sg1")) {
