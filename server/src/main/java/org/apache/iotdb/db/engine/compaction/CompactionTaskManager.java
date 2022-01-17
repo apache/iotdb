@@ -240,7 +240,12 @@ public class CompactionTaskManager implements IService {
         if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
           addMetrics(compactionTask, false, false);
         }
-        compactionTask.setCallBack(new CompactionCallBack(compactionTask));
+        AbstractCompactionTask finalCompactionTask = compactionTask;
+        compactionTask.setCallBack(
+            () -> {
+              CompactionTaskManager.getInstance().releaseSemaphore();
+              CompactionTaskManager.getInstance().removeRunningTaskFromList(finalCompactionTask);
+            });
         submitTask(
             compactionTask.getFullStorageGroupName(),
             compactionTask.getTimePartition(),

@@ -19,7 +19,6 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
-import org.apache.iotdb.db.engine.compaction.CompactionCallBack;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
@@ -47,7 +46,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
-  protected CompactionCallBack callBack = null;
+  protected Runnable callBack = null;
 
   public AbstractCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
@@ -74,7 +73,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       }
       this.currentTaskNum.decrementAndGet();
       if (callBack != null) {
-        callBack.execute();
+        callBack.run();
       }
     }
 
@@ -110,7 +109,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
    */
   public abstract boolean checkValidAndSetMerging();
 
-  public void setCallBack(CompactionCallBack callBack) {
+  public void setCallBack(Runnable callBack) {
     this.callBack = callBack;
   }
 
@@ -120,5 +119,10 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
       return equalsOtherTask((AbstractCompactionTask) other);
     }
     return false;
+  }
+
+  @FunctionalInterface
+  public interface CompactionCallBack {
+    void call();
   }
 }
