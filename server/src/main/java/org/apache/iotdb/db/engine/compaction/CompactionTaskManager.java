@@ -333,6 +333,8 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
+      semaphore =
+          new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
     }
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");
