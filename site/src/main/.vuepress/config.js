@@ -787,7 +787,8 @@ var config = {
 						children: [
 							['Appendix/Config-Manual','Config Manual'],
 							['Appendix/SQL-Reference','SQL Reference'],
-							['Appendix/Status-Codes','Status Codes']
+							['Appendix/Status-Codes','Status Codes'],
+							['Appendix/Keywords','Keywords']
 						]
 					},
 					{
@@ -1596,7 +1597,8 @@ var config = {
 						children: [
 							['Appendix/Config-Manual','附录1: 配置参数'],
 							['Appendix/SQL-Reference','附录2: SQL 参考文档'],
-							['Appendix/Status-Codes','附录3: 状态码']
+							['Appendix/Status-Codes','附录3: 状态码'],
+							['Appendix/Keywords','附录4：关键字']
 						]
 					},
 					{
