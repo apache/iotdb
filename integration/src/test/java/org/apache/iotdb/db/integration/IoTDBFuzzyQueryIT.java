@@ -98,7 +98,7 @@ public class IoTDBFuzzyQueryIT {
     sqls.add(
         "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466080000,'123%',18.3)");
     sqls.add(
-        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\',10.3)");
+        "insert into root.t1.wf01.wt01 (time,status,temperature) values (1509466090000,'\\\\',10.3)");
     sqls.add("insert into root.t1.wf01.wt02 (time,status) values (1509465600000,'14')");
   }
 
