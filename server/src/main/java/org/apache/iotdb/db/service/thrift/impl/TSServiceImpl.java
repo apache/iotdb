@@ -253,36 +253,41 @@ public class TSServiceImpl implements TSIService.Iface {
     public TSFetchResultsResp call() throws Exception {
       QueryDataSet queryDataSet = SESSION_MANAGER.getDataset(queryId);
       TSFetchResultsResp resp = RpcUtils.getTSFetchResultsResp(TSStatusCode.SUCCESS_STATUS);
-      if (isAlign) {
-        TSQueryDataSet result =
-            fillRpcReturnData(fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
-        boolean hasResultSet = result.bufferForTime().limit() != 0;
-        if (!hasResultSet) {
-          SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-        }
-        resp.setHasResultSet(hasResultSet);
-        resp.setQueryDataSet(result);
-        resp.setIsAlign(true);
-      } else {
-        TSQueryNonAlignDataSet nonAlignResult =
-            fillRpcNonAlignReturnData(
-                fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
-        boolean hasResultSet = false;
-        for (ByteBuffer timeBuffer : nonAlignResult.getTimeList()) {
-          if (timeBuffer.limit() != 0) {
-            hasResultSet = true;
-            break;
+      try {
+        if (isAlign) {
+          TSQueryDataSet result =
+              fillRpcReturnData(fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
+          boolean hasResultSet = result.bufferForTime().limit() != 0;
+          if (!hasResultSet) {
+            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
           }
+          resp.setHasResultSet(hasResultSet);
+          resp.setQueryDataSet(result);
+          resp.setIsAlign(true);
+        } else {
+          TSQueryNonAlignDataSet nonAlignResult =
+              fillRpcNonAlignReturnData(
+                  fetchSize, queryDataSet, SESSION_MANAGER.getUsername(sessionId));
+          boolean hasResultSet = false;
+          for (ByteBuffer timeBuffer : nonAlignResult.getTimeList()) {
+            if (timeBuffer.limit() != 0) {
+              hasResultSet = true;
+              break;
+            }
+          }
+          if (!hasResultSet) {
+            SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+          }
+          resp.setHasResultSet(hasResultSet);
+          resp.setNonAlignQueryDataSet(nonAlignResult);
+          resp.setIsAlign(false);
         }
-        if (!hasResultSet) {
-          SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
-        }
-        resp.setHasResultSet(hasResultSet);
-        resp.setNonAlignQueryDataSet(nonAlignResult);
-        resp.setIsAlign(false);
+        QUERY_TIME_MANAGER.unRegisterQuery(queryId, false);
+        return resp;
+      } catch (Exception e) {
+        SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
+        throw e;
       }
-      QUERY_TIME_MANAGER.unRegisterQuery(queryId, false);
-      return resp;
     }
   }
 
@@ -1004,14 +1009,10 @@ public class TSServiceImpl implements TSIService.Iface {
     } catch (InterruptedException e) {
       LOGGER.error(INFO_INTERRUPT_ERROR, req, e);
       Thread.currentThread().interrupt();
-      return RpcUtils.getTSFetchResultsResp(
-          onNPEOrUnexpectedException(
-              e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } catch (Exception e) {
       SESSION_MANAGER.releaseQueryResourceNoExceptions(req.queryId);
-      return RpcUtils.getTSFetchResultsResp(
-          onNPEOrUnexpectedException(
-              e, OperationType.FETCH_RESULTS, TSStatusCode.INTERNAL_SERVER_ERROR));
+      return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
   }
 
