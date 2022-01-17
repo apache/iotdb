@@ -89,6 +89,8 @@ public class TsFileSplitTool {
   /* entry of tool */
   @SuppressWarnings("squid:S3776") // Suppress high Cognitive Complexity warning
   public void run() throws IOException {
+    TsFileIOWriter writer = null;
+
     try (TsFileSequenceReader reader = new TsFileSequenceReader(filename)) {
       Iterator<List<Path>> pathIterator = reader.getPathsIterator();
       Set<String> devices = new HashSet<>();
@@ -97,7 +99,6 @@ public class TsFileSplitTool {
       // to avoid compaction after restarting. NOTICE: This will take effect only in
       filePathSplit[filePathSplit.length - 2] = "10";
       // server v0.12
-      TsFileIOWriter writer = null;
 
       while (pathIterator.hasNext()) {
         for (Path path : pathIterator.next()) {
@@ -197,6 +198,10 @@ public class TsFileSplitTool {
         TsFileResource resource = endFileAndGenerateResource(writer);
         resource.close();
       }
+    } finally {
+      if (writer != null) {
+        writer.close();
+      }
     }
   }
 
@@ -227,14 +232,13 @@ public class TsFileSplitTool {
     }
   }
 
-  private TsFileResource endFileAndGenerateResource(TsFileIOWriter tsFileIOWriter)
-      throws IOException {
-    tsFileIOWriter.endChunkGroup();
-    tsFileIOWriter.endFile();
+  private TsFileResource endFileAndGenerateResource(TsFileIOWriter writer) throws IOException {
+    writer.endChunkGroup();
+    writer.endFile();
 
-    TsFileResource tsFileResource = new TsFileResource(tsFileIOWriter.getFile());
+    TsFileResource tsFileResource = new TsFileResource(writer.getFile());
     Map<String, List<TimeseriesMetadata>> deviceTimeseriesMetadataMap =
-        tsFileIOWriter.getDeviceTimeseriesMetadataMap();
+        writer.getDeviceTimeseriesMetadataMap();
     for (Map.Entry<String, List<TimeseriesMetadata>> entry :
         deviceTimeseriesMetadataMap.entrySet()) {
       String device = entry.getKey();
