@@ -21,12 +21,12 @@ package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
+
 import org.junit.Assert;
 import org.junit.Test;
 import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,14 +36,14 @@ public class MetricConfigTest {
 
   @Test
   public void yamlConfigTest() {
-    String url = this.getClass().getClassLoader().getResource("resources/iotdb-metric.yml").getPath();
+    String url = this.getClass().getClassLoader().getResource("iotdb-metric.yml").getPath();
     System.out.println(url);
 
     MetricConfig metricConfig = MetricConfigDescriptor.getInstance().getMetricConfig();
     Constructor constructor = new Constructor(MetricConfig.class);
     Yaml yaml = new Yaml(constructor);
     if (url != null) {
-      try (InputStream inputStream = new FileInputStream(new File(url))) {
+      try (InputStream inputStream = new FileInputStream(url)) {
         metricConfig = (MetricConfig) yaml.load(inputStream);
       } catch (IOException e) {
         Assert.fail();
@@ -52,7 +52,8 @@ public class MetricConfigTest {
 
     List<ReporterType> lists = metricConfig.getMetricReporterList();
     Assert.assertEquals(lists.size(), 2);
-    Assert.assertEquals(metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "9091");
+    Assert.assertEquals(
+        metricConfig.getPrometheusReporterConfig().getPrometheusExporterPort(), "9091");
     List<PredefinedMetric> predefinedMetrics = metricConfig.getPredefinedMetrics();
     Assert.assertEquals(predefinedMetrics.size(), 1);
   }

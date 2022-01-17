@@ -196,7 +196,7 @@ metric采集默认是关闭的，需要先到conf/iotdb-metric.yml中打开后�
 # 是否启动监控模块，默认为false
 enableMetric: false
 
-# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[jmx, prometheus]
+# 数据提供方式，对外部通过jmx和prometheus协议提供metrics的数据, 可选参数：[jmx, prometheus, iotdb],iotdb是默认关闭的。
 metricReporterList:
    - jmx
    - prometheus
