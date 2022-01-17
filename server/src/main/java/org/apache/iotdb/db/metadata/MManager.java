@@ -2264,7 +2264,7 @@ public class MManager {
     return new HashSet<>(mtree.getPathsUsingTemplate(templateName));
   }
 
-  public synchronized void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+  public void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
     try {
       String templateName = plan.getName();
       // check whether template exists
