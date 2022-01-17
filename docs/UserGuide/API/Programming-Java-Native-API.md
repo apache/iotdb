@@ -384,6 +384,13 @@ void insertRecords(List<String> deviceIds, List<Long> times,
    List<List<String>> measurementsList, List<List<String>> valuesList)
 ```
 
+* Insert multiple Records that belong to the same device.
+
+```java
+void insertStringRecordsOfOneDevice(String deviceId, List<Long> times,
+        List<List<String>> measurementsList, List<List<String>> valuesList)
+```
+
 #### Insert of Aligned Timeseries
 
 The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and others are similar to the above interfaces:
@@ -391,6 +398,7 @@ The Insert of aligned timeseries uses interfaces like insertAlignedXXX, and othe
 * insertAlignedRecord
 * insertAlignedRecords
 * insertAlignedRecordsOfOneDevice
+* insertAlignedStringRecordsOfOneDevice
 * insertAlignedTablet
 * insertAlignedTablets
 

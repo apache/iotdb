@@ -34,6 +34,8 @@ Last Updated on 2021.11.16 by Minghui Liu.
 | ------------------------------------------------------------ | ------------------ |
 | Add TSTracingInfo                                            | Minghui Liu        |
 | Add structs and interfaces to append, prune, query and unset Schema Template (detail: TSAppendSchemaTemplateReq, TSPruneSchemaTemplateReq, TSQueryTemplateReq, TSQueryTemplateResp, TSUnsetSchemaTemplateReq, appendSchemaTemplate, pruneSchemaTemplate, querySchemaTemplate, unsetSchemaTemplate), and serializedTemplate in TSCreateSchemaTemplateReq | Xin Zhao           |
+| Add struct TSInsertStringRecordsOfOneDeviceReq               | Hang Zhang         |
+| Add method TSStatus insertStringRecordsOfOneDevice(1:TSInsertStringRecordsOfOneDeviceReq req) | Hang Zhang |
 
 ## 3. Update
 

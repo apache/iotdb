@@ -795,7 +795,7 @@ public class IoTDBSessionSimpleIT {
     addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
     addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
 
-    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
+    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
     checkResultForInsertStringRecordsOfOneDevice(session);
     session.close();
   }
@@ -813,7 +813,43 @@ public class IoTDBSessionSimpleIT {
     addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
     addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
 
-    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
+    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertAlignedStringRecordsOfOneDeviceWithOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    checkResultForInsertStringRecordsOfOneDevice(session);
+    session.close();
+  }
+
+  @Test
+  public void testInsertAlignedStringRecordsOfOneDeviceWithIncorrectOrder()
+      throws IoTDBConnectionException, StatementExecutionException {
+    session = new Session("127.0.0.1", 6667, "root", "root");
+    session.open();
+    List<Long> times = new ArrayList<>();
+    List<List<String>> measurements = new ArrayList<>();
+    List<List<String>> values = new ArrayList<>();
+
+    addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
+    addStringLine(times, measurements, values, 1L, "s4", "s5", "5.0", "true");
+    addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
+
+    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
     checkResultForInsertStringRecordsOfOneDevice(session);
     session.close();
   }

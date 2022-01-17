@@ -1232,9 +1232,9 @@ public class Session {
   }
 
   /**
-   * Insert multiple rows, which can reduce the overhead of network. This method is just like jdbc
-   * executeBatch, we pack some insert request in batch and send them to server. If you want improve
-   * your performance, please see insertTablet method
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
    *
    * <p>Each row could have same deviceId but different time, number of measurements, number of
    * values as String
@@ -1261,6 +1261,23 @@ public class Session {
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
     }
+  }
+
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   */
+  public void insertStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
   }
 
   /**
@@ -1314,6 +1331,57 @@ public class Session {
     } catch (RedirectException e) {
       handleRedirection(deviceId, e.getEndPoint());
     }
+  }
+
+  /**
+   * Insert multiple rows with String format data, which can reduce the overhead of network. This
+   * method is just like jdbc executeBatch, we pack some insert request in batch and send them to
+   * server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same deviceId but different time, number of measurements, number of
+   * values as String
+   *
+   * @param haveSorted deprecated, whether the times have been sorted
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int len = times.size();
+    if (len != measurementsList.size() || len != valuesList.size()) {
+      throw new IllegalArgumentException(
+          "times, measurementsList and valuesList's size should be equal");
+    }
+    TSInsertStringRecordsOfOneDeviceReq req =
+        genTSInsertStringRecordsOfOneDeviceReq(
+            deviceId, times, measurementsList, valuesList, haveSorted, true);
+    try {
+      getSessionConnection(deviceId).insertStringRecordsOfOneDevice(req);
+    } catch (RedirectException e) {
+      handleRedirection(deviceId, e.getEndPoint());
+    }
+  }
+
+  /**
+   * Insert aligned multiple rows with String format data, which can reduce the overhead of network.
+   * This method is just like jdbc executeBatch, we pack some insert request in batch and send them
+   * to server. If you want improve your performance, please see insertTablet method
+   *
+   * <p>Each row could have same prefixPath but different time, number of measurements, number of
+   * values as String
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertAlignedStringRecordsOfOneDevice(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    insertAlignedStringRecordsOfOneDevice(deviceId, times, measurementsList, valuesList, false);
   }
 
   private TSInsertRecordsOfOneDeviceReq genTSInsertRecordsOfOneDeviceReq(
