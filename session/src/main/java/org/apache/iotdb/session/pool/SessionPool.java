@@ -773,6 +773,38 @@ public class SessionPool {
   }
 
   /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertOneDeviceAlignedStringRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
    * Insert aligned data that belong to the same device in batch format, which can reduce the
    * overhead of network. This method is just like jdbc batch insert, we pack some insert request in
    * batch and send them to server If you want improve your performance, please see insertTablet
@@ -799,6 +831,40 @@ public class SessionPool {
       } catch (IoTDBConnectionException e) {
         // TException means the connection is broken, remove it and get a new one.
         logger.warn("insertAlignedRecordsOfOneDevice failed", e);
+        cleanSessionAndMayThrowConnectionException(session, i, e);
+      } catch (StatementExecutionException | RuntimeException e) {
+        putBack(session);
+        throw e;
+      }
+    }
+  }
+
+  /**
+   * Insert aligned data as String format that belong to the same device in batch format, which can
+   * reduce the overhead of network. This method is just like jdbc batch insert, we pack some insert
+   * request in batch and send them to server If you want improve your performance, please see
+   * insertTablet method.
+   *
+   * @param haveSorted whether the times list has been ordered.
+   * @see Session#insertTablet(Tablet)
+   */
+  public void insertOneDeviceAlignedStringRecords(
+      String deviceId,
+      List<Long> times,
+      List<List<String>> measurementsList,
+      List<List<String>> valuesList,
+      boolean haveSorted)
+      throws IoTDBConnectionException, StatementExecutionException {
+    for (int i = 0; i < RETRY; i++) {
+      Session session = getSession();
+      try {
+        session.insertAlignedStringRecordsOfOneDevice(
+            deviceId, times, measurementsList, valuesList, haveSorted);
+        putBack(session);
+        return;
+      } catch (IoTDBConnectionException e) {
+        // TException means the connection is broken, remove it and get a new one.
+        logger.warn("insertAlignedStringRecordsOfOneDevice failed", e);
         cleanSessionAndMayThrowConnectionException(session, i, e);
       } catch (StatementExecutionException | RuntimeException e) {
         putBack(session);
