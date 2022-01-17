@@ -430,9 +430,6 @@ public class IoTDBConfig {
   /** The interval of compaction task schedulation in each virtual storage group. The unit is ms. */
   private long compactionScheduleInterval = 60_000L;
 
-  /** The interval of compaction task submission from queue in CompactionTaskMananger */
-  private long compactionSubmissionInterval = 60_000L;
-
   /**
    * The max open file num in each unseq compaction task. We use the unseq file num as the open file
    * num # This parameters have to be much smaller than the permitted max open file num of each
@@ -2558,14 +2555,6 @@ public class IoTDBConfig {
 
   public void setMaxCompactionCandidateFileNum(int maxCompactionCandidateFileNum) {
     this.maxCompactionCandidateFileNum = maxCompactionCandidateFileNum;
-  }
-
-  public long getCompactionSubmissionInterval() {
-    return compactionSubmissionInterval;
-  }
-
-  public void setCompactionSubmissionInterval(long interval) {
-    compactionSubmissionInterval = interval;
   }
 
   public String getDeviceIDTransformationMethod() {

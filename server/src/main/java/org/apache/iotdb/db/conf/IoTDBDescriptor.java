@@ -334,12 +334,6 @@ public class IoTDBDescriptor {
                   "compaction_schedule_interval",
                   Long.toString(conf.getCompactionScheduleInterval()))));
 
-      conf.setCompactionSubmissionInterval(
-          Long.parseLong(
-              properties.getProperty(
-                  "compaction_submission_interval",
-                  Long.toString(conf.getCompactionSubmissionInterval()))));
-
       conf.setEnableCrossSpaceCompaction(
           Boolean.parseBoolean(
               properties.getProperty(
