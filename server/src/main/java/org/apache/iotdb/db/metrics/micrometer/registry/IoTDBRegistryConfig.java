@@ -17,17 +17,15 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.utils;
+package org.apache.iotdb.db.metrics.micrometer.registry;
 
-public enum ReporterType {
-  // The name of ReporterType should same as value of metricReporterList in iotdb-metric.yml, that's
-  // why all below are in lower case.
-  jmx,
-  prometheus,
-  iotdb;
+import io.micrometer.core.instrument.step.StepRegistryConfig;
+
+public interface IoTDBRegistryConfig extends StepRegistryConfig {
+  IoTDBRegistryConfig DEFAULT = k -> null;
 
   @Override
-  public String toString() {
-    return name();
+  default String prefix() {
+    return "iotdb";
   }
 }

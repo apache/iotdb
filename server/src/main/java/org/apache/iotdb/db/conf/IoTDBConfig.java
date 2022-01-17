@@ -2185,14 +2185,6 @@ public class IoTDBConfig {
     this.thriftServerAwaitTimeForStopService = thriftServerAwaitTimeForStopService;
   }
 
-  public int getQueryCacheSizeInMetric() {
-    return queryCacheSizeInMetric;
-  }
-
-  public void setQueryCacheSizeInMetric(int queryCacheSizeInMetric) {
-    this.queryCacheSizeInMetric = queryCacheSizeInMetric;
-  }
-
   public boolean isEnableMQTTService() {
     return enableMQTTService;
   }
