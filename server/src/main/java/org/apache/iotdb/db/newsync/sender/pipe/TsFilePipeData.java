@@ -25,6 +25,7 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.qp.physical.PhysicalPlan;
 import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,7 +136,8 @@ public class TsFilePipeData {
     stream.write(bytes);
   }
 
-  public static TsFilePipeData deserialize(DataInputStream stream) throws IOException, IllegalPathException {
+  public static TsFilePipeData deserialize(DataInputStream stream)
+      throws IOException, IllegalPathException {
     long serialNumber = stream.readLong();
     Type type = Type.values()[stream.readByte()];
     byte[] bytes = new byte[stream.readInt()];
@@ -145,9 +147,12 @@ public class TsFilePipeData {
     if (type.equals(Type.TSFILE)) {
       pipeData = new TsFilePipeData(ReadWriteIOUtils.readString(stream), serialNumber);
     } else if (type.equals(Type.DELETION)) {
-      pipeData = new TsFilePipeData(Deletion.deserializeWithoutFileOffset(ByteBuffer.wrap(bytes)), serialNumber);
+      pipeData =
+          new TsFilePipeData(
+              Deletion.deserializeWithoutFileOffset(ByteBuffer.wrap(bytes)), serialNumber);
     } else if (type.equals(Type.PHYSICALPLAN)) {
-      pipeData = new TsFilePipeData(PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes)), serialNumber);
+      pipeData =
+          new TsFilePipeData(PhysicalPlan.Factory.create(ByteBuffer.wrap(bytes)), serialNumber);
     }
 
     return pipeData;
