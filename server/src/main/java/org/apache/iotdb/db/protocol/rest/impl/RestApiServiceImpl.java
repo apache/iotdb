@@ -114,8 +114,6 @@ public class RestApiServiceImpl extends RestApiService {
                     .message(TSStatusCode.EXECUTE_STATEMENT_ERROR.name()))
             .build();
       }
-      QueryPlan queryPlan = (QueryPlan) physicalPlan;
-
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
         return response;

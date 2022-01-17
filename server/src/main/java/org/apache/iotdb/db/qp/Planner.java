@@ -170,36 +170,4 @@ public class Planner {
     operator.setQueryOperator(optimizeQueryOperator(operator.getQueryOperator()));
     return operator;
   }
-
-  public PhysicalPlan parseSQLToPhysicalPlan(String sqlStr) throws QueryProcessException {
-    return parseSQLToPhysicalPlan(sqlStr, ZoneId.systemDefault());
-  }
-
-  public PhysicalPlan parseSQLToRestQueryPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // check if there are logical errors
-    LogicalChecker.check(operator);
-    // extra check for rest query
-    PhysicalPlanValidationHandler.checkRestQuery(operator);
-    // optimize the logical operator
-    operator = logicalOptimize(operator);
-    // from logical operator to physical plan
-    return new PhysicalGenerator().transformToPhysicalPlan(operator);
-  }
-
-  public PhysicalPlan parseSQLToGrafanaQueryPlan(String sqlStr, ZoneId zoneId)
-      throws QueryProcessException {
-    // from SQL to logical operator
-    Operator operator = LogicalGenerator.generate(sqlStr, zoneId);
-    // check if there are logical errors
-    LogicalChecker.check(operator);
-    // extra check for grafana query
-    PhysicalPlanValidationHandler.checkGrafanaQuery(operator);
-    // optimize the logical operator
-    operator = logicalOptimize(operator);
-    // from logical operator to physical plan
-    return new PhysicalGenerator().transformToPhysicalPlan(operator);
-  }
 }
