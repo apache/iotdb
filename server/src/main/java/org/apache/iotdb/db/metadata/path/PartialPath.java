@@ -294,6 +294,34 @@ public class PartialPath extends Path implements Comparable<Path>, Cloneable {
     return isMatch;
   }
 
+  /**
+   * Test if this PartialPath matches a full path's prefix. This partialPath acts as a prefix path
+   * pattern. rPath is supposed to be a full timeseries path without wildcards. e.g. "root.sg" or
+   * "root.*" both match path "root.sg.device.s1", "root.sg.device" and "root.sg.vehicle.s1"
+   *
+   * @param rPath a plain full path of a timeseries
+   * @return true if a successful match, otherwise return false
+   */
+  public boolean matchPrefixPath(PartialPath rPath) {
+    String[] rNodes = rPath.getNodes();
+    if (this.nodes.length > rNodes.length) {
+      return false;
+    }
+    for (int i = 0; i < this.nodes.length; i++) {
+      if (nodes[i].equals(MULTI_LEVEL_PATH_WILDCARD)) {
+        return true;
+      }
+      if (nodes[i].equals(ONE_LEVEL_PATH_WILDCARD)) {
+        continue;
+      }
+      if (!nodes[i].equals(rNodes[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   @Override
   public String getFullPath() {
     if (fullPath == null) {

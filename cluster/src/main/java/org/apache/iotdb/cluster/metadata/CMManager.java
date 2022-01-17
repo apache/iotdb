@@ -41,6 +41,7 @@ import org.apache.iotdb.cluster.server.member.MetaGroupMember;
 import org.apache.iotdb.cluster.utils.ClusterQueryUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
+import org.apache.iotdb.db.engine.storagegroup.VirtualStorageGroupProcessor;
 import org.apache.iotdb.db.exception.metadata.IllegalPathException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.exception.metadata.PathAlreadyExistException;
@@ -182,18 +183,19 @@ public class CMManager extends MManager {
   }
 
   @Override
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     cacheLock.writeLock().lock();
-    mRemoteMetaCache.removeItem(pathPattern);
+    mRemoteMetaCache.removeItem(pathPattern, isPrefixMatch);
     cacheLock.writeLock().unlock();
-    return super.deleteTimeseries(pathPattern);
+    return super.deleteTimeseries(pathPattern, isPrefixMatch);
   }
 
   @Override
   public void deleteStorageGroups(List<PartialPath> storageGroups) throws MetadataException {
     cacheLock.writeLock().lock();
     for (PartialPath storageGroup : storageGroups) {
-      mRemoteMetaCache.removeItem(storageGroup);
+      mRemoteMetaCache.removeItem(storageGroup, true);
     }
     cacheLock.writeLock().unlock();
     super.deleteStorageGroups(storageGroups);
@@ -300,6 +302,10 @@ public class CMManager extends MManager {
   }
 
   /**
+   * the {@link org.apache.iotdb.db.writelog.recover.LogReplayer#replayLogs(Supplier,
+   * VirtualStorageGroupProcessor)} will call this to get schema after restart we should retry to
+   * get schema util we get the schema.
+   *
    * @param deviceId the device id.
    * @param measurements the measurements.
    */
@@ -472,9 +478,13 @@ public class CMManager extends MManager {
       return null;
     }
 
+    public synchronized void removeItem(PartialPath key, boolean isPrefixMatch) {
+      cache.keySet().removeIf(s -> isPrefixMatch ? key.matchPrefixPath(s) : key.matchFullPath(s));
+    }
+
     @Override
     public synchronized void removeItem(PartialPath key) {
-      cache.keySet().removeIf(s -> s.getFullPath().startsWith(key.getFullPath()));
+      removeItem(key, false);
     }
 
     @Override
@@ -1012,7 +1022,7 @@ public class CMManager extends MManager {
     if (!withAlias) {
       return super.getMeasurementPaths(partialPath);
     } else {
-      return super.getMeasurementPathsWithAlias(partialPath, -1, -1).left;
+      return super.getMeasurementPathsWithAlias(partialPath, -1, -1, false).left;
     }
   }
 
@@ -1258,8 +1268,31 @@ public class CMManager extends MManager {
    */
   @Override
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(pathPattern);
+
+    if (isPrefixMatch) {
+      // adapt to prefix match of IoTDB v0.12
+      Map<String, List<PartialPath>> prefixSgPathMap =
+          groupPathByStorageGroup(pathPattern.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD));
+      List<PartialPath> originPaths;
+      List<PartialPath> addedPaths;
+      for (String sg : prefixSgPathMap.keySet()) {
+        originPaths = sgPathMap.get(sg);
+        addedPaths = prefixSgPathMap.get(sg);
+        if (originPaths == null) {
+          sgPathMap.put(sg, addedPaths);
+        } else {
+          for (PartialPath path : addedPaths) {
+            if (!originPaths.contains(path)) {
+              originPaths.add(path);
+            }
+          }
+        }
+      }
+    }
+
     List<MeasurementPath> result;
     try {
       result = getMatchedPaths(sgPathMap, true);
@@ -1755,7 +1788,7 @@ public class CMManager extends MManager {
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
-          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1).left;
+          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1, false).left;
       for (MeasurementPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(timeseriesPathWithAlias.getFullPath());
         dataTypes.add(timeseriesPathWithAlias.getSeriesTypeInByte());

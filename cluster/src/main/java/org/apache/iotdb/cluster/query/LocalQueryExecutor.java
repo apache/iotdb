@@ -1072,7 +1072,7 @@ public class LocalQueryExecutor {
     Map<String, Integer> fullResult = new HashMap<>();
     for (String path : paths) {
       Map<PartialPath, Integer> partialResult =
-          getCMManager().getMeasurementCountGroupByLevel(new PartialPath(path), level);
+          getCMManager().getMeasurementCountGroupByLevel(new PartialPath(path), level, false);
       for (Entry<PartialPath, Integer> entry : partialResult.entrySet()) {
         fullResult.compute(
             entry.getKey().getFullPath(),

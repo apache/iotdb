@@ -453,7 +453,10 @@ public class TSServiceImpl implements TSIService.Iface {
         PhysicalPlan physicalPlan =
             serviceProvider
                 .getPlanner()
-                .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
+                .parseSQLToPhysicalPlan(
+                    statement,
+                    SESSION_MANAGER.getZoneId(req.sessionId),
+                    SESSION_MANAGER.getClientVersion(req.sessionId));
         if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
         }
@@ -554,7 +557,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+              .parseSQLToPhysicalPlan(
+                  statement,
+                  SESSION_MANAGER.getZoneId(req.getSessionId()),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -603,7 +609,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
+              .parseSQLToPhysicalPlan(
+                  statement,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -648,7 +657,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .rawDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
+              .rawDataQueryReqToPhysicalPlan(
+                  req,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -691,7 +703,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .lastDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
+              .lastDataQueryReqToPhysicalPlan(
+                  req,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -1039,7 +1054,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(req.statement, SESSION_MANAGER.getZoneId(req.sessionId));
+              .parseSQLToPhysicalPlan(
+                  req.statement,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
       return physicalPlan.isQuery()
           ? RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")

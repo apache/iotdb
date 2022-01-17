@@ -218,7 +218,7 @@ import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_BUILTIN_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDAF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_EXTERNAL_UDTF;
 import static org.apache.iotdb.db.conf.IoTDBConstant.FUNCTION_TYPE_NATIVE;
-import static org.apache.iotdb.db.conf.IoTDBConstant.ONE_LEVEL_PATH_WILDCARD;
+import static org.apache.iotdb.db.conf.IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD;
 import static org.apache.iotdb.db.conf.IoTDBConstant.QUERY_ID;
 import static org.apache.iotdb.db.conf.IoTDBConstant.STATEMENT;
 import static org.apache.iotdb.rpc.TSStatusCode.INTERNAL_SERVER_ERROR;
@@ -684,7 +684,9 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountNodes(CountPlan countPlan) throws MetadataException {
-    int num = getNodesNumInGivenLevel(countPlan.getPath(), countPlan.getLevel());
+    int num =
+        getNodesNumInGivenLevel(
+            countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
     return createSingleDataSet(COLUMN_COUNT, TSDataType.INT32, num);
   }
 
@@ -710,12 +712,12 @@ public class PlanExecutor implements IPlanExecutor {
   }
 
   private QueryDataSet processCountDevices(CountPlan countPlan) throws MetadataException {
-    int num = getDevicesNum(countPlan.getPath());
+    int num = getDevicesNum(countPlan.getPath(), countPlan.isPrefixMatch());
     return createSingleDataSet(COLUMN_DEVICES, TSDataType.INT32, num);
   }
 
   private QueryDataSet processCountStorageGroup(CountPlan countPlan) throws MetadataException {
-    int num = getStorageGroupNum(countPlan.getPath());
+    int num = getStorageGroupNum(countPlan.getPath(), countPlan.isPrefixMatch());
     return createSingleDataSet(COLUMN_STORAGE_GROUP, TSDataType.INT32, num);
   }
 
@@ -753,20 +755,21 @@ public class PlanExecutor implements IPlanExecutor {
     return singleDataSet;
   }
 
-  protected int getDevicesNum(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getDevicesNum(path);
+  protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return IoTDB.metaManager.getDevicesNum(path, isPrefixMatch);
   }
 
-  private int getStorageGroupNum(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getStorageGroupNum(path);
+  private int getStorageGroupNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return IoTDB.metaManager.getStorageGroupNum(path, isPrefixMatch);
   }
 
-  protected int getPathsNum(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getAllTimeseriesCount(path);
+  protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return IoTDB.metaManager.getAllTimeseriesCount(path, isPrefixMatch);
   }
 
-  protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
-    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level);
+  protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    return IoTDB.metaManager.getNodesCountInGivenLevel(path, level, isPrefixMatch);
   }
 
   protected List<MeasurementPath> getPathsName(PartialPath path) throws MetadataException {
@@ -781,11 +784,11 @@ public class PlanExecutor implements IPlanExecutor {
   protected Map<PartialPath, Integer> getTimeseriesCountGroupByLevel(CountPlan countPlan)
       throws MetadataException {
     return IoTDB.metaManager.getMeasurementCountGroupByLevel(
-        countPlan.getPath(), countPlan.getLevel());
+        countPlan.getPath(), countPlan.getLevel(), countPlan.isPrefixMatch());
   }
 
   private QueryDataSet processCountTimeSeries(CountPlan countPlan) throws MetadataException {
-    int num = getPathsNum(countPlan.getPath());
+    int num = getPathsNum(countPlan.getPath(), countPlan.isPrefixMatch());
     return createSingleDataSet(COLUMN_COUNT, TSDataType.INT32, num);
   }
 
@@ -837,8 +840,9 @@ public class PlanExecutor implements IPlanExecutor {
     return IoTDB.metaManager.getChildNodeNameInNextLevel(path);
   }
 
-  protected List<PartialPath> getStorageGroupNames(PartialPath path) throws MetadataException {
-    return IoTDB.metaManager.getMatchedStorageGroups(path);
+  protected List<PartialPath> getStorageGroupNames(PartialPath path, boolean isPrefixMatch)
+      throws MetadataException {
+    return IoTDB.metaManager.getMatchedStorageGroups(path, isPrefixMatch);
   }
 
   private QueryDataSet processShowStorageGroup(ShowStorageGroupPlan showStorageGroupPlan)
@@ -847,7 +851,8 @@ public class PlanExecutor implements IPlanExecutor {
         new ListDataSet(
             Collections.singletonList(new PartialPath(COLUMN_STORAGE_GROUP, false)),
             Collections.singletonList(TSDataType.TEXT));
-    List<PartialPath> storageGroupList = getStorageGroupNames(showStorageGroupPlan.getPath());
+    List<PartialPath> storageGroupList =
+        getStorageGroupNames(showStorageGroupPlan.getPath(), showStorageGroupPlan.isPrefixMatch());
     addToDataSet(storageGroupList, listDataSet);
     return listDataSet;
   }
@@ -871,7 +876,8 @@ public class PlanExecutor implements IPlanExecutor {
                 new PartialPath(COLUMN_LOCK_INFO, false)),
             Arrays.asList(TSDataType.TEXT, TSDataType.TEXT));
     try {
-      List<PartialPath> storageGroupList = getStorageGroupNames(showLockInfoPlan.getPath());
+      List<PartialPath> storageGroupList =
+          getStorageGroupNames(showLockInfoPlan.getPath(), showLockInfoPlan.isPrefixMatch());
       List<String> lockHolderList = StorageEngine.getInstance().getLockInfo(storageGroupList);
       addLockInfoToDataSet(storageGroupList, lockHolderList, listDataSet);
     } catch (StorageEngineException e) {
@@ -1291,8 +1297,7 @@ public class PlanExecutor implements IPlanExecutor {
           throw alreadySetException;
         }
       }
-      for (PartialPath path :
-          IoTDB.metaManager.getMeasurementPaths(devicePath.concatNode(ONE_LEVEL_PATH_WILDCARD))) {
+      for (PartialPath path : IoTDB.metaManager.getMeasurementPaths(devicePath, true)) {
         existSeriesSet.add(path.getMeasurement());
         existSeriesSet.add(path.getMeasurementAlias());
       }
@@ -1391,7 +1396,7 @@ public class PlanExecutor implements IPlanExecutor {
   private void operateTTL(SetTTLPlan plan) throws QueryProcessException {
     try {
       List<PartialPath> storageGroupPaths =
-          IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup());
+          IoTDB.metaManager.getMatchedStorageGroups(plan.getStorageGroup(), plan.isPrefixMatch());
       for (PartialPath storagePath : storageGroupPaths) {
         IoTDB.metaManager.setTTL(storagePath, plan.getDataTTL());
         StorageEngine.getInstance().setTTL(storagePath, plan.getDataTTL());
@@ -1814,7 +1819,16 @@ public class PlanExecutor implements IPlanExecutor {
         StorageEngine.getInstance()
             .deleteTimeseries(
                 path, deleteTimeSeriesPlan.getIndex(), deleteTimeSeriesPlan.getPartitionFilter());
-        String failed = IoTDB.metaManager.deleteTimeseries(path);
+        if (deleteTimeSeriesPlan.isPrefixMatch()) {
+          // adapt to prefix match of 0.12
+          StorageEngine.getInstance()
+              .deleteTimeseries(
+                  path.concatNode(MULTI_LEVEL_PATH_WILDCARD),
+                  deleteTimeSeriesPlan.getIndex(),
+                  deleteTimeSeriesPlan.getPartitionFilter());
+        }
+        String failed =
+            IoTDB.metaManager.deleteTimeseries(path, deleteTimeSeriesPlan.isPrefixMatch());
         if (failed != null) {
           deleteTimeSeriesPlan
               .getResults()
@@ -1893,7 +1907,8 @@ public class PlanExecutor implements IPlanExecutor {
     try {
       for (PartialPath storageGroupPath : deleteStorageGroupPlan.getPaths()) {
         List<PartialPath> allRelatedStorageGroupPath =
-            IoTDB.metaManager.getMatchedStorageGroups(storageGroupPath);
+            IoTDB.metaManager.getMatchedStorageGroups(
+                storageGroupPath, deleteStorageGroupPlan.isPrefixMatch());
         if (allRelatedStorageGroupPath.isEmpty()) {
           throw new PathNotExistException(storageGroupPath.getFullPath(), true);
         }
