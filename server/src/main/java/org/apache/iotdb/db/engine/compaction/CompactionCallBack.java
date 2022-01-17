@@ -28,7 +28,7 @@ public class CompactionCallBack {
   }
 
   public void execute() {
-    CompactionTaskManager.semaphore.release();
+    CompactionTaskManager.getInstance().releaseSemaphore();
     CompactionTaskManager.getInstance().removeRunningTaskFromList(compactionTask);
   }
 }
