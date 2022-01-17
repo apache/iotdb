@@ -753,7 +753,8 @@ public class LocalQueryExecutor {
         dataType,
         ascResults,
         descResults,
-        new SlotTsFileFilter(nodeSlots));
+        new SlotTsFileFilter(nodeSlots),
+        ascending);
     return results;
   }
 

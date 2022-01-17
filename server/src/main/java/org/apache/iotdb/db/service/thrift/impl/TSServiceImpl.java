@@ -330,10 +330,6 @@ public class TSServiceImpl implements TSIService.Iface {
     return resp.setStatus(status);
   }
 
-  private String getMetadataInString() {
-    return IoTDB.metaManager.getMetadataInString();
-  }
-
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
     return IoTDB.metaManager.getMeasurementPaths(path);
   }
@@ -751,7 +747,6 @@ public class TSServiceImpl implements TSIService.Iface {
           queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
       TRACING_MANAGER.setSeriesPathNum(queryId, plan.getPaths().size());
     }
-    context.setAscending(plan.isAscending());
 
     TSExecuteStatementResp resp = null;
     // execute it before createDataSet since it may change the content of query plan
@@ -1835,7 +1830,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
+  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     int size = req.getMeasurementsSize();
     String[] measurements = new String[size];
     TSDataType[] dataTypes = new TSDataType[size];
@@ -1857,7 +1852,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) throws TException {
+  public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     PruneTemplatePlan plan =
         new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
@@ -1865,7 +1860,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) throws TException {
+  public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
     try {
       TSQueryTemplateResp resp = new TSQueryTemplateResp();
       String path;

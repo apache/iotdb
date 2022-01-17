@@ -73,22 +73,20 @@ Examples:
 
 #### remove a tsfile
 
-The command to delete a tsfile is: `remove "<path>"`.
+The command to delete a tsfile is: `remove '<path>'`.
 
 This command deletes a tsfile by specifying the file path. The specific implementation is to delete the tsfile and its corresponding `.resource` and` .modification` files.
 
 Examples:
 
-* `remove 'root.vehicle/1575028885956-101-0.tsfile'`
-* `remove '1575028885956-101-0.tsfile'`
+* `remove '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile'`
 
 #### unload a tsfile and move it to a target directory
 
-The command to unload a tsfile and move it to target directory is: `unload "<path>" "<dir>"`.
+The command to unload a tsfile and move it to target directory is: `unload '<path>' '<dir>'`.
 
 This command unload a tsfile and move it to a target directory by specifying tsfile path and the target directory(absolute path). The specific implementation is to remove the tsfile from the engine and move the tsfile file and its corresponding `.resource` file to the target directory.
 
 Examples:
 
-* `unload 'root.vehicle/1575029224130-101-0.tsfile' '/data/data/tmp'`
-* `unload '1575029224130-101-0.tsfile' '/data/data/tmp'`
+* `unload '/Users/Desktop/data/data/root.vehicle/0/0/1575028885956-101-0.tsfile' '/data/data/tmp'`

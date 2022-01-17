@@ -40,7 +40,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.stream.Collectors.toList;
@@ -118,11 +125,11 @@ public class TagManager {
       ShowTimeSeriesPlan plan, QueryContext context) throws MetadataException {
     logger.debug("Searching for key {} in tag index", plan.getKey());
     if (!tagIndex.containsKey(plan.getKey())) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.", true);
+      return Collections.emptyList();
     }
     Map<String, Set<IMeasurementMNode>> value2Node = tagIndex.get(plan.getKey());
     if (value2Node.isEmpty()) {
-      throw new MetadataException("The key " + plan.getKey() + " is not a tag.");
+      return Collections.emptyList();
     }
     logger.debug("Key {} found in tag index", plan.getKey());
 

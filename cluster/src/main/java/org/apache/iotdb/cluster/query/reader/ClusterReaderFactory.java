@@ -576,7 +576,7 @@ public class ClusterReaderFactory {
     // If requiredSlots is not null, it means that this node should provide partial data as previous
     // holder, in order to assist the new holder to read the complete data.
     QueryDataSource queryDataSource =
-        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter);
+        QueryResourceManager.getInstance().getQueryDataSource(path, context, timeFilter, ascending);
     valueFilter = queryDataSource.updateFilterUsingTTL(valueFilter);
     return path.createSeriesReader(
         allSensors,
