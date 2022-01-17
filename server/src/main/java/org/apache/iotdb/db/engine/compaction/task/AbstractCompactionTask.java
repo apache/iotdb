@@ -19,6 +19,7 @@
 
 package org.apache.iotdb.db.engine.compaction.task;
 
+import org.apache.iotdb.db.engine.compaction.CompactionCallBack;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.db.engine.compaction.cross.inplace.InplaceCompactionRecoverTask;
@@ -46,6 +47,7 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   protected String fullStorageGroupName;
   protected long timePartition;
   protected final AtomicInteger currentTaskNum;
+  protected CompactionCallBack callBack = null;
 
   public AbstractCompactionTask(
       String fullStorageGroupName, long timePartition, AtomicInteger currentTaskNum) {
@@ -59,8 +61,8 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
   @Override
   public Void call() throws Exception {
     long startTime = System.currentTimeMillis();
-    currentTaskNum.incrementAndGet();
     try {
+      currentTaskNum.incrementAndGet();
       doCompaction();
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
@@ -71,7 +73,9 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
         CompactionTaskManager.getInstance().removeRunningTaskFromList(this);
       }
       this.currentTaskNum.decrementAndGet();
-      CompactionTaskManager.semaphore.release();
+      if (callBack != null) {
+        callBack.execute();
+      }
     }
 
     if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
@@ -105,6 +109,10 @@ public abstract class AbstractCompactionTask implements Callable<Void> {
    * @return true if the task is valid else false
    */
   public abstract boolean checkValidAndSetMerging();
+
+  public void setCallBack(CompactionCallBack callBack) {
+    this.callBack = callBack;
+  }
 
   @Override
   public boolean equals(Object other) {

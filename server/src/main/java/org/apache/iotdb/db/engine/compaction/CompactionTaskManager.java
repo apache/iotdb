@@ -219,7 +219,7 @@ public class CompactionTaskManager implements IService {
         if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
           addMetrics(compactionTask, false, false);
         }
-
+        compactionTask.setCallBack(new CompactionCallBack(compactionTask));
         submitTask(
             compactionTask.getFullStorageGroupName(),
             compactionTask.getTimePartition(),
@@ -282,13 +282,14 @@ public class CompactionTaskManager implements IService {
           .computeIfAbsent(fullStorageGroupName, k -> new ConcurrentHashMap<>())
           .computeIfAbsent(timePartition, k -> new HashSet<>())
           .add(future);
-      return;
+    } else {
+      logger.warn(
+          "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
+          taskExecutionPool == null
+              ? "taskExecutionPool is null"
+              : "taskExecutionPool is terminated");
+      semaphore.release();
     }
-    logger.warn(
-        "A CompactionTask failed to be submitted to CompactionTaskManager because {}",
-        taskExecutionPool == null
-            ? "taskExecutionPool is null"
-            : "taskExecutionPool is terminated");
   }
 
   /**
