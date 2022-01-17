@@ -500,8 +500,8 @@ public abstract class Cases {
 
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag3=v1"
     for (Statement readStatement : readStatements) {
-      try (ResultSet resultSet = readStatement
-          .executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1")) {
+      try (ResultSet resultSet =
+          readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1")) {
         assertFalse(resultSet.next());
       }
     }
