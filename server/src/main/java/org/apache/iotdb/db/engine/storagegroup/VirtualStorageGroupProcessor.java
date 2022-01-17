@@ -544,6 +544,14 @@ public class VirtualStorageGroupProcessor {
   }
 
   private void initCompaction() {
+    timedCompactionScheduleTask =
+        IoTDBThreadPoolFactory.newScheduledThreadPool(
+            1,
+            ThreadName.COMPACTION_SCHEDULE
+                + "-"
+                + logicalStorageGroupName
+                + "-"
+                + virtualStorageGroupId);
     timedCompactionScheduleTask.scheduleWithFixedDelay(
         this::executeCompaction,
         COMPACTION_TASK_SUBMIT_DELAY,
