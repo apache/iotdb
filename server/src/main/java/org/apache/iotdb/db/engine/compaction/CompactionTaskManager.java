@@ -52,11 +52,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /** CompactionMergeTaskPoolManager provides a ThreadPool tPro queue and run all compaction tasks. */
 public class CompactionTaskManager implements IService {
@@ -67,8 +65,6 @@ public class CompactionTaskManager implements IService {
   // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  //  private MinMaxPriorityQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-  //      MinMaxPriorityQueue.orderedBy(new CompactionTaskComparator()).maximumSize(1000).create();
   private BlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
       new PriorityBlockingQueue<>(1000, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
@@ -77,13 +73,6 @@ public class CompactionTaskManager implements IService {
   private Map<String, Map<Long, Set<Future<Void>>>> compactionTaskFutures =
       new ConcurrentHashMap<>();
   private List<AbstractCompactionTask> runningCompactionTaskList = new ArrayList<>();
-
-  public static AtomicLong writtenBytes = new AtomicLong(0);
-
-  // The thread pool that periodically fetches and executes the compaction task from
-  // candidateCompactionTaskQueue to taskExecutionPool. The default number of threads for this pool
-  // is 1.
-  private ScheduledExecutorService compactionTaskSubmissionThreadPool;
 
   public static Semaphore semaphore = null;
 
@@ -108,21 +97,6 @@ public class CompactionTaskManager implements IService {
       // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
       // if there is thread space available in the taskExecutionPool, put the compaction task thread
       // into the taskExecutionPool and perform the compaction.
-      this.compactionTaskSubmissionThreadPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
-      compactionTaskSubmissionThreadPool.scheduleWithFixedDelay(
-          () -> {
-            double writtenSize = writtenBytes.doubleValue() / 1024 / 1024;
-            logger.info(
-                "[IO Rates] Total written size is {} MB, {} MB/s in average",
-                writtenSize,
-                writtenSize / 60);
-            writtenBytes.set(0);
-          },
-          60,
-          60,
-          TimeUnit.SECONDS);
-      new Thread(this::submitTaskFromTaskQueue).start();
     }
     logger.info("Compaction task manager started.");
   }
@@ -131,7 +105,6 @@ public class CompactionTaskManager implements IService {
   public void stop() {
     if (taskExecutionPool != null) {
       taskExecutionPool.shutdownNow();
-      compactionTaskSubmissionThreadPool.shutdownNow();
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -142,7 +115,6 @@ public class CompactionTaskManager implements IService {
   public void waitAndStop(long milliseconds) {
     if (taskExecutionPool != null) {
       awaitTermination(taskExecutionPool, milliseconds);
-      awaitTermination(compactionTaskSubmissionThreadPool, milliseconds);
       logger.info("Waiting for task taskExecutionPool to shut down");
       waitTermination();
       storageGroupTasks.clear();
@@ -365,8 +337,6 @@ public class CompactionTaskManager implements IService {
               IoTDBThreadPoolFactory.newScheduledThreadPool(
                   IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread(),
                   ThreadName.COMPACTION_SERVICE.getName());
-      this.compactionTaskSubmissionThreadPool =
-          IoTDBThreadPoolFactory.newScheduledThreadPool(1, ThreadName.COMPACTION_SERVICE.getName());
     }
     currentTaskNum = new AtomicInteger(0);
     logger.info("Compaction task manager started.");
