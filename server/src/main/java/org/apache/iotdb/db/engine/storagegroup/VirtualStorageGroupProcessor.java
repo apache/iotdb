@@ -530,9 +530,9 @@ public class VirtualStorageGroupProcessor {
         long endTime = resource.getEndTime(deviceId);
         endTimeMap.put(deviceId, endTime);
       }
-      lastFlushTimeManager.setLastTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setFlushedTimeAll(timePartitionId, endTimeMap);
-      lastFlushTimeManager.setGlobalFlushedTimeAll(endTimeMap);
+      lastFlushTimeManager.setMultiDeviceLastTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceFlushedTime(timePartitionId, endTimeMap);
+      lastFlushTimeManager.setMultiDeviceGlobalFlushedTime(endTimeMap);
     }
 
     // recover and start timed compaction thread
@@ -655,13 +655,13 @@ public class VirtualStorageGroupProcessor {
       for (String deviceId : resource.getDevices()) {
         long endTime = resource.getEndTime(deviceId);
         long endTimePartitionId = StorageEngine.getTimePartition(endTime);
-        lastFlushTimeManager.setLastTime(endTimePartitionId, deviceId, endTime);
-        lastFlushTimeManager.setGlobalFlushedTime(deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceLastTime(endTimePartitionId, deviceId, endTime);
+        lastFlushTimeManager.setOneDeviceGlobalFlushedTime(deviceId, endTime);
 
         // set all the covered partition's LatestFlushedTime
         long partitionId = StorageEngine.getTimePartition(resource.getStartTime(deviceId));
         while (partitionId <= endTimePartitionId) {
-          lastFlushTimeManager.setFlushedTime(partitionId, deviceId, endTime);
+          lastFlushTimeManager.setOneDeviceFlushedTime(partitionId, deviceId, endTime);
           if (!timePartitionIdVersionControllerMap.containsKey(partitionId)) {
             File directory =
                 SystemFileFactory.INSTANCE.getFile(storageGroupSysDir, String.valueOf(partitionId));

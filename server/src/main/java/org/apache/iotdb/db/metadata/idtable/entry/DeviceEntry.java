@@ -32,18 +32,21 @@ public class DeviceEntry {
 
   boolean isAligned;
 
-  // for manages flush time
-  Map<Long, Long> lastTimeMap;
+  // for managing last time
+  // time partition -> last time
+  Map<Long, Long> lastTimeMapOfEachPartition;
 
-  Map<Long, Long> flushTimeMap;
+  // for managing flush time
+  // time partition -> flush time
+  Map<Long, Long> flushTimeMapOfEachPartition;
 
   long globalFlushTime = Long.MIN_VALUE;
 
   public DeviceEntry(IDeviceID deviceID) {
     this.deviceID = deviceID;
     measurementMap = new HashMap<>();
-    lastTimeMap = new HashMap<>();
-    flushTimeMap = new HashMap<>();
+    lastTimeMapOfEachPartition = new HashMap<>();
+    flushTimeMapOfEachPartition = new HashMap<>();
   }
 
   /**
@@ -90,20 +93,20 @@ public class DeviceEntry {
 
   // region support flush time
   public void putLastTimeMap(long timePartition, long lastTime) {
-    lastTimeMap.put(timePartition, lastTime);
+    lastTimeMapOfEachPartition.put(timePartition, lastTime);
   }
 
   public void putFlushTimeMap(long timePartition, long flushTime) {
-    flushTimeMap.put(timePartition, flushTime);
+    flushTimeMapOfEachPartition.put(timePartition, flushTime);
   }
 
   public long updateLastTimeMap(long timePartition, long lastTime) {
-    return lastTimeMap.compute(
+    return lastTimeMapOfEachPartition.compute(
         timePartition, (k, v) -> v == null ? lastTime : Math.max(v, lastTime));
   }
 
   public long updateFlushTimeMap(long timePartition, long flushTime) {
-    return flushTimeMap.compute(
+    return flushTimeMapOfEachPartition.compute(
         timePartition, (k, v) -> v == null ? flushTime : Math.max(v, flushTime));
   }
 
@@ -116,19 +119,19 @@ public class DeviceEntry {
   }
 
   public Long getLastTime(long timePartition) {
-    return lastTimeMap.get(timePartition);
+    return lastTimeMapOfEachPartition.get(timePartition);
   }
 
   public Long getFlushTime(long timePartition) {
-    return flushTimeMap.get(timePartition);
+    return flushTimeMapOfEachPartition.get(timePartition);
   }
 
   public Long getLastTimeWithDefaultValue(long timePartition) {
-    return lastTimeMap.getOrDefault(timePartition, Long.MIN_VALUE);
+    return lastTimeMapOfEachPartition.getOrDefault(timePartition, Long.MIN_VALUE);
   }
 
   public Long getFLushTimeWithDefaultValue(long timePartition) {
-    return flushTimeMap.getOrDefault(timePartition, Long.MIN_VALUE);
+    return flushTimeMapOfEachPartition.getOrDefault(timePartition, Long.MIN_VALUE);
   }
 
   public long getGlobalFlushTime() {
@@ -136,11 +139,11 @@ public class DeviceEntry {
   }
 
   public void clearLastTime() {
-    lastTimeMap.clear();
+    lastTimeMapOfEachPartition.clear();
   }
 
   public void clearFlushTime() {
-    flushTimeMap.clear();
+    flushTimeMapOfEachPartition.clear();
   }
   // endregion
 }

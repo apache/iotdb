@@ -38,38 +38,38 @@ public class IDTableFlushTimeManager implements ILastFlushTimeManager {
 
   // region set
   @Override
-  public void setLastTimeAll(long timePartitionId, Map<String, Long> lastTimeMap) {
+  public void setMultiDeviceLastTime(long timePartitionId, Map<String, Long> lastTimeMap) {
     for (Map.Entry<String, Long> entry : lastTimeMap.entrySet()) {
       idTable.getDeviceEntry(entry.getKey()).putLastTimeMap(timePartitionId, entry.getValue());
     }
   }
 
   @Override
-  public void setLastTime(long timePartitionId, String path, long time) {
+  public void setOneDeviceLastTime(long timePartitionId, String path, long time) {
     idTable.getDeviceEntry(path).putLastTimeMap(timePartitionId, time);
   }
 
   @Override
-  public void setFlushedTimeAll(long timePartitionId, Map<String, Long> flushedTimeMap) {
+  public void setMultiDeviceFlushedTime(long timePartitionId, Map<String, Long> flushedTimeMap) {
     for (Map.Entry<String, Long> entry : flushedTimeMap.entrySet()) {
       idTable.getDeviceEntry(entry.getKey()).putFlushTimeMap(timePartitionId, entry.getValue());
     }
   }
 
   @Override
-  public void setFlushedTime(long timePartitionId, String path, long time) {
+  public void setOneDeviceFlushedTime(long timePartitionId, String path, long time) {
     idTable.getDeviceEntry(path).putFlushTimeMap(timePartitionId, time);
   }
 
   @Override
-  public void setGlobalFlushedTimeAll(Map<String, Long> globalFlushedTimeMap) {
+  public void setMultiDeviceGlobalFlushedTime(Map<String, Long> globalFlushedTimeMap) {
     for (Map.Entry<String, Long> entry : globalFlushedTimeMap.entrySet()) {
       idTable.getDeviceEntry(entry.getKey()).setGlobalFlushTime(entry.getValue());
     }
   }
 
   @Override
-  public void setGlobalFlushedTime(String path, long time) {
+  public void setOneDeviceGlobalFlushedTime(String path, long time) {
     idTable.getDeviceEntry(path).setGlobalFlushTime(time);
   }
 
