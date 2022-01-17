@@ -25,7 +25,7 @@ The following list shows the keywords and reserved words in IoTDB 0.13. Reserved
 
 - Common Keywords
   - ADD
-  - A F T E R
+  - AFTER
   - ALIAS
   - ALIGN
   - ALIGNED

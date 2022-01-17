@@ -25,7 +25,7 @@
 
 - 一般关键字
     - ADD
-    - A F T E R
+    - AFTER
     - ALIAS
     - ALIGN
     - ALIGNED
