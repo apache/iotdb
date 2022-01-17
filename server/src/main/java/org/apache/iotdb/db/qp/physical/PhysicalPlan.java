@@ -191,7 +191,7 @@ public abstract class PhysicalPlan {
    *
    * @param buffer
    */
-  public void serialize(ByteBuffer buffer) {
+  public final void serialize(ByteBuffer buffer) {
     buffer.mark();
     try {
       serializeImpl(buffer);
