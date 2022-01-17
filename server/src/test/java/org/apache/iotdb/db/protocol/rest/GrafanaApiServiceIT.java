@@ -248,7 +248,6 @@ public class GrafanaApiServiceIT {
     }
   }
 
-
   public void expressionWithControlGroupBy(CloseableHttpClient httpClient) {
     CloseableHttpResponse response = null;
     try {
