@@ -22,7 +22,6 @@ import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionTaskManager;
 import org.apache.iotdb.integration.env.EnvFactory;
 import org.apache.iotdb.itbase.category.LocalStandaloneTest;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,15 +41,21 @@ import static org.junit.Assert.assertEquals;
 @Category({LocalStandaloneTest.class})
 public class IoTDBSizeTieredCompactionIT {
   private static final Logger LOGGER = LoggerFactory.getLogger(IoTDBSizeTieredCompactionIT.class);
+  private static final boolean oldIsEnableUnseqCompaction =
+      IoTDBDescriptor.getInstance().getConfig().isEnableUnseqSpaceCompaction();
 
   @Before
   public void setUp() throws Exception {
     EnvFactory.getEnv().initBeforeTest();
+    IoTDBDescriptor.getInstance().getConfig().setEnableUnseqSpaceCompaction(true);
   }
 
   @After
   public void tearDown() throws Exception {
     EnvFactory.getEnv().cleanAfterTest();
+    IoTDBDescriptor.getInstance()
+        .getConfig()
+        .setEnableUnseqSpaceCompaction(oldIsEnableUnseqCompaction);
   }
 
   /** test compaction files num > MAX_FILE_NUM_IN_LEVEL * MAX_LEVEL_NUM */
@@ -1201,7 +1206,6 @@ public class IoTDBSizeTieredCompactionIT {
           assertEquals(time + 3, s3);
         }
       }
-
     } finally {
       IoTDBDescriptor.getInstance().getConfig().setConcurrentCompactionThread(oriThreadNum);
       IoTDBDescriptor.getInstance().getConfig().setTargetCompactionFileSize(oriTargetFileSize);

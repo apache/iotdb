@@ -36,10 +36,8 @@ import org.apache.iotdb.db.utils.EnvironmentUtils;
 import org.apache.iotdb.tsfile.common.conf.TSFileDescriptor;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
-
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -835,7 +833,7 @@ public class CompactionSchedulerTest {
    * enable_seq_space_compaction=false enable_unseq_space_compaction=true
    * compaction_concurrent_thread=1 max_compaction_candidate_file_num=100
    */
-  @Ignore
+  @Test
   public void test6() throws IOException, IllegalPathException {
     logger.warn("Running test6");
     boolean prevEnableSeqSpaceCompaction =
