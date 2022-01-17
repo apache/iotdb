@@ -49,9 +49,8 @@ public class CrossSpaceCompactionExceptionHandler {
       String storageGroup,
       File logFile,
       List<TsFileResource> targetResourceList,
-      List<TsFileResource> seqFileList,
-      List<TsFileResource> unseqFileList,
-      TsFileManager tsFileManager) {
+      TsFileManager tsFileManager,
+      long timePartiionId) {
     try {
       if (logFile == null || !logFile.exists()) {
         // the log file is null or the log file does not exists
@@ -65,18 +64,29 @@ public class CrossSpaceCompactionExceptionHandler {
       List<TsFileResource> lostSeqFiles = new ArrayList<>();
       List<TsFileResource> lostUnseqFiles = new ArrayList<>();
 
-      boolean allSeqFilesExist = checkAllSourceFileExists(seqFileList, lostSeqFiles);
-      boolean allUnseqFilesExist = checkAllSourceFileExists(unseqFileList, lostUnseqFiles);
+      boolean allSeqFilesExist =
+          checkAllSourceFileExists(
+              tsFileManager.getSequenceListByTimePartition(timePartiionId), lostSeqFiles);
+      boolean allUnseqFilesExist =
+          checkAllSourceFileExists(
+              tsFileManager.getUnsequenceListByTimePartition(timePartiionId), lostUnseqFiles);
 
       if (allSeqFilesExist && allUnseqFilesExist) {
         // all source files exists, remove target file
         handleSuccess =
             handleWhenAllSourceFilesExist(
-                storageGroup, targetResourceList, seqFileList, unseqFileList);
+                storageGroup,
+                targetResourceList,
+                tsFileManager.getSequenceListByTimePartition(timePartiionId),
+                tsFileManager.getUnsequenceListByTimePartition(timePartiionId));
       } else {
         handleSuccess =
             handleWhenSomeSourceFilesLost(
-                storageGroup, targetResourceList, seqFileList, unseqFileList, logFile);
+                storageGroup,
+                targetResourceList,
+                tsFileManager.getSequenceListByTimePartition(timePartiionId),
+                tsFileManager.getUnsequenceListByTimePartition(timePartiionId),
+                logFile);
       }
 
       if (!handleSuccess) {

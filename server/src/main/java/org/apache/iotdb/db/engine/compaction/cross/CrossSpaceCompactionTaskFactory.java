@@ -48,8 +48,6 @@ public class CrossSpaceCompactionTaskFactory {
             timePartitionId,
             storageGroupDir,
             tsFileManager,
-            seqTsFileResourceList,
-            unseqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList);
   }

@@ -24,21 +24,15 @@ import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.read.TimeValuePair;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.BatchData;
 import org.apache.iotdb.tsfile.read.common.Chunk;
 import org.apache.iotdb.tsfile.read.common.Path;
-import org.apache.iotdb.tsfile.read.reader.chunk.ChunkReader;
-import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.PriorityQueue;
 
@@ -50,85 +44,9 @@ public class MergeUtils {
     // util class
   }
 
-  public static void writeTVPair(TimeValuePair timeValuePair, ChunkWriterImpl chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBinary());
-        break;
-      case DOUBLE:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getDouble());
-        break;
-      case BOOLEAN:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getBoolean());
-        break;
-      case INT64:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getLong());
-        break;
-      case INT32:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getInt());
-        break;
-      case FLOAT:
-        chunkWriter.write(timeValuePair.getTimestamp(), timeValuePair.getValue().getFloat());
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
-  }
-
   private static List<Path> collectFileSeries(TsFileSequenceReader sequenceReader)
       throws IOException {
     return sequenceReader.getAllPaths();
-  }
-
-  public static long collectFileSizes(
-      List<TsFileResource> seqFiles, List<TsFileResource> unseqFiles) {
-    long totalSize = 0;
-    for (TsFileResource tsFileResource : seqFiles) {
-      totalSize += tsFileResource.getTsFileSize();
-    }
-    for (TsFileResource tsFileResource : unseqFiles) {
-      totalSize += tsFileResource.getTsFileSize();
-    }
-    return totalSize;
-  }
-
-  public static int writeChunkWithoutUnseq(Chunk chunk, ChunkWriterImpl chunkWriter)
-      throws IOException {
-    ChunkReader chunkReader = new ChunkReader(chunk, null);
-    int ptWritten = 0;
-    while (chunkReader.hasNextSatisfiedPage()) {
-      BatchData batchData = chunkReader.nextPageData();
-      for (int i = 0; i < batchData.length(); i++) {
-        writeBatchPoint(batchData, i, chunkWriter);
-      }
-      ptWritten += batchData.length();
-    }
-    return ptWritten;
-  }
-
-  public static void writeBatchPoint(BatchData batchData, int i, ChunkWriterImpl chunkWriter) {
-    switch (chunkWriter.getDataType()) {
-      case TEXT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBinaryByIndex(i));
-        break;
-      case DOUBLE:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getDoubleByIndex(i));
-        break;
-      case BOOLEAN:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getBooleanByIndex(i));
-        break;
-      case INT64:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getLongByIndex(i));
-        break;
-      case INT32:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getIntByIndex(i));
-        break;
-      case FLOAT:
-        chunkWriter.write(batchData.getTimeByIndex(i), batchData.getFloatByIndex(i));
-        break;
-      default:
-        throw new UnsupportedOperationException("Unknown data type " + chunkWriter.getDataType());
-    }
   }
 
   // returns totalChunkNum of a file and the max number of chunks of a series
@@ -227,45 +145,6 @@ public class MergeUtils {
     }
   }
 
-  public static boolean isChunkOverflowed(TimeValuePair timeValuePair, ChunkMetadata metaData) {
-    return timeValuePair != null && timeValuePair.getTimestamp() <= metaData.getEndTime();
-  }
-
-  public static boolean isChunkTooSmall(
-      int ptWritten, ChunkMetadata chunkMetaData, boolean isLastChunk, int minChunkPointNum) {
-    return ptWritten > 0
-        || (minChunkPointNum >= 0
-            && chunkMetaData.getNumOfPoints() < minChunkPointNum
-            && !isLastChunk);
-  }
-
-  public static List<List<PartialPath>> splitPathsByDevice(List<PartialPath> paths) {
-    if (paths.isEmpty()) {
-      return Collections.emptyList();
-    }
-    paths.sort(Comparator.comparing(PartialPath::getFullPath));
-
-    String currDevice = null;
-    List<PartialPath> currList = null;
-    List<List<PartialPath>> ret = new ArrayList<>();
-    for (PartialPath path : paths) {
-      if (currDevice == null) {
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      } else if (path.getDevice().equals(currDevice)) {
-        currList.add(path);
-      } else {
-        ret.add(currList);
-        currDevice = path.getDevice();
-        currList = new ArrayList<>();
-        currList.add(path);
-      }
-    }
-    ret.add(currList);
-    return ret;
-  }
-
   public static class MetaListEntry implements Comparable<MetaListEntry> {
 
     private int pathId;
@@ -294,10 +173,6 @@ public class MergeUtils {
 
     public ChunkMetadata next() {
       return chunkMetadataList.get(++listIdx);
-    }
-
-    public int getPathId() {
-      return pathId;
     }
   }
 }

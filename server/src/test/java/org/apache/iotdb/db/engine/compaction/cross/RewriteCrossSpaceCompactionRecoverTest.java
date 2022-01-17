@@ -34,7 +34,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
 import org.apache.iotdb.tsfile.utils.Pair;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -101,8 +100,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             "0",
             0,
             SEQ_DIRS.getPath(),
-            null,
-            null,
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -175,8 +172,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             "0",
             0,
             SEQ_DIRS.getPath(),
-            null,
-            null,
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -266,8 +261,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             "0",
             0,
             SEQ_DIRS.getPath(),
-            null,
-            null,
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)
@@ -372,8 +365,6 @@ public class RewriteCrossSpaceCompactionRecoverTest extends AbstractCompactionTe
             "0",
             0,
             SEQ_DIRS.getPath(),
-            null,
-            null,
             compactionLogFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager)

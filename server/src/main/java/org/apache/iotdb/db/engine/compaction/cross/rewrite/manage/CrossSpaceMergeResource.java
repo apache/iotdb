@@ -22,17 +22,9 @@ package org.apache.iotdb.db.engine.compaction.cross.rewrite.manage;
 import org.apache.iotdb.db.engine.modification.Modification;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
-import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
-import org.apache.iotdb.db.query.reader.resource.CachedUnseqResourceMergeReader;
 import org.apache.iotdb.db.service.IoTDB;
-import org.apache.iotdb.db.utils.MergeUtils;
-import org.apache.iotdb.tsfile.file.metadata.ChunkMetadata;
-import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
-import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 import org.apache.iotdb.tsfile.read.TsFileSequenceReader;
-import org.apache.iotdb.tsfile.read.common.Chunk;
-import org.apache.iotdb.tsfile.read.reader.IPointReader;
 import org.apache.iotdb.tsfile.utils.Pair;
 import org.apache.iotdb.tsfile.write.chunk.ChunkWriterImpl;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -50,8 +42,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
-
-import static org.apache.iotdb.db.engine.compaction.cross.AbstractCrossSpaceCompactionTask.MERGE_SUFFIX;
 
 /**
  * CrossSpaceMergeResource manages files and caches of readers, writers, MeasurementSchemas and
@@ -112,35 +102,6 @@ public class CrossSpaceMergeResource {
   }
 
   /**
-   * Construct a new or get an existing RestorableTsFileIOWriter of a merge temp file for a SeqFile.
-   * The path of the merge temp file will be the seqFile's + ".merge".
-   *
-   * @return A RestorableTsFileIOWriter of a merge temp file for a SeqFile.
-   */
-  public RestorableTsFileIOWriter getMergeFileWriter(TsFileResource resource) throws IOException {
-    RestorableTsFileIOWriter writer = fileWriterCache.get(resource);
-    if (writer == null) {
-      writer =
-          new RestorableTsFileIOWriter(
-              FSFactoryProducer.getFSFactory().getFile(resource.getTsFilePath() + MERGE_SUFFIX));
-      fileWriterCache.put(resource, writer);
-    }
-    return writer;
-  }
-
-  /**
-   * Query ChunkMetadata of a timeseries from the given TsFile (seq or unseq). The ChunkMetadata is
-   * not cached since it is usually huge.
-   *
-   * @param path name of the time series
-   */
-  public List<ChunkMetadata> queryChunkMetadata(PartialPath path, TsFileResource seqFile)
-      throws IOException {
-    TsFileSequenceReader sequenceReader = getFileReader(seqFile);
-    return sequenceReader.getChunkMetadataList(path, true);
-  }
-
-  /**
    * Construct the a new or get an existing TsFileSequenceReader of a TsFile.
    *
    * @return a TsFileSequenceReader
@@ -152,38 +113,6 @@ public class CrossSpaceMergeResource {
       fileReaderCache.put(tsFileResource, reader);
     }
     return reader;
-  }
-
-  /**
-   * Construct UnseqResourceMergeReaders of for each timeseries over all seqFiles. The readers are
-   * not cached since the method is only called once for each timeseries.
-   *
-   * @param paths names of the timeseries
-   * @return an array of UnseqResourceMergeReaders each corresponding to a timeseries in paths
-   */
-  public IPointReader[] getUnseqReaders(List<PartialPath> paths)
-      throws IOException, MetadataException {
-    List<Chunk>[] pathChunks = MergeUtils.collectUnseqChunks(paths, unseqFiles, this);
-    IPointReader[] ret = new IPointReader[paths.size()];
-    for (int i = 0; i < paths.size(); i++) {
-      PartialPath path = paths.get(i);
-      TSDataType dataType;
-      if (path instanceof MeasurementPath) {
-        dataType = path.getMeasurementSchema().getType();
-      } else {
-        dataType = getSchema(path).getType();
-      }
-      ret[i] = new CachedUnseqResourceMergeReader(pathChunks[i], dataType);
-    }
-    return ret;
-  }
-
-  /**
-   * Construct the a new or get an existing ChunkWriter of a measurement. Different timeseries of
-   * the same measurement and data type shares the same instance.
-   */
-  public ChunkWriterImpl getChunkWriter(IMeasurementSchema measurementSchema) {
-    return chunkWriterCache.computeIfAbsent(measurementSchema, ChunkWriterImpl::new);
   }
 
   /**
@@ -205,32 +134,6 @@ public class CrossSpaceMergeResource {
       }
     }
     return pathModifications;
-  }
-
-  /**
-   * Remove and close the writer of the merge temp file of a SeqFile. The merge temp file is also
-   * deleted.
-   *
-   * @param tsFileResource the SeqFile
-   */
-  public void removeFileAndWriter(TsFileResource tsFileResource) throws IOException {
-    RestorableTsFileIOWriter newFileWriter = fileWriterCache.remove(tsFileResource);
-    if (newFileWriter != null) {
-      newFileWriter.close();
-      newFileWriter.getFile().delete();
-    }
-  }
-
-  /**
-   * Remove and close the reader of the TsFile. The TsFile is NOT deleted.
-   *
-   * @param resource the SeqFile
-   */
-  public void removeFileReader(TsFileResource resource) throws IOException {
-    TsFileSequenceReader sequenceReader = fileReaderCache.remove(resource);
-    if (sequenceReader != null) {
-      sequenceReader.close();
-    }
   }
 
   public List<TsFileResource> getSeqFiles() {
@@ -266,10 +169,6 @@ public class CrossSpaceMergeResource {
 
   public void setCacheDeviceMeta(boolean cacheDeviceMeta) {
     this.cacheDeviceMeta = cacheDeviceMeta;
-  }
-
-  public void clearChunkWriterCache() {
-    this.chunkWriterCache.clear();
   }
 
   public void updateStartTime(TsFileResource tsFileResource, String device, long startTime) {

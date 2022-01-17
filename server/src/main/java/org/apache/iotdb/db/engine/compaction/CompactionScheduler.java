@@ -28,7 +28,6 @@ import org.apache.iotdb.db.engine.compaction.inner.InnerSpaceCompactionTaskFacto
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionSelector;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +116,6 @@ public class CompactionScheduler {
               virtualStorageGroupName,
               timePartition,
               tsFileManager,
-              sequenceFileList,
               true,
               new InnerSpaceCompactionTaskFactory());
       taskSubmitted =
@@ -126,7 +124,6 @@ public class CompactionScheduler {
                   virtualStorageGroupName,
                   timePartition,
                   tsFileManager,
-                  unsequenceFileList,
                   false,
                   new InnerSpaceCompactionTaskFactory())
               | taskSubmitted;
@@ -137,8 +134,6 @@ public class CompactionScheduler {
                   storageGroupDir,
                   timePartition,
                   tsFileManager,
-                  sequenceFileList,
-                  unsequenceFileList,
                   new CrossSpaceCompactionTaskFactory())
               | taskSubmitted;
     }
@@ -157,7 +152,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
@@ -165,7 +159,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitCrossSpaceCompactionTask(
@@ -174,8 +167,6 @@ public class CompactionScheduler {
         storageGroupDir,
         timePartition,
         tsFileManager,
-        sequenceFileList,
-        unsequenceFileList,
         new CrossSpaceCompactionTaskFactory());
   }
 
@@ -193,15 +184,12 @@ public class CompactionScheduler {
         storageGroupDir,
         timePartition,
         tsFileManager,
-        sequenceFileList,
-        unsequenceFileList,
         new CrossSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
         logicalStorageGroupName,
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        sequenceFileList,
         true,
         new InnerSpaceCompactionTaskFactory());
     tryToSubmitInnerSpaceCompactionTask(
@@ -209,7 +197,6 @@ public class CompactionScheduler {
         virtualStorageGroupName,
         timePartition,
         tsFileManager,
-        unsequenceFileList,
         false,
         new InnerSpaceCompactionTaskFactory());
   }
@@ -219,7 +206,6 @@ public class CompactionScheduler {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     if ((!config.isEnableSeqSpaceCompaction() && sequence)
@@ -235,7 +221,6 @@ public class CompactionScheduler {
                 virtualStorageGroupName,
                 timePartition,
                 tsFileManager,
-                tsFileResources,
                 sequence,
                 taskFactory);
     return innerSpaceCompactionSelector.selectAndSubmit();
@@ -247,8 +232,6 @@ public class CompactionScheduler {
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
     if (!config.isEnableCrossSpaceCompaction()) {
       return false;
@@ -262,8 +245,6 @@ public class CompactionScheduler {
                 storageGroupDir,
                 timePartition,
                 tsFileManager,
-                sequenceFileList,
-                unsequenceFileList,
                 taskFactory);
     return crossSpaceCompactionSelector.selectAndSubmit();
   }

@@ -359,7 +359,7 @@ public class CompactionUtils {
 
   /**
    * This method is called to recover modifications while an exception occurs during compaction. It
-   * append new modifications of each selected tsfile to its corresponding old mods file and delete
+   * appends new modifications of each selected tsfile to its corresponding old mods file and delete
    * the compaction mods file.
    *
    * @param selectedTsFileResources

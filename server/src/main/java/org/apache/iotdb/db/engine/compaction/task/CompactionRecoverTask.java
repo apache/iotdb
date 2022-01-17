@@ -23,7 +23,6 @@ import org.apache.iotdb.db.conf.directories.DirectoryManager;
 import org.apache.iotdb.db.engine.compaction.CompactionScheduler;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,8 +75,6 @@ public class CompactionRecoverTask {
                   virtualStorageGroupId,
                   timePartition,
                   storageGroupDir,
-                  tsFileManager.getSequenceListByTimePartition(timePartition),
-                  tsFileManager.getUnsequenceListByTimePartition(timePartition),
                   compactionLog,
                   tsFileManager)
               .call();

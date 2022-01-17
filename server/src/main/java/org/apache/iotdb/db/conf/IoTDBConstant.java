@@ -173,10 +173,10 @@ public class IoTDBConstant {
   public static final String FILE_NAME_SUFFIX_SEPARATOR = "\\.";
 
   // inner space compaction
-  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".target";
+  public static final String INNER_COMPACTION_TMP_FILE_SUFFIX = ".inner";
 
   // cross space compaction
-  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".merge";
+  public static final String CROSS_COMPACTION_TMP_FILE_SUFFIX = ".cross";
 
   // client version number
   public enum ClientVersion {

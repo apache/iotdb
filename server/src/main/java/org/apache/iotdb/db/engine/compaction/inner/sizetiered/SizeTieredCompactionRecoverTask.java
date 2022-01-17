@@ -61,7 +61,6 @@ public class SizeTieredCompactionRecoverTask extends SizeTieredCompactionTask {
         virtualStorageGroup,
         timePartition,
         tsFileManager,
-        null,
         new ArrayList<>(),
         sequence,
         currentTaskNum);

@@ -29,7 +29,6 @@ import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.StorageEngineException;
 import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -76,7 +75,6 @@ public class InnerCompactionSchedulerTest {
         "0",
         0L,
         new TsFileManager("testSG", "0", "tmp"),
-        tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();
@@ -107,7 +105,6 @@ public class InnerCompactionSchedulerTest {
         "0",
         0L,
         new TsFileManager("testSG", "0", "tmp"),
-        tsFileResources,
         true,
         new FakedInnerSpaceCompactionTaskFactory());
     CompactionTaskManager.getInstance().submitTaskFromTaskQueue();

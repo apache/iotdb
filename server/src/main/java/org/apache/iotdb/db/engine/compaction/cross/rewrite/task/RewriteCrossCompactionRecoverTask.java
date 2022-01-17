@@ -18,6 +18,7 @@
  */
 package org.apache.iotdb.db.engine.compaction.cross.rewrite.task;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.compaction.CompactionUtils;
@@ -28,10 +29,7 @@ import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.modification.ModificationFile;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +44,6 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
   private static final Logger LOGGER =
       LoggerFactory.getLogger(RewriteCrossCompactionRecoverTask.class);
   private File compactionLogFile;
-  private String dataDir;
   private String logicalStorageGroupName;
   private String virtualStorageGroup;
 
@@ -55,8 +52,6 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList selectedSeqTsFileResourceList,
-      TsFileResourceList selectedUnSeqTsFileResourceList,
       File logFile,
       AtomicInteger currentTaskNum,
       TsFileManager tsFileManager) {
@@ -68,11 +63,8 @@ public class RewriteCrossCompactionRecoverTask extends RewriteCrossSpaceCompacti
         tsFileManager,
         null,
         null,
-        selectedSeqTsFileResourceList,
-        selectedUnSeqTsFileResourceList,
         currentTaskNum);
     this.compactionLogFile = logFile;
-    this.dataDir = storageGroupDir;
     this.logicalStorageGroupName = logicalStorageGroupName;
     this.virtualStorageGroup = virtualStorageGroupName;
   }

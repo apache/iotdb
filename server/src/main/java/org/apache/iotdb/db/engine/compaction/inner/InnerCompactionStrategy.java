@@ -56,7 +56,6 @@ public enum InnerCompactionStrategy {
             virtualStorageGroup,
             timePartition,
             tsFileManager,
-            tsFileResourceList,
             selectedTsFileResourceList,
             sequence,
             CompactionTaskManager.currentTaskNum);
@@ -91,7 +90,6 @@ public enum InnerCompactionStrategy {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResources,
       boolean sequence,
       InnerSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
@@ -102,7 +100,6 @@ public enum InnerCompactionStrategy {
             virtualStorageGroupName,
             timePartition,
             tsFileManager,
-            tsFileResources,
             sequence,
             taskFactory);
     }

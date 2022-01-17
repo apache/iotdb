@@ -57,14 +57,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(
@@ -94,14 +87,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
     tsFileManager.addAll(unseqResources, false);
     SizeTieredCompactionTask task =
         new SizeTieredCompactionTask(
-            COMPACTION_TEST_SG,
-            "0",
-            0,
-            tsFileManager,
-            tsFileManager.getSequenceListByTimePartition(0),
-            seqResources,
-            true,
-            new AtomicInteger(0));
+            COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
     tsFileManager.writeLock("test");
     try {
       seqResources.get(seqResources.size() - 1).remove();
@@ -131,14 +117,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(
@@ -173,14 +152,7 @@ public class SizeTieredCompactionHandleExceptionTest extends AbstractInnerSpaceC
       tsFileManager.addAll(unseqResources, false);
       SizeTieredCompactionTask task =
           new SizeTieredCompactionTask(
-              COMPACTION_TEST_SG,
-              "0",
-              0,
-              tsFileManager,
-              tsFileManager.getSequenceListByTimePartition(0),
-              seqResources,
-              true,
-              new AtomicInteger(0));
+              COMPACTION_TEST_SG, "0", 0, tsFileManager, seqResources, true, new AtomicInteger(0));
       tsFileManager.writeLock("test");
       try {
         new Thread(

@@ -46,8 +46,6 @@ public class FakedCrossSpaceCompactionTaskFactory {
             timePartitionId,
             storageGroupDir,
             tsFileManager,
-            seqTsFileResourceList,
-            unseqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList);
   }

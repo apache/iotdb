@@ -104,9 +104,6 @@ public class TsFileSequenceRead {
             if (header.getDataType() == TSDataType.VECTOR) {
               timeBatch.clear();
             }
-            long startTime = 0;
-            long endTime = 0;
-            boolean hasStartChunk = false;
             while (dataSize > 0) {
               valueDecoder.reset();
               System.out.println(
@@ -160,16 +157,11 @@ public class TsFileSequenceRead {
                 }
                 if (printDetail) {
                   while (batchData.hasCurrent()) {
-                    if (!hasStartChunk) {
-                      startTime = batchData.currentTime();
-                      hasStartChunk = true;
-                    }
-                    endTime = batchData.currentTime();
-                    //                    System.out.println(
-                    //                        "\t\t\ttime, value: "
-                    //                            + batchData.currentTime()
-                    //                            + ", "
-                    //                            + batchData.currentValue());
+                    System.out.println(
+                        "\t\t\ttime, value: "
+                            + batchData.currentTime()
+                            + ", "
+                            + batchData.currentValue());
                     batchData.next();
                   }
                 }
@@ -177,7 +169,6 @@ public class TsFileSequenceRead {
               pageIndex++;
               dataSize -= pageHeader.getSerializedPageSize();
             }
-            System.out.println("\tTime Range:" + startTime + "," + endTime);
             break;
           case MetaMarker.CHUNK_GROUP_HEADER:
             System.out.println("[Chunk Group]");

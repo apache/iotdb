@@ -19,13 +19,17 @@
 
 package org.apache.iotdb.db.engine.compaction.utils;
 
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.cache.BloomFilterCache;
 import org.apache.iotdb.db.engine.cache.ChunkCache;
 import org.apache.iotdb.db.engine.cache.TimeSeriesMetadataCache;
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger;
 import org.apache.iotdb.db.engine.compaction.inner.utils.SizeTieredCompactionLogger;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
 import org.apache.iotdb.db.query.control.FileReaderManager;
+import org.apache.iotdb.tsfile.common.constant.TsFileConstant;
 import org.apache.iotdb.tsfile.fileSystem.FSFactoryProducer;
 
 import org.apache.commons.io.FileUtils;
@@ -37,11 +41,11 @@ public class CompactionClearUtils {
 
   /** Clear all generated and merged files in the test directory */
   public static void clearAllCompactionFiles() throws IOException {
-    deleteAllFilesInOneDirBySuffix("target", ".tsfile");
-    deleteAllFilesInOneDirBySuffix("target", ".resource");
-    deleteAllFilesInOneDirBySuffix("target", ".mods");
-    deleteAllFilesInOneDirBySuffix("target", ".target");
-    deleteAllFilesInOneDirBySuffix("target", ".merge");
+    deleteAllFilesInOneDirBySuffix("target", TsFileConstant.TSFILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", TsFileResource.RESOURCE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", ModificationFile.FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.INNER_COMPACTION_TMP_FILE_SUFFIX);
+    deleteAllFilesInOneDirBySuffix("target", IoTDBConstant.CROSS_COMPACTION_TMP_FILE_SUFFIX);
     deleteAllFilesInOneDirBySuffix("target", SizeTieredCompactionLogger.COMPACTION_LOG_NAME);
     deleteAllFilesInOneDirBySuffix("target", RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
     // clean cache

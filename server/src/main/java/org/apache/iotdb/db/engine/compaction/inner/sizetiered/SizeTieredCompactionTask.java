@@ -61,7 +61,6 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
       String virtualStorageGroupName,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList tsFileResourceList,
       List<TsFileResource> selectedTsFileResourceList,
       boolean sequence,
       AtomicInteger currentTaskNum) {
@@ -71,13 +70,17 @@ public class SizeTieredCompactionTask extends AbstractInnerSpaceCompactionTask {
         currentTaskNum,
         sequence,
         selectedTsFileResourceList);
-    this.tsFileResourceList = tsFileResourceList;
     this.tsFileManager = tsFileManager;
     isHoldingReadLock = new boolean[selectedTsFileResourceList.size()];
     isHoldingWriteLock = new boolean[selectedTsFileResourceList.size()];
     for (int i = 0; i < selectedTsFileResourceList.size(); ++i) {
       isHoldingWriteLock[i] = false;
       isHoldingReadLock[i] = false;
+    }
+    if (sequence) {
+      tsFileResourceList = tsFileManager.getSequenceListByTimePartition(timePartition);
+    } else {
+      tsFileResourceList = tsFileManager.getUnsequenceListByTimePartition(timePartition);
     }
   }
 

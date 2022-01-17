@@ -15,7 +15,6 @@ on:
       - master
       - 'rel/*'
       - cluster_new
-      - new-compaction
     paths-ignore:
       - 'docs/**'
   # allow manually run the action:

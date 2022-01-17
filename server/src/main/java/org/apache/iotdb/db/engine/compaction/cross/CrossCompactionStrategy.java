@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossComp
 import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpaceCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.io.File;
 import java.util.List;
@@ -45,8 +44,6 @@ public enum CrossCompactionStrategy {
       long timePartitionId,
       String storageGroupDir,
       TsFileManager tsFileManager,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     switch (this) {
@@ -58,8 +55,6 @@ public enum CrossCompactionStrategy {
             timePartitionId,
             storageGroupDir,
             tsFileManager,
-            seqTsFileResourceList,
-            unseqTsFileResourceList,
             selectedSeqTsFileResourceList,
             selectedUnSeqTsFileResourceList,
             CompactionTaskManager.currentTaskNum);
@@ -71,8 +66,6 @@ public enum CrossCompactionStrategy {
       String virtualStorageGroupName,
       long timePartitionId,
       String storageGroupDir,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unSeqTsFileResourceList,
       File logFile,
       TsFileManager tsFileManager) {
     switch (this) {
@@ -83,8 +76,6 @@ public enum CrossCompactionStrategy {
             virtualStorageGroupName,
             timePartitionId,
             storageGroupDir,
-            seqTsFileResourceList,
-            unSeqTsFileResourceList,
             logFile,
             CompactionTaskManager.currentTaskNum,
             tsFileManager);
@@ -97,8 +88,6 @@ public enum CrossCompactionStrategy {
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
     switch (this) {
       case INPLACE_COMPACTION:
@@ -109,8 +98,6 @@ public enum CrossCompactionStrategy {
             storageGroupDir,
             timePartition,
             tsFileManager,
-            sequenceFileList,
-            unsequenceFileList,
             taskFactory);
     }
   }

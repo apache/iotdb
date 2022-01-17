@@ -24,7 +24,6 @@ import org.apache.iotdb.db.engine.compaction.cross.rewrite.task.RewriteCrossSpac
 import org.apache.iotdb.db.engine.storagegroup.FakedTsFileResource;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 
 import java.util.List;
 
@@ -35,8 +34,6 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
       long timePartitionId,
       String storageGroupDir,
       TsFileManager tsFileManager,
-      TsFileResourceList seqTsFileResourceList,
-      TsFileResourceList unseqTsFileResourceList,
       List<TsFileResource> selectedSeqTsFileResourceList,
       List<TsFileResource> selectedUnSeqTsFileResourceList) {
     super(
@@ -45,8 +42,6 @@ public class FakedCrossSpaceCompactionTask extends RewriteCrossSpaceCompactionTa
         timePartitionId,
         storageGroupDir,
         tsFileManager,
-        seqTsFileResourceList,
-        unseqTsFileResourceList,
         selectedSeqTsFileResourceList,
         selectedUnSeqTsFileResourceList,
         CompactionTaskManager.currentTaskNum);

@@ -30,9 +30,7 @@ import org.apache.iotdb.db.engine.compaction.inner.utils.InnerSpaceCompactionUti
 import org.apache.iotdb.db.engine.compaction.task.AbstractCompactionTask;
 import org.apache.iotdb.db.engine.storagegroup.TsFileManager;
 import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
-import org.apache.iotdb.db.engine.storagegroup.TsFileResourceList;
 import org.apache.iotdb.db.exception.MergeException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,8 +49,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
       String storageGroupDir,
       long timePartition,
       TsFileManager tsFileManager,
-      TsFileResourceList sequenceFileList,
-      TsFileResourceList unsequenceFileList,
       CrossSpaceCompactionTaskFactory taskFactory) {
     super(
         logicalStorageGroupName,
@@ -60,8 +56,6 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
         storageGroupDir,
         timePartition,
         tsFileManager,
-        sequenceFileList,
-        unsequenceFileList,
         taskFactory);
   }
 
