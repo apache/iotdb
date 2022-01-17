@@ -37,6 +37,9 @@ import org.apache.iotdb.db.service.IService;
 import org.apache.iotdb.db.service.ServiceType;
 import org.apache.iotdb.tsfile.utils.Pair;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 
 public class SenderService implements IService {
+  private static final Logger logger = LoggerFactory.getLogger(SenderService.class);
   private final SenderLogger senderLogger;
 
   private Map<String, PipeSink> pipeSinks;
@@ -240,7 +244,13 @@ public class SenderService implements IService {
 
   @Override
   public void stop() {
-    runningPipe.stop();
+    if (runningPipe != null) {
+      try {
+        runningPipe.stop();
+      } catch (PipeException e) {
+        logger.warn(String.format("Running pipe %s has been dropped.", runningPipe.getName()));
+      }
+    }
     senderLogger.close();
   }
 

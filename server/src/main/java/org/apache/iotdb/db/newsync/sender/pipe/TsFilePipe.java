@@ -19,30 +19,48 @@
  */
 package org.apache.iotdb.db.newsync.sender.pipe;
 
+import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
+import org.apache.iotdb.db.concurrent.ThreadName;
+import org.apache.iotdb.db.engine.modification.Deletion;
+import org.apache.iotdb.db.engine.modification.ModificationFile;
+import org.apache.iotdb.db.engine.storagegroup.TsFileResource;
+import org.apache.iotdb.db.exception.PipeException;
+import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLog;
 import org.apache.iotdb.db.newsync.sender.recovery.TsFilePipeLogAnalyzer;
-import org.apache.iotdb.db.qp.utils.DatetimeUtils;
+import org.apache.iotdb.db.qp.physical.PhysicalPlan;
+
+import org.apache.iotdb.tsfile.utils.ReadWriteIOUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class TsFilePipe implements Pipe {
-  private static final String SERIALIZE_SPLIT_TOKEN = ",";
+  private static final Logger logger = LoggerFactory.getLogger(TsFilePipe.class);
 
   private final long createTime;
-
   private final String name;
   private final IoTDBPipeSink pipeSink;
   private final long dataStartTimestamp;
   private final boolean syncDelOp;
 
+  private ExecutorService singleExecutorService;
+  private TsFilePipeLog pipeLog;
+
   private PipeStatus status;
 
-  public TsFilePipe(
-      String name, IoTDBPipeSink pipeSink, long dataStartTimestamp, boolean syncDelOp) {
-    this.name = name;
-    this.pipeSink = pipeSink;
-    this.dataStartTimestamp = dataStartTimestamp;
-    this.syncDelOp = syncDelOp;
-
-    createTime = DatetimeUtils.currentTime();
-  }
+  private final BlockingQueue<TsFilePipeData> pipeData;
+  private long maxSerialNumber;
 
   public TsFilePipe(
       long createTime,
@@ -55,29 +73,113 @@ public class TsFilePipe implements Pipe {
     this.pipeSink = pipeSink;
     this.dataStartTimestamp = dataStartTimestamp;
     this.syncDelOp = syncDelOp;
+
+    this.pipeLog = new TsFilePipeLog(this);
+    this.singleExecutorService =
+        IoTDBThreadPoolFactory.newSingleThreadExecutor(
+            ThreadName.PIPE_SERVICE.getName() + "-" + name);
+
     this.status = PipeStatus.STOP;
+
+    this.pipeData = new LinkedBlockingDeque<>();
   }
 
   @Override
-  public void start() {
+  public synchronized void start() throws PipeException {
+    if (status == PipeStatus.DROP) {
+      throw new PipeException(
+          String.format("Can not start pipe %s, because the pipe is drop.", name));
+    } else if (status == PipeStatus.RUNNING) {
+      return;
+    }
+
+    status = PipeStatus.RUNNING;
     if (new TsFilePipeLogAnalyzer().isCollectFinished()) {
       recover();
+    } else {
+      collectData();
+      pipeLog.finishCollect();
     }
-    status = PipeStatus.RUNNING;
+
+    singleExecutorService.submit(this::transport);
   }
 
-  private void recover() {
+  /** collect data * */
+  private void collectData() {
+    collectMetaData();
+    collectTsFileAndDeletion();
+  }
+
+  private void collectMetaData() {}
+
+  private void collectTsFileAndDeletion() {}
+
+  private void recover() {}
+
+  /** transport data * */
+  private void transport() {
+    try {
+      while (true) {
+        if (status == PipeStatus.STOP || status == PipeStatus.DROP) {
+          logger.info(String.format("TsFile pipe %s stops transporting data by command.", name));
+          break;
+        }
+
+        TsFilePipeData data;
+        try {
+          synchronized (pipeData) {
+            if (pipeData.isEmpty()) {
+              pipeData.wait();
+              pipeData.notifyAll();
+            }
+            data = pipeData.poll();
+          }
+        } catch (InterruptedException e) {
+          logger.warn(String.format("TsFile pipe %s has been interrupted.", name));
+          continue;
+        }
+
+        if (data == null) {
+          continue;
+        }
+        if (data.isTsFile()) {
+          // senderTransport(data.getTsFiles, data.getLoaderType());
+        } else {
+          // senderTransport(data.getBytes, data.getLoaderType());
+        }
+      }
+    } catch (Exception e) {
+      logger.error(String.format("TsFile pipe %s stops transportng data, because %s", name, e));
+    }
   }
 
   @Override
-  public void stop() {
+  public synchronized void stop() throws PipeException {
+    if (status == PipeStatus.DROP) {
+      throw new PipeException(
+          String.format("Can not stop pipe %s, because the pipe is drop.", name));
+    }
+
     status = PipeStatus.STOP;
+    synchronized (pipeData) {
+      pipeData.notifyAll();
+    }
   }
 
   @Override
-  public void drop() {
+  public synchronized void drop() {
+    if (status == PipeStatus.DROP) {
+      return;
+    }
+
     status = PipeStatus.DROP;
+    synchronized (pipeData) {
+      pipeData.notifyAll();
+    }
+    clear();
   }
+
+  private void clear() {}
 
   @Override
   public String getName() {
@@ -95,7 +197,7 @@ public class TsFilePipe implements Pipe {
   }
 
   @Override
-  public PipeStatus getStatus() {
+  public synchronized PipeStatus getStatus() {
     return status;
   }
 }

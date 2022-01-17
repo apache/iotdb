@@ -19,6 +19,7 @@
  */
 package org.apache.iotdb.db.newsync.sender.recovery;
 
+import org.apache.iotdb.db.exception.PipeException;
 import org.apache.iotdb.db.newsync.sender.conf.SenderConf;
 import org.apache.iotdb.db.newsync.sender.pipe.Pipe;
 import org.apache.iotdb.db.newsync.sender.pipe.PipeSink;
@@ -117,19 +118,23 @@ public class SenderLogAnalyzer {
     }
 
     if (pipes.size() > 0) {
-      switch (runningPipeStatus) {
-        case RUNNING:
-          runningPipe.start();
-          break;
-        case STOP:
-          runningPipe.stop();
-          break;
-        case DROP:
-          runningPipe.drop();
-          break;
-        default:
-          throw new IOException(
-              String.format("Can not recognize running pipe status %s.", runningPipeStatus));
+      try {
+        switch (runningPipeStatus) {
+          case RUNNING:
+            runningPipe.start();
+            break;
+          case STOP:
+            runningPipe.stop();
+            break;
+          case DROP:
+            runningPipe.drop();
+            break;
+          default:
+            throw new IOException(
+                String.format("Can not recognize running pipe status %s.", runningPipeStatus));
+        }
+      } catch (PipeException e) {
+        throw new IOException(e.getMessage());
       }
     }
 

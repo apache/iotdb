@@ -41,6 +41,10 @@ public class SenderLogger {
 
   private void getBufferedWriter() {
     try {
+      if (bw != null) {
+        return;
+      }
+
       File senderLog = new File(SenderConf.senderLog);
       if (!senderLog.exists()) {
         if (!senderLog.getParentFile().exists()) {
