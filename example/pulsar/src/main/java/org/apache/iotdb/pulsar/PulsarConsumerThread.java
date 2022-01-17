@@ -94,6 +94,7 @@ public class PulsarConsumerThread implements Runnable {
                 Constant.IOTDB_CONNECTION_PORT,
                 Constant.IOTDB_CONNECTION_USER,
                 Constant.IOTDB_CONNECTION_PASSWORD);
+        session.open();
         insert(session, new String(msg.getData()));
         consumer.acknowledge(msg);
       } while (true);

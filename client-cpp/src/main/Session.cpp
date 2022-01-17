@@ -19,10 +19,11 @@
 
 #include "Session.h"
 #include <algorithm>
+#include <memory>
 
 using namespace std;
 
-TSDataType::TSDataType getTSDataTypeFromString(string str) {
+TSDataType::TSDataType getTSDataTypeFromString(const string &str) {
     // BOOLEAN, INT32, INT64, FLOAT, DOUBLE, TEXT, NULLTYPE
     if (str == "BOOLEAN") return TSDataType::BOOLEAN;
     else if (str == "INT32") return TSDataType::INT32;
@@ -45,7 +46,7 @@ void RpcUtils::verifySuccess(const TSStatus &status) {
 }
 
 void RpcUtils::verifySuccess(const vector<TSStatus> &statuses) {
-    for (TSStatus status: statuses) {
+    for (const TSStatus &status: statuses) {
         if (status.code != TSStatusCode::SUCCESS_STATUS) {
             throw BatchExecutionException(statuses, status.message);
         }
@@ -79,7 +80,7 @@ RpcUtils::getTSExecuteStatementResp(TSStatusCode::TSStatusCode tsStatusCode, con
 shared_ptr<TSExecuteStatementResp> RpcUtils::getTSExecuteStatementResp(const TSStatus &status) {
     shared_ptr<TSExecuteStatementResp> resp(new TSExecuteStatementResp());
     TSStatus tsStatus(status);
-    resp->status = status;
+    resp->status = tsStatus;
     return resp;
 }
 
@@ -144,7 +145,7 @@ int Tablet::getValueByteSize() {
                 break;
             case TSDataType::TEXT:
                 valueOccupation += rowSize * 4;
-                for (string value: values[i]) {
+                for (const string &value: values[i]) {
                     valueOccupation += value.size();
                 }
                 break;
@@ -234,8 +235,8 @@ string SessionUtils::getValue(const Tablet &tablet) {
         valueBuffer.putChar(columnHasNull ? (char) 1 : (char) 0);
         if (columnHasNull) {
             vector<char> bytes = bitMap->getByteArray();
-            for (int j = 0; j < bytes.size(); j++) {
-                valueBuffer.putChar(bytes[j]);
+            for (char byte: bytes) {
+                valueBuffer.putChar(byte);
             }
         }
     }
@@ -272,11 +273,11 @@ bool SessionDataSet::hasNext() {
                 return false;
             } else {
                 tsQueryDataSet = make_shared<TSQueryDataSet>(resp->queryDataSet);
-                tsQueryDataSetTimeBuffer = tsQueryDataSet->time;
+                tsQueryDataSetTimeBuffer.str = tsQueryDataSet->time;
                 rowsIndex = 0;
             }
         }
-        catch (IoTDBConnectionException e) {
+        catch (IoTDBConnectionException &e) {
             throw IoTDBConnectionException(
                     string("Cannot fetch result from server, because of network connection: ") + e.what());
         }
@@ -338,7 +339,7 @@ void SessionDataSet::constructOneRow() {
                     }
                     default: {
                         throw UnSupportedDataTypeException(
-                                string("Data type ") + columnTypeDeduplicatedList[i].c_str() + " is not supported.");
+                                string("Data type ") + columnTypeDeduplicatedList[i] + " is not supported.");
                     }
                 }
             } else {
@@ -367,7 +368,7 @@ bool SessionDataSet::isNull(int index, int rowNum) {
 RowRecord *SessionDataSet::next() {
     if (!hasCachedRecord) {
         if (!hasNext()) {
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -385,10 +386,62 @@ void SessionDataSet::closeOperationHandle() {
         client->closeOperation(*closeResp, *closeReq);
         RpcUtils::verifySuccess(*closeResp);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
         throw IoTDBConnectionException(
                 string("Error occurs when connecting to server for close operation, because: ") + e.what());
     }
+}
+
+string MeasurementNode::serialize() const {
+    MyStringBuffer buffer;
+    buffer.putString(getName());
+    buffer.putChar(getDataType());
+    buffer.putChar(getEncoding());
+    buffer.putChar(getCompressionType());
+    return buffer.str;
+}
+
+string Template::serialize() const {
+    MyStringBuffer buffer;
+    stack<pair<string, shared_ptr<TemplateNode>>> stack;
+    unordered_set<string> alignedPrefix;
+    buffer.putString(getName());
+    buffer.putBool(isAligned());
+    if (isAligned()) {
+        alignedPrefix.emplace("");
+    }
+
+    for (const auto &child: children_) {
+        stack.push(make_pair("", child.second));
+    }
+
+    while (!stack.empty()) {
+        auto cur = stack.top();
+        stack.pop();
+
+        string prefix = cur.first;
+        shared_ptr<TemplateNode> cur_node_ptr = cur.second;
+        string fullPath(prefix);
+
+        if (!cur_node_ptr->isMeasurement()) {
+            if (!prefix.empty()) {
+                fullPath.append(".");
+            }
+            fullPath.append(cur_node_ptr->getName());
+            if (cur_node_ptr->isAligned()) {
+                alignedPrefix.emplace(fullPath);
+            }
+            for (const auto &child: cur_node_ptr->getChildren()) {
+                stack.push(make_pair(fullPath, child.second));
+            }
+        } else {
+            buffer.putString(prefix);
+            buffer.putBool(alignedPrefix.find(prefix) != alignedPrefix.end());
+            buffer.concat(cur_node_ptr->serialize());
+        }
+    }
+
+    return buffer.str;
 }
 
 /**
@@ -555,7 +608,7 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         try {
             transport->open();
         }
-        catch (TTransportException e) {
+        catch (TTransportException &e) {
             throw IoTDBConnectionException(e.what());
         }
     }
@@ -590,13 +643,13 @@ void Session::open(bool enableRPCCompression, int connectionTimeoutInMs) {
         sessionId = openResp.sessionId;
         statementId = client->requestStatementId(sessionId);
 
-        if (zoneId != "") {
+        if (!zoneId.empty()) {
             setTimeZone(zoneId);
         } else {
             zoneId = getTimeZone();
         }
     }
-    catch (exception e) {
+    catch (exception &e) {
         transport->close();
         throw IoTDBConnectionException(e.what());
     }
@@ -615,7 +668,7 @@ void Session::close() {
         shared_ptr<TSStatus> resp(new TSStatus());
         client->closeSession(*resp, *req);
     }
-    catch (exception e) {
+    catch (exception &e) {
         throw IoTDBConnectionException(
                 string("Error occurs when closing session at server. Maybe server is down. ") + e.what());
     }
@@ -642,6 +695,7 @@ void Session::insertRecord(const string &deviceId, int64_t time,
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -664,6 +718,7 @@ void Session::insertRecord(const string &prefixPath, int64_t time,
         client->insertRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -684,6 +739,7 @@ void Session::insertAlignedRecord(const string &deviceId, int64_t time,
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -706,6 +762,7 @@ void Session::insertAlignedRecord(const string &prefixPath, int64_t time,
         client->insertRecord(respStatus, req);
         RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -733,6 +790,7 @@ void Session::insertRecords(const vector<string> &deviceIds,
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -766,6 +824,7 @@ void Session::insertRecords(const vector<string> &deviceIds,
         client->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -793,6 +852,7 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -826,6 +886,7 @@ void Session::insertAlignedRecords(const vector<string> &deviceIds,
         client->insertRecords(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -881,6 +942,7 @@ void Session::insertRecordsOfOneDevice(const string &deviceId,
         client->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const exception &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -936,6 +998,7 @@ void Session::insertAlignedRecordsOfOneDevice(const string &deviceId,
         client->insertRecordsOfOneDevice(respStatus, request);
         RpcUtils::verifySuccess(respStatus);
     } catch (const exception &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -945,6 +1008,7 @@ void Session::insertTablet(Tablet &tablet) {
         insertTablet(tablet, false);
     }
     catch (const exception &e) {
+        cout << e.what() << endl;
         logic_error error(e.what());
         throw exception(error);
     }
@@ -977,7 +1041,8 @@ void Session::insertTablet(Tablet &tablet, bool sorted) {
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
-        throw new IoTDBConnectionException(e.what());
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
     }
 }
 
@@ -991,22 +1056,24 @@ void Session::insertAlignedTablet(Tablet &tablet, bool sorted) {
         insertTablet(tablet, sorted);
     }
     catch (const exception &e) {
+        cout << e.what() << endl;
         logic_error error(e.what());
         throw exception(error);
     }
 }
 
-void Session::insertTablets(map<string, Tablet *> &tablets) {
+void Session::insertTablets(unordered_map<string, Tablet *> &tablets) {
     try {
         insertTablets(tablets, false);
     }
     catch (const exception &e) {
+        cout << e.what() << endl;
         logic_error error(e.what());
         throw exception(error);
     }
 }
 
-void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
+void Session::insertTablets(unordered_map<string, Tablet *> &tablets, bool sorted) {
     TSInsertTabletsReq request;
     request.__set_sessionId(sessionId);
     if (tablets.empty()) {
@@ -1045,22 +1112,24 @@ void Session::insertTablets(map<string, Tablet *> &tablets, bool sorted) {
         RpcUtils::verifySuccess(respStatus);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
 
-void Session::insertAlignedTablets(map<string, Tablet *> &tablets) {
+void Session::insertAlignedTablets(unordered_map<string, Tablet *> &tablets) {
     insertAlignedTablets(tablets, false);
 }
 
-void Session::insertAlignedTablets(map<string, Tablet *> &tablets, bool sorted) {
-    for (map<string, Tablet *>::iterator iter = tablets.begin(); iter != tablets.end(); iter++) {
+void Session::insertAlignedTablets(unordered_map<string, Tablet *> &tablets, bool sorted) {
+    for (auto iter = tablets.begin(); iter != tablets.end(); iter++) {
         iter->second->setAligned(true);
     }
     try {
         insertTablets(tablets, sorted);
     }
     catch (const exception &e) {
+        cout << e.what() << endl;
         logic_error error(e.what());
         throw exception(error);
     }
@@ -1079,7 +1148,8 @@ void Session::testInsertRecord(const string &deviceId, int64_t time, const vecto
         client->insertStringRecord(*resp, *req);
         RpcUtils::verifySuccess(*resp);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1102,6 +1172,7 @@ void Session::testInsertTablet(const Tablet &tablet) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1128,6 +1199,7 @@ void Session::testInsertRecords(const vector<string> &deviceIds,
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1145,6 +1217,7 @@ void Session::deleteTimeseries(const vector<string> &paths) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1166,6 +1239,7 @@ void Session::deleteData(const vector<string> &deviceId, int64_t time) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (exception &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1177,6 +1251,7 @@ void Session::setStorageGroup(const string &storageGroupId) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1194,6 +1269,7 @@ void Session::deleteStorageGroups(const vector<string> &storageGroups) {
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1203,9 +1279,10 @@ void Session::createTimeseries(const string &path,
                                TSEncoding::TSEncoding encoding,
                                CompressionType::CompressionType compressor) {
     try {
-        createTimeseries(path, dataType, encoding, compressor, NULL, NULL, NULL, "");
+        createTimeseries(path, dataType, encoding, compressor, nullptr, nullptr, nullptr, "");
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1225,17 +1302,17 @@ void Session::createTimeseries(const string &path,
     req->__set_dataType(dataType);
     req->__set_encoding(encoding);
     req->__set_compressor(compressor);
-    if (props != NULL) {
+    if (props != nullptr) {
         req->__set_props(*props);
     }
 
-    if (tags != NULL) {
+    if (tags != nullptr) {
         req->__set_tags(*tags);
     }
-    if (attributes != NULL) {
+    if (attributes != nullptr) {
         req->__set_attributes(*attributes);
     }
-    if (measurementAlias != "") {
+    if (!measurementAlias.empty()) {
         req->__set_measurementAlias(measurementAlias);
     }
 
@@ -1245,6 +1322,7 @@ void Session::createTimeseries(const string &path,
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1262,34 +1340,37 @@ void Session::createMultiTimeseries(const vector<string> &paths,
     request->__set_paths(paths);
 
     vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
     for (TSDataType::TSDataType dataType: dataTypes) {
         dataTypesOrdinal.push_back(dataType);
     }
     request->__set_dataTypes(dataTypesOrdinal);
 
     vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
     for (TSEncoding::TSEncoding encoding: encodings) {
         encodingsOrdinal.push_back(encoding);
     }
     request->__set_encodings(encodingsOrdinal);
 
     vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
     for (CompressionType::CompressionType compressor: compressors) {
         compressorsOrdinal.push_back(compressor);
     }
     request->__set_compressors(compressorsOrdinal);
 
-    if (propsList != NULL) {
+    if (propsList != nullptr) {
         request->__set_propsList(*propsList);
     }
 
-    if (tagsList != NULL) {
+    if (tagsList != nullptr) {
         request->__set_tagsList(*tagsList);
     }
-    if (attributesList != NULL) {
+    if (attributesList != nullptr) {
         request->__set_attributesList(*attributesList);
     }
-    if (measurementAliasList != NULL) {
+    if (measurementAliasList != nullptr) {
         request->__set_measurementAliasList(*measurementAliasList);
     }
 
@@ -1299,6 +1380,7 @@ void Session::createMultiTimeseries(const vector<string> &paths,
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1314,18 +1396,21 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
     request->__set_measurements(measurements);
 
     vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
     for (TSDataType::TSDataType dataType: dataTypes) {
         dataTypesOrdinal.push_back(dataType);
     }
     request->__set_dataTypes(dataTypesOrdinal);
 
     vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
     for (TSEncoding::TSEncoding encoding: encodings) {
         encodingsOrdinal.push_back(encoding);
     }
     request->__set_encodings(encodingsOrdinal);
 
     vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
     for (CompressionType::CompressionType compressor: compressors) {
         compressorsOrdinal.push_back(compressor);
     }
@@ -1337,6 +1422,7 @@ void Session::createAlignedTimeseries(const std::string &deviceId,
         RpcUtils::verifySuccess(*resp);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
 }
@@ -1355,7 +1441,7 @@ bool Session::checkTimeseriesExists(const string &path) {
 }
 
 string Session::getTimeZone() {
-    if (zoneId != "") {
+    if (!zoneId.empty()) {
         return zoneId;
     }
     shared_ptr<TSGetTimeZoneResp> resp(new TSGetTimeZoneResp());
@@ -1364,6 +1450,7 @@ string Session::getTimeZone() {
         RpcUtils::verifySuccess(resp->status);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
     return resp->timeZone;
@@ -1378,6 +1465,7 @@ void Session::setTimeZone(const string &zoneId) {
         client->setTimeZone(*resp, *req);
     }
     catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
     RpcUtils::verifySuccess(*resp);
@@ -1395,7 +1483,8 @@ unique_ptr<SessionDataSet> Session::executeQueryStatement(const string &sql) {
         client->executeStatement(*resp, *req);
         RpcUtils::verifySuccess(resp->status);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
     shared_ptr<TSQueryDataSet> queryDataSet(new TSQueryDataSet(resp->queryDataSet));
@@ -1414,7 +1503,260 @@ void Session::executeNonQueryStatement(const string &sql) {
         client->executeUpdateStatement(*resp, *req);
         RpcUtils::verifySuccess(resp->status);
     }
-    catch (IoTDBConnectionException e) {
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
         throw IoTDBConnectionException(e.what());
     }
+}
+
+void Session::createSchemaTemplate(const Template &templ) {
+    shared_ptr<TSCreateSchemaTemplateReq> req(new TSCreateSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(templ.getName());
+    req->__set_serializedTemplate(templ.serialize());
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->createSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::setSchemaTemplate(const string &template_name, const string &prefix_path) {
+    shared_ptr<TSSetSchemaTemplateReq> req(new TSSetSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_templateName(template_name);
+    req->__set_prefixPath(prefix_path);
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->setSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::unsetSchemaTemplate(const string &prefix_path, const string &template_name) {
+    shared_ptr<TSUnsetSchemaTemplateReq> req(new TSUnsetSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_templateName(template_name);
+    req->__set_prefixPath(prefix_path);
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->unsetSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::addAlignedMeasurementsInTemplate(const string &template_name, const vector<std::string> &measurements,
+                                               const vector<TSDataType::TSDataType> &dataTypes,
+                                               const vector<TSEncoding::TSEncoding> &encodings,
+                                               const vector<CompressionType::CompressionType> &compressors) {
+    shared_ptr<TSAppendSchemaTemplateReq> req(new TSAppendSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurements(measurements);
+    req->__set_isAligned(true);
+
+    vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
+    for (TSDataType::TSDataType dataType: dataTypes) {
+        dataTypesOrdinal.push_back(dataType);
+    }
+    req->__set_dataTypes(dataTypesOrdinal);
+
+    vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
+    for (TSEncoding::TSEncoding encoding: encodings) {
+        encodingsOrdinal.push_back(encoding);
+    }
+    req->__set_encodings(encodingsOrdinal);
+
+    vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
+    for (CompressionType::CompressionType compressor: compressors) {
+        compressorsOrdinal.push_back(compressor);
+    }
+    req->__set_compressors(compressorsOrdinal);
+
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->appendSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::addAlignedMeasurementsInTemplate(const string &template_name, const string &measurement,
+                                               TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+                                               CompressionType::CompressionType compressor) {
+    vector<std::string> measurements(1, measurement);
+    vector<TSDataType::TSDataType> dataTypes(1, dataType);
+    vector<TSEncoding::TSEncoding> encodings(1, encoding);
+    vector<CompressionType::CompressionType> compressors(1, compressor);
+    addAlignedMeasurementsInTemplate(template_name, measurements, dataTypes, encodings, compressors);
+}
+
+void Session::addUnalignedMeasurementsInTemplate(const string &template_name, const vector<std::string> &measurements,
+                                                 const vector<TSDataType::TSDataType> &dataTypes,
+                                                 const vector<TSEncoding::TSEncoding> &encodings,
+                                                 const vector<CompressionType::CompressionType> &compressors) {
+    shared_ptr<TSAppendSchemaTemplateReq> req(new TSAppendSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurements(measurements);
+    req->__set_isAligned(false);
+
+    vector<int> dataTypesOrdinal;
+    dataTypesOrdinal.reserve(dataTypes.size());
+    for (TSDataType::TSDataType dataType: dataTypes) {
+        dataTypesOrdinal.push_back(dataType);
+    }
+    req->__set_dataTypes(dataTypesOrdinal);
+
+    vector<int> encodingsOrdinal;
+    encodingsOrdinal.reserve(encodings.size());
+    for (TSEncoding::TSEncoding encoding: encodings) {
+        encodingsOrdinal.push_back(encoding);
+    }
+    req->__set_encodings(encodingsOrdinal);
+
+    vector<int> compressorsOrdinal;
+    compressorsOrdinal.reserve(compressors.size());
+    for (CompressionType::CompressionType compressor: compressors) {
+        compressorsOrdinal.push_back(compressor);
+    }
+    req->__set_compressors(compressorsOrdinal);
+
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->appendSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+void Session::addUnalignedMeasurementsInTemplate(const string &template_name, const string &measurement,
+                                                 TSDataType::TSDataType dataType, TSEncoding::TSEncoding encoding,
+                                                 CompressionType::CompressionType compressor) {
+    vector<std::string> measurements(1, measurement);
+    vector<TSDataType::TSDataType> dataTypes(1, dataType);
+    vector<TSEncoding::TSEncoding> encodings(1, encoding);
+    vector<CompressionType::CompressionType> compressors(1, compressor);
+    addUnalignedMeasurementsInTemplate(template_name, measurements, dataTypes, encodings, compressors);
+}
+
+void Session::deleteNodeInTemplate(const string &template_name, const string &path) {
+    shared_ptr<TSPruneSchemaTemplateReq> req(new TSPruneSchemaTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_path(path);
+    shared_ptr<TSStatus> resp(new TSStatus());
+    try {
+        client->pruneSchemaTemplate(*resp, *req);
+        RpcUtils::verifySuccess(*resp);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+}
+
+int Session::countMeasurementsInTemplate(const string &template_name) {
+    shared_ptr<TSQueryTemplateReq> req(new TSQueryTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_queryType(TemplateQueryType::COUNT_MEASUREMENTS);
+    shared_ptr<TSQueryTemplateResp> resp(new TSQueryTemplateResp());
+    try {
+        client->querySchemaTemplate(*resp, *req);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+    return resp->count;
+}
+
+bool Session::isMeasurementInTemplate(const string &template_name, const string &path) {
+    shared_ptr<TSQueryTemplateReq> req(new TSQueryTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurement(path);
+    req->__set_queryType(TemplateQueryType::IS_MEASUREMENT);
+    shared_ptr<TSQueryTemplateResp> resp(new TSQueryTemplateResp());
+    try {
+        client->querySchemaTemplate(*resp, *req);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+    return resp->result;
+}
+
+bool Session::isPathExistInTemplate(const string &template_name, const string &path) {
+    shared_ptr<TSQueryTemplateReq> req(new TSQueryTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurement(path);
+    req->__set_queryType(TemplateQueryType::PATH_EXIST);
+    shared_ptr<TSQueryTemplateResp> resp(new TSQueryTemplateResp());
+    try {
+        client->querySchemaTemplate(*resp, *req);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+    return resp->result;
+}
+
+std::vector<std::string> Session::showMeasurementsInTemplate(const string &template_name) {
+    shared_ptr<TSQueryTemplateReq> req(new TSQueryTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurement("");
+    req->__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
+    shared_ptr<TSQueryTemplateResp> resp(new TSQueryTemplateResp());
+    try {
+        client->querySchemaTemplate(*resp, *req);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+    return resp->measurements;
+}
+
+std::vector<std::string> Session::showMeasurementsInTemplate(const string &template_name, const string &pattern) {
+    shared_ptr<TSQueryTemplateReq> req(new TSQueryTemplateReq());
+    req->__set_sessionId(sessionId);
+    req->__set_name(template_name);
+    req->__set_measurement(pattern);
+    req->__set_queryType(TemplateQueryType::SHOW_MEASUREMENTS);
+    shared_ptr<TSQueryTemplateResp> resp(new TSQueryTemplateResp());
+    try {
+        client->querySchemaTemplate(*resp, *req);
+    }
+    catch (IoTDBConnectionException &e) {
+        cout << e.what() << endl;
+        throw IoTDBConnectionException(e.what());
+    }
+    return resp->measurements;
 }

@@ -37,6 +37,7 @@ public class CreateContinuousQueryOperator extends Operator {
   private long forInterval;
   private long groupByTimeInterval;
   private String groupByTimeIntervalString;
+  private Long firstExecutionTimeBoundary;
 
   public CreateContinuousQueryOperator(int tokenIntType) {
     super(tokenIntType);
@@ -79,6 +80,10 @@ public class CreateContinuousQueryOperator extends Operator {
     this.groupByTimeIntervalString = groupByTimeIntervalString;
   }
 
+  public void setFirstExecutionTimeBoundary(long firstExecutionTimeBoundary) {
+    this.firstExecutionTimeBoundary = firstExecutionTimeBoundary;
+  }
+
   public void setQueryOperator(QueryOperator queryOperator) {
     this.queryOperator = queryOperator;
   }
@@ -97,6 +102,7 @@ public class CreateContinuousQueryOperator extends Operator {
         everyInterval,
         forInterval,
         groupByTimeInterval,
-        groupByTimeIntervalString);
+        groupByTimeIntervalString,
+        firstExecutionTimeBoundary);
   }
 }
