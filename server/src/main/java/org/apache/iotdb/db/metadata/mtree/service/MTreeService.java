@@ -188,20 +188,24 @@ public class MTreeService implements Serializable {
     // only write on mtree will be synchronized
     synchronized (this) {
       if (store.hasChild(device, leafName)) {
+        unPinPath(device);
         throw new PathAlreadyExistException(path.getFullPath());
       }
 
       if (alias != null && store.hasChild(device, alias)) {
+        unPinPath(device);
         throw new AliasAlreadyExistException(path.getFullPath(), alias);
       }
 
       if (upperTemplate != null
           && (upperTemplate.getDirectNode(leafName) != null
               || upperTemplate.getDirectNode(alias) != null)) {
+        unPinPath(device);
         throw new TemplateImcompatibeException(path.getFullPath(), upperTemplate.getName());
       }
 
       if (device.isEntity() && device.getAsEntityMNode().isAligned()) {
+        unPinPath(device);
         throw new AlignedTimeseriesException(
             "Timeseries under this entity is aligned, please use createAlignedTimeseries or change entity.",
             device.getFullPath());
@@ -226,6 +230,7 @@ public class MTreeService implements Serializable {
       if (alias != null) {
         store.addAlias(entityMNode, alias, measurementMNode);
       }
+      unPinPath(measurementMNode);
       return measurementMNode;
     }
   }
@@ -257,6 +262,7 @@ public class MTreeService implements Serializable {
     synchronized (this) {
       for (String measurement : measurements) {
         if (store.hasChild(device, measurement)) {
+          unPinPath(device);
           throw new PathAlreadyExistException(devicePath.getFullPath() + "." + measurement);
         }
       }
@@ -264,6 +270,7 @@ public class MTreeService implements Serializable {
       if (upperTemplate != null) {
         for (String measurement : measurements) {
           if (upperTemplate.getDirectNode(measurement) != null) {
+            unPinPath(device);
             throw new TemplateImcompatibeException(
                 devicePath.concatNode(measurement).getFullPath(), upperTemplate.getName());
           }
@@ -271,6 +278,7 @@ public class MTreeService implements Serializable {
       }
 
       if (device.isEntity() && !device.getAsEntityMNode().isAligned()) {
+        unPinPath(device);
         throw new AlignedTimeseriesException(
             "Timeseries under this entity is not aligned, please use createTimeseries or change entity.",
             devicePath.getFullPath());
@@ -294,7 +302,9 @@ public class MTreeService implements Serializable {
                     measurements.get(i), dataTypes.get(i), encodings.get(i), compressors.get(i)),
                 null);
         store.addChild(entityMNode, measurements.get(i), measurementMNode);
+        unPinMNode(measurementMNode);
       }
+      unPinPath(device);
     }
   }
 
@@ -312,12 +322,14 @@ public class MTreeService implements Serializable {
     // e.g, path = root.sg.d1.s1,  create internal nodes and set cur to d1 node
     for (int i = 1; i < nodeNames.length; i++) {
       String childName = nodeNames[i];
-      child = store.getChild(cur, childName);
+      child = store.getPinnedChild(cur, childName);
       if (child == null) {
         if (!hasSetStorageGroup) {
+          unPinPath(cur);
           throw new StorageGroupNotSetException("Storage group should be created first");
         }
         if (upperTemplate != null && upperTemplate.getDirectNode(childName) != null) {
+          unPinPath(cur);
           throw new TemplateImcompatibeException(
               devicePath.getFullPath(), upperTemplate.getName(), childName);
         }
@@ -327,6 +339,7 @@ public class MTreeService implements Serializable {
       cur = child;
 
       if (cur.isMeasurement()) {
+        unPinPath(cur);
         throw new PathAlreadyExistException(cur.getFullPath());
       }
       if (cur.isStorageGroup()) {
@@ -414,9 +427,10 @@ public class MTreeService implements Serializable {
     IMNode child;
     Template upperTemplate = cur.getSchemaTemplate();
     for (int i = 1; i < nodeNames.length; i++) {
-      child = store.getChild(cur, nodeNames[i]);
+      child = store.getPinnedChild(cur, nodeNames[i]);
       if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.getDirectNode(nodeNames[i]) != null) {
+          unPinPath(cur);
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
@@ -433,7 +447,7 @@ public class MTreeService implements Serializable {
       // update upper template
       upperTemplate = cur.getSchemaTemplate() == null ? upperTemplate : cur.getSchemaTemplate();
     }
-
+    unPinPath(cur);
     return cur;
   }
 
@@ -466,9 +480,10 @@ public class MTreeService implements Serializable {
     int i = 1;
     // e.g., path = root.a.b.sg, create internal nodes for a, b
     while (i < nodeNames.length - 1) {
-      child = store.getChild(cur, nodeNames[i]);
+      child = store.getPinnedChild(cur, nodeNames[i]);
       if (child == null) {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          unPinPath(cur);
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
@@ -476,6 +491,7 @@ public class MTreeService implements Serializable {
         store.addChild(cur, nodeNames[i], child);
       } else if (child.isStorageGroup()) {
         // before set storage group, check whether the exists or not
+        unPinPath(cur);
         throw new StorageGroupAlreadySetException(child.getFullPath());
       }
       cur = child;
@@ -488,6 +504,7 @@ public class MTreeService implements Serializable {
     synchronized (this) {
       child = store.getChild(cur, nodeNames[i]);
       if (child != null) {
+        unPinPath(cur);
         // node b has child sg
         if (child.isStorageGroup()) {
           throw new StorageGroupAlreadySetException(path.getFullPath());
@@ -496,6 +513,7 @@ public class MTreeService implements Serializable {
         }
       } else {
         if (cur.isUseTemplate() && upperTemplate.hasSchema(nodeNames[i])) {
+          unPinPath(cur);
           throw new PathAlreadyExistException(
               cur.getPartialPath().concatNode(nodeNames[i]).getFullPath());
         }
@@ -503,6 +521,7 @@ public class MTreeService implements Serializable {
             new StorageGroupMNode(
                 cur, nodeNames[i], IoTDBDescriptor.getInstance().getConfig().getDefaultTTL());
         store.addChild(cur, nodeNames[i], storageGroupMNode);
+        unPinPath(storageGroupMNode);
       }
     }
   }
@@ -1453,4 +1472,19 @@ public class MTreeService implements Serializable {
   }
 
   // endregion
+
+  // region Interfaces and Implementation for Pin/UnPin MNode or Path
+  public void unPinPath(IMNode node) {
+    while (node.getParent() != null) {
+      store.unPin(node);
+      node = node.getParent();
+    }
+  }
+
+  public void unPinMNode(IMNode node) {
+    store.unPin(node);
+  }
+
+  // endregion
+
 }

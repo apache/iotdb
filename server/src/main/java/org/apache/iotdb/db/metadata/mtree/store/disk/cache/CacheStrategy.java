@@ -166,6 +166,12 @@ public class CacheStrategy implements ICacheStrategy {
       cacheEntry = new CacheEntry();
       node.setCacheEntry(cacheEntry);
     }
+    if (!cacheEntry.isPinned()) {
+      IMNode parent = node.getParent();
+      if (parent != null) {
+        parent.getCacheEntry().pin();
+      }
+    }
     cacheEntry.pin();
   }
 
@@ -173,6 +179,17 @@ public class CacheStrategy implements ICacheStrategy {
   public void unPinMNode(IMNode node) {
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.unPin();
+    if (!cacheEntry.isPinned()) {
+      IMNode parent = node.getParent();
+      while (parent != null) {
+        cacheEntry = parent.getCacheEntry();
+        cacheEntry.unPin();
+        if (cacheEntry.isPinned()) {
+          break;
+        }
+        parent = parent.getParent();
+      }
+    }
   }
 
   @Override
