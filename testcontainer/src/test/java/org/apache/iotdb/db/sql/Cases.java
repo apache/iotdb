@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -499,16 +500,9 @@ public abstract class Cases {
 
     // try to read data on each node. SHOW TIMESERIES root.ln.wf01.* where tag3=v1"
     for (Statement readStatement : readStatements) {
-      ResultSet resultSet = null;
-      try {
-        resultSet = readStatement.executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1");
-        fail("Exception expected for \"The key tag3 is not a tag\"");
-      } catch (Exception e) {
-        Assert.assertTrue(e.getMessage().contains("The key tag3 is not a tag"));
-      } finally {
-        if (resultSet != null) {
-          resultSet.close();
-        }
+      try (ResultSet resultSet = readStatement
+          .executeQuery("SHOW TIMESERIES root.ln.wf01.* where tag3=v1")) {
+        assertFalse(resultSet.next());
       }
     }
   }
