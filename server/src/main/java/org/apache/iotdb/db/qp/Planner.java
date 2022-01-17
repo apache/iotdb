@@ -105,6 +105,8 @@ public class Planner {
 
   private PhysicalPlan generatePhysicalPlanFromOperator(
       Operator operator, IoTDBConstant.ClientVersion clientVersion) throws QueryProcessException {
+    // if client version is before 0.13, match path with prefix
+    operator.setPrefixMatchPath(IoTDBConstant.ClientVersion.V_0_12.equals(clientVersion));
     // check if there are logical errors
     LogicalChecker.check(operator);
     // optimize the logical operator
