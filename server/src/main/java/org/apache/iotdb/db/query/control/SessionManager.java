@@ -211,6 +211,10 @@ public class SessionManager {
     }
   }
 
+  public IoTDBConstant.ClientVersion getClientVersion(Long sessionId) {
+    return sessionIdToClientVersion.get(sessionId);
+  }
+
   public static SessionManager getInstance() {
     return SessionManagerHelper.INSTANCE;
   }

@@ -127,6 +127,14 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
+  protected int getDevicesNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    // adapt to prefix match of IoTDB v0.12
+    return getDevicesNum(path)
+        + (isPrefixMatch
+            ? getDevicesNum(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD))
+            : 0);
+  }
+
   protected int getDevicesNum(PartialPath path) throws MetadataException {
     // make sure this node knows all storage groups
     try {
@@ -290,11 +298,22 @@ public class ClusterPlanExecutor extends PlanExecutor {
   }
 
   @Override
-  protected int getPathsNum(PartialPath path) throws MetadataException {
-    return getNodesNumInGivenLevel(path, -1);
+  protected int getPathsNum(PartialPath path, boolean isPrefixMatch) throws MetadataException {
+    return getNodesNumInGivenLevel(path, -1, isPrefixMatch);
   }
 
   @Override
+  protected int getNodesNumInGivenLevel(PartialPath path, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    int result = getNodesNumInGivenLevel(path, level);
+    if (isPrefixMatch) {
+      // adapt to prefix match of IoTDB v0.12
+      result +=
+          getNodesNumInGivenLevel(path.concatNode(IoTDBConstant.MULTI_LEVEL_PATH_WILDCARD), level);
+    }
+    return result;
+  }
+
   protected int getNodesNumInGivenLevel(PartialPath path, int level) throws MetadataException {
     // make sure this node knows all storage groups
     try {
