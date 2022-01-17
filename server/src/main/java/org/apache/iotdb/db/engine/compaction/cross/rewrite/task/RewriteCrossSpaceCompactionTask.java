@@ -35,7 +35,6 @@ import org.apache.iotdb.db.exception.metadata.MetadataException;
 import org.apache.iotdb.db.query.control.FileReaderManager;
 import org.apache.iotdb.db.rescon.TsFileResourceManager;
 import org.apache.iotdb.tsfile.exception.write.WriteProcessException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.apache.iotdb.db.conf.IoTDBConstant.PATH_SEPARATOR;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.MAGIC_STRING;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_SEQ_FILES;
 import static org.apache.iotdb.db.engine.compaction.cross.rewrite.recover.RewriteCrossSpaceCompactionLogger.STR_TARGET_FILES;
@@ -130,8 +130,8 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
         TsFileNameGenerator.getCrossCompactionTargetFileResources(selectedSeqTsFileResourceList);
 
     if (targetTsfileResourceList.isEmpty()
-        || selectedSeqTsFileResourceList.isEmpty()
-        || selectedUnSeqTsFileResourceList.isEmpty()) {
+        && selectedSeqTsFileResourceList.isEmpty()
+        && selectedUnSeqTsFileResourceList.isEmpty()) {
       return;
     }
 
@@ -145,6 +145,7 @@ public class RewriteCrossSpaceCompactionTask extends AbstractCrossSpaceCompactio
             selectedSeqTsFileResourceList.get(0).getTsFile().getParent()
                 + File.separator
                 + targetTsfileResourceList.get(0).getTsFile().getName()
+                + PATH_SEPARATOR
                 + RewriteCrossSpaceCompactionLogger.COMPACTION_LOG_NAME);
     try (RewriteCrossSpaceCompactionLogger compactionLogger =
         new RewriteCrossSpaceCompactionLogger(logFile)) {
