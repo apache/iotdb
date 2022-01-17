@@ -397,12 +397,13 @@ service TSDataService extends RaftService {
   /**
   * Given path patterns (paths with wildcard), return all paths they match.
   **/
-  GetAllPathsResult getAllPaths(1:RaftNode header, 2:list<string> paths, 3:bool withAlias)
+  GetAllPathsResult getAllPaths(1:RaftNode header, 2:list<string> paths, 3:bool withAlias, 4:bool
+   isPrefixMatch)
 
   /**
    * Given path patterns (paths with wildcard), return all devices they match.
    **/
-  set<string> getAllDevices(1:RaftNode header, 2:list<string> path)
+  set<string> getAllDevices(1:RaftNode header, 2:list<string> path, 3:bool isPrefixMatch)
 
   /**
    * Get the devices from the header according to the showDevicesPlan

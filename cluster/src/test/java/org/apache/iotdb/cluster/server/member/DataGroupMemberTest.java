@@ -994,7 +994,11 @@ public class DataGroupMemberTest extends BaseMember {
         new GenericHandler<>(TestUtils.getNode(0), pathResult);
     new DataAsyncService(dataGroupMember)
         .getAllPaths(
-            TestUtils.getRaftNode(0, raftId), Collections.singletonList(path), false, handler);
+            TestUtils.getRaftNode(0, raftId),
+            Collections.singletonList(path),
+            false,
+            false,
+            handler);
     List<String> result = new ArrayList<>(pathResult.get().paths);
     assertEquals(20, result.size());
     for (int i = 0; i < 10; i++) {

@@ -155,11 +155,12 @@ public class TestAsyncDataClient extends AsyncDataClient {
       RaftNode header,
       List<String> paths,
       boolean withAlias,
+      boolean isPrefixMatch,
       AsyncMethodCallback<GetAllPathsResult> resultHandler) {
     new Thread(
             () ->
                 new DataAsyncService(dataGroupMemberMap.get(header))
-                    .getAllPaths(header, paths, withAlias, resultHandler))
+                    .getAllPaths(header, paths, withAlias, isPrefixMatch, resultHandler))
         .start();
   }
 

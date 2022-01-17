@@ -198,11 +198,13 @@ public class DataLogApplierTest extends IoTDBTest {
                             RaftNode header,
                             List<String> path,
                             boolean withAlias,
+                            boolean isWithPrefix,
                             AsyncMethodCallback<GetAllPathsResult> resultHandler) {
                           new Thread(
                                   () ->
                                       new DataAsyncService(testDataGroupMember)
-                                          .getAllPaths(header, path, withAlias, resultHandler))
+                                          .getAllPaths(
+                                              header, path, withAlias, isWithPrefix, resultHandler))
                               .start();
                         }
 

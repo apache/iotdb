@@ -945,11 +945,12 @@ public class CMManager extends MManager {
    * @return all paths after removing wildcards in the path
    */
   @Override
-  public Set<PartialPath> getMatchedDevices(PartialPath originPath) throws MetadataException {
+  public Set<PartialPath> getMatchedDevices(PartialPath originPath, boolean isPrefixMatch)
+      throws MetadataException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
     Set<PartialPath> ret;
     try {
-      ret = getMatchedDevices(sgPathMap);
+      ret = getMatchedDevices(sgPathMap, isPrefixMatch);
     } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
@@ -965,7 +966,7 @@ public class CMManager extends MManager {
    * @return a collection of all queried paths
    */
   private List<MeasurementPath> getMatchedPaths(
-      Map<String, List<PartialPath>> sgPathMap, boolean withAlias)
+      Map<String, List<PartialPath>> sgPathMap, boolean withAlias, boolean isPrefixMatch)
       throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
     List<MeasurementPath> result = new ArrayList<>();
     // split the paths by the data group they belong to
@@ -1011,7 +1012,7 @@ public class CMManager extends MManager {
         remoteGroupPathMap.entrySet()) {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
-      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery, withAlias));
+      result.addAll(getMatchedPaths(partitionGroup, pathsToQuery, withAlias, isPrefixMatch));
     }
 
     return result;
@@ -1039,20 +1040,24 @@ public class CMManager extends MManager {
   public List<MeasurementPath> getMatchedPaths(PartialPath originPath)
       throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
     Map<String, List<PartialPath>> sgPathMap = groupPathByStorageGroup(originPath);
-    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false);
+    List<MeasurementPath> ret = getMatchedPaths(sgPathMap, false, false);
     logger.debug("The paths of path {} are {}", originPath, ret);
     return ret;
   }
 
   private List<MeasurementPath> getMatchedPaths(
-      PartitionGroup partitionGroup, List<String> pathsToQuery, boolean withAlias)
+      PartitionGroup partitionGroup,
+      List<String> pathsToQuery,
+      boolean withAlias,
+      boolean isPrefixMatch)
       throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
         List<MeasurementPath> paths =
-            getMatchedPaths(node, partitionGroup.getHeader(), pathsToQuery, withAlias);
+            getMatchedPaths(
+                node, partitionGroup.getHeader(), pathsToQuery, withAlias, isPrefixMatch);
         if (logger.isDebugEnabled()) {
           logger.debug(
               "{}: get matched paths of {} and other {} paths from {} in {}, result {}",
@@ -1080,9 +1085,14 @@ public class CMManager extends MManager {
 
   @SuppressWarnings("java:S1168") // null and empty list are different
   private List<MeasurementPath> getMatchedPaths(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
+      Node node,
+      RaftNode header,
+      List<String> pathsToQuery,
+      boolean withAlias,
+      boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
-    GetAllPathsResult result = getMatchedPathsRemotely(node, header, pathsToQuery, withAlias);
+    GetAllPathsResult result =
+        getMatchedPathsRemotely(node, header, pathsToQuery, withAlias, isPrefixMatch);
 
     if (result != null) {
       // paths may be empty, implying that the group does not contain matched paths, so we do not
@@ -1105,21 +1115,26 @@ public class CMManager extends MManager {
   }
 
   private GetAllPathsResult getMatchedPathsRemotely(
-      Node node, RaftNode header, List<String> pathsToQuery, boolean withAlias)
+      Node node,
+      RaftNode header,
+      List<String> pathsToQuery,
+      boolean withAlias,
+      boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
     GetAllPathsResult result;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      result = SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, withAlias);
+      result =
+          SyncClientAdaptor.getAllPaths(client, header, pathsToQuery, isPrefixMatch, withAlias);
     } else {
       SyncDataClient syncDataClient = null;
       try {
         syncDataClient =
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias);
+        result = syncDataClient.getAllPaths(header, pathsToQuery, withAlias, isPrefixMatch);
       } catch (TApplicationException e) {
         throw e;
       } catch (TException e) {
@@ -1142,7 +1157,8 @@ public class CMManager extends MManager {
    *     queried with storage group added
    * @return a collection of all queried devices
    */
-  private Set<PartialPath> getMatchedDevices(Map<String, List<PartialPath>> sgPathMap)
+  private Set<PartialPath> getMatchedDevices(
+      Map<String, List<PartialPath>> sgPathMap, boolean isPrefixMatch)
       throws MetadataException, PartitionTableUnavailableException, NotInSameGroupException {
     Set<PartialPath> result = new HashSet<>();
     // split the paths by the data group they belong to
@@ -1165,7 +1181,7 @@ public class CMManager extends MManager {
         }
         Set<PartialPath> allDevices = new HashSet<>();
         for (PartialPath path : paths) {
-          allDevices.addAll(super.getMatchedDevices(path));
+          allDevices.addAll(super.getMatchedDevices(path, isPrefixMatch));
         }
         logger.debug(
             "{}: get matched paths of {} locally, result {}",
@@ -1188,19 +1204,21 @@ public class CMManager extends MManager {
       PartitionGroup partitionGroup = partitionGroupPathEntry.getKey();
       List<String> pathsToQuery = partitionGroupPathEntry.getValue();
 
-      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery));
+      result.addAll(getMatchedDevices(partitionGroup, pathsToQuery, isPrefixMatch));
     }
 
     return result;
   }
 
   private Set<PartialPath> getMatchedDevices(
-      PartitionGroup partitionGroup, List<String> pathsToQuery) throws MetadataException {
+      PartitionGroup partitionGroup, List<String> pathsToQuery, boolean isPrefixMatch)
+      throws MetadataException {
     // choose the node with lowest latency or highest throughput
     List<Node> coordinatedNodes = QueryCoordinator.getINSTANCE().reorderNodes(partitionGroup);
     for (Node node : coordinatedNodes) {
       try {
-        Set<String> paths = getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery);
+        Set<String> paths =
+            getMatchedDevices(node, partitionGroup.getHeader(), pathsToQuery, isPrefixMatch);
         logger.debug(
             "{}: get matched paths of {} from {}, result {} for {}",
             metaGroupMember.getName(),
@@ -1227,14 +1245,15 @@ public class CMManager extends MManager {
     return Collections.emptySet();
   }
 
-  private Set<String> getMatchedDevices(Node node, RaftNode header, List<String> pathsToQuery)
+  private Set<String> getMatchedDevices(
+      Node node, RaftNode header, List<String> pathsToQuery, boolean isPrefixMatch)
       throws IOException, TException, InterruptedException {
     Set<String> paths;
     if (ClusterDescriptor.getInstance().getConfig().isUseAsyncServer()) {
       AsyncDataClient client =
           ClusterIoTDB.getInstance()
               .getAsyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
-      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery);
+      paths = SyncClientAdaptor.getAllDevices(client, header, pathsToQuery, isPrefixMatch);
     } else {
       SyncDataClient syncDataClient = null;
       try {
@@ -1242,7 +1261,7 @@ public class CMManager extends MManager {
             ClusterIoTDB.getInstance()
                 .getSyncDataClient(node, ClusterConstant.getReadOperationTimeoutMS());
         try {
-          paths = syncDataClient.getAllDevices(header, pathsToQuery);
+          paths = syncDataClient.getAllDevices(header, pathsToQuery, isPrefixMatch);
         } catch (TApplicationException e) {
           throw e;
         } catch (TException e) {
@@ -1295,7 +1314,7 @@ public class CMManager extends MManager {
 
     List<MeasurementPath> result;
     try {
-      result = getMatchedPaths(sgPathMap, true);
+      result = getMatchedPaths(sgPathMap, true, isPrefixMatch);
     } catch (PartitionTableUnavailableException | NotInSameGroupException e) {
       throw new MetadataException(e);
     }
@@ -1368,10 +1387,11 @@ public class CMManager extends MManager {
    *
    * @param paths paths potentially contain wildcards
    */
-  public Set<String> getAllDevices(List<String> paths) throws MetadataException {
+  public Set<String> getAllDevices(List<String> paths, boolean isPrefixMatch)
+      throws MetadataException {
     Set<String> results = new HashSet<>();
     for (String path : paths) {
-      this.getMatchedDevices(new PartialPath(path)).stream()
+      this.getMatchedDevices(new PartialPath(path), isPrefixMatch).stream()
           .map(PartialPath::getFullPath)
           .forEach(results::add);
     }
@@ -1780,7 +1800,7 @@ public class CMManager extends MManager {
     return resultBinary;
   }
 
-  public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias)
+  public GetAllPathsResult getAllPaths(List<String> paths, boolean withAlias, boolean isPrefixMatch)
       throws MetadataException {
     List<String> retPaths = new ArrayList<>();
     List<Byte> dataTypes = new ArrayList<>();
@@ -1788,7 +1808,7 @@ public class CMManager extends MManager {
 
     for (String path : paths) {
       List<MeasurementPath> allTimeseriesPathWithAlias =
-          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1, false).left;
+          super.getMeasurementPathsWithAlias(new PartialPath(path), -1, -1, isPrefixMatch).left;
       for (MeasurementPath timeseriesPathWithAlias : allTimeseriesPathWithAlias) {
         retPaths.add(timeseriesPathWithAlias.getFullPath());
         dataTypes.add(timeseriesPathWithAlias.getSeriesTypeInByte());

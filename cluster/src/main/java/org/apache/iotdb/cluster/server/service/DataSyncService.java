@@ -286,21 +286,23 @@ public class DataSyncService extends BaseSyncService implements TSDataService.If
   }
 
   @Override
-  public GetAllPathsResult getAllPaths(RaftNode header, List<String> paths, boolean withAlias)
+  public GetAllPathsResult getAllPaths(
+      RaftNode header, List<String> paths, boolean withAlias, boolean isPrefixMatch)
       throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias);
+      return ((CMManager) IoTDB.metaManager).getAllPaths(paths, withAlias, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TApplicationException(e.getMessage());
     }
   }
 
   @Override
-  public Set<String> getAllDevices(RaftNode header, List<String> path) throws TException {
+  public Set<String> getAllDevices(RaftNode header, List<String> path, boolean isPrefixMatch)
+      throws TException {
     try {
       dataGroupMember.syncLeaderWithConsistencyCheck(false);
-      return ((CMManager) IoTDB.metaManager).getAllDevices(path);
+      return ((CMManager) IoTDB.metaManager).getAllDevices(path, isPrefixMatch);
     } catch (MetadataException | CheckConsistencyException e) {
       throw new TApplicationException(e.getMessage());
     }
