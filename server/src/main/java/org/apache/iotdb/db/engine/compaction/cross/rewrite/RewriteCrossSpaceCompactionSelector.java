@@ -143,13 +143,14 @@ public class RewriteCrossSpaceCompactionSelector extends AbstractCrossSpaceCompa
                 mergeFiles[0],
                 mergeFiles[1]);
         CompactionTaskManager.getInstance().addTaskToWaitingQueue(compactionTask);
+        taskSubmitted = true;
+        LOGGER.info(
+            "{} [Compaction] submit a task with {} sequence file and {} unseq files",
+            logicalStorageGroupName + "-" + virtualGroupId,
+            mergeResource.getSeqFiles().size(),
+            mergeResource.getUnseqFiles().size());
       }
-      taskSubmitted = true;
-      LOGGER.info(
-          "{} [Compaction] submit a task with {} sequence file and {} unseq files",
-          logicalStorageGroupName + "-" + virtualGroupId,
-          mergeResource.getSeqFiles().size(),
-          mergeResource.getUnseqFiles().size());
+
     } catch (MergeException | IOException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
