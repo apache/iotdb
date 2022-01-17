@@ -34,6 +34,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.*;
 
 import static org.junit.Assert.fail;
 
@@ -110,6 +111,7 @@ public class IoTDBSyntaxConventionIT {
 
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -139,7 +141,7 @@ public class IoTDBSyntaxConventionIT {
   public void testExpression1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       boolean hasResult = statement.execute("SELECT `1` FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -147,6 +149,7 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertFalse(resultSet.next());
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -154,14 +157,18 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression1() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       statement.execute("SELECT 1 FROM root.sg1.d1");
       fail();
     } catch (SQLException ignored) {
     }
+  }
+
+  @Test
+  public void testIllegalExpression1inV12() {
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.1 INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.1 with datatype = INT32");
       boolean hasResult = statement.execute("SELECT 1 FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -169,6 +176,7 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertFalse(resultSet.next());
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -176,7 +184,7 @@ public class IoTDBSyntaxConventionIT {
   public void testExpression2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       boolean hasResult = statement.execute("SELECT `1` + 1 FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -184,6 +192,7 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertFalse(resultSet.next());
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -191,7 +200,7 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression2() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT32");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT32");
       statement.execute("SELECT 1 + 1 FROM root.sg1.d1");
       fail();
     } catch (SQLException ignored) {
@@ -202,7 +211,7 @@ public class IoTDBSyntaxConventionIT {
   public void testExpression3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT64");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT64");
       boolean hasResult = statement.execute("SELECT sin(`1`) FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -210,6 +219,7 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertFalse(resultSet.next());
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
     }
   }
 
@@ -217,14 +227,18 @@ public class IoTDBSyntaxConventionIT {
   public void testIllegalExpression3() {
     try (Connection connection = EnvFactory.getEnv().getConnection();
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.`1` INT64");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`1` INT64");
       statement.execute("SELECT sin(1) FROM root.sg1.d1");
       fail();
     } catch (SQLException ignored) {
     }
+  }
+
+  @Test
+  public void testIllegalExpression3inV12() {
     try (Connection connection = EnvFactory.getEnv().getConnection(Constant.Version.V_0_12);
         Statement statement = connection.createStatement()) {
-      statement.execute("CREATE root.sg1.d1.1 INT64");
+      statement.execute("CREATE TIMESERIES root.sg1.d1.1 with datatype = INT64");
       boolean hasResult = statement.execute("SELECT sin(1) FROM root.sg1.d1");
       Assert.assertTrue(hasResult);
 
@@ -232,6 +246,76 @@ public class IoTDBSyntaxConventionIT {
       Assert.assertFalse(resultSet.next());
     } catch (SQLException e) {
       e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testNodeName() {
+    String[] createNodeNames = {
+      "`select`", "'select'", "\"select\"", "`a+b`", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+    };
+    String[] resultNodeNames = {
+      "select", "'select'", "\"select\"", "a+b", "'a+b'", "\"a+b\"", "'a.b'", "\"a.b\""
+    };
+    String[] resultTimeseries = {
+      "root.sg1.d1.select",
+      "root.sg1.d1.'select'",
+      "root.sg1.d1.\"select\"",
+      "root.sg1.d1.a+b",
+      "root.sg1.d1.'a+b'",
+      "root.sg1.d1.\"a+b\"",
+      "root.sg1.d1.'a.b'",
+      "root.sg1.d1.\"a.b\""
+    };
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      for (int i = 0; i < createNodeNames.length; i++) {
+        String createSql =
+            String.format("CREATE TIMESERIES root.sg1.d1.%s INT32", createNodeNames[i]);
+        String insertSql =
+            String.format("INSERT INTO root.sg1.d1(time, %s) VALUES(1, 1)", createNodeNames[i]);
+        System.out.println("CREATE TIMESERIES: " + createSql);
+        statement.execute(createSql);
+        statement.execute(insertSql);
+      }
+
+      boolean hasResult = statement.execute("SHOW TIMESERIES");
+      Assert.assertTrue(hasResult);
+      Set<String> expectedResult = new HashSet<>(Arrays.asList(resultTimeseries));
+
+      ResultSet resultSet = statement.getResultSet();
+      while (resultSet.next()) {
+        Assert.assertTrue(expectedResult.contains(resultSet.getString("timeseries")));
+        expectedResult.remove(resultSet.getString("timeseries"));
+      }
+      Assert.assertEquals(0, expectedResult.size());
+
+      for (int i = 0; i < createNodeNames.length; i++) {
+        String selectSql =
+            String.format("SELECT %s FROM root.sg1.d1 WHERE time = 1", createNodeNames[i]);
+        System.out.println("SELECT STATEMENT: " + selectSql);
+        hasResult = statement.execute(selectSql);
+        Assert.assertTrue(hasResult);
+
+        resultSet = statement.getResultSet();
+        Assert.assertTrue(resultSet.next());
+        Assert.assertEquals(1, resultSet.getInt("root.sg1.d1." + resultNodeNames[i]));
+      }
+
+    } catch (SQLException e) {
+      e.printStackTrace();
+      fail();
+    }
+  }
+
+  @Test
+  public void testIllegalNodeName1() {
+    try (Connection connection = EnvFactory.getEnv().getConnection();
+        Statement statement = connection.createStatement()) {
+      statement.execute("CREATE TIMESERIES root.sg1.d1.`a.b` TEXT");
+      fail();
+    } catch (SQLException ignored) {
     }
   }
 }
