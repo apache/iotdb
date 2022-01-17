@@ -22,6 +22,7 @@ import org.apache.iotdb.db.metadata.mnode.IMNode;
 import org.apache.iotdb.db.metadata.mtree.store.disk.ICachedMNodeContainer;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -53,8 +54,11 @@ public class CacheStrategy implements ICacheStrategy {
 
   @Override
   public void updateCacheStatusAfterAppend(IMNode node) {
-    CacheEntry cacheEntry = new CacheEntry();
-    node.setCacheEntry(new CacheEntry());
+    CacheEntry cacheEntry = node.getCacheEntry();
+    if (cacheEntry == null) {
+      cacheEntry = new CacheEntry();
+      node.setCacheEntry(new CacheEntry());
+    }
     nodeBuffer.put(cacheEntry, node);
   }
 
@@ -104,7 +108,7 @@ public class CacheStrategy implements ICacheStrategy {
       cacheEntry = child.getCacheEntry();
       if (cacheEntry != null && cacheEntry.isVolatile()) {
         if (!needPersist) {
-          nodesToPersist.add(child);
+          nodesToPersist.add(node);
           needPersist = true;
         }
         collectVolatileNodes(child, nodesToPersist);
@@ -113,12 +117,29 @@ public class CacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public void remove(IMNode node) {
-    CacheEntry cacheEntry = node.getCacheEntry();
+  public List<IMNode> remove(IMNode node) {
+    List<IMNode> removedMNodes = new LinkedList<>();
+    removeRecursively(node, removedMNodes);
+    return removedMNodes;
+  }
+
+  private void removeOne(CacheEntry cacheEntry) {
     if (cacheEntry.isVolatile()) {
       nodeBuffer.remove(cacheEntry);
     } else {
       nodeCache.remove(cacheEntry);
+    }
+  }
+
+  private void removeRecursively(IMNode node, List<IMNode> removedMNodes) {
+    CacheEntry cacheEntry = node.getCacheEntry();
+    if (cacheEntry == null) {
+      return;
+    }
+    removeOne(cacheEntry);
+    removedMNodes.add(node);
+    for (IMNode child : node.getChildren().values()) {
+      removeRecursively(child, removedMNodes);
     }
   }
 
@@ -143,7 +164,7 @@ public class CacheStrategy implements ICacheStrategy {
     }
     if (node != null) {
       node.getParent().deleteChild(node.getName());
-      remove(node);
+      removeOne(node.getCacheEntry());
       evictedMNodes.add(node);
       collectEvictedMNodes(node, evictedMNodes);
     }
@@ -152,8 +173,7 @@ public class CacheStrategy implements ICacheStrategy {
 
   private void collectEvictedMNodes(IMNode node, List<IMNode> evictedMNodes) {
     for (IMNode child : node.getChildren().values()) {
-      node.deleteChild(child.getName());
-      remove(child);
+      removeOne(child.getCacheEntry());
       evictedMNodes.add(child);
       collectVolatileNodes(child, evictedMNodes);
     }
@@ -176,10 +196,12 @@ public class CacheStrategy implements ICacheStrategy {
   }
 
   @Override
-  public void unPinMNode(IMNode node) {
+  public List<IMNode> unPinMNode(IMNode node) {
+    List<IMNode> releasedMNodes = new ArrayList<>();
     CacheEntry cacheEntry = node.getCacheEntry();
     cacheEntry.unPin();
     if (!cacheEntry.isPinned()) {
+      releasedMNodes.add(node);
       IMNode parent = node.getParent();
       while (parent != null) {
         cacheEntry = parent.getCacheEntry();
@@ -187,9 +209,11 @@ public class CacheStrategy implements ICacheStrategy {
         if (cacheEntry.isPinned()) {
           break;
         }
+        releasedMNodes.add(parent);
         parent = parent.getParent();
       }
     }
+    return releasedMNodes;
   }
 
   @Override

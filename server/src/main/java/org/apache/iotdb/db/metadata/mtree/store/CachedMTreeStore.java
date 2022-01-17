@@ -51,6 +51,7 @@ public class CachedMTreeStore implements IMTreeStore {
     MNodeContainers.IS_DISK_MODE = true;
     file = new MockSchemaFile();
     root = file.init();
+    cacheStrategy.pinMNode(root);
   }
 
   @Override
@@ -112,7 +113,9 @@ public class CachedMTreeStore implements IMTreeStore {
   // must pin parent first
   @Override
   public void addChild(IMNode parent, String childName, IMNode child) {
+    child.setParent(parent);
     pinMNodeInMemory(child);
+    parent.addChild(childName, child);
     cacheStrategy.updateCacheStatusAfterAppend(child);
   }
 
@@ -126,7 +129,13 @@ public class CachedMTreeStore implements IMTreeStore {
     IMNode node = parent.getChild(childName);
     parent.deleteChild(childName);
     if (cacheStrategy.isCached(node)) {
-      cacheStrategy.remove(node);
+      List<IMNode> removedMNodes = cacheStrategy.remove(node);
+      for (IMNode removedMNode : removedMNodes) {
+        if (cacheStrategy.isPinned(removedMNode)) {
+          memManager.releasePinnedMemResource(removedMNode);
+        }
+        memManager.releaseMemResource(removedMNode);
+      }
     }
     if (!getCachedMNodeContainer(parent).isVolatile()) {
       file.deleteMNode(node);
@@ -149,7 +158,13 @@ public class CachedMTreeStore implements IMTreeStore {
 
   @Override
   public void unPin(IMNode node) {
-    cacheStrategy.unPinMNode(node);
+    List<IMNode> releasedMNodes = cacheStrategy.unPinMNode(node);
+    for (IMNode releasedMNode : releasedMNodes) {
+      memManager.releasePinnedMemResource(releasedMNode);
+    }
+    if (!memManager.isUnderThreshold()) {
+      executeMemoryRelease();
+    }
   }
 
   @Override

@@ -36,13 +36,13 @@ public interface ICacheStrategy {
 
   List<IMNode> collectVolatileMNodes(IMNode node);
 
-  void remove(IMNode node);
+  List<IMNode> remove(IMNode node);
 
   List<IMNode> evict();
 
   void pinMNode(IMNode node);
 
-  void unPinMNode(IMNode node);
+  List<IMNode> unPinMNode(IMNode node);
 
   boolean isPinned(IMNode node);
 

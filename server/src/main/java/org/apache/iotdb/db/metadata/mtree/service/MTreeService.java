@@ -51,8 +51,8 @@ import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MNodeLevelCo
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.MeasurementGroupByLevelCounter;
 import org.apache.iotdb.db.metadata.mtree.service.traverser.counter.StorageGroupCounter;
+import org.apache.iotdb.db.metadata.mtree.store.CachedMTreeStore;
 import org.apache.iotdb.db.metadata.mtree.store.IMTreeStore;
-import org.apache.iotdb.db.metadata.mtree.store.MemMTreeStore;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.template.Template;
@@ -131,7 +131,7 @@ public class MTreeService implements Serializable {
   public MTreeService() {}
 
   public void init() throws IOException {
-    store = new MemMTreeStore();
+    store = new CachedMTreeStore();
     store.init();
     this.root = store.getRoot();
   }
@@ -370,7 +370,7 @@ public class MTreeService implements Serializable {
           "Cannot delete a timeseries inside a template: " + path.toString());
     }
 
-    IMeasurementMNode deletedNode = getMeasurementMNode(path);
+    IMeasurementMNode deletedNode = getPinnedMeasurementMNode(path);
     IEntityMNode parent = deletedNode.getParent();
     // delete the last node of path
     store.deleteChild(parent, path.getMeasurement());
@@ -406,6 +406,7 @@ public class MTreeService implements Serializable {
       store.deleteChild(curNode.getParent(), curNode.getName());
       curNode = curNode.getParent();
     }
+    unPinPath(curNode);
     return new Pair<>(null, deletedNode);
   }
   // endregion
@@ -1572,6 +1573,52 @@ public class MTreeService implements Serializable {
   // endregion
 
   // region Interfaces and Implementation for Pin/UnPin MNode or Path
+
+  public IMNode getPinnedNodeByPath(PartialPath path) throws MetadataException {
+    String[] nodes = path.getNodes();
+    if (nodes.length == 0 || !nodes[0].equals(root.getName())) {
+      throw new IllegalPathException(path.getFullPath());
+    }
+    IMNode cur = root;
+    Template upperTemplate = cur.getSchemaTemplate();
+
+    for (int i = 1; i < nodes.length; i++) {
+      if (cur.isMeasurement()) {
+        if (i == nodes.length - 1) {
+          return cur;
+        } else {
+          unPinPath(cur);
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+      }
+      if (cur.getSchemaTemplate() != null) {
+        upperTemplate = cur.getSchemaTemplate();
+      }
+      IMNode next = store.getPinnedChild(cur, nodes[i]);
+      if (next == null) {
+        if (upperTemplate == null
+            || !cur.isUseTemplate()
+            || upperTemplate.getDirectNode(nodes[i]) == null) {
+          unPinPath(cur);
+          throw new PathNotExistException(path.getFullPath(), true);
+        }
+        next = upperTemplate.getDirectNode(nodes[i]);
+      }
+      cur = next;
+    }
+    return cur;
+  }
+
+  public IMeasurementMNode getPinnedMeasurementMNode(PartialPath path) throws MetadataException {
+    IMNode node = getPinnedNodeByPath(path);
+    if (node.isMeasurement()) {
+      return node.getAsMeasurementMNode();
+    } else {
+      throw new MNodeTypeMismatchException(
+          path.getFullPath(), MetadataConstant.MEASUREMENT_MNODE_TYPE);
+    }
+  }
+
   public void unPinPath(IMNode node) {
     while (node.getParent() != null) {
       store.unPin(node);

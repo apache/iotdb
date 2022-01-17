@@ -40,7 +40,7 @@ public class MemManager implements IMemManager {
 
   @Override
   public boolean isUnderThreshold() {
-    return size <= (capacity - pinnedSize) * 0.6;
+    return isEmpty() || size <= (capacity - pinnedSize) * 0.6;
   }
 
   @Override
@@ -65,6 +65,7 @@ public class MemManager implements IMemManager {
   @Override
   public void releasePinnedMemResource(IMNode node) {
     pinnedSize--;
+    size++;
   }
 
   @Override

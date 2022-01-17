@@ -167,6 +167,8 @@ public class InternalMNode extends MNode {
 
     newChildNode.setParent(this);
 
+    newChildNode.setCacheEntry(oldChildNode.getCacheEntry());
+
     this.deleteChild(oldChildName);
     this.addChild(newChildNode.getName(), newChildNode);
   }

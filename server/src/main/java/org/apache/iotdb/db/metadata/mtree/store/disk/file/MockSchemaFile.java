@@ -94,6 +94,12 @@ public class MockSchemaFile implements ISchemaFile {
 
   private void write(long address, Map<String, IMNode> nodeMap) {
     for (IMNode node : nodeMap.values()) {
+      if (!node.isMeasurement()) {
+        ICachedMNodeContainer container = getCachedMNodeContainer(node);
+        if (container.isVolatile()) {
+          container.setSegmentAddress(allocateSegment());
+        }
+      }
       mockFile.get(address).put(node.getName(), cloneMNode(node));
     }
   }
