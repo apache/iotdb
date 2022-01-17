@@ -711,7 +711,7 @@ public class MTreeService implements Serializable {
    * @return a list contains all distinct storage groups
    */
   public List<PartialPath> getAllStorageGroupPaths() throws MetadataException {
-    return getMatchedStorageGroups(ALL_MATCH_PATTERN);
+    return getMatchedStorageGroups(ALL_MATCH_PATTERN, false);
   }
 
   /**
@@ -1106,7 +1106,7 @@ public class MTreeService implements Serializable {
    */
   public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    CounterTraverser counter = new MeasurementCounter(root, pathPattern);
+    CounterTraverser counter = new MeasurementCounter(root, pathPattern, store);
     counter.setPrefixMatch(isPrefixMatch);
     counter.traverse();
     return counter.getCount();
