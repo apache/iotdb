@@ -20,6 +20,7 @@ package org.apache.iotdb.db.metadata;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
+import org.apache.iotdb.db.conf.IoTDBConstant;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
 import org.apache.iotdb.db.engine.StorageEngine;
 import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
@@ -49,6 +50,7 @@ import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mnode.IStorageGroupMNode;
 import org.apache.iotdb.db.metadata.mnode.MeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
+import org.apache.iotdb.db.metadata.mtree.traverser.collector.CollectorTraverser;
 import org.apache.iotdb.db.metadata.path.MeasurementPath;
 import org.apache.iotdb.db.metadata.path.PartialPath;
 import org.apache.iotdb.db.metadata.tag.TagManager;
@@ -73,6 +75,7 @@ import org.apache.iotdb.db.qp.physical.sys.CreateTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.DeleteTimeSeriesPlan;
 import org.apache.iotdb.db.qp.physical.sys.DropContinuousQueryPlan;
+import org.apache.iotdb.db.qp.physical.sys.DropTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.PruneTemplatePlan;
 import org.apache.iotdb.db.qp.physical.sys.SetStorageGroupPlan;
 import org.apache.iotdb.db.qp.physical.sys.SetTTLPlan;
@@ -111,10 +114,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -482,6 +487,18 @@ public class MManager {
       case CREATE_TEMPLATE:
         CreateTemplatePlan createTemplatePlan = (CreateTemplatePlan) plan;
         createSchemaTemplate(createTemplatePlan);
+        break;
+      case DROP_TEMPLATE:
+        DropTemplatePlan dropTemplatePlan = (DropTemplatePlan) plan;
+        dropSchemaTemplate(dropTemplatePlan);
+        break;
+      case APPEND_TEMPLATE:
+        AppendTemplatePlan appendTemplatePlan = (AppendTemplatePlan) plan;
+        appendSchemaTemplate(appendTemplatePlan);
+        break;
+      case PRUNE_TEMPLATE:
+        PruneTemplatePlan pruneTemplatePlan = (PruneTemplatePlan) plan;
+        pruneSchemaTemplate(pruneTemplatePlan);
         break;
       case SET_TEMPLATE:
         SetTemplatePlan setTemplatePlan = (SetTemplatePlan) plan;
@@ -2231,6 +2248,137 @@ public class MManager {
   public List<String> getMeasurementsInTemplate(String templateName, String path)
       throws MetadataException {
     return templateManager.getTemplate(templateName).getMeasurementsUnderPath(path);
+  }
+
+  public Set<String> getAllTemplates() {
+    return templateManager.getAllTemplateName();
+  }
+
+  /**
+   * Get all paths set designated template
+   *
+   * @param templateName designated template name, blank string for any template exists
+   * @return paths set
+   */
+  public Set<String> getPathsSetTemplate(String templateName) throws MetadataException {
+    Set<String> resSet = new HashSet<>();
+
+    CollectorTraverser<Set<String>> setTemplatePaths =
+        new CollectorTraverser<Set<String>>(
+            mtree.getNodeByPath(new PartialPath(IoTDBConstant.PATH_ROOT)),
+            new PartialPath(IoTDBConstant.PATH_ROOT).concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // will never get here, implement for placeholder
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // shall not traverse nodes inside template
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+              return true;
+            }
+
+            // if node not set template, go on traversing
+            if (node.getUpperTemplate() != null) {
+              // if set template, and equals to target or target for all, add to result
+              if (templateName.equals("")
+                  || templateName.equals(node.getUpperTemplate().getName())) {
+                resSet.add(node.getFullPath());
+              }
+              // descendants of the node cannot set another template, exit from this branch
+              return true;
+            }
+            return false;
+          }
+        };
+
+    setTemplatePaths.traverse();
+    return resSet;
+  }
+
+  public Set<String> getPathsUsingTemplate(String templateName) throws MetadataException {
+    Set<String> result = new HashSet<>();
+
+    CollectorTraverser<Set<String>> usingTemplatePaths =
+        new CollectorTraverser<Set<String>>(
+            mtree.getNodeByPath(new PartialPath(IoTDBConstant.PATH_ROOT)),
+            new PartialPath(IoTDBConstant.PATH_ROOT).concatNode(MULTI_LEVEL_PATH_WILDCARD)) {
+          @Override
+          protected boolean processInternalMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // will never get here, implement for placeholder
+            return false;
+          }
+
+          @Override
+          protected boolean processFullMatchedMNode(IMNode node, int idx, int level)
+              throws MetadataException {
+            // shall not traverse nodes inside template
+            if (!node.getPartialPath().equals(getCurrentPartialPath(node))) {
+              return true;
+            }
+
+            if (node.getUpperTemplate() != null) {
+              // this node and its descendants are set other template, exit from this branch
+              if (!templateName.equals("")
+                  && !templateName.equals(node.getUpperTemplate().getName())) {
+                return true;
+              }
+
+              // descendants of this node may be using template too
+              if (node.isUseTemplate()) {
+                result.add(node.getFullPath());
+              }
+            }
+            return false;
+          }
+        };
+
+    usingTemplatePaths.traverse();
+    return result;
+  }
+
+  public synchronized void dropSchemaTemplate(DropTemplatePlan plan) throws MetadataException {
+    try {
+      String templateName = plan.getName();
+      // check whether template exists
+      if (!templateManager.getAllTemplateName().contains(templateName)) {
+        throw new UndefinedTemplateException(templateName);
+      }
+
+      // check whether template has been set
+      Deque<IMNode> nodeStack = new ArrayDeque<>();
+      nodeStack.push(mtree.getNodeByPath(new PartialPath(IoTDBConstant.PATH_ROOT)));
+
+      // DFT traverse on MTree
+      while (nodeStack.size() != 0) {
+        IMNode curNode = nodeStack.pop();
+        if (curNode.getUpperTemplate() != null) {
+          if (curNode.getUpperTemplate().getName().equals(templateName)) {
+            throw new MetadataException(
+                String.format(
+                    "Template [%s] has been set on [%s], cannot be dropped now.",
+                    templateName, curNode.getFullPath()));
+          }
+          // curNode set to other templates, cut this branch
+        }
+
+        // no template on curNode, push children to stack
+        for (IMNode child : curNode.getChildren().values()) {
+          nodeStack.push(child);
+        }
+      }
+      templateManager.dropSchemaTemplate(plan);
+      if (!isRecovering) {
+        logWriter.dropSchemaTemplate(plan);
+      }
+    } catch (IOException e) {
+      throw new MetadataException(e);
+    }
   }
 
   public synchronized void setSchemaTemplate(SetTemplatePlan plan) throws MetadataException {
