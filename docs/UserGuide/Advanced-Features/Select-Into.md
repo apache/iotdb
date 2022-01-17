@@ -134,7 +134,7 @@ When the target aligned timeseries are not existed, the system will automaticall
 
 ### Supported Query Types
 
-**Note that except for the following types of queries, other types of queries (such as `LAST` queries) are not supported. **
+**Note that except for the following types of queries, other types of queries (such as `LAST` queries and raw aggregation queries) are not supported. **
 
 * Raw time series query
 
@@ -240,6 +240,7 @@ When the target aligned timeseries are not existed, the system will automaticall
 * When the target series in the `into` clause already exist, you need to ensure that the source series in the `select` clause and the target series in the `into` clause have the same data types.
 * The target series in the `into` clause must be different from each other.
 * Only one prefix path of a series is allowed in the `from` clause.
+* Aligned Timeseries has not been supported in Time series generating function query（including UDF query）/ Arithmetic query / Nested query yet. An error message is expected if you use these types of query with Aligned Timeseries selected in the `select` clause.
 
 
 

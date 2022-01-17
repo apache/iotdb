@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.iotdb.db.cq;
+package org.apache.iotdb.db.engine.cq;
 
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
@@ -45,6 +45,8 @@ public class ContinuousQueryService implements IService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ContinuousQueryService.class);
 
+  private static final long SYSTEM_STARTUP_TIME = DatetimeUtils.currentTime();
+
   private static final ContinuousQueryTaskPoolManager TASK_POOL_MANAGER =
       ContinuousQueryTaskPoolManager.getInstance();
   private static final long TASK_SUBMIT_CHECK_INTERVAL =
@@ -63,13 +65,9 @@ public class ContinuousQueryService implements IService {
   @Override
   public void start() {
     for (CreateContinuousQueryPlan plan : continuousQueryPlans.values()) {
-      long durationFromCreation = DatetimeUtils.currentTime() - plan.getCreationTimestamp();
-      long nextExecutionTimestamp =
-          plan.getCreationTimestamp()
-              + plan.getEveryInterval()
-                  * (durationFromCreation / plan.getEveryInterval()
-                      + ((durationFromCreation % plan.getEveryInterval() == 0) ? 0 : 1));
-      nextExecutionTimestamps.put(plan.getContinuousQueryName(), nextExecutionTimestamp);
+      nextExecutionTimestamps.put(
+          plan.getContinuousQueryName(),
+          calculateNextExecutionTimestamp(plan, SYSTEM_STARTUP_TIME));
     }
 
     continuousQueryTaskSubmitThread =
@@ -82,6 +80,23 @@ public class ContinuousQueryService implements IService {
             IoTDBDescriptor.getInstance().getConfig().getTimestampPrecision()));
 
     LOGGER.info("Continuous query service started.");
+  }
+
+  private long calculateNextExecutionTimestamp(
+      CreateContinuousQueryPlan plan, final long currentTime) {
+    final long expectedFirstExecutionTime =
+        plan.getFirstExecutionTimeBoundary() + plan.getForInterval();
+
+    if (currentTime <= expectedFirstExecutionTime) {
+      return expectedFirstExecutionTime;
+    }
+
+    final long durationFromExpectedFirstExecutionTime = currentTime - expectedFirstExecutionTime;
+    final long everyInterval = plan.getEveryInterval();
+    return expectedFirstExecutionTime
+        + everyInterval
+            * (durationFromExpectedFirstExecutionTime / everyInterval
+                + (durationFromExpectedFirstExecutionTime % everyInterval == 0 ? 0 : 1));
   }
 
   private void checkAndSubmitTasks() {
@@ -127,8 +142,10 @@ public class ContinuousQueryService implements IService {
           String.format("Continuous Query [%s] already exists", plan.getContinuousQueryName()));
     }
 
-    // some exceptions will only occur at runtime
-    tryExecuteCQTaskOnceBeforeRegistration(plan);
+    // if it is not processing recovery
+    if (shouldWriteLog) {
+      checkSchemaBeforeRegistration(plan);
+    }
 
     acquireRegistrationLock();
     try {
@@ -144,10 +161,10 @@ public class ContinuousQueryService implements IService {
     }
   }
 
-  private void tryExecuteCQTaskOnceBeforeRegistration(CreateContinuousQueryPlan plan)
+  private void checkSchemaBeforeRegistration(CreateContinuousQueryPlan plan)
       throws ContinuousQueryException {
     try {
-      new ContinuousQueryTask(plan, plan.getCreationTimestamp()).run();
+      new ContinuousQuerySchemaCheckTask(plan, plan.getFirstExecutionTimeBoundary()).run();
     } catch (Exception e) {
       throw new ContinuousQueryException("Failed to create continuous query task.", e);
     }
@@ -155,11 +172,9 @@ public class ContinuousQueryService implements IService {
 
   private void doRegister(CreateContinuousQueryPlan plan) {
     continuousQueryPlans.put(plan.getContinuousQueryName(), plan);
-    // one cq task has been executed in tryExecuteCQTaskOnceBeforeRegistration
-    // so nextExecutionTimestamp should start with
-    //     plan.getCreationTimestamp() + plan.getEveryInterval()
     nextExecutionTimestamps.put(
-        plan.getContinuousQueryName(), plan.getCreationTimestamp() + plan.getEveryInterval());
+        plan.getContinuousQueryName(),
+        calculateNextExecutionTimestamp(plan, DatetimeUtils.currentTime()));
   }
 
   @TestOnly
@@ -204,7 +219,8 @@ public class ContinuousQueryService implements IService {
               plan.getContinuousQueryName(),
               plan.getTargetPath(),
               plan.getEveryInterval(),
-              plan.getForInterval()));
+              plan.getForInterval(),
+              plan.getFirstExecutionTimeBoundary()));
     }
     return results;
   }

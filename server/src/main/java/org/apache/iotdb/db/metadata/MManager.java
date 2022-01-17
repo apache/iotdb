@@ -21,8 +21,8 @@ package org.apache.iotdb.db.metadata;
 import org.apache.iotdb.db.concurrent.IoTDBThreadPoolFactory;
 import org.apache.iotdb.db.conf.IoTDBConfig;
 import org.apache.iotdb.db.conf.IoTDBDescriptor;
-import org.apache.iotdb.db.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.StorageEngine;
+import org.apache.iotdb.db.engine.cq.ContinuousQueryService;
 import org.apache.iotdb.db.engine.fileSystem.SystemFileFactory;
 import org.apache.iotdb.db.engine.trigger.executor.TriggerEngine;
 import org.apache.iotdb.db.exception.ContinuousQueryException;
@@ -728,14 +728,18 @@ public class MManager {
   }
 
   /**
-   * Delete all timeseries matching the given path pattern, may cross different storage group
+   * Delete all timeseries matching the given path pattern, may cross different storage group. If
+   * using prefix match, the path pattern is used to match prefix path. All timeseries start with
+   * the matched prefix path will be deleted.
    *
    * @param pathPattern path to be deleted
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return deletion failed Timeseries
    */
-  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+  public String deleteTimeseries(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
     try {
-      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern);
+      List<MeasurementPath> allTimeseries = mtree.getMeasurementPaths(pathPattern, isPrefixMatch);
       if (allTimeseries.isEmpty()) {
         // In the cluster mode, the deletion of a timeseries will be forwarded to all the nodes. For
         // nodes that do not have the metadata of the timeseries, the coordinator expects a
@@ -754,6 +758,16 @@ public class MManager {
     } catch (IOException e) {
       throw new MetadataException(e.getMessage());
     }
+  }
+
+  /**
+   * Delete all timeseries matching the given path pattern, may cross different storage group
+   *
+   * @param pathPattern path to be deleted
+   * @return deletion failed Timeseries
+   */
+  public String deleteTimeseries(PartialPath pathPattern) throws MetadataException {
+    return deleteTimeseries(pathPattern, false);
   }
 
   private void deleteSingleTimeseriesInternal(PartialPath p, Set<String> failedNames)
@@ -976,20 +990,59 @@ public class MManager {
 
   /**
    * To calculate the count of timeseries matching given path. The path could be a pattern of a full
+   * path, may contain wildcard. If using prefix match, the path pattern is used to match prefix
+   * path. All timeseries start with the matched prefix path will be counted.
+   */
+  public int getAllTimeseriesCount(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getAllTimeseriesCount(pathPattern, isPrefixMatch);
+  }
+
+  /**
+   * To calculate the count of timeseries matching given path. The path could be a pattern of a full
    * path, may contain wildcard.
    */
   public int getAllTimeseriesCount(PartialPath pathPattern) throws MetadataException {
-    return mtree.getAllTimeseriesCount(pathPattern);
+    return getAllTimeseriesCount(pathPattern, false);
+  }
+
+  /**
+   * To calculate the count of devices for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
+  public int getDevicesNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevicesNum(pathPattern, isPrefixMatch);
   }
 
   /** To calculate the count of devices for given path pattern. */
   public int getDevicesNum(PartialPath pathPattern) throws MetadataException {
-    return mtree.getDevicesNum(pathPattern);
+    return getDevicesNum(pathPattern, false);
   }
 
-  /** To calculate the count of storage group for given path pattern. */
-  public int getStorageGroupNum(PartialPath pathPattern) throws MetadataException {
-    return mtree.getStorageGroupNum(pathPattern);
+  /**
+   * To calculate the count of storage group for given path pattern. If using prefix match, the path
+   * pattern is used to match prefix path. All timeseries start with the matched prefix path will be
+   * counted.
+   */
+  public int getStorageGroupNum(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getStorageGroupNum(pathPattern, isPrefixMatch);
+  }
+
+  /**
+   * To calculate the count of nodes in the given level for given path pattern. If using prefix
+   * match, the path pattern is used to match prefix path. All timeseries start with the matched
+   * prefix path will be counted.
+   *
+   * @param pathPattern a path pattern or a full path
+   * @param level the level should match the level of the path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public int getNodesCountInGivenLevel(PartialPath pathPattern, int level, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getNodesCountInGivenLevel(pathPattern, level, isPrefixMatch);
   }
 
   /**
@@ -1000,12 +1053,12 @@ public class MManager {
    */
   public int getNodesCountInGivenLevel(PartialPath pathPattern, int level)
       throws MetadataException {
-    return mtree.getNodesCountInGivenLevel(pathPattern, level);
+    return getNodesCountInGivenLevel(pathPattern, level, false);
   }
 
   public Map<PartialPath, Integer> getMeasurementCountGroupByLevel(
-      PartialPath pathPattern, int level) throws MetadataException {
-    return mtree.getMeasurementCountGroupByLevel(pathPattern, level);
+      PartialPath pathPattern, int level, boolean isPrefixMatch) throws MetadataException {
+    return mtree.getMeasurementCountGroupByLevel(pathPattern, level, isPrefixMatch);
   }
 
   // endregion
@@ -1105,14 +1158,16 @@ public class MManager {
   }
 
   /**
-   * Get all storage group matching given path pattern.
+   * Get all storage group matching given path pattern. If using prefix match, the path pattern is
+   * used to match prefix path. All timeseries start with the matched prefix path will be collected.
    *
    * @param pathPattern a pattern of a full path
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    * @return A ArrayList instance which stores storage group paths matching given path pattern.
    */
-  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern)
+  public List<PartialPath> getMatchedStorageGroups(PartialPath pathPattern, boolean isPrefixMatch)
       throws MetadataException {
-    return mtree.getMatchedStorageGroups(pathPattern);
+    return mtree.getMatchedStorageGroups(pathPattern, isPrefixMatch);
   }
 
   /** Get all storage group paths */
@@ -1155,25 +1210,26 @@ public class MManager {
   }
 
   /**
+   * Get all device paths matching the path pattern. If using prefix match, the path pattern is used
+   * to match prefix path. All timeseries start with the matched prefix path will be collected.
+   *
+   * @param pathPattern the pattern of the target devices.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   * @return A HashSet instance which stores devices paths matching the given path pattern.
+   */
+  public Set<PartialPath> getMatchedDevices(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getDevices(pathPattern, isPrefixMatch);
+  }
+
+  /**
    * Get all device paths matching the path pattern.
    *
    * @param pathPattern the pattern of the target devices.
    * @return A HashSet instance which stores devices paths matching the given path pattern.
    */
   public Set<PartialPath> getMatchedDevices(PartialPath pathPattern) throws MetadataException {
-    return mtree.getDevices(pathPattern, false);
-  }
-
-  /**
-   * Get all device paths matching the path pattern by prefix.
-   *
-   * @param pathPattern the pattern of the target devices.
-   * @param isPrefixMatch whether to use prefix matching
-   * @return A HashSet instance which stores devices paths matching the given path pattern.
-   */
-  public Set<PartialPath> getMatchedDeviceByPrefix(PartialPath pathPattern, boolean isPrefixMatch)
-      throws MetadataException {
-    return mtree.getDevices(pathPattern, isPrefixMatch);
+    return getMatchedDevices(pathPattern, false);
   }
 
   /**
@@ -1192,22 +1248,40 @@ public class MManager {
   /**
    * Return all measurement paths for given path if the path is abstract. Or return the path itself.
    * Regular expression in this method is formed by the amalgamation of seriesPath and the character
+   * '*'. If using prefix match, the path pattern is used to match prefix path. All timeseries start
+   * with the matched prefix path will be collected.
+   *
+   * @param pathPattern can be a pattern or a full path of timeseries.
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
+   */
+  public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern, boolean isPrefixMatch)
+      throws MetadataException {
+    return getMeasurementPathsWithAlias(pathPattern, 0, 0, isPrefixMatch).left;
+  }
+
+  /**
+   * Return all measurement paths for given path if the path is abstract. Or return the path itself.
+   * Regular expression in this method is formed by the amalgamation of seriesPath and the character
    * '*'.
    *
    * @param pathPattern can be a pattern or a full path of timeseries.
    */
   public List<MeasurementPath> getMeasurementPaths(PartialPath pathPattern)
       throws MetadataException {
-    return mtree.getMeasurementPaths(pathPattern);
+    return getMeasurementPaths(pathPattern, false);
   }
 
   /**
    * Similar to method getMeasurementPaths(), but return Path with alias and filter the result by
-   * limit and offset.
+   * limit and offset. If using prefix match, the path pattern is used to match prefix path. All
+   * timeseries start with the matched prefix path will be collected.
+   *
+   * @param isPrefixMatch if true, the path pattern is used to match prefix path
    */
   public Pair<List<MeasurementPath>, Integer> getMeasurementPathsWithAlias(
-      PartialPath pathPattern, int limit, int offset) throws MetadataException {
-    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset);
+      PartialPath pathPattern, int limit, int offset, boolean isPrefixMatch)
+      throws MetadataException {
+    return mtree.getMeasurementPathsWithAlias(pathPattern, limit, offset, isPrefixMatch);
   }
 
   public List<ShowTimeSeriesResult> showTimeseries(ShowTimeSeriesPlan plan, QueryContext context)
@@ -1233,7 +1307,9 @@ public class MManager {
     int limit = plan.getLimit();
     int offset = plan.getOffset();
     for (IMeasurementMNode leaf : allMatchedNodes) {
-      if (pathPattern.matchFullPath(leaf.getPartialPath())) {
+      if (plan.isPrefixMatch()
+          ? pathPattern.matchPrefixPath(leaf.getPartialPath())
+          : pathPattern.matchFullPath(leaf.getPartialPath())) {
         if (limit != 0 || offset != 0) {
           curOffset++;
           if (curOffset < offset || count == limit) {

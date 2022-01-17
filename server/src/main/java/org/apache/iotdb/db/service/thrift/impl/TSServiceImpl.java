@@ -250,11 +250,21 @@ public class TSServiceImpl implements TSIService.Iface {
 
   @Override
   public TSOpenSessionResp openSession(TSOpenSessionReq req) throws TException {
+    IoTDBConstant.ClientVersion clientVersion = parseClientVersion(req);
     BasicOpenSessionResp openSessionResp =
-        serviceProvider.openSession(req.username, req.password, req.zoneId, req.client_protocol);
+        serviceProvider.openSession(
+            req.username, req.password, req.zoneId, req.client_protocol, clientVersion);
     TSStatus tsStatus = RpcUtils.getStatus(openSessionResp.getCode(), openSessionResp.getMessage());
     TSOpenSessionResp resp = new TSOpenSessionResp(tsStatus, CURRENT_RPC_VERSION);
     return resp.setSessionId(openSessionResp.getSessionId());
+  }
+
+  private IoTDBConstant.ClientVersion parseClientVersion(TSOpenSessionReq req) {
+    Map<String, String> configuration = req.configuration;
+    if (configuration != null && configuration.containsKey("version")) {
+      return IoTDBConstant.ClientVersion.valueOf(configuration.get("version"));
+    }
+    return IoTDBConstant.ClientVersion.V_0_12;
   }
 
   @Override
@@ -317,10 +327,6 @@ public class TSServiceImpl implements TSIService.Iface {
               e, OperationType.FETCH_METADATA, TSStatusCode.INTERNAL_SERVER_ERROR);
     }
     return resp.setStatus(status);
-  }
-
-  private String getMetadataInString() {
-    return IoTDB.metaManager.getMetadataInString();
   }
 
   protected List<MeasurementPath> getPaths(PartialPath path) throws MetadataException {
@@ -446,7 +452,10 @@ public class TSServiceImpl implements TSIService.Iface {
         PhysicalPlan physicalPlan =
             serviceProvider
                 .getPlanner()
-                .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
+                .parseSQLToPhysicalPlan(
+                    statement,
+                    SESSION_MANAGER.getZoneId(req.sessionId),
+                    SESSION_MANAGER.getClientVersion(req.sessionId));
         if (physicalPlan.isQuery() || physicalPlan.isSelectInto()) {
           throw new QueryInBatchStatementException(statement);
         }
@@ -547,7 +556,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.getSessionId()));
+              .parseSQLToPhysicalPlan(
+                  statement,
+                  SESSION_MANAGER.getZoneId(req.getSessionId()),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -596,7 +608,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(statement, SESSION_MANAGER.getZoneId(req.sessionId));
+              .parseSQLToPhysicalPlan(
+                  statement,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -641,7 +656,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .rawDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
+              .rawDataQueryReqToPhysicalPlan(
+                  req,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -684,7 +702,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .lastDataQueryReqToPhysicalPlan(req, SESSION_MANAGER.getZoneId(req.sessionId));
+              .lastDataQueryReqToPhysicalPlan(
+                  req,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
 
       if (physicalPlan.isQuery()) {
         Future<TSExecuteStatementResp> resp =
@@ -740,7 +761,6 @@ public class TSServiceImpl implements TSIService.Iface {
           queryId, TracingConstant.ACTIVITY_PARSE_SQL, System.currentTimeMillis());
       TRACING_MANAGER.setSeriesPathNum(queryId, plan.getPaths().size());
     }
-    context.setAscending(plan.isAscending());
 
     TSExecuteStatementResp resp = null;
     // execute it before createDataSet since it may change the content of query plan
@@ -1033,7 +1053,10 @@ public class TSServiceImpl implements TSIService.Iface {
       PhysicalPlan physicalPlan =
           serviceProvider
               .getPlanner()
-              .parseSQLToPhysicalPlan(req.statement, SESSION_MANAGER.getZoneId(req.sessionId));
+              .parseSQLToPhysicalPlan(
+                  req.statement,
+                  SESSION_MANAGER.getZoneId(req.sessionId),
+                  SESSION_MANAGER.getClientVersion(req.sessionId));
       return physicalPlan.isQuery()
           ? RpcUtils.getTSExecuteStatementResp(
               TSStatusCode.EXECUTE_STATEMENT_ERROR, "Statement is a query statement.")
@@ -1824,7 +1847,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) throws TException {
+  public TSStatus appendSchemaTemplate(TSAppendSchemaTemplateReq req) {
     int size = req.getMeasurementsSize();
     String[] measurements = new String[size];
     TSDataType[] dataTypes = new TSDataType[size];
@@ -1846,7 +1869,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) throws TException {
+  public TSStatus pruneSchemaTemplate(TSPruneSchemaTemplateReq req) {
     PruneTemplatePlan plan =
         new PruneTemplatePlan(req.getName(), Collections.singletonList(req.getPath()));
     TSStatus status = serviceProvider.checkAuthority(plan, req.getSessionId());
@@ -1854,7 +1877,7 @@ public class TSServiceImpl implements TSIService.Iface {
   }
 
   @Override
-  public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) throws TException {
+  public TSQueryTemplateResp querySchemaTemplate(TSQueryTemplateReq req) {
     try {
       TSQueryTemplateResp resp = new TSQueryTemplateResp();
       String path;

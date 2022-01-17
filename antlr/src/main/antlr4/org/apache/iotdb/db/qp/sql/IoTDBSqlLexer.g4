@@ -93,6 +93,10 @@ BEGIN
     : B E G I N
     ;
 
+BOUNDARY
+    : B O U N D A R Y
+    ;
+
 BY
     : B Y
     ;

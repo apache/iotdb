@@ -586,7 +586,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
 
   public void parseResampleClause(
       IoTDBSqlParser.ResampleClauseContext ctx, CreateContinuousQueryOperator operator) {
-
     if (ctx.DURATION_LITERAL().size() == 1) {
       if (ctx.EVERY() != null) {
         operator.setEveryInterval(
@@ -600,6 +599,10 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
           DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(0).getText()));
       operator.setForInterval(
           DatetimeUtils.convertDurationStrToLong(ctx.DURATION_LITERAL(1).getText()));
+    }
+
+    if (ctx.BOUNDARY() != null) {
+      operator.setFirstExecutionTimeBoundary(parseDateExpression(ctx.dateExpression()));
     }
   }
 
@@ -2936,7 +2939,6 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
   private Map<String, String> extractMap(
       List<IoTDBSqlParser.PropertyClauseContext> property2,
       IoTDBSqlParser.PropertyClauseContext property3) {
-    String value;
     Map<String, String> tags = new HashMap<>(property2.size());
     if (property3 != null) {
       for (IoTDBSqlParser.PropertyClauseContext property : property2) {

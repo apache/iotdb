@@ -45,6 +45,8 @@ import org.apache.commons.lang3.StringUtils;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.SecurityContext;
 
+import java.time.ZoneId;
+
 public class GrafanaApiServiceImpl extends GrafanaApiService {
 
   private final ServiceProvider serviceProvider = IoTDB.serviceProvider;
@@ -138,7 +140,8 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         sql += " " + expressionRequest.getControl();
       }
 
-      PhysicalPlan physicalPlan = serviceProvider.getPlanner().parseSQLToPhysicalPlan(sql);
+      PhysicalPlan physicalPlan =
+          serviceProvider.getPlanner().parseSQLToGrafanaQueryPlan(sql, ZoneId.systemDefault());
 
       Response response = authorizationHandler.checkAuthority(securityContext, physicalPlan);
       if (response != null) {
@@ -157,7 +160,7 @@ public class GrafanaApiServiceImpl extends GrafanaApiService {
         QueryDataSet queryDataSet =
             serviceProvider.createQueryDataSet(
                 queryContext, physicalPlan, IoTDBConstant.DEFAULT_FETCH_SIZE);
-        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan);
+        return QueryDataSetHandler.fillDateSet(queryDataSet, (QueryPlan) physicalPlan, 0);
       } finally {
         ServiceProvider.SESSION_MANAGER.releaseQueryResourceNoExceptions(queryId);
       }
