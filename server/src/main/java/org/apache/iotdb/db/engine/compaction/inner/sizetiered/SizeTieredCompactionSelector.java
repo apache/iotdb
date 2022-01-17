@@ -180,7 +180,8 @@ public class SizeTieredCompactionSelector extends AbstractInnerSpaceCompactionSe
     return maxLevel;
   }
 
-  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList) {
+  private boolean createAndSubmitTask(List<TsFileResource> selectedFileList)
+      throws InterruptedException {
     AbstractCompactionTask compactionTask =
         taskFactory.createTask(
             logicalStorageGroupName,

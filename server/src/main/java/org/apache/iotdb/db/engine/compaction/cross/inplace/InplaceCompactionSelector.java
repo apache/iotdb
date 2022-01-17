@@ -151,7 +151,7 @@ public class InplaceCompactionSelector extends AbstractCrossSpaceCompactionSelec
           logicalStorageGroupName + "-" + virtualGroupId,
           mergeResource.getSeqFiles().size(),
           mergeResource.getUnseqFiles().size());
-    } catch (MergeException | IOException e) {
+    } catch (MergeException | IOException | InterruptedException e) {
       LOGGER.error("{} cannot select file for cross space compaction", logicalStorageGroupName, e);
     }
 

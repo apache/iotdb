@@ -32,6 +32,7 @@ import org.apache.iotdb.db.service.metrics.Metric;
 import org.apache.iotdb.db.service.metrics.MetricsService;
 import org.apache.iotdb.db.service.metrics.Tag;
 import org.apache.iotdb.db.utils.TestOnly;
+import org.apache.iotdb.db.utils.datastructure.PriorityBlockingQueueWithMaxSize;
 import org.apache.iotdb.metrics.config.MetricConfigDescriptor;
 import org.apache.iotdb.metrics.type.Gauge;
 
@@ -45,12 +46,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
@@ -65,8 +64,8 @@ public class CompactionTaskManager implements IService {
   // is 10.
   private WrappedScheduledExecutorService taskExecutionPool;
   public static volatile AtomicInteger currentTaskNum = new AtomicInteger(0);
-  private BlockingQueue<AbstractCompactionTask> candidateCompactionTaskQueue =
-      new PriorityBlockingQueue<>(1000, new CompactionTaskComparator());
+  private PriorityBlockingQueueWithMaxSize<AbstractCompactionTask> candidateCompactionTaskQueue =
+      new PriorityBlockingQueueWithMaxSize<>(1000, new CompactionTaskComparator());
   // <logicalStorageGroupName,futureSet>, it is used to terminate all compaction tasks under the
   // logicalStorageGroup
   private Map<String, Set<Future<Void>>> storageGroupTasks = new ConcurrentHashMap<>();
@@ -92,11 +91,6 @@ public class CompactionTaskManager implements IService {
       currentTaskNum = new AtomicInteger(0);
       semaphore =
           new Semaphore(IoTDBDescriptor.getInstance().getConfig().getConcurrentCompactionThread());
-
-      // Periodically do the following: fetch the highest priority thread from the
-      // candidateCompactionTaskQueue, check that all tsfiles in the compaction task are valid, and
-      // if there is thread space available in the taskExecutionPool, put the compaction task thread
-      // into the taskExecutionPool and perform the compaction.
     }
     logger.info("Compaction task manager started.");
   }
@@ -193,10 +187,11 @@ public class CompactionTaskManager implements IService {
    * The task will not be submitted immediately. If the queue size is larger than max size, the task
    * with last priority will be removed from the task.
    */
-  public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask) {
+  public synchronized boolean addTaskToWaitingQueue(AbstractCompactionTask compactionTask)
+      throws InterruptedException {
     if (!candidateCompactionTaskQueue.contains(compactionTask)
         && !runningCompactionTaskList.contains(compactionTask)) {
-      candidateCompactionTaskQueue.add(compactionTask);
+      candidateCompactionTaskQueue.put(compactionTask);
 
       // add metrics
       if (MetricConfigDescriptor.getInstance().getMetricConfig().getEnableMetric()) {
