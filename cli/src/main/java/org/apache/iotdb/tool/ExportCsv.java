@@ -133,7 +133,7 @@ public class ExportCsv extends AbstractCsvTool {
         String sql;
 
         if (sqlFile == null) {
-          LineReader lineReader = JlineUtils.getLineReader();
+          LineReader lineReader = JlineUtils.getLineReader(username, host, port);
           sql = lineReader.readLine(TSFILEDB_CLI_PREFIX + "> please input query: ");
           System.out.println(sql);
           String[] values = sql.trim().split(";");

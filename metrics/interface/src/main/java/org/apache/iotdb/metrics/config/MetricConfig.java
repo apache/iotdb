@@ -20,6 +20,7 @@
 package org.apache.iotdb.metrics.config;
 
 import org.apache.iotdb.metrics.utils.MonitorType;
+import org.apache.iotdb.metrics.utils.PredefinedMetric;
 import org.apache.iotdb.metrics.utils.ReporterType;
 
 import java.util.Arrays;
@@ -39,8 +40,19 @@ public class MetricConfig {
   private List<ReporterType> metricReporterList =
       Arrays.asList(ReporterType.jmx, ReporterType.prometheus);
 
+  private List<PredefinedMetric> predefinedMetrics = Arrays.asList(PredefinedMetric.jvm);
+
   /** the config of prometheus reporter */
   private PrometheusReporterConfig prometheusReporterConfig = new PrometheusReporterConfig();
+
+  public void copy(MetricConfig newMetricConfig) {
+    enableMetric = newMetricConfig.getEnableMetric();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    monitorType = newMetricConfig.getMonitorType();
+    metricReporterList = newMetricConfig.getMetricReporterList();
+    predefinedMetrics = newMetricConfig.getPredefinedMetrics();
+    prometheusReporterConfig = newMetricConfig.getPrometheusReporterConfig();
+  }
 
   public Boolean getEnableMetric() {
     return enableMetric;
@@ -82,6 +94,14 @@ public class MetricConfig {
     this.prometheusReporterConfig = prometheusReporterConfig;
   }
 
+  public List<PredefinedMetric> getPredefinedMetrics() {
+    return predefinedMetrics;
+  }
+
+  public void setPredefinedMetrics(List<PredefinedMetric> predefinedMetrics) {
+    this.predefinedMetrics = predefinedMetrics;
+  }
+
   /** the following is prometheus related config. */
   public static class PrometheusReporterConfig {
     private String prometheusExporterUrl = "http://localhost";
@@ -103,5 +123,31 @@ public class MetricConfig {
     public void setPrometheusExporterPort(String prometheusExporterPort) {
       this.prometheusExporterPort = prometheusExporterPort;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof PrometheusReporterConfig)) {
+        return false;
+      }
+      PrometheusReporterConfig anotherPrometheusReporterConfig = (PrometheusReporterConfig) obj;
+      return prometheusExporterUrl.equals(
+              anotherPrometheusReporterConfig.getPrometheusExporterPort())
+          && prometheusExporterPort.equals(
+              anotherPrometheusReporterConfig.getPrometheusExporterUrl());
+    }
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (!(obj instanceof MetricConfig)) {
+      return false;
+    }
+    MetricConfig anotherMetricConfig = (MetricConfig) obj;
+    return enableMetric.equals(anotherMetricConfig.getEnableMetric())
+        && pushPeriodInSecond.equals(anotherMetricConfig.getPushPeriodInSecond())
+        && monitorType.equals(anotherMetricConfig.getMonitorType())
+        && metricReporterList.equals(anotherMetricConfig.getMetricReporterList())
+        && predefinedMetrics.equals(anotherMetricConfig.getPredefinedMetrics())
+        && prometheusReporterConfig.equals(anotherMetricConfig.getPrometheusReporterConfig());
   }
 }

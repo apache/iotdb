@@ -86,12 +86,12 @@ public class QueryRouter implements IQueryRouter {
     }
     queryPlan.setExpression(optimizedExpression);
 
-    // group the vector partial paths for raw query after optimize the expression
-    // because path in expressions should not be grouped
-    queryPlan.transformToVector();
     RawDataQueryExecutor rawDataQueryExecutor = getRawDataQueryExecutor(queryPlan);
 
     if (!queryPlan.isAlignByTime()) {
+      // group the vector partial paths for raw query after optimize the expression
+      // because path in expressions should not be grouped
+      queryPlan.transformToVector();
       return rawDataQueryExecutor.executeNonAlign(context);
     }
 
@@ -107,6 +107,10 @@ public class QueryRouter implements IQueryRouter {
         return new EmptyDataSet();
       }
     }
+
+    // group the vector partial paths for raw query after optimize the expression
+    // because path in expressions should not be grouped
+    queryPlan.transformToVector();
     return rawDataQueryExecutor.executeWithoutValueFilter(context);
   }
 

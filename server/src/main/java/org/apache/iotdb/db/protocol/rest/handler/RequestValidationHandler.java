@@ -21,6 +21,8 @@ import org.apache.iotdb.db.protocol.rest.model.ExpressionRequest;
 import org.apache.iotdb.db.protocol.rest.model.InsertTabletRequest;
 import org.apache.iotdb.db.protocol.rest.model.SQL;
 
+import org.apache.commons.lang3.Validate;
+
 import java.util.Objects;
 
 public class RequestValidationHandler {
@@ -29,8 +31,8 @@ public class RequestValidationHandler {
 
   public static void validateSQL(SQL sql) {
     Objects.requireNonNull(sql.getSql(), "sql should not be null");
-    if (sql.getRowLimit() != null && sql.getRowLimit() <= 0) {
-      Objects.requireNonNull(null, "rowLimit should be greater than or equal to 0");
+    if (sql.getRowLimit() != null) {
+      Validate.isTrue(sql.getRowLimit() > 0, "rowLimit should be positive");
     }
   }
 

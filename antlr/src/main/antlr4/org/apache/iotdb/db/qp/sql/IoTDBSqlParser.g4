@@ -141,7 +141,7 @@ cqGroupByTimeClause
     ;
 
 resampleClause
-    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)?;
+    : RESAMPLE (EVERY DURATION_LITERAL)? (FOR DURATION_LITERAL)? (BOUNDARY dateExpression)?;
 
 // Create Snapshot for Schema
 createSnapshot
@@ -824,7 +824,7 @@ attributeClauses
     tagClause?
     attributeClause?
     // Simplified version (supported since v0.13)
-    | alias? dataType=DATATYPE_VALUE
+    | alias? WITH? (DATATYPE OPERATOR_EQ)? dataType=DATATYPE_VALUE
     (ENCODING OPERATOR_EQ encoding=ENCODING_VALUE)?
     ((COMPRESSOR | COMPRESSION) OPERATOR_EQ compressor=COMPRESSOR_VALUE)?
     propertyClause*
