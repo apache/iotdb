@@ -43,7 +43,7 @@ public class CompositeReporter {
     return result;
   }
 
-  /** Start reporter by name values in jmx, prometheus, iotdb, internal */
+  /** Start reporter by name values in jmx, prometheus, iotdb */
   public boolean start(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
@@ -66,7 +66,7 @@ public class CompositeReporter {
     return result;
   }
 
-  /** Stop reporter by name, values in jmx, prometheus, internal */
+  /** Stop reporter by name, values in jmx, prometheus, iotdb */
   public boolean stop(ReporterType reporterType) {
     for (Reporter reporter : reporters) {
       if (reporter.getReporterType() == reporterType) {
