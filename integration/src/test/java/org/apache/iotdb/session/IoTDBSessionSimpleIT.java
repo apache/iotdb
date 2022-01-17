@@ -795,7 +795,7 @@ public class IoTDBSessionSimpleIT {
     addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
     addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
 
-    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    session.insertStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
     checkResultForInsertStringRecordsOfOneDevice(session);
     session.close();
   }
@@ -831,7 +831,7 @@ public class IoTDBSessionSimpleIT {
     addStringLine(times, measurements, values, 2L, "s2", "s3", "3", "4");
     addStringLine(times, measurements, values, 3L, "s1", "s2", "false", "6");
 
-    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values);
+    session.insertAlignedStringRecordsOfOneDevice("root.sg.d1", times, measurements, values, true);
     checkResultForInsertStringRecordsOfOneDevice(session);
     session.close();
   }
