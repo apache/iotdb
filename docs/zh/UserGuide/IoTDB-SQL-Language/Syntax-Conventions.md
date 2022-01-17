@@ -47,7 +47,7 @@
 - 使用两个连续单引号转义单引号，即 `''` 转义为 `'`。
 - 使用两个连续双引号转义双引号，即 `""` 转义为 `"`。
 - 在引号前使用转义符 (\\)。
-- 在单引号括的的字符串内，双引号无需特殊处理。同理，在双引号括的的字符串内，单引号无需特殊处理。
+- 在单引号括的的字符串内，双引号无需特殊处理。同理，在双引号括的的字符串内，单引号无需特殊处理。（但转义依然生效）
 
 关于引号和转义字符的使用示例如下：
 ```js
@@ -103,7 +103,7 @@
 - 标识符是大小写敏感的。
 - 注意：用户与角色名对大小写不敏感，并且不允许转义特殊字符。
 
-如果标识符要包含不允许的特殊字符，或者使用系统保留字，需要用反引号（`）对标识符进行引用。
+如果标识符要包含不允许的特殊字符，或者使用系统关键字，需要用反引号（`）对标识符进行引用。
 
 示例如下：
 ```sql
@@ -145,11 +145,11 @@ CREATE TIMESERIES root.a.b.`s1+s2/s3`.c WITH DATATYPE=INT32, ENCODING=RLE
 ```
 
 ```sql
-CREATE TIMESERIES root.a.b.time WITH DATATYPE=INT32, ENCODING=RLE
+CREATE TIMESERIES root.a.b.select WITH DATATYPE=INT32, ENCODING=RLE
 // 解析失败！
 
-CREATE TIMESERIES root.a.b.`time` WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b.`time` 将被解析为 Path[root, a, b, time]
+CREATE TIMESERIES root.a.b.`select` WITH DATATYPE=INT32, ENCODING=RLE
+// root.a.b.`select` 将被解析为 Path[root, a, b, select]
 ```
 
 ```sql
@@ -162,7 +162,7 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 
 ## 关键字和保留字
 
-关键字是在 SQL 具有特定含义的词。保留字是关键字的一个子集，保留字不能直接用于标识符或路径节点名。
+关键字是在 SQL 具有特定含义的词，不能直接用于标识符或路径节点名，需要使用反引号进行转义。保留字是关键字的一个子集，保留字不能用于标识符或路径节点名（即使进行了转义）。
 
 关于 IoTDB 的关键字和保留字列表，可以查看 [关键字和保留字](../Appendix/Keywords.md) 。
 

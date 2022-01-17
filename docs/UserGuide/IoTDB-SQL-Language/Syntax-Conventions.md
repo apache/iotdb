@@ -46,7 +46,7 @@ There are several ways to include quote characters within a string:
  - A `'` inside a string quoted with `'` may be written as `''`.
  - A `"` inside a string quoted with `"` may be written as `""`.
  - Precede the quote character by an escape character (\\).
- - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment.
+ - `'` inside a string quoted with `"` needs no special treatment and need not be doubled or escaped. In the same way, `"` inside a string quoted with `'` needs no special treatment. (but escaping still works)
 
 The following examples demonstrate how quoting and escaping work:
 ```js
@@ -104,7 +104,7 @@ What you need to know about identifiers:
 - Identifiers are case sensitive.
 - Note: User and role names are not case-sensitive, and special characters are not allowed to be escaped.
 
-If an identifier contains special characters or is a reserved word, you must quote it whenever you refer to it.
+If an identifier contains special characters or is a keyword, you must quote it whenever you refer to it.
 The identifier quote character is the backtick (`):
 ```sql
 id  // parsed as id
@@ -145,11 +145,11 @@ CREATE TIMESERIES root.a.b.`s1+s2/s3`.c WITH DATATYPE=INT32, ENCODING=RLE
 ```
 
 ```sql
-CREATE TIMESERIES root.a.b.time WITH DATATYPE=INT32, ENCODING=RLE
+CREATE TIMESERIES root.a.b.select WITH DATATYPE=INT32, ENCODING=RLE
 // invalid!
 
-CREATE TIMESERIES root.a.b.`time` WITH DATATYPE=INT32, ENCODING=RLE
-// root.a.b.`time` will be parsed as Path[root, a, b, time]
+CREATE TIMESERIES root.a.b.`select` WITH DATATYPE=INT32, ENCODING=RLE
+// root.a.b.`select` will be parsed as Path[root, a, b, `select`]
 ```
 
 ```sql
@@ -162,7 +162,8 @@ CREATE TIMESERIES root.a.b."s1.s2".c WITH DATATYPE=INT32, ENCODING=RLE
 
 ## Keywords and Reserved Words
 
-Keywords are words that have significance in SQL. Certain keywords, such as TIME or FROM, are reserved and require special treatment for use as identifiers and node names.
+Keywords are words that have significance in SQL require special treatment for use as identifiers and node names, and need to be escaped with backticks.
+Certain keywords, such as TIME and ROOT, are reserved and cannot use as identifiers and node names (even after escaping).
 
 [Keywords and Reserved Words](../Appendix/Keywords.md) shows the keywords and reserved words in IoTDB 0.13.
 

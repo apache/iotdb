@@ -2827,19 +2827,13 @@ public class IoTDBSqlVisitor extends IoTDBSqlParserBaseVisitor<Operator> {
     if (2 <= src.length()) {
       if (src.charAt(0) == '\"' && src.charAt(src.length() - 1) == '\"') {
         String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        if (unescapeString.length() == 0) {
-          return "\"\"";
-        } else {
-          return "\"" + unescapeString.replace("\"\"", "\"") + "\"";
-        }
+        return unescapeString.length() == 0
+            ? "\"\""
+            : "\"" + unescapeString.replace("\"\"", "\"") + "\"";
       }
       if (src.charAt(0) == '\'' && src.charAt(src.length() - 1) == '\'') {
         String unescapeString = StringEscapeUtils.unescapeJava(src.substring(1, src.length() - 1));
-        if (unescapeString.length() == 0) {
-          return "''";
-        } else {
-          return "'" + unescapeString.replace("''", "'") + "'";
-        }
+        return unescapeString.length() == 0 ? "''" : "'" + unescapeString.replace("''", "'") + "'";
       }
     }
     return src;

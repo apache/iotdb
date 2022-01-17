@@ -173,47 +173,7 @@ public class LogicalGenerator {
 
   @TestOnly
   public static Operator generate(String sql, ZoneId zoneId) throws ParseCancellationException {
-    IoTDBSqlVisitor ioTDBSqlVisitor = new IoTDBSqlVisitor();
-    ioTDBSqlVisitor.setZoneId(zoneId);
-
-    CharStream charStream1 = CharStreams.fromString(sql);
-
-    IoTDBSqlLexer lexer1 = new IoTDBSqlLexer(charStream1);
-    lexer1.removeErrorListeners();
-    lexer1.addErrorListener(SQLParseError.INSTANCE);
-
-    CommonTokenStream tokens1 = new CommonTokenStream(lexer1);
-
-    IoTDBSqlParser parser1 = new IoTDBSqlParser(tokens1);
-    parser1.getInterpreter().setPredictionMode(PredictionMode.SLL);
-    parser1.removeErrorListeners();
-    parser1.addErrorListener(SQLParseError.INSTANCE);
-
-    ParseTree tree;
-    try {
-      // STAGE 1: try with simpler/faster SLL(*)
-      tree = parser1.singleStatement();
-      // if we get here, there was no syntax error and SLL(*) was enough;
-      // there is no need to try full LL(*)
-    } catch (Exception ex) {
-      CharStream charStream2 = CharStreams.fromString(sql);
-
-      IoTDBSqlLexer lexer2 = new IoTDBSqlLexer(charStream2);
-      lexer2.removeErrorListeners();
-      lexer2.addErrorListener(SQLParseError.INSTANCE);
-
-      CommonTokenStream tokens2 = new CommonTokenStream(lexer2);
-
-      IoTDBSqlParser parser2 = new IoTDBSqlParser(tokens2);
-      parser2.getInterpreter().setPredictionMode(PredictionMode.LL);
-      parser2.removeErrorListeners();
-      parser2.addErrorListener(SQLParseError.INSTANCE);
-
-      // STAGE 2: parser with full LL(*)
-      tree = parser2.singleStatement();
-      // if we get here, it's LL not SLL
-    }
-    return ioTDBSqlVisitor.visit(tree);
+    return generate(sql, zoneId, IoTDBConstant.ClientVersion.V_0_13);
   }
 
   private LogicalGenerator() {}
