@@ -1011,7 +1011,6 @@ public class TSServiceImpl implements TSIService.Iface {
       Thread.currentThread().interrupt();
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     } catch (Exception e) {
-      SESSION_MANAGER.releaseQueryResourceNoExceptions(req.queryId);
       return RpcUtils.getTSFetchResultsResp(onQueryException(e, OperationType.FETCH_RESULTS));
     }
   }
