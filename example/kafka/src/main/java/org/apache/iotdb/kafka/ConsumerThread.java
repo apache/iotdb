@@ -20,7 +20,7 @@ package org.apache.iotdb.kafka;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -39,14 +39,15 @@ public class ConsumerThread implements Runnable {
 
   private static final Logger logger = LoggerFactory.getLogger(ConsumerThread.class);
   private KafkaConsumer<String, String> consumer;
+  private SessionPool pool;
 
-  public ConsumerThread(KafkaConsumer<String, String> consumer) {
+  public ConsumerThread(KafkaConsumer<String, String> consumer, SessionPool pool) {
     this.consumer = consumer;
+    this.pool = pool;
   }
 
   /** insert data to IoTDB */
-  private void insert(Session session, String data)
-      throws IoTDBConnectionException, StatementExecutionException {
+  private void insert(String data) throws IoTDBConnectionException, StatementExecutionException {
     String[] dataArray = data.split(",");
     String device = dataArray[0];
     long time = Long.parseLong(dataArray[1]);
@@ -81,7 +82,63 @@ public class ConsumerThread implements Runnable {
       }
     }
 
-    session.insertRecord(device, time, measurements, types, values);
+    pool.insertRecord(device, time, measurements, types, values);
+  }
+  /** insert data to IoTDB */
+  private void insertDatas(List<String> datas)
+      throws IoTDBConnectionException, StatementExecutionException {
+    int size = datas.size();
+    List<String> deviceIds = new ArrayList<>(size);
+    List<Long> times = new ArrayList<>(size);
+    ;
+    List<List<String>> measurementsList = new ArrayList<>(size);
+    ;
+    List<List<TSDataType>> typesList = new ArrayList<>(size);
+    ;
+    List<List<Object>> valuesList = new ArrayList<>(size);
+    ;
+    for (String data : datas) {
+      String[] dataArray = data.split(",");
+      String device = dataArray[0];
+      long time = Long.parseLong(dataArray[1]);
+      List<String> measurements = Arrays.asList(dataArray[2].split(":"));
+      List<TSDataType> types = new ArrayList<>();
+      for (String type : dataArray[3].split(":")) {
+        types.add(TSDataType.valueOf(type));
+      }
+
+      List<Object> values = new ArrayList<>();
+      String[] valuesStr = dataArray[4].split(":");
+      for (int i = 0; i < valuesStr.length; i++) {
+        switch (types.get(i)) {
+          case INT64:
+            values.add(Long.parseLong(valuesStr[i]));
+            break;
+          case DOUBLE:
+            values.add(Double.parseDouble(valuesStr[i]));
+            break;
+          case INT32:
+            values.add(Integer.parseInt(valuesStr[i]));
+            break;
+          case TEXT:
+            values.add(valuesStr[i]);
+            break;
+          case FLOAT:
+            values.add(Float.parseFloat(valuesStr[i]));
+            break;
+          case BOOLEAN:
+            values.add(Boolean.parseBoolean(valuesStr[i]));
+            break;
+        }
+      }
+      deviceIds.add(device);
+      times.add(time);
+      measurementsList.add(measurements);
+      typesList.add(types);
+      valuesList.add(values);
+    }
+
+    pool.insertRecords(deviceIds, times, measurementsList, typesList, valuesList);
   }
 
   @Override
@@ -89,16 +146,11 @@ public class ConsumerThread implements Runnable {
     try {
       do {
         ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(1));
-        Session session =
-            new Session(
-                Constant.IOTDB_CONNECTION_HOST,
-                Constant.IOTDB_CONNECTION_PORT,
-                Constant.IOTDB_CONNECTION_USER,
-                Constant.IOTDB_CONNECTION_PASSWORD);
-        session.open();
+        List<String> datas = new ArrayList<>(records.count());
         for (ConsumerRecord<String, String> record : records) {
-          insert(session, record.value());
+          datas.add(record.value());
         }
+        insertDatas(datas);
       } while (true);
     } catch (Exception e) {
       logger.error(e.getMessage());

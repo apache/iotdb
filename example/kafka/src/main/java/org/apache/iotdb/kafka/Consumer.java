@@ -20,7 +20,7 @@ package org.apache.iotdb.kafka;
 
 import org.apache.iotdb.rpc.IoTDBConnectionException;
 import org.apache.iotdb.rpc.StatementExecutionException;
-import org.apache.iotdb.session.Session;
+import org.apache.iotdb.session.pool.SessionPool;
 import org.apache.iotdb.tsfile.file.metadata.enums.CompressionType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSEncoding;
@@ -31,7 +31,10 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -43,9 +46,18 @@ public class Consumer {
 
   private List<KafkaConsumer<String, String>> consumerList;
   private static final Logger logger = LoggerFactory.getLogger(Consumer.class);
+  private static SessionPool pool;
 
   private Consumer(List<KafkaConsumer<String, String>> consumerList) {
     this.consumerList = consumerList;
+    pool =
+        new SessionPool.Builder()
+            .host(Constant.IOTDB_CONNECTION_HOST)
+            .port(Constant.IOTDB_CONNECTION_PORT)
+            .user(Constant.IOTDB_CONNECTION_USER)
+            .password(Constant.IOTDB_CONNECTION_PASSWORD)
+            .maxSize(Constant.SESSION_SIZE)
+            .build();
   }
 
   public static void main(String[] args) {
@@ -79,45 +91,39 @@ public class Consumer {
 
   @SuppressWarnings("squid:S2068")
   private static void initIoTDB() {
+
     try {
-      Session session =
-          new Session(
-              Constant.IOTDB_CONNECTION_HOST,
-              Constant.IOTDB_CONNECTION_PORT,
-              Constant.IOTDB_CONNECTION_USER,
-              Constant.IOTDB_CONNECTION_PASSWORD);
-      session.open();
       for (String storageGroup : Constant.STORAGE_GROUP) {
-        addStorageGroup(session, storageGroup);
+        addStorageGroup(storageGroup);
       }
       for (String[] sql : Constant.CREATE_TIMESERIES) {
-        createTimeseries(session, sql);
+        createTimeseries(sql);
       }
     } catch (IoTDBConnectionException | StatementExecutionException e) {
       logger.error(e.getMessage());
     }
   }
 
-  private static void addStorageGroup(Session session, String storageGroup)
+  private static void addStorageGroup(String storageGroup)
       throws IoTDBConnectionException, StatementExecutionException {
-    session.setStorageGroup(storageGroup);
+    pool.setStorageGroup(storageGroup);
   }
 
-  private static void createTimeseries(Session session, String[] sql)
+  private static void createTimeseries(String[] sql)
       throws StatementExecutionException, IoTDBConnectionException {
     String timeseries = sql[0];
     TSDataType dataType = TSDataType.valueOf(sql[1]);
     TSEncoding encoding = TSEncoding.valueOf(sql[2]);
     CompressionType compressionType = CompressionType.valueOf(sql[3]);
-    session.createTimeseries(timeseries, dataType, encoding, compressionType);
+    pool.createTimeseries(timeseries, dataType, encoding, compressionType);
   }
 
   private void consumeInParallel() {
     /** Specify the number of consumer thread */
     ExecutorService executor = Executors.newFixedThreadPool(Constant.CONSUMER_THREAD_NUM);
     for (int i = 0; i < consumerList.size(); i++) {
-      ConsumerThread consumerThread1 = new ConsumerThread(consumerList.get(i));
-      executor.submit(consumerThread1);
+      ConsumerThread consumerThread = new ConsumerThread(consumerList.get(i), pool);
+      executor.submit(consumerThread);
     }
   }
 }

@@ -23,7 +23,8 @@ public class Constant {
 
   public static final String TOPIC = "Kafka-Test";
   public static final String KAFKA_SERVICE_URL = "127.0.0.1:9092";
-  public static final int CONSUMER_THREAD_NUM = 3;
+  public static final int CONSUMER_THREAD_NUM = 5;
+  public static final int SESSION_SIZE = 3;
   public static final String IOTDB_CONNECTION_HOST = "localhost";
   public static final int IOTDB_CONNECTION_PORT = 6667;
   public static final String IOTDB_CONNECTION_USER = "root";
