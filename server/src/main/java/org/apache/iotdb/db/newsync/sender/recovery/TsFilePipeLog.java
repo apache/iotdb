@@ -124,7 +124,7 @@ public class TsFilePipeLog {
     historyOutputStream = new DataOutputStream(new FileOutputStream(historyPipeLog));
   }
 
-  public void addRealTimeTsFilePipeData(TsFilePipeData pipeData) {
+  public void addRealTimeTsFilePipeData(TsFilePipeData pipeData) throws IOException {
     getRealTimeOutputStream();
   }
 
