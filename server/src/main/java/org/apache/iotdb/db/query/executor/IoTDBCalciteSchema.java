@@ -19,6 +19,8 @@ import org.apache.calcite.rel.RelCollations;
 import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
+import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.schema.FilterableTable;
 import org.apache.calcite.schema.Function;
 import org.apache.calcite.schema.QueryableTable;
 import org.apache.calcite.schema.ScannableTable;
@@ -38,6 +40,7 @@ import org.apache.iotdb.db.metadata.MManager;
 import org.apache.iotdb.db.metadata.mnode.IMeasurementMNode;
 import org.apache.iotdb.db.metadata.mtree.MTree;
 import org.apache.iotdb.db.metadata.path.PartialPath;
+import org.apache.iotdb.db.query.executor.calcite.IoTDBTable;
 import org.apache.iotdb.tsfile.exception.NotImplementedException;
 import org.apache.iotdb.tsfile.file.metadata.enums.TSDataType;
 import org.apache.iotdb.tsfile.write.schema.IMeasurementSchema;
@@ -46,126 +49,132 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.List;
 
 public class IoTDBCalciteSchema extends CalciteSchema {
 
-  static class IoTDBTable implements ScannableTable, Table {
-
-    private final String path;
-    private final TSDataType dataType;
-    private final String name;
-
-    public IoTDBTable(String path) {
-      this.path = path;
-      try {
-        IMeasurementSchema schema = MManager.getInstance().getMeasurementMNode(new PartialPath(this.path)).getSchema();
-        name = schema.getMeasurementId();
-        dataType = schema.getType();
-      } catch (MetadataException e) {
-        throw new IllegalArgumentException("Unable to find DataType for Path " + path);
-      }
-    }
-
-    @Override
-    public RelDataType getRowType(RelDataTypeFactory typeFactory) {
-      return typeFactory.createStructType(
-          Arrays.asList(
-              typeFactory.createJavaType(Long.class),
-              typeFactory.createJavaType(getClassForDataType(this.dataType))
-          ),
-          Arrays.asList(
-              "time",
-              name
-          )
-      );
-    }
-
-    private Class<?> getClassForDataType(TSDataType type) {
-      switch (type) {
-        case INT32:
-          return Integer.class;
-        case TEXT:
-          return String.class;
-        default:
-          throw new NotImplementedException("Type " + type + " not yet supported!");
-      }
-    }
-
-    @Override
-    public Statistic getStatistic() {
-      return Statistics.of(null, null, null, Arrays.asList(RelCollations.of(new RelFieldCollation(0, RelFieldCollation.Direction.ASCENDING))));
-    }
-
-    @Override
-    public Schema.TableType getJdbcTableType() {
-      return null;
-    }
-
-    @Override
-    public boolean isRolledUp(String column) {
-      return false;
-    }
-
-    @Override
-    public boolean rolledUpColumnValidInsideAgg(String column, SqlCall call, @Nullable SqlNode parent, @Nullable CalciteConnectionConfig config) {
-      return false;
-    }
-
-    public <T> Queryable<T> asQueryable(QueryProvider queryProvider, SchemaPlus schema, String tableName) {
-      throw new UnsupportedOperationException();
-    }
-
-    public Type getElementType() {
-      // Should be allowed as we return Object[]
-      return null;
-    }
-
-    public Expression getExpression(SchemaPlus schema, String tableName, Class clazz) {
-      Method apply;
-      try {
-        apply = Function2.class.getMethod("apply", Object.class, Object.class);
-      } catch (NoSuchMethodException e) {
-        throw new IllegalStateException();
-      }
-      return Expressions.convert_(
-          Expressions.call(
-              Expressions.convert_(
-                  Expressions.call(
-                      DataContext.ROOT,
-                      "get",
-                      Expressions.constant("series", String.class)
-                  ),
-                  Function2.class
-              ),
-              apply,
-              Expressions.constant(path, String.class),
-              Expressions.constant(dataType, TSDataType.class)
-          ),
-          Enumerable.class
-      );
-    }
-
-    @Override
-    public Enumerable<Object[]> scan(DataContext root) {
-      Enumerable<Object[]> enumerable = (Enumerable<Object[]>) ((Function2) root.get("series")).apply(path, dataType);
-//      Enumerator<Object[]> enumerator = enumerable.enumerator();
+//  static class IoTDBTable implements ScannableTable, FilterableTable, Table {
 //
-//      while (enumerator.moveNext()) {
-//        Object[] current = enumerator.current();
+//    private final String path;
+//    private final TSDataType dataType;
+//    private final String name;
 //
-//        System.out.println(" ==> " + Arrays.toString(current));
+//    public IoTDBTable(String path) {
+//      this.path = path;
+//      try {
+//        IMeasurementSchema schema = MManager.getInstance().getMeasurementMNode(new PartialPath(this.path)).getSchema();
+//        name = schema.getMeasurementId();
+//        dataType = schema.getType();
+//      } catch (MetadataException e) {
+//        throw new IllegalArgumentException("Unable to find DataType for Path " + path);
 //      }
-      return enumerable;
-    }
-
+//    }
+//
+//    @Override
+//    public RelDataType getRowType(RelDataTypeFactory typeFactory) {
+//      return typeFactory.createStructType(
+//          Arrays.asList(
+//              typeFactory.createJavaType(Long.class),
+//              typeFactory.createJavaType(getClassForDataType(this.dataType))
+//          ),
+//          Arrays.asList(
+//              "time",
+//              name
+//          )
+//      );
+//    }
+//
+//    private Class<?> getClassForDataType(TSDataType type) {
+//      switch (type) {
+//        case INT32:
+//          return Integer.class;
+//        case TEXT:
+//          return String.class;
+//        default:
+//          throw new NotImplementedException("Type " + type + " not yet supported!");
+//      }
+//    }
+//
+//    @Override
+//    public Statistic getStatistic() {
+//      return Statistics.of(null, null, null, Arrays.asList(RelCollations.of(new RelFieldCollation(0, RelFieldCollation.Direction.ASCENDING))));
+//    }
+//
+//    @Override
+//    public Schema.TableType getJdbcTableType() {
+//      return null;
+//    }
+//
+//    @Override
+//    public boolean isRolledUp(String column) {
+//      return false;
+//    }
+//
+//    @Override
+//    public boolean rolledUpColumnValidInsideAgg(String column, SqlCall call, @Nullable SqlNode parent, @Nullable CalciteConnectionConfig config) {
+//      return false;
+//    }
+//
+//    public <T> Queryable<T> asQueryable(QueryProvider queryProvider, SchemaPlus schema, String tableName) {
+//      throw new UnsupportedOperationException();
+//    }
+//
+//    public Type getElementType() {
+//      // Should be allowed as we return Object[]
+//      return null;
+//    }
+//
+//    public Expression getExpression(SchemaPlus schema, String tableName, Class clazz) {
+//      Method apply;
+//      try {
+//        apply = Function2.class.getMethod("apply", Object.class, Object.class);
+//      } catch (NoSuchMethodException e) {
+//        throw new IllegalStateException();
+//      }
+//      return Expressions.convert_(
+//          Expressions.call(
+//              Expressions.convert_(
+//                  Expressions.call(
+//                      DataContext.ROOT,
+//                      "get",
+//                      Expressions.constant("series", String.class)
+//                  ),
+//                  Function2.class
+//              ),
+//              apply,
+//              Expressions.constant(path, String.class),
+//              Expressions.constant(dataType, TSDataType.class)
+//          ),
+//          Enumerable.class
+//      );
+//    }
+//
 //    @Override
 //    public Enumerable<Object[]> scan(DataContext root) {
-//      return Linq4j.asEnumerable(Arrays.asList(
-//          new Object[]{1L, 1},
-//          new Object[]{2L, 3}
-//      ));
+//      Enumerable<Object[]> enumerable = (Enumerable<Object[]>) ((Function2) root.get("series")).apply(path, dataType);
+////      Enumerator<Object[]> enumerator = enumerable.enumerator();
+////
+////      while (enumerator.moveNext()) {
+////        Object[] current = enumerator.current();
+////
+////        System.out.println(" ==> " + Arrays.toString(current));
+////      }
+//      return enumerable;
 //    }
-  }
+//
+//    @Override
+//    public Enumerable<Object[]> scan(DataContext root, List<RexNode> filters) {
+//      return scan(root);
+//    }
+//
+////    @Override
+////    public Enumerable<Object[]> scan(DataContext root) {
+////      return Linq4j.asEnumerable(Arrays.asList(
+////          new Object[]{1L, 1},
+////          new Object[]{2L, 3}
+////      ));
+////    }
+//  }
 
   protected IoTDBCalciteSchema(@Nullable CalciteSchema parent, Schema schema, String name) {
     super(parent, schema, name, null, null, null, null, null, null, null, null);

@@ -4,17 +4,28 @@ import com.google.common.cache.RemovalListener;
 import com.google.common.collect.ImmutableList;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.DataContexts;
+import org.apache.calcite.adapter.enumerable.EnumerableBindable;
+import org.apache.calcite.adapter.enumerable.EnumerableConvention;
+import org.apache.calcite.adapter.enumerable.EnumerableInterpretable;
+import org.apache.calcite.adapter.enumerable.EnumerableRel;
+import org.apache.calcite.adapter.enumerable.EnumerableRelImplementor;
+import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.interpreter.BindableConvention;
+import org.apache.calcite.interpreter.InterpretableConvention;
+import org.apache.calcite.interpreter.InterpretableConverter;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.linq4j.Linq4j;
 import org.apache.calcite.linq4j.QueryProvider;
+import org.apache.calcite.linq4j.QueryProviderImpl;
+import org.apache.calcite.linq4j.Queryable;
 import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.linq4j.function.Function2;
+import org.apache.calcite.linq4j.tree.ClassDeclaration;
 import org.apache.calcite.linq4j.tree.Expression;
 import org.apache.calcite.linq4j.tree.Expressions;
 import org.apache.calcite.linq4j.tree.MethodCallExpression;
@@ -43,8 +54,11 @@ import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rel.type.RelProtoDataType;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.runtime.ArrayBindable;
 import org.apache.calcite.runtime.Bindable;
 import org.apache.calcite.runtime.Hook;
+import org.apache.calcite.runtime.Typed;
+import org.apache.calcite.runtime.Utilities;
 import org.apache.calcite.schema.Function;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
@@ -72,11 +86,18 @@ import org.apache.iotdb.tsfile.read.expression.impl.SingleSeriesExpression;
 import org.apache.iotdb.tsfile.read.query.dataset.QueryDataSet;
 import org.apache.iotdb.tsfile.read.query.iterator.SeriesIterator;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.codehaus.commons.compiler.CompileException;
+import org.codehaus.commons.compiler.CompilerFactoryFactory;
+import org.codehaus.commons.compiler.IClassBodyEvaluator;
+import org.codehaus.commons.compiler.ICompilerFactory;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Properties;
@@ -186,7 +207,8 @@ public class CalciteExecutor {
 
     planner = new VolcanoPlanner();
 
-    RelOptUtil.registerDefaultRules(planner, false, true);
+    RelOptUtil.registerDefaultRules(planner, false, false);
+    planner.addRule(EnumerableRules.ENUMERABLE_PROJECT_TO_CALC_RULE);
     planner.addRelTraitDef(ConventionTraitDef.INSTANCE);
     planner.addRelTraitDef(RelCollationTraitDef.INSTANCE);
 
@@ -201,7 +223,7 @@ public class CalciteExecutor {
 
   public QueryDataSet execute(QueryContext queryContext, RelNode root) {
     RelTraitSet desired = cluster.traitSet()
-        .replace(BindableConvention.INSTANCE)
+        .replace(EnumerableConvention.INSTANCE)
         .replace(RelCollations.of(new RelFieldCollation(0, RelFieldCollation.Direction.ASCENDING)));
 
     RelNode expectedRoot = planner.changeTraits(root, desired);
@@ -209,20 +231,50 @@ public class CalciteExecutor {
 
     Hook.JAVA_PLAN.addThread((Consumer<? extends Object>) System.out::println);
 
-    RelNode exp = planner.findBestExp();
-    Bindable bestExp = (Bindable) exp;
+    EnumerableRel plan = ((EnumerableRel) planner.findBestExp());
 
+    EnumerableRelImplementor relImplementor =
+        new EnumerableRelImplementor(plan.getCluster().getRexBuilder(), new HashMap<>());
+
+    ClassDeclaration classExpr = relImplementor.implementRoot(plan, EnumerableRel.Prefer.ARRAY);
+    String javaCode =
+        Expressions.toString(classExpr.memberDeclarations, "\n", false);
+
+    ICompilerFactory compilerFactory;
+    try {
+      compilerFactory = CompilerFactoryFactory.getDefaultCompilerFactory(CalciteExecutor.class.getClassLoader());
+    } catch (Exception e) {
+      throw new IllegalStateException(
+          "Unable to instantiate java compiler", e);
+    }
+    IClassBodyEvaluator cbe = compilerFactory.newClassBodyEvaluator();
+    cbe.setClassName(classExpr.name);
+    cbe.setExtendedClass(Utilities.class);
+    cbe.setImplementedInterfaces(
+        plan.getRowType().getFieldCount() == 1
+            ? new Class[]{Bindable.class, Typed.class}
+            : new Class[]{ArrayBindable.class});
+    cbe.setParentClassLoader(EnumerableInterpretable.class.getClassLoader());
+
+    Bindable bindable;
+    try {
+      System.out.println(javaCode);
+      bindable = (Bindable) cbe.createInstance(new StringReader(javaCode));
+    } catch (CompileException | IOException e) {
+      e.printStackTrace();
+      throw new IllegalStateException();
+    }
     System.out.println(RelOptUtil.toString(root, SqlExplainLevel.ALL_ATTRIBUTES));
-    System.out.println(RelOptUtil.toString(exp, SqlExplainLevel.ALL_ATTRIBUTES));
+    System.out.println(RelOptUtil.toString(plan, SqlExplainLevel.ALL_ATTRIBUTES));
 
 
-    Enumerable<@Nullable Object[]> enumerable = bestExp.bind(this.getContext(queryContext));
+    Enumerable<@Nullable Object[]> enumerable = bindable.bind(this.getContext(queryContext));
 
-    if (!exp.getRowType().isStruct()) {
+    if (!plan.getRowType().isStruct()) {
       throw new NotImplementedException();
     }
 
-    TSDataType[] dataTypes = exp.getRowType().getFieldList().stream().filter(
+    TSDataType[] dataTypes = plan.getRowType().getFieldList().stream().filter(
         field -> !Arrays.asList("time", "$f0").contains(field.getName())
     ).map(field -> calciteTypeToTSDataType(field.getType())).toArray(TSDataType[]::new);
 
@@ -246,6 +298,15 @@ public class CalciteExecutor {
   public DataContext getContext(QueryContext queryContext) {
     DataContext inner = DataContexts.of(Collections.emptyMap());
 
+    QueryProvider queryProvider = new QueryProviderImpl() {
+
+      @Override
+      public <T> Enumerator<T> executeQuery(Queryable<T> queryable) {
+        throw new UnsupportedOperationException();
+      }
+
+    };
+
     return new DataContext() {
 
       @Override
@@ -260,7 +321,7 @@ public class CalciteExecutor {
 
       @Override
       public QueryProvider getQueryProvider() {
-        return inner.getQueryProvider();
+        return queryProvider;
       }
 
       @Override
@@ -324,6 +385,7 @@ public class CalciteExecutor {
       SingleSeriesExpression seriesExpression = (SingleSeriesExpression) expression;
 
       relBuilder.scan(seriesExpression.getSeriesPath().getFullPath());
+//      relBuilder.sort(0);
 //      if (seriesExpression.getFilter())
 //      relBuilder.filter()
       relBuilder.join(JoinRelType.LEFT, "time");
@@ -332,10 +394,9 @@ public class CalciteExecutor {
 //          relBuilder.field(1),
 //          relBuilder.field(3)
 //      );
-      relBuilder.sort(0);
+
       relBuilder.filter(relBuilder.greaterThan(relBuilder.field(3), rexBuilder.makeLiteral(100, typeFactory.createJavaType(Long.class))));
       relBuilder.project(relBuilder.field(0), relBuilder.field(1));
-      relBuilder.sort(0);
       return;
     }
     throw new NotImplementedException();
