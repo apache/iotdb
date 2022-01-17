@@ -72,7 +72,8 @@ public class MergeManager implements IService, MergeManagerMBean {
   private MergeManager() {}
 
   public RateLimiter getMergeWriteRateLimiter() {
-    setWriteMergeRate(IoTDBDescriptor.getInstance().getConfig().getMergeWriteThroughputMbPerSec());
+    setWriteMergeRate(
+        IoTDBDescriptor.getInstance().getConfig().getCompactionWriteThroughputMbPerSec());
     return mergeWriteRateLimiter;
   }
 

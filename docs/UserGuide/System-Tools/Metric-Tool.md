@@ -19,11 +19,11 @@
 
 -->
 
-## What is metrics?
+## 1. What is metrics?
 
 Along with IoTDB running, some metrics reflecting current system's status will be collected continuously, which will provide some useful information helping us resolving system problems and detecting potential system risks.
 
-## When to use metrics?
+## 2. When to use metrics?
 
 Belows are some typical application scenarios
 
@@ -46,15 +46,15 @@ Belows are some typical application scenarios
 
    We could use the count of error logs、the alive status of nodes in cluster, etc, to determine whether the system is running abnormally.
 
-## Who will use metrics?
+## 3. Who will use metrics?
 
 Any person cares about the system's status, including but not limited to RD, QA, SRE, DBA, can use the metrics to work more efficiently.
 
-## What metrics does IoTDB have?
+## 4. What metrics does IoTDB have?
 
 For now, we have provided some metrics for several core modules of IoTDB, and more metrics will be added or updated along with the development of new features and optimization or refactoring of architecture.
 
-### Key Concept
+### 4.1. Key Concept
 
 Before step into next, we'd better stop to have a look into some key concepts about metrics.
 
@@ -68,15 +68,15 @@ Every metric data has two properties
 
   Each metric could have 0 or several sub classes (Tag), for the same example, the ```logback_events_total``` metric has a sub class named ```level```, which means ```the total count of log events at the specific level```
 
-### Data Format
+### 4.2. Data Format
 
 IoTDB provides metrics data both in JMX and Prometheus format. For JMX, you can get these metrics via ```org.apache.iotdb.metrics```.  
 
 Next, we will choose Prometheus format data as samples to describe each kind of metric.
 
-### IoTDB Metrics
+### 4.3. IoTDB Metrics
 
-### API
+### 4.4. API
 
 | Metric              | Tag                   | Description                              | Sample                                       |
 | ------------------- | --------------------- | ---------------------------------------- | -------------------------------------------- |
@@ -85,14 +85,14 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | entry_seconds_max   | name="interface name" | The max latency of the interface         | entry_seconds_max{name="openSession",} 0.024 |
 | quantity_total      | name="pointsIn"       | The total points inserted into IoTDB     | quantity_total{name="pointsIn",} 1.0         |
 
-### File
+### 4.5. File
 
 | Metric     | Tag                  | Description                                     | Sample                      |
 | ---------- | -------------------- | ----------------------------------------------- | --------------------------- |
 | file_size  | name="wal/seq/unseq" | The current file size of wal/seq/unseq in bytes | file_size{name="wal",} 67.0 |
 | file_count | name="wal/seq/unseq" | The current count of wal/seq/unseq files        | file_count{name="seq",} 1.0 |
 
-### Flush
+### 4.6. Flush
 
 | Metric                  | Tag                                         | Description                                                  | Sample                                                       |
 | ----------------------- | ------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -101,7 +101,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_max   | name="flush"                                | The seconds of the longest flushing task takes till now      | cost_task_seconds_max{name="flush",} 0.363                   |
 | cost_task_seconds_sum   | name="flush"                                | The total cost seconds of all flushing tasks till now        | cost_task_seconds_sum{name="flush",} 0.363                   |
 
-### Compaction
+### 4.7. Compaction
 
 | Metric                  | Tag                                                          | Description                                                  | Sample                                               |
 | ----------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------------------------------------------------- |
@@ -110,25 +110,25 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cost_task_seconds_max   | name="compaction"                                            | The seconds of the longest compaction task takes till now    | cost_task_seconds_max{name="compaction",} 0.363      |
 | cost_task_seconds_sum   | name="compaction"                                            | The total cost seconds of all compaction tasks till now      | cost_task_seconds_sum{name="compaction",} 0.363      |
 
-### Memory Usage
+### 4.8. Memory Usage
 
 | Metric | Tag                                     | Description                                                  | Sample                            |
 | ------ | --------------------------------------- | ------------------------------------------------------------ | --------------------------------- |
 | mem    | name="chunkMetaData/storageGroup/mtree" | Current memory size of chunkMetaData/storageGroup/mtree data in bytes | mem{name="chunkMetaData",} 2050.0 |
 
-### Cache Hit Ratio
+### 4.9. Cache Hit Ratio
 
 | Metric    | Tag                                     | Description                                                  | Sample                      |
 | --------- | --------------------------------------- | ------------------------------------------------------------ | --------------------------- |
 | cache_hit | name="chunk/timeSeriesMeta/bloomFilter" | Cache hit ratio of chunk/timeSeriesMeta  and prevention ratio of bloom filter | cache_hit{name="chunk",} 80 |
 
-### Business Data
+### 4.10. Business Data
 
 | Metric   | Tag                                   | Description                                                  | Sample                           |
 | -------- | ------------------------------------- | ------------------------------------------------------------ | -------------------------------- |
 | quantity | name="timeSeries/storageGroup/device" | The current count of timeSeries/storageGroup/devices in IoTDB | quantity{name="timeSeries",} 1.0 |
 
-### Cluster
+### 4.11. Cluster
 
 | Metric                    | Tag                             | Description                                                  | Sample                                                       |
 | ------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -137,15 +137,15 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | cluster_node_status       | name="{{ip}}"                   | The current node status, 1=online  2=offline                 | cluster_node_status{name="127.0.0.1",} 1.0                   |
 | cluster_elect_total       | name="{{ip}}",status="fail/win" | The count and result (won or failed) of elections the node participated in. | cluster_elect_total{name="127.0.0.1",status="win",} 1.0      |
 
-### Log Events
+### 4.12. Log Events
 
 | Metric               | Tag                                    | Description                                                  | Sample                                  |
 | -------------------- | -------------------------------------- | ------------------------------------------------------------ | --------------------------------------- |
 | logback_events_total | {level="trace/debug/info/warn/error",} | The count of  trace/debug/info/warn/error log events till now | logback_events_total{level="warn",} 0.0 |
 
-### JVM
+### 4.13. JVM
 
-#### Threads
+#### 4.13.1. Threads
 
 | Metric                     | Tag                                                          | Description                          | Sample                                             |
 | -------------------------- | ------------------------------------------------------------ | ------------------------------------ | -------------------------------------------------- |
@@ -154,7 +154,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_threads_peak_threads   | None                                                         | The max count of threads till now    | jvm_threads_peak_threads 28.0                      |
 | jvm_threads_states_threads | state="runnable/blocked/waiting/timed-waiting/new/terminated" | The count of threads in each status  | jvm_threads_states_threads{state="runnable",} 10.0 |
 
-#### GC
+#### 4.13.2. GC
 
 | Metric                              | Tag                                                    | Description                                                  | Sample                                                       |
 | ----------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -167,7 +167,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_gc_live_data_size_bytes         | 无                                                     | Size of long-lived heap memory pool after reclamation        | jvm_gc_live_data_size_bytes 8450088.0                        |
 | jvm_gc_memory_allocated_bytes_total | None                                                   | Incremented for an increase in the size of the (young) heap memory pool after one GC to before the next | jvm_gc_memory_allocated_bytes_total 4.2979144E7              |
 
-#### Memory
+#### 4.13.3. Memory
 
 | Metric                          | Tag                             | Description                                                  | Sample                                                       |
 | ------------------------------- | ------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -178,7 +178,7 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_memory_max_bytes            | {area="heap/nonheap",id="xxx",} | The maximum amount of memory in bytes that can be used for memory management | jvm_memory_max_bytes{area="heap",id="Par Survivor Space",} 2.44252672E8<br/>jvm_memory_max_bytes{area="nonheap",id="Compressed Class Space",} 1.073741824E9 |
 | jvm_memory_used_bytes           | {area="heap/nonheap",id="xxx",} | The amount of used memory                                    | jvm_memory_used_bytes{area="heap",id="Par Eden Space",} 1.000128376E9<br/>jvm_memory_used_bytes{area="nonheap",id="Code Cache",} 2.9783808E7<br/> |
 
-#### Classes
+#### 4.13.4. Classes
 
 | Metric                             | Tag                                           | Description                                                  | Sample                                                       |
 | ---------------------------------- | --------------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
@@ -186,29 +186,34 @@ Next, we will choose Prometheus format data as samples to describe each kind of 
 | jvm_classes_loaded_classes         | 无                                            | The number of classes that are currently loaded in the Java virtual machine | jvm_classes_loaded_classes 5975.0                            |
 | jvm_compilation_time_ms_total      | {compiler="HotSpot 64-Bit Tiered Compilers",} | The approximate accumulated elapsed time spent in compilation | jvm_compilation_time_ms_total{compiler="HotSpot 64-Bit Tiered Compilers",} 107092.0 |
 
-If you want add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
+If you want to add your own metrics data in IoTDB, please see the [IoTDB Metric Framework] (https://github.com/apache/iotdb/tree/master/metrics) document.
 
-## How to get these metrics？
+## 5. How to get these metrics？
 
-The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-metric.yml```
+The metrics collection switch is disabled by default，you need to enable it from ```conf/iotdb-metric.yml```, Currently, it also supports hot loading via `load configuration` after startup.
 
-### Iotdb-metric.yml
+### 5.1. Iotdb-metric.yml
 
 ```yaml
-# The default value is false，change it to true and start/restart you IoTDB server, then you will get the metrics data.
-enableMetric: false            
+# whether enable the module
+enableMetric: false
 
-# IoTDB provides metrics data both in JMX and Prometheus format.
-metricReporterList:						
-  - jmx                    
+# Multiple reporter, options: [jmx, prometheus, iotdb]. iotdb is off by default.
+metricReporterList:
+  - jmx
   - prometheus
 
-# You can choose the underlying inplementation of the framework, dropwizard or micrometer, the latter is recommended.
-monitorType: micrometer         
+# Type of monitor frame, options: [micrometer, dropwizard]
+monitorType: micrometer
 
-# you can set the period time of push.
-# This param works only when monitorType=dropwizard
-pushPeriodInSecond: 5								
+# Predefined metric, options: [jvm, logback]
+predefinedMetrics:
+  - jvm
+  - logback
+
+# Period time of push, only valid for dropwizard
+pushPeriodInSecond: 5
+
 ########################################################
 #                                                      #
 # if the reporter is prometheus,                       #
@@ -217,9 +222,7 @@ pushPeriodInSecond: 5
 ########################################################
 prometheusReporterConfig:
   prometheusExporterUrl: http://localhost
-  
-  # From this port, you can get metrics data by http request
-  prometheusExporterPort: 9091						
+  prometheusExporterPort: 9091
 ```
 
 Then you can get metrics data as follows
@@ -227,9 +230,10 @@ Then you can get metrics data as follows
 1. Enable metrics switch in ```iotdb-metric.yml```
 2. You can just stay other config params  as default.
 3. Start/Restart your IoTDB server/cluster
-4. Open your browser or use the ```curl``` command to request ```http://servier_ip:9001/metrics```，then you will get metrics data like follows:
+4. Open your browser or use the ```curl``` command to request ```http://servier_ip:9091/metrics```，then you will get metrics data like follows:
 
 ```
+...
 # HELP file_count
 # TYPE file_count gauge
 file_count{name="wal",} 0.0
@@ -260,9 +264,10 @@ logback_events_total{level="info",} 71.0
 # TYPE mem gauge
 mem{name="storageGroup",} 0.0
 mem{name="mtree",} 1328.0
+...
 ```
 
-### Integrating with Prometheus and Grafana
+### 5.2. Integrating with Prometheus and Grafana
 
 As above descriptions，IoTDB provides metrics data in standard Prometheus format，so we can integrate with Prometheus and Grafana directly. 
 

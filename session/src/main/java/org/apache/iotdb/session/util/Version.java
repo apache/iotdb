@@ -17,26 +17,9 @@
  * under the License.
  */
 
-package org.apache.iotdb.metrics.dropwizard;
+package org.apache.iotdb.session.util;
 
-import org.apache.iotdb.metrics.MetricManager;
-import org.apache.iotdb.metrics.MetricService;
-import org.apache.iotdb.metrics.type.Counter;
-
-import java.util.concurrent.TimeUnit;
-
-public class PrometheusRunTest {
-  public MetricManager metricManager = MetricService.getMetricManager();
-
-  public static void main(String[] args) throws InterruptedException {
-    System.setProperty("line.separator", "\n");
-    System.setProperty("IOTDB_CONF", "metrics/dropwizard-metrics/src/test/resources");
-    PrometheusRunTest prometheusRunTest = new PrometheusRunTest();
-    Counter counter = prometheusRunTest.metricManager.getOrCreateCounter("counter");
-    MetricService.startAll();
-    while (true) {
-      counter.inc();
-      TimeUnit.SECONDS.sleep(1);
-    }
-  }
+public enum Version {
+  V_0_12,
+  V_0_13
 }
