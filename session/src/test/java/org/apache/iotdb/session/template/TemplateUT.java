@@ -203,6 +203,8 @@ public class TemplateUT {
 
     session.createSchemaTemplate(temp1);
 
+    assertEquals("[]", session.showPathsTemplateSetOn("template1").toString());
+
     try {
       session.createSchemaTemplate(temp1);
       fail();
@@ -220,7 +222,7 @@ public class TemplateUT {
       fail();
     } catch (Exception e) {
       assertEquals(
-          "303: Template [template1] has been set on [root.sg.v1], cannot be dropped now.",
+          "303: Template [template1] has been set on MTree, cannot be dropped now.",
           e.getMessage());
     }
 

@@ -324,8 +324,7 @@ public class TemplateTest {
       fail();
     } catch (MetadataException e) {
       assertEquals(
-          "Template [treeTemplate] has been set on [root.tsg10.d11], cannot be dropped now.",
-          e.getMessage());
+          "Template [treeTemplate] has been set on MTree, cannot be dropped now.", e.getMessage());
     }
   }
 
@@ -354,8 +353,7 @@ public class TemplateTest {
       fail();
     } catch (MetadataException e) {
       assertEquals(
-          "Template [template1] has been set on [root.sg.d0], cannot be dropped now.",
-          e.getMessage());
+          "Template [template1] has been set on MTree, cannot be dropped now.", e.getMessage());
     }
 
     UnsetTemplatePlan unsetPlan = new UnsetTemplatePlan("root.sg.d0", "template1");
